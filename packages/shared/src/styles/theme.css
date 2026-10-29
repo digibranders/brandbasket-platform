@@ -103,6 +103,17 @@
   /* The one raised surface a screen may have (DESIGN.md "Surfaces"). */
   --shadow-lift: 0 1px 2px rgb(21 22 26 / 0.05), 0 14px 34px -20px rgb(21 22 26 / 0.28);
   --radius-lift: 0.875rem;
+
+  /* Portal v3 (apps/platform/DESIGN.md): a third line shade for small labels, and the status colours. A status colour
+     always comes with a word. Each has a wash for its pill and a deep shade for the text on it (4.5:1 or better). */
+  --color-ink-3: #646c79;
+  --color-ok: #1e7a4c;
+  --color-ok-wash: #e6f4ec;
+  --color-warn: #8a5300;
+  --color-warn-wash: #fdf1dc;
+  --color-info: #2456a6;
+  --color-info-wash: #e9f0fb;
+  --color-error-wash: #fdecea;
 }
 
 @theme inline {
@@ -425,6 +436,55 @@ html[data-brand="brandbasket"]:is([data-app="customer"], [data-app="console"]) {
 
 html[data-brand="brandbasket"]:is([data-app="customer"], [data-app="console"]) :where(.heading-display, .panel-title) em {
   color: #a46c2f;
+}
+
+/*
+ * The customer portal, third generation (docs/redesign-29-oct-2026): cool neutrals, white working surfaces, and rattan as
+ * the one brand accent. The console keeps the block above. This selector ties with that block's in specificity, so it
+ * must stay after it. The older names (paper, card, ink-soft, accent, highlight) point at the same values, so pages not
+ * yet rebuilt follow the new palette without a class changing.
+ */
+html[data-brand="brandbasket"][data-app="customer"] {
+  --color-bg: #f6f7f9;
+  --color-surface: #ffffff;
+  --color-sunken: #f0f2f5;
+  --color-line: #e3e6eb;
+  --color-ink: #111418;
+  --color-ink-2: #4a5260;
+  --color-ink-raised: #2a2f37;
+  --color-rattan: #c48a47;
+  --color-rattan-text: #9a6428;
+  --color-rattan-ink: #7a4e1e;
+  --color-rattan-wash: #fbf3e8;
+  --color-c-site: #c48a47;
+  --color-c-growth: #1f7a74;
+  --color-c-search: #3558a0;
+  --color-sage: #1e7a4c;
+  --color-sage-wash: #e6f4ec;
+  --color-sage-deep: #1e7a4c;
+  --color-paper: #f6f7f9;
+  --color-paper-deep: #f0f2f5;
+  --color-card: #ffffff;
+  --color-ink-soft: #4a5260;
+  --color-dark-surface: #111418;
+  --color-dark-raised: #2a2f37;
+  --color-accent: #111418;
+  --color-accent-deep: #111418;
+  --color-accent-light: #f6f7f9;
+  --color-accent-pale: #fbf3e8;
+  --color-highlight: #c48a47;
+  --color-highlight-deep: #9a6428;
+  --color-dusk: #111418;
+  --color-amber: #c48a47;
+  /* One raised look: white, a 1px line drawn as a ring (so the console's shared LIFT class needs no border), and a faint lift. */
+  --shadow-lift: 0 0 0 1px #e3e6eb, 0 1px 2px rgb(17 20 24 / 0.05);
+  --radius-control: 0.625rem;
+  --radius-card: 0.875rem;
+  --radius-lift: 0.875rem;
+}
+
+html[data-brand="brandbasket"][data-app="customer"] :where(.heading-display, .panel-title) em {
+  color: #9a6428;
 }
 
 /* The paper grain is Brandbasket's; the Brandbasket site has none. */

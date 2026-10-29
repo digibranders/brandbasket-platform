@@ -11,31 +11,35 @@ const PILL: Readonly<Record<PillTone, string>> = {
   closed: "bg-sunken text-ink-2",
 };
 
+const FILTERS: readonly RequestFilter[] = ["waiting", "open", "done"];
+const FILTER_LABELS: Readonly<Record<RequestFilter, string>> = { waiting: "Waiting for you", open: "Open", done: "Done" };
+export const EMPTY_LINES: Readonly<Record<RequestFilter, string>> = { waiting: "Nothing is waiting for you.", open: "Nothing is open.", done: "Nothing is done yet." };
+
 interface RequestListProps {
   readonly rows: readonly RequestRow[];
   readonly filter: RequestFilter;
   readonly selectedId: string | null;
-  readonly counts: { readonly open: number; readonly done: number };
+  readonly counts: Readonly<Record<RequestFilter, number>>;
 }
 
-/** The list on the left: Open and Done above, then a row for each request with its title, its status word and its kind and date. */
+/** The list on the left: Waiting for you, Open and Done above, then a row for each request with its title, its status word and its kind and date. */
 export function RequestList({ rows, filter, selectedId, counts }: RequestListProps): ReactElement {
   return (
     <div>
       <nav aria-label="Show requests" className="flex flex-wrap gap-1.5 border-b border-line px-3 py-2.5">
-        {(["open", "done"] as const).map((value) => (
+        {FILTERS.map((value) => (
           <Link
             key={value}
             href={listHref(value)}
             aria-current={filter === value ? "true" : undefined}
             className={cn("rounded-[0.4375rem] px-2.5 py-1 text-[0.78125rem] font-semibold transition-colors duration-200", filter === value ? "bg-ink text-white" : "text-ink-2 hover:bg-sunken")}
           >
-            {value === "open" ? "Open" : "Done"} <span className="font-figure tabular-nums">{counts[value]}</span>
+            {FILTER_LABELS[value]} <span className="font-figure tabular-nums">{counts[value]}</span>
           </Link>
         ))}
       </nav>
       {rows.length === 0 ? (
-        <p className="px-3.5 py-4 text-[0.84375rem] text-ink-2 @2xl:hidden">{filter === "open" ? "Nothing is open." : "Nothing is done yet."}</p>
+        <p className="px-3.5 py-4 text-[0.9375rem] text-ink-2 @2xl:hidden">{EMPTY_LINES[filter]}</p>
       ) : (
         <ul>
           {rows.map((row) => (

@@ -11,12 +11,13 @@ import {
   listChangeRequestsForBusiness,
   listRequestItems,
   listRequestNeeds,
+  listWaitingOnYou,
   listUnreadReplies,
   moveChangeAsCustomer,
 } from "./queries/change-requests";
 import { insertCharge } from "./queries/charges";
 import { insertBusiness } from "./queries/onboarding";
-import { appendSupportMessageByStaff } from "./queries/support-staff";
+import { appendSupportMessageByStaff, updateSupportTicketByStaff } from "./queries/support-staff";
 import { createSupportTicket, createSupportTicketWithOutcome, getSupportTicket, markSupportTicketRead } from "./queries/support";
 import { businessMembers, changeRequests, staffMembers, supportTickets, users } from "./schema";
 import { withTenantScope } from "./scope";
@@ -196,6 +197,33 @@ describe("listRequestItems", () => {
 
   it("is checked for its size", async () => {
     await expect(asOwner((tx) => listRequestItems(tx, OWNER, businessId, 0))).rejects.toThrow(RangeError);
+  });
+});
+
+/** The team asks the person something: the status moves through the staff function, which the version and the status guard require. */
+async function waitOnOwner(ticketId: string): Promise<void> {
+  const [ticket] = await dbs.staff.db.select({ version: supportTickets.version }).from(supportTickets).where(eq(supportTickets.id, ticketId));
+  await updateSupportTicketByStaff(dbs.staff.db, { staffUserId: STAFF, ticketId, expectedVersion: ticket?.version ?? 1, status: "waiting_on_you" });
+}
+
+describe("listWaitingOnYou", () => {
+  it("lists the person's conversations the team is waiting on, with and without a change request, and no others", async () => {
+    const change = await ask({ subject: "Add an Implants page" });
+    const question = await createSupportTicket(dbs.app.db, { userId: OWNER, businessId, category: "support", subject: "A question", description: "How do I change my password?", submissionKey: key() });
+    const quiet = await createSupportTicket(dbs.app.db, { userId: OWNER, businessId, category: "general", subject: "Not waiting", description: "Just so you know, thank you.", submissionKey: key() });
+    expect(await asOwner((tx) => listWaitingOnYou(tx, OWNER, businessId))).toEqual([]);
+    await waitOnOwner(change.ticket.id);
+    await waitOnOwner(question.id);
+    const waiting = await asOwner((tx) => listWaitingOnYou(tx, OWNER, businessId));
+    expect(waiting.map((item) => item.ticketId).sort()).toEqual([change.ticket.id, question.id].sort());
+    expect(waiting.map((item) => item.ticketId)).not.toContain(quiet.id);
+  });
+
+  it("shows a stranger and a second member of the business nothing", async () => {
+    const { ticket } = await ask();
+    await waitOnOwner(ticket.id);
+    expect(await asOtherOwner((tx) => listWaitingOnYou(tx, OTHER_OWNER, otherBusinessId))).toEqual([]);
+    expect(await asSecond((tx) => listWaitingOnYou(tx, SECOND, businessId))).toEqual([]);
   });
 });
 

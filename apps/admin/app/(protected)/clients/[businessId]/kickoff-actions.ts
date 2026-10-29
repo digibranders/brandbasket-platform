@@ -1,10 +1,11 @@
 "use server";
 
-import { clearSetupCallHeld, markSetupCallHeld } from "@brandbasket/db";
+import { clearSetupCallHeld } from "@brandbasket/db";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { getStaffDb } from "@/lib/server/db";
+import { completeKickoff } from "@/lib/server/kickoff-complete";
 import { requireStaffAccess } from "@/lib/server/staff-access";
 import { logStaffAccessOrThrow } from "@/lib/server/staff-access-log";
 
@@ -22,16 +23,19 @@ function finish(businessId: string): never {
   redirect(`/clients/${businessId}/project#kickoff-call`);
 }
 
-/** Staff mark the kickoff call as held: it ends the customer's first look and opens their To do page and Overview. */
+/**
+ * Staff mark the kickoff call as held, for a call that happened by phone or to start the build before the call's end time passes
+ * (a booked call completes by itself once it ends). It also readies a Managed Website project to build.
+ */
 export async function markCallHeldAction(formData: FormData): Promise<void> {
   const { user } = await requireStaffAccess();
   const businessId = readBusinessId(formData);
-  const marked = await markSetupCallHeld(getStaffDb(), { businessId, staffId: user.id, now: new Date() });
-  if (marked) await logStaffAccessOrThrow({ staffUserId: user.id, action: "setup_call.held", targetType: "business", targetId: businessId, businessId });
+  const { newlyHeld } = await completeKickoff(getStaffDb(), { businessId, staffId: user.id, now: new Date(), notes: null });
+  if (newlyHeld) await logStaffAccessOrThrow({ staffUserId: user.id, action: "setup_call.held", targetType: "business", targetId: businessId, businessId });
   finish(businessId);
 }
 
-/** Undo the mark, if it was a mistake: the customer goes back to the first look. */
+/** Undo the mark, if it was a mistake. A project that already moved to building stays where it is. */
 export async function undoCallHeldAction(formData: FormData): Promise<void> {
   const { user } = await requireStaffAccess();
   const businessId = readBusinessId(formData);

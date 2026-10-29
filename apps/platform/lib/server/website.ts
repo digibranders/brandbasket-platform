@@ -19,6 +19,7 @@ import { progressView, revisionDue, type ProgressView } from "@/lib/website/prog
 import { boughtRows, type BoughtRow } from "@/lib/website/bought";
 import { WEBSITE_PREVIEW_IMAGE_PATH } from "@/lib/website/tabs";
 import { getAppDb } from "./db";
+import { loadIntake } from "./intake";
 import { firstPaymentView, type FirstPaymentView } from "./first-look";
 import { readLiveWebsite, type LiveWebsite } from "./onboarding";
 import { quietly } from "./quietly";
@@ -67,6 +68,8 @@ export async function loadWebsite(tenant: TenantContext, now: Date): Promise<Web
           quietly("website", "the preview picture", null, () => withTenantScope(db, tenant, (tx) => findPreviewImageInfo(tx))),
         ]);
 
+  // A customer who answered the first questions is on the kickoff-first path: the setup checklist is not theirs to finish.
+  const kickoffFirst = await quietly("website", "the first questions", false, async () => (await loadIntake(tenant)).completedAt !== null);
   const plan = await quietly("website", "what the plan covers", null, () =>
     withTenantScope(db, tenant, async (tx) => ({ lines: await findLiveBundledAddOns(tx, tenant.businessId), first: await findFirstPayment(tx, tenant.businessId) })),
   );
@@ -111,6 +114,8 @@ export async function loadWebsite(tenant: TenantContext, now: Date): Promise<Web
       roundsGranted: project?.revisionRoundsGranted ?? 0,
       previewDue,
       liveBy: timeline === null ? null : (liveDate(timeline)?.liveBy ?? null),
+      kickoffFirst,
+      kickoffDay: history?.callStartsAt == null ? null : day(history.callStartsAt),
     }),
     bought: plan === null ? [] : boughtRows(plan.lines),
     payment: plan === null ? null : firstPaymentView(plan.first),

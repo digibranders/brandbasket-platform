@@ -6,34 +6,23 @@ import { MembershipCheckout } from "@/components/panel/membership/membership-che
 import { STACK } from "@/components/v2/classes";
 import { sellsFreeListing } from "@/lib/brand";
 import { MEMBER_WELCOME_HREF } from "@/lib/celebration";
+import { personalizeHref, INTAKE_SUMMARY_STEP } from "@/lib/intake/links";
 import {
   MEMBER_HOME,
   isWaitingOnPayment,
-  MEMBERSHIP_SERVICES_PARAM,
   readMembershipPaymentNotice,
+  readSelectedServices,
   type MembershipTier,
 } from "@/lib/membership";
 import { getCustomerBusinessEntry, isAwaitingMembership, requireCustomerAccess } from "@/lib/server/customer-access";
+import { loadIntake } from "@/lib/server/intake";
 import { loadMembershipCheckout } from "@/lib/server/membership-checkout";
 import { requestBrand } from "@/lib/server/request-brand";
 import { chooseFreeListing } from "@/app/app-host/(protected)/plan/actions";
-import type { MonthlyAddOnId } from "@brandbasket/shared/lib/billing/add-ons";
-import { readBundleSelection, WEBSITE_ALONE } from "@brandbasket/shared/lib/billing/bundle";
 
 interface MembershipPageProps {
   readonly tier: MembershipTier;
   readonly searchParams: Promise<Readonly<Record<string, string | string[] | undefined>>>;
-}
-
-/**
- * The services named in the address (`?services=managed-website,digital-growth`), as catalogue ids only: the whole
- * subscription being bought. The website alone when it names none.
- */
-function readSelectedServices(params: Readonly<Record<string, string | string[] | undefined>>): readonly MonthlyAddOnId[] {
-  const raw = params[MEMBERSHIP_SERVICES_PARAM];
-  const text = Array.isArray(raw) ? raw.join(",") : (raw ?? "");
-  const named = readBundleSelection(text.split(","));
-  return named.length === 0 ? WEBSITE_ALONE : named;
 }
 
 /**
@@ -68,6 +57,12 @@ export async function MembershipPage({ tier, searchParams }: MembershipPageProps
   const { plan, services: selected } = view;
   const brand = await requestBrand();
 
+  // A new account (nothing paid yet) answers the short questions first. A payment on its way, or under review, is never
+  // sent away from the page that says so; and once they are answered the services are changed on the questions' summary.
+  const intakeDone = view.offer.kind === "available" ? (await loadIntake(tenant)).completedAt !== null : true;
+  if (!intakeDone && !waiting && notice === null && !billing.paymentUnderReview) redirect(personalizeHref(selected));
+  const changeServicesHref = view.offer.kind === "available" ? personalizeHref(selected, INTAKE_SUMMARY_STEP) : null;
+
   // Only an account with something to pay is shown the choice and the Pay button: one whose payment is on its way, or under
   // review, is told so by the checkout instead.
   const payable = plan !== null && !waiting && !billing.paymentUnderReview;
@@ -78,7 +73,8 @@ export async function MembershipPage({ tier, searchParams }: MembershipPageProps
         <CheckoutLedger
           tier={tier}
           initialServices={selected}
-          choosable={view.offer.kind === "available"}
+          choosable={false}
+          changeServicesHref={changeServicesHref}
           pricing={{
             planInitialAmountCents: plan.initialAmountCents,
             currency: plan.currency,

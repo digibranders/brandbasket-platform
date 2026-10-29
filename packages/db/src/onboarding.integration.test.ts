@@ -27,6 +27,7 @@ import {
   OnboardingLockedError,
   replaceBusinessHours,
   replaceServices,
+  saveBusinessContact,
   saveBusinessProfile,
   savePrimaryDomain,
   saveProjectBrief,
@@ -277,6 +278,35 @@ describe("saving and reading every step", () => {
       expect(await listMediaAssets(tx, "logo")).toEqual([]);
       expect(await listStepProgress(tx, projectA)).toMatchObject([{ step: "business" }]);
     });
+  });
+
+  it("updates only the contact facts, with no onboarding lock, and keeps the rest of the profile", async () => {
+    await asTenant("A", async (tx) => {
+      await saveBusinessProfile(tx, { ...profileInput("Original name"), tagline: "A tagline", description: "A description" });
+      const saved = await saveBusinessContact(tx, {
+        displayName: "New name",
+        phone: "+912012345678",
+        email: "new@example.test",
+        addressLine1: "12 Market Road",
+        addressLine2: null,
+        city: "Thane",
+        region: "Maharashtra",
+        postalCode: "400601",
+        country: "India",
+        serviceAreas: "Thane, Mumbai",
+      });
+      expect(saved).toMatchObject({ displayName: "New name", phone: "+912012345678", city: "Thane", serviceAreas: "Thane, Mumbai", tagline: "A tagline", description: "A description" });
+      expect(saved.addressLine2).toBeNull();
+    });
+    expect((await asTenant("A", (tx) => getBusinessProfile(tx)))?.displayName).toBe("New name");
+    expect((await asTenant("B", (tx) => getBusinessProfile(tx)))?.displayName).not.toBe("New name");
+  });
+
+  it("creates the profile when there is none, for a business that never did the onboarding steps", async () => {
+    const created = await asTenant("A", (tx) =>
+      saveBusinessContact(tx, { displayName: "Only contact", phone: null, email: "hello@example.test", addressLine1: null, addressLine2: null, city: null, region: null, postalCode: null, country: null, serviceAreas: null }),
+    );
+    expect(created).toMatchObject({ displayName: "Only contact", email: "hello@example.test", tagline: null });
   });
 
   it("upserts the profile and brief instead of adding rows", async () => {

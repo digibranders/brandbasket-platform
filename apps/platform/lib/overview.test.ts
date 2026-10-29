@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { activityRows, greetingFor, monthKey, monthName, monthStart, resultLines, sublineFor, type SnapshotView } from "@/lib/overview";
+import { activityRows, greetingFor, monthKey, monthName, monthStart, resultLines, type SnapshotView } from "@/lib/overview";
 
 const blank: SnapshotView = {
   adSpendCents: null,
@@ -20,23 +20,11 @@ describe("months in India", () => {
   });
 });
 
-describe("greetingFor and sublineFor", () => {
+describe("greetingFor", () => {
   it("greets by the hour in India", () => {
     expect(greetingFor(new Date("2026-11-15T03:30:00.000Z"))).toBe("Good morning");
     expect(greetingFor(new Date("2026-11-15T08:30:00.000Z"))).toBe("Good afternoon");
     expect(greetingFor(new Date("2026-11-15T14:30:00.000Z"))).toBe("Good evening");
-  });
-
-  it("says how many things need the customer", () => {
-    expect(sublineFor(0)).toBe("Everything is running. Nothing needs you.");
-    expect(sublineFor(1)).toBe("Everything is running. 1 thing needs you.");
-    expect(sublineFor(4)).toBe("Everything is running. 4 things need you.");
-  });
-
-  it("does not claim everything is running while the website is still being built", () => {
-    expect(sublineFor(0, true)).toBe("We are setting things up. Nothing needs you.");
-    expect(sublineFor(1, true)).toBe("We are setting things up. 1 thing needs you.");
-    expect(sublineFor(4, true)).toBe("We are setting things up. 4 things need you.");
   });
 });
 

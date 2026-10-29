@@ -70,6 +70,12 @@ describe("the Settings page", () => {
     expect(html).not.toMatch(/border-line bg-card/);
   });
 
+  it("offers to sign out the other devices on its own, without changing the password", async () => {
+    const html = await render();
+    expect(html).toContain(">Sign out other devices</button>");
+    expect(html).toContain("You stay signed in here.");
+  });
+
   it("names a free listing account's business and kind instead of a plan", async () => {
     vi.mocked(getCustomerBusinessKind).mockResolvedValue("listing");
     const html = await render();

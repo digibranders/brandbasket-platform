@@ -11,6 +11,7 @@ vi.mock("next/navigation", () => ({
 }));
 vi.mock("@/lib/server/customer-access", () => ({ requireCustomerAccess: vi.fn() }));
 vi.mock("@/lib/server/social", () => ({ loadSocial: vi.fn() }));
+vi.mock("@/lib/server/todo", () => ({ loadTodo: vi.fn(async () => ({ services: [], items: [], open: 0, answers: { social: undefined, search: undefined } })) }));
 vi.mock("@/components/social/social-view", () => ({ SocialView: () => null }));
 
 const tenant = { userId: "user-1", businessId: "business-1" };

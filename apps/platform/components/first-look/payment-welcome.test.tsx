@@ -56,7 +56,7 @@ describe("PaymentWelcome", () => {
     expect(dialog().hasAttribute("open")).toBe(true);
     expect(dialog().textContent).toContain("Welcome to Brandbasket.");
     expect(dialog().textContent).toContain("Website");
-    expect(dialog().textContent).toContain("Search");
+    expect(dialog().textContent).toContain("Local SEO + AEO");
     expect(dialog().textContent).not.toContain("Social & Ads");
   });
 

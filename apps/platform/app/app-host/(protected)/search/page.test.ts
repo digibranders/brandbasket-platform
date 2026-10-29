@@ -11,18 +11,19 @@ vi.mock("next/navigation", () => ({
 }));
 vi.mock("@/lib/server/customer-access", () => ({ requireCustomerAccess: vi.fn() }));
 vi.mock("@/lib/server/search", () => ({ loadSearch: vi.fn() }));
+vi.mock("@/lib/server/todo", () => ({ loadTodo: vi.fn(async () => ({ services: [], items: [], open: 0, answers: { social: undefined, search: undefined } })) }));
 vi.mock("@/components/search/search-view", () => ({ SearchView: () => null }));
 
 const tenant = { userId: "user-1", businessId: "business-1" };
-const data = { summary: { pageOne: null, pages: [], listings: [] }, waiting: [], report: null, month: "November" };
+const data = { summary: { pageOne: null, pages: [], listings: [] }, report: null, month: "November" };
 
 beforeEach(() => {
   vi.resetAllMocks();
 });
 
 describe("the Search page", () => {
-  it("is titled Search", () => {
-    expect(metadata).toEqual({ title: "Search" });
+  it("is titled Local SEO + AEO, never just Search, which is the sidebar search box", () => {
+    expect(metadata).toEqual({ title: "Local SEO + AEO" });
   });
 
   it("sends a signed-out visitor on to sign in, reading nothing", async () => {

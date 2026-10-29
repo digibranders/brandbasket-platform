@@ -1,6 +1,6 @@
 import type { RequestNeed } from "@brandbasket/db";
 import { expect, it } from "vitest";
-import { needsYouFrom, noticeInputsFrom } from "./needs";
+import { needsYouFrom, noticeInputsFrom, waitingOnYouFrom } from "./needs";
 
 const need = (overrides: Partial<RequestNeed>): RequestNeed => ({
   ticketId: "t1",
@@ -59,4 +59,10 @@ it("lists a payment to make and a change to check, and gives Billing and Somethi
 
 it("still lists a quote whose figures are missing", () => {
   expect(needsYouFrom([need({ quote: null })])[0]?.hint).toBe("Waiting for your OK");
+});
+
+it("lists a question from the team as something to reply to, once, and not when it is already a quote or a check", () => {
+  const rows = waitingOnYouFrom([{ ticketId: "t1", subject: "Add an Implants page" }, { ticketId: "t7", subject: "Which logo should we use?" }], [need({})]);
+  expect(rows).toEqual([{ key: "request-t7", label: "Reply to: Which logo should we use?", hint: "Waiting for you", service: null, href: "/requests?open=t7" }]);
+  expect(waitingOnYouFrom([], [])).toEqual([]);
 });

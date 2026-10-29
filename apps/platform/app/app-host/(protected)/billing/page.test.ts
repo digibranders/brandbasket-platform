@@ -25,6 +25,7 @@ vi.mock("@/components/panel/billing/billing-details", () => ({ BillingDetails: (
 vi.mock("@/components/panel/billing/payments-list", () => ({ PaymentsList: () => "[payments]" }));
 vi.mock("@/components/panel/billing/reactivate-plan", () => ({ ReactivatePlan: () => "[reactivate]" }));
 vi.mock("@/components/panel/billing/service-picker", () => ({ ServicePicker: () => "[service picker]" }));
+vi.mock("@/components/v2/section-tabs", () => ({ SectionTabs: ({ label }: { label: string }) => `[tabs ${label}]` }));
 vi.mock("@/components/panel/payment-waiting", () => ({ PaymentWaiting: () => "[waiting]" }));
 vi.mock("@/lib/billing/billing-months", () => ({ billingMonths: vi.fn(() => []) }));
 vi.mock("@brandbasket/shared/lib/billing/terms", () => ({ describePlanTerms: () => "₹2,999 a month, GST included.", monthlyPaymentAmount: () => "₹2,999" }));
@@ -52,7 +53,8 @@ async function render(searchParams: Record<string, string> = {}): Promise<string
 describe("the Billing page", () => {
   it("puts the plan on the left and the payments in the aside, with no box around any section", async () => {
     const html = await render();
-    expect(html).toContain(">Billing</h1>");
+    expect(html).toContain(">Plan &amp; billing</h1>");
+    expect(html).toContain("[tabs Plan and billing]");
     expect(html).toContain("Your plan, and each month’s bill with its invoices and receipts.");
     expect(html.indexOf("[plan summary]")).toBeGreaterThan(-1);
     expect(html.indexOf("[payments]")).toBeGreaterThan(html.indexOf("[plan summary]"));

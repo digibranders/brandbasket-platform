@@ -5,10 +5,10 @@ import { activityEvents, type ActivityEvent, type ActivityService } from "../sch
 
 type Runner = Database | ScopedTransaction;
 
-/** Adds a dated line for a customer. Staff connection. */
+/** Adds a dated line for a customer. Staff connection. `staffId` is null for a line the system wrote (a scheduled job). */
 export async function addActivityEvent(
   db: Runner,
-  input: { readonly businessId: string; readonly service: ActivityService | null; readonly title: string; readonly occurredAt: Date; readonly staffId: string },
+  input: { readonly businessId: string; readonly service: ActivityService | null; readonly title: string; readonly occurredAt: Date; readonly staffId: string | null },
 ): Promise<void> {
   await db.insert(activityEvents).values({
     businessId: input.businessId,

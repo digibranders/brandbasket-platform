@@ -17,8 +17,8 @@ export function PageHeader({ title, lede, action, tabs }: PageHeaderProps): Reac
     <header className="grid gap-4">
       <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-3">
         <div className="min-w-0">
-          <h1 className="font-display text-[1.75rem] font-semibold leading-tight tracking-[-0.035em] text-ink">{title}</h1>
-          {lede === undefined ? null : <p className="mt-2 max-w-2xl text-[0.84375rem] leading-relaxed text-ink-2">{lede}</p>}
+          <h1 className="font-display text-[1.875rem] font-semibold leading-tight tracking-[-0.025em] text-ink">{title}</h1>
+          {lede === undefined ? null : <p className="mt-2 max-w-2xl text-[1.0625rem] leading-relaxed text-ink-2">{lede}</p>}
         </div>
         {action === undefined ? null : <div className="flex flex-wrap items-center gap-2">{action}</div>}
       </div>
@@ -93,8 +93,8 @@ export function EmptyState({ icon: Mark, title, text, action, compact = false }:
       <span aria-hidden="true" className="mb-4 grid size-11 place-items-center rounded-full bg-sunken text-ink-2">
         <Mark size={22} />
       </span>
-      <h2 className="font-display text-[1.0625rem] font-semibold tracking-[-0.02em] text-ink">{title}</h2>
-      {text === undefined ? null : <p className="mt-1.5 max-w-sm text-[0.84375rem] leading-relaxed text-ink-2">{text}</p>}
+      <h2 className="font-display text-lg font-semibold tracking-[-0.02em] text-ink">{title}</h2>
+      {text === undefined ? null : <p className="mt-1.5 max-w-sm text-[0.9375rem] leading-relaxed text-ink-2">{text}</p>}
       {action === undefined ? null : <div className="mt-5">{action}</div>}
     </div>
   );
@@ -122,10 +122,10 @@ export function PageSection({
   return (
     <section aria-labelledby={`${id}-title`} className={className}>
       <div className="flex items-baseline justify-between gap-4 border-b border-line pb-2.5">
-        <h2 id={`${id}-title`} className="font-display text-[0.9375rem] font-semibold tracking-[-0.01em] text-ink">
+        <h2 id={`${id}-title`} className="font-display text-[1.0625rem] font-semibold tracking-[-0.01em] text-ink">
           {title}
         </h2>
-        {aside === undefined ? null : <div className="shrink-0 text-[0.8125rem] text-ink-2">{aside}</div>}
+        {aside === undefined ? null : <div className="shrink-0 text-[0.9375rem] text-ink-2">{aside}</div>}
       </div>
       <div className={flush ? undefined : "pt-4"}>{children}</div>
     </section>
@@ -144,8 +144,8 @@ export function FactRows({
     <dl className={cn("divide-y divide-line", className)}>
       {items.map((item) => (
         <div key={item.label} className="grid gap-1 py-3 first:pt-0 last:pb-0 sm:grid-cols-[11rem_minmax(0,1fr)] sm:gap-6">
-          <dt className="text-[0.8125rem] text-ink-2">{item.label}</dt>
-          <dd className="min-w-0 break-words text-sm text-ink">{item.value}</dd>
+          <dt className="text-[0.9375rem] text-ink-2">{item.label}</dt>
+          <dd className="min-w-0 break-words text-base text-ink">{item.value}</dd>
         </div>
       ))}
     </dl>
@@ -157,8 +157,8 @@ export function ActionRow({ title, text, action }: { readonly title?: string; re
   return (
     <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3">
       <div className="min-w-0 max-w-xl">
-        {title === undefined ? null : <p className="text-sm font-semibold text-ink">{title}</p>}
-        <p className={title === undefined ? "text-sm leading-relaxed text-ink-2" : "mt-1 text-sm leading-relaxed text-ink-2"}>{text}</p>
+        {title === undefined ? null : <p className="text-base font-semibold text-ink">{title}</p>}
+        <p className={title === undefined ? "text-[0.9375rem] leading-relaxed text-ink-2" : "mt-1 text-[0.9375rem] leading-relaxed text-ink-2"}>{text}</p>
       </div>
       <div className="shrink-0">{action}</div>
     </div>

@@ -1,13 +1,15 @@
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+
+vi.mock("@/app/app-host/(protected)/setup-actions", () => ({ saveSetupItemAction: vi.fn() }));
+
 import { SearchView } from "@/components/search/search-view";
 import { DARK_BUTTON } from "@/components/v2/classes";
 import type { SearchData } from "@/lib/server/search";
-import type { TodoItem } from "@/lib/todo";
+import type { SetupAsk } from "@/lib/setup-asks";
 
-const waitingItem = (key: string, overrides: Partial<TodoItem> = {}): TodoItem =>
-  ({ key, label: `Tell us ${key}`, hint: "Two minutes", service: "search", done: false, kind: "form", setup: "areas", ...overrides }) as TodoItem;
+const ask = (key: string, overrides: Partial<SetupAsk> = {}): SetupAsk => ({ key, setup: "areas", label: `Tell us ${key}`, hint: "Two minutes", saved: undefined, ...overrides });
 
 function data(overrides: Partial<SearchData> = {}): SearchData {
   return {
@@ -19,25 +21,24 @@ function data(overrides: Partial<SearchData> = {}): SearchData {
       ],
       listings: [{ id: "l1", title: "Opening hours on Google" }],
     },
-    waiting: [],
     report: null,
     month: "November",
     ...overrides,
   };
 }
 
-const render = (value: SearchData): string => renderToStaticMarkup(createElement(SearchView, { data: value }));
+const render = (value: SearchData, setup: readonly SetupAsk[] = []): string => renderToStaticMarkup(createElement(SearchView, { data: value, setup })).replaceAll("<!-- -->", "");
 const darkButtons = (html: string): number => html.split(DARK_BUTTON).length - 1;
 
 describe("SearchView", () => {
   it("shows the header, the month line and the four sections for a full summary", () => {
-    const html = render(data({ waiting: [waitingItem("areas")], report: "https://example.com/report.pdf" }));
+    const html = render(data({ report: "https://example.com/report.pdf" }), [ask("areas")]);
 
-    expect(html).toContain("Search");
+    expect(html).toContain("Local SEO + AEO");
     expect(html).toContain("November: 14 searches show you on Google&#x27;s first page.");
     expect(html).toContain("Monthly report");
     expect(html).toContain('href="https://example.com/report.pdf"');
-    expect(html).toContain("Waiting on you");
+    expect(html).toContain("We need one thing from you");
     expect(html).toContain("Searches on Google&#x27;s first page");
     expect(html).toContain("Up from 6");
     expect(html).toContain("Pages we improved in November");
@@ -48,9 +49,9 @@ describe("SearchView", () => {
     expect(html).toContain("Opening hours on Google");
   });
 
-  it("orders the main column: waiting, pages, listings", () => {
-    const html = render(data({ waiting: [waitingItem("areas")] }));
-    const at = ["Waiting on you", "Pages we improved in", "Listings we fixed"].map((text) => html.indexOf(text));
+  it("orders the page: what we need from you, pages, listings", () => {
+    const html = render(data(), [ask("areas")]);
+    const at = ["We need one thing from you", "Pages we improved in", "Listings we fixed"].map((text) => html.indexOf(text));
     expect(at.every((index) => index >= 0)).toBe(true);
     expect([...at].sort((a, b) => a - b)).toEqual(at);
   });
@@ -88,7 +89,7 @@ describe("SearchView", () => {
 
   it("sits in the page frame, with the figure in the aside after the pages and listings", () => {
     const html = render(data());
-    expect(html).toContain(">Search</h1>");
+    expect(html).toContain(">Local SEO + AEO</h1>");
     expect(html).toContain("@container");
     expect(html.indexOf("Searches on Google&#x27;s first page")).toBeGreaterThan(html.indexOf("Listings we fixed"));
   });
@@ -106,16 +107,17 @@ describe("SearchView", () => {
     expect(render(data({ report: "javascript:alert(1)" }))).not.toContain("Monthly report");
   });
 
-  it("has the one dark button only when something is waiting, on the first item", () => {
-    expect(darkButtons(render(data()))).toBe(0);
-    const html = render(data({ waiting: [waitingItem("a"), waitingItem("b", { kind: "link", href: "/onboarding/x" } as Partial<TodoItem>)] }));
-    expect(darkButtons(html)).toBe(1);
-    expect(html).toContain('href="/todo?focus=a#a"');
-    expect(html).toContain('href="/onboarding/x"');
-    expect(html.indexOf(DARK_BUTTON)).toBeLessThan(html.indexOf('href="/onboarding/x"'));
+  it("has no card asking for anything when nothing is needed", () => {
+    const html = render(data());
+    expect(html).not.toContain("We need one thing from you");
+    expect(html).not.toContain("Waiting on you");
+    expect(darkButtons(html)).toBe(0);
   });
 
-  it("has no Waiting on you section when nothing is waiting", () => {
-    expect(render(data())).not.toContain("Waiting on you");
+  it("asks for what blocks the work in one card at the top, even before there is any work to show", () => {
+    const html = render(data({ summary: { pageOne: null, pages: [], listings: [] } }), [ask("areas")]);
+    expect(html).toContain('id="setup"');
+    expect(html).toContain("Tell us areas");
+    expect(html.indexOf("We need one thing from you")).toBeLessThan(html.indexOf("No search work to show yet"));
   });
 });

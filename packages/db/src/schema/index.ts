@@ -11,6 +11,7 @@ export * from "./businesses";
 export * from "./change-requests";
 export * from "./chatbots";
 export * from "./client-activity";
+export * from "./client-intakes";
 export * from "./currency";
 export * from "./deliveries";
 export * from "./deliverables";

@@ -1,6 +1,7 @@
 "use client";
 
 import { Check } from "@phosphor-icons/react/dist/ssr";
+import Link from "next/link";
 import { useActionState, useEffect, useMemo, useRef, useState, type ReactElement } from "react";
 import { addOnById, MONTHLY_ADD_ON_IDS, type MonthlyAddOnId } from "@brandbasket/shared/lib/billing/add-ons";
 import { bundleLines } from "@brandbasket/shared/lib/billing/bundle";
@@ -24,6 +25,8 @@ interface CheckoutLedgerProps {
   readonly initialServices: readonly MonthlyAddOnId[];
   /** Whether the services can be chosen here: not for a business that is buying back the basket it lapsed with. */
   readonly choosable: boolean;
+  /** Where "Change services" goes when they cannot be chosen here: the questions' summary, or null when there is nowhere to change them. */
+  readonly changeServicesHref?: string | null;
   readonly pricing: LedgerPricing;
   readonly initialTermMonths: number;
   /** The code in force, or null. */
@@ -58,6 +61,7 @@ export function CheckoutLedger({
   tier,
   initialServices,
   choosable,
+  changeServicesHref = null,
   pricing,
   initialTermMonths,
   code,
@@ -187,6 +191,14 @@ export function CheckoutLedger({
                 <p className="mt-3 text-[0.84375rem] font-semibold text-sage-deep">{CHECKOUT_COPY.allThree}</p>
               ) : null}
             </>
+          ) : null}
+
+          {!choosable && changeServicesHref !== null ? (
+            <p className="mb-3 text-sm">
+              <Link href={changeServicesHref} className="font-semibold underline decoration-line underline-offset-[3px]">
+                Change services
+              </Link>
+            </p>
           ) : null}
 
           <div aria-live="polite" className={choosable ? "mt-5 border-t border-line pt-[1.125rem]" : ""}>

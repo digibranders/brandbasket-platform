@@ -60,4 +60,11 @@ describe("PlanSummary", () => {
     expect(markup(true)).toContain("per month");
     expect(markup(true)).toContain("Next payment");
   });
+
+  it("has no bar of days used: the next payment is a plain line", () => {
+    const html = markup(true);
+    expect(html).not.toContain("progressbar");
+    expect(html).not.toMatch(/\d+ of \d+ days/);
+    expect(html).toContain("Next payment");
+  });
 });

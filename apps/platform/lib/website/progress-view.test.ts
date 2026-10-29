@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { progressView, revisionDue, roundsLine, type ProgressInput } from "@/lib/website/progress-view";
 
 function input(overrides: Partial<ProgressInput> = {}): ProgressInput {
-  return { status: null, holdReason: null, roundsIncluded: 2, roundsGranted: 0, previewDue: null, liveBy: null, ...overrides };
+  return { status: null, holdReason: null, roundsIncluded: 2, roundsGranted: 0, previewDue: null, liveBy: null, kickoffFirst: false, kickoffDay: null, ...overrides };
 }
 
 describe("progressView", () => {
@@ -17,6 +17,16 @@ describe("progressView", () => {
       title: "Finish your setup",
       line: "We start building once your setup is in.",
     });
+  });
+
+  it("waits for the kickoff call, with no setup to finish, for a customer who answered the first questions", () => {
+    expect(progressView(input({ status: "onboarding", kickoffFirst: true }))).toEqual({
+      kind: "kickoff",
+      title: "We start after your kickoff call",
+      line: "Book your call and we start building straight after it.",
+    });
+    expect(progressView(input({ status: "onboarding", kickoffFirst: true, kickoffDay: "2026-11-02" })).line).toBe("Your call is on Mon 2 Nov. We start building straight after it.");
+    expect(progressView(input({ status: "building", kickoffFirst: true })).kind).toBe("building");
   });
 
   it("gives the first preview date while building", () => {
@@ -48,11 +58,11 @@ describe("progressView", () => {
     });
   });
 
-  it("explains the preview and the rounds still included", () => {
+  it("explains the preview; the rounds still included sit under the feedback box", () => {
     expect(progressView(input({ status: "preview", roundsIncluded: 2, roundsGranted: 1 }))).toEqual({
       kind: "preview",
       title: "Your preview is ready",
-      line: "Look through it on your phone and on a computer. Then approve it, or tell us what to change. One round of changes is included.",
+      line: "Look through it on your phone and on a computer. Then approve it, or tell us what to change.",
     });
   });
 

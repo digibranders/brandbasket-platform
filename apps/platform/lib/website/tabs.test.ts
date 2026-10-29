@@ -3,12 +3,12 @@ import { askAboutHref, currentTab } from "@/lib/website/tabs";
 import { readWebsiteNotice, websiteNoticeHref, WEBSITE_NOTICES } from "@/lib/website/notices";
 
 describe("currentTab", () => {
-  it("marks Progress only on /website itself", () => {
-    expect(currentTab("/website")?.label).toBe("Progress");
+  it("marks Overview only on /website itself", () => {
+    expect(currentTab("/website")?.label).toBe("Overview");
     expect(currentTab("/website/x")).toBeNull();
   });
 
-  it("marks Pages on /website/pages and not Progress", () => {
+  it("marks Pages on /website/pages and not Overview", () => {
     expect(currentTab("/website/pages")?.label).toBe("Pages");
   });
 
@@ -22,8 +22,8 @@ describe("currentTab", () => {
     }
   });
 
-  it("marks no tab on OyeChats, which has its own page", () => {
-    expect(currentTab("/oyechats")).toBeNull();
+  it("marks Enquiries on the website chat's page", () => {
+    expect(currentTab("/website/enquiries")?.label).toBe("Enquiries");
   });
 
   it("marks no tab on pages the tabs do not cover", () => {

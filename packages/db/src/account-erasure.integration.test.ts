@@ -258,6 +258,7 @@ describe("eraseClosedAccount", () => {
     const postIds: Record<string, string> = { [businessId]: randomUUID(), [controlId]: randomUUID() };
     for (const id of [businessId, controlId]) {
       await dbs.owner.db.execute(sql.raw(`insert into service_setup (id, business_id, service) values (gen_random_uuid(), '${id}', 'social')`));
+      await dbs.owner.db.execute(sql.raw(`insert into client_intakes (business_id) values ('${id}')`));
       await dbs.owner.db.execute(sql.raw(`insert into activity_events (id, business_id, title) values (gen_random_uuid(), '${id}', 'Ads narrowed to 4 km')`));
       await dbs.owner.db.execute(sql.raw(`insert into business_activity (id, business_id, actor_kind, kind, summary) values (gen_random_uuid(), '${id}', 'staff', 'payment.refunded', 'Marked a payment refunded')`));
       await dbs.owner.db.execute(sql.raw(`insert into monthly_snapshots (id, business_id, service, month) values (gen_random_uuid(), '${id}', 'social', '2026-10-01')`));
@@ -290,7 +291,7 @@ describe("eraseClosedAccount", () => {
       expect(outcome.storageKeys).toContain(`deliverables/${postIds[businessId]}/display`);
       expect(outcome.storageKeys).not.toContain(`deliverables/${postIds[controlId]}/display`);
     }
-    for (const table of ["service_setup", "activity_events", "business_activity", "monthly_snapshots", "monthly_reports", "site_events", "team_calls", "metric_daily", "metric_breakdowns", "report_documents", "report_source_runs", "report_sources", "site_keys", "site_hits", "website_hosting"]) {
+    for (const table of ["service_setup", "client_intakes", "activity_events", "business_activity", "monthly_snapshots", "monthly_reports", "site_events", "team_calls", "metric_daily", "metric_breakdowns", "report_documents", "report_source_runs", "report_sources", "site_keys", "site_hits", "website_hosting"]) {
       expect(await count(table, `business_id = '${businessId}'`), `${table} of the closed business`).toBe(0);
       expect(await count(table, `business_id = '${controlId}'`), `${table} of the other business`).toBe(1);
     }
@@ -495,7 +496,7 @@ describe("what the erase knows about", () => {
   /** Tables the erase empties for the business. */
   const ERASED = [
     "activity_events", "appointment_services", "appointment_settings", "appointments", "billing_profiles", "booking_otps", "business_activity", "business_announcements", "business_closures",
-    "business_hours", "business_members", "business_modules", "business_profiles", "change_requests", "chatbot_leads", "chatbots", "deliverables", "directory_business_categories", "directory_business_faqs",
+    "business_hours", "business_members", "business_modules", "business_profiles", "change_requests", "chatbot_leads", "chatbots", "client_intakes", "deliverables", "directory_business_categories", "directory_business_faqs",
     "directory_business_products", "directory_business_profiles", "directory_business_services", "directory_claims",
     "directory_deals", "directory_listings", "directory_pictures", "directory_videos", "domains", "leads", "media_assets", "metric_breakdowns", "metric_daily", "monthly_reports", "monthly_snapshots", "onboarding_progress",
     "patients", "practitioner_hours", "practitioner_leave", "practitioners", "project_briefs", "project_events", "project_preview_images", "projects", "report_documents", "report_source_runs", "report_sources", "service_setup", "services",

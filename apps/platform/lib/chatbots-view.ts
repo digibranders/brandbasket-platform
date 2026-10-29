@@ -5,7 +5,7 @@ import type { ChatbotStatus } from "@brandbasket/db";
  * browser-safe, so the sentences are tested and the same ones are used wherever they appear.
  */
 
-export const CHATBOT_PATH = "/oyechats";
+export const CHATBOT_PATH = "/website/enquiries";
 
 /** What the page says about the price: OyeChats comes with the plan, so the customer never sees it as something to buy. */
 export const OYECHATS_INCLUDED_LABEL = "Included in your plan";

@@ -4,6 +4,9 @@ import { AddOnRow } from "@/components/panel/add-ons/add-on-row";
 import { NoticeBanner } from "@/components/panel/notice-banner";
 import { PaymentWaiting } from "@/components/panel/payment-waiting";
 import { PageFrame } from "@/components/v2/page";
+import { SectionTabs } from "@/components/v2/section-tabs";
+import { ownedFirst } from "@/lib/plan/order";
+import { PLAN_TABS } from "@/lib/plan/tabs";
 import { ADD_ONS } from "@/lib/add-ons";
 import { supportEmailOf } from "@/lib/brand";
 import { CHARGE_NOTICES, readChargeNotice } from "@/lib/billing/charge-notices";
@@ -12,7 +15,7 @@ import { listOpenCustomerCharges } from "@/lib/server/charges";
 import { requireCustomerAccess } from "@/lib/server/customer-access";
 import { requestBrand } from "@/lib/server/request-brand";
 
-export const metadata: Metadata = { title: "Your plan" };
+export const metadata: Metadata = { title: "Plan & billing" };
 
 interface ServicesPageProps {
   readonly searchParams: Promise<Record<string, string | string[] | undefined>>;
@@ -32,13 +35,12 @@ export default async function ServicesPage({ searchParams }: ServicesPageProps):
     listOpenCustomerCharges(customer),
     requestBrand(),
   ]);
-  const entryOf = new Map(page.addOns.map((entry) => [entry.addOn, entry] as const));
   const chargeReturn = readChargeNotice(params.charge);
   const confirming = chargeReturn === "processing" && openCharges.some((charge) => charge.kind === "add_on");
   const notice = chargeReturn === "paid" || chargeReturn === "processing" ? null : chargeReturn;
 
   return (
-    <PageFrame title="Your plan" lede="Each service, what it costs a month and where it stands.">
+    <PageFrame title="Plan & billing" lede="Your services first, then the ones you could add." tabs={<SectionTabs tabs={PLAN_TABS} label="Plan and billing" />}>
       {notice === null && !confirming ? null : (
         <div className="grid gap-6">
           {notice === null ? null : <NoticeBanner {...CHARGE_NOTICES[notice]} />}
@@ -53,9 +55,9 @@ export default async function ServicesPage({ searchParams }: ServicesPageProps):
         </div>
       )}
       <ul className="divide-y divide-line border-y border-line">
-        {ADD_ONS.map((addOn) => {
-          const entry = entryOf.get(addOn.id);
-          return entry === undefined ? null : <AddOnRow key={addOn.id} addOn={addOn} entry={entry} canAdd={!confirming} />;
+        {ownedFirst(ADD_ONS, page.addOns).map((entry) => {
+          const addOn = ADD_ONS.find((candidate) => candidate.id === entry.addOn);
+          return addOn === undefined ? null : <AddOnRow key={addOn.id} addOn={addOn} entry={entry} canAdd={!confirming} />;
         })}
       </ul>
     </PageFrame>

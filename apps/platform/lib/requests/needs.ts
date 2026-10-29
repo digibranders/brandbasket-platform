@@ -1,4 +1,4 @@
-import type { RequestNeed, UnreadReply } from "@brandbasket/db";
+import type { RequestNeed, UnreadReply, WaitingOnYou } from "@brandbasket/db";
 import type { RequestNoticeInput } from "@brandbasket/shared/lib/account-panel";
 import { hoursLabel } from "@brandbasket/shared/lib/change-requests";
 import { formatMoney } from "@brandbasket/shared/lib/money";
@@ -37,4 +37,12 @@ export function needsYouFrom(needs: readonly RequestNeed[]): readonly NeedsYouRo
     if (need.acceptedAt !== null) return { ...base, label: `Pay for: ${need.subject}`, hint: price ?? "Waiting for your payment" };
     return { ...base, label: `Accept a quote: ${need.subject}`, hint: price ?? "Waiting for your OK" };
   });
+}
+
+/** The conversations the team is waiting on, as Home lists them. A conversation already listed as a quote or a check is left out. */
+export function waitingOnYouFrom(waiting: readonly WaitingOnYou[], needs: readonly RequestNeed[]): readonly NeedsYouRow[] {
+  const listed = new Set(needs.map((need) => need.ticketId));
+  return waiting
+    .filter((item) => !listed.has(item.ticketId))
+    .map((item): NeedsYouRow => ({ key: `request-${item.ticketId}`, label: `Reply to: ${item.subject}`, hint: "Waiting for you", service: null, href: requestHref(item.ticketId) }));
 }

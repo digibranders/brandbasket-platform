@@ -192,6 +192,41 @@ export async function saveBusinessProfile(
   return profile;
 }
 
+/** The contact facts a customer keeps current after their website is built: who they are and how to reach them. */
+export type BusinessContactInput = Pick<
+  BusinessProfileInput,
+  "displayName" | "phone" | "email" | "addressLine1" | "addressLine2" | "city" | "region" | "postalCode" | "country" | "serviceAreas"
+>;
+
+/**
+ * Creates or updates the contact facts of the profile, and nothing else: the tagline, description and Google link are left
+ * as they are. Unlike saveBusinessProfile it takes no onboarding lock, because it runs for a paying customer long after
+ * onboarding, on any plan. Every contact field is written, so one sent as null is cleared.
+ */
+export async function saveBusinessContact(tx: ScopedTransaction, input: BusinessContactInput): Promise<BusinessProfile> {
+  const businessId = await currentBusinessId(tx);
+  const values = {
+    displayName: input.displayName,
+    phone: input.phone,
+    email: input.email,
+    addressLine1: input.addressLine1,
+    addressLine2: input.addressLine2,
+    city: input.city,
+    region: input.region,
+    postalCode: input.postalCode,
+    country: input.country,
+    serviceAreas: input.serviceAreas,
+  };
+  const rows = await tx
+    .insert(businessProfiles)
+    .values({ businessId, ...values })
+    .onConflictDoUpdate({ target: businessProfiles.businessId, set: { ...values, updatedAt: new Date() } })
+    .returning(PROFILE_COLUMNS);
+  const profile = rows[0];
+  if (profile === undefined) throw new Error("Business contact upsert returned no row");
+  return profile;
+}
+
 /**
  * One row of opening hours, shaped like the table. A row is closed (`closed`), open all day (`openAllDay`, no times)
  * or open between two different times; a closing time earlier than the opening time closes after midnight. The

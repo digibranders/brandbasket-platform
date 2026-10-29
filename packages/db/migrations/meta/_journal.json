@@ -1415,6 +1415,13 @@
       "when": 1793189507439,
       "tag": "0204_website_hosting_host_pause",
       "breakpoints": true
+    },
+    {
+      "idx": 202,
+      "version": "7",
+      "when": 1793267217587,
+      "tag": "0205_client_intakes",
+      "breakpoints": true
     }
   ]
 }

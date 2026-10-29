@@ -7,7 +7,7 @@ const render = (count: number | undefined, current: boolean): string => renderTo
 
 it("shows the number and says what it counts to a screen reader", () => {
   const html = render(3, false);
-  expect(html).toContain('<span aria-hidden="true">3</span><span class="sr-only">, 3 open</span>');
+  expect(html).toContain('<span aria-hidden="true">3</span><span class="sr-only">, 3 waiting</span>');
   expect(html).not.toContain("aria-label");
 });
 

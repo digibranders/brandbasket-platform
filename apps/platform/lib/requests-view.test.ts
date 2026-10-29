@@ -35,29 +35,27 @@ function render(overrides: Partial<Parameters<typeof RequestsView>[0]> = {}): st
       filter: "open",
       selectedId: "t1",
       explicit: false,
-      includedLine: "This month: 1 of 2 included edits used.",
       detail: createElement("p", null, "THE OPEN REQUEST"),
       ...overrides,
     }),
   ).replaceAll("<!-- -->", "");
 }
 
-it("heads the page with the included edits used and a soft Ask for a change link", () => {
+it("heads the page with a soft New request link and no included-edits line", () => {
   const html = render();
   expect(html).toContain(">Requests</h1>");
-  expect(html).toContain("Ask for any change and follow it here. This month: 1 of 2 included edits used.");
+  expect(html).toContain("Everything you have asked us, and anything we have asked you.");
   expect(html).toContain('href="/requests/new"');
+  expect(html).toContain("New request");
+  expect(html).not.toContain("included edits");
   expect(html).not.toContain(DARK_BUTTON);
 });
 
-it("leaves the included edits out when the plan has none", () => {
-  expect(render({ includedLine: null })).not.toContain("included edits");
-});
-
-it("counts Open and Done, marks the one showing, and links each row to its request in the list it sits in", () => {
+it("counts Waiting for you, Open and Done, marks the one showing, and links each row to its request in the list it sits in", () => {
   const html = render();
   expect(html).toContain('aria-current="true"');
-  expect(html).toMatch(/Open <span[^>]*>2<\/span>/);
+  expect(html).toMatch(/Waiting for you <span[^>]*>1<\/span>/);
+  expect(html).toMatch(/Open <span[^>]*>1<\/span>/);
   expect(html).toMatch(/Done <span[^>]*>1<\/span>/);
   expect(html).toContain('href="/requests?filter=open&amp;open=t1"');
   expect(html).toContain('href="/requests?filter=done"');
@@ -81,7 +79,7 @@ it("shows the request in the right-hand pane, and on a phone only when the addre
 it("says there are no requests yet instead of drawing an empty list, with the one dark button to ask", () => {
   const html = render({ rows: [], listed: [], selectedId: null, detail: null });
   expect(html).toContain(">No requests yet</h2>");
-  expect(html).toContain("Ask for a change and follow it here, from our first reply to the day it is done.");
+  expect(html).toContain("Ask a question, send us information or ask for a change. Follow it here, from our first reply to the day it is done.");
   expect(html).not.toContain("Show requests");
   expect(html.split(DARK_BUTTON).length - 1).toBe(1);
   expect(html.match(/href="\/requests\/new"/g)).toHaveLength(2);
@@ -90,15 +88,16 @@ it("says there are no requests yet instead of drawing an empty list, with the on
 it("fills the right-hand pane with a word when the list has nothing to open", () => {
   const html = render({ listed: [], detail: null });
   expect(html).toContain("Nothing is open.");
-  expect(html).toContain("Ask for a change and you can follow it here.");
+  expect(html).toContain("A new request appears here as soon as you send it.");
 });
 
-it("says nothing is open or done in a list with nothing in it", () => {
+it("says nothing is waiting, open or done in a list with nothing in it", () => {
+  expect(render({ listed: [], filter: "waiting" })).toContain("Nothing is waiting for you.");
   expect(render({ listed: [] })).toContain("Nothing is open.");
   expect(render({ listed: [], filter: "done" })).toContain("Nothing is done yet.");
 });
 
-it("offers Book a call beside Ask for a change when calls are open, and not otherwise", () => {
+it("offers Book a call beside New request when calls are open, and not otherwise", () => {
   const calls = { options: [{ value: "website", label: "Website" }] as const, bookingUrl: "https://cal.com/brandbasket/call", canBook: true };
   expect(render({ calls })).toContain(">Book a call</button>");
   expect(render({ calls: null })).not.toContain("Book a call");

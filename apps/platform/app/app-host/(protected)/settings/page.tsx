@@ -18,6 +18,7 @@ import { accountLabel } from "@/lib/server/account-label";
 import { findReactivationNetCents } from "@/lib/server/billing";
 import { getCustomerBusinessKind, requireCustomerAccess } from "@/lib/server/customer-access";
 import { signOut } from "@/lib/server/sign-out";
+import { SignOutOtherDevices } from "@/components/panel/sign-out-other-devices";
 import { changePasswordAction, revokeOtherSessionsAction } from "./actions";
 
 export const metadata: Metadata = { title: "Settings" };
@@ -116,11 +117,14 @@ export default async function SettingsPage(): Promise<ReactElement> {
       </PageSection>
 
       <PageSection id="session" title="Session">
-        <form action={signOut}>
-          <button type="submit" className={SOFT_BUTTON}>
-            Sign out
-          </button>
-        </form>
+        <div className="grid gap-6">
+          <SignOutOtherDevices action={revokeOtherSessionsAction} />
+          <form action={signOut}>
+            <button type="submit" className={SOFT_BUTTON}>
+              Sign out
+            </button>
+          </form>
+        </div>
       </PageSection>
     </PageFrame>
   );
