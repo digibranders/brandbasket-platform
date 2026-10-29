@@ -91,4 +91,9 @@ describe("todaySummary", () => {
     expect(todaySummary(NOW, 3, 0)).toBe("Monday 30 November. 3 things need someone today.");
     expect(todaySummary(NOW, 0, 0)).toBe("Monday 30 November. Nothing needs anyone right now.");
   });
+
+  it("does not say all clear when a list failed to load", () => {
+    expect(todaySummary(NOW, 0, 0, true)).toBe("Monday 30 November.");
+    expect(todaySummary(NOW, 2, 0, true)).toBe("Monday 30 November. 2 things need someone today.");
+  });
 });

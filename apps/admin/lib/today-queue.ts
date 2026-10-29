@@ -144,9 +144,10 @@ export function actionLabel(kind: TodayKind): string {
 }
 
 /** The line under the greeting: "Monday 30 November. 9 things need someone today, 2 are late." */
-export function todaySummary(now: Date, count: number, late: number): string {
+export function todaySummary(now: Date, count: number, late: number, incomplete = false): string {
   const day = longDay(now);
-  if (count === 0) return `${day}. Nothing needs anyone right now.`;
+  // A list that failed to load may hide work, so an empty queue is not "all clear".
+  if (count === 0) return incomplete ? `${day}.` : `${day}. Nothing needs anyone right now.`;
   const things = count === 1 ? "1 thing needs" : `${count} things need`;
   const lateText = late === 0 ? "" : late === 1 ? ", 1 is late" : `, ${late} are late`;
   return `${day}. ${things} someone today${lateText}.`;

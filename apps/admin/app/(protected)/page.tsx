@@ -29,7 +29,7 @@ export default async function TodayPage(): Promise<ReactElement> {
     <div className="grid gap-[1.125rem]">
       <PageHeader
         title={`${greeting(now)}, ${firstName(user.name)}.`}
-        meta={todaySummary(now, today.items.length, late)}
+        meta={todaySummary(now, today.items.length, late, today.failed.length > 0)}
         action={
           <Link href="/leads/new" className={buttonSecondary}>
             <UserPlus size={16} aria-hidden="true" />
