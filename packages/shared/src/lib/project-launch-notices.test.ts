@@ -22,6 +22,6 @@ describe("project launch notices", () => {
     const successes = Object.entries(PROJECT_LAUNCH_NOTICES)
       .filter(([, notice]) => notice.ok)
       .map(([key]) => key);
-    expect(successes.sort()).toEqual(["address-saved", "checks-saved", "launched", "launched-no-email", "resent"].sort());
+    expect(successes.sort()).toEqual(["address-saved", "check-ok", "checks-saved", "launched", "launched-no-email", "resent"].sort());
   });
 });

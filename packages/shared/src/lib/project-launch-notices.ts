@@ -13,7 +13,10 @@ export type ProjectLaunchNotice =
   | "resend-failed"
   | "resend-not-allowed"
   | "address-saved"
-  | "address-unavailable";
+  | "address-unavailable"
+  | "check-ok"
+  | "check-failed"
+  | "check-no-domain";
 
 /** Fixed messages only: the query parameter picks one, and nothing from it is ever shown. */
 export const PROJECT_LAUNCH_NOTICES: Readonly<Record<ProjectLaunchNotice, { readonly text: string; readonly ok: boolean }>> = {
@@ -49,6 +52,12 @@ export const PROJECT_LAUNCH_NOTICES: Readonly<Record<ProjectLaunchNotice, { read
     text: "No free address could be made. Check the site address setting or add the domain another way.",
     ok: false,
   },
+  "check-ok": {
+    text: "The address loads over HTTPS. This is a quick automatic check, so still look at the site yourself.",
+    ok: true,
+  },
+  "check-failed": { text: "The address did not load properly. Check DNS and the deployment, then try again.", ok: false },
+  "check-no-domain": { text: "Add an address first.", ok: false },
 };
 
 export function projectLaunchNoticeHref(businessId: string, notice: ProjectLaunchNotice): string {
