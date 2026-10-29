@@ -16,6 +16,7 @@ import { PROJECT_PREVIEW_NOTICES, readProjectPreviewNotice } from "@brandbasket/
 import { STAFF_STAGE_LABELS, staffStageOf } from "@brandbasket/shared/lib/project-stage";
 import { SUPPORT_STATUS_LABELS } from "@brandbasket/shared/lib/support";
 import { HairlineList, HairlineRow } from "@/components/console/hairline-list";
+import { FreeAddressForm } from "@/components/console/free-address-form";
 import { KickoffCallSection } from "@/components/console/kickoff-call-section";
 import { Notice } from "@/components/console/notice";
 import { Quiet, Section } from "@/components/console/section";
@@ -216,7 +217,14 @@ export default async function ClientProjectPage({
 
       <Section title="Domain" id={client.movingTo === null && nextStep !== "live" ? "domain" : undefined}>
         {client.domain === null ? (
-          <Quiet>Not given yet.</Quiet>
+          <>
+            <Quiet>Not given yet.</Quiet>
+            {project !== null && buildState === "active" && project.status !== "cancelled" && project.status !== "live" ? (
+              <div className="mt-6">
+                <FreeAddressForm businessId={client.businessId} />
+              </div>
+            ) : null}
+          </>
         ) : isTemporarySubdomain(client.domain.hostname) ? (
           <Facts
             items={[
