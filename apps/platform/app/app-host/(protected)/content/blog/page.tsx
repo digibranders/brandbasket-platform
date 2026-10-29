@@ -24,16 +24,6 @@ function UnlockMorePosts({ usage }: { readonly usage: BlogUsage }): ReactElement
   );
 }
 
-/** The blog's authors and categories, which have no sidebar link of their own: they are settings of the blog. */
-function BlogSettingsLinks(): ReactElement {
-  return (
-    <span className="inline-flex gap-4 font-semibold text-ink">
-      <Link href="/content/authors">Authors</Link>
-      <Link href="/content/categories">Categories</Link>
-    </span>
-  );
-}
-
 export default async function BlogListPage(): Promise<ReactElement> {
   const customer = await requireWebsiteClient();
   const [posts, usage] = await Promise.all([getBlogPosts(), getBlogUsage(customer, customer.billing.plan)]);
@@ -41,21 +31,16 @@ export default async function BlogListPage(): Promise<ReactElement> {
 
   if (posts.length === 0) {
     return (
-      <>
-        <EmptyState
-          icon={Article}
-          title="No posts yet"
-          text="Write your first post to see it listed here. It stays a draft until you publish it."
-          action={
-            <Link href="/content/blog/new" className={DARK_BUTTON}>
-              Write your first post
-            </Link>
-          }
-        />
-        <p className="text-[0.9375rem] text-ink-2">
-          Blog settings: <BlogSettingsLinks />
-        </p>
-      </>
+      <EmptyState
+        icon={Article}
+        title="No posts yet"
+        text="Write your first post to see it listed here. It stays a draft until you publish it."
+        action={
+          <Link href="/content/blog/new" className={DARK_BUTTON}>
+            Write your first post
+          </Link>
+        }
+      />
     );
   }
 
@@ -82,7 +67,7 @@ export default async function BlogListPage(): Promise<ReactElement> {
           )
         }
       />
-      <PageSection id="posts" title="Posts" aside={<BlogSettingsLinks />}>
+      <PageSection id="posts" title="Posts">
         <BlogPostsTable posts={posts} />
       </PageSection>
     </>

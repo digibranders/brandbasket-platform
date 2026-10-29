@@ -10,6 +10,7 @@ export function StatusHero({
   children,
   actions,
   aside,
+  footer,
   labelId,
 }: {
   readonly word: string;
@@ -19,21 +20,26 @@ export function StatusHero({
   readonly actions?: ReactNode;
   /** A second column beside the status (the call's agenda, a preview picture). */
   readonly aside?: ReactNode;
+  /** What sits under the status inside the same card, set off by a hairline (the path from kickoff to live). */
+  readonly footer?: ReactNode;
   readonly labelId: string;
 }): ReactElement {
   return (
-    <section aria-labelledby={labelId} className={`${LIFT} grid gap-8 p-6 sm:p-7 ${aside === undefined ? "" : "lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)]"}`}>
-      <div className="grid content-start gap-5">
-        <StatusWord tone={tone}>{word}</StatusWord>
-        <div className="grid gap-2">
-          <h2 id={labelId} className="font-display text-[1.875rem] font-semibold leading-[1.15] tracking-[-0.025em] text-ink">
-            {title}
-          </h2>
-          {children === undefined ? null : <div className="max-w-[56ch] text-base leading-relaxed text-ink-2">{children}</div>}
+    <section aria-labelledby={labelId} className={`${LIFT} grid gap-6 p-6 sm:p-7`}>
+      <div className={`grid gap-8 ${aside === undefined ? "" : "lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)]"}`}>
+        <div className="grid content-start gap-5">
+          <StatusWord tone={tone}>{word}</StatusWord>
+          <div className="grid gap-2">
+            <h2 id={labelId} className="font-display text-[1.875rem] font-semibold leading-[1.15] tracking-[-0.025em] text-ink">
+              {title}
+            </h2>
+            {children === undefined ? null : <div className="max-w-[56ch] text-base leading-relaxed text-ink-2">{children}</div>}
+          </div>
+          {actions === undefined ? null : <div className="flex flex-wrap items-center gap-3">{actions}</div>}
         </div>
-        {actions === undefined ? null : <div className="flex flex-wrap items-center gap-3">{actions}</div>}
+        {aside === undefined ? null : <div>{aside}</div>}
       </div>
-      {aside === undefined ? null : <div>{aside}</div>}
+      {footer === undefined ? null : <div className="border-t border-line pt-6">{footer}</div>}
     </section>
   );
 }

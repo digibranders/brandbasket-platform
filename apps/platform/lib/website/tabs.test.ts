@@ -12,14 +12,8 @@ describe("currentTab", () => {
     expect(currentTab("/website/pages")?.label).toBe("Pages");
   });
 
-  it("marks Blog on the blog's own pages", () => {
-    expect(currentTab("/content/blog/new")?.label).toBe("Blog");
-  });
-
-  it("marks Blog on the authors and categories pages, which are blog settings", () => {
-    for (const path of ["/content/authors", "/content/authors/new", "/content/categories", "/content/categories/abc"]) {
-      expect(currentTab(path)?.label).toBe("Blog");
-    }
+  it("does not cover the blog, which has its own link and tabs", () => {
+    for (const path of ["/content/blog", "/content/blog/new", "/content/authors", "/content/categories"]) expect(currentTab(path)).toBeNull();
   });
 
   it("marks Enquiries on the website chat's page", () => {

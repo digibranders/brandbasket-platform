@@ -71,13 +71,14 @@ at 390px with no sideways scroll.
 The sidebar (`lib/rail.ts`, drawn by `components/v2/rail.tsx`) has four groups:
 
 - **Home**
-- **Services**: Website (tabs Overview, Pages, Enquiries, Blog), Social & Ads, Local SEO + AEO. Each only when the
+- **Services**: Website (tabs Overview, Pages, Enquiries), Blog (tabs Posts, Authors, Categories) right under it, Social & Ads,
+  Local SEO + AEO. Website and Blog go together; each of the others only when the
   customer has it (`lib/server/active-services.ts`).
 - **Manage**: Requests (with the number waiting on the customer), Business.
 - **Account**: Plan & billing (tabs Your services, Billing), Affiliate for affiliates, Settings.
 
-Pages with tabs use `SectionTabs` (`components/v2/section-tabs.tsx`) in the frame's `tabs` slot. Authors and Categories
-are blog settings, linked from the Blog tab. Calls is reached from the Requests page.
+Pages with tabs use `SectionTabs` (`components/v2/section-tabs.tsx`) in the frame's `tabs` slot: `WebsiteFrame` for the
+website, `BlogFrame` for every `/content/*` page (`lib/blog/tabs.ts`). Calls is reached from the Requests page.
 
 ## Words
 

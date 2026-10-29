@@ -4,9 +4,6 @@ import { currentSectionTab, type SectionTab } from "@/lib/section-tabs";
 export const WEBSITE_PATH = "/website";
 export const WEBSITE_PAGES_PATH = "/website/pages";
 export const WEBSITE_PREVIEW_IMAGE_PATH = "/website/preview-image";
-/** Paths owned by other pages that the tabs point at. Plain strings. */
-export const WEBSITE_BLOG_PATH = "/content/blog";
-
 export type WebsiteTab = SectionTab;
 
 export const WEBSITE_TABS: readonly WebsiteTab[] = [
@@ -14,8 +11,6 @@ export const WEBSITE_TABS: readonly WebsiteTab[] = [
   { href: WEBSITE_PAGES_PATH, label: "Pages" },
   // The website chat and its leads.
   { href: CHATBOT_PATH, label: "Enquiries" },
-  // Authors and categories are blog settings.
-  { href: WEBSITE_BLOG_PATH, label: "Blog", alsoOwns: ["/content/authors", "/content/categories"] },
 ];
 
 /** The tab a path belongs to: Overview only on /website itself; the others on their own path, the pages under it and what they also own. */
