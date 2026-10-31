@@ -1,6 +1,22 @@
 # Brandbasket payment welcome: the unboxing
 
-Design proposal, 31 October 2026.
+Implemented in the customer app, 31 October 2026. The original concept is retained as a visual reference below.
+
+## Working implementation
+
+The real confirmed-payment welcome dialog now has independently animated gift layers, a three-second confetti burst, explicit payment confirmation and purchased-service reveals. Close, Escape and the main action dismiss immediately and consume the welcome URL parameter. Reduced motion removes decorative animation, and short viewports keep the main action visible while the content scrolls.
+
+The implementation is in `apps/platform/components/first-look/payment-welcome.tsx`, `payment-welcome.module.css` and `fire-poppers.ts`; the gift asset is in `apps/platform/public/illustrations/welcome-gift.png`.
+
+Actual browser screenshots from a signed-in customer whose three services were activated through the local fake-payment helpers:
+
+![Implemented desktop welcome popup](./implemented-desktop.jpg)
+
+![Implemented mobile welcome popup](./implemented-mobile.jpg)
+
+Validation: platform lint, TypeScript, all 2,985 platform unit tests and the production build pass. Browser checks covered desktop, 390px mobile, a short 320px viewport, native Escape, the main action, query preservation and no replay after dismissal and refresh. Reduced-motion and animation cancellation are covered by unit tests and the CSS media query. An independent code review found no actionable issues.
+
+## Original concept
 
 ![Desktop and mobile welcome-popup concept](./brandbasket-unboxing-concept.png)
 
@@ -8,7 +24,7 @@ The generated visual illustrates the proposed direction. Its surrounding dashboa
 
 ## Review of the current popup
 
-Reviewed `brandbasket-platform/apps/platform/components/first-look/payment-welcome.tsx`, `fire-poppers.ts`, `lib/celebration.ts`, the existing component tests and `apps/platform/DESIGN.md`. The local app redirects an unauthenticated visit to sign-in, so these observations come from the implementation, rather than a signed-in visual session.
+The initial source review covered `apps/platform/components/first-look/payment-welcome.tsx`, `fire-poppers.ts`, `lib/celebration.ts`, the existing component tests and `apps/platform/DESIGN.md`. The observations in this section describe the previous popup, before the implementation above.
 
 The existing popup already has two confetti cannons, a 500ms content entrance and staggered service checkmarks. Its underlying presentation is a small text-first card: a 28px welcome heading, a plain service list and a full-width button. After the short confetti effect, there is no lasting visual focal point. Payment confirmation is implicit, and there is little sense of a new beginning.
 
@@ -57,7 +73,7 @@ Timing is relative to opening the confirmed-payment dialog:
 | 400 to 1800ms | A single coordinated burst of gold, sage and teal paper spreads around the upper card and falls away. |
 | 500 to 850ms | Payment confirmation and welcome content appear. |
 | 750 to 1150ms | Purchased services reveal in sequence. |
-| By 1200ms | All content and the main action are visible. |
+| By 1500ms | All content has finished revealing; the main action is available throughout. |
 | By 3000ms | Decorative motion has ended; the complete composition remains. |
 
 The main action is usable immediately, even during its entrance. No sound, autoplay video, looping bobbing or automatic dismissal. Implement motion with transforms and opacity. Confetti should use elapsed time so its duration does not vary with screen refresh rate. Cancel animation work on close and unmount. Decorative layers must not intercept input.
@@ -90,4 +106,4 @@ The gift is an illustration, not a replacement logo. Any implementation must use
 
 ## Deliverable scope
 
-This deliverable is a creative direction and generated desktop/mobile visual concept. Application source has not been edited as part of this design review.
+The deliverable includes the working application component, animation renderer, responsive styles, illustration asset, regression tests and actual browser screenshots, together with the original creative direction.
