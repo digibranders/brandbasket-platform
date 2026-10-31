@@ -6,7 +6,9 @@ Implemented in the customer app, 31 October 2026. The original concept is retain
 
 The real confirmed-payment welcome dialog now has independently animated gift layers, a three-second confetti burst, explicit payment confirmation and purchased-service reveals. Close, Escape and the main action dismiss immediately and consume the welcome URL parameter. Reduced motion removes decorative animation, and short viewports keep the main action visible while the content scrolls.
 
-The implementation is in `apps/platform/components/first-look/payment-welcome.tsx`, `payment-welcome.module.css` and `fire-poppers.ts`; the gift asset is in `apps/platform/public/illustrations/welcome-gift.png`.
+The implementation is in `apps/platform/components/first-look/payment-welcome.tsx`, `payment-welcome.module.css` and `fire-poppers.ts`; the reference-derived gift and ribbon asset is in `apps/platform/public/illustrations/welcome-celebration.png`.
+
+The concept-fidelity revision replaces the simplified gift and decorative strokes with the full gold/teal celebration illustration, a 450px desktop card, bold 48px display type, warm service icon tiles and solid green checks. Paper remains around the card after the entrance finishes. Initial focus goes to the heading, and the overflowing artwork follows the body when short screens need scrolling. Compact landscape rules keep the footer within the viewport.
 
 Actual browser screenshots from a signed-in customer whose three services were activated through the local fake-payment helpers:
 
@@ -14,7 +16,7 @@ Actual browser screenshots from a signed-in customer whose three services were a
 
 ![Implemented mobile welcome popup](./implemented-mobile.jpg)
 
-Validation: platform lint, TypeScript, all 2,985 platform unit tests and the production build pass. Browser checks covered desktop, 390px mobile, a short 320px viewport, native Escape, the main action, query preservation and no replay after dismissal and refresh. Reduced-motion and animation cancellation are covered by unit tests and the CSS media query. An independent code review found no actionable issues.
+Validation: platform lint, TypeScript, all 2,986 platform unit tests and the production build pass. Browser checks covered desktop, 390px mobile, a short 320px viewport, 568px and 667px landscape viewports, native Escape, the main action, query preservation and no replay after dismissal and refresh. Reduced-motion and animation cancellation are covered by unit tests and the CSS media query. An independent code review found no further actionable issues after the compact landscape adjustment.
 
 ## Original concept
 
@@ -47,15 +49,15 @@ The still composition must feel celebratory on its own. Motion enhances the comp
 
 ## Composition and proposed copy
 
-Desktop modal: approximately 520px maximum width, 32px side padding, white surface and existing lift shadow. Use the existing radius token when implemented. A contained illustration occupies approximately 140px above the content; decorative streamers can extend outside the upper corners without overlapping the close target.
+Desktop modal: 450px maximum width, 32px content padding, white surface and the existing lift shadow and radius. The illustration fills the upper card, with gold/teal ribbons extending above and beyond its upper corners. Content begins 248px below the desktop card's top and 208px below it on typical portrait phones. Short viewports use a compact composition and a scrollable body with the footer always available.
 
 Content order:
 
 1. Illustration: paper gift with an opening lid and gold ribbon.
 2. Small check and explicit confirmation: `Payment successful`.
-3. Heading: `Welcome to Brandbasket.` Display type around 34px on desktop, 28px on phones, balanced over two lines.
+3. Heading: `Welcome to Brandbasket.` Bold display type at 48px on desktop and approximately 37px on a 390px phone, balanced over two lines, with compact sizing for short screens.
 4. Supporting line: `Your next chapter starts here.`
-5. `Now yours`, followed by only the purchased services, using their existing names and service marks.
+5. `Now yours`, followed by only the purchased services, using their existing names, warm 38px icon tiles and solid green checkmarks, as explicitly requested in the approved concept.
 6. Existing main action: `Let’s go`, with a quiet directional arrow.
 
 The new supporting and confirmation copy are proposals for review. An unlocked service must not be described as a finished website or an active campaign. There are no new delivery promises, prices or extra offers.

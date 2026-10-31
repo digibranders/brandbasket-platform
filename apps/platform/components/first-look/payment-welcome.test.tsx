@@ -53,6 +53,13 @@ const dialog = (): HTMLDialogElement => {
 };
 
 describe("PaymentWelcome", () => {
+  it("places initial focus on the welcome heading while keeping the close control available", () => {
+    search = "welcome=1";
+    render(["website"]);
+    expect(document.activeElement).toBe(dialog().querySelector("h2"));
+    expect(dialog().querySelector('button[aria-label="Close welcome"]')).not.toBeNull();
+  });
+
   it("explicitly confirms payment and describes the celebration accessibly", () => {
     search = "welcome=1";
     render(["website"]);

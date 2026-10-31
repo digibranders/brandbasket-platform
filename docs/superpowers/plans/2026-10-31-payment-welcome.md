@@ -11,3 +11,7 @@
 3. Update `fire-poppers.ts` to use fixed physics steps driven by elapsed time, scale for the viewport, read palette tokens and stop all work on close, reduced-motion changes or unmount. Keep the existing pure physics helpers and parameter helpers.
 4. Run focused tests, app lint, TypeScript, the app unit suite and production build. Review the complete diff. Inspect the real dialog at desktop and mobile widths, including short viewports, dismissal and reduced motion.
 5. Commit only the welcome implementation and its assets, push to development and update the existing PR with the implemented behavior and validation results.
+
+## Concept fidelity revision
+
+The owner requested matching the supplied concept directly. Replace the simplified gift with a transparent illustration derived from the concept, including its curled metallic ribbons and persistent paper. Use a 450px desktop card, a 48px bold display heading, warm 38px service icon tiles, solid green checks and the concept's vertical spacing. Keep the real payment data, native dialog controls, reduced motion and cleanup behavior. Initial focus goes to the heading so opening the card does not visually select the close button. Compare the implemented desktop and mobile popup directly with the supplied image, then rerun platform lint, TypeScript, unit tests and build before updating the PR.
