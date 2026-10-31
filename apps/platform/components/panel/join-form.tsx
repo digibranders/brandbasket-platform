@@ -32,6 +32,7 @@ import {
 import type { LegalLinks } from "@/lib/legal-links";
 import { PASSWORD_MIN_LENGTH, PASSWORD_RULE } from "@brandbasket/auth/password-policy";
 import { useOtpRetryCooldown } from "@/lib/use-otp-retry-cooldown";
+import type { StartPrefill } from "@/lib/start-token";
 
 /** The paid plan's price line. */
 export interface PlanPrices {
@@ -100,6 +101,8 @@ interface JoinFormProps {
   readonly phoneCountries: readonly PhoneCountryOption[];
   /** The code the dropdown opens on: the visitor's country when it can be told, otherwise India. */
   readonly defaultPhoneCountry: string;
+  /** The details the ad landing page handed over (lib/start-token.ts): only the opening values of name, email and mobile, all still editable. */
+  readonly prefill?: StartPrefill | null;
 }
 
 function subscribeToNothing(): () => void {
@@ -218,6 +221,7 @@ export function JoinForm({
   countries,
   phoneCountries,
   defaultPhoneCountry,
+  prefill = null,
 }: JoinFormProps): ReactElement {
   const cooldown = useOtpRetryCooldown();
   const runAction = async (previous: JoinFormState, formData: FormData): Promise<JoinFormState> => {
@@ -234,17 +238,19 @@ export function JoinForm({
   const [choice, setChoice] = useState<JoinChoice | null>(initialChoice ?? onlyChoice ?? preselected);
   /** True once the owner has pressed Continue on the plans (or a link or the brand picked one for them). */
   const [choiceMade, setChoiceMade] = useState(initialChoice !== null || onlyChoice !== null);
-  const [name, setName] = useState("");
+  const [name, setName] = useState(() => prefill?.name.trim().slice(0, JOIN_NAME_MAX_LENGTH) ?? "");
   /** Asked only of a Managed Website sign-up. */
   const [newBusinessName, setNewBusinessName] = useState("");
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState(() => prefill?.email ?? "");
   /** India first: the product is sold there. The state is never filled in for the owner; they pick it. */
   const [country, setCountry] = useState<string>(HOME_COUNTRY);
   const planPrices = prices[currencyForCountry(country)];
   const countryChoices = useMemo(() => countries.map((option) => ({ value: option.code, label: option.name })), [countries]);
   const [stateCode, setStateCode] = useState("");
   /** The mobile number: held here, since the code step sends the details again, and the field itself keeps no copy. */
-  const [phone, setPhone] = useState<PhoneFieldValue>({ country: defaultPhoneCountry, number: "" });
+  const [phone, setPhone] = useState<PhoneFieldValue>(() =>
+    prefill !== null && /^\d{10}$/.test(prefill.phone) ? { country: HOME_COUNTRY, number: prefill.phone } : { country: defaultPhoneCountry, number: "" },
+  );
   const [password, setPassword] = useState("");
   /** Never ticked for the owner: agreeing to the Terms and Privacy Notice is their own act (DPDP Act s.6). */
   const [agreed, setAgreed] = useState(false);
