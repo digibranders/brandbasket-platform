@@ -25,6 +25,8 @@ import { accountLabel } from "@/lib/server/account-label";
 import { getAffiliateAccess } from "@/lib/server/affiliate-access";
 import { getCustomerAccess } from "@/lib/server/customer-access";
 import { emailCodeBypassed } from "@/lib/server/env";
+import { leadsApiToken } from "@/lib/server/website-api-auth";
+import { openStart, START_PARAM, type StartPrefill } from "@/lib/start-token";
 
 import { legalLinksFor } from "@/lib/legal-links";
 import { getMembershipPlan } from "@/lib/server/membership";
@@ -136,6 +138,10 @@ export default async function AppLoginPage({ searchParams }: AppLoginPageProps):
   const basket: JoinBasket = { name: servicesPhrase(entry.services), prices: { INR: basketLine(india), USD: basketLine(us) } };
   // With the local bypass on (EMAIL_CODE_BYPASS) any six digits are accepted, so the form must not promise a real check.
   const confirmsCodes = !emailCodeBypassed();
+  // The ad landing page's sealed details; no secret, a repeated parameter or a bad token all mean no prefill.
+  const startToken = params[START_PARAM];
+  const secret = leadsApiToken();
+  const prefill: StartPrefill | null = typeof startToken === "string" && secret !== null ? openStart(startToken, secret) : null;
 
   return (
     <EntryScreen
@@ -161,6 +167,7 @@ export default async function AppLoginPage({ searchParams }: AppLoginPageProps):
           countries={countryOptions()}
           phoneCountries={phoneCountryOptions()}
           defaultPhoneCountry={visitorPhoneCountry(await headers())}
+          prefill={prefill}
         />
       </TurnstileScope>
     </EntryScreen>

@@ -41,6 +41,10 @@ describe("readEntryRequest", () => {
     expect(entryHrefForPlan("?new=1&plan=managed", null)).toBe("/login?new=1");
   });
 
+  it("keeps the ad landing page's start token on the continued address", () => {
+    expect(entryHrefForPlan("?new=1&plan=managed&start=abc", "managed")).toBe("/login?new=1&plan=managed&start=abc");
+  });
+
   it("ignores a plan it does not know, and asks the question", () => {
     expect(readEntryRequest({ new: "1", plan: "gold" })).toEqual({ view: "create", choice: null, preselected: null, services: ["managed-website"] });
     expect(readEntryRequest({ plan: "gold" }).view).toBe("sign-in");
