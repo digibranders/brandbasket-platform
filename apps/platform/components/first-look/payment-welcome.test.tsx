@@ -54,6 +54,30 @@ const dialog = (): HTMLDialogElement => {
 };
 
 describe("PaymentWelcome", () => {
+  it("starts the artwork entrance only after its shared image has loaded", () => {
+    search = "welcome=1";
+    render(["website"]);
+    const art = dialog().querySelector('svg[viewBox="0 0 1536 1024"]');
+    expect(art?.getAttribute("data-ready")).toBe("false");
+    const texture = art?.querySelector("defs image");
+    expect(texture).not.toBeNull();
+    act(() => texture?.dispatchEvent(new Event("load")));
+    expect(art?.getAttribute("data-ready")).toBe("true");
+  });
+
+  it("renders separately clipped gift, ribbon and paper pieces instead of two flattened image halves", () => {
+    search = "welcome=1";
+    render(["website"]);
+    const art = dialog().querySelector('svg[viewBox="0 0 1536 1024"]');
+    expect(art).not.toBeNull();
+    expect(art?.querySelector('[data-part="lid"]')).not.toBeNull();
+    expect(art?.querySelector('[data-part="box"]')).not.toBeNull();
+    expect(art?.querySelectorAll('[data-part="ribbon"]').length).toBeGreaterThan(1);
+    expect(art?.querySelectorAll('[data-part="paper"]').length).toBeGreaterThan(10);
+    const clips = [...art?.querySelectorAll("clipPath") ?? []].map((clip) => clip.id);
+    expect(new Set(clips).size).toBe(clips.length);
+  });
+
   it("places initial focus on the welcome heading while keeping the close control available", () => {
     search = "welcome=1";
     render(["website"]);

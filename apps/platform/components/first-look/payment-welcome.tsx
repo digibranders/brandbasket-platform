@@ -1,13 +1,13 @@
 "use client";
 
 import { ArrowRight, Browser, Check, MapPin, Megaphone, X } from "@phosphor-icons/react/dist/ssr";
-import Image from "next/image";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useRef, type CSSProperties, type ReactElement, type RefObject } from "react";
+import { useEffect, useRef, type CSSProperties, type ReactElement } from "react";
 import { useDialogOpen } from "@brandbasket/shared/ui/v2/dialog-hooks";
 import { useBrand } from "@/components/panel/brand-provider";
 import { DARK_BUTTON, LIFT } from "@/components/v2/classes";
 import { firePoppers } from "./fire-poppers";
+import { WelcomeCelebration } from "./welcome-celebration";
 import { wantsWelcome, withoutWelcome } from "@/lib/celebration";
 import { pushPurchase, type PurchaseEvent } from "@/lib/purchase-event";
 import { SERVICE_NAMES, type ServiceKey } from "@/lib/first-look";
@@ -28,20 +28,6 @@ const BACKDROP_PAPER = [
   [77, 12, 28], [88, 29, -35], [81, 48, 18], [92, 65, -18], [77, 82, 32],
   [15, 34, 45], [85, 92, -25], [6, 76, -32], [94, 18, 36],
 ] as const;
-
-/** The illustration follows the approved concept; the upper and lower layers reveal independently. */
-function WelcomeGift({ artwork }: { readonly artwork: RefObject<HTMLDivElement | null> }): ReactElement {
-  return (
-    <div ref={artwork} aria-hidden="true" className={styles.artwork}>
-      <div className={styles.giftBase}>
-        <Image src="/illustrations/welcome-celebration.png" alt="" width={1536} height={1024} sizes="(max-width: 640px) 110vw, 520px" loading="eager" />
-      </div>
-      <div className={styles.giftLid}>
-        <Image src="/illustrations/welcome-celebration.png" alt="" width={1536} height={1024} sizes="(max-width: 640px) 110vw, 520px" loading="eager" />
-      </div>
-    </div>
-  );
-}
 
 /** The existing confirmed-payment landing opens this native dialog; dismissing it consumes the welcome parameter. */
 export function PaymentWelcome({ services, purchase = null }: PaymentWelcomeProps): ReactElement {
@@ -96,14 +82,14 @@ export function PaymentWelcome({ services, purchase = null }: PaymentWelcomeProp
           <canvas ref={canvas} aria-hidden="true" className={styles.confetti} />
           <div aria-hidden="true" className={styles.paperScene}>
             {BACKDROP_PAPER.map(([left, top, rotation], index) => (
-              <span key={index} className={styles.paper} style={{ left: `${String(left)}%`, top: `${String(top)}%`, rotate: `${String(rotation)}deg` }} />
+              <span key={index} className={styles.paper} style={{ left: `${String(left)}%`, top: `${String(top)}%`, rotate: `${String(rotation)}deg`, "--paper-delay": `${String(-index * 0.27)}s`, "--paper-duration": `${String(3.2 + (index % 5) * 0.35)}s` } as CSSProperties} />
             ))}
           </div>
           <div className={styles.card}>
             <button type="button" onClick={dismiss} aria-label="Close welcome" className={styles.close}>
               <X size={20} aria-hidden="true" />
             </button>
-            <WelcomeGift artwork={artwork} />
+            <WelcomeCelebration artwork={artwork} className={styles.artwork} />
             <div className={styles.body} onScroll={(event) => {
               // Let the overflowing illustration travel with its content instead of covering rows on short screens.
               artwork.current?.style.setProperty("--body-scroll", `${String(event.currentTarget.scrollTop)}px`);

@@ -10,13 +10,19 @@ The implementation is in `apps/platform/components/first-look/payment-welcome.ts
 
 The concept-fidelity revision replaces the simplified gift and decorative strokes with the full gold/teal celebration illustration, a 450px desktop card, bold 48px display type, warm service icon tiles and solid green checks. Paper remains around the card after the entrance finishes. Initial focus goes to the heading, and the overflowing artwork follows the body when short screens need scrolling. Compact landscape rules keep the footer within the viewport.
 
+### Independent celebration motion
+
+The artwork is no longer a flattened illustration moving in two halves. `welcome-celebration.tsx` uses 41 separately clipped pieces from the unchanged approved asset, with geometry in `welcome-art-parts.json`. The box pops into place; the lid lifts and then hovers; five ribbon pieces sway independently; 33 paper pieces flutter and turn; the star gently glints. Forty pieces continue gentle motion after the entrance. Backdrop paper also drifts, alongside the real three-second canvas confetti burst.
+
+The SVG pieces share one optimized texture, and the entrance waits for that texture to load, including when it finished loading before hydration. Closing the popup unmounts the pieces and stops their CSS animations; reduced-motion mode shows the composed artwork without movement. Geometry is derived offline from the PNG's alpha islands, with expanded convex clipping envelopes to retain antialiased edges; there is no runtime image-analysis dependency. Regenerate the geometry when replacing the source artwork.
+
 Actual browser screenshots from a signed-in customer whose three services were activated through the local fake-payment helpers:
 
 ![Implemented desktop welcome popup](./implemented-desktop.jpg)
 
 ![Implemented mobile welcome popup](./implemented-mobile.jpg)
 
-Validation: platform lint, TypeScript, all 2,986 platform unit tests and the production build pass. Browser checks covered desktop, 390px mobile, a short 320px viewport, 568px and 667px landscape viewports, native Escape, the main action, query preservation and no replay after dismissal and refresh. Reduced-motion and animation cancellation are covered by unit tests and the CSS media query. An independent code review found no further actionable issues after the compact landscape adjustment.
+Validation: platform lint, TypeScript, all 3,047 platform unit tests and the production build pass. Browser checks covered desktop, 390px mobile, a short 320px viewport, 568px and 667px landscape viewports, native Escape, the main action, query preservation and no replay after dismissal and refresh. Live browser inspection confirmed 41 independent artwork pieces sharing one loaded texture and 40 ongoing animations with changing transforms after the entrance. Reduced-motion and animation cancellation are covered by unit tests and the CSS media query. Independent code reviews found no further actionable issues.
 
 ## Original concept
 

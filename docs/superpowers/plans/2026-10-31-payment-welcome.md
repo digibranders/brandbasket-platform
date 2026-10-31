@@ -15,3 +15,7 @@
 ## Concept fidelity revision
 
 The owner requested matching the supplied concept directly. Replace the simplified gift with a transparent illustration derived from the concept, including its curled metallic ribbons and persistent paper. Use a 450px desktop card, a 48px bold display heading, warm 38px service icon tiles, solid green checks and the concept's vertical spacing. Keep the real payment data, native dialog controls, reduced motion and cleanup behavior. Initial focus goes to the heading so opening the card does not visually select the close button. Compare the implemented desktop and mobile popup directly with the supplied image, then rerun platform lint, TypeScript, unit tests and build before updating the PR.
+
+## Independent motion revision
+
+Replace the two flattened artwork halves with individually clipped source pieces. Derive geometry from the existing raster's alpha channel offline, preserve its appearance, and render the pieces with unique SVG clip IDs and a shared optimized texture. Animate the box entrance, lifting/hovering lid, swaying ribbons, turning paper and glinting star independently. Keep gentle motion after the original three-second particle burst. Gate the entrance on texture readiness, including cached loads before hydration, and clean up pending load listeners on unmount. Verify actual changing transforms in the browser, mobile layout and dismissal, then rerun the platform checks and update the PR.
