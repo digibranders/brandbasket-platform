@@ -187,3 +187,25 @@ describe("error reporting in the policy", () => {
     ]);
   });
 });
+
+describe("Tag Manager in the policy", () => {
+  const withTags = directives(contentSecurityPolicy({ ...PRODUCTION, tagManager: true }));
+
+  it("lets Tag Manager, Google Analytics and Clarity load and report when the dashboard has a container", () => {
+    expect(withTags.get("script-src")).toEqual(expect.arrayContaining(["https://www.googletagmanager.com", "https://*.clarity.ms"]));
+    expect(withTags.get("connect-src")).toEqual(expect.arrayContaining(["https://*.google-analytics.com", "https://*.analytics.google.com", "https://*.clarity.ms"]));
+    expect(withTags.get("img-src")).toEqual(expect.arrayContaining(["https://*.google-analytics.com", "https://c.bing.com"]));
+    expect(withTags.get("frame-src")).toContain("https://www.googletagmanager.com");
+  });
+
+  it("opens none of those origins without a container, as on the staff console", () => {
+    const closed = contentSecurityPolicy(PRODUCTION);
+    for (const origin of ["googletagmanager.com", "google-analytics.com", "clarity.ms", "c.bing.com"]) expect(closed).not.toContain(origin);
+  });
+
+  it("keeps every other source as it was", () => {
+    expect(withTags.get("default-src")).toEqual(["'self'"]);
+    expect(withTags.get("frame-ancestors")).toEqual(["'none'"]);
+    expect(withTags.get("script-src")).toContain("https://challenges.cloudflare.com");
+  });
+});

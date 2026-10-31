@@ -3,9 +3,11 @@ import Link from "next/link";
 import type { ReactElement } from "react";
 import { findNominee } from "@brandbasket/db";
 import { displayPhone } from "@brandbasket/shared/server/phone-display";
+import { CookieSettingsButton } from "@/components/consent/CookieSettingsButton";
 import { NomineeForm } from "@/components/panel/nominee-form";
 import { SOFT_BUTTON } from "@/components/v2/classes";
 import { PageFrame, PageSection } from "@/components/v2/page";
+import { GTM_ID } from "@/lib/consent";
 import { legalLinksFor } from "@/lib/legal-links";
 import { supportEmailOf } from "@/lib/brand";
 import { requestBrand } from "@/lib/server/request-brand";
@@ -58,6 +60,17 @@ export default async function PrivacySettingsPage(): Promise<ReactElement> {
           current={nominee === null ? null : { name: nominee.name, phoneText: displayPhone(nominee.phone).text }}
         />
       </PageSection>
+
+      {GTM_ID === null ? null : (
+        <PageSection id="measurement" title="Measuring how you use the dashboard">
+          <p className="max-w-xl text-sm leading-relaxed text-ink-2">
+            With your yes, Google Analytics counts visits and Microsoft Clarity records how pages are used. You can turn this on or off at any time.
+          </p>
+          <div className="mt-5">
+            <CookieSettingsButton />
+          </div>
+        </PageSection>
+      )}
 
       <PageSection id="requests" title="Correct, delete or complain">
         <p className="max-w-xl text-sm leading-relaxed text-ink-2">
