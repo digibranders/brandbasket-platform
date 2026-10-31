@@ -2,6 +2,7 @@
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import type { PurchaseEvent } from "@/lib/purchase-event";
 import { PaymentWelcome } from "./payment-welcome";
 
 const replace = vi.fn();
@@ -39,8 +40,8 @@ afterEach(() => {
   container.remove();
 });
 
-function render(services: readonly ("website" | "social" | "search")[]): void {
-  act(() => root.render(<PaymentWelcome services={services} />));
+function render(services: readonly ("website" | "social" | "search")[], purchase: PurchaseEvent | null = null): void {
+  act(() => root.render(<PaymentWelcome services={services} purchase={purchase} />));
 }
 
 const dialog = (): HTMLDialogElement => {
@@ -73,5 +74,41 @@ describe("PaymentWelcome", () => {
     if (button === undefined) throw new Error("No close button");
     act(() => button.click());
     expect(replace).toHaveBeenCalledWith("/", { scroll: false });
+  });
+
+  describe("telling Tag Manager about the purchase", () => {
+    const PURCHASE: PurchaseEvent = { transactionId: "pay_Abc123", value: 2541.54, currency: "INR" };
+    const win = window as { dataLayer?: unknown[] };
+
+    beforeEach(() => {
+      win.dataLayer = [];
+      window.sessionStorage.clear();
+      window.localStorage.clear();
+    });
+
+    afterEach(() => {
+      delete win.dataLayer;
+    });
+
+    it("pushes the purchase once when the welcome opens, and not again when it opens again", () => {
+      search = "welcome=1";
+      render(["website"], PURCHASE);
+      expect(win.dataLayer).toHaveLength(2);
+      expect(win.dataLayer?.[1]).toMatchObject({ event: "purchase", ecommerce: { transaction_id: "pay_Abc123", currency: "INR" } });
+      act(() => root.unmount());
+      root = createRoot(container);
+      render(["website"], PURCHASE);
+      expect(win.dataLayer).toHaveLength(2);
+    });
+
+    it("pushes nothing on a visit that is not the welcome, or when there is no purchase to report", () => {
+      search = "";
+      render(["website"], PURCHASE);
+      search = "welcome=1";
+      act(() => root.unmount());
+      root = createRoot(container);
+      render(["website"], null);
+      expect(win.dataLayer).toHaveLength(0);
+    });
   });
 });

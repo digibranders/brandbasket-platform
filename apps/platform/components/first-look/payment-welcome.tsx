@@ -8,11 +8,14 @@ import { useBrand } from "@/components/panel/brand-provider";
 import { DARK_BUTTON, LIFT } from "@/components/v2/classes";
 import { firePoppers } from "@/components/first-look/fire-poppers";
 import { wantsWelcome, withoutWelcome } from "@/lib/celebration";
+import { pushPurchase, type PurchaseEvent } from "@/lib/purchase-event";
 import { SERVICE_NAMES, type ServiceKey } from "@/lib/first-look";
 
 interface PaymentWelcomeProps {
   /** The services the payment opened, in the order Overview names them. */
   readonly services: readonly ServiceKey[];
+  /** The first payment, for Tag Manager (plan 59); null when it cannot be told. Reported when the welcome opens, once per payment. */
+  readonly purchase?: PurchaseEvent | null;
 }
 
 /**
@@ -34,7 +37,7 @@ const EASE = "cubic-bezier(0.22,1,0.36,1)";
  * live address, not once: a payment lands here by a client-side redirect, when the address is not yet the new one at first render.
  * A native dialog keeps focus inside while open and gives it back on close.
  */
-export function PaymentWelcome({ services }: PaymentWelcomeProps): ReactElement {
+export function PaymentWelcome({ services, purchase = null }: PaymentWelcomeProps): ReactElement {
   const brand = useBrand();
   const router = useRouter();
   const pathname = usePathname();
@@ -49,6 +52,17 @@ export function PaymentWelcome({ services }: PaymentWelcomeProps): ReactElement 
     if (!open || canvas.current === null) return;
     return firePoppers(canvas.current);
   }, [open]);
+
+  useEffect(() => {
+    if (!open || purchase === null) return;
+    let notes: Storage | null = null;
+    try {
+      notes = window.localStorage;
+    } catch {
+      // Storage blocked: pushPurchase carries on without its note.
+    }
+    pushPurchase(window.dataLayer, notes, purchase);
+  }, [open, purchase]);
 
   return (
     <dialog

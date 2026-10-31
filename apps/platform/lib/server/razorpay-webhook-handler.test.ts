@@ -45,6 +45,7 @@ vi.mock("./keep-plan", () => ({ restoreKeptPlan: vi.fn(async () => true) }));
 vi.mock("./charges", () => ({ recordRazorpayChargePayment: vi.fn() }));
 vi.mock("./payment-failure", () => ({ recordRazorpayPaymentFailure: vi.fn() }));
 vi.mock("./teams", () => ({ announcePaymentToTeams: vi.fn(async () => undefined), announcePlanStatusToTeams: vi.fn(async () => undefined) }));
+vi.mock("./conversions", () => ({ reportFirstPaymentToAds: vi.fn(async () => undefined) }));
 // A transaction that is also its own savepoint: both run the callback straight away.
 vi.mock("./db", () => {
   const db = { transaction: (fn: (tx: unknown) => unknown) => fn(db) };
@@ -79,6 +80,7 @@ import { activateFirstPayment, activateReactivationPayment, activateRenewalPayme
 import { recordRazorpayChargePayment } from "./charges";
 import { recordRazorpayPaymentFailure } from "./payment-failure";
 import { restoreKeptPlan } from "./keep-plan";
+import { reportFirstPaymentToAds } from "./conversions";
 import { announcePaymentToTeams, announcePlanStatusToTeams } from "./teams";
 import { syncTenantForBusiness } from "./payload-tenant-sync";
 import { handleRazorpayWebhookEvent } from "./razorpay-webhook-handler";
@@ -2061,6 +2063,7 @@ describe("telling Teams about a payment", () => {
     await handleRazorpayWebhookEvent(CHARGED);
     expect(announcePaymentToTeams).toHaveBeenCalledTimes(1);
     expect(announcePaymentToTeams).toHaveBeenCalledWith("pay_row_1");
+    expect(reportFirstPaymentToAds).toHaveBeenCalledWith("pay_row_1");
   });
 
   it("announces a customer's first payment", async () => {

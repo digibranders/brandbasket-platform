@@ -24,6 +24,7 @@ import { confirmAccountEmailCode, requestAccountEmailCode, type AccountEmailCode
 import { getAuth } from "./auth";
 import { reportServerError } from "./error-report";
 import { ipRateLimitKey } from "./ip-key";
+import { reportSignUpToAds } from "./conversions";
 import { getStaffDb } from "./db";
 import { signInCustomer } from "./customer-sign-in";
 
@@ -181,7 +182,10 @@ export async function createListingAccount(input: JoinInput, attribution: NewSig
       currency: input.choice === "listing_only" ? "INR" : currencyForCountry(input.country),
     });
     await recordLeadForSignup({ name: input.name, businessName, email: signInAddress, businessId, choice: input.choice, userId, phone: phone.e164 });
-    if (attribution !== null) await recordAttributionForSignup(businessId, attribution, userId);
+    if (attribution !== null) {
+      await recordAttributionForSignup(businessId, attribution, userId);
+      void reportSignUpToAds(attribution);
+    }
   } catch (error) {
     // A brand-new account cannot already have a business; if it somehow does, signing in shows it.
     if (!(error instanceof UserAlreadyHasBusinessError)) throw error;
