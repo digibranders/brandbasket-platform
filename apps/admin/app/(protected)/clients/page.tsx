@@ -29,6 +29,7 @@ import { matchesClientSearch } from "@/lib/client-search";
 import { attentionBySubject, attentionItems } from "@/lib/pipeline";
 import { getStaffDb } from "@/lib/server/db";
 import { requireStaffAccess } from "@/lib/server/staff-access";
+import { logStaffAccess } from "@/lib/server/staff-access-log";
 import { clientsWaitingOnUs } from "@/lib/waiting-clients";
 import { TableScroll } from "@/components/console/table-scroll";
 
@@ -59,7 +60,8 @@ export default async function ClientsPage({
 }: {
   readonly searchParams: Promise<Record<string, string | string[] | undefined>>;
 }): Promise<ReactElement> {
-  await requireStaffAccess();
+  const { user } = await requireStaffAccess();
+  await logStaffAccess({ staffUserId: user.id, action: "clients.list", targetType: "clients" });
   const params = await searchParams;
   const stage = readStage(params.stage);
   const build = parseBuildStage(Array.isArray(params.build) ? params.build[0] : params.build);

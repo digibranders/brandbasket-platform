@@ -8,6 +8,7 @@ import { PageHeader } from "@/components/console/page-header";
 import { StatusDot } from "@/components/console/status-dot";
 import { getStaffDb } from "@/lib/server/db";
 import { requireStaffAccess } from "@/lib/server/staff-access";
+import { logStaffAccess } from "@/lib/server/staff-access-log";
 
 export const metadata: Metadata = { title: "Leaving" };
 
@@ -30,7 +31,8 @@ function outcomeLine(row: ExitFeedbackRow): ReactElement {
  * or business, so there is nothing here to act on for a person, only a picture of the reasons.
  */
 export default async function LeavingPage(): Promise<ReactElement> {
-  await requireStaffAccess();
+  const { user } = await requireStaffAccess();
+  await logStaffAccess({ staffUserId: user.id, action: "leaving.list", targetType: "leaving" });
   const db = getStaffDb();
   const [summary, rows] = await Promise.all([summariseExitFeedback(db), listExitFeedback(db, LIST_LIMIT)]);
 

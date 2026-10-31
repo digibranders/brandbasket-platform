@@ -22,6 +22,7 @@ import { StatusDot } from "@/components/console/status-dot";
 import { getStaffDb } from "@/lib/server/db";
 import { referralWorth } from "@/lib/server/referral-admin";
 import { requireStaffCan } from "@/lib/server/staff-role";
+import { logStaffAccess } from "@/lib/server/staff-access-log";
 import { retireReferralCodeAction } from "./actions";
 import { deleteReferralCodeAction } from "./delete-actions";
 
@@ -40,8 +41,9 @@ function dateInputValue(when: Date | null): string {
 
 /** One code, a coupon or an affiliate's: what it means in money today, who is on it, and what may still change. */
 export default async function CodePage({ params }: CodePageProps): Promise<ReactElement> {
-  await requireStaffCan("money");
+  const { user } = await requireStaffCan("money");
   const { codeId } = await params;
+  await logStaffAccess({ staffUserId: user.id, action: "coupons.detail", targetType: "coupon", targetId: codeId });
   const staffDb = getStaffDb();
   const code = await findReferralCodeById(staffDb, codeId);
   if (code === null) notFound();

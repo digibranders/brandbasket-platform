@@ -6,6 +6,7 @@ import { listClients } from "@brandbasket/db";
 import { PageHeader } from "@/components/console/page-header";
 import { getStaffDb } from "@/lib/server/db";
 import { requireStaffAccess } from "@/lib/server/staff-access";
+import { logStaffAccess } from "@/lib/server/staff-access-log";
 import { NewRequestForm } from "./new-request-form";
 
 export const metadata: Metadata = { title: "New request" };
@@ -15,7 +16,8 @@ interface NewRequestPageProps {
 }
 
 export default async function NewRequestPage({ searchParams }: NewRequestPageProps): Promise<ReactElement> {
-  await requireStaffAccess();
+  const { user } = await requireStaffAccess();
+  await logStaffAccess({ staffUserId: user.id, action: "support.new", targetType: "support_ticket" });
   const { businessId } = await searchParams;
   const preselected = z.uuid().safeParse(businessId);
   // Paying and not yet paid businesses (contract C3b): staff open requests for anyone they are talking to.
