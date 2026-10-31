@@ -4,6 +4,7 @@ import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { PurchaseEvent } from "@/lib/purchase-event";
 import { PaymentWelcome } from "./payment-welcome";
+import { firePoppers } from "./fire-poppers";
 
 const replace = vi.fn();
 let search = "";
@@ -23,12 +24,14 @@ let root: Root;
 beforeEach(() => {
   globals.IS_REACT_ACT_ENVIRONMENT = true;
   replace.mockClear();
+  search = "";
   // happy-dom has no modal dialog: stand in for the two calls the hook makes.
   HTMLDialogElement.prototype.showModal = function showModal(this: HTMLDialogElement): void {
     this.setAttribute("open", "");
   };
   HTMLDialogElement.prototype.close = function close(this: HTMLDialogElement): void {
     this.removeAttribute("open");
+    this.dispatchEvent(new Event("close"));
   };
   container = document.createElement("div");
   document.body.appendChild(container);
@@ -51,6 +54,74 @@ const dialog = (): HTMLDialogElement => {
 };
 
 describe("PaymentWelcome", () => {
+  it("places initial focus on the welcome heading while keeping the close control available", () => {
+    search = "welcome=1";
+    render(["website"]);
+    expect(document.activeElement).toBe(dialog().querySelector("h2"));
+    expect(dialog().querySelector('button[aria-label="Close welcome"]')).not.toBeNull();
+  });
+
+  it("explicitly confirms payment and describes the celebration accessibly", () => {
+    search = "welcome=1";
+    render(["website"]);
+    const descriptionId = dialog().getAttribute("aria-describedby");
+    expect(descriptionId).not.toBeNull();
+    expect(document.getElementById(descriptionId ?? "")?.textContent).toBe("Payment successful");
+    expect(dialog().textContent).toContain("Your next chapter starts here.");
+  });
+
+  it("has an accessible close control that dismisses immediately and preserves other query parameters", () => {
+    search = "source=checkout&welcome=1";
+    render(["website"]);
+    const closeButton = dialog().querySelector<HTMLButtonElement>('button[aria-label="Close welcome"]');
+    expect(closeButton).not.toBeNull();
+    act(() => closeButton?.click());
+    expect(dialog().open).toBe(false);
+    expect(replace).toHaveBeenCalledWith("/?source=checkout", { scroll: false });
+  });
+
+  it("removes the welcome parameter when Escape closes the native dialog", () => {
+    search = "welcome=1";
+    render(["website"]);
+    act(() => dialog().close());
+    expect(replace).toHaveBeenCalledWith("/", { scroll: false });
+  });
+
+  it("does not show an empty services section", () => {
+    search = "welcome=1";
+    render([]);
+    expect(dialog().querySelector("ul")).toBeNull();
+    expect(dialog().textContent).not.toContain("Now yours");
+  });
+
+  it("stops the celebration when the welcome parameter disappears", () => {
+    const stop = vi.fn();
+    vi.mocked(firePoppers).mockReturnValueOnce(stop);
+    search = "welcome=1";
+    render(["website"]);
+    search = "";
+    render(["website"]);
+    expect(stop).toHaveBeenCalledOnce();
+    expect(dialog().open).toBe(false);
+  });
+
+  it("stops drawing immediately when the dialog is dismissed", () => {
+    const stop = vi.fn();
+    vi.mocked(firePoppers).mockReturnValueOnce(stop);
+    search = "welcome=1";
+    render(["website"]);
+    act(() => dialog().close());
+    expect(stop).toHaveBeenCalledOnce();
+  });
+
+  it("shows all purchased services in order", () => {
+    search = "welcome=1";
+    render(["website", "social", "search"]);
+    expect([...dialog().querySelectorAll("li")].map((row) => row.textContent)).toEqual([
+      "Website", "Social & Ads", "Local SEO + AEO",
+    ]);
+  });
+
   it("opens when the address says a payment just opened the plan, and lists the services", () => {
     search = "welcome=1";
     render(["website", "search"]);
@@ -70,7 +141,7 @@ describe("PaymentWelcome", () => {
   it("takes the welcome off the address when closed, so a refresh never replays it", () => {
     search = "welcome=1";
     render(["website"]);
-    const button = [...dialog().querySelectorAll("button")].find((each) => each.textContent === "Let’s go");
+    const button = [...dialog().querySelectorAll("button")].find((each) => each.textContent?.trim() === "Let’s go");
     if (button === undefined) throw new Error("No close button");
     act(() => button.click());
     expect(replace).toHaveBeenCalledWith("/", { scroll: false });

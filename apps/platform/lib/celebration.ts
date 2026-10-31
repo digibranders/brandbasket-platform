@@ -47,8 +47,8 @@ export interface Piece {
 export const PIECES_PER_CANNON = 90;
 
 /** How many frames the paper lives, and how many of its last frames it spends fading. */
-export const LIFETIME_FRAMES = 260;
-export const FADE_FRAMES = 90;
+export const LIFETIME_FRAMES = 180;
+export const FADE_FRAMES = 60;
 
 /** A random number in [low, high). `random` is Math.random in the browser and a fixed sequence in tests. */
 function between(random: () => number, low: number, high: number): number {

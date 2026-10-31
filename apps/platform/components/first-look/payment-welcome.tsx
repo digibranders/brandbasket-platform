@@ -1,42 +1,49 @@
 "use client";
 
-import { Check } from "@phosphor-icons/react/dist/ssr";
+import { ArrowRight, Browser, Check, MapPin, Megaphone, X } from "@phosphor-icons/react/dist/ssr";
+import Image from "next/image";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useRef, type ReactElement } from "react";
+import { useEffect, useRef, type CSSProperties, type ReactElement, type RefObject } from "react";
 import { useDialogOpen } from "@brandbasket/shared/ui/v2/dialog-hooks";
 import { useBrand } from "@/components/panel/brand-provider";
 import { DARK_BUTTON, LIFT } from "@/components/v2/classes";
-import { firePoppers } from "@/components/first-look/fire-poppers";
+import { firePoppers } from "./fire-poppers";
 import { wantsWelcome, withoutWelcome } from "@/lib/celebration";
 import { pushPurchase, type PurchaseEvent } from "@/lib/purchase-event";
 import { SERVICE_NAMES, type ServiceKey } from "@/lib/first-look";
+import styles from "./payment-welcome.module.css";
 
 interface PaymentWelcomeProps {
-  /** The services the payment opened, in the order Overview names them. */
+  /** The services this confirmed payment opened, in Overview order. */
   readonly services: readonly ServiceKey[];
   /** The first payment, for Tag Manager (plan 59); null when it cannot be told. Reported when the welcome opens, once per payment. */
   readonly purchase?: PurchaseEvent | null;
 }
 
-/**
- * The card lifts in and each service is ticked in turn. The motion is on the card's contents, not on the dialog, so the
- * poppers' canvas stays fixed to the screen. Anyone who asked their device for less motion gets everything at once.
- */
-const KEYFRAMES = `
-@keyframes bb-lift { from { transform: translateY(10px) scale(0.98); opacity: 0; } to { transform: none; opacity: 1; } }
-@keyframes bb-tick { from { transform: scale(0.4); opacity: 0; } 60% { transform: scale(1.12); opacity: 1; } to { transform: scale(1); opacity: 1; } }
-@media (prefers-reduced-motion: reduce) { .bb-anim { animation: none !important; opacity: 1 !important; transform: none !important; } }
-`;
+const SERVICE_ICONS = { website: Browser, social: Megaphone, search: MapPin } as const;
 
-const EASE = "cubic-bezier(0.22,1,0.36,1)";
+/** Paper outside the card keeps the settled composition as celebratory as the approved concept. */
+const BACKDROP_PAPER = [
+  [12, 17, -28], [24, 9, -16], [8, 47, 32], [19, 64, -32], [27, 83, 16],
+  [77, 12, 28], [88, 29, -35], [81, 48, 18], [92, 65, -18], [77, 82, 32],
+  [15, 34, 45], [85, 92, -25], [6, 76, -32], [94, 18, 36],
+] as const;
 
-/**
- * What Overview does the moment a payment has opened the plan: party poppers, and a short welcome that lists the services the
- * payment opened. It shows while the address carries `welcome=1` (lib/celebration.ts), which the payment's landing adds;
- * closing it takes that off the address, so a refresh, a shared link or the back button never replays it. Read from the
- * live address, not once: a payment lands here by a client-side redirect, when the address is not yet the new one at first render.
- * A native dialog keeps focus inside while open and gives it back on close.
- */
+/** The illustration follows the approved concept; the upper and lower layers reveal independently. */
+function WelcomeGift({ artwork }: { readonly artwork: RefObject<HTMLDivElement | null> }): ReactElement {
+  return (
+    <div ref={artwork} aria-hidden="true" className={styles.artwork}>
+      <div className={styles.giftBase}>
+        <Image src="/illustrations/welcome-celebration.png" alt="" width={1536} height={1024} sizes="(max-width: 640px) 110vw, 520px" loading="eager" />
+      </div>
+      <div className={styles.giftLid}>
+        <Image src="/illustrations/welcome-celebration.png" alt="" width={1536} height={1024} sizes="(max-width: 640px) 110vw, 520px" loading="eager" />
+      </div>
+    </div>
+  );
+}
+
+/** The existing confirmed-payment landing opens this native dialog; dismissing it consumes the welcome parameter. */
 export function PaymentWelcome({ services, purchase = null }: PaymentWelcomeProps): ReactElement {
   const brand = useBrand();
   const router = useRouter();
@@ -45,13 +52,23 @@ export function PaymentWelcome({ services, purchase = null }: PaymentWelcomeProp
   const open = wantsWelcome(search);
   const dialog = useDialogOpen(open);
   const canvas = useRef<HTMLCanvasElement>(null);
+  const title = useRef<HTMLHeadingElement>(null);
+  const artwork = useRef<HTMLDivElement>(null);
 
-  const close = (): void => router.replace(`${pathname}${withoutWelcome(search)}`, { scroll: false });
+  const dismiss = (): void => { dialog.current?.close(); };
 
   useEffect(() => {
     if (!open || canvas.current === null) return;
-    return firePoppers(canvas.current);
-  }, [open]);
+    title.current?.focus({ preventScroll: true });
+    const stop = firePoppers(canvas.current);
+    // Stop drawing on native close immediately, before the URL transition completes.
+    const element = dialog.current;
+    element?.addEventListener("close", stop);
+    return () => {
+      stop();
+      element?.removeEventListener("close", stop);
+    };
+  }, [open, dialog]);
 
   useEffect(() => {
     if (!open || purchase === null) return;
@@ -68,41 +85,69 @@ export function PaymentWelcome({ services, purchase = null }: PaymentWelcomeProp
     <dialog
       ref={dialog}
       aria-labelledby="payment-welcome-title"
-      // Escape closes the native dialog; the address then loses its parameter. A close this component asked for finds it already gone.
+      aria-describedby="payment-welcome-confirmation"
       onClose={() => {
-        if (open) close();
+        if (open) router.replace(`${pathname}${withoutWelcome(search)}`, { scroll: false });
       }}
-      className={`${LIFT} m-auto w-[calc(100%-2.5rem)] max-w-md overflow-visible p-0 text-ink backdrop:bg-ink/50 backdrop:backdrop-blur-sm`}
+      className={`${LIFT} ${styles.dialog} text-ink backdrop:bg-ink/50`}
     >
-      <style>{KEYFRAMES}</style>
-      <canvas ref={canvas} aria-hidden="true" className="pointer-events-none fixed inset-0 size-full" />
-      <div className="bb-anim p-8" style={{ animation: `bb-lift 0.5s ${EASE} both` }}>
-        <h2 id="payment-welcome-title" className="font-display text-[1.75rem] font-semibold leading-tight tracking-[-0.02em]">
-          Welcome to {brand.shortName}.
-        </h2>
-        {services.length === 0 ? null : (
-          <>
-            <p className="mt-6 text-sm text-ink-2">Now yours</p>
-            <ul className="mt-2 divide-y divide-line">
-              {services.map((service, index) => (
-                <li key={service} className="flex items-center gap-3 py-3">
-                  <span
-                    aria-hidden="true"
-                    className="bb-anim grid size-6 shrink-0 place-items-center rounded-full bg-sage text-white"
-                    style={{ animation: `bb-tick 0.5s ${EASE} both`, animationDelay: `${String(0.45 + index * 0.2)}s` }}
-                  >
-                    <Check size={13} weight="fill" />
+      {open ? (
+        <>
+          <canvas ref={canvas} aria-hidden="true" className={styles.confetti} />
+          <div aria-hidden="true" className={styles.paperScene}>
+            {BACKDROP_PAPER.map(([left, top, rotation], index) => (
+              <span key={index} className={styles.paper} style={{ left: `${String(left)}%`, top: `${String(top)}%`, rotate: `${String(rotation)}deg` }} />
+            ))}
+          </div>
+          <div className={styles.card}>
+            <button type="button" onClick={dismiss} aria-label="Close welcome" className={styles.close}>
+              <X size={20} aria-hidden="true" />
+            </button>
+            <WelcomeGift artwork={artwork} />
+            <div className={styles.body} onScroll={(event) => {
+              // Let the overflowing illustration travel with its content instead of covering rows on short screens.
+              artwork.current?.style.setProperty("--body-scroll", `${String(event.currentTarget.scrollTop)}px`);
+            }}>
+              <div className={styles.introduction}>
+                <p id="payment-welcome-confirmation" className="flex items-center justify-center gap-2 text-[0.9375rem] font-semibold text-ok">
+                  <span aria-hidden="true" className="grid size-5 place-items-center rounded-full bg-ok text-white">
+                    <Check size={13} weight="bold" />
                   </span>
-                  <span className="text-[0.9375rem] font-medium">{SERVICE_NAMES[service]}</span>
-                </li>
-              ))}
-            </ul>
-          </>
-        )}
-        <button type="button" onClick={close} className={`${DARK_BUTTON} mt-6 w-full`}>
-          Let’s go
-        </button>
-      </div>
+                  Payment successful
+                </p>
+                <h2 ref={title} tabIndex={-1} id="payment-welcome-title" className={`${styles.title} font-display`}>
+                  Welcome to <span className="block">{brand.shortName}.</span>
+                </h2>
+                <p className={`${styles.subtitle} text-ink-2`}>Your next chapter starts here.</p>
+              </div>
+              {services.length > 0 ? (
+                <section aria-labelledby="payment-welcome-services" className={styles.services}>
+                  <h3 id="payment-welcome-services" className="text-lg font-semibold">Now yours</h3>
+                  <ul className="mt-2 divide-y divide-line">
+                    {services.map((service, index) => {
+                      const ServiceIcon = SERVICE_ICONS[service];
+                      return (
+                        <li key={service} className={`${styles.service} flex items-center gap-4`} style={{ "--reveal-delay": `${String(750 + index * 130)}ms` } as CSSProperties}>
+                          <span aria-hidden="true" className={styles.serviceIcon}><ServiceIcon size={24} /></span>
+                          <span className="min-w-0 flex-1 text-[0.9375rem] font-medium">{SERVICE_NAMES[service]}</span>
+                          <span aria-hidden="true" className="grid size-[1.125rem] shrink-0 place-items-center rounded-full bg-ok text-white">
+                            <Check size={12} weight="bold" />
+                          </span>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </section>
+              ) : null}
+            </div>
+            <div className={styles.footer}>
+              <button type="button" onClick={dismiss} className={`${DARK_BUTTON} h-12! w-full hover:bg-ink-raised`}>
+                Let’s go <ArrowRight size={18} aria-hidden="true" />
+              </button>
+            </div>
+          </div>
+        </>
+      ) : null}
     </dialog>
   );
 }
