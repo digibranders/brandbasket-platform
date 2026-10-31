@@ -266,7 +266,7 @@ describe("pausing", () => {
 
 describe("resuming", () => {
   const cases: readonly { readonly from: ProjectStatus; readonly lands: ProjectStatus }[] = [
-    { from: "submitted", lands: "building" },
+    { from: "submitted", lands: "submitted" },
     { from: "building", lands: "building" },
     { from: "revisions", lands: "revisions" },
     { from: "preview", lands: "preview" },

@@ -3,8 +3,8 @@ import { SUPPORT_CATEGORY_LABELS } from "@brandbasket/shared/lib/support";
 import type { AttentionItem } from "./pipeline";
 import { clock, longDay, shortDate } from "./team-time";
 
-/** Every kind of work Today shows: the pipeline's attention kinds, plus requests, sign-ups and errors. */
-export type TodayKind = AttentionItem["kind"] | "request" | "signup" | "error";
+/** Every kind of work Today shows: the pipeline's attention kinds, plus requests, sign-ups, errors, failed deliveries and kickoff calls. */
+export type TodayKind = AttentionItem["kind"] | "request" | "signup" | "error" | "delivery" | "kickoff";
 
 export interface TodayItem {
   /** Unique across the queue. */
@@ -26,6 +26,10 @@ export interface TodayInput {
   readonly unpaidSignups: readonly Pick<Lead, "id" | "businessName" | "createdAt">[];
   /** Errors nobody has looked at yet (status "new"). */
   readonly newErrors: readonly Pick<ErrorIssue, "id" | "operation" | "route" | "occurrenceCount" | "firstSeenAt">[];
+  /** Deliveries that failed in the last 24 hours (the rail's count); null when that count could not be read. */
+  readonly failedDeliveries: number | null;
+  /** End times of kickoff calls that are over and not marked held; null when they could not be read. The count is its length. */
+  readonly kickoffsNeedingOutcome: readonly Date[] | null;
   /** The end of the team's day: a preview due after it is not today's work. */
   readonly endOfToday: Date;
 }
@@ -113,7 +117,69 @@ export function todayQueue(input: TodayInput): readonly TodayItem[] {
       dueAt: after(issue.firstSeenAt, WAIT_LIMITS.error),
     }),
   );
-  return [...attention, ...requests, ...signups, ...errors].sort(byDue);
+  // A failed delivery has no due time: nothing sets a clock on it, so it sorts after the timed work.
+  const deliveries: readonly TodayItem[] =
+    input.failedDeliveries !== null && input.failedDeliveries > 0
+      ? [
+          {
+            key: "deliveries:failed",
+            kind: "delivery",
+            href: "/deliveries",
+            title: `${input.failedDeliveries} ${input.failedDeliveries === 1 ? "delivery" : "deliveries"} failed`,
+            detail: "",
+            dueAt: null,
+          },
+        ]
+      : [];
+  // Every call here has already ended, so the item is overdue from the start; its clock is the earliest end time.
+  const kickoffEnds = input.kickoffsNeedingOutcome ?? [];
+  const kickoffs: readonly TodayItem[] =
+    kickoffEnds.length > 0
+      ? [
+          {
+            key: "kickoff:needs-outcome",
+            kind: "kickoff",
+            href: "/calls",
+            title: kickoffEnds.length === 1 ? "1 kickoff call needs an outcome" : `${kickoffEnds.length} kickoff calls need an outcome`,
+            detail: "",
+            dueAt: kickoffEnds.reduce((earliest, end) => (end.getTime() < earliest.getTime() ? end : earliest)),
+          },
+        ]
+      : [];
+  return [...attention, ...requests, ...signups, ...errors, ...deliveries, ...kickoffs].sort(byDue);
+}
+
+export const GROUP_HEADINGS = {
+  overdue: "Overdue",
+  dueToday: "Due today",
+  waiting: "Waiting for someone",
+} as const;
+
+export interface TodayGroup {
+  readonly heading: (typeof GROUP_HEADINGS)[keyof typeof GROUP_HEADINGS];
+  readonly items: readonly TodayItem[];
+}
+
+/**
+ * Splits a queue from todayQueue into Overdue (due before now), Due today (due from now until the end of the team's day)
+ * and Waiting for someone (everything else, including items with no due time). Each group keeps the queue's order and
+ * empty groups are left out.
+ */
+export function groupTodayQueue(queue: readonly TodayItem[], now: Date, endOfToday: Date): readonly TodayGroup[] {
+  const overdue: TodayItem[] = [];
+  const dueToday: TodayItem[] = [];
+  const waiting: TodayItem[] = [];
+  for (const item of queue) {
+    if (item.dueAt !== null && item.dueAt.getTime() < now.getTime()) overdue.push(item);
+    else if (item.dueAt !== null && item.dueAt.getTime() < endOfToday.getTime()) dueToday.push(item);
+    else waiting.push(item);
+  }
+  const groups: readonly TodayGroup[] = [
+    { heading: GROUP_HEADINGS.overdue, items: overdue },
+    { heading: GROUP_HEADINGS.dueToday, items: dueToday },
+    { heading: GROUP_HEADINGS.waiting, items: waiting },
+  ];
+  return groups.filter((group) => group.items.length > 0);
 }
 
 export type DueTone = "late" | "soon" | "plain";
@@ -144,9 +210,10 @@ export function actionLabel(kind: TodayKind): string {
 }
 
 /** The line under the greeting: "Monday 30 November. 9 things need someone today, 2 are late." */
-export function todaySummary(now: Date, count: number, late: number): string {
+export function todaySummary(now: Date, count: number, late: number, incomplete = false): string {
   const day = longDay(now);
-  if (count === 0) return `${day}. Nothing needs anyone right now.`;
+  // A list that failed to load may hide work, so an empty queue is not "all clear".
+  if (count === 0) return incomplete ? `${day}.` : `${day}. Nothing needs anyone right now.`;
   const things = count === 1 ? "1 thing needs" : `${count} things need`;
   const lateText = late === 0 ? "" : late === 1 ? ", 1 is late" : `, ${late} are late`;
   return `${day}. ${things} someone today${lateText}.`;

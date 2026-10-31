@@ -12,6 +12,7 @@ import { StatusPill, type PillTone } from "@/components/console/status-pill";
 import { TABLE, TD, TD_NUM, TD_TIME, TH } from "@/components/console/table";
 import { getStaffDb } from "@/lib/server/db";
 import { requireStaffAccess } from "@/lib/server/staff-access";
+import { TableScroll } from "@/components/console/table-scroll";
 
 export const metadata: Metadata = { title: "Errors" };
 const STATUS_LABELS: Record<ErrorIssueStatus, string> = { new: "New", investigating: "Investigating", resolved: "Resolved", ignored: "Ignored" };
@@ -44,45 +45,47 @@ export default async function AutomaticErrorsPage({ searchParams }: { readonly s
         </div>
       ) : (
         <section aria-label="Error issues" className={`${LIFT} mt-6 overflow-x-auto px-4`}>
-          <table className={TABLE}>
-            <thead>
-              <tr>
-                <th className={TH}>Error</th>
-                <th className={TH}>Where</th>
-                <th className={TH}>Status</th>
-                <th className={`${TH} text-right`}>Occurrences</th>
-                <th className={`${TH} text-right`}>Signed-in users</th>
-                <th className={TH}>Last seen</th>
-              </tr>
-            </thead>
-            <tbody>
-              {issues.map((issue) => (
-                <tr key={issue.id}>
-                  <td className={TD}>
-                    <Link href={`/support/errors/${issue.id}`} className="font-semibold underline-offset-4 hover:underline">
-                      {issue.errorClass}
-                    </Link>
-                    <span className="mt-0.5 block text-xs text-ink-2">{issue.operation.replaceAll("_", " ")}</span>
-                  </td>
-                  <td className={TD}>
-                    <span className="break-all">{issue.route}</span>
-                    <span className="mt-0.5 block text-xs text-ink-2">{issue.app}</span>
-                  </td>
-                  <td className={TD}>
-                    <StatusPill tone={STATUS_TONES[issue.status]}>{STATUS_LABELS[issue.status]}</StatusPill>
-                  </td>
-                  <td className={TD_NUM}>{issue.occurrenceCount.toLocaleString("en-IN")}</td>
-                  <td className={TD_NUM}>
-                    ~{issue.affectedUsers.count.toLocaleString("en-IN")}
-                    {issue.affectedUsers.saturated ? "+" : ""}
-                  </td>
-                  <td className={TD_TIME}>
-                    <LocalDateTime iso={issue.lastSeenAt.toISOString()} variant="timestamp" />
-                  </td>
+          <TableScroll label="Errors">
+            <table className={TABLE}>
+              <thead>
+                <tr>
+                  <th className={TH}>Error</th>
+                  <th className={TH}>Where</th>
+                  <th className={TH}>Status</th>
+                  <th className={`${TH} text-right`}>Occurrences</th>
+                  <th className={`${TH} text-right`}>Signed-in users</th>
+                  <th className={TH}>Last seen</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {issues.map((issue) => (
+                  <tr key={issue.id}>
+                    <td className={TD}>
+                      <Link href={`/support/errors/${issue.id}`} className="font-semibold underline-offset-4 hover:underline">
+                        {issue.errorClass}
+                      </Link>
+                      <span className="mt-0.5 block text-xs text-ink-2">{issue.operation.replaceAll("_", " ")}</span>
+                    </td>
+                    <td className={TD}>
+                      <span className="break-all">{issue.route}</span>
+                      <span className="mt-0.5 block text-xs text-ink-2">{issue.app}</span>
+                    </td>
+                    <td className={TD}>
+                      <StatusPill tone={STATUS_TONES[issue.status]}>{STATUS_LABELS[issue.status]}</StatusPill>
+                    </td>
+                    <td className={TD_NUM}>{issue.occurrenceCount.toLocaleString("en-IN")}</td>
+                    <td className={TD_NUM}>
+                      ~{issue.affectedUsers.count.toLocaleString("en-IN")}
+                      {issue.affectedUsers.saturated ? "+" : ""}
+                    </td>
+                    <td className={TD_TIME}>
+                      <LocalDateTime iso={issue.lastSeenAt.toISOString()} variant="timestamp" />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </TableScroll>
         </section>
       )}
       <p className="mt-4 text-sm text-ink-2">Counts include anonymous reports; signed-in users is an estimate.</p>

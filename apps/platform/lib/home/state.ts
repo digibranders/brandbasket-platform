@@ -34,6 +34,8 @@ export type ClientHomeState =
   | { readonly kind: "kickoff_booked"; readonly startsAt: Date | null; readonly endsAt: Date | null }
   /** The kickoff is over and the website build is about to start (the project is still waiting in onboarding). */
   | { readonly kind: "starting" }
+  /** Sent to us and not started yet: staff have not pressed Start. Drawn exactly as building, with its own headline. */
+  | { readonly kind: "preparing"; readonly dueAt: Date | null }
   | { readonly kind: "building"; readonly dueAt: Date | null }
   | { readonly kind: "on_hold"; readonly reason: string | null }
   | { readonly kind: "preview_ready" }
@@ -74,6 +76,7 @@ export function deriveClientHomeState(facts: HomeFacts): ClientHomeState {
     case "onboarding":
       return { kind: "starting" };
     case "submitted":
+      return { kind: "preparing", dueAt: project.slaDueAt };
     case "building":
       return { kind: "building", dueAt: project.slaDueAt };
     case "on_hold":
@@ -99,6 +102,7 @@ export function homeLayoutOf(state: ClientHomeState): HomeLayout {
     case "kickoff_booked":
       return "kickoff";
     case "starting":
+    case "preparing":
     case "building":
     case "on_hold":
     case "revisions":

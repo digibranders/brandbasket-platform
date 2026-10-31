@@ -15,6 +15,7 @@ import { PEOPLE_NOTICES, readPeopleNotice } from "@/lib/people-notices";
 import { openClientTab } from "@/lib/server/client-page";
 import { getStaffDb } from "@/lib/server/db";
 import { extendClosureAction, renameOwnerAction, restoreClosureAction } from "./actions";
+import { TableScroll } from "@/components/console/table-scroll";
 
 export const metadata: Metadata = { title: "Client people" };
 
@@ -45,33 +46,35 @@ export default async function ClientPeoplePage({
         {members.length === 0 ? (
           <Quiet>Nobody can open this business&apos;s dashboard.</Quiet>
         ) : (
-          <table className={TABLE}>
-            <thead>
-              <tr>
-                <th className={TH}>Person</th>
-                <th className={TH}>Role</th>
-                <th className={TH}>Mobile</th>
-                <th className={TH}>Joined</th>
-              </tr>
-            </thead>
-            <tbody>
-              {members.map((member) => (
-                <tr key={member.userId}>
-                  <td className={TD}>
-                    <b className="font-semibold">{member.name}</b>
-                    <small className="block text-xs text-ink-2">{member.email ?? "Signs in with a mobile number"}</small>
-                  </td>
-                  <td className={TD}>
-                    <StatusPill tone={member.role === "owner" ? "progress" : "todo"}>{member.role === "owner" ? "Owner" : "Editor"}</StatusPill>
-                  </td>
-                  <td className={TD}>{member.phone === null ? "None" : (displayPhoneText(member.phone) ?? member.phone)}</td>
-                  <td className={TD_TIME}>
-                    <LocalDate iso={member.joinedAt.toISOString()} />
-                  </td>
+          <TableScroll label="People">
+            <table className={TABLE}>
+              <thead>
+                <tr>
+                  <th className={TH}>Person</th>
+                  <th className={TH}>Role</th>
+                  <th className={TH}>Mobile</th>
+                  <th className={TH}>Joined</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {members.map((member) => (
+                  <tr key={member.userId}>
+                    <td className={TD}>
+                      <b className="font-semibold">{member.name}</b>
+                      <small className="block text-xs text-ink-2">{member.email ?? "Signs in with a mobile number"}</small>
+                    </td>
+                    <td className={TD}>
+                      <StatusPill tone={member.role === "owner" ? "progress" : "todo"}>{member.role === "owner" ? "Owner" : "Editor"}</StatusPill>
+                    </td>
+                    <td className={TD}>{member.phone === null ? "None" : (displayPhoneText(member.phone) ?? member.phone)}</td>
+                    <td className={TD_TIME}>
+                      <LocalDate iso={member.joinedAt.toISOString()} />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </TableScroll>
         )}
       </Section>
 

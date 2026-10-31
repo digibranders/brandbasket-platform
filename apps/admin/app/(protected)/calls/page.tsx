@@ -11,6 +11,7 @@ import { KickoffWrapUp } from "./kickoff-wrap-up";
 import { todayRange } from "@/lib/team-time";
 import { getStaffDb } from "@/lib/server/db";
 import { requireStaffAccess } from "@/lib/server/staff-access";
+import { TableScroll } from "@/components/console/table-scroll";
 
 export const metadata: Metadata = { title: "Calls" };
 
@@ -21,28 +22,30 @@ const AHEAD_DAYS = 28;
 
 function CallTable({ lines }: { readonly lines: readonly CallLine[] }): ReactElement {
   return (
-    <table className={TABLE}>
-      <thead>
-        <tr>
-          <th className={TH}>When</th>
-          <th className={TH}>Client</th>
-          <th className={TH}>Setup answers</th>
-        </tr>
-      </thead>
-      <tbody>
-        {lines.map((line) => (
-          <tr key={line.call.businessId}>
-            <td className={TD_TIME}>{line.when}</td>
-            <td className={TD}>
-              <Link href={`/clients/${line.call.businessId}`} className="font-semibold text-ink">
-                {line.call.businessName}
-              </Link>
-            </td>
-            <td className={`${TD} font-figure tabular-nums text-ink-2`}>{line.setup}</td>
+    <TableScroll label="Calls">
+      <table className={TABLE}>
+        <thead>
+          <tr>
+            <th className={TH}>When</th>
+            <th className={TH}>Client</th>
+            <th className={TH}>Setup answers</th>
           </tr>
-        ))}
-      </tbody>
-    </table>
+        </thead>
+        <tbody>
+          {lines.map((line) => (
+            <tr key={line.call.businessId}>
+              <td className={TD_TIME}>{line.when}</td>
+              <td className={TD}>
+                <Link href={`/clients/${line.call.businessId}`} className="font-semibold text-ink">
+                  {line.call.businessName}
+                </Link>
+              </td>
+              <td className={`${TD} font-figure tabular-nums text-ink-2`}>{line.setup}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </TableScroll>
   );
 }
 

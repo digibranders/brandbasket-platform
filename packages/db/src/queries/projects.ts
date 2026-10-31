@@ -206,8 +206,8 @@ export async function approveProjectPreview(db: Runner, input: ProjectPreviewRes
 /**
  * Asking for changes, moving the business's project back to `revisions` and counting the round in
  * `revisionRoundsGranted`, tracked against `revisionRoundsIncluded` for whoever later needs to know how many rounds
- * a business has used. There is deliberately no written detail to record: the customer is pointed at booking a call
- * instead (see PreviewReviewActions), so this is a plain status move. Staff-privileged for the same reason as
+ * a business has used. This is a plain status move: the customer's written feedback is saved as a support ticket first
+ * (sendPreviewFeedbackAction in the dashboard), not here. Staff-privileged for the same reason as
  * approveProjectPreview; see its doc comment.
  */
 export async function requestProjectRevisions(db: Runner, input: ProjectPreviewResponse): Promise<Project> {

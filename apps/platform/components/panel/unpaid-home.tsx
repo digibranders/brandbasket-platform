@@ -11,6 +11,7 @@ import { PrepareChecklist } from "./prepare-checklist";
 const SUBTITLES: Readonly<Record<NextStep["kind"], string>> = {
   "start-onboarding": "Let’s get your business online.",
   "continue-onboarding": "Let’s get your business online.",
+  preparing: "Your website is on its way.",
   building: "Your website is on its way.",
   "on-hold": "We’ll be in touch soon.",
   review: "Your website is ready for you to look at.",

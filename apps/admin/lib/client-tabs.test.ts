@@ -5,12 +5,12 @@ const ID = "01a0f71b-8402-7d48-a90a-207e8c8a882c";
 
 describe("tabsFor", () => {
   it("hides Billing from support staff", () => {
-    expect(tabsFor("support").map((tab) => tab.label)).toEqual(["Overview", "Project", "Services", "Website", "Requests", "People", "Activity"]);
+    expect(tabsFor("support").map((tab) => tab.label)).toEqual(["Overview", "Delivery", "Services", "Website", "Requests", "People", "Activity"]);
   });
 
   it("shows Billing to finance and admin", () => {
     for (const role of ["finance", "admin"] as const) {
-      expect(tabsFor(role).map((tab) => tab.label)).toEqual(["Overview", "Project", "Billing", "Services", "Website", "Requests", "People", "Activity"]);
+      expect(tabsFor(role).map((tab) => tab.label)).toEqual(["Overview", "Delivery", "Billing", "Services", "Website", "Requests", "People", "Activity"]);
     }
   });
 });
@@ -29,7 +29,7 @@ describe("forwardedNoticeHref", () => {
     expect(forwardedNoticeHref(ID, { invoice: "issued" })).toBe(`/clients/${ID}/billing?invoice=issued`);
   });
 
-  it("sends preview, launch and domain notices to Project", () => {
+  it("sends preview, launch and domain notices to Delivery", () => {
     expect(forwardedNoticeHref(ID, { preview: "sent" })).toBe(`/clients/${ID}/project?preview=sent`);
     expect(forwardedNoticeHref(ID, { launch: "launched" })).toBe(`/clients/${ID}/project?launch=launched`);
     expect(forwardedNoticeHref(ID, { dns: "ready" })).toBe(`/clients/${ID}/project?dns=ready`);

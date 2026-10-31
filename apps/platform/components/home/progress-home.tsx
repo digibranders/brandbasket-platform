@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { ReactElement } from "react";
 import { DARK_BUTTON, LIFT, SOFT_BUTTON } from "@/components/v2/classes";
 import { PageColumns } from "@/components/v2/page";
+import { CUSTOMER_STAGE_HEADLINE } from "@brandbasket/shared/lib/project-customer-line";
 import { websiteMilestones } from "@/lib/home/milestones";
 import type { ClientHomeState } from "@/lib/home/state";
 import type { HomeData } from "@/lib/server/home";
@@ -26,11 +27,12 @@ function copyFor(state: WebsiteState): Copy {
   switch (state.kind) {
     case "starting":
       return { word: "Starting", tone: "info", title: "We are getting your website started", text: "Your kickoff is done. The date of your first preview appears here as soon as the build starts." };
+    case "preparing":
     case "building":
       return {
         word: "In progress",
         tone: "info",
-        title: "We are building your website",
+        title: state.kind === "preparing" ? CUSTOMER_STAGE_HEADLINE.submitted : CUSTOMER_STAGE_HEADLINE.building,
         text: state.dueAt === null ? "We will email you, and show it here, when your first preview is ready." : `Your first preview will be ready by ${WHEN.format(state.dueAt)}. We will email you and show it here.`,
       };
     case "on_hold":

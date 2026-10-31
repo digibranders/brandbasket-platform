@@ -23,7 +23,7 @@ export async function KickoffCallSection({ businessId }: { readonly businessId: 
         ]}
       />
       <p className="mt-6 max-w-xl text-sm text-ink-soft">
-        Marking the call held opens the customer&apos;s To do page and Overview. If nobody marks it, it opens two days after the call.
+        Marking the call held ends the customer&apos;s first look and readies their website build. If nobody marks it, the build starts by itself two hours after the call ends and the first look ends two days after.
       </p>
       <form action={held === null ? markCallHeldAction : undoCallHeldAction} className="mt-4">
         <input type="hidden" name="businessId" value={businessId} />

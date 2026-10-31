@@ -6,9 +6,12 @@ export type ClientNextStep = "preview" | "live" | null;
 
 const SEND_PREVIEW_STATUSES: ReadonlySet<string> = new Set(PROJECT_STATUSES_PREVIEWABLE);
 
-/** What we owe a client next on their build: the preview while we build, going live once they approved. */
+/**
+ * What we owe a client next on their build: the preview while we build, going live once they approved.
+ * Status decides. onboardingSubmittedAt is only history of the old setup checklist, so kickoff-first projects still get it.
+ */
 export function clientNextStep(project: ClientProject | null): ClientNextStep {
-  if (project === null || project.onboardingSubmittedAt === null) return null;
+  if (project === null) return null;
   if (SEND_PREVIEW_STATUSES.has(project.status)) return "preview";
   return project.status === "approved" ? "live" : null;
 }
@@ -24,16 +27,20 @@ export function previewLateReason(project: ClientProject | null, now: Date): str
 export interface OverviewNextStep {
   readonly label: string;
   /** The section on the Project tab to open at, or null for its top. */
-  readonly anchor: "domain" | null;
+  readonly anchor: "domain" | "website-build" | null;
 }
 
-/** The one line the Overview leads with. A domain move first, then the preview, then going live. */
+/** The one line the Overview leads with. A domain move first, then the build or preview, then going live. */
 export function overviewNextStep(client: Pick<ClientDetail, "project" | "movingTo">, now: Date): OverviewNextStep | null {
   if (client.movingTo !== null) return { label: "Move them to their own domain", anchor: "domain" };
   const step = clientNextStep(client.project);
   if (step === "preview") {
     const late = previewLateReason(client.project, now);
-    return { label: late === null ? "Send the preview" : `Send the preview: ${late.toLowerCase()}`, anchor: null };
+    const suffix = late === null ? "" : `: ${late.toLowerCase()}`;
+    // Nobody has started a submitted project, so the next thing is to start the build, not to send a preview.
+    return client.project?.status === "submitted"
+      ? { label: `Start building the website${suffix}`, anchor: "website-build" }
+      : { label: `Send the preview${suffix}`, anchor: null };
   }
   if (step === "live") return { label: "Go live", anchor: "domain" };
   return null;

@@ -1,6 +1,17 @@
 import type { ClientBilling, ClientProject } from "@brandbasket/db";
 import { describe, expect, it } from "vitest";
-import { CLIENT_ROW_STAGE_LABELS, clientRowStage, servicesByBusiness } from "./client-rows";
+import { STAFF_STAGE_LABELS, type StaffStage } from "@brandbasket/shared/lib/project-stage";
+import {
+  BUILD_STAGES,
+  buildStageLabel,
+  CLIENT_ROW_STAGE_LABELS,
+  clientBuildStage,
+  clientRowStage,
+  filterClientRows,
+  parseBuildStage,
+  servicesByBusiness,
+  type ClientRowStage,
+} from "./client-rows";
 
 const PAID: ClientBilling = {
   subscription: null,
@@ -47,5 +58,69 @@ describe("servicesByBusiness", () => {
     expect(map.get("a")).toEqual({ addOns: ["managed-website", "digital-growth", "local-seo-aeo"], monthlyCents: 2_799_800 });
     expect(map.get("b")).toEqual({ addOns: ["managed-website"], monthlyCents: 0 });
     expect(map.get("c")).toBeUndefined();
+  });
+});
+
+describe("clientBuildStage", () => {
+  it("names the website build stage of the client's project, and is null without a project", () => {
+    expect(clientBuildStage({ project: null })).toBeNull();
+    expect(clientBuildStage({ project: project("onboarding") })).toBe("waiting_for_kickoff");
+    expect(clientBuildStage({ project: project("submitted") })).toBe("ready_to_start");
+    expect(clientBuildStage({ project: project("building") })).toBe("building");
+  });
+});
+
+describe("buildStageLabel", () => {
+  it("looks up the staff label, and is null without a stage", () => {
+    expect(buildStageLabel(null)).toBeNull();
+    expect(buildStageLabel("ready_to_start")).toBe("Ready to start");
+    expect(buildStageLabel("changes_requested")).toBe(STAFF_STAGE_LABELS.changes_requested);
+  });
+});
+
+describe("parseBuildStage", () => {
+  it("accepts each staff stage key and reads anything else as all (null)", () => {
+    expect(parseBuildStage("building")).toBe("building");
+    expect(parseBuildStage("waiting_for_kickoff")).toBe("waiting_for_kickoff");
+    expect(parseBuildStage("all")).toBeNull();
+    expect(parseBuildStage("")).toBeNull();
+    expect(parseBuildStage(undefined)).toBeNull();
+    expect(parseBuildStage("Building")).toBeNull();
+    expect(parseBuildStage("constructor")).toBeNull();
+  });
+});
+
+describe("BUILD_STAGES", () => {
+  it("lists every staff stage in the label order", () => {
+    expect(BUILD_STAGES).toEqual(Object.keys(STAFF_STAGE_LABELS));
+    expect(BUILD_STAGES).toHaveLength(9);
+  });
+});
+
+describe("filterClientRows", () => {
+  type Row = { readonly id: string; readonly stage: ClientRowStage; readonly buildStage: StaffStage | null };
+  const ROWS: readonly Row[] = [
+    { id: "a", stage: "live", buildStage: "live" },
+    { id: "b", stage: "building", buildStage: "building" },
+    { id: "c", stage: "setup", buildStage: null },
+    { id: "d", stage: "building", buildStage: "approved" },
+    { id: "e", stage: "not-paid", buildStage: "waiting_for_kickoff" },
+  ];
+  const ids = (rows: readonly Row[]): string[] => rows.map((row) => row.id);
+
+  it("keeps every row when neither filter is set", () => {
+    expect(ids(filterClientRows(ROWS, { stage: null, build: null }))).toEqual(["a", "b", "c", "d", "e"]);
+  });
+
+  it("keeps only rows whose project has the build stage, and excludes clients without a project", () => {
+    expect(ids(filterClientRows(ROWS, { stage: null, build: "building" }))).toEqual(["b"]);
+    expect(ids(filterClientRows(ROWS, { stage: null, build: "cancelled" }))).toEqual([]);
+  });
+
+  it("combines with the row stage filter", () => {
+    expect(ids(filterClientRows(ROWS, { stage: "building", build: "building" }))).toEqual(["b"]);
+    expect(ids(filterClientRows(ROWS, { stage: "building", build: "approved" }))).toEqual(["d"]);
+    expect(ids(filterClientRows(ROWS, { stage: "live", build: "building" }))).toEqual([]);
+    expect(ids(filterClientRows(ROWS, { stage: "setup", build: null }))).toEqual(["c"]);
   });
 });

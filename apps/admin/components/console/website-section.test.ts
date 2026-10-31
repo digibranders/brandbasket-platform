@@ -95,7 +95,7 @@ describe("WebsiteSection facts", () => {
       picture: null,
     });
     const html = await render();
-    expect(html).toContain("Preview ready");
+    expect(html).toContain("Awaiting client review");
     expect(html).toContain("Setup sent");
     expect(html).toContain("20 October 2026");
     expect(html).toContain("First preview due");

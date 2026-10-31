@@ -113,3 +113,22 @@ export function googleBusinessCredentials(): GoogleBusinessCredentials | null {
   }
   return { clientId, clientSecret };
 }
+
+// ---------------------------------------------------------------------------------------------------------------
+// Kickoff build start (docs/kickoff-builds.md, "Staff confirmation mode"): optional. Read when the sync runs, so a
+// deployment that never sets it keeps the elapsed-time rule.
+// ---------------------------------------------------------------------------------------------------------------
+
+const kickoffAutoStartSchema = z.enum(["on", "off"], { error: "KICKOFF_AUTO_START must be on or off" });
+
+/**
+ * "on" (the default, also when unset or empty) starts a website build once a kickoff call's end time has passed. "off"
+ * starts it only once staff have marked the call held.
+ */
+export function kickoffAutoStart(env: Readonly<Record<string, string | undefined>> = process.env): "on" | "off" {
+  const raw = env.KICKOFF_AUTO_START?.trim() ?? "";
+  if (raw === "") return "on";
+  const parsed = kickoffAutoStartSchema.safeParse(raw);
+  if (!parsed.success) throw new Error(`Invalid kickoff configuration: ${z.prettifyError(parsed.error)}`);
+  return parsed.data;
+}
