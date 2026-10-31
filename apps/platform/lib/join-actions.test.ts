@@ -3,6 +3,8 @@ import { joinForListing } from "@/app/app-host/login/actions";
 import { BRAND, type Brand } from "@/lib/brand";
 import { LISTING_BRAND } from "@/lib/testing/listing-brand";
 import { requestJoinCode, createListingAccount } from "@/lib/server/listing-account";
+import { sealStart } from "@/lib/start-token";
+import { START_FIELD } from "@/lib/join-form";
 
 const host: { brand: Brand } = { brand: LISTING_BRAND };
 
@@ -12,6 +14,8 @@ vi.mock("@/lib/server/listing-account", () => ({ requestJoinCode: vi.fn(), creat
 vi.mock("@/lib/server/sign-in", () => ({ signInWithPassword: vi.fn() }));
 vi.mock("@/lib/server/affiliate-access", () => ({ landingForSignedInUser: vi.fn() }));
 vi.mock("@/lib/server/customer-access", () => ({ LISTING_PAGE_PATH: "/details" }));
+const SECRET = "k".repeat(40);
+vi.mock("@/lib/server/website-api-auth", () => ({ leadsApiToken: () => SECRET }));
 
 const otp = { otpId: "existing-challenge", emailHint: "o•••@example.test", confirmRequired: true };
 function form(code: boolean): FormData {
@@ -100,5 +104,13 @@ it("opens an account once the emailed code is confirmed, and goes on to pay for 
   expect(await joinForListing({ status: "code", otp: emailOtp }, brandbasketForm({ otpId: emailOtp.otpId, code: "123456" }))).toMatchObject({
     status: "error", message: "That code isn't right. 4 tries left.", otp: emailOtp,
   });
-  expect(createListingAccount).toHaveBeenCalledWith(expect.objectContaining({ email: "owner@example.test", code: { otpId: emailOtp.otpId, code: "123456" } }));
+  expect(createListingAccount).toHaveBeenCalledWith(expect.objectContaining({ email: "owner@example.test", code: { otpId: emailOtp.otpId, code: "123456" } }), null);
+});
+
+it("hands the account the ad it came from, read from the sealed field the sign-up link carried", async () => {
+  host.brand = BRAND;
+  vi.mocked(createListingAccount).mockResolvedValue({ kind: "wrong-code", message: "x" });
+  const start = sealStart({ name: "Owner", email: "owner@example.test", phone: "", attr: { values: { utm_source: "meta", utm_campaign: "diwali" }, consentMeasurement: false, consentAdvertising: false } }, SECRET);
+  await joinForListing({ status: "code", otp: emailOtp }, brandbasketForm({ otpId: emailOtp.otpId, code: "123456", [START_FIELD]: start }));
+  expect(createListingAccount).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ utmSource: "meta", utmCampaign: "diwali", consentAdvertising: false }));
 });

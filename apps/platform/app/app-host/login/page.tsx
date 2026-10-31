@@ -168,6 +168,7 @@ export default async function AppLoginPage({ searchParams }: AppLoginPageProps):
           phoneCountries={phoneCountryOptions()}
           defaultPhoneCountry={visitorPhoneCountry(await headers())}
           prefill={prefill}
+          startToken={prefill?.attr === undefined || typeof startToken !== "string" ? null : startToken}
         />
       </TurnstileScope>
     </EntryScreen>

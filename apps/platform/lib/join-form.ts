@@ -42,6 +42,9 @@ export function readJoinChoice(value: unknown): JoinChoice | null {
   return JOIN_CHOICES.find((choice) => choice === value) ?? null;
 }
 
+/** The hidden field that carries the ad landing page's sealed details through both steps of the form (lib/start-token.ts), so the account can keep which ad it came from. */
+export const START_FIELD = "start";
+
 /** The one thing the tick box can say: the owner agreed to the Terms and the Privacy Notice (proof is kept in consent_records). */
 export const AGREE_FIELD = "agree";
 export const AGREE_VALUE = "yes";

@@ -8,7 +8,7 @@ describe("railFor", () => {
     expect(labels("admin")).toEqual([
       [null, ["Today"]],
       ["Work", ["Enquiries", "Clients", "Projects", "Requests", "Calls"]],
-      ["Money", ["Payments", "Invoices", "Prices", "Coupons", "Affiliates", "Ad credit"]],
+      ["Money", ["Payments", "Invoices", "Prices", "Coupons", "Affiliates", "Ad credit", "Ad results"]],
       ["System", ["Deliveries", "Errors", "Staff", "Settings", "Compliance"]],
     ]);
   });

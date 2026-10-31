@@ -48,6 +48,7 @@ export const CONSOLE_RAIL: readonly ConsoleRailSection[] = [
       { href: "/coupons", label: "Coupons", icon: "coupons", needs: "money" },
       { href: "/affiliates", label: "Affiliates", icon: "affiliates", needs: "money" },
       { href: "/ad-credit", label: "Ad credit", icon: "ad-credit" },
+      { href: "/ad-results", label: "Ad results", icon: "ad-credit", needs: "money" },
     ],
   },
   {

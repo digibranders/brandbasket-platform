@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { ClientHomeState } from "@/lib/home/state";
 import { getBillingBanner } from "@/lib/server/billing-banner";
 import { requireCustomerAccess } from "@/lib/server/customer-access";
+import { loadFirstPaymentEvent } from "@/lib/server/first-payment-event";
 import { loadHome, type HomeData } from "@/lib/server/home";
 import { getLiveWebsite, getProjectOverview } from "@/lib/server/onboarding";
 import AppHomePage from "./page";
@@ -13,7 +14,14 @@ vi.mock("@/lib/server/customer-access", () => ({ requireCustomerAccess: vi.fn() 
 vi.mock("@/lib/server/billing-banner", () => ({ getBillingBanner: vi.fn() }));
 vi.mock("@/lib/server/onboarding", () => ({ getLiveWebsite: vi.fn(), getProjectOverview: vi.fn() }));
 vi.mock("@/lib/server/home", () => ({ loadHome: vi.fn() }));
-vi.mock("@/components/first-look/payment-welcome", () => ({ PaymentWelcome: () => null }));
+const welcomeProps = vi.fn();
+vi.mock("@/components/first-look/payment-welcome", () => ({
+  PaymentWelcome: (props: unknown) => {
+    welcomeProps(props);
+    return null;
+  },
+}));
+vi.mock("@/lib/server/first-payment-event", () => ({ loadFirstPaymentEvent: vi.fn() }));
 vi.mock("@/components/first-look/kickoff-picker", () => ({ KickoffPicker: () => "[picker]" }));
 
 const tenant = { userId: "user-1", businessId: "business-1", businessName: "Cafe", role: "owner" };
@@ -33,9 +41,9 @@ function home(state: ClientHomeState, overrides: Partial<HomeData> = {}): HomeDa
   };
 }
 
-async function renderHome(data: HomeData): Promise<string> {
+async function renderHome(data: HomeData, params: Readonly<Record<string, string>> = {}): Promise<string> {
   vi.mocked(loadHome).mockResolvedValue(data);
-  return renderToStaticMarkup(await AppHomePage()).replaceAll("<!-- -->", "");
+  return renderToStaticMarkup(await AppHomePage({ searchParams: Promise.resolve(params) })).replaceAll("<!-- -->", "");
 }
 
 beforeEach(() => {
@@ -44,6 +52,23 @@ beforeEach(() => {
   vi.mocked(getBillingBanner).mockResolvedValue(null);
   vi.mocked(getProjectOverview).mockResolvedValue({ project: { status: "onboarding", slaDueAt: null, onboardingSubmittedAt: null, previewSentAt: null, launchPlannedOn: null }, completed: ["business"] } as never);
   vi.mocked(getLiveWebsite).mockResolvedValue(null);
+});
+
+describe("reporting the first payment to Tag Manager", () => {
+  const purchase = { transactionId: "pay_Abc123", value: 2541.54, currency: "INR" } as const;
+
+  it("reads the first payment only for the visit that opens the welcome, and hands it to the popup", async () => {
+    vi.mocked(loadFirstPaymentEvent).mockResolvedValue(purchase);
+    await renderHome(home({ kind: "kickoff_unbooked" }), { welcome: "1" });
+    expect(loadFirstPaymentEvent).toHaveBeenCalledWith(tenant);
+    expect(welcomeProps).toHaveBeenCalledWith(expect.objectContaining({ purchase }));
+  });
+
+  it("reads nothing on an ordinary visit", async () => {
+    await renderHome(home({ kind: "kickoff_unbooked" }));
+    expect(loadFirstPaymentEvent).not.toHaveBeenCalled();
+    expect(welcomeProps).toHaveBeenCalledWith(expect.objectContaining({ purchase: null }));
+  });
 });
 
 describe("a payment problem keeps the old setup Home", () => {

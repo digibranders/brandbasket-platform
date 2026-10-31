@@ -28,6 +28,7 @@ import { sendOnboardingWithin, StepRefusedError } from "./onboarding";
 import { notifyTeamOnboardingSent } from "./onboarding-alert";
 import { syncTenantForBusiness } from "./payload-tenant-sync";
 import { syncSiteHostingForBusiness } from "./site-hosting";
+import { reportFirstPaymentToAds } from "./conversions";
 import { announcePaymentToTeams } from "./teams";
 import { confirmFirstPayment, verifyCheckoutFor } from "./payment-confirmation";
 
@@ -44,6 +45,7 @@ vi.mock("./onboarding-alert", () => ({ notifyTeamOnboardingSent: vi.fn() }));
 vi.mock("./payload-tenant-sync", () => ({ syncTenantForBusiness: vi.fn() }));
 vi.mock("./site-hosting", () => ({ syncSiteHostingForBusiness: vi.fn() }));
 vi.mock("./teams", () => ({ announcePaymentToTeams: vi.fn(async () => undefined) }));
+vi.mock("./conversions", () => ({ reportFirstPaymentToAds: vi.fn(async () => undefined) }));
 vi.mock("./onboarding", () => {
   class MockStepRefusedError extends Error {}
   return { sendOnboardingWithin: vi.fn(), StepRefusedError: MockStepRefusedError };
@@ -295,6 +297,7 @@ describe("telling Teams about a confirmed payment", () => {
 
     expect(announcePaymentToTeams).toHaveBeenCalledTimes(1);
     expect(announcePaymentToTeams).toHaveBeenCalledWith("pay-1");
+    expect(reportFirstPaymentToAds).toHaveBeenCalledWith("pay-1");
     expect(calls.indexOf("teams")).toBeGreaterThan(calls.indexOf("send"));
   });
 
@@ -306,6 +309,7 @@ describe("telling Teams about a confirmed payment", () => {
     await confirmFirstPayment(tenant, { token }, NOW);
 
     expect(announcePaymentToTeams).not.toHaveBeenCalled();
+    expect(reportFirstPaymentToAds).not.toHaveBeenCalled();
   });
 });
 

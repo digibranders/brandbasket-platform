@@ -5,7 +5,8 @@
 #
 # Assumes: the dashboard is up on 127.0.0.1:3201 and SITE_ANALYTICS_TOKEN is set in the env file (docs/site-analytics.md).
 # The token is passed to curl on its standard input, so it never appears in the process list. Fails (exit 1) on any answer but
-# 2xx, so systemd and journalctl show a failed run. Takes no action in the database itself.
+# 2xx, so systemd and journalctl show a failed run. After the roll-up it also asks /api/internal/retry-conversions to send any
+# first payment to GA4 and Meta again that failed (plan 59).
 #
 #   run-site-rollup-job.sh --env-file /srv/brandbasket/shared/platform.env.local [--dry-run] [--url URL]
 # --dry-run asks the endpoint to report what it WOULD write without writing or deleting (?dryRun=1). Safe to run any time.
@@ -34,3 +35,9 @@ if [[ -z "$token" ]]; then echo "SITE_ANALYTICS_TOKEN is not set in $ENV_FILE." 
 # -K - reads curl options from standard input; --fail makes a 4xx/5xx a non-zero exit; the body is still printed on success.
 printf 'header = "Authorization: Bearer %s"\n' "$token" | curl --silent --show-error --fail --max-time 540 -K - -X POST "$URL"
 echo
+
+# Then the failed sends to GA4 and Meta (plan 59): same secret, own endpoint. A dry run writes nothing, so it sends nothing either.
+if [[ $DRY -eq 0 ]]; then
+  printf 'header = "Authorization: Bearer %s"\n' "$token" | curl --silent --show-error --fail --max-time 120 -K - -X POST "${URL%/roll-up-site-analytics}/retry-conversions"
+  echo
+fi

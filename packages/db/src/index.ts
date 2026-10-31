@@ -912,6 +912,9 @@ export {
   type NewSiteHit,
   type RollupCandidate,
 } from "./queries/site-hits";
+export { listAdFunnelData, type AdFunnelData } from "./queries/ad-funnel";
+export { claimConversionEvent, listRetryableConversionPayments, markConversionEvent, MAX_CONVERSION_ATTEMPTS } from "./queries/conversion-events";
+export { getSignupAttribution, recordSignupAttribution, type NewSignupAttribution } from "./queries/signup-attribution";
 export {
   activateBundledAddOns,
   BundledAddOnNotPossibleError,

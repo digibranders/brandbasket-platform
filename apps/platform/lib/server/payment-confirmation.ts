@@ -31,6 +31,7 @@ import { sendOnboardingWithin, StepRefusedError } from "./onboarding";
 import { notifyTeamOnboardingSent } from "./onboarding-alert";
 import { syncTenantForBusiness } from "./payload-tenant-sync";
 import { syncSiteHostingForBusiness } from "./site-hosting";
+import { reportFirstPaymentToAds } from "./conversions";
 import { announcePaymentToTeams } from "./teams";
 
 /**
@@ -351,7 +352,10 @@ export async function confirmFirstPayment(
   });
 
   for (const subscriptionId of discountEndedFor) await moveProviderAfterDiscountEnds(basketDeps(), subscriptionId, now);
-  for (const paymentId of announce) void announcePaymentToTeams(paymentId);
+  for (const paymentId of announce) {
+    void announcePaymentToTeams(paymentId);
+    void reportFirstPaymentToAds(paymentId);
+  }
   // After the commit, as for a setup link: Payload's database is not ours, and the sync logs rather than throws.
   if (confirmation.kind === "membership-opened") {
     await syncTenantForBusiness({ businessId: tenant.businessId, name: tenant.businessName });

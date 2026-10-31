@@ -36,6 +36,7 @@ import { recordRazorpayChargePayment } from "./charges";
 import { recordRazorpayPaymentFailure } from "./payment-failure";
 import { getStaffDb } from "./db";
 import { restoreKeptPlan } from "./keep-plan";
+import { reportFirstPaymentToAds } from "./conversions";
 import { announcePaymentToTeams, announcePlanStatusToTeams } from "./teams";
 import { syncTenantForBusiness } from "./payload-tenant-sync";
 import { syncSiteHostingForBusiness } from "./site-hosting";
@@ -444,7 +445,10 @@ export async function handleRazorpayWebhookEvent(event: RazorpayWebhookEvent): P
       throw error;
     });
 
-  for (const paymentId of announce) void announcePaymentToTeams(paymentId);
+  for (const paymentId of announce) {
+    void announcePaymentToTeams(paymentId);
+    void reportFirstPaymentToAds(paymentId);
+  }
   if (newMember !== null) await syncTenantForBusiness({ businessId: newMember.businessId, name: newMember.businessName });
   // The last month of a code's discount was just paid: the provider bills the basket without it from the next renewal.
   for (const subscriptionId of discountEndedFor) await moveProviderAfterDiscountEnds(basketDeps(), subscriptionId, new Date());
@@ -546,7 +550,10 @@ async function handleAddOnCharge(event: ChargedEvent, initial: AddOnSubscription
       throw error;
     });
 
-  for (const paymentId of announce) void announcePaymentToTeams(paymentId);
+  for (const paymentId of announce) {
+    void announcePaymentToTeams(paymentId);
+    void reportFirstPaymentToAds(paymentId);
+  }
   for (const target of toCancel) {
     await cancelAtProvider(provider, {
       businessId: initial.businessId,

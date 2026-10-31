@@ -21,6 +21,7 @@ import { ArrowIcon, EyeIcon, EyeOffIcon, HeartIcon, PinIcon } from "@brandbasket
 import { ENTRY_LEDE_SLOT_ID, ENTRY_PATH, entryHrefForPlan } from "@/lib/account-entry";
 import {
   AGREE_FIELD,
+  START_FIELD,
   AGREE_VALUE,
   initialJoinFormState,
   isPaidChoice,
@@ -103,6 +104,8 @@ interface JoinFormProps {
   readonly defaultPhoneCountry: string;
   /** The details the ad landing page handed over (lib/start-token.ts): only the opening values of name, email and mobile, all still editable. */
   readonly prefill?: StartPrefill | null;
+  /** The sealed token that named an ad (lib/start-token.ts), sent back with the form so the account can keep which ad it came from; null when it named none. */
+  readonly startToken?: string | null;
 }
 
 function subscribeToNothing(): () => void {
@@ -222,6 +225,7 @@ export function JoinForm({
   phoneCountries,
   defaultPhoneCountry,
   prefill = null,
+  startToken = null,
 }: JoinFormProps): ReactElement {
   const cooldown = useOtpRetryCooldown();
   const runAction = async (previous: JoinFormState, formData: FormData): Promise<JoinFormState> => {
@@ -292,6 +296,7 @@ export function JoinForm({
     <>
       {choice === null ? null : <input type="hidden" name="choice" value={choice} />}
       {services.length === 0 ? null : <input type="hidden" name="services" value={services.join(",")} />}
+      {startToken === null ? null : <input type="hidden" name={START_FIELD} value={startToken} />}
     </>
   );
   const signInLine = (

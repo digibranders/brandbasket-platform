@@ -1,6 +1,30 @@
 # Brandbasket payment welcome: the unboxing
 
-Design proposal, 31 October 2026.
+Implemented in the customer app, 31 October 2026. The original concept is retained as a visual reference below.
+
+## Working implementation
+
+The real confirmed-payment welcome dialog now has independently animated gift layers, a three-second confetti burst, explicit payment confirmation and purchased-service reveals. Close, Escape and the main action dismiss immediately and consume the welcome URL parameter. Reduced motion removes decorative animation, and short viewports keep the main action visible while the content scrolls.
+
+The implementation is in `apps/platform/components/first-look/payment-welcome.tsx`, `payment-welcome.module.css` and `fire-poppers.ts`; the reference-derived gift and ribbon asset is in `apps/platform/public/illustrations/welcome-celebration.png`.
+
+The concept-fidelity revision replaces the simplified gift and decorative strokes with the full gold/teal celebration illustration, a 450px desktop card, bold 48px display type, warm service icon tiles and solid green checks. Paper remains around the card after the entrance finishes. Initial focus goes to the heading, and the overflowing artwork follows the body when short screens need scrolling. Compact landscape rules keep the footer within the viewport.
+
+### Independent celebration motion
+
+The artwork is no longer a flattened illustration moving in two halves. `welcome-celebration.tsx` uses 41 separately clipped pieces from the unchanged approved asset, with geometry in `welcome-art-parts.json`. The box pops into place; the lid lifts and then hovers; five ribbon pieces sway independently; 33 paper pieces flutter and turn; the star gently glints. Forty pieces continue gentle motion after the entrance. Backdrop paper also drifts, alongside the real three-second canvas confetti burst.
+
+The SVG pieces share one optimized texture, and the entrance waits for that texture to load, including when it finished loading before hydration. Closing the popup unmounts the pieces and stops their CSS animations; reduced-motion mode shows the composed artwork without movement. Geometry is derived offline from the PNG's alpha islands, with expanded convex clipping envelopes to retain antialiased edges; there is no runtime image-analysis dependency. Regenerate the geometry when replacing the source artwork.
+
+Actual browser screenshots from a signed-in customer whose three services were activated through the local fake-payment helpers:
+
+![Implemented desktop welcome popup](./implemented-desktop.jpg)
+
+![Implemented mobile welcome popup](./implemented-mobile.jpg)
+
+Validation: platform lint, TypeScript, all 3,047 platform unit tests and the production build pass. Browser checks covered desktop, 390px mobile, a short 320px viewport, 568px and 667px landscape viewports, native Escape, the main action, query preservation and no replay after dismissal and refresh. Live browser inspection confirmed 41 independent artwork pieces sharing one loaded texture and 40 ongoing animations with changing transforms after the entrance. Reduced-motion and animation cancellation are covered by unit tests and the CSS media query. Independent code reviews found no further actionable issues.
+
+## Original concept
 
 ![Desktop and mobile welcome-popup concept](./brandbasket-unboxing-concept.png)
 
@@ -8,7 +32,7 @@ The generated visual illustrates the proposed direction. Its surrounding dashboa
 
 ## Review of the current popup
 
-Reviewed `brandbasket-platform/apps/platform/components/first-look/payment-welcome.tsx`, `fire-poppers.ts`, `lib/celebration.ts`, the existing component tests and `apps/platform/DESIGN.md`. The local app redirects an unauthenticated visit to sign-in, so these observations come from the implementation, rather than a signed-in visual session.
+The initial source review covered `apps/platform/components/first-look/payment-welcome.tsx`, `fire-poppers.ts`, `lib/celebration.ts`, the existing component tests and `apps/platform/DESIGN.md`. The observations in this section describe the previous popup, before the implementation above.
 
 The existing popup already has two confetti cannons, a 500ms content entrance and staggered service checkmarks. Its underlying presentation is a small text-first card: a 28px welcome heading, a plain service list and a full-width button. After the short confetti effect, there is no lasting visual focal point. Payment confirmation is implicit, and there is little sense of a new beginning.
 
@@ -31,15 +55,15 @@ The still composition must feel celebratory on its own. Motion enhances the comp
 
 ## Composition and proposed copy
 
-Desktop modal: approximately 520px maximum width, 32px side padding, white surface and existing lift shadow. Use the existing radius token when implemented. A contained illustration occupies approximately 140px above the content; decorative streamers can extend outside the upper corners without overlapping the close target.
+Desktop modal: 450px maximum width, 32px content padding, white surface and the existing lift shadow and radius. The illustration fills the upper card, with gold/teal ribbons extending above and beyond its upper corners. Content begins 248px below the desktop card's top and 208px below it on typical portrait phones. Short viewports use a compact composition and a scrollable body with the footer always available.
 
 Content order:
 
 1. Illustration: paper gift with an opening lid and gold ribbon.
 2. Small check and explicit confirmation: `Payment successful`.
-3. Heading: `Welcome to Brandbasket.` Display type around 34px on desktop, 28px on phones, balanced over two lines.
+3. Heading: `Welcome to Brandbasket.` Bold display type at 48px on desktop and approximately 37px on a 390px phone, balanced over two lines, with compact sizing for short screens.
 4. Supporting line: `Your next chapter starts here.`
-5. `Now yours`, followed by only the purchased services, using their existing names and service marks.
+5. `Now yours`, followed by only the purchased services, using their existing names, warm 38px icon tiles and solid green checkmarks, as explicitly requested in the approved concept.
 6. Existing main action: `Let’s go`, with a quiet directional arrow.
 
 The new supporting and confirmation copy are proposals for review. An unlocked service must not be described as a finished website or an active campaign. There are no new delivery promises, prices or extra offers.
@@ -57,7 +81,7 @@ Timing is relative to opening the confirmed-payment dialog:
 | 400 to 1800ms | A single coordinated burst of gold, sage and teal paper spreads around the upper card and falls away. |
 | 500 to 850ms | Payment confirmation and welcome content appear. |
 | 750 to 1150ms | Purchased services reveal in sequence. |
-| By 1200ms | All content and the main action are visible. |
+| By 1500ms | All content has finished revealing; the main action is available throughout. |
 | By 3000ms | Decorative motion has ended; the complete composition remains. |
 
 The main action is usable immediately, even during its entrance. No sound, autoplay video, looping bobbing or automatic dismissal. Implement motion with transforms and opacity. Confetti should use elapsed time so its duration does not vary with screen refresh rate. Cancel animation work on close and unmount. Decorative layers must not intercept input.
@@ -90,4 +114,4 @@ The gift is an illustration, not a replacement logo. Any implementation must use
 
 ## Deliverable scope
 
-This deliverable is a creative direction and generated desktop/mobile visual concept. Application source has not been edited as part of this design review.
+The deliverable includes the working application component, animation renderer, responsive styles, illustration asset, regression tests and actual browser screenshots, together with the original creative direction.
