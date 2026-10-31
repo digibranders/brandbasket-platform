@@ -2,6 +2,7 @@ import type { ReactElement, ReactNode } from "react";
 import { Notice } from "@/components/console/notice";
 import { TABLE, TD, TD_NUM, TH } from "@/components/console/table";
 import type { DocumentSeriesView, GstSummaryView, LabelledValue } from "@/lib/invoice-register-view";
+import { TableScroll } from "@/components/console/table-scroll";
 
 const NUM_HEAD = `${TH} text-right`;
 
@@ -39,26 +40,28 @@ export function GstSummary({
       )}
 
       <Part title="Outward taxable supplies" note="GSTR-3B, table 3.1(a). Supplies to unregistered and registered customers together.">
-        <table aria-label="Outward taxable supplies" className={`${TABLE} min-w-[32rem]`}>
-          <thead>
-            <tr>
-              {summary.outward.map((item) => (
-                <th key={item.label} className={NUM_HEAD}>
-                  {item.label}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              {summary.outward.map((item) => (
-                <td key={item.label} className={TD_NUM}>
-                  {item.value}
-                </td>
-              ))}
-            </tr>
-          </tbody>
-        </table>
+        <TableScroll label="Outward taxable supplies">
+          <table aria-label="Outward taxable supplies" className={`${TABLE} min-w-[32rem]`}>
+            <thead>
+              <tr>
+                {summary.outward.map((item) => (
+                  <th key={item.label} className={NUM_HEAD}>
+                    {item.label}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                {summary.outward.map((item) => (
+                  <td key={item.label} className={TD_NUM}>
+                    {item.value}
+                  </td>
+                ))}
+              </tr>
+            </tbody>
+          </table>
+        </TableScroll>
       </Part>
 
       <Part title="Registered customers" note="GSTR-1, table 4. Each invoice with a GSTIN is a line in the register below.">
@@ -69,30 +72,32 @@ export function GstSummary({
         {summary.b2c.length === 0 ? (
           <p className="text-sm text-ink-2">None this month.</p>
         ) : (
-          <table aria-label="Unregistered customers by place of supply" className={`${TABLE} min-w-[40rem]`}>
-            <thead>
-              <tr>
-                <th className={TH}>Place of supply</th>
-                <th className={NUM_HEAD}>Rate</th>
-                <th className={NUM_HEAD}>Taxable value</th>
-                <th className={NUM_HEAD}>CGST</th>
-                <th className={NUM_HEAD}>SGST</th>
-                <th className={NUM_HEAD}>IGST</th>
-              </tr>
-            </thead>
-            <tbody>
-              {summary.b2c.map((row) => (
-                <tr key={row.key}>
-                  <td className={TD}>{row.place}</td>
-                  <td className={TD_NUM}>{row.rate}</td>
-                  <td className={TD_NUM}>{row.taxable}</td>
-                  <td className={TD_NUM}>{row.cgst}</td>
-                  <td className={TD_NUM}>{row.sgst}</td>
-                  <td className={TD_NUM}>{row.igst}</td>
+          <TableScroll label="Unregistered customers by place of supply">
+            <table aria-label="Unregistered customers by place of supply" className={`${TABLE} min-w-[40rem]`}>
+              <thead>
+                <tr>
+                  <th className={TH}>Place of supply</th>
+                  <th className={NUM_HEAD}>Rate</th>
+                  <th className={NUM_HEAD}>Taxable value</th>
+                  <th className={NUM_HEAD}>CGST</th>
+                  <th className={NUM_HEAD}>SGST</th>
+                  <th className={NUM_HEAD}>IGST</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {summary.b2c.map((row) => (
+                  <tr key={row.key}>
+                    <td className={TD}>{row.place}</td>
+                    <td className={TD_NUM}>{row.rate}</td>
+                    <td className={TD_NUM}>{row.taxable}</td>
+                    <td className={TD_NUM}>{row.cgst}</td>
+                    <td className={TD_NUM}>{row.sgst}</td>
+                    <td className={TD_NUM}>{row.igst}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </TableScroll>
         )}
       </Part>
 
@@ -100,34 +105,36 @@ export function GstSummary({
         {summary.hsn.length === 0 ? (
           <p className="text-sm text-ink-2">None this month.</p>
         ) : (
-          <table aria-label="Services by SAC" className={`${TABLE} min-w-[48rem]`}>
-            <thead>
-              <tr>
-                <th className={TH}>SAC</th>
-                <th className={TH}>Description</th>
-                <th className={NUM_HEAD}>Quantity</th>
-                <th className={NUM_HEAD}>Taxable value</th>
-                <th className={NUM_HEAD}>CGST</th>
-                <th className={NUM_HEAD}>SGST</th>
-                <th className={NUM_HEAD}>IGST</th>
-                <th className={NUM_HEAD}>Total</th>
-              </tr>
-            </thead>
-            <tbody>
-              {summary.hsn.map((row) => (
-                <tr key={row.key}>
-                  <td className={`${TD} font-figure tabular-nums`}>{row.sac}</td>
-                  <td className={TD}>{row.description}</td>
-                  <td className={TD_NUM}>{row.quantity}</td>
-                  <td className={TD_NUM}>{row.taxable}</td>
-                  <td className={TD_NUM}>{row.cgst}</td>
-                  <td className={TD_NUM}>{row.sgst}</td>
-                  <td className={TD_NUM}>{row.igst}</td>
-                  <td className={TD_NUM}>{row.total}</td>
+          <TableScroll label="Services by SAC">
+            <table aria-label="Services by SAC" className={`${TABLE} min-w-[48rem]`}>
+              <thead>
+                <tr>
+                  <th className={TH}>SAC</th>
+                  <th className={TH}>Description</th>
+                  <th className={NUM_HEAD}>Quantity</th>
+                  <th className={NUM_HEAD}>Taxable value</th>
+                  <th className={NUM_HEAD}>CGST</th>
+                  <th className={NUM_HEAD}>SGST</th>
+                  <th className={NUM_HEAD}>IGST</th>
+                  <th className={NUM_HEAD}>Total</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {summary.hsn.map((row) => (
+                  <tr key={row.key}>
+                    <td className={`${TD} font-figure tabular-nums`}>{row.sac}</td>
+                    <td className={TD}>{row.description}</td>
+                    <td className={TD_NUM}>{row.quantity}</td>
+                    <td className={TD_NUM}>{row.taxable}</td>
+                    <td className={TD_NUM}>{row.cgst}</td>
+                    <td className={TD_NUM}>{row.sgst}</td>
+                    <td className={TD_NUM}>{row.igst}</td>
+                    <td className={TD_NUM}>{row.total}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </TableScroll>
         )}
       </Part>
 

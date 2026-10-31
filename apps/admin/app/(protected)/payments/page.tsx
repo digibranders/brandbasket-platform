@@ -29,6 +29,7 @@ import {
 import { getStaffDb } from "@/lib/server/db";
 import { logStaffAccess } from "@/lib/server/staff-access-log";
 import { requireStaffCan } from "@/lib/server/staff-role";
+import { TableScroll } from "@/components/console/table-scroll";
 
 export const metadata: Metadata = { title: "Payments" };
 
@@ -137,42 +138,44 @@ export default async function PaymentsPage({ searchParams }: PaymentsPageProps):
         <EmptyLine>No payments to show for {label}.</EmptyLine>
       ) : (
         <section aria-label={`Payments in ${label}`} className={`${LIFT} mt-4 overflow-x-auto px-4`}>
-          <table className={TABLE}>
-            <thead>
-              <tr>
-                <th className={TH}>When</th>
-                <th className={TH}>Client</th>
-                <th className={TH}>For</th>
-                <th className={TH}>Method</th>
-                <th className={`${TH} text-right`}>Amount</th>
-                <th className={TH}>Status</th>
-                <th className={TH}>Invoice</th>
-                <th className={TH}>
-                  <span className="sr-only">Open</span>
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {shown.map((row) => (
-                <tr key={row.id}>
-                  <td className={TD_TIME}>{row.when}</td>
-                  <td className={`${TD} font-semibold`}>{row.client}</td>
-                  <td className={TD}>{row.forLabel}</td>
-                  <td className={`${TD} text-ink-2`}>{row.method}</td>
-                  <td className={TD_NUM}>{row.amount}</td>
-                  <td className={TD}>
-                    <StatusPill tone={row.status.tone}>{row.status.label}</StatusPill>
-                  </td>
-                  <td className={`${TD} font-figure text-xs`}>{row.invoice}</td>
-                  <td className={`${TD} text-right`}>
-                    <Link href={row.href} className={buttonSmall}>
-                      Open
-                    </Link>
-                  </td>
+          <TableScroll label="Payments">
+            <table className={TABLE}>
+              <thead>
+                <tr>
+                  <th className={TH}>When</th>
+                  <th className={TH}>Client</th>
+                  <th className={TH}>For</th>
+                  <th className={TH}>Method</th>
+                  <th className={`${TH} text-right`}>Amount</th>
+                  <th className={TH}>Status</th>
+                  <th className={TH}>Invoice</th>
+                  <th className={TH}>
+                    <span className="sr-only">Open</span>
+                  </th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {shown.map((row) => (
+                  <tr key={row.id}>
+                    <td className={TD_TIME}>{row.when}</td>
+                    <td className={`${TD} font-semibold`}>{row.client}</td>
+                    <td className={TD}>{row.forLabel}</td>
+                    <td className={`${TD} text-ink-2`}>{row.method}</td>
+                    <td className={TD_NUM}>{row.amount}</td>
+                    <td className={TD}>
+                      <StatusPill tone={row.status.tone}>{row.status.label}</StatusPill>
+                    </td>
+                    <td className={`${TD} font-figure text-xs`}>{row.invoice}</td>
+                    <td className={`${TD} text-right`}>
+                      <Link href={row.href} className={buttonSmall}>
+                        Open
+                      </Link>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </TableScroll>
         </section>
       )}
     </>

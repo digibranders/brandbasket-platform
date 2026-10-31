@@ -38,6 +38,7 @@ import { buttonPrimary, buttonSecondary } from "@/components/console/buttons";
 import { checkboxClasses, fieldClasses, hintClasses, labelClasses } from "@/components/console/field-styles";
 import { FactList, Quiet, type Fact } from "@/components/console/section";
 import {
+  checkAddressAction,
   markDomainReadyAction,
   markLiveAction,
   recordManualPaymentAction,
@@ -509,6 +510,16 @@ export function LaunchChecksForm({
       <GatedSubmitButton className={`${buttonSecondary} mt-5`} pendingLabel="Saving…">
         Save checks
       </GatedSubmitButton>
+    </form>
+  );
+}
+
+/** A second, automatic look at the customer's address. It ticks no check and does not change who can mark the site live. */
+export function CheckAddressForm({ businessId }: { readonly businessId: string }): ReactElement {
+  return (
+    <form action={checkAddressAction}>
+      <input type="hidden" name="businessId" value={businessId} />
+      <GatedSubmitButton className={buttonSecondary}>Check the address</GatedSubmitButton>
     </form>
   );
 }

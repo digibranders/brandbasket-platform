@@ -15,6 +15,7 @@ import { accessLogHref, parseAccessLogFilters } from "@/lib/access-log-filters";
 import { getStaffDb } from "@/lib/server/db";
 import { logStaffAccess } from "@/lib/server/staff-access-log";
 import { requireStaffCan } from "@/lib/server/staff-role";
+import { TableScroll } from "@/components/console/table-scroll";
 
 export const metadata: Metadata = { title: "Compliance" };
 
@@ -136,38 +137,40 @@ export default async function CompliancePage({
         {result.rows.length === 0 ? (
           <EmptyLine>Nothing matches these filters.</EmptyLine>
         ) : (
-          <table className={`${TABLE} mt-4`}>
-            <thead>
-              <tr>
-                <th className={TH}>When</th>
-                <th className={TH}>Person</th>
-                <th className={TH}>What</th>
-                <th className={TH}>Target</th>
-                <th className={TH}>From</th>
-              </tr>
-            </thead>
-            <tbody>
-              {result.rows.map((record) => (
-                <tr key={record.id}>
-                  <td className={TD_TIME}>
-                    <LocalDateTime iso={record.createdAt.toISOString()} variant="timestamp" />
-                  </td>
-                  <td className={TD}>{record.staffEmail}</td>
-                  <td className={TD}>
-                    {record.action === "staff.sign_in" && record.result === "failed" ? "Failed sign-in" : actionLabel(record.action)}
-                    {record.result === "denied" ? (
-                      <span className="ml-2">
-                        <StatusPill tone="problem">Refused</StatusPill>
-                      </span>
-                    ) : null}
-                    {record.detail === null ? null : <span className="block text-xs text-ink-2">{record.detail}</span>}
-                  </td>
-                  <td className={`${TD} font-figure text-xs text-ink-2`}>{record.targetId ?? ""}</td>
-                  <td className={`${TD} font-figure text-xs text-ink-2`}>{record.ipAddress ?? ""}</td>
+          <TableScroll label="Access log" className="mt-4">
+            <table className={TABLE}>
+              <thead>
+                <tr>
+                  <th className={TH}>When</th>
+                  <th className={TH}>Person</th>
+                  <th className={TH}>What</th>
+                  <th className={TH}>Target</th>
+                  <th className={TH}>From</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {result.rows.map((record) => (
+                  <tr key={record.id}>
+                    <td className={TD_TIME}>
+                      <LocalDateTime iso={record.createdAt.toISOString()} variant="timestamp" />
+                    </td>
+                    <td className={TD}>{record.staffEmail}</td>
+                    <td className={TD}>
+                      {record.action === "staff.sign_in" && record.result === "failed" ? "Failed sign-in" : actionLabel(record.action)}
+                      {record.result === "denied" ? (
+                        <span className="ml-2">
+                          <StatusPill tone="problem">Refused</StatusPill>
+                        </span>
+                      ) : null}
+                      {record.detail === null ? null : <span className="block text-xs text-ink-2">{record.detail}</span>}
+                    </td>
+                    <td className={`${TD} font-figure text-xs text-ink-2`}>{record.targetId ?? ""}</td>
+                    <td className={`${TD} font-figure text-xs text-ink-2`}>{record.ipAddress ?? ""}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </TableScroll>
         )}
 
         <nav aria-label="Pages" className="mt-4 flex gap-2">

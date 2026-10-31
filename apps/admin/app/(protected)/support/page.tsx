@@ -17,6 +17,7 @@ import { readRequestFilters, requestsHref } from "@/lib/requests-filters";
 import { getStaffDb } from "@/lib/server/db";
 import { requireStaffAccess } from "@/lib/server/staff-access";
 import { STAFF_SUPPORT_CATEGORY_LABELS } from "@/lib/support-admin-state";
+import { TableScroll } from "@/components/console/table-scroll";
 
 export const metadata: Metadata = { title: "Requests" };
 
@@ -86,39 +87,41 @@ export default async function RequestsPage({ searchParams }: RequestsPageProps):
       {page.items.length === 0 ? (
         <EmptyLine>No requests here.</EmptyLine>
       ) : (
-        <table className={`${TABLE} mt-6`}>
-          <thead>
-            <tr>
-              <th className={TH}>Request</th>
-              <th className={TH}>Client</th>
-              <th className={TH}>Category</th>
-              <th className={TH}>Owner</th>
-              <th className={`${TH} text-right`}>Waiting</th>
-            </tr>
-          </thead>
-          <tbody>
-            {page.items.map((ticket) => {
-              const clock = replyClock(ticket);
-              const waiting = clock.waitingSince === null ? null : waitingLabel(clock.waitingSince, now);
-              return (
-                <tr key={ticket.id}>
-                  <td className={TD}>
-                    <Link href={`/support/${ticket.id}`} className="font-semibold hover:underline">
-                      {ticket.subject}
-                    </Link>
-                    <small className="mt-0.5 block font-figure text-xs text-ink-2">{ticket.displayRef}</small>
-                  </td>
-                  <td className={TD}>{ticket.businessName ?? "No business"}</td>
-                  <td className={TD}>{STAFF_SUPPORT_CATEGORY_LABELS[ticket.category]}</td>
-                  <td className={`${TD} text-ink-2`}>{ownerName(ticket.assigneeStaffId)}</td>
-                  <td className={`${TD_TIME} text-right`}>
-                    {waiting === null ? <LocalDateTime iso={ticket.lastActivityAt.toISOString()} variant="timestamp" /> : <span className={WAITING_CLASSES[waiting.tone]}>{waiting.text}</span>}
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+        <TableScroll label="Requests" className="mt-6">
+          <table className={TABLE}>
+            <thead>
+              <tr>
+                <th className={TH}>Request</th>
+                <th className={TH}>Client</th>
+                <th className={TH}>Category</th>
+                <th className={TH}>Owner</th>
+                <th className={`${TH} text-right`}>Waiting</th>
+              </tr>
+            </thead>
+            <tbody>
+              {page.items.map((ticket) => {
+                const clock = replyClock(ticket);
+                const waiting = clock.waitingSince === null ? null : waitingLabel(clock.waitingSince, now);
+                return (
+                  <tr key={ticket.id}>
+                    <td className={TD}>
+                      <Link href={`/support/${ticket.id}`} className="font-semibold hover:underline">
+                        {ticket.subject}
+                      </Link>
+                      <small className="mt-0.5 block font-figure text-xs text-ink-2">{ticket.displayRef}</small>
+                    </td>
+                    <td className={TD}>{ticket.businessName ?? "No business"}</td>
+                    <td className={TD}>{STAFF_SUPPORT_CATEGORY_LABELS[ticket.category]}</td>
+                    <td className={`${TD} text-ink-2`}>{ownerName(ticket.assigneeStaffId)}</td>
+                    <td className={`${TD_TIME} text-right`}>
+                      {waiting === null ? <LocalDateTime iso={ticket.lastActivityAt.toISOString()} variant="timestamp" /> : <span className={WAITING_CLASSES[waiting.tone]}>{waiting.text}</span>}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </TableScroll>
       )}
 
       {page.nextCursor === null ? null : (

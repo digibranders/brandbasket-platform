@@ -1,5 +1,6 @@
 import type { ClientSummary, LiveServiceLine } from "@brandbasket/db";
 import { MONTHLY_ADD_ON_IDS } from "@brandbasket/shared/lib/billing/add-ons";
+import { STAFF_STAGE_LABELS, staffStageOf, type StaffStage } from "@brandbasket/shared/lib/project-stage";
 import type { PillTone } from "@/components/console/status-pill";
 import { clientStage, JOURNEY_STAGE_LABELS } from "@/lib/pipeline";
 
@@ -11,6 +12,40 @@ export function clientRowStage(client: Pick<ClientSummary, "project" | "billing"
   if (client.billing.firstPayment === null) return "not-paid";
   const stage = clientStage(client);
   return stage === "lead" ? "setup" : stage;
+}
+
+/** The website build stage staff see for a client, or null when the client has no project. */
+export function clientBuildStage(client: Pick<ClientSummary, "project">): StaffStage | null {
+  return client.project === null ? null : staffStageOf(client.project.status);
+}
+
+export function buildStageLabel(stage: StaffStage | null): string | null {
+  return stage === null ? null : STAFF_STAGE_LABELS[stage];
+}
+
+/** Every build stage, in the order of STAFF_STAGE_LABELS. */
+export const BUILD_STAGES: readonly StaffStage[] = Object.keys(STAFF_STAGE_LABELS) as StaffStage[];
+
+/** Reads the `build` query value. Anything that is not a stage key reads as "all" (null). */
+export function parseBuildStage(value: string | null | undefined): StaffStage | null {
+  return (BUILD_STAGES as readonly string[]).includes(value ?? "") ? (value as StaffStage) : null;
+}
+
+export interface ClientRowFilter {
+  /** null shows every row stage. */
+  readonly stage: ClientRowStage | null;
+  /** null shows every build stage, including clients without a project. */
+  readonly build: StaffStage | null;
+}
+
+/** Rows that match both filters. A client without a project has no build stage, so only "all" keeps it. */
+export function filterClientRows<T extends { readonly stage: ClientRowStage; readonly buildStage: StaffStage | null }>(
+  rows: readonly T[],
+  filter: ClientRowFilter,
+): T[] {
+  return rows.filter(
+    (row) => (filter.stage === null || row.stage === filter.stage) && (filter.build === null || row.buildStage === filter.build),
+  );
 }
 
 export const CLIENT_ROW_STAGE_LABELS: Readonly<Record<ClientRowStage, string>> = {

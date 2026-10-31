@@ -101,6 +101,23 @@ describe("listKickoffsToStart", () => {
     await markProjectReadyAfterKickoff(dbs.staff.db, { businessId: siteId, dueAt: DUE, now: NOW });
     expect(await listKickoffsToStart(dbs.staff.db, { endedBefore: NOW })).toEqual([]);
   });
+
+  it("with confirmedOnly, lists only the calls staff marked held, and the default still lists an ended call", async () => {
+    await booking(siteId, { startsAt: new Date("2026-10-30T08:30:00Z"), endsAt: ENDED });
+    await booking(socialId, { startsAt: new Date("2026-10-30T10:30:00Z"), endsAt: new Date("2026-10-30T11:00:00Z"), heldAt: NOW, heldByStaffId: STAFF });
+
+    const everything = await listKickoffsToStart(dbs.staff.db, { endedBefore: NOW });
+    expect(everything.map((row) => row.businessId).sort()).toEqual([siteId, socialId].sort());
+    expect((await listKickoffsToStart(dbs.staff.db, { endedBefore: NOW, confirmedOnly: false })).map((row) => row.businessId).sort()).toEqual([siteId, socialId].sort());
+
+    expect((await listKickoffsToStart(dbs.staff.db, { endedBefore: NOW, confirmedOnly: true })).map((row) => row.businessId)).toEqual([socialId]);
+  });
+
+  it("with confirmedOnly, ignores an ended call that staff have not marked held, even long after it ended", async () => {
+    await booking(siteId, { startsAt: new Date("2026-10-01T08:30:00Z"), endsAt: new Date("2026-10-01T09:00:00Z") });
+    expect(await listKickoffsToStart(dbs.staff.db, { endedBefore: NOW, confirmedOnly: true })).toEqual([]);
+    expect((await listKickoffsToStart(dbs.staff.db, { endedBefore: NOW })).map((row) => row.businessId)).toEqual([siteId]);
+  });
 });
 
 describe("firstPreviewDueAfterKickoff", () => {

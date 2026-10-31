@@ -3,8 +3,8 @@ import { SUPPORT_CATEGORY_LABELS } from "@brandbasket/shared/lib/support";
 import type { AttentionItem } from "./pipeline";
 import { clock, longDay, shortDate } from "./team-time";
 
-/** Every kind of work Today shows: the pipeline's attention kinds, plus requests, sign-ups, errors and failed deliveries. */
-export type TodayKind = AttentionItem["kind"] | "request" | "signup" | "error" | "delivery";
+/** Every kind of work Today shows: the pipeline's attention kinds, plus requests, sign-ups, errors, failed deliveries and kickoff calls. */
+export type TodayKind = AttentionItem["kind"] | "request" | "signup" | "error" | "delivery" | "kickoff";
 
 export interface TodayItem {
   /** Unique across the queue. */
@@ -28,6 +28,8 @@ export interface TodayInput {
   readonly newErrors: readonly Pick<ErrorIssue, "id" | "operation" | "route" | "occurrenceCount" | "firstSeenAt">[];
   /** Deliveries that failed in the last 24 hours (the rail's count); null when that count could not be read. */
   readonly failedDeliveries: number | null;
+  /** End times of kickoff calls that are over and not marked held; null when they could not be read. The count is its length. */
+  readonly kickoffsNeedingOutcome: readonly Date[] | null;
   /** The end of the team's day: a preview due after it is not today's work. */
   readonly endOfToday: Date;
 }
@@ -129,7 +131,22 @@ export function todayQueue(input: TodayInput): readonly TodayItem[] {
           },
         ]
       : [];
-  return [...attention, ...requests, ...signups, ...errors, ...deliveries].sort(byDue);
+  // Every call here has already ended, so the item is overdue from the start; its clock is the earliest end time.
+  const kickoffEnds = input.kickoffsNeedingOutcome ?? [];
+  const kickoffs: readonly TodayItem[] =
+    kickoffEnds.length > 0
+      ? [
+          {
+            key: "kickoff:needs-outcome",
+            kind: "kickoff",
+            href: "/calls",
+            title: kickoffEnds.length === 1 ? "1 kickoff call needs an outcome" : `${kickoffEnds.length} kickoff calls need an outcome`,
+            detail: "",
+            dueAt: kickoffEnds.reduce((earliest, end) => (end.getTime() < earliest.getTime() ? end : earliest)),
+          },
+        ]
+      : [];
+  return [...attention, ...requests, ...signups, ...errors, ...deliveries, ...kickoffs].sort(byDue);
 }
 
 export const GROUP_HEADINGS = {

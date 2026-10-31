@@ -15,6 +15,7 @@ import { ROLE_CAN, ROLE_LABELS, ROLE_ORDER } from "@/lib/staff-roles";
 import { getStaffDb } from "@/lib/server/db";
 import { requireStaffCan } from "@/lib/server/staff-role";
 import { changeStaffRoleAction, inviteStaffAction, resendStaffInviteAction, switchOffStaffAction, switchOnStaffAction } from "./actions";
+import { TableScroll } from "@/components/console/table-scroll";
 
 export const metadata: Metadata = { title: "Staff" };
 
@@ -69,102 +70,106 @@ export default async function StaffPage({
       </Section>
 
       <Section title="Team">
-        <table className={TABLE}>
-          <thead>
-            <tr>
-              <th className={TH}>Person</th>
-              <th className={TH}>Role</th>
-              <th className={TH}>Can</th>
-              <th className={TH}>Last in</th>
-              <th className={TH}>
-                <span className="sr-only">Change</span>
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {roster.map((member) => (
-              <tr key={member.userId}>
-                <td className={TD}>
-                  <b className="font-semibold">{member.name}</b>
-                  {member.userId === user.id ? <span className="ml-2 text-xs text-ink-2">You</span> : null}
-                  <span className="block text-xs text-ink-2">{member.email}</span>
-                </td>
-                <td className={TD}>
-                  {member.active ? <StatusPill tone={ROLE_TONE[member.role]}>{ROLE_LABELS[member.role]}</StatusPill> : <StatusPill tone="problem">Switched off</StatusPill>}
-                </td>
-                <td className={`${TD} text-ink-2`}>{ROLE_CAN[member.role]}</td>
-                <td className={TD_TIME}>{member.lastSignInAt === null ? "Never" : <LocalDateTime iso={member.lastSignInAt.toISOString()} variant="timestamp" />}</td>
-                <td className={`${TD} text-right`}>
-                  {member.userId === user.id ? null : (
-                    <div className="flex flex-wrap justify-end gap-2">
-                      <form action={changeStaffRoleAction} className="flex gap-2">
-                        <input type="hidden" name="userId" value={member.userId} />
-                        <label htmlFor={`role-${member.userId}`} className="sr-only">
-                          Role for {member.name}
-                        </label>
-                        <select id={`role-${member.userId}`} name="role" defaultValue={member.role} className="rounded-lg border border-ink-2/65 bg-surface px-2 text-sm">
-                          {ROLE_ORDER.map((role) => (
-                            <option key={role} value={role}>
-                              {ROLE_LABELS[role]}
-                            </option>
-                          ))}
-                        </select>
-                        <button type="submit" className={buttonSmall}>
-                          Save role
-                        </button>
-                      </form>
-                      <form action={member.active ? switchOffStaffAction : switchOnStaffAction}>
-                        <input type="hidden" name="userId" value={member.userId} />
-                        <button type="submit" className={member.active ? `${buttonDanger} h-7 px-2.5 text-xs` : buttonSmall}>
-                          {member.active ? "Switch off" : "Switch on"}
-                        </button>
-                      </form>
-                    </div>
-                  )}
-                </td>
+        <TableScroll label="Team">
+          <table className={TABLE}>
+            <thead>
+              <tr>
+                <th className={TH}>Person</th>
+                <th className={TH}>Role</th>
+                <th className={TH}>Can</th>
+                <th className={TH}>Last in</th>
+                <th className={TH}>
+                  <span className="sr-only">Change</span>
+                </th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {roster.map((member) => (
+                <tr key={member.userId}>
+                  <td className={TD}>
+                    <b className="font-semibold">{member.name}</b>
+                    {member.userId === user.id ? <span className="ml-2 text-xs text-ink-2">You</span> : null}
+                    <span className="block text-xs text-ink-2">{member.email}</span>
+                  </td>
+                  <td className={TD}>
+                    {member.active ? <StatusPill tone={ROLE_TONE[member.role]}>{ROLE_LABELS[member.role]}</StatusPill> : <StatusPill tone="problem">Switched off</StatusPill>}
+                  </td>
+                  <td className={`${TD} text-ink-2`}>{ROLE_CAN[member.role]}</td>
+                  <td className={TD_TIME}>{member.lastSignInAt === null ? "Never" : <LocalDateTime iso={member.lastSignInAt.toISOString()} variant="timestamp" />}</td>
+                  <td className={`${TD} text-right`}>
+                    {member.userId === user.id ? null : (
+                      <div className="flex flex-wrap justify-end gap-2">
+                        <form action={changeStaffRoleAction} className="flex gap-2">
+                          <input type="hidden" name="userId" value={member.userId} />
+                          <label htmlFor={`role-${member.userId}`} className="sr-only">
+                            Role for {member.name}
+                          </label>
+                          <select id={`role-${member.userId}`} name="role" defaultValue={member.role} className="rounded-lg border border-ink-2/65 bg-surface px-2 text-sm">
+                            {ROLE_ORDER.map((role) => (
+                              <option key={role} value={role}>
+                                {ROLE_LABELS[role]}
+                              </option>
+                            ))}
+                          </select>
+                          <button type="submit" className={buttonSmall}>
+                            Save role
+                          </button>
+                        </form>
+                        <form action={member.active ? switchOffStaffAction : switchOnStaffAction}>
+                          <input type="hidden" name="userId" value={member.userId} />
+                          <button type="submit" className={member.active ? `${buttonDanger} h-7 px-2.5 text-xs` : buttonSmall}>
+                            {member.active ? "Switch off" : "Switch on"}
+                          </button>
+                        </form>
+                      </div>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </TableScroll>
       </Section>
 
       <Section title="Invited">
         {invites.length === 0 ? (
           <EmptyLine>No open invites.</EmptyLine>
         ) : (
-          <table className={TABLE}>
-            <thead>
-              <tr>
-                <th className={TH}>Email</th>
-                <th className={TH}>Role</th>
-                <th className={TH}>Sent</th>
-                <th className={TH}>Link</th>
-                <th className={TH}>
-                  <span className="sr-only">Resend</span>
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {invites.map((invite) => (
-                <tr key={invite.id}>
-                  <td className={TD}>{invite.email}</td>
-                  <td className={TD}>{ROLE_LABELS[invite.role]}</td>
-                  <td className={TD_TIME}>
-                    <LocalDateTime iso={invite.createdAt.toISOString()} variant="timestamp" />
-                  </td>
-                  <td className={TD}>{invite.expiresAt > now ? <StatusPill tone="wait">Not joined</StatusPill> : <StatusPill tone="todo">Expired</StatusPill>}</td>
-                  <td className={`${TD} text-right`}>
-                    <form action={resendStaffInviteAction}>
-                      <input type="hidden" name="inviteId" value={invite.id} />
-                      <button type="submit" className={buttonSmall}>
-                        Resend
-                      </button>
-                    </form>
-                  </td>
+          <TableScroll label="Invited">
+            <table className={TABLE}>
+              <thead>
+                <tr>
+                  <th className={TH}>Email</th>
+                  <th className={TH}>Role</th>
+                  <th className={TH}>Sent</th>
+                  <th className={TH}>Link</th>
+                  <th className={TH}>
+                    <span className="sr-only">Resend</span>
+                  </th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {invites.map((invite) => (
+                  <tr key={invite.id}>
+                    <td className={TD}>{invite.email}</td>
+                    <td className={TD}>{ROLE_LABELS[invite.role]}</td>
+                    <td className={TD_TIME}>
+                      <LocalDateTime iso={invite.createdAt.toISOString()} variant="timestamp" />
+                    </td>
+                    <td className={TD}>{invite.expiresAt > now ? <StatusPill tone="wait">Not joined</StatusPill> : <StatusPill tone="todo">Expired</StatusPill>}</td>
+                    <td className={`${TD} text-right`}>
+                      <form action={resendStaffInviteAction}>
+                        <input type="hidden" name="inviteId" value={invite.id} />
+                        <button type="submit" className={buttonSmall}>
+                          Resend
+                        </button>
+                      </form>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </TableScroll>
         )}
       </Section>
     </>

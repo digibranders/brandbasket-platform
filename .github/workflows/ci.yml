@@ -82,7 +82,8 @@ jobs:
   database:
     name: Migrations and integration tests
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    # The suite took 14 minutes of a 15 minute limit before the project lifecycle tests were added, so it needs headroom.
+    timeout-minutes: 25
 
     # Production runs Ubuntu 24.04's Postgres 16, so this matches it.
     #

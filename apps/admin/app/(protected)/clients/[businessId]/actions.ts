@@ -81,6 +81,7 @@ import {
   sendProjectPreview,
   type OwnerNotification,
 } from "@/lib/server/project-preview";
+import { checkSiteAddress } from "@/lib/server/site-check";
 import { rotateSiteApiToken } from "@/lib/server/site-token";
 import { recordStaffAction } from "@/lib/server/activity";
 import { placeIdForAddress } from "@/lib/server/page-address";
@@ -283,6 +284,28 @@ export async function resendLaunchEmailAction(formData: FormData): Promise<void>
   revalidateClient(businessId);
   if (result === "email-failed") redirect(projectLaunchNoticeHref(businessId, "resend-failed"));
   redirect(projectLaunchNoticeHref(businessId, result === "emailed" ? "resent" : "launched-no-email"));
+}
+
+/**
+ * Loads the business's address once to see whether it answers over HTTPS. A second check beside the launch checklist: it
+ * ticks nothing and does not change who can mark the site live.
+ */
+export async function checkAddressAction(formData: FormData): Promise<void> {
+  const staff = await requireStaffAccess();
+  const businessId = readId(formData.get("businessId"), "Check the address's business");
+
+  const client = await findClientDetail(getStaffDb(), businessId);
+  const domain = client?.domain ?? null;
+  if (domain === null) redirect(projectLaunchNoticeHref(businessId, "check-no-domain"));
+
+  const result = await checkSiteAddress(domain.hostname);
+  await recordStaffAction(staff, {
+    businessId,
+    kind: "project.address_checked",
+    summary: "Checked the address",
+    data: { hostname: domain.hostname, ok: result.ok, reason: result.ok ? null : result.reason, status: result.status ?? null },
+  });
+  redirect(projectLaunchNoticeHref(businessId, result.ok ? "check-ok" : "check-failed"));
 }
 
 /**

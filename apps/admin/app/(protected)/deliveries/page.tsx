@@ -18,6 +18,7 @@ import { loadDeliveries } from "@/lib/server/deliveries";
 import { requireStaffAccess } from "@/lib/server/staff-access";
 import { logStaffAccess } from "@/lib/server/staff-access-log";
 import { resendAlertAction, resendAllFailedAction, resendEmailAction } from "./actions";
+import { TableScroll } from "@/components/console/table-scroll";
 
 export const metadata: Metadata = { title: "Deliveries" };
 
@@ -105,53 +106,55 @@ export default async function DeliveriesPage({ searchParams }: { readonly search
         </div>
       ) : (
         <section aria-label="Deliveries" className={`${LIFT} mt-6 overflow-x-auto px-4`}>
-          <table className={TABLE}>
-            <thead>
-              <tr>
-                <th className={TH}>When</th>
-                <th className={TH}>Source</th>
-                <th className={TH}>Event</th>
-                <th className={TH}>Client or address</th>
-                <th className={TH}>Result</th>
-                <th className={TH}>
-                  <span className="sr-only">Actions</span>
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((row) => (
-                <tr key={`${row.source}:${row.id}`}>
-                  <td className={TD_TIME}>
-                    <LocalDateTime iso={row.at.toISOString()} variant="timestamp" />
-                  </td>
-                  <td className={`${TD} font-semibold`}>{SOURCE_LABELS[row.source]}</td>
-                  <td className={TD}>
-                    {row.eventIsCode ? <code className="rounded-md bg-sunken px-1.5 py-0.5 font-figure text-xs">{row.event}</code> : row.event}
-                  </td>
-                  <td className={TD}>{row.target ?? <span className="text-ink-2">Not linked</span>}</td>
-                  <td className={TD}>
-                    <StatusPill tone={PILL[row.outcome]}>{row.resultLabel}</StatusPill>
-                    {row.detail === null ? null : <span className="mt-1 block max-w-80 text-xs text-ink-2">{row.detail}</span>}
-                  </td>
-                  <td className={`${TD} text-right`}>
-                    {row.resend === null ? (
-                      <Link href={row.href} className={buttonSmall}>
-                        Details
-                      </Link>
-                    ) : (
-                      <form action={row.resend === "email" ? resendEmailAction : resendAlertAction} className="inline">
-                        <input type="hidden" name="deliveryId" value={row.id} />
-                        <input type="hidden" name="from" value="list" />
-                        <button type="submit" className={buttonSmall}>
-                          Resend
-                        </button>
-                      </form>
-                    )}
-                  </td>
+          <TableScroll label="Deliveries">
+            <table className={TABLE}>
+              <thead>
+                <tr>
+                  <th className={TH}>When</th>
+                  <th className={TH}>Source</th>
+                  <th className={TH}>Event</th>
+                  <th className={TH}>Client or address</th>
+                  <th className={TH}>Result</th>
+                  <th className={TH}>
+                    <span className="sr-only">Actions</span>
+                  </th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {rows.map((row) => (
+                  <tr key={`${row.source}:${row.id}`}>
+                    <td className={TD_TIME}>
+                      <LocalDateTime iso={row.at.toISOString()} variant="timestamp" />
+                    </td>
+                    <td className={`${TD} font-semibold`}>{SOURCE_LABELS[row.source]}</td>
+                    <td className={TD}>
+                      {row.eventIsCode ? <code className="rounded-md bg-sunken px-1.5 py-0.5 font-figure text-xs">{row.event}</code> : row.event}
+                    </td>
+                    <td className={TD}>{row.target ?? <span className="text-ink-2">Not linked</span>}</td>
+                    <td className={TD}>
+                      <StatusPill tone={PILL[row.outcome]}>{row.resultLabel}</StatusPill>
+                      {row.detail === null ? null : <span className="mt-1 block max-w-80 text-xs text-ink-2">{row.detail}</span>}
+                    </td>
+                    <td className={`${TD} text-right`}>
+                      {row.resend === null ? (
+                        <Link href={row.href} className={buttonSmall}>
+                          Details
+                        </Link>
+                      ) : (
+                        <form action={row.resend === "email" ? resendEmailAction : resendAlertAction} className="inline">
+                          <input type="hidden" name="deliveryId" value={row.id} />
+                          <input type="hidden" name="from" value="list" />
+                          <button type="submit" className={buttonSmall}>
+                            Resend
+                          </button>
+                        </form>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </TableScroll>
         </section>
       )}
     </>
