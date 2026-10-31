@@ -8,10 +8,12 @@ import { parseJoinForm, type JoinCodeStep, type JoinFormState } from "@/lib/join
 import { personalizeHref } from "@/lib/intake/links";
 import { membershipTierForChoice } from "@/lib/membership";
 import { readBundleSelection } from "@brandbasket/shared/lib/billing/bundle";
+import { attributionFromStart } from "@/lib/start-attribution";
 import { LISTING_PAGE_PATH } from "@/lib/server/customer-access";
 import { createListingAccount, requestJoinCode } from "@/lib/server/listing-account";
 import { landingForSignedInUser } from "@/lib/server/affiliate-access";
 import { requestBrand } from "@/lib/server/request-brand";
+import { leadsApiToken } from "@/lib/server/website-api-auth";
 import { signInWithPassword } from "@/lib/server/sign-in";
 import { checkHuman } from "@brandbasket/shared/server/turnstile-request";
 
@@ -67,7 +69,7 @@ export async function joinForListing(previous: JoinFormState, formData: FormData
     return { status: "error", message: outcome.message, otp: resend ? current : null };
   }
 
-  const outcome = await createListingAccount(parsed.data);
+  const outcome = await createListingAccount(parsed.data, attributionFromStart(formData, leadsApiToken()));
   if (outcome.kind === "limited") return {
     status: "error", message: otpLimitMessage(outcome, "confirm"), otp: current,
     retry: { operation: "confirm", scope: outcome.scope, retryAfterSeconds: outcome.retryAfterSeconds },

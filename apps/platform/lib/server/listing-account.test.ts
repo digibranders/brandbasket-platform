@@ -6,6 +6,7 @@ import {
   findUserByEmail,
   phoneNumberIsTaken,
   recordConsent,
+  recordSignupAttribution,
   recordSignupLead,
   setUserPhoneNumber,
   UserAlreadyHasBusinessError,
@@ -50,6 +51,7 @@ vi.mock("@brandbasket/db", async () => {
     phoneNumberIsTaken: vi.fn(),
     setUserPhoneNumber: vi.fn(),
     recordSignupLead: vi.fn(),
+    recordSignupAttribution: vi.fn(),
   };
 });
 
@@ -77,6 +79,7 @@ beforeEach(() => {
   vi.mocked(createVerifiedEmailAccountWithGrant).mockResolvedValue({ userId: "user-2", email: EMAIL });
   vi.mocked(createUnlistedAccountBusiness).mockResolvedValue({ businessId: "business-1" });
   vi.mocked(recordConsent).mockResolvedValue(undefined);
+  vi.mocked(recordSignupAttribution).mockResolvedValue(true);
 });
 
 describe("requestJoinCode", () => {
@@ -149,6 +152,21 @@ describe("createListingAccount", () => {
     expect(await createListingAccount(WITH_CODE)).toEqual({ kind: "created" });
     expect(setUserPhoneNumber).toHaveBeenCalledWith(DB, "user-2", E164);
     expect(recordSignupLead).toHaveBeenCalledWith(DB, expect.objectContaining({ businessId: "business-1", phone: E164 }));
+  });
+
+  it("keeps the ad the account came from on its business, and nothing when it came from none", async () => {
+    const ad = { utmSource: "meta", utmCampaign: "diwali", consentMeasurement: true, consentAdvertising: false } as const;
+    expect(await createListingAccount(WITH_CODE, ad)).toEqual({ kind: "created" });
+    expect(recordSignupAttribution).toHaveBeenCalledWith(DB, "business-1", ad);
+    vi.mocked(recordSignupAttribution).mockClear();
+    expect(await createListingAccount(WITH_CODE)).toEqual({ kind: "created" });
+    expect(recordSignupAttribution).not.toHaveBeenCalled();
+  });
+
+  it("never stops the sign-up when the ad cannot be kept", async () => {
+    vi.mocked(recordSignupAttribution).mockRejectedValue(new Error("database down"));
+    expect(await createListingAccount(WITH_CODE, { consentMeasurement: false, consentAdvertising: false, utmSource: "meta" })).toEqual({ kind: "created" });
+    expect(signInEmail).toHaveBeenCalled();
   });
 
   it("tells Teams about the sign-up, pointing at the lead it recorded", async () => {

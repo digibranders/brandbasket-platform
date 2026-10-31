@@ -64,6 +64,7 @@ import {
   setupInvites,
   siteEvents,
   siteHits,
+  signupAttribution,
   siteKeys,
   staffMembers,
   subscriptions,
@@ -343,6 +344,8 @@ export async function eraseClosedAccount(db: Database, input: { readonly closure
     await tx.delete(metricBreakdowns).where(eq(metricBreakdowns.businessId, businessId));
     await tx.delete(reportSourceRuns).where(eq(reportSourceRuns.businessId, businessId));
     await tx.delete(reportSources).where(eq(reportSources.businessId, businessId));
+    // The ad the business came from (plan 59).
+    await tx.delete(signupAttribution).where(eq(signupAttribution.businessId, businessId));
     // The first-party site analytics: the hits visitors left on the website, and its public tracking key.
     await tx.delete(siteHits).where(eq(siteHits.businessId, businessId));
     await tx.delete(siteKeys).where(eq(siteKeys.businessId, businessId));

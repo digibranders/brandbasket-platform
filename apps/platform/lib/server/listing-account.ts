@@ -6,9 +6,11 @@ import {
   findUserByEmail,
   isPhoneAccountEmail,
   phoneNumberIsTaken,
+  recordSignupAttribution,
   recordSignupLead,
   setUserPhoneNumber,
   UserAlreadyHasBusinessError,
+  type NewSignupAttribution,
 } from "@brandbasket/db";
 import { headers } from "next/headers";
 import { clientIpFrom } from "@brandbasket/shared/lib/client-ip";
@@ -113,7 +115,7 @@ export type ListingAccountOutcome =
  * Premium sign-up). What the owner chose on the entry page is kept on the business: an owner who chose Premium is held
  * on the payment page until they pay (customer-access.ts).
  */
-export async function createListingAccount(input: JoinInput): Promise<ListingAccountOutcome> {
+export async function createListingAccount(input: JoinInput, attribution: NewSignupAttribution | null = null): Promise<ListingAccountOutcome> {
   const requestHeaders = await headers();
   const clientIp = clientIpFrom(requestHeaders);
   if (input.code === null) return { kind: "refused", message: "Enter a 6-digit code." };
@@ -179,6 +181,7 @@ export async function createListingAccount(input: JoinInput): Promise<ListingAcc
       currency: input.choice === "listing_only" ? "INR" : currencyForCountry(input.country),
     });
     await recordLeadForSignup({ name: input.name, businessName, email: signInAddress, businessId, choice: input.choice, userId, phone: phone.e164 });
+    if (attribution !== null) await recordAttributionForSignup(businessId, attribution, userId);
   } catch (error) {
     // A brand-new account cannot already have a business; if it somehow does, signing in shows it.
     if (!(error instanceof UserAlreadyHasBusinessError)) throw error;
@@ -186,6 +189,18 @@ export async function createListingAccount(input: JoinInput): Promise<ListingAcc
 
   await signInCustomer({ email: signInAddress, password: input.password }, requestHeaders);
   return { kind: "created" };
+}
+
+/**
+ * Keeps which ad the account came from (plan 59). Best effort, like the lead: the owner is about to be signed in, and a failure
+ * here is reported for staff to see and never stops the sign-up.
+ */
+async function recordAttributionForSignup(businessId: string, attribution: NewSignupAttribution, userId: string): Promise<void> {
+  try {
+    await recordSignupAttribution(getStaffDb(), businessId, attribution);
+  } catch (error) {
+    await reportServerError(error, { app: "platform", operation: "server_action", route: "/join", userId });
+  }
 }
 
 /**

@@ -912,6 +912,7 @@ export {
   type NewSiteHit,
   type RollupCandidate,
 } from "./queries/site-hits";
+export { getSignupAttribution, recordSignupAttribution, type NewSignupAttribution } from "./queries/signup-attribution";
 export {
   activateBundledAddOns,
   BundledAddOnNotPossibleError,

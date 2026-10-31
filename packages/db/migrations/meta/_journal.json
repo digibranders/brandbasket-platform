@@ -1457,6 +1457,13 @@
       "when": 1793283731273,
       "tag": "0210_project_launch_checks",
       "breakpoints": true
+    },
+    {
+      "idx": 208,
+      "version": "7",
+      "when": 1793439478839,
+      "tag": "0211_signup_attribution",
+      "breakpoints": true
     }
   ]
 }
