@@ -25,7 +25,8 @@ function finish(businessId: string): never {
 
 /**
  * Staff mark the kickoff call as held, for a call that happened by phone or to start the build before the call's end time passes
- * (a booked call completes by itself once it ends). It also readies a Managed Website project to build.
+ * (a booked call's build starts by itself two hours after it ends, and that does not mark the call held). It also readies a
+ * Managed Website project to build.
  */
 export async function markCallHeldAction(formData: FormData): Promise<void> {
   const { user } = await requireStaffAccess();

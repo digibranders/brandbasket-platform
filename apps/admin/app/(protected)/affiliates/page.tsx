@@ -22,6 +22,8 @@ import { StatusPill } from "@/components/console/status-pill";
 import { describeAffiliateReward, describeRewardCycles } from "@/lib/server/affiliate-admin";
 import { getStaffDb } from "@/lib/server/db";
 import { requireStaffCan } from "@/lib/server/staff-role";
+import { logStaffAccess } from "@/lib/server/staff-access-log";
+import { TableScroll } from "@/components/console/table-scroll";
 
 export const metadata: Metadata = { title: "Affiliates" };
 
@@ -44,7 +46,8 @@ function owedByCurrency(rows: readonly { readonly totals: readonly AffiliateTota
 }
 
 export default async function AffiliatesPage(): Promise<ReactElement> {
-  await requireStaffCan("money");
+  const { user } = await requireStaffCan("money");
+  await logStaffAccess({ staffUserId: user.id, action: "affiliates.list", targetType: "affiliates" });
   const affiliates = await listAffiliates(getStaffDb(), LIST_LIMIT);
   const members = affiliates.reduce((total, affiliate) => total + affiliate.members, 0);
   const owed = owedByCurrency(affiliates);
@@ -74,52 +77,54 @@ export default async function AffiliatesPage(): Promise<ReactElement> {
             <PanelEmpty>No affiliates yet.</PanelEmpty>
           ) : (
             <div className="overflow-x-auto">
-              <table className={PANEL_TABLE}>
-                <thead>
-                  <tr>
-                    <th scope="col" className={PANEL_TH}>Affiliate</th>
-                    <th scope="col" className={PANEL_TH}>Earns</th>
-                    <th scope="col" className={PANEL_TH_NUM}>Members</th>
-                    <th scope="col" className={PANEL_TH_NUM}>Owed</th>
-                    <th scope="col" className={PANEL_TH_NUM}>Paid</th>
-                    <th scope="col" className={PANEL_TH}>Sign-in</th>
-                    <th scope="col" className={PANEL_TH}>Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {affiliates.map((affiliate) => {
-                    const owedFigure = money(affiliate.totals, "owedCents");
-                    return (
-                      <tr key={affiliate.id} className="relative transition-colors duration-200 hover:bg-sunken/40">
-                        <td className={PANEL_TD}>
-                          <span className="flex items-center gap-3">
-                            <Avatar id={affiliate.id} name={affiliate.name} size="sm" />
-                            <span className="min-w-0">
-                              <Link href={`/affiliates/${affiliate.id}`} className="block truncate font-semibold text-ink after:absolute after:inset-0">
-                                {affiliate.name}
-                              </Link>
-                              <span className="block max-w-[14rem] truncate text-xs text-ink-2">{affiliate.email ?? displayPhoneText(affiliate.phone)}</span>
+              <TableScroll label="All affiliates">
+                <table className={PANEL_TABLE}>
+                  <thead>
+                    <tr>
+                      <th scope="col" className={PANEL_TH}>Affiliate</th>
+                      <th scope="col" className={PANEL_TH}>Earns</th>
+                      <th scope="col" className={PANEL_TH_NUM}>Members</th>
+                      <th scope="col" className={PANEL_TH_NUM}>Owed</th>
+                      <th scope="col" className={PANEL_TH_NUM}>Paid</th>
+                      <th scope="col" className={PANEL_TH}>Sign-in</th>
+                      <th scope="col" className={PANEL_TH}>Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {affiliates.map((affiliate) => {
+                      const owedFigure = money(affiliate.totals, "owedCents");
+                      return (
+                        <tr key={affiliate.id} className="relative transition-colors duration-200 hover:bg-sunken/40">
+                          <td className={PANEL_TD}>
+                            <span className="flex items-center gap-3">
+                              <Avatar id={affiliate.id} name={affiliate.name} size="sm" />
+                              <span className="min-w-0">
+                                <Link href={`/affiliates/${affiliate.id}`} className="block truncate font-semibold text-ink after:absolute after:inset-0">
+                                  {affiliate.name}
+                                </Link>
+                                <span className="block max-w-[14rem] truncate text-xs text-ink-2">{affiliate.email ?? displayPhoneText(affiliate.phone)}</span>
+                              </span>
                             </span>
-                          </span>
-                        </td>
-                        <td className={PANEL_TD}>
-                          {describeAffiliateReward(affiliate)}
-                          {affiliate.rewardCycles === null ? null : <span className="block text-xs text-ink-2">{describeRewardCycles(affiliate.rewardCycles)}</span>}
-                        </td>
-                        <td className={PANEL_TD_NUM}>{affiliate.members}</td>
-                        <td className={`${PANEL_TD_NUM} ${owedFigure === "₹0" ? "" : "text-rattan-text"}`}>{owedFigure}</td>
-                        <td className={PANEL_TD_NUM}>{money(affiliate.totals, "paidCents")}</td>
-                        <td className={PANEL_TD}>
-                          <StatusPill tone={affiliate.signedUp ? "done" : "todo"}>{affiliate.signedUp ? "Has a sign-in" : "No sign-in yet"}</StatusPill>
-                        </td>
-                        <td className={PANEL_TD}>
-                          <StatusPill tone={affiliate.active ? "done" : "todo"}>{affiliate.active ? "Active" : "Off"}</StatusPill>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+                          </td>
+                          <td className={PANEL_TD}>
+                            {describeAffiliateReward(affiliate)}
+                            {affiliate.rewardCycles === null ? null : <span className="block text-xs text-ink-2">{describeRewardCycles(affiliate.rewardCycles)}</span>}
+                          </td>
+                          <td className={PANEL_TD_NUM}>{affiliate.members}</td>
+                          <td className={`${PANEL_TD_NUM} ${owedFigure === "₹0" ? "" : "text-rattan-text"}`}>{owedFigure}</td>
+                          <td className={PANEL_TD_NUM}>{money(affiliate.totals, "paidCents")}</td>
+                          <td className={PANEL_TD}>
+                            <StatusPill tone={affiliate.signedUp ? "done" : "todo"}>{affiliate.signedUp ? "Has a sign-in" : "No sign-in yet"}</StatusPill>
+                          </td>
+                          <td className={PANEL_TD}>
+                            <StatusPill tone={affiliate.active ? "done" : "todo"}>{affiliate.active ? "Active" : "Off"}</StatusPill>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </TableScroll>
             </div>
           )}
         </Panel>

@@ -5,6 +5,7 @@ import {
   listAddOnsToContact,
   listClients,
   listErrorIssues,
+  listKickoffBoard,
   listLeads,
   listPaymentsNeedingAttention,
   listSetupCallsBetween,
@@ -27,19 +28,23 @@ import { monthRange, todayRange } from "@/lib/team-time";
 import { todayQueue, type TodayItem } from "@/lib/today-queue";
 import { clientsWaitingOnUs } from "@/lib/waiting-clients";
 import { getStaffDb } from "./db";
+import { countFailedDeliveries24h } from "./deliveries";
 import { readSystemHealth, type SystemLine } from "./system-health";
 
 /** Far more flagged payments and add-ons than are ever open at once, so none is left out. */
 const ATTENTION_READ_LIMIT = 100;
 /** The support query's page size cap. */
 const NEW_TICKETS_READ_LIMIT = 25;
+/** How far back a kickoff call is still asked about: the Calls page's "Just finished" uses the same window. */
+const KICKOFF_LOOK_BACK_DAYS = 14;
 
-/** One read that may fail without taking the page down: a failure logs and gives `fallback`. */
-async function guarded<T>(label: string, read: () => Promise<T>, fallback: T): Promise<T> {
+/** One read that may fail without taking the page down: a failure logs, records its label in `failed` when given, and gives `fallback`. */
+async function guarded<T>(label: string, read: () => Promise<T>, fallback: T, failed?: string[]): Promise<T> {
   try {
     return await read();
   } catch (error) {
     console.error(`[today] could not read ${label}`, errorLogInfo(error));
+    failed?.push(label);
     return fallback;
   }
 }
@@ -51,19 +56,40 @@ interface QueueSources {
   readonly addOns: readonly AddOnToContact[];
   readonly newTickets: readonly SupportTicket[];
   readonly newErrors: readonly ErrorIssue[];
+  /** Failed deliveries in the last 24 hours; null when the read failed. */
+  readonly failedDeliveries: number | null;
+  /** End times of kickoff calls that are over and not marked held; null when the read failed. */
+  readonly kickoffsNeedingOutcome: readonly Date[] | null;
 }
 
-async function readQueueSources(): Promise<QueueSources> {
+interface QueueRead {
+  readonly sources: QueueSources;
+  /** Labels of the sources that failed to read, in the order they failed. */
+  readonly failed: readonly string[];
+}
+
+async function readQueueSources(now: Date): Promise<QueueRead> {
   const db = getStaffDb();
-  const [clients, leads, flagged, addOns, newTickets, newErrors] = await Promise.all([
-    guarded("clients", () => listClients(db), []),
-    guarded("leads", () => listLeads(db, {}), []),
-    guarded("flagged payments", () => listPaymentsNeedingAttention(db, { limit: ATTENTION_READ_LIMIT }), []),
-    guarded("add-ons to contact", () => listAddOnsToContact(db, ATTENTION_READ_LIMIT), []),
-    guarded("requests needing a reply", async () => (await listSupportTicketsForStaff(db, { queue: "needs_reply", limit: NEW_TICKETS_READ_LIMIT })).items, []),
-    guarded("new errors", async () => (await listErrorIssues(db, { status: "new" })).issues, []),
+  const failed: string[] = [];
+  const [clients, leads, flagged, addOns, newTickets, newErrors, failedDeliveries, kickoffsNeedingOutcome] = await Promise.all([
+    guarded("clients", () => listClients(db), [], failed),
+    guarded("leads", () => listLeads(db, {}), [], failed),
+    guarded("flagged payments", () => listPaymentsNeedingAttention(db, { limit: ATTENTION_READ_LIMIT }), [], failed),
+    guarded("add-ons to contact", () => listAddOnsToContact(db, ATTENTION_READ_LIMIT), [], failed),
+    guarded("requests needing a reply", async () => (await listSupportTicketsForStaff(db, { queue: "needs_reply", limit: NEW_TICKETS_READ_LIMIT })).items, [], failed),
+    guarded("new errors", async () => (await listErrorIssues(db, { status: "new" })).issues, [], failed),
+    guarded<number | null>("deliveries", () => countFailedDeliveries24h(now), null, failed),
+    guarded<Date[] | null>(
+      "kickoff calls",
+      async () =>
+        (await listKickoffBoard(db, { now, lookBackDays: KICKOFF_LOOK_BACK_DAYS })).flatMap((row) =>
+          row.heldAt === null && row.endsAt !== null && row.endsAt.getTime() <= now.getTime() && (row.projectStatus === null || row.projectStatus === "onboarding") ? [row.endsAt] : [],
+        ),
+      null,
+      failed,
+    ),
   ]);
-  return { clients, leads, flagged, addOns, newTickets, newErrors };
+  return { sources: { clients, leads, flagged, addOns, newTickets, newErrors, failedDeliveries, kickoffsNeedingOutcome }, failed };
 }
 
 function queueFrom(sources: QueueSources, now: Date): readonly TodayItem[] {
@@ -78,13 +104,15 @@ function queueFrom(sources: QueueSources, now: Date): readonly TodayItem[] {
     newTickets: sources.newTickets,
     unpaidSignups: sources.leads.filter((lead) => lead.status === "account_created"),
     newErrors: sources.newErrors,
+    failedDeliveries: sources.failedDeliveries,
+    kickoffsNeedingOutcome: sources.kickoffsNeedingOutcome,
     endOfToday: todayRange(now).end,
   });
 }
 
 /** Everything that needs a person right now, late first. */
 export async function loadTodayItems(now: Date): Promise<readonly TodayItem[]> {
-  return queueFrom(await readQueueSources(), now);
+  return queueFrom((await readQueueSources(now)).sources, now);
 }
 
 /** The rail's Today count: the length of the queue. */
@@ -94,6 +122,8 @@ export async function countTodayItems(): Promise<number> {
 
 export interface TodayPage {
   readonly items: readonly TodayItem[];
+  /** Labels of queue sources that failed to read, so the page can say the queue may be incomplete. */
+  readonly failed: readonly string[];
   readonly figures: readonly FigureItem[];
   readonly calls: readonly BookedCall[];
   readonly systems: readonly SystemLine[];
@@ -104,16 +134,18 @@ export async function loadTodayPage(now: Date): Promise<TodayPage> {
   const db = getStaffDb();
   const month = monthRange(now);
   const today = todayRange(now);
-  const [sources, collected, ticketCounts, activeErrors, calls, systems] = await Promise.all([
-    readQueueSources(),
+  const [queue, collected, ticketCounts, activeErrors, calls, systems] = await Promise.all([
+    readQueueSources(now),
     guarded("money collected", () => sumCapturedPaymentsBetween(db, month.start, month.end), []),
     guarded<Readonly<Record<SupportStatus, number>> | null>("request counts", () => countSupportTicketsByStatus(db), null),
     guarded("open errors", () => countActiveErrorIssues(db), 0),
     guarded("calls today", () => listSetupCallsBetween(db, today.start, today.end), []),
     readSystemHealth(now),
   ]);
+  const { sources } = queue;
   return {
     items: queueFrom(sources, now),
+    failed: queue.failed,
     figures: businessFigures(figuresInput({ leads: sources.leads, clients: sources.clients, collected, ticketCounts, activeErrors }, now)),
     calls,
     systems,

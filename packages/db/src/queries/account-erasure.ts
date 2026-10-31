@@ -327,6 +327,7 @@ export async function eraseClosedAccount(db: Database, input: { readonly closure
     // project_events needs no line here: staff cannot delete a row of it, and each goes with its project (on delete cascade).
     await tx.delete(projects).where(eq(projects.businessId, businessId));
     await tx.delete(setupCallBookings).where(eq(setupCallBookings.businessId, businessId));
+    // setup_call_outcomes is not removed here: staff have no DELETE on it (append only) and the business row stays, so its rows stay.
     await tx.delete(teamCalls).where(eq(teamCalls.businessId, businessId));
     await tx.delete(serviceSetup).where(eq(serviceSetup.businessId, businessId));
     await tx.delete(clientIntakes).where(eq(clientIntakes.businessId, businessId));

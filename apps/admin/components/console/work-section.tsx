@@ -20,7 +20,7 @@ import { WORK_NOTICE_TEXT, type WorkNotice } from "@/lib/work-notices";
 
 const REPORT_MONTHS = 6;
 const REPORT_ROWS = 12;
-const SERVICE_TITLES: Readonly<Record<SetupService, string>> = { social: "Social & Ads", search: "Search" };
+const SERVICE_TITLES: Readonly<Record<SetupService, string>> = { social: "Social & Ads", search: "Local SEO + AEO" };
 const STATE_LABELS: Readonly<Record<Deliverable["status"], string>> = {
   planned: "Planned",
   awaiting_approval: "Waiting for the customer",

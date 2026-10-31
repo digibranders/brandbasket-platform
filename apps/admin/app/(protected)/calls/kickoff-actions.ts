@@ -1,6 +1,6 @@
 "use server";
 
-import { clearUnheldKickoffBooking } from "@brandbasket/db";
+import { clearUnheldKickoffBooking, findSetupCallBooking, recordKickoffOutcome } from "@brandbasket/db";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { getStaffDb } from "@/lib/server/db";
@@ -11,11 +11,18 @@ import { logStaffAccessOrThrow } from "@/lib/server/staff-access-log";
 const idSchema = z.uuid();
 /** What was agreed on the call: the database keeps a summary to 3 to 600 characters. */
 const notesSchema = z.string().trim().min(3, "Notes must be 3 to 600 characters.").max(600, "Notes must be 3 to 600 characters.");
+/** The three ways a kickoff call can fail to happen, as the wrap-up buttons name them. */
+const noShowOutcomeSchema = z.enum(["customer_no_show", "team_no_show", "rescheduled"]);
+type NoShowOutcome = z.infer<typeof noShowOutcomeSchema>;
 
 function readBusinessId(formData: FormData): string {
   const parsed = idSchema.safeParse(formData.get("businessId"));
   if (!parsed.success) throw new Error("The kickoff call's business must be a valid id.");
   return parsed.data;
+}
+
+function readNoShowOutcome(formData: FormData): NoShowOutcome {
+  return noShowOutcomeSchema.parse(formData.get("outcome"));
 }
 
 /**
@@ -30,6 +37,26 @@ export async function completeKickoffAction(formData: FormData): Promise<void> {
   const notes = text === "" ? null : notesSchema.parse(text);
   const { newlyHeld } = await completeKickoff(getStaffDb(), { businessId, staffId: user.id, now: new Date(), notes });
   if (newlyHeld) await logStaffAccessOrThrow({ staffUserId: user.id, action: "setup_call.held", targetType: "business", targetId: businessId, businessId });
+  revalidatePath("/calls");
+  revalidatePath(`/clients/${businessId}`);
+}
+
+/**
+ * The kickoff did not happen, and why: the booking is forgotten (so the customer picks a new time) and the outcome is
+ * recorded with the booking's times. A held call is never forgotten, so nothing is recorded for it either. The note is
+ * always null: free text could hold personal data that erasure does not remove.
+ */
+export async function recordKickoffOutcomeAction(formData: FormData): Promise<void> {
+  const { user } = await requireStaffAccess();
+  const businessId = readBusinessId(formData);
+  const outcome = readNoShowOutcome(formData);
+  const db = getStaffDb();
+  const booking = await findSetupCallBooking(db, businessId);
+  const removed = await clearUnheldKickoffBooking(db, businessId);
+  if (removed) {
+    await recordKickoffOutcome(db, { businessId, outcome, note: null, startsAt: booking?.startsAt ?? null, endsAt: booking?.endsAt ?? null, staffId: user.id, now: new Date() });
+    await logStaffAccessOrThrow({ staffUserId: user.id, action: `setup_call.${outcome}`, targetType: "business", targetId: businessId, businessId });
+  }
   revalidatePath("/calls");
   revalidatePath(`/clients/${businessId}`);
 }

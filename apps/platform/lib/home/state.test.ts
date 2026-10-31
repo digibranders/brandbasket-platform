@@ -54,8 +54,12 @@ describe("after the kickoff, for a website customer", () => {
 
   it("is starting while the project waits in onboarding, and building once it has moved", () => {
     expect(kind({ ...over, ...project("onboarding") })).toBe("starting");
-    expect(deriveClientHomeState(facts({ ...over, ...project("submitted", { slaDueAt: at("2026-11-01T10:00:00Z") }) }))).toEqual({ kind: "building", dueAt: at("2026-11-01T10:00:00Z") });
     expect(kind({ ...over, ...project("building") })).toBe("building");
+  });
+
+  it("is preparing from the send until staff press Start, with the same due date as building", () => {
+    expect(deriveClientHomeState(facts({ ...over, ...project("submitted", { slaDueAt: at("2026-11-01T10:00:00Z") }) }))).toEqual({ kind: "preparing", dueAt: at("2026-11-01T10:00:00Z") });
+    expect(deriveClientHomeState(facts({ ...over, ...project("building", { slaDueAt: at("2026-11-01T10:00:00Z") }) }))).toEqual({ kind: "building", dueAt: at("2026-11-01T10:00:00Z") });
   });
 
   it("shows the hold reason exactly as staff wrote it", () => {
@@ -97,6 +101,7 @@ describe("homeLayoutOf", () => {
       kickoff_unbooked: "kickoff",
       kickoff_booked: "kickoff",
       starting: "progress",
+      preparing: "progress",
       building: "progress",
       on_hold: "progress",
       revisions: "progress",

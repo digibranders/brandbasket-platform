@@ -1,17 +1,17 @@
-import { clearUnheldKickoffBooking } from "@brandbasket/db";
+import { clearUnheldKickoffBooking, findSetupCallBooking, recordKickoffOutcome } from "@brandbasket/db";
 import { revalidatePath } from "next/cache";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { getStaffDb } from "@/lib/server/db";
 import { completeKickoff } from "@/lib/server/kickoff-complete";
 import { requireStaffAccess, type GrantedStaff } from "@/lib/server/staff-access";
 import { logStaffAccessOrThrow } from "@/lib/server/staff-access-log";
-import { completeKickoffAction, kickoffDidNotHappenAction } from "./kickoff-actions";
+import { completeKickoffAction, kickoffDidNotHappenAction, recordKickoffOutcomeAction } from "./kickoff-actions";
 
 vi.mock("server-only", () => ({}));
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 vi.mock("@brandbasket/db", async () => {
   const actual = await vi.importActual<typeof import("@brandbasket/db")>("@brandbasket/db");
-  return { ...actual, clearUnheldKickoffBooking: vi.fn() };
+  return { ...actual, clearUnheldKickoffBooking: vi.fn(), findSetupCallBooking: vi.fn(), recordKickoffOutcome: vi.fn() };
 });
 vi.mock("@/lib/server/staff-access", () => ({ requireStaffAccess: vi.fn() }));
 vi.mock("@/lib/server/staff-access-log", () => ({ logStaffAccessOrThrow: vi.fn() }));
@@ -68,6 +68,52 @@ describe("completeKickoffAction", () => {
   it("writes no log line when the call was already held", async () => {
     vi.mocked(completeKickoff).mockResolvedValue({ newlyHeld: false, buildStarted: false });
     await completeKickoffAction(form({ businessId: BUSINESS }));
+    expect(logStaffAccessOrThrow).not.toHaveBeenCalled();
+  });
+});
+
+describe("recordKickoffOutcomeAction", () => {
+  const BOOKING = { startsAt: new Date("2026-10-30T10:00:00.000Z"), endsAt: new Date("2026-10-30T10:30:00.000Z") };
+
+  beforeEach(() => {
+    vi.mocked(findSetupCallBooking).mockResolvedValue(BOOKING as never);
+    vi.mocked(clearUnheldKickoffBooking).mockResolvedValue(true);
+  });
+
+  it.each([
+    ["customer_no_show", "setup_call.customer_no_show"],
+    ["team_no_show", "setup_call.team_no_show"],
+    ["rescheduled", "setup_call.rescheduled"],
+  ])("records %s with the booking's times and no note, forgets the booking and logs %s", async (outcome, action) => {
+    await recordKickoffOutcomeAction(form({ businessId: BUSINESS, outcome }));
+    expect(recordKickoffOutcome).toHaveBeenCalledWith(DB, {
+      businessId: BUSINESS,
+      outcome,
+      note: null,
+      startsAt: BOOKING.startsAt,
+      endsAt: BOOKING.endsAt,
+      staffId: "staff-1",
+      now: expect.any(Date),
+    });
+    expect(clearUnheldKickoffBooking).toHaveBeenCalledWith(DB, BUSINESS);
+    expect(logStaffAccessOrThrow).toHaveBeenCalledWith(expect.objectContaining({ action, targetId: BUSINESS, businessId: BUSINESS }));
+    expect(revalidatePath).toHaveBeenCalledWith("/calls");
+    expect(revalidatePath).toHaveBeenCalledWith(`/clients/${BUSINESS}`);
+  });
+
+  it.each([["completed"], ["unknown"], [""], [null]])("refuses the outcome %p before recording anything", async (outcome) => {
+    const data = new FormData();
+    data.set("businessId", BUSINESS);
+    if (outcome !== null) data.set("outcome", outcome);
+    await expect(recordKickoffOutcomeAction(data)).rejects.toThrow();
+    expect(recordKickoffOutcome).not.toHaveBeenCalled();
+    expect(clearUnheldKickoffBooking).not.toHaveBeenCalled();
+  });
+
+  it("records and logs nothing when the booking was held and so not forgotten", async () => {
+    vi.mocked(clearUnheldKickoffBooking).mockResolvedValue(false);
+    await recordKickoffOutcomeAction(form({ businessId: BUSINESS, outcome: "customer_no_show" }));
+    expect(recordKickoffOutcome).not.toHaveBeenCalled();
     expect(logStaffAccessOrThrow).not.toHaveBeenCalled();
   });
 });

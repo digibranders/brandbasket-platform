@@ -5,6 +5,7 @@ import { EnquiryList } from "@/components/enquiries/enquiry-list";
 import { readEnquiryQuery } from "@/lib/enquiries";
 import { loadEnquiryScreen } from "@/lib/server/enquiries-screen";
 import { requireStaffAccess } from "@/lib/server/staff-access";
+import { logStaffAccess } from "@/lib/server/staff-access-log";
 
 export const metadata: Metadata = { title: "Enquiries" };
 
@@ -14,6 +15,7 @@ export default async function EnquiriesPage({
   readonly searchParams: Promise<Record<string, string | string[] | undefined>>;
 }): Promise<ReactElement> {
   const { user } = await requireStaffAccess();
+  await logStaffAccess({ staffUserId: user.id, action: "leads.list", targetType: "leads" });
   const query = readEnquiryQuery(await searchParams);
   const screen = await loadEnquiryScreen(query, user.id);
   return (

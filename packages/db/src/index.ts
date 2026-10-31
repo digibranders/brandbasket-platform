@@ -5,11 +5,16 @@ export * from "./queries/support";
 export * from "./queries/change-requests";
 export * from "./queries/change-request-staff";
 export * from "./queries/project-website";
+export * from "./queries/project-feedback";
+export * from "./queries/project-launch-checks";
+export * from "./queries/project-preview-versions";
+export * from "./queries/setup-call-outcomes";
 export * from "./queries/support-staff";
 export * from "./queries/error-issues";
 export * from "./queries/support-ticket-error-links";
 export * from "./queries/deliveries";
 export * from "./queries/staff-payments";
+export * from "./queries/staff-domains";
 export { assertValidRule, consumeRateLimit, windowStartFor, type RateLimitResult, type RateLimitRule } from "./rate-limit";
 export {
   BillingBusinessNotFoundError,

@@ -51,13 +51,20 @@ export interface KickoffToStart {
   readonly heldAt: Date | null;
 }
 
-/** The kickoffs that are over and whose project has not started: held by staff, or ended at or before `endedBefore`. Staff connection. */
-export async function listKickoffsToStart(db: Database, input: { readonly endedBefore: Date }): Promise<KickoffToStart[]> {
+/**
+ * The kickoffs that are over and whose project has not started: held by staff, or ended at or before `endedBefore`. With
+ * `confirmedOnly`, only the ones staff marked held, whatever their end time. Staff connection.
+ */
+export async function listKickoffsToStart(db: Database, input: { readonly endedBefore: Date; readonly confirmedOnly?: boolean }): Promise<KickoffToStart[]> {
+  const over =
+    input.confirmedOnly === true
+      ? isNotNull(setupCallBookings.heldAt)
+      : or(isNotNull(setupCallBookings.heldAt), and(isNotNull(setupCallBookings.endsAt), lte(setupCallBookings.endsAt, input.endedBefore)));
   return db
     .select({ businessId: setupCallBookings.businessId, endsAt: setupCallBookings.endsAt, heldAt: setupCallBookings.heldAt })
     .from(setupCallBookings)
     .innerJoin(projects, eq(projects.businessId, setupCallBookings.businessId))
-    .where(and(eq(projects.status, "onboarding"), or(isNotNull(setupCallBookings.heldAt), and(isNotNull(setupCallBookings.endsAt), lte(setupCallBookings.endsAt, input.endedBefore)))));
+    .where(and(eq(projects.status, "onboarding"), over));
 }
 
 /** One kickoff call as the console's board shows it. */

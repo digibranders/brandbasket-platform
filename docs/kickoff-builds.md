@@ -1,8 +1,9 @@
 # Starting the website build after the kickoff call
 
 A customer who buys the Managed Website books a kickoff call on Home. Nobody on the team marks the call as held for the build
-to start. When the call's end time has passed, the website project moves from `onboarding` to `submitted` on its own, and the
-first preview is due 48 hours after the call.
+to start. By default, when the call's end time has passed, the website project moves from `onboarding` to `submitted` on its own,
+and the first preview is due 48 hours after the call. To wait for staff to confirm the call instead, see "Staff confirmation
+mode" below.
 
 ## How it works
 
@@ -17,6 +18,20 @@ first preview is due 48 hours after the call.
   started (the report is the body), and 200 otherwise. The report is `{ checked, started, failed }`.
 - In the console, staff only handle exceptions: "Did not happen" and "held by phone" on the Calls page, and notes in "Just
   finished".
+
+## Staff confirmation mode
+
+`KICKOFF_AUTO_START` on the dashboard (`apps/platform`) chooses how a build starts. The default, `on` (also when unset or
+empty), is the behaviour above. With `KICKOFF_AUTO_START=off`, a build starts only when staff confirm the call: "Save and start
+the build" on the Calls page, or "Mark call as held" on the client page. The end time alone starts nothing.
+
+- A call that ends without a confirmation stays on the Calls page under "Just finished". Today shows "N kickoff calls need an
+  outcome" (or "1 kickoff call needs an outcome"), linking to Calls, for calls that ended and are not marked held, from the last
+  14 days. Staff either confirm the call or record that it did not happen: "Customer did not attend", "We did not attend" or
+  "Call was rescheduled".
+- Today shows that count whichever way the switch is set.
+- The switch is read when the job runs. After a change, restart the dashboard.
+- Any value other than `on`, `off` or empty fails the job with a configuration error rather than guessing a mode.
 
 ## On the server
 

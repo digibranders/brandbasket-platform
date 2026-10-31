@@ -8,6 +8,7 @@ import { FilterPills } from "@/components/console/filter-pills";
 import { EmptyLine } from "@/components/console/hairline-list";
 import { TABLE, TD, TH, TR_SELECTED } from "@/components/console/table";
 import { ENQUIRY_BUCKETS, ENQUIRY_BUCKET_LABELS, enquiryHref, inBucket, OWNER_FILTERS, OWNER_FILTER_LABELS, waitingOf, type EnquiryQuery } from "@/lib/enquiries";
+import { TableScroll } from "@/components/console/table-scroll";
 
 const PLAN_DOT: Readonly<Record<string, string>> = { website: "bg-c-site", growth: "bg-c-growth", search: "bg-c-search" };
 const WAITING_TONE = { late: "font-semibold text-error", soon: "font-semibold text-rattan-ink", plain: "text-ink-2" } as const;
@@ -67,52 +68,54 @@ export function EnquiryList({ all, rows, query, selectedId, ownerNames, now }: E
       {rows.length === 0 ? (
         <EmptyLine>{all.length === 0 ? "No enquiries yet." : "No enquiries match this."}</EmptyLine>
       ) : (
-        <table className={TABLE}>
-          <thead>
-            <tr>
-              <th className={TH}>Business</th>
-              <th className={TH}>Source</th>
-              <th className={TH}>Wants</th>
-              <th className={TH}>Owner</th>
-              <th className={cn(TH, "text-right")}>Waiting</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((lead) => {
-              const waiting = waitingOf(lead.createdAt, now, lead.status);
-              return (
-                <tr key={lead.id} className={lead.id === selectedId ? TR_SELECTED : undefined}>
-                  <td className={TD}>
-                    <Link href={enquiryHref(query, {}, `/leads/${lead.id}`)} aria-current={lead.id === selectedId ? "page" : undefined} className="font-semibold text-ink hover:underline">
-                      {lead.businessName}
-                    </Link>
-                    <span className="block text-xs text-ink-2">
-                      {lead.name}
-                      {lead.city === null ? "" : ` · ${lead.city}`}
-                    </span>
-                  </td>
-                  <td className={cn(TD, "text-[0.8125rem]")}>{sourceLabel(lead)}</td>
-                  <td className={TD}>
-                    {lead.plans.length === 0 ? (
-                      <span className="text-ink-2">Not said</span>
-                    ) : (
-                      <span className="flex flex-wrap gap-x-2">
-                        {lead.plans.map((plan) => (
-                          <span key={plan} className="inline-flex items-center gap-1 text-xs text-ink-2">
-                            <span aria-hidden="true" className={cn("size-[7px] rounded-[2px]", PLAN_DOT[plan] ?? "bg-ink-2")} />
-                            {websitePlanLabels([plan])[0]}
-                          </span>
-                        ))}
+        <TableScroll label="Enquiries">
+          <table className={TABLE}>
+            <thead>
+              <tr>
+                <th className={TH}>Business</th>
+                <th className={TH}>Source</th>
+                <th className={TH}>Wants</th>
+                <th className={TH}>Owner</th>
+                <th className={cn(TH, "text-right")}>Waiting</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((lead) => {
+                const waiting = waitingOf(lead.createdAt, now, lead.status);
+                return (
+                  <tr key={lead.id} className={lead.id === selectedId ? TR_SELECTED : undefined}>
+                    <td className={TD}>
+                      <Link href={enquiryHref(query, {}, `/leads/${lead.id}`)} aria-current={lead.id === selectedId ? "page" : undefined} className="font-semibold text-ink hover:underline">
+                        {lead.businessName}
+                      </Link>
+                      <span className="block text-xs text-ink-2">
+                        {lead.name}
+                        {lead.city === null ? "" : ` · ${lead.city}`}
                       </span>
-                    )}
-                  </td>
-                  <td className={cn(TD, "text-ink-2")}>{lead.assignedStaffId === null ? "Nobody" : (ownerNames.get(lead.assignedStaffId) ?? "Someone who has left")}</td>
-                  <td className={cn(TD, "text-right font-figure text-xs", WAITING_TONE[waiting.tone])}>{waiting.label}</td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+                    </td>
+                    <td className={cn(TD, "text-[0.8125rem]")}>{sourceLabel(lead)}</td>
+                    <td className={TD}>
+                      {lead.plans.length === 0 ? (
+                        <span className="text-ink-2">Not said</span>
+                      ) : (
+                        <span className="flex flex-wrap gap-x-2">
+                          {lead.plans.map((plan) => (
+                            <span key={plan} className="inline-flex items-center gap-1 text-xs text-ink-2">
+                              <span aria-hidden="true" className={cn("size-[7px] rounded-[2px]", PLAN_DOT[plan] ?? "bg-ink-2")} />
+                              {websitePlanLabels([plan])[0]}
+                            </span>
+                          ))}
+                        </span>
+                      )}
+                    </td>
+                    <td className={cn(TD, "text-ink-2")}>{lead.assignedStaffId === null ? "Nobody" : (ownerNames.get(lead.assignedStaffId) ?? "Someone who has left")}</td>
+                    <td className={cn(TD, "text-right font-figure text-xs", WAITING_TONE[waiting.tone])}>{waiting.label}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </TableScroll>
       )}
     </div>
   );

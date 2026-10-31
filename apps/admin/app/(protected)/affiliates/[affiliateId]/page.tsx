@@ -39,7 +39,9 @@ import { StatusPill, type PillTone } from "@/components/console/status-pill";
 import { describeAffiliateReward, describeRewardCycles, findAffiliate, payoutToday } from "@/lib/server/affiliate-admin";
 import { getStaffDb } from "@/lib/server/db";
 import { requireStaffCan } from "@/lib/server/staff-role";
+import { logStaffAccess } from "@/lib/server/staff-access-log";
 import { cancelEarningAction, emailLoginLinkAction, issueLoginLinkAction, recordPayoutAction, updateAffiliateAction } from "./actions";
+import { TableScroll } from "@/components/console/table-scroll";
 
 export const metadata: Metadata = { title: "Affiliate" };
 
@@ -90,8 +92,9 @@ function formValues(affiliate: Affiliate): AffiliateFormValues {
  * to choose a password (the Sign-in section).
  */
 export default async function AffiliatePage({ params, searchParams }: AffiliatePageProps): Promise<ReactElement> {
-  await requireStaffCan("money");
+  const { user } = await requireStaffCan("money");
   const { affiliateId } = await params;
+  await logStaffAccess({ staffUserId: user.id, action: "affiliates.detail", targetType: "affiliate", targetId: affiliateId });
   const { mail } = await searchParams;
   const affiliate = await findAffiliate(affiliateId);
   if (affiliate === null) notFound();
@@ -186,46 +189,48 @@ export default async function AffiliatePage({ params, searchParams }: AffiliateP
               <PanelEmpty>No codes yet. Add one to share.</PanelEmpty>
             ) : (
               <div className="overflow-x-auto">
-                <table className={PANEL_TABLE}>
-                  <thead>
-                    <tr>
-                      <th scope="col" className={PANEL_TH}>Code</th>
-                      <th scope="col" className={PANEL_TH}>Discount</th>
-                      <th scope="col" className={PANEL_TH}>Currency</th>
-                      <th scope="col" className={PANEL_TH_NUM}>Used</th>
-                      <th scope="col" className={PANEL_TH}>Status</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {codes.map((code) => {
-                      const working = code.active && affiliate.active;
-                      return (
-                        <tr key={code.id}>
-                          <td className={PANEL_TD}>
-                            <Link href={`/coupons/${code.id}`} className="font-semibold tracking-[0.06em] text-ink underline-offset-4 hover:underline">
-                              {code.code}
-                            </Link>
-                          </td>
-                          <td className={PANEL_TD}>
-                            {code.discount === null ? (
-                              <span className="text-ink-2">No discount</span>
-                            ) : (
-                              <>
-                                {describeReferralDiscount(code.discount, code.currency)}
-                                <span className="block text-xs text-ink-2">{describeDiscountMonths(code.discountMonths)}</span>
-                              </>
-                            )}
-                          </td>
-                          <td className={PANEL_TD_TIME}>{code.currency}</td>
-                          <td className={PANEL_TD_NUM}>{code.redemptions}</td>
-                          <td className={PANEL_TD}>
-                            <StatusPill tone={working ? "done" : "todo"}>{working ? "Active" : "Off"}</StatusPill>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
+                <TableScroll label="Codes">
+                  <table className={PANEL_TABLE}>
+                    <thead>
+                      <tr>
+                        <th scope="col" className={PANEL_TH}>Code</th>
+                        <th scope="col" className={PANEL_TH}>Discount</th>
+                        <th scope="col" className={PANEL_TH}>Currency</th>
+                        <th scope="col" className={PANEL_TH_NUM}>Used</th>
+                        <th scope="col" className={PANEL_TH}>Status</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {codes.map((code) => {
+                        const working = code.active && affiliate.active;
+                        return (
+                          <tr key={code.id}>
+                            <td className={PANEL_TD}>
+                              <Link href={`/coupons/${code.id}`} className="font-semibold tracking-[0.06em] text-ink underline-offset-4 hover:underline">
+                                {code.code}
+                              </Link>
+                            </td>
+                            <td className={PANEL_TD}>
+                              {code.discount === null ? (
+                                <span className="text-ink-2">No discount</span>
+                              ) : (
+                                <>
+                                  {describeReferralDiscount(code.discount, code.currency)}
+                                  <span className="block text-xs text-ink-2">{describeDiscountMonths(code.discountMonths)}</span>
+                                </>
+                              )}
+                            </td>
+                            <td className={PANEL_TD_TIME}>{code.currency}</td>
+                            <td className={PANEL_TD_NUM}>{code.redemptions}</td>
+                            <td className={PANEL_TD}>
+                              <StatusPill tone={working ? "done" : "todo"}>{working ? "Active" : "Off"}</StatusPill>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </TableScroll>
               </div>
             )}
           </Panel>
@@ -235,39 +240,41 @@ export default async function AffiliatePage({ params, searchParams }: AffiliateP
               <PanelEmpty>Nothing earned yet.</PanelEmpty>
             ) : (
               <div className="overflow-x-auto">
-                <table className={PANEL_TABLE}>
-                  <thead>
-                    <tr>
-                      <th scope="col" className={PANEL_TH}>Date</th>
-                      <th scope="col" className={PANEL_TH}>Member</th>
-                      <th scope="col" className={PANEL_TH_NUM}>Amount</th>
-                      <th scope="col" className={PANEL_TH}>Status</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {earnings.map((earning) => (
-                      <tr key={earning.id}>
-                        <td className={PANEL_TD_TIME}>
-                          <LocalDate iso={earning.createdAt.toISOString()} />
-                        </td>
-                        <td className={PANEL_TD}>
-                          <span className="block max-w-[16rem] truncate font-semibold">{earning.businessName}</span>
-                          <span className="block text-xs text-ink-2">
-                            {earning.code} · Month {earning.cycleNumber}
-                            {affiliate.rewardCycles === null ? "" : ` of ${affiliate.rewardCycles}`}
-                          </span>
-                        </td>
-                        <td className={PANEL_TD_NUM}>{formatMoney(earning.amountCents, earning.currency)}</td>
-                        <td className={PANEL_TD}>
-                          <span className="flex items-center gap-3">
-                            <StatusPill tone={EARNING_TONE[earning.status]}>{EARNING_LABEL[earning.status]}</StatusPill>
-                            {earning.status === "owed" ? <CancelEarningButton action={cancelEarningAction.bind(null, affiliate.id, earning.id)} /> : null}
-                          </span>
-                        </td>
+                <TableScroll label="Earnings">
+                  <table className={PANEL_TABLE}>
+                    <thead>
+                      <tr>
+                        <th scope="col" className={PANEL_TH}>Date</th>
+                        <th scope="col" className={PANEL_TH}>Member</th>
+                        <th scope="col" className={PANEL_TH_NUM}>Amount</th>
+                        <th scope="col" className={PANEL_TH}>Status</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody>
+                      {earnings.map((earning) => (
+                        <tr key={earning.id}>
+                          <td className={PANEL_TD_TIME}>
+                            <LocalDate iso={earning.createdAt.toISOString()} />
+                          </td>
+                          <td className={PANEL_TD}>
+                            <span className="block max-w-[16rem] truncate font-semibold">{earning.businessName}</span>
+                            <span className="block text-xs text-ink-2">
+                              {earning.code} · Month {earning.cycleNumber}
+                              {affiliate.rewardCycles === null ? "" : ` of ${affiliate.rewardCycles}`}
+                            </span>
+                          </td>
+                          <td className={PANEL_TD_NUM}>{formatMoney(earning.amountCents, earning.currency)}</td>
+                          <td className={PANEL_TD}>
+                            <span className="flex items-center gap-3">
+                              <StatusPill tone={EARNING_TONE[earning.status]}>{EARNING_LABEL[earning.status]}</StatusPill>
+                              {earning.status === "owed" ? <CancelEarningButton action={cancelEarningAction.bind(null, affiliate.id, earning.id)} /> : null}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </TableScroll>
               </div>
             )}
           </Panel>
@@ -277,34 +284,36 @@ export default async function AffiliatePage({ params, searchParams }: AffiliateP
               <PanelEmpty>Nobody yet.</PanelEmpty>
             ) : (
               <div className="overflow-x-auto">
-                <table className={PANEL_TABLE}>
-                  <thead>
-                    <tr>
-                      <th scope="col" className={PANEL_TH}>Business</th>
-                      <th scope="col" className={PANEL_TH}>Code</th>
-                      <th scope="col" className={PANEL_TH}>Since</th>
-                      <th scope="col" className={PANEL_TH}>Status</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {members.map((member) => (
-                      <tr key={member.businessId}>
-                        <td className={PANEL_TD}>
-                          <Link href={`/clients/${member.businessId}`} className="font-semibold text-ink underline-offset-4 hover:underline">
-                            {member.businessName}
-                          </Link>
-                        </td>
-                        <td className={`${PANEL_TD} tracking-[0.06em]`}>{member.code}</td>
-                        <td className={PANEL_TD_TIME}>
-                          <LocalDate iso={member.since.toISOString()} />
-                        </td>
-                        <td className={PANEL_TD}>
-                          <StatusPill tone={member.status === "active" ? "done" : "todo"}>{member.status === "active" ? "Paying" : "Stopped"}</StatusPill>
-                        </td>
+                <TableScroll label="Members">
+                  <table className={PANEL_TABLE}>
+                    <thead>
+                      <tr>
+                        <th scope="col" className={PANEL_TH}>Business</th>
+                        <th scope="col" className={PANEL_TH}>Code</th>
+                        <th scope="col" className={PANEL_TH}>Since</th>
+                        <th scope="col" className={PANEL_TH}>Status</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody>
+                      {members.map((member) => (
+                        <tr key={member.businessId}>
+                          <td className={PANEL_TD}>
+                            <Link href={`/clients/${member.businessId}`} className="font-semibold text-ink underline-offset-4 hover:underline">
+                              {member.businessName}
+                            </Link>
+                          </td>
+                          <td className={`${PANEL_TD} tracking-[0.06em]`}>{member.code}</td>
+                          <td className={PANEL_TD_TIME}>
+                            <LocalDate iso={member.since.toISOString()} />
+                          </td>
+                          <td className={PANEL_TD}>
+                            <StatusPill tone={member.status === "active" ? "done" : "todo"}>{member.status === "active" ? "Paying" : "Stopped"}</StatusPill>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </TableScroll>
               </div>
             )}
           </Panel>
@@ -312,33 +321,35 @@ export default async function AffiliatePage({ params, searchParams }: AffiliateP
           {payouts.length === 0 ? null : (
             <Panel title="Payouts" count={payouts.length} flush>
               <div className="overflow-x-auto">
-                <table className={PANEL_TABLE}>
-                  <thead>
-                    <tr>
-                      <th scope="col" className={PANEL_TH}>Paid on</th>
-                      <th scope="col" className={PANEL_TH}>Reference</th>
-                      <th scope="col" className={PANEL_TH_NUM}>Months</th>
-                      <th scope="col" className={PANEL_TH_NUM}>Amount</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {payouts.map((payout) => (
-                      <tr key={payout.id}>
-                        <td className={PANEL_TD_TIME}>{payout.paidOn}</td>
-                        <td className={PANEL_TD}>
-                          <span className="block max-w-[16rem] truncate">{payout.reference}</span>
-                          {payout.withheldCents === 0 ? null : (
-                            <span className="block truncate text-xs tabular-nums text-ink-2">
-                              {formatMoney(payout.withheldCents, payout.currency)} withheld · {payout.withheldReason}
-                            </span>
-                          )}
-                        </td>
-                        <td className={PANEL_TD_NUM}>{payout.earnings}</td>
-                        <td className={PANEL_TD_NUM}>{formatMoney(payout.amountCents, payout.currency)}</td>
+                <TableScroll label="Payouts">
+                  <table className={PANEL_TABLE}>
+                    <thead>
+                      <tr>
+                        <th scope="col" className={PANEL_TH}>Paid on</th>
+                        <th scope="col" className={PANEL_TH}>Reference</th>
+                        <th scope="col" className={PANEL_TH_NUM}>Months</th>
+                        <th scope="col" className={PANEL_TH_NUM}>Amount</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody>
+                      {payouts.map((payout) => (
+                        <tr key={payout.id}>
+                          <td className={PANEL_TD_TIME}>{payout.paidOn}</td>
+                          <td className={PANEL_TD}>
+                            <span className="block max-w-[16rem] truncate">{payout.reference}</span>
+                            {payout.withheldCents === 0 ? null : (
+                              <span className="block truncate text-xs tabular-nums text-ink-2">
+                                {formatMoney(payout.withheldCents, payout.currency)} withheld · {payout.withheldReason}
+                              </span>
+                            )}
+                          </td>
+                          <td className={PANEL_TD_NUM}>{payout.earnings}</td>
+                          <td className={PANEL_TD_NUM}>{formatMoney(payout.amountCents, payout.currency)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </TableScroll>
               </div>
             </Panel>
           )}

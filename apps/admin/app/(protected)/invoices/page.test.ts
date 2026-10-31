@@ -1,5 +1,5 @@
 import type { Payment, TaxInvoice, TaxInvoiceLineRecord } from "@brandbasket/db";
-import { listMissingTaxInvoices, listTaxInvoicesIssuedBetween } from "@brandbasket/db";
+import { listMissingTaxInvoices, listPaymentsForStaff, listTaxInvoicesIssuedBetween } from "@brandbasket/db";
 import { renderToStaticMarkup } from "react-dom/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { requireStaffAccess } from "@/lib/server/staff-access";
@@ -18,7 +18,7 @@ vi.mock("next/navigation", async (importOriginal) => ({
 vi.mock("@/lib/server/db", () => ({ getStaffDb: () => ({ name: "staff-db" }) }));
 vi.mock("@brandbasket/db", async () => {
   const actual = await vi.importActual<typeof import("@brandbasket/db")>("@brandbasket/db");
-  return { ...actual, listTaxInvoicesIssuedBetween: vi.fn(), listMissingTaxInvoices: vi.fn() };
+  return { ...actual, listTaxInvoicesIssuedBetween: vi.fn(), listMissingTaxInvoices: vi.fn(), listPaymentsForStaff: vi.fn() };
 });
 
 const line: TaxInvoiceLineRecord = {
@@ -96,6 +96,7 @@ beforeEach(() => {
   vi.mocked(requireStaffAccess).mockResolvedValue({ user: { id: "staff-1" }, staff: { userId: "staff-1", role: "finance" } } as never);
   vi.mocked(listTaxInvoicesIssuedBetween).mockResolvedValue([]);
   vi.mocked(listMissingTaxInvoices).mockResolvedValue([]);
+  vi.mocked(listPaymentsForStaff).mockResolvedValue([]);
 });
 
 describe("the Invoices page and roles", () => {
@@ -124,7 +125,8 @@ describe("the Invoices page", () => {
   it("shows the current Indian month when none is asked for", async () => {
     vi.useFakeTimers({ now: new Date("2026-10-31T20:00:00Z"), toFake: ["Date"] });
     const html = render(await InvoicesPage({ searchParams: search() }));
-    expect(listTaxInvoicesIssuedBetween).toHaveBeenCalledWith({ name: "staff-db" }, "2026-11-01", "2026-12-01");
+    // The whole financial year is read, so the month list and the series check see the year.
+    expect(listTaxInvoicesIssuedBetween).toHaveBeenCalledWith({ name: "staff-db" }, "2026-04-01", "2027-04-01");
     expect(html).toContain('href="/invoices/export?month=2026-11"');
   });
 
@@ -136,7 +138,7 @@ describe("the Invoices page", () => {
     const html = render(await InvoicesPage({ searchParams: search("2026-10") }));
     const text = visibleText(html);
 
-    expect(listTaxInvoicesIssuedBetween).toHaveBeenCalledWith({ name: "staff-db" }, "2026-10-01", "2026-11-01");
+    expect(listTaxInvoicesIssuedBetween).toHaveBeenCalledWith({ name: "staff-db" }, "2026-04-01", "2027-04-01");
     expect(html).toContain('href="/invoices/export?month=2026-10"');
     expect(html).toContain('href="/invoices?month=2026-09"');
     expect(html).toContain('href="/invoices?month=2026-11"');
@@ -151,9 +153,13 @@ describe("the Invoices page", () => {
 
     // Each row, with the PDF link /invoices/{id}.
     expect(text).toContain("FY/26-27/000001");
-    expect(text).toContain("GSTIN 27AAPFU0939F1ZV · Maharashtra · 9 October 2026");
+    expect(text).toContain("GSTIN 27AAPFU0939F1ZV, B2B");
+    expect(text).toContain("27-Maharashtra");
     expect(text).toContain("Sharma & Rao Traders");
-    expect(text).toContain("Unregistered · Karnataka · 9 October 2026");
+    expect(text).toContain("No GSTIN, B2C");
+    expect(text).toContain("29-Karnataka");
+    expect(text).toContain("Visa credit card ending 4366, pay_TljxffN6THodkg");
+    expect(text).toContain("9 October 2026");
     expect(html).toContain('href="/invoices/inv-1"');
     expect(html).toContain('href="/invoices/inv-2"');
     expect(html).toContain('aria-label="Download tax invoice FY/26-27/000002"');
@@ -167,12 +173,12 @@ describe("the Invoices page", () => {
 
   it("does not crash at the first and last supported months, and offers no link past either end", async () => {
     const first = render(await InvoicesPage({ searchParams: search("2000-01") }));
-    expect(listTaxInvoicesIssuedBetween).toHaveBeenLastCalledWith({ name: "staff-db" }, "2000-01-01", "2000-02-01");
+    expect(listTaxInvoicesIssuedBetween).toHaveBeenLastCalledWith({ name: "staff-db" }, "1999-04-01", "2000-04-01");
     expect(first).not.toContain("Previous month");
     expect(first).toContain('href="/invoices?month=2000-02"');
 
     const last = render(await InvoicesPage({ searchParams: search("2999-12") }));
-    expect(listTaxInvoicesIssuedBetween).toHaveBeenLastCalledWith({ name: "staff-db" }, "2999-12-01", "3000-01-01");
+    expect(listTaxInvoicesIssuedBetween).toHaveBeenLastCalledWith({ name: "staff-db" }, "2999-04-01", "3000-04-01");
     expect(last).not.toContain("Next month");
     expect(last).toContain('href="/invoices?month=2999-11"');
   });
@@ -230,5 +236,71 @@ describe("the Invoices page", () => {
       { payment: { id: "pay-1", businessId: "biz-1", amountCents: 100, paidAt: new Date("2026-10-09T09:00:00Z") } as Payment, businessName: "Riverside Dental" },
     ]);
     expect(visibleText(render(await InvoicesPage({ searchParams: search("2026-10") })))).not.toMatch(/[\u2013\u2014]/);
+  });
+
+  it("offers the month as one ZIP only when it has invoices, beside the CSV, and records the view", async () => {
+    const none = render(await InvoicesPage({ searchParams: search("2026-10") }));
+    expect(none).not.toContain("/invoices/export/zip");
+
+    vi.mocked(listTaxInvoicesIssuedBetween).mockResolvedValue([invoiceOf({ id: "inv-1", serial: 1 })]);
+    const some = render(await InvoicesPage({ searchParams: search("2026-10") }));
+    expect(some).toContain('href="/invoices/export/zip?month=2026-10"');
+    expect(visibleText(some)).toContain("Download all as ZIP");
+    expect(logStaffAccess).toHaveBeenCalledWith({ staffUserId: "staff-1", action: "invoice.register_view", targetType: "invoice_register", targetId: "2026-10" });
+  });
+
+  it("lays the financial year out month by month and counts the month's own invoices", async () => {
+    vi.mocked(listTaxInvoicesIssuedBetween).mockResolvedValue([
+      invoiceOf({ id: "inv-1", serial: 1, issuedOn: "2026-05-04", paidOn: "2026-05-04" }),
+      invoiceOf({ id: "inv-2", serial: 2 }),
+    ]);
+    const html = render(await InvoicesPage({ searchParams: search("2026-10") }));
+    const text = visibleText(html);
+    expect(text).toContain("Financial year 2026-27");
+    expect(text).toContain("2 invoices, ₹13,214.12");
+    expect(html).toContain('href="/invoices?month=2026-04"');
+    expect(html).toContain('href="/invoices?month=2027-03"');
+    // October holds one invoice, not both.
+    expect(text).toContain("1 invoice in October 2026");
+  });
+
+  it("gives the GST return summary: outward supplies, SAC summary and the series of invoices issued", async () => {
+    vi.mocked(listTaxInvoicesIssuedBetween).mockResolvedValue([invoiceOf({ id: "inv-1", serial: 1 }), interState("inv-2", 2, "Sharma & Rao Traders")]);
+    const text = visibleText(render(await InvoicesPage({ searchParams: search("2026-10") })));
+    expect(text).toContain("For the GST returns");
+    expect(text).toContain("Outward taxable supplies");
+    expect(text).toContain("998361");
+    expect(text).toMatch(/FY\/26-27\/000001 to FY\/26-27\/000002\s*, 2 invoices issued, 0 cancelled/);
+    expect(text).not.toContain("Serial numbers missing");
+  });
+
+  it("flags a hole in the invoice series of the year", async () => {
+    vi.mocked(listTaxInvoicesIssuedBetween).mockResolvedValue([invoiceOf({ id: "inv-3", serial: 3 })]);
+    const text = visibleText(render(await InvoicesPage({ searchParams: search("2026-10") })));
+    expect(text).toContain("Serial numbers missing from the series: 1, 2");
+  });
+
+  it("lists the month's payments and how they line up with the invoices", async () => {
+    vi.mocked(listTaxInvoicesIssuedBetween).mockResolvedValue([invoiceOf({ id: "inv-1", serial: 1 })]);
+    vi.mocked(listPaymentsForStaff).mockResolvedValue([
+      {
+        id: "pay-1", businessId: "biz-1", businessName: "QA Premium Business", provider: "razorpay", providerPaymentId: "pay_x", kind: "initial",
+        amountCents: 660_706, currency: "INR", status: "captured", paidAt: new Date("2026-10-09T06:00:00Z"), createdAt: new Date("2026-10-09T06:00:00Z"),
+        method: "card", failureReason: null, attentionReason: null, attentionResolvedAt: null, recordedByName: null, refundedAmountCents: null, refundReason: null,
+        invoiceNumber: "FY/26-27/000001",
+      },
+      {
+        id: "pay-2", businessId: "biz-2", businessName: "Thane Tailors", provider: "razorpay", providerPaymentId: "pay_y", kind: "renewal",
+        amountCents: 353_900, currency: "INR", status: "captured", paidAt: new Date("2026-10-10T06:00:00Z"), createdAt: new Date("2026-10-10T06:00:00Z"),
+        method: "upi", failureReason: null, attentionReason: null, attentionResolvedAt: null, recordedByName: null, refundedAmountCents: null, refundReason: null,
+        invoiceNumber: null,
+      },
+    ]);
+    const text = visibleText(render(await InvoicesPage({ searchParams: search("2026-10") })));
+    expect(text).toContain("2 payments in October 2026");
+    expect(text).toContain("Received in the month 2 payments, ₹10,146.06");
+    expect(text).toContain("Invoice still to issue 1 payment, ₹3,539.00");
+    expect(text).toContain("Thane Tailors");
+    expect(text).toContain("Not yet");
   });
 });

@@ -2,9 +2,12 @@ import type { Payment } from "@brandbasket/db";
 import { describe, expect, it } from "vitest";
 import { registerTotals, type RegisterInvoice } from "@brandbasket/shared/lib/billing/invoice-register";
 import {
+  exportZipHref,
+  financialYearChips,
   missingRegisterRow,
   monthLabel,
   monthLinks,
+  rateLabel,
   registerMoney,
   registerRow,
   registerTotalsView,
@@ -153,5 +156,25 @@ describe("missingRegisterRow", () => {
       detail: "₹3,539 on 9 October 2026",
       href: "/clients/biz-1/billing#tax-invoices",
     });
+  });
+});
+
+describe("the CA register view", () => {
+  it("labels a rate without rounding a half point away", () => {
+    expect(rateLabel(1_800)).toBe("18%");
+    expect(rateLabel(150)).toBe("1.50%");
+  });
+
+  it("links the twelve months of the year and marks the open one, leaving out months the register has no page for", () => {
+    const months = ["2026-04", "2026-05", "2026-06", "2026-07", "2026-08", "2026-09", "2026-10", "2026-11", "2026-12", "2027-01", "2027-02", "2027-03"].map((month, index) => ({ month, count: index }));
+    const chips = financialYearChips("2026-10", months);
+    expect(chips).toHaveLength(12);
+    expect(chips[6]).toEqual({ month: "2026-10", label: "Oct", href: "/invoices?month=2026-10", count: 6, current: true });
+    expect(chips.filter((chip) => chip.current)).toHaveLength(1);
+    expect(financialYearChips("2999-12", [{ month: "2999-12", count: 0 }, { month: "3000-01", count: 0 }]).map((chip) => chip.month)).toEqual(["2999-12"]);
+  });
+
+  it("links the month's ZIP", () => {
+    expect(exportZipHref("2026-10")).toBe("/invoices/export/zip?month=2026-10");
   });
 });

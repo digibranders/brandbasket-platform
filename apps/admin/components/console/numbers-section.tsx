@@ -8,6 +8,7 @@ import { Notice } from "@/components/console/notice";
 import { Section } from "@/components/console/section";
 import { listBoughtServices } from "@/lib/server/bought-services";
 import { getStaffDb } from "@/lib/server/db";
+import { TableScroll } from "@/components/console/table-scroll";
 
 export type NumbersNotice = "saved" | "invalid" | "not-bought";
 
@@ -46,7 +47,7 @@ const SERVICES: Readonly<
     ],
   },
   search: {
-    title: "Search",
+    title: "Local SEO + AEO",
     fields: [
       { name: "keywordsPageOne", label: "Searches on Google's first page" },
       { name: "keywordsPageOnePrev", label: "Last month's searches on the first page" },
@@ -131,38 +132,40 @@ export async function NumbersSection({
                 </button>
               </div>
             </form>
-            <table className="mt-6 w-full max-w-2xl text-left text-sm">
-              <caption className="pb-2 text-left text-sm text-ink-soft">Last three months saved for {title}</caption>
-              <thead>
-                <tr className="border-b border-line text-ink-soft">
-                  <th scope="col" className="py-2 pr-4 font-normal">
-                    Month
-                  </th>
-                  {columns.map((column) => (
-                    <th key={column.label} scope="col" className="py-2 pr-4 font-normal">
-                      {column.label}
+            <TableScroll label={`Saved numbers for ${title}`} className="mt-6">
+              <table className="w-full max-w-2xl text-left text-sm">
+                <caption className="pb-2 text-left text-sm text-ink-soft">Last three months saved for {title}</caption>
+                <thead>
+                  <tr className="border-b border-line text-ink-soft">
+                    <th scope="col" className="py-2 pr-4 font-normal">
+                      Month
                     </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-line tabular-nums">
-                {saved.map(({ month, rows }) => {
-                  const row = rows.find((candidate) => candidate.service === service);
-                  return (
-                    <tr key={month}>
-                      <th scope="row" className="py-2 pr-4 font-normal">
-                        {monthLabel(month)}
+                    {columns.map((column) => (
+                      <th key={column.label} scope="col" className="py-2 pr-4 font-normal">
+                        {column.label}
                       </th>
-                      {columns.map((column) => (
-                        <td key={column.label} className="py-2 pr-4">
-                          {(row === undefined ? null : column.show(row)) ?? "-"}
-                        </td>
-                      ))}
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-line tabular-nums">
+                  {saved.map(({ month, rows }) => {
+                    const row = rows.find((candidate) => candidate.service === service);
+                    return (
+                      <tr key={month}>
+                        <th scope="row" className="py-2 pr-4 font-normal">
+                          {monthLabel(month)}
+                        </th>
+                        {columns.map((column) => (
+                          <td key={column.label} className="py-2 pr-4">
+                            {(row === undefined ? null : column.show(row)) ?? "-"}
+                          </td>
+                        ))}
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </TableScroll>
           </div>
         );
       })}
