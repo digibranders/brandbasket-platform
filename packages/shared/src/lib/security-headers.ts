@@ -21,6 +21,11 @@ export interface SecurityHeaderOptions {
    * the browser then sends nothing; without it here the browser would refuse the reports a DSN asks it to send.
    */
   readonly errorReportingOrigin?: string;
+  /**
+   * The customer dashboard loads its Google Tag Manager container (Google Analytics and Microsoft Clarity tags). Left
+   * out on the staff console, which loads no tags.
+   */
+  readonly tagManager?: boolean;
 }
 
 export interface SecurityHeader {
@@ -54,6 +59,52 @@ const CALENDLY_ORIGIN = "https://calendly.com";
 const RAZORPAY_SCRIPT_ORIGINS = ["https://checkout.razorpay.com", "https://cdn.razorpay.com"] as const;
 const RAZORPAY_FRAME_ORIGIN = "https://api.razorpay.com";
 const RAZORPAY_REPORTING_ORIGIN = "https://lumberjack.razorpay.com";
+
+interface TagOrigins {
+  readonly script: readonly string[];
+  readonly style: readonly string[];
+  readonly img: readonly string[];
+  readonly font: readonly string[];
+  readonly connect: readonly string[];
+  readonly frame: readonly string[];
+}
+
+const NO_TAG_ORIGINS: TagOrigins = { script: [], style: [], img: [], font: [], connect: [], frame: [] };
+
+/**
+ * Google Tag Manager with its Google Analytics 4 and Microsoft Clarity tags, as the marketing website allows them (Google's
+ * CSP guide, developers.google.com/tag-platform/security/guides/csp, with India's TLD; Microsoft's Clarity CSP guide). Tag
+ * Manager's Preview mode origins are included so the container can be debugged. Custom JavaScript variables would need
+ * 'unsafe-eval'; the container must not use them.
+ */
+const TAG_MANAGER_ORIGINS: TagOrigins = {
+  script: ["https://www.googletagmanager.com", "https://tagmanager.google.com", "https://*.clarity.ms"],
+  style: ["https://www.googletagmanager.com", "https://tagmanager.google.com", "https://fonts.googleapis.com"],
+  img: [
+    "https://www.googletagmanager.com",
+    "https://ssl.gstatic.com",
+    "https://www.gstatic.com",
+    "https://*.google-analytics.com",
+    "https://*.g.doubleclick.net",
+    "https://www.google.com",
+    "https://www.google.co.in",
+    "https://*.clarity.ms",
+    "https://c.bing.com",
+  ],
+  font: ["https://fonts.gstatic.com", "data:"],
+  connect: [
+    "https://www.googletagmanager.com",
+    "https://*.google-analytics.com",
+    "https://*.analytics.google.com",
+    "https://*.g.doubleclick.net",
+    "https://pagead2.googlesyndication.com",
+    "https://www.google.com",
+    "https://www.google.co.in",
+    "https://*.clarity.ms",
+    "https://c.bing.com",
+  ],
+  frame: ["https://www.googletagmanager.com"],
+};
 
 /** Two years, the value browsers' preload lists expect. */
 const HSTS_MAX_AGE_SECONDS = 63_072_000;
@@ -100,8 +151,9 @@ export function framedSiteOrigins(
   return [...new Set(origins)];
 }
 
-export function contentSecurityPolicy({ development, https, framedOrigins, razorpayCheckout, errorReportingOrigin }: SecurityHeaderOptions): string {
+export function contentSecurityPolicy({ development, https, framedOrigins, razorpayCheckout, errorReportingOrigin, tagManager = false }: SecurityHeaderOptions): string {
   framedOrigins.forEach(assertFramedOrigin);
+  const tags = tagManager ? TAG_MANAGER_ORIGINS : NO_TAG_ORIGINS;
 
   const directives: readonly (readonly string[])[] = [
     ["default-src", "'self'"],
@@ -114,14 +166,15 @@ export function contentSecurityPolicy({ development, https, framedOrigins, razor
       TURNSTILE_ORIGIN,
       WEB_ANALYTICS_SCRIPT_ORIGIN,
       ...(razorpayCheckout ? RAZORPAY_SCRIPT_ORIGINS : []),
+      ...tags.script,
     ],
-    ["style-src", "'self'", "'unsafe-inline'", CALENDLY_SCRIPT_ORIGIN],
+    ["style-src", "'self'", "'unsafe-inline'", CALENDLY_SCRIPT_ORIGIN, ...tags.style],
     // i.ytimg.com: a free listing's featured video is a YouTube link, shown in the dashboard by its thumbnail.
     // i.vimeocdn.com: the poster of a Premium member's Vimeo video.
-    ["img-src", "'self'", "data:", "blob:", YOUTUBE_THUMBNAIL_ORIGIN, VIMEO_IMAGE_ORIGIN],
+    ["img-src", "'self'", "data:", "blob:", YOUTUBE_THUMBNAIL_ORIGIN, VIMEO_IMAGE_ORIGIN, ...tags.img],
     // blob: lets the Photos tab read a chosen video's length in the browser before it is sent; videos are the page's own.
     ["media-src", "'self'", "blob:"],
-    ["font-src", "'self'"],
+    ["font-src", "'self'", ...tags.font],
     [
       "connect-src",
       "'self'",
@@ -133,8 +186,9 @@ export function contentSecurityPolicy({ development, https, framedOrigins, razor
       ...(errorReportingOrigin === undefined ? [] : [errorReportingOrigin]),
       // *.upload.vimeo.com: the browser sends a member's video straight to Vimeo's upload servers.
       VIMEO_UPLOAD_ORIGIN,
+      ...tags.connect,
     ],
-    ["frame-src", CALENDLY_ORIGIN, TURNSTILE_ORIGIN, VIMEO_PLAYER_ORIGIN, ...framedOrigins, ...(razorpayCheckout ? [RAZORPAY_FRAME_ORIGIN] : [])],
+    ["frame-src", CALENDLY_ORIGIN, TURNSTILE_ORIGIN, VIMEO_PLAYER_ORIGIN, ...framedOrigins, ...(razorpayCheckout ? [RAZORPAY_FRAME_ORIGIN] : []), ...tags.frame],
     ["object-src", "'none'"],
     ["base-uri", "'self'"],
     ["form-action", "'self'"],

@@ -3,6 +3,7 @@ import { vercelProductionRequirements } from "@brandbasket/shared/lib/production
 import { withPayload } from "@payloadcms/next/withPayload";
 import { withSentryConfig } from "@sentry/nextjs/config";
 import { securityHeaders, sentryIngestOrigin } from "@brandbasket/shared/lib/security-headers";
+import { GTM_ID } from "./lib/consent";
 import { deploymentIdOf } from "./lib/deployment-id";
 import { previewOrigins } from "./lib/preview-origins";
 
@@ -47,6 +48,8 @@ const nextConfig: NextConfig = {
           razorpayCheckout: true,
           // The browser's Sentry reports go to the DSN's own ingest host, and only when a DSN was set for this build.
           errorReportingOrigin: sentryIngestOrigin(process.env.NEXT_PUBLIC_SENTRY_DSN),
+          // The dashboard's Tag Manager container (Google Analytics, Clarity), only when a container id is set for this build.
+          tagManager: GTM_ID !== null,
         }),
       },
       // The site tracking script (public/t/v1.js): customers' pages load it from here, so it may be cached for an hour and

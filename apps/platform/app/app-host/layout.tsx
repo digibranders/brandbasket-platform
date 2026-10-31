@@ -1,8 +1,11 @@
 import type { Metadata, Viewport } from "next";
 import type { ReactElement, ReactNode } from "react";
 import { DashboardRoot, dashboardMetadataBase, dashboardViewport } from "@brandbasket/shared/ui/panel/dashboard-root";
+import { ConsentBanner } from "@/components/consent/ConsentBanner";
 import { BrandProvider } from "@/components/panel/brand-provider";
 import { brandbasketFontVariables } from "@/lib/brandbasket-font";
+import { GTM_ID } from "@/lib/consent";
+import { legalLinksFor } from "@/lib/legal-links";
 import { requestBrand } from "@/lib/server/request-brand";
 import { requireSurfaceHost } from "@/lib/server/surface-host";
 
@@ -32,6 +35,7 @@ export default async function AppHostLayout({ children }: AppHostLayoutProps): P
   return (
     <DashboardRoot brand={{ id: "brandbasket", className: brandbasketFontVariables }} app="customer">
       <BrandProvider brand={brand}>{children}</BrandProvider>
+      {GTM_ID === null ? null : <ConsentBanner privacyHref={legalLinksFor(brand).privacy} />}
     </DashboardRoot>
   );
 }
