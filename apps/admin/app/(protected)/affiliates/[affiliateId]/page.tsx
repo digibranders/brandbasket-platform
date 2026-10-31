@@ -39,6 +39,7 @@ import { StatusPill, type PillTone } from "@/components/console/status-pill";
 import { describeAffiliateReward, describeRewardCycles, findAffiliate, payoutToday } from "@/lib/server/affiliate-admin";
 import { getStaffDb } from "@/lib/server/db";
 import { requireStaffCan } from "@/lib/server/staff-role";
+import { logStaffAccess } from "@/lib/server/staff-access-log";
 import { cancelEarningAction, emailLoginLinkAction, issueLoginLinkAction, recordPayoutAction, updateAffiliateAction } from "./actions";
 import { TableScroll } from "@/components/console/table-scroll";
 
@@ -91,8 +92,9 @@ function formValues(affiliate: Affiliate): AffiliateFormValues {
  * to choose a password (the Sign-in section).
  */
 export default async function AffiliatePage({ params, searchParams }: AffiliatePageProps): Promise<ReactElement> {
-  await requireStaffCan("money");
+  const { user } = await requireStaffCan("money");
   const { affiliateId } = await params;
+  await logStaffAccess({ staffUserId: user.id, action: "affiliates.detail", targetType: "affiliate", targetId: affiliateId });
   const { mail } = await searchParams;
   const affiliate = await findAffiliate(affiliateId);
   if (affiliate === null) notFound();
