@@ -69,7 +69,7 @@ describe("PreviewCard history", () => {
     expect(html).toContain("Every version we have sent you, newest first.");
     expect(html.indexOf("Version 2")).toBeLessThan(html.indexOf("Version 1"));
     expect(html).toContain("www.example.com");
-    expect(html).toContain("Sent <span");
+    expect(html).not.toContain("font-figure");
     expect(html).toContain("Mon 2 Nov, 3:57 pm");
     expect(html).toContain("You asked for changes");
     expect(html.match(/Open preview/g)).toHaveLength(2);

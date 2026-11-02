@@ -11,7 +11,6 @@ import { PreviewApprove } from "./preview-approve";
 import { PreviewFeedback } from "./preview-feedback";
 
 const TEXT_LINK = "w-fit text-[0.9375rem] font-semibold text-ink underline underline-offset-[3px]";
-const FIGURE = "font-figure tabular-nums";
 
 interface PreviewCardProps {
   /** Every version we sent, newest first. */
@@ -84,7 +83,7 @@ function VersionItem({ row, reviewing, answer }: { readonly row: VersionRow; rea
           </p>
           <p className="mt-0.5 break-words text-[0.9375rem] text-ink-2">
             {row.host === null ? null : <>{row.host} &middot; </>}
-            Sent <span className={FIGURE}>{row.sent}</span>
+            Sent {row.sent}
             {row.outcome === null ? null : <> &middot; {row.outcome}</>}
           </p>
         </div>
@@ -137,7 +136,7 @@ export function PreviewCard({ rows, inProgress, changes, reviewing, pictureUrl, 
                   {inProgress.readyBy === null ? null : (
                     <>
                       {" "}
-                      &middot; ready by <span className={FIGURE}>{inProgress.readyBy}</span>
+                      &middot; ready by {inProgress.readyBy}
                     </>
                   )}
                 </p>
@@ -159,7 +158,7 @@ export function PreviewCard({ rows, inProgress, changes, reviewing, pictureUrl, 
               <span>
                 Round {changes.round} of {changes.of}
               </span>{" "}
-              &middot; asked <span className={FIGURE}>{changes.asked}</span>
+              &middot; asked {changes.asked}
             </p>
             {changes.doneIn === null ? null : <p className="font-semibold text-ink">Done in Version {changes.doneIn}</p>}
           </div>
