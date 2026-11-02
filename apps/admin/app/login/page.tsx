@@ -7,7 +7,7 @@ import { QuietFrame } from "@/components/console/quiet-frame";
 import { signOut } from "@/lib/server/sign-out";
 import { getStaffAccess } from "@/lib/server/staff-access";
 import { adminBrand } from "@/lib/brand";
-import { signInStaff } from "./actions";
+import { confirmStaffCode, signInStaff } from "./actions";
 import { AuthFrame } from "@/components/auth/auth-frame";
 import { StaffSignInForm } from "@/components/auth/sign-in-form";
 
@@ -40,7 +40,7 @@ export default async function AdminLoginPage({ searchParams }: {
   return (
     <AuthFrame title="Welcome back." description="Sign in to keep good things moving.">
       <TurnstileScope>
-        <StaffSignInForm action={signInStaff} passwordChanged={(await searchParams).notice === "password-changed"} />
+        <StaffSignInForm action={signInStaff} confirmAction={confirmStaffCode} passwordChanged={(await searchParams).notice === "password-changed"} />
       </TurnstileScope>
     </AuthFrame>
   );

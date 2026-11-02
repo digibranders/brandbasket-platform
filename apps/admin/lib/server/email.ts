@@ -12,3 +12,12 @@ export function realDeployment(): boolean {
 export function customerEmailTransport(db: Database): EmailTransport {
   return createAppEmailTransport(db, { realDeployment: realDeployment() });
 }
+
+/**
+ * Local development only: `EMAIL_CODE_BYPASS=true` makes any six digits finish the console's code step (the code is still
+ * emailed, so it is in the outbox). Never on where real customers can reach the app, and a real deployment refuses to
+ * start with it set (packages/shared/src/server/runtime-environment.ts).
+ */
+export function emailCodeBypassed(): boolean {
+  return process.env.EMAIL_CODE_BYPASS?.trim() === "true" && !realDeployment();
+}

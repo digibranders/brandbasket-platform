@@ -94,8 +94,6 @@ export async function acceptStaffInvite(token: string, form: { readonly name: st
   // The claim is the gate: if another tab used the link first, nobody is added (an account made just now stays without access).
   if (!(await claimStaffInvite(db, invite.id))) return { status: "error", message: GONE };
   await addStaffMember(db, { userId, role: invite.role });
-  if (mode === "create" && form !== null) {
-    await getAuth().api.signInEmail({ body: { email: invite.email, password: form.password }, headers: await headers() });
-  }
+  // A new member is not signed in here: a password alone starts no console session, so they sign in with the emailed code.
   return { status: "joined" };
 }

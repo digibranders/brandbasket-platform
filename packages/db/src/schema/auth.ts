@@ -43,6 +43,11 @@ export const sessions = pgTable(
     token: text("token").notNull().unique(),
     ipAddress: text("ip_address"),
     userAgent: text("user_agent"),
+    /**
+     * Set only on a session made by the console's two-step sign-in (password, then an emailed code). The console
+     * ignores any session without it, so a password-only session from another door (the customer dashboard) opens nothing there.
+     */
+    secondFactorAt: timestamp("second_factor_at", { withTimezone: true }),
     userId: text("user_id")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),

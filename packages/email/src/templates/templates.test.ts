@@ -19,6 +19,7 @@ import { setupLinkEmail } from "./setup-link";
 import { affiliateLinkEmail } from "./affiliate-link";
 import { staffInviteEmail } from "./staff-invite";
 import { signupCodeEmail } from "./signup-code";
+import { staffSignInCodeEmail } from "./staff-sign-in-code";
 import { supportReplyAlertEmail } from "./support-reply-alert";
 import { supportTicketAlertEmail } from "./support-ticket-alert";
 import { systemErrorAlertEmail } from "./system-error-alert";
@@ -671,6 +672,36 @@ describe("signupCodeEmail", () => {
 
   it("is addressed without header-breaking characters", () => {
     expect(signupCodeEmail({ ...input, to: "owner@example.com\r\nBcc: x@y.z" }).to).not.toMatch(/[\r\n]/);
+  });
+});
+
+describe("staffSignInCodeEmail", () => {
+  const input = { to: "asha@brandbasket.in", code: "482913", expiresInMinutes: 5 };
+  const email = staffSignInCodeEmail(input);
+
+  it("carries the code and how long it lasts", () => {
+    expect(email.template).toBe("staff-sign-in-code");
+    expect(email.subject).toBe("Your Brandbasket console sign-in code");
+    for (const body of [email.bodyText, email.bodyHtml]) {
+      expect(body).toContain("482913");
+      expect(body).toContain("expires in 5 minutes");
+    }
+    expect(JSON.stringify(email)).not.toMatch(/[\u2013\u2014]/);
+  });
+
+  it("keeps the code out of the subject, and out of the copy the outbox stores", () => {
+    expect(email.subject).not.toContain("482913");
+    for (const text of [email.outboxCopy?.subject, email.outboxCopy?.bodyText, email.outboxCopy?.bodyHtml]) {
+      expect(text).not.toContain("482913");
+    }
+    // Local development reads the code from the outbox: this flag lets only that inbox keep the full message.
+    expect(email.outboxCopy?.linkWithheld).toBe(true);
+  });
+
+  it("refuses anything but a six-digit code", () => {
+    for (const code of ["12345", "1234567", "12345a", "<b>1</b>", ""]) {
+      expect(() => staffSignInCodeEmail({ ...input, code })).toThrow("code");
+    }
   });
 });
 

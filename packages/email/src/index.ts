@@ -30,6 +30,7 @@ export {
   type PreviewRevisionsRequestedInput,
 } from "./templates/preview-revisions-requested";
 export { signupCodeEmail, type SignupCodeInput } from "./templates/signup-code";
+export { staffSignInCodeEmail, type StaffSignInCodeInput } from "./templates/staff-sign-in-code";
 export { setupLinkEmail, type SetupLinkInput } from "./templates/setup-link";
 export { supportRequestOpenedEmail, type SupportRequestOpenedInput } from "./templates/support-request-opened";
 export { staffInviteEmail, type StaffInviteInput } from "./templates/staff-invite";

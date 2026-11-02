@@ -30,7 +30,7 @@ Then edit `apps/platform/.env.local` (and `apps/admin/.env.local`) so the databa
 APP_ORIGIN=http://app.brandbasket.localhost:3198
 NEXT_PUBLIC_APP_URL=http://app.brandbasket.localhost:3198
 ADMIN_ORIGIN=http://console.brandbasket.localhost:3199
-EMAIL_CODE_BYPASS=true        # local only: any 6 digits confirm an email sign-up
+EMAIL_CODE_BYPASS=true        # local only: any 6 digits confirm an email sign-up or the console sign-in code (also in apps/admin/.env.local)
 ```
 
 Start the dashboard with `cd apps/platform && npx next dev -p 3198`, and the staff console with

@@ -48,34 +48,40 @@ beforeEach(async () => {
 describe("account codes", () => {
   it("hands back what the code is for and the address it was emailed to with each try, and counts the tries", async () => {
     const otpId = await newOtp();
-    expect(await claimAccountOtpAttempt(dbs.staff.db, { otpId, maxAttempts: 5, now: NOW })).toEqual({
+    expect(await claimAccountOtpAttempt(dbs.staff.db, { purpose: "signup", otpId, maxAttempts: 5, now: NOW })).toEqual({
       attempts: 1,
       purpose: "signup",
       email: EMAIL,
       codeHash: "a".repeat(64),
     });
-    expect((await claimAccountOtpAttempt(dbs.staff.db, { otpId, maxAttempts: 5, now: NOW }))?.attempts).toBe(2);
+    expect((await claimAccountOtpAttempt(dbs.staff.db, { purpose: "signup", otpId, maxAttempts: 5, now: NOW }))?.attempts).toBe(2);
   });
 
   it("gives no more tries than allowed", async () => {
     const otpId = await newOtp();
-    await claimAccountOtpAttempt(dbs.staff.db, { otpId, maxAttempts: 2, now: NOW });
-    await claimAccountOtpAttempt(dbs.staff.db, { otpId, maxAttempts: 2, now: NOW });
-    expect(await claimAccountOtpAttempt(dbs.staff.db, { otpId, maxAttempts: 2, now: NOW })).toBeNull();
+    await claimAccountOtpAttempt(dbs.staff.db, { purpose: "signup", otpId, maxAttempts: 2, now: NOW });
+    await claimAccountOtpAttempt(dbs.staff.db, { purpose: "signup", otpId, maxAttempts: 2, now: NOW });
+    expect(await claimAccountOtpAttempt(dbs.staff.db, { purpose: "signup", otpId, maxAttempts: 2, now: NOW })).toBeNull();
   });
 
   it("gives no try for a code that has run out, that never existed, or whose id is not one", async () => {
     const expired = await newOtp({ expiresAt: new Date(NOW.getTime() - 1000) });
-    expect(await claimAccountOtpAttempt(dbs.staff.db, { otpId: expired, maxAttempts: 5, now: NOW })).toBeNull();
-    expect(await claimAccountOtpAttempt(dbs.staff.db, { otpId: randomUUID(), maxAttempts: 5, now: NOW })).toBeNull();
-    expect(await claimAccountOtpAttempt(dbs.staff.db, { otpId: "not-an-id", maxAttempts: 5, now: NOW })).toBeNull();
+    expect(await claimAccountOtpAttempt(dbs.staff.db, { purpose: "signup", otpId: expired, maxAttempts: 5, now: NOW })).toBeNull();
+    expect(await claimAccountOtpAttempt(dbs.staff.db, { purpose: "signup", otpId: randomUUID(), maxAttempts: 5, now: NOW })).toBeNull();
+    expect(await claimAccountOtpAttempt(dbs.staff.db, { purpose: "signup", otpId: "not-an-id", maxAttempts: 5, now: NOW })).toBeNull();
+  });
+
+  it("gives no try to a code made for another purpose, and spends none of its tries", async () => {
+    const otpId = await newOtp();
+    expect(await claimAccountOtpAttempt(dbs.staff.db, { purpose: "staff_sign_in", otpId, maxAttempts: 5, now: NOW })).toBeNull();
+    expect((await claimAccountOtpAttempt(dbs.staff.db, { purpose: "signup", otpId, maxAttempts: 5, now: NOW }))?.attempts).toBe(1);
   });
 
   it("is used up exactly once", async () => {
     const otpId = await newOtp();
     expect(await consumeAccountOtp(dbs.staff.db, otpId)).toBe(true);
     expect(await consumeAccountOtp(dbs.staff.db, otpId)).toBe(false);
-    expect(await claimAccountOtpAttempt(dbs.staff.db, { otpId, maxAttempts: 5, now: NOW })).toBeNull();
+    expect(await claimAccountOtpAttempt(dbs.staff.db, { purpose: "signup", otpId, maxAttempts: 5, now: NOW })).toBeNull();
   });
 
   it("purges codes an hour after they run out, and no sooner", async () => {
