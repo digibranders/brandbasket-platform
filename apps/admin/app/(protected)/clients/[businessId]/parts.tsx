@@ -25,6 +25,7 @@ import {
 } from "@brandbasket/shared/lib/billing/manual-payment-form";
 import { couponPhrase, type CarriedCodeHint } from "@/lib/manual-reactivation-hint";
 import { launchChecksSentence } from "@/lib/launch-check-state";
+import { SEND_PREVIEW_LABEL } from "@/lib/delivery-tab";
 import { firstPaymentAmount, initialTermPhrase, monthlyPaymentAmount } from "@brandbasket/shared/lib/billing/terms";
 import { isPlacementField } from "@brandbasket/shared/lib/directory/placement-form";
 import { formatStoredDate } from "@brandbasket/shared/lib/format";
@@ -434,7 +435,11 @@ export function ManualPaymentForm({ businessId, plan, netCents, reactivating, ca
   );
 }
 
-export function SendPreviewForm({ businessId }: { readonly businessId: string }): ReactElement {
+/**
+ * The button stays a normal button when the link is empty: the form is checked when it is sent, and the action answers with
+ * the "enter a valid link" notice, rather than a greyed-out button that gives no reason.
+ */
+export function SendPreviewForm({ businessId, label = SEND_PREVIEW_LABEL }: { readonly businessId: string; readonly label?: string }): ReactElement {
   return (
     <form action={sendPreviewAction}>
       <p className="max-w-xl text-ink-soft">
@@ -456,8 +461,8 @@ export function SendPreviewForm({ businessId }: { readonly businessId: string })
           className={fieldClasses}
         />
       </div>
-      <GatedSubmitButton className={`${buttonPrimary} mt-5`} pendingLabel="Sending…">
-        Send preview
+      <GatedSubmitButton className={`${buttonPrimary} mt-5`} pendingLabel="Sending…" formNoValidate>
+        {label}
       </GatedSubmitButton>
     </form>
   );

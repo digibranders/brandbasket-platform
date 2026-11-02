@@ -1,7 +1,8 @@
 import { eq } from "drizzle-orm";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { findFeedbackLinkForTicket, linkFeedbackTicket, listFeedbackForProject } from "./queries/project-feedback";
-import { businesses, businessMembers, projectFeedbackTickets, projects, supportTickets, users } from "./schema";
+import { businesses, businessMembers, projectFeedbackTickets, projects, supportMessages, supportTickets, users } from "./schema";
+import { withUserScope } from "./scope";
 import { openTestDatabases, resetTestDatabase, type TestDatabases } from "./testing";
 
 const OWNER = "pf-owner";
@@ -46,6 +47,20 @@ async function makeTicket(number: number, subject: string): Promise<string> {
   return ticket.id;
 }
 
+/** Written as the customer, the way the dashboard writes it: the database refuses a message whose author is not the signed-in user. */
+async function addCustomerMessage(ticketId: string, body: string, key: string): Promise<void> {
+  await withUserScope(dbs.app.db, OWNER, (tx) =>
+    tx.insert(supportMessages).values({
+      ticketId,
+      authorRole: "customer",
+      authorUserId: OWNER,
+      body,
+      submissionKey: key,
+      submissionHash: "a".repeat(64),
+    }),
+  );
+}
+
 beforeEach(async () => {
   await resetTestDatabase(dbs.owner);
   await dbs.staff.db.insert(users).values([
@@ -71,6 +86,19 @@ describe("project feedback tickets", () => {
       round: 1,
     });
     expect(rows[0]?.createdAt).toBeInstanceOf(Date);
+  });
+
+  it("carries the first thing the customer wrote, and null when there is no message", async () => {
+    const written = await makeTicket(7, "Preview feedback, round 1: Make the logo bigger");
+    await linkFeedbackTicket(dbs.staff.db, { ticketId: written, projectId, businessId, round: 1 });
+    await addCustomerMessage(written, "Make the logo bigger and move the phone number to the top.", "customer_msg_1");
+    await addCustomerMessage(written, "One more thing: the footer.", "customer_msg_2");
+    const bare = await makeTicket(8, "Preview feedback, round 2: Fix the menu");
+    await linkFeedbackTicket(dbs.staff.db, { ticketId: bare, projectId, businessId, round: 2 });
+
+    const rows = await listFeedbackForProject(dbs.staff.db, { projectId, businessId });
+    expect(rows.find((row) => row.ticketId === written)?.body).toBe("Make the logo bigger and move the phone number to the top.");
+    expect(rows.find((row) => row.ticketId === bare)?.body).toBeNull();
   });
 
   it("leaves one row when the same ticket is linked twice", async () => {
