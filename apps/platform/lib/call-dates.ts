@@ -1,5 +1,7 @@
-import { addDays, weekdayIndex } from "@brandbasket/shared/lib/calendar/local-date";
 import { dayKey } from "@brandbasket/shared/lib/call-slots";
+import { addWorkingDays } from "@brandbasket/shared/lib/working-days";
+
+export { addWorkingDays };
 
 /** Where the team works: call times, promises and paid dates are all said in India's time. */
 export const BRAND_TIME_ZONE = "Asia/Kolkata";
@@ -19,17 +21,6 @@ export interface PromiseDates {
 export function promiseDates(callStartIso: string): PromiseDates {
   const startBy = dayKey(new Date(Date.parse(callStartIso) + START_WITHIN_HOURS * HOUR_MS).toISOString(), BRAND_TIME_ZONE);
   return { startBy, liveBy: addWorkingDays(dayKey(callStartIso, BRAND_TIME_ZONE), LIVE_WITHIN_WORKING_DAYS) };
-}
-
-/** shortcut: Monday to Friday only, public holidays are not skipped; add a holiday list when the team publishes one. */
-export function addWorkingDays(date: string, days: number): string {
-  let day = date;
-  let left = days;
-  while (left > 0) {
-    day = addDays(day, 1);
-    if (weekdayIndex(day) < 5) left -= 1;
-  }
-  return day;
 }
 
 /** "Thu 5 Nov" for a `YYYY-MM-DD` date. */

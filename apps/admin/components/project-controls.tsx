@@ -52,12 +52,6 @@ export async function ProjectControls({ businessId, notice }: ProjectControlsPro
           </form>
         ) : null}
 
-        {canMoveProject("grant-round", project.status) ? (
-          <p className="text-sm text-ink-2">
-            Rounds of changes used: <span className="font-figure tabular-nums">{project.revisionRoundsUsed} of {project.revisionRoundsIncluded}</span>
-          </p>
-        ) : null}
-
         {canMoveProject("plan-launch", project.status) ? (
           <form action={planLaunchAction} className="grid max-w-md gap-2">
             {ids}

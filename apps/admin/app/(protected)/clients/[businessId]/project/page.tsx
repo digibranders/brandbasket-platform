@@ -1,6 +1,7 @@
 import {
   findBusinessWebsiteUrl,
   findLatestKickoffOutcome,
+  findLatestProjectEventAt,
   findOpenProjectForStaff,
   findSetupCallBooking,
   listFeedbackForProject,
@@ -12,39 +13,29 @@ import type { ReactElement } from "react";
 import { DOMAIN_CONNECT_NOTICES, readDomainConnectNotice } from "@brandbasket/shared/lib/domain-connect-notices";
 import { isTemporarySubdomain } from "@brandbasket/shared/lib/onboarding/domain-form";
 import { clientPaymentState } from "@brandbasket/shared/lib/billing/client-payment";
-import { CUSTOMER_STAGE_HEADLINE } from "@brandbasket/shared/lib/project-customer-line";
 import { PROJECT_LAUNCH_NOTICES, readProjectLaunchNotice } from "@brandbasket/shared/lib/project-launch-notices";
 import { PROJECT_PREVIEW_NOTICES, readProjectPreviewNotice } from "@brandbasket/shared/lib/project-preview-notices";
-import { STAFF_STAGE_LABELS, staffStageOf } from "@brandbasket/shared/lib/project-stage";
 import { SUPPORT_STATUS_LABELS } from "@brandbasket/shared/lib/support";
-import { HairlineList, HairlineRow } from "@/components/console/hairline-list";
+import { DeliveryFacts, FeedbackList, NextStepCard, PreviewVersionList } from "@/components/console/delivery-tab";
+import { Fold } from "@/components/console/fold";
 import { FreeAddressForm } from "@/components/console/free-address-form";
 import { KickoffCallSection } from "@/components/console/kickoff-call-section";
 import { Notice } from "@/components/console/notice";
 import { Quiet, Section } from "@/components/console/section";
-import { StartBuildingForm, WebsiteSection } from "@/components/console/website-section";
+import { WebsiteSection } from "@/components/console/website-section";
 import { billingNeedsAttention } from "@/lib/billing-attention";
 import { buildPanelState } from "@/lib/build-summary";
 import { isPastIncludedRounds } from "@/lib/build-rounds";
 import { clientNextStep, previewLateReason } from "@/lib/client-next-step";
+import { updatedPreviewDay, updatedPreviewLateReason } from "@/lib/delivery-tab";
+import { readProjectMoveNotice } from "@/lib/project-move-notices";
+import { readWebsiteMoveNotice } from "@/lib/website-form";
 import { ProjectControls } from "@/components/project-controls";
 import { openClientTab } from "@/lib/server/client-page";
 import { isWebsiteBought } from "@/lib/server/bought-services";
 import { getStaffDb } from "@/lib/server/db";
 import { LAUNCH_RESEND_WINDOW_MS } from "@/lib/server/project-launch";
-import {
-  CheckAddressForm,
-  CustomerLink,
-  DNS_STATUS_TEXT,
-  Facts,
-  GoLivePanel,
-  LaunchChecksForm,
-  MoveDomainPanel,
-  ResendLaunchEmailForm,
-  ResendPreviewEmailForm,
-  SendPreviewForm,
-  When,
-} from "../parts";
+import { CustomerLink, DNS_STATUS_TEXT, Facts, MoveDomainPanel, ResendLaunchEmailForm, When } from "../parts";
 
 export const metadata: Metadata = { title: "Client project" };
 
@@ -66,7 +57,20 @@ export default async function ClientProjectPage({
   const nextStep = clientNextStep(project);
   const buildState = buildPanelState(project);
   const now = new Date();
-  const late = nextStep === "preview" ? previewLateReason(project, now) : null;
+  // Once changes are asked for, the promise is the updated preview's day, the same one the customer is shown, not the first preview's.
+  const changesAskedAt =
+    project !== null && project.status === "revisions"
+      ? await findLatestProjectEventAt(getStaffDb(), { projectId: project.id, status: "revisions" })
+      : null;
+  const updatedDay = changesAskedAt === null ? null : updatedPreviewDay(changesAskedAt);
+  const late =
+    project !== null && project.status === "revisions"
+      ? updatedDay === null
+        ? null
+        : updatedPreviewLateReason(updatedDay, now)
+      : nextStep === "preview"
+        ? previewLateReason(project, now)
+        : null;
   const logo = client.media.filter((asset) => asset.purpose === "logo");
   const photos = client.media.filter((asset) => asset.purpose === "photo");
   const feedback =
@@ -87,12 +91,20 @@ export default async function ClientProjectPage({
       : await listLaunchChecks(getStaffDb(), { projectId: project.id, businessId: client.businessId });
   const billingAttention = billingNeedsAttention(clientPaymentState(client.billing, now), client.billing);
   const openBuild = project === null ? null : await findOpenProjectForStaff(getStaffDb(), client.businessId);
+  const build =
+    openBuild === null
+      ? null
+      : { rounds: { used: openBuild.revisionRoundsUsed, included: openBuild.revisionRoundsIncluded }, launchPlannedOn: openBuild.launchPlannedOn };
+  const latestFeedback = feedback[0] ?? null;
   const roundsPastAllowance = openBuild !== null && isPastIncludedRounds(openBuild.revisionRoundsUsed, openBuild.revisionRoundsIncluded);
   const launchEmailOpen =
     project !== null &&
     project.status === "live" &&
     project.launchedAt !== null &&
     now.getTime() - project.launchedAt.getTime() <= LAUNCH_RESEND_WINDOW_MS;
+  const hasControls = websiteBought || launchEmailOpen;
+  // A move or build notice is printed inside the controls, so a fold that is shut would hide the answer to what was just pressed.
+  const controlsOpen = project?.status === "on_hold" || readProjectMoveNotice(sp.move) !== null || readWebsiteMoveNotice(sp.build) !== null;
 
   return (
     <>
@@ -110,55 +122,6 @@ export default async function ClientProjectPage({
         </div>
       )}
 
-      {project !== null && project.status === "submitted" ? (
-        <Section title="Start building" aside="The next step">
-          <StartBuildingForm businessId={client.businessId} />
-        </Section>
-      ) : null}
-      {nextStep === "preview" ? (
-        <Section
-          title="Send a preview"
-          tone={late === null ? "plain" : "attention"}
-          aside={late === null ? (project?.status === "submitted" ? undefined : "The next step") : <span className="font-semibold text-error">{late}</span>}
-        >
-          <SendPreviewForm businessId={client.businessId} />
-        </Section>
-      ) : null}
-      {project !== null && project.status === "preview" ? (
-        <Section title="Preview email">
-          <ResendPreviewEmailForm businessId={client.businessId} />
-        </Section>
-      ) : null}
-      {client.movingTo !== null && client.domain !== null ? (
-        <Section title="Move to their own domain" id="domain" aside="Asked by the customer">
-          <MoveDomainPanel
-            businessId={client.businessId}
-            current={client.domain.hostname}
-            movingTo={client.movingTo}
-            siteUrl={websiteUrl ?? project?.previewUrl ?? null}
-          />
-        </Section>
-      ) : null}
-      {nextStep === "live" ? (
-        <Section title="Go live" id="domain" aside="The next step">
-          <div className="space-y-8">
-            <LaunchChecksForm businessId={client.businessId} done={launchChecks.map((check) => check.key)} />
-            {client.domain === null ? null : <CheckAddressForm businessId={client.businessId} />}
-            <GoLivePanel
-              businessId={client.businessId}
-              domain={client.domain}
-              previewUrl={project?.previewUrl ?? null}
-              addressUnverified={launchNotice === "address-unverified"}
-            />
-          </div>
-        </Section>
-      ) : null}
-      {launchEmailOpen ? (
-        <Section title="Launch email">
-          <ResendLaunchEmailForm businessId={client.businessId} />
-        </Section>
-      ) : null}
-
       {billingAttention || roundsPastAllowance ? (
         <div className="mb-8 space-y-3">
           {billingAttention ? (
@@ -172,80 +135,72 @@ export default async function ClientProjectPage({
         </div>
       ) : null}
 
-      <Section title="Build">
-        {project === null || buildState === "none" ? (
-          <Quiet>No project yet.</Quiet>
-        ) : buildState === "waiting" ? (
-          <Quiet>Not started. Waiting for the kickoff call.</Quiet>
-        ) : (
-          <>
-            <Facts
-              items={[
-                { label: "Stage", value: STAFF_STAGE_LABELS[staffStageOf(project.status)] },
-                { label: "Customer sees", value: CUSTOMER_STAGE_HEADLINE[project.status] },
-                ...(kickoff === null
-                  ? []
-                  : [
-                      {
-                        label: "Kickoff",
-                        value: kickoffConfirmed ? "Confirmed by staff" : "Started automatically, not confirmed by staff",
-                      },
-                    ]),
-                ...(project.onboardingSubmittedAt === null
-                  ? []
-                  : [{ label: "Sent to us", value: <When date={project.onboardingSubmittedAt} /> }]),
-                { label: "First preview due", value: project.slaDueAt === null ? null : <When date={project.slaDueAt} /> },
-                ...(project.previewUrl === null
-                  ? []
-                  : [
-                      { label: "Preview link", value: <CustomerLink url={project.previewUrl} /> },
-                      { label: "Preview sent", value: project.previewSentAt === null ? null : <When date={project.previewSentAt} /> },
-                    ]),
-                ...(project.revisionRoundsGranted === 0 ? [] : [{ label: "Revision rounds used", value: String(project.revisionRoundsGranted) }]),
-                ...(project.launchedAt === null ? [] : [{ label: "Launched", value: <When date={project.launchedAt} /> }]),
-              ]}
-            />
-            {project.status === "revisions" ? (
-              <p className="mt-6 max-w-xl border-l-2 border-rattan py-1 pl-4 text-sm leading-relaxed">
-                They asked for changes. What they wrote is in Requests.
-              </p>
-            ) : null}
-          </>
-        )}
-      </Section>
-
-      {previewVersions.length === 0 ? null : (
-        <Section title="Preview history">
-          <Facts
-            items={previewVersions.map((version) => ({
-              label: `Version ${version.version}`,
-              value: (
-                <>
-                  <CustomerLink url={version.previewUrl} /> <When date={version.sentAt} />
-                </>
-              ),
-            }))}
+      {project === null ? (
+        <Quiet>No project yet.</Quiet>
+      ) : (
+        <>
+          <NextStepCard
+            businessId={client.businessId}
+            status={project.status}
+            late={late}
+            rounds={build?.rounds ?? null}
+            latestFeedback={latestFeedback}
+            goLive={{
+              doneChecks: launchChecks.map((check) => check.key),
+              domain: client.domain,
+              previewUrl: project.previewUrl,
+              addressUnverified: launchNotice === "address-unverified",
+            }}
+          />
+          <DeliveryFacts
+            status={project.status}
+            slaDueAt={project.slaDueAt}
+            updatedPreviewDay={updatedDay}
+            build={build}
+            kickoffConfirmed={kickoff === null ? null : kickoffConfirmed}
+          />
+        </>
+      )}
+      {client.movingTo !== null && client.domain !== null ? (
+        <Section title="Move to their own domain" id="domain" aside="Asked by the customer">
+          <MoveDomainPanel
+            businessId={client.businessId}
+            current={client.domain.hostname}
+            movingTo={client.movingTo}
+            siteUrl={websiteUrl ?? project?.previewUrl ?? null}
           />
         </Section>
+      ) : null}
+      {previewVersions.length === 0 ? null : (
+        <Fold title="Preview versions" count={previewVersions.length} open={project?.status === "preview"}>
+          <PreviewVersionList versions={previewVersions} />
+        </Fold>
       )}
-
       {feedback.length === 0 ? null : (
-        <Section title="Client feedback">
-          <HairlineList label="Client feedback">
-            {feedback.map((item) => (
-              <HairlineRow
-                key={item.ticketId}
-                href={`/support/${item.ticketId}`}
-                title={item.subject}
-                sub={`${item.displayRef} · Round ${item.round} · ${SUPPORT_STATUS_LABELS[item.status]}`}
-                trail={<When date={item.createdAt} />}
-              />
-            ))}
-          </HairlineList>
-        </Section>
+        <Fold title="Customer feedback" count={feedback.length}>
+          <FeedbackList
+            items={feedback.map((item) => ({
+              ticketId: item.ticketId,
+              round: item.round,
+              subject: item.subject,
+              body: item.body,
+              createdAt: item.createdAt,
+              statusLabel: SUPPORT_STATUS_LABELS[item.status],
+            }))}
+          />
+        </Fold>
       )}
-
-      {websiteBought ? <ProjectControls businessId={client.businessId} notice={sp.move} /> : null}
+      {hasControls ? (
+        <Fold title="More controls" open={controlsOpen}>
+          {launchEmailOpen ? (
+            <Section title="Launch email">
+              <ResendLaunchEmailForm businessId={client.businessId} />
+            </Section>
+          ) : null}
+          {websiteBought ? <ProjectControls businessId={client.businessId} notice={sp.move} /> : null}
+          {websiteBought ? <WebsiteSection businessId={client.businessId} staffId={granted.user.id} notice={sp.build} /> : null}
+        </Fold>
+      ) : null}
 
       <Section title="Domain" id={client.movingTo === null && nextStep !== "live" ? "domain" : undefined}>
         {client.domain === null ? (
@@ -339,7 +294,6 @@ export default async function ClientProjectPage({
         )}
       </Section>
       <KickoffCallSection businessId={client.businessId} />
-      {websiteBought ? <WebsiteSection businessId={client.businessId} staffId={granted.user.id} notice={sp.build} /> : null}
     </>
   );
 }

@@ -1,11 +1,11 @@
 import type { ProjectStatus } from "@brandbasket/db";
 import { dayKey } from "@brandbasket/shared/lib/call-slots";
+import { REVISION_READY_WORKING_DAYS } from "@brandbasket/shared/lib/working-days";
 import { addWorkingDays, BRAND_TIME_ZONE, dayMonth, shortDay } from "@/lib/call-dates";
 
 /** The days the customer is given (decision 4): changing one number here changes every date the Website page shows. */
 const APPROVE_WITHIN_WORKING_DAYS = 2;
 const LIVE_AFTER_APPROVAL_WORKING_DAYS = 1;
-const REVISION_READY_WORKING_DAYS = 2;
 const LIVE_WITHIN_WORKING_DAYS_OF_CALL = 7;
 
 export interface TimelineProject {
