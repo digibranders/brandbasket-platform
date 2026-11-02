@@ -17,8 +17,7 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run --config vitest.config.ts",
     "test:integration": "vitest run --config vitest.integration.config.ts",
-    "staff:create": "tsx scripts/create-staff.ts",
-    "staff:reset-2fa": "tsx scripts/reset-staff-2fa.ts"
+    "staff:create": "tsx scripts/create-staff.ts"
   },
   "dependencies": {
     "@brandbasket/db": "workspace:*",

@@ -34,11 +34,12 @@ export interface CallAlertInput {
   readonly note: string | null;
 }
 
-/** The facts and text of the call alert; the meeting link is a line on the card. Empty values are left out by the card. */
+/** The facts, text and buttons of the call alert; the meeting link is a line on the card and a Join meeting button. Empty values are left out by the card. */
 export function callAlert(input: CallAlertInput): {
   readonly event: "kickoff_booked" | "kickoff_changed" | "call_booked" | "call_changed";
   readonly facts: readonly { readonly name: string; readonly value: string | null }[];
   readonly text: string | null;
+  readonly buttons: readonly { readonly label: string; readonly url: string }[];
 } {
   const event = `${input.kind}_${input.changed ? "changed" : "booked"}` as const;
   const wasAt = input.previousStartsAt === null || input.previousEndsAt === null ? null : callTimeText(input.previousStartsAt, input.previousEndsAt);
@@ -53,5 +54,6 @@ export function callAlert(input: CallAlertInput): {
       { name: "Meeting link", value: input.meetingUrl },
     ],
     text: input.note === null || input.note.trim() === "" ? null : `Customer's note: ${input.note.trim()}`,
+    buttons: input.meetingUrl === null ? [] : [{ label: "Join meeting", url: input.meetingUrl }],
   };
 }

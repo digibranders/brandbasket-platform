@@ -5,23 +5,19 @@ import { useActionState, useEffect, useRef, type ReactElement } from "react";
 import { ArrowRight } from "@phosphor-icons/react";
 import { SubmitButton } from "@brandbasket/shared/ui/panel/submit-button";
 import { TurnstileWidget } from "@brandbasket/shared/ui/turnstile";
-import { initialSignInState } from "@brandbasket/shared/lib/sign-in-form";
-import type { StaffCodeFormState, StaffSignInFormState } from "@/lib/staff-sign-in-form";
+import { initialSignInState, type SignInFormState } from "@brandbasket/shared/lib/sign-in-form";
 import { AuthField } from "./auth-field";
-import { StaffCodeForm } from "./code-form";
 
 interface StaffSignInFormProps {
-  readonly action: (state: StaffSignInFormState, data: FormData) => Promise<StaffSignInFormState>;
-  readonly confirmAction: (state: StaffCodeFormState, data: FormData) => Promise<StaffCodeFormState>;
+  readonly action: (state: SignInFormState, data: FormData) => Promise<SignInFormState>;
   readonly passwordChanged: boolean;
 }
 
-export function StaffSignInForm({ action, confirmAction, passwordChanged }: StaffSignInFormProps): ReactElement {
+export function StaffSignInForm({ action, passwordChanged }: StaffSignInFormProps): ReactElement {
   const [state, formAction, pending] = useActionState(action, initialSignInState);
   const errorRef = useRef<HTMLParagraphElement>(null);
   const error = !pending && state.status === "error" ? state.message : null;
   useEffect(() => { if (error !== null) errorRef.current?.focus(); }, [error, state]);
-  if (state.status === "code") return <StaffCodeForm action={confirmAction} email={state.email} otpId={state.otpId} />;
   return (
     <form action={formAction} className="auth-form" noValidate aria-busy={pending}>
       {passwordChanged && state.status === "idle" ? <p className="auth-success" role="status">Password updated. Sign in with your new password.</p> : null}

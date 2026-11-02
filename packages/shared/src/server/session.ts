@@ -10,8 +10,6 @@ export interface SessionReader {
       headers: Headers;
       query: { disableRefresh: true };
     }): Promise<{
-      /** Set on a session made by the console's two-step sign-in. */
-      readonly session: { readonly secondFactorAt?: Date | null };
       readonly user: {
         id: string;
         email: string;
@@ -31,16 +29,10 @@ export interface SessionReader {
  * binds Better Auth to the row-level-security connection, the console to the staff one. Everything else about
  * reading a session is identical, so it lives here.
  *
- * With `requireSecondFactor` (the console), a session that did not pass the emailed code counts as no session at all,
- * wherever it came from: a password-only session made on the dashboard opens nothing here.
- *
  * Call this once at module scope and export the result — `cache` dedupes per request, so a fresh wrapper per call
  * would reopen the session on every component that asks for it.
  */
-export function createGetSessionUser(
-  getAuth: () => SessionReader,
-  options: { readonly requireSecondFactor: boolean } = { requireSecondFactor: false },
-): () => Promise<SessionUser | null> {
+export function createGetSessionUser(getAuth: () => SessionReader): () => Promise<SessionUser | null> {
   /**
    * The signed-in user for this request, or null. Refresh is disabled because server components cannot
    * write cookies; sessions last their full lifetime and then require signing in again.
@@ -51,7 +43,6 @@ export function createGetSessionUser(
       query: { disableRefresh: true },
     });
     if (session === null) return null;
-    if (options.requireSecondFactor && !(session.session.secondFactorAt instanceof Date)) return null;
     return {
       id: session.user.id,
       email: session.user.email,

@@ -375,9 +375,8 @@ timing of a build next to Firstfold's apps.
 
 ## Owner decisions
 
-- Cloudflare Access in front of the console: not needed for staging (nginx refuses non-Cloudflare requests). The console's own
-  sign-in is a password plus an emailed code (`docs/STAFF-ACCESS.md`); Access adds an independent wall in front. Not set up yet;
-  steps in `docs/deployment/cloudflare-access.md`.
+- Cloudflare Access in front of the console: not needed for staging (nginx refuses non-Cloudflare requests); the console's own sign-in
+  has no second factor (`docs/STAFF-ACCESS.md`), so set it up before real staff use it. Steps in `docs/deployment/cloudflare-access.md`.
 - Starting `brandbasket-erase.timer`: it deletes customer data 30 days after a closure. Not enabled by anything here.
 - Alert recipients: Brandbasket's handler mails `BRANDBASKET_TEAM_EMAIL` from `platform.env.local`, default `support@brandbasket.in`.
   Set it there if the team address differs, and fill `BREVO_API_KEY` (alerts only log until then).
