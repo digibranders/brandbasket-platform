@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { ProjectStatus } from "@brandbasket/db";
 import { CUSTOMER_STAGE_HEADLINE } from "@brandbasket/shared/lib/project-customer-line";
-import { progressView, revisionDue, roundsLine, type ProgressInput } from "@/lib/website/progress-view";
+import { progressView, revisionDue, ROUNDS_USED_UP, roundsLine, roundsUsedUp, type ProgressInput } from "@/lib/website/progress-view";
 
 function input(overrides: Partial<ProgressInput> = {}): ProgressInput {
   return { status: null, holdReason: null, roundsIncluded: 2, roundsGranted: 0, previewDue: null, liveBy: null, kickoffFirst: false, kickoffDay: null, ...overrides };
@@ -123,6 +123,25 @@ describe("roundsLine", () => {
   it("quotes further changes once the rounds are used up", () => {
     expect(roundsLine(2, 2)).toBe("Further changes are quoted first.");
     expect(roundsLine(2, 3)).toBe("Further changes are quoted first.");
+  });
+});
+
+describe("roundsUsedUp", () => {
+  it("is true from the moment as many rounds were sent as are included", () => {
+    expect(roundsUsedUp(2, 1)).toBe(false);
+    expect(roundsUsedUp(2, 2)).toBe(true);
+    expect(roundsUsedUp(2, 3)).toBe(true);
+  });
+
+  it("is true at once for a build that includes none, and false again after staff add a round", () => {
+    expect(roundsUsedUp(0, 0)).toBe(true);
+    expect(roundsUsedUp(3, 2)).toBe(false);
+  });
+
+  it("agrees with the line the customer reads", () => {
+    expect(roundsLine(2, 2)).toBe(ROUNDS_USED_UP);
+    expect(roundsLine(0, 0)).toBe(ROUNDS_USED_UP);
+    expect(roundsLine(10, 0)).toBe("Ten rounds of changes are included.");
   });
 });
 

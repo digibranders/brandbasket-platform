@@ -1,11 +1,12 @@
 "use server";
 
+import { readRevisionRounds, REVISION_ROUNDS_FIELD } from "@brandbasket/db/revision-rounds";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { readSetupCallUrl, SETUP_CALL_URL_FIELD } from "@brandbasket/shared/lib/setup-call-link";
 import { isTeamsDestination, readTeamsWebhookUrl, TEAMS_DESTINATION_FIELD, TEAMS_URL_FIELD, type TeamsDestination } from "@brandbasket/shared/lib/teams-webhook";
 import { settingsNoticeHref } from "@/lib/settings-notices";
-import { saveSetupCallUrl } from "@/lib/server/settings-admin";
+import { saveRevisionRounds, saveSetupCallUrl } from "@/lib/server/settings-admin";
 import { requireStaffAccess } from "@/lib/server/staff-access";
 import { requireStaffCan } from "@/lib/server/staff-role";
 import { recordStaffAction } from "@/lib/server/activity";
@@ -71,4 +72,24 @@ export async function testTeamsWebhookAction(formData: FormData): Promise<void> 
   const result = await testTeamsUrl(destination, { email: user.email }, new Date());
   await recordStaffAction(staff, { businessId: null, kind: "settings.teams_tested", summary: "Sent a test card to a Teams channel", data: { destination, result } });
   redirect(settingsNoticeHref(`teams-test-${result === "sent" ? "sent" : result}`));
+}
+
+/**
+ * Saves how many rounds of changes a new website build includes. Admins only. Builds already under way keep the number
+ * they were opened with; staff give one of those an extra round from its project page.
+ */
+export async function saveRevisionRoundsAction(formData: FormData): Promise<void> {
+  const staff = await requireStaffCan("buildRules");
+  const typed = formData.get(REVISION_ROUNDS_FIELD);
+  const reading = readRevisionRounds(typeof typed === "string" ? typed : "");
+  if (!reading.ok) redirect(settingsNoticeHref("rounds-invalid"));
+  await saveRevisionRounds({ rounds: reading.rounds, staffUserId: staff.user.id }, new Date());
+  await recordStaffAction(staff, {
+    businessId: null,
+    kind: "settings.revision_rounds_saved",
+    summary: `Set the rounds of changes in a new build to ${reading.rounds}`,
+    data: { rounds: reading.rounds },
+  });
+  revalidatePath("/settings");
+  redirect(settingsNoticeHref("rounds-saved"));
 }

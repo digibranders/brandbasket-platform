@@ -18,6 +18,7 @@
     "./local-env": "./src/local-env.ts",
     "./opened-districts": "./src/opened-districts.ts",
     "./place-id": "./src/place-id.ts",
+    "./revision-rounds": "./src/revision-rounds.ts",
     "./testing": "./src/testing/index.ts"
   },
   "scripts": {

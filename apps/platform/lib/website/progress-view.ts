@@ -26,12 +26,20 @@ export interface ProgressView {
   readonly line: string | null;
 }
 
-const WORDS = ["no", "one", "two", "three", "four", "five"] as const;
+const WORDS = ["no", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten"] as const;
+
+/** What the customer reads once every round of changes is used. */
+export const ROUNDS_USED_UP = "Further changes are quoted first.";
+
+/** True when no round of changes is left to send. Mirrors the check requestProjectRevisions makes in the database. */
+export function roundsUsedUp(included: number, granted: number): boolean {
+  return granted >= included;
+}
 
 /** "Two rounds of changes are included." or, after them, "Further changes are quoted first." */
 export function roundsLine(included: number, granted: number): string {
-  const left = Math.max(0, included - granted);
-  if (left === 0) return "Further changes are quoted first.";
+  if (roundsUsedUp(included, granted)) return ROUNDS_USED_UP;
+  const left = included - granted;
   const word = WORDS[left] ?? String(left);
   const first = `${word.charAt(0).toUpperCase()}${word.slice(1)}`;
   return left === 1 ? `${first} round of changes is included.` : `${first} rounds of changes are included.`;

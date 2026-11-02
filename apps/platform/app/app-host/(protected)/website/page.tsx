@@ -15,7 +15,7 @@ import { Timeline } from "@/components/website/timeline";
 import { requireWebsiteClient } from "@/lib/server/customer-access";
 import { loadWebsite } from "@/lib/server/website";
 import { addressCardView, siteAddress } from "@/lib/website/address";
-import { roundsLine } from "@/lib/website/progress-view";
+import { roundsLine, roundsUsedUp } from "@/lib/website/progress-view";
 import { readWebsiteNotice, WEBSITE_NOTICES } from "@/lib/website/notices";
 import { askAboutHref } from "@/lib/website/tabs";
 
@@ -50,6 +50,8 @@ export default async function WebsitePage({ searchParams }: WebsitePageProps): P
         {WEBSITE_NOTICES[notice].text}
       </p>
     );
+  const roundsIncluded = project?.revisionRoundsIncluded ?? 0;
+  const roundsGranted = project?.revisionRoundsGranted ?? 0;
   const showsTimeline = data.steps.length > 0 && view.kind !== "none";
   const hasAside = showsTimeline || addressCard !== null || data.bought.length > 0;
 
@@ -78,7 +80,8 @@ export default async function WebsitePage({ searchParams }: WebsitePageProps): P
               businessName={tenant.businessName}
               liveHostname={live?.hostname ?? null}
               feedbackKey={randomUUID()}
-              roundsLine={roundsLine(project?.revisionRoundsIncluded ?? 0, project?.revisionRoundsGranted ?? 0)}
+              roundsLine={roundsLine(roundsIncluded, roundsGranted)}
+              roundsUsedUp={roundsUsedUp(roundsIncluded, roundsGranted)}
             />
           )}
         </>

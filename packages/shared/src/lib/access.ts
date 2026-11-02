@@ -64,6 +64,8 @@ export const STAFF_CAPABILITIES = {
   oversight: ["admin"],
   /** Where alerts are sent (the Teams webhook addresses in Settings). */
   integrations: ["admin"],
+  /** The rules customers' builds run on (rounds of changes included in a new build, in Settings). */
+  buildRules: ["admin"],
 } as const satisfies Readonly<Record<string, readonly StaffRole[]>>;
 
 export type StaffCapability = keyof typeof STAFF_CAPABILITIES;

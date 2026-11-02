@@ -1,3 +1,4 @@
+import { MAX_REVISION_ROUNDS, MIN_REVISION_ROUNDS } from "@brandbasket/db/revision-rounds";
 import { SETUP_CALL_URL_PROBLEMS, type SetupCallUrlProblem } from "@brandbasket/shared/lib/setup-call-link";
 import { TEAMS_URL_PROBLEMS, type TeamsUrlProblem } from "@brandbasket/shared/lib/teams-webhook";
 
@@ -13,11 +14,15 @@ export type SettingsNotice =
   | "teams-test-unset"
   | "teams-test-unreadable"
   | "teams-nothing-pasted"
+  | "rounds-saved"
+  | "rounds-invalid"
   | TeamsUrlProblem;
 
 export const SETTINGS_NOTICES: Readonly<Record<SettingsNotice, { readonly text: string; readonly ok: boolean }>> = {
   "setup-call-saved": { text: "Saved. Customers see the new link on their Set up your website page straight away.", ok: true },
   "setup-call-cleared": { text: "Cleared. Customers no longer see the Book a call card.", ok: true },
+  "rounds-saved": { text: "Saved. New builds include this many rounds of changes. Builds already under way keep theirs.", ok: true },
+  "rounds-invalid": { text: `Enter a whole number from ${MIN_REVISION_ROUNDS} to ${MAX_REVISION_ROUNDS}.`, ok: false },
   "not-a-web-address": { text: SETUP_CALL_URL_PROBLEMS["not-a-web-address"], ok: false },
   "not-secure": { text: SETUP_CALL_URL_PROBLEMS["not-secure"], ok: false },
   "too-long": { text: SETUP_CALL_URL_PROBLEMS["too-long"], ok: false },
@@ -37,7 +42,7 @@ export const SETTINGS_NOTICES: Readonly<Record<SettingsNotice, { readonly text: 
 };
 
 export function settingsNoticeHref(notice: SettingsNotice): string {
-  return `/settings?saved=${notice}${notice.startsWith("teams-") ? "#teams" : ""}`;
+  return `/settings?saved=${notice}${notice.startsWith("teams-") ? "#teams" : notice.startsWith("rounds-") ? "#revision-rounds" : ""}`;
 }
 
 export function readSettingsNotice(value: string | string[] | undefined): SettingsNotice | null {
