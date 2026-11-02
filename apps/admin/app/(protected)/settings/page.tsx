@@ -11,6 +11,7 @@ import { fieldClasses, hintClasses, labelClasses } from "@/components/console/fi
 import { Notice } from "@/components/console/notice";
 import { SecretInput } from "@/components/console/secret-input";
 import { PageHeader } from "@/components/console/page-header";
+import { SectionTabs } from "@/components/console/section-tabs";
 import { Quiet, Section } from "@/components/console/section";
 import { findLatestWebsiteLeadAt } from "@brandbasket/db";
 import { getStaffDb } from "@/lib/server/db";
@@ -43,6 +44,7 @@ export default async function SettingsPage({
   return (
     <>
       <PageHeader title={<>Settings</>} meta="Changes here are live straight away, with no deploy." />
+      <SectionTabs role={staff.role} page="/settings" />
       {notice === null ? null : (
         <Notice tone={SETTINGS_NOTICES[notice].ok ? "ok" : "problem"} className="mt-8">
           {SETTINGS_NOTICES[notice].text}

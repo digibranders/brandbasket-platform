@@ -26,23 +26,31 @@ afterEach(async () => {
 
 async function renderRail(role: "support" | "admin", counts: Record<string, number>): Promise<void> {
   await act(async () =>
-    root.render(createElement(Rail, { sections: railFor(role), counts, userName: "Riya Kapoor", role, signOut: async () => undefined, logo })),
+    root.render(createElement(Rail, { links: railFor(role), counts, userName: "Riya Kapoor", role, signOut: async () => undefined, logo })),
   );
 }
 
-it("marks the open page, longest address first", async () => {
+it("marks the item holding the open page, longest address first", async () => {
   mocks.pathname = "/support/errors";
   await renderRail("admin", {});
-  expect(container.querySelector('a[aria-current="page"]')?.textContent).toBe("Errors");
+  expect(container.querySelector('a[aria-current="page"]')?.textContent).toBe("Settings");
+  mocks.pathname = "/projects";
+  await renderRail("admin", {});
+  expect(container.querySelector('a[aria-current="page"]')?.textContent).toBe("Clients");
 });
 
 it("shows a count only when something is waiting", async () => {
   mocks.pathname = "/";
-  await renderRail("admin", { leads: 6, requests: 0 });
-  const enquiries = container.querySelector('a[href="/leads"]');
-  const requests = container.querySelector('a[href="/support"]');
-  expect(enquiries?.textContent).toBe("Enquiries6");
-  expect(requests?.textContent).toBe("Requests");
+  await renderRail("admin", { leads: 6, requests: 1, calls: 0 });
+  expect(container.querySelector('a[href="/support"]')?.textContent).toBe("Inbox7");
+  expect(container.querySelector('a[href="/calls"]')?.textContent).toBe("Calls");
+});
+
+it("draws the Settings count in red for failed deliveries", async () => {
+  await renderRail("admin", { deliveries: 3 });
+  const count = container.querySelector('a[href="/settings"] span:last-child');
+  expect(count?.textContent).toBe("3");
+  expect(count?.className).toContain("bg-error");
 });
 
 it("shows the signed-in person, their role and Sign out", async () => {
@@ -50,5 +58,7 @@ it("shows the signed-in person, their role and Sign out", async () => {
   expect(container.textContent).toContain("Riya Kapoor");
   expect(container.textContent).toContain("Support");
   expect(container.querySelector('button[aria-label="Sign out"]')).not.toBeNull();
-  expect(container.querySelector('a[href="/access-log"]')).toBeNull();
+  expect(container.querySelector('a[href="/staff"]')).toBeNull();
+  expect(container.querySelector('a[href="/payments"]')).toBeNull();
+  expect(container.querySelectorAll("nav a")).toHaveLength(6);
 });

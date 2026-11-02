@@ -102,6 +102,14 @@ describe("parseAskForm", () => {
     expect(parsed).toEqual({ success: true, data: { intent: "website_update", page: "Home", body: "Add an Implants page, like the root canal page.", attachmentIds: [], submissionKey: KEY } });
   });
 
+  it("cleans the page the same way the address does, and drops it when nothing printable is left", () => {
+    const body = "Add an Implants page, like the root canal page.";
+    const cleaned = parseAskForm(form({ intent: "website_update", page: "Home\u0000\n  page", body, submissionKey: KEY }), ALL);
+    expect(cleaned.success && cleaned.data.page).toBe("Home page");
+    const empty = parseAskForm(form({ intent: "website_update", page: "\u0001\u0002", body, submissionKey: KEY }), ALL);
+    expect(empty.success && empty.data.page).toBe(null);
+  });
+
   it("keeps a page only for a website change", () => {
     const parsed = parseAskForm(form({ intent: "billing", page: "Home", body: "Put my GST number on the invoice.", submissionKey: KEY }), ALL);
     expect(parsed.success && parsed.data.page).toBe(null);

@@ -51,7 +51,7 @@ export default async function AutomaticErrorPage({ params, searchParams }: { rea
 
   return (
     <>
-      <PageHeader title={issue.errorClass} back={{ href: "/support/errors", label: "Errors" }} meta={`${issue.app} · ${issue.route}`} />
+      <PageHeader title={issue.errorClass} back={{ href: "/support/errors", label: "App errors" }} meta={`${issue.app} · ${issue.route}`} />
       {search.updated === "saved" ? <p role="status" className="mt-6 text-sm text-ink-soft">Status saved.</p> : search.updated === "stale" ? <p role="status" className="mt-6 text-sm text-error">This issue changed while you reviewed it. Check the latest counts before updating again.</p> : search.updated === "invalid" ? <p role="alert" className="mt-6 text-sm text-error">Choose a valid status and try again.</p> : null}
       <div className="mt-10">
         <Section title="Occurrences">

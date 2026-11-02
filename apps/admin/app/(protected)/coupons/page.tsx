@@ -9,6 +9,7 @@ import { buttonPrimary } from "@/components/console/buttons";
 import { Figures } from "@/components/console/figures";
 import { EmptyLine, HairlineList, HairlineRow } from "@/components/console/hairline-list";
 import { PageHeader } from "@/components/console/page-header";
+import { SectionTabs } from "@/components/console/section-tabs";
 import { StatusDot } from "@/components/console/status-dot";
 import { getStaffDb } from "@/lib/server/db";
 import { requireStaffCan } from "@/lib/server/staff-role";
@@ -32,7 +33,7 @@ function retiredReason(
 }
 
 export default async function CouponsPage(): Promise<ReactElement> {
-  const { user } = await requireStaffCan("money");
+  const { user, staff: viewer } = await requireStaffCan("money");
   await logStaffAccess({ staffUserId: user.id, action: "coupons.list", targetType: "coupons" });
   const codes = await listReferralCodes(getStaffDb(), "coupon", LIST_LIMIT);
   const now = new Date();
@@ -50,6 +51,7 @@ export default async function CouponsPage(): Promise<ReactElement> {
           </Link>
         }
       />
+      <SectionTabs role={viewer.role} page="/coupons" />
 
       <Figures
         items={[

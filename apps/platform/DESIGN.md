@@ -71,7 +71,7 @@ at 390px with no sideways scroll.
 The sidebar (`lib/rail.ts`, drawn by `components/v2/rail.tsx`) has four groups:
 
 - **Home**
-- **Services**: Website (tabs Overview, Pages, Enquiries), Blog (tabs Posts, Authors, Categories) right under it, Social & Ads,
+- **Services**: Website (tabs Overview and Enquiries, shown once the website is live), Blog (tabs Posts, Authors, Categories) right under it, Social & Ads,
   Local SEO + AEO. Website and Blog go together; each of the others only when the
   customer has it (`lib/server/active-services.ts`).
 - **Manage**: Requests (with the number waiting on the customer), Business.

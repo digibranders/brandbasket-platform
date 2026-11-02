@@ -5,6 +5,7 @@ import type { ReactElement } from "react";
 import { EmptyLine } from "@/components/console/hairline-list";
 import { FilterPills, type FilterOption } from "@/components/console/filter-pills";
 import { PageHeader } from "@/components/console/page-header";
+import { SectionTabs } from "@/components/console/section-tabs";
 import { StatusPill } from "@/components/console/status-pill";
 import { TABLE, TD, TD_TIME, TH } from "@/components/console/table";
 import { monthRange } from "@/lib/team-time";
@@ -56,7 +57,7 @@ function Card({ card }: { readonly card: BoardCard }): ReactElement {
 
 /** Every website build on one board, with its builder and the date its first preview is promised by. */
 export default async function ProjectsPage({ searchParams }: ProjectsPageProps): Promise<ReactElement> {
-  const { user } = await requireStaffAccess();
+  const { user, staff: viewer } = await requireStaffAccess();
   await logStaffAccess({ staffUserId: user.id, action: "projects.list", targetType: "projects" });
   const query = await searchParams;
   const view = one(query.view) === "list" ? "list" : "board";
@@ -72,10 +73,6 @@ export default async function ProjectsPage({ searchParams }: ProjectsPageProps):
   const late = cards.filter(({ card }) => card.late).length;
   const dueToday = cards.filter(({ card }) => card.dueSoon).length;
 
-  const viewOptions: FilterOption[] = [
-    { href: href("board", builder, scope), label: "Board", current: view === "board" },
-    { href: href("list", builder, scope), label: "List", current: view === "list" },
-  ];
   const builderOptions: FilterOption[] = [
     { href: href(view, null, scope), label: "Anyone", current: builder === null },
     { href: href(view, "none", scope), label: "No builder", current: builder === "none" },
@@ -91,8 +88,8 @@ export default async function ProjectsPage({ searchParams }: ProjectsPageProps):
   return (
     <>
       <PageHeader title="Projects" meta={`${open} open · ${late} late · ${dueToday} due today`} />
+      <SectionTabs role={viewer.role} page="/projects" />
       <div className="mt-6 flex flex-wrap items-center gap-6">
-        <FilterPills label="View" options={viewOptions} />
         <FilterPills label="Builder" options={builderOptions} />
       </div>
       <div className="mt-3 flex flex-wrap items-center gap-6">

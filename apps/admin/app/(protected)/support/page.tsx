@@ -11,6 +11,7 @@ import { fieldClasses } from "@/components/console/field-styles";
 import { FilterPills } from "@/components/console/filter-pills";
 import { EmptyLine } from "@/components/console/hairline-list";
 import { PageHeader } from "@/components/console/page-header";
+import { SectionTabs } from "@/components/console/section-tabs";
 import { TABLE, TD, TD_TIME, TH } from "@/components/console/table";
 import { replyClock, waitingLabel, type WaitingTone } from "@/lib/reply-clock";
 import { readRequestFilters, requestsHref } from "@/lib/requests-filters";
@@ -30,7 +31,7 @@ interface RequestsPageProps {
 }
 
 export default async function RequestsPage({ searchParams }: RequestsPageProps): Promise<ReactElement> {
-  const { user } = await requireStaffAccess();
+  const { user, staff: viewer } = await requireStaffAccess();
   await logStaffAccess({ staffUserId: user.id, action: "support.list", targetType: "support_tickets" });
   const filters = readRequestFilters(await searchParams);
   const db = getStaffDb();
@@ -61,6 +62,7 @@ export default async function RequestsPage({ searchParams }: RequestsPageProps):
           </Link>
         }
       />
+      <SectionTabs role={viewer.role} page="/support" />
 
       <div className="mt-6 flex flex-wrap items-center gap-3">
         <form method="get" action="/support" className="flex flex-wrap items-center gap-2">

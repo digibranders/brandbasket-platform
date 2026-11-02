@@ -5,7 +5,9 @@ import { changeRequestUpdateEmail, type ChangeRequestUpdate } from "./templates/
 import { domainMovedEmail } from "./templates/domain-moved";
 import { domainReadyEmail } from "./templates/domain-ready";
 import { passwordResetEmail } from "./templates/password-reset";
+import { paymentFailedEmail } from "./templates/payment-failed";
 import { paymentReceivedEmail } from "./templates/payment-received";
+import { previewChangesReceivedEmail } from "./templates/preview-changes-received";
 import { previewReadyEmail } from "./templates/preview-ready";
 import { privacyRequestCodeEmail } from "./templates/privacy-request-code";
 import { setupLinkEmail } from "./templates/setup-link";
@@ -70,22 +72,31 @@ const CUSTOMER = [
   { name: "domain-moved", kicker: "Your own domain", mail: domainMovedEmail({ to, businessName: "Rao Dental Care", websiteUrl: "https://raodental.in", oldHostname: "rao.brandbasket.site" }), button: "Visit raodental.in" },
   {
     name: "payment-received",
-    kicker: "Receipt for Rao Dental Care",
+    kicker: "Receipt",
     mail: paymentReceivedEmail({
       to,
-      ownerName: "Asha Rao",
-      businessName: "Rao Dental Care",
+      name: "Asha Rao",
       currency: "INR",
-      lines: [{ label: "Managed Website", amountCents: 299900 }],
+      amountCents: 299900,
+      items: ["Managed Website"],
       gstRatePercent: 18,
-      gstCents: 45746,
-      totalCents: 299900,
-      paidAt: new Date("2026-10-27T05:00:00Z"),
-      invoiceUrl: url,
-      logoUrl: "https://app.brandbasket.in/email/email-logo.png",
+      paidThrough: new Date("2026-11-27T05:00:00Z"),
       nextPayment: null,
+      receiptUrl: url,
     }),
-    button: "Download GST invoice",
+    button: "Download receipt",
+  },
+  {
+    name: "payment-failed",
+    kicker: "Payment",
+    mail: paymentFailedEmail({ to, name: "Asha Rao", currency: "INR", amountCents: 299900, items: ["Managed Website"], plan: { state: "paused" }, payUrl: url }),
+    button: "Pay now",
+  },
+  {
+    name: "preview-changes-received",
+    kicker: "Changes received",
+    mail: previewChangesReceivedEmail({ to, name: "Asha Rao", round: 1, rounds: 2, text: "Make the logo bigger.", readyBy: "Thu 5 Nov" }),
+    button: null,
   },
 ] as const;
 

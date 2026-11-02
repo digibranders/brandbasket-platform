@@ -1,6 +1,7 @@
 import { findChargeByProviderOrder, recordFailedPayment } from "@brandbasket/db";
 import { logBillingEvent } from "@brandbasket/shared/server/billing-log";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { sendPaymentFailed } from "./payment-emails";
 import { recordRazorpayPaymentFailure, type RazorpayPaymentFailed } from "./payment-failure";
 
 vi.mock("server-only", () => ({}));
@@ -9,6 +10,7 @@ vi.mock("@brandbasket/db", async () => {
   return { ...actual, findChargeByProviderOrder: vi.fn(), recordFailedPayment: vi.fn() };
 });
 vi.mock("@brandbasket/shared/server/billing-log", () => ({ logBillingEvent: vi.fn() }));
+vi.mock("./payment-emails", () => ({ sendPaymentFailed: vi.fn(async () => undefined) }));
 vi.mock("./db", () => ({ getStaffDb: () => ({ name: "staff-db" }) }));
 
 const BUSINESS = "01920000-0000-7000-8000-0000000000b1";
@@ -56,6 +58,35 @@ describe("recordRazorpayPaymentFailure", () => {
     await recordRazorpayPaymentFailure({ ...event, businessId: BUSINESS });
 
     expect(recordFailedPayment).toHaveBeenCalledWith({ name: "staff-db" }, expect.objectContaining({ businessId: BUSINESS, kind: "renewal" }));
+  });
+
+  it("emails the customer once about a plan payment that failed for the first time", async () => {
+    await recordRazorpayPaymentFailure({ ...event, businessId: BUSINESS });
+
+    expect(sendPaymentFailed).toHaveBeenCalledTimes(1);
+    expect(sendPaymentFailed).toHaveBeenCalledWith({ businessId: BUSINESS, amountCents: 299_900, currency: "INR", chargeDescription: null });
+  });
+
+  it("names a failed extra by what it was for", async () => {
+    vi.mocked(findChargeByProviderOrder).mockResolvedValue({ id: "charge-1", businessId: BUSINESS, description: "Extra change hours" } as never);
+
+    await recordRazorpayPaymentFailure({ ...event, orderId: "order_1" });
+
+    expect(sendPaymentFailed).toHaveBeenCalledWith(expect.objectContaining({ chargeDescription: "Extra change hours" }));
+  });
+
+  it("sends nothing for a delivery that was recorded before", async () => {
+    vi.mocked(recordFailedPayment).mockResolvedValue("already-recorded");
+
+    await recordRazorpayPaymentFailure({ ...event, businessId: BUSINESS });
+
+    expect(sendPaymentFailed).not.toHaveBeenCalled();
+  });
+
+  it("sends nothing for a failure it cannot tie to a business", async () => {
+    await recordRazorpayPaymentFailure(event);
+
+    expect(sendPaymentFailed).not.toHaveBeenCalled();
   });
 
   it("logs a failure it cannot tie to a business", async () => {

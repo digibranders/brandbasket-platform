@@ -1,26 +1,9 @@
 import "server-only";
-import { findLiveBundledAddOns, listBoughtSetupServices, withTenantScope, type Payment } from "@brandbasket/db";
+import { findLiveBundledAddOns, listBoughtSetupServices, withTenantScope } from "@brandbasket/db";
 import type { TenantContext } from "@brandbasket/shared/lib/access";
-import { formatMoney } from "@brandbasket/shared/lib/money";
 import { errorLogInfo } from "@brandbasket/shared/server/error-log-info";
-import { receiptDownloadHref } from "@/lib/billing/receipt-download";
-import { dayMonth } from "@/lib/call-dates";
 import { servicesBought, type ServiceKey } from "@/lib/first-look";
 import { getAppDb } from "./db";
-
-/** The reassurance line under the welcome: what was paid, when, and the receipt. */
-export interface FirstPaymentView {
-  readonly amount: string;
-  readonly paidOn: string;
-  readonly receiptHref: string;
-}
-
-/** A first payment as the reassurance line shows it; null while it has no paid date. */
-export function firstPaymentView(row: Pick<Payment, "id" | "amountCents" | "currency" | "paidAt"> | null): FirstPaymentView | null {
-  return row === null || row.paidAt === null
-    ? null
-    : { amount: formatMoney(row.amountCents, row.currency), paidOn: dayMonth(row.paidAt), receiptHref: receiptDownloadHref([row.id]) };
-}
 
 /** The services the plan pays for now. A failed read shows none, so a page still draws. */
 export async function loadServicesBought(tenant: TenantContext): Promise<readonly ServiceKey[]> {

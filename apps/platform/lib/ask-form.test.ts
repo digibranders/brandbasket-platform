@@ -18,18 +18,34 @@ it("asks what they would like to do, offering a service only when the customer h
   expect(html).toContain("What would you like to do?");
   for (const label of ["Change my website", "Ask about my social media or ads", "Ask a question", "Send us information", "Something is not working", "Billing or my plan"]) expect(html).toContain(label);
   expect(html).not.toContain("Local SEO + AEO");
-  expect(html).toContain("What do you want changed?");
+  expect(html).toContain("What should change?");
   expect(html).toContain('name="submissionKey" value="ask-key-12345678"');
   expect(html.split(DARK_BUTTON).length - 1).toBe(1);
-  expect(html).toContain(">Send</button>");
+  expect(html).toContain(">Send to the team</button>");
 });
 
 it("asks which page, and shows the included edits, only for a website change, which is the first choice for a customer with a website", () => {
   const included = "This month: 1 of 2 included edits used.";
   expect(render(["website"], { includedLine: included })).toContain(included);
-  expect(render(["website"])).toContain("Which page? (optional)");
+  expect(render(["website"])).toContain("Which page?");
   expect(render([])).not.toContain("Which page?");
   expect(render(["website"], { defaultIntent: "question", includedLine: included })).not.toContain(included);
+});
+
+it("words the page box and the note for a website change, and shows the note for no other choice", () => {
+  const html = render(["website"]);
+  expect(html).toContain("Which page?");
+  expect(html).not.toContain("Which page? (optional)");
+  expect(html).toContain('placeholder="For example Home, or www.yoursite.com/about"');
+  expect(html).toContain("Already picked if you came from a page.");
+  expect(html).toContain("Add a screenshot or photo (optional)");
+  expect(html).toContain("We will email you when it is done.");
+  expect(render(["website"], { defaultIntent: "question" })).not.toContain("We will email you when it is done.");
+});
+
+it("starts the page box on the page the link named", () => {
+  const html = renderToStaticMarkup(createElement(AskForm, { options: intentOptions(["website"]), submissionKey: "ask-key-12345678", defaultPage: "Home" })).replaceAll("<!-- -->", "");
+  expect(html).toMatch(/<input[^>]*id="ask-page"[^>]*value="Home"/);
 });
 
 it("words the details question for what they chose", () => {

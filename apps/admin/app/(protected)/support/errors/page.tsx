@@ -8,18 +8,19 @@ import { LIFT } from "@/components/console/classes";
 import { FilterPills } from "@/components/console/filter-pills";
 import { EmptyLine } from "@/components/console/hairline-list";
 import { PageHeader } from "@/components/console/page-header";
+import { SectionTabs } from "@/components/console/section-tabs";
 import { StatusPill, type PillTone } from "@/components/console/status-pill";
 import { TABLE, TD, TD_NUM, TD_TIME, TH } from "@/components/console/table";
 import { getStaffDb } from "@/lib/server/db";
 import { requireStaffAccess } from "@/lib/server/staff-access";
 import { TableScroll } from "@/components/console/table-scroll";
 
-export const metadata: Metadata = { title: "Errors" };
+export const metadata: Metadata = { title: "App errors" };
 const STATUS_LABELS: Record<ErrorIssueStatus, string> = { new: "New", investigating: "Investigating", resolved: "Resolved", ignored: "Ignored" };
 const STATUS_TONES: Record<ErrorIssueStatus, PillTone> = { new: "problem", investigating: "progress", resolved: "done", ignored: "todo" };
 
 export default async function AutomaticErrorsPage({ searchParams }: { readonly searchParams: Promise<{ readonly status?: string; readonly page?: string }> }): Promise<ReactElement> {
-  await requireStaffAccess();
+  const { staff: viewer } = await requireStaffAccess();
   const search = await searchParams;
   const status = search.status !== undefined && Object.hasOwn(STATUS_LABELS, search.status) ? (search.status as ErrorIssueStatus) : undefined;
   const parsedPage = Number(search.page ?? 1);
@@ -29,7 +30,8 @@ export default async function AutomaticErrorsPage({ searchParams }: { readonly s
   const pageHref = (nextPage: number): string => `/support/errors?${new URLSearchParams({ ...(status === undefined ? {} : { status }), page: String(nextPage) })}`;
   return (
     <>
-      <PageHeader title="Errors" meta={`${total.toLocaleString("en-IN")} grouped ${total === 1 ? "issue" : "issues"}. Unexpected failures captured by ${adminBrand().name}.`} />
+      <PageHeader title="App errors" meta={`${total.toLocaleString("en-IN")} grouped ${total === 1 ? "issue" : "issues"}. Unexpected failures captured by ${adminBrand().name}.`} />
+      <SectionTabs role={viewer.role} page="/support/errors" />
       <div className="mt-6">
         <FilterPills
           label="Filter errors"

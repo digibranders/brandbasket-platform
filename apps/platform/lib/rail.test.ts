@@ -91,7 +91,7 @@ describe("current link", () => {
 
   it("marks the website current on every page of its tabs, and not on the blog's", () => {
     const website = link("Website");
-    for (const path of [WEBSITE_PATH, "/website/pages", "/website/enquiries", "/domain", "/content/blog", "/content/authors"]) {
+    for (const path of [WEBSITE_PATH, "/website/enquiries", "/domain", "/content/blog", "/content/authors"]) {
       // /domain is not a tab: it is reached from the Overview. The blog is its own link.
       expect(website === undefined ? false : linkIsCurrent(website, path), path).toBe(!["/domain", "/content/blog", "/content/authors"].includes(path));
     }
@@ -99,8 +99,8 @@ describe("current link", () => {
 
   it("marks the blog current on its posts, the editor, authors and categories, and not on the website's pages", () => {
     const blog = link("Blog");
-    for (const path of ["/content/blog", "/content/blog/new", "/content/blog/abc", "/content/authors", "/content/authors/new", "/content/categories", "/content/categories/abc", "/website/pages"]) {
-      expect(blog === undefined ? false : linkIsCurrent(blog, path), path).toBe(path !== "/website/pages");
+    for (const path of ["/content/blog", "/content/blog/new", "/content/blog/abc", "/content/authors", "/content/authors/new", "/content/categories", "/content/categories/abc", "/website/enquiries"]) {
+      expect(blog === undefined ? false : linkIsCurrent(blog, path), path).toBe(path !== "/website/enquiries");
     }
   });
 
@@ -122,8 +122,14 @@ describe("menuChildren and search", () => {
   it("lists the website's other tabs, and the blog's authors and categories under the blog", () => {
     const website = link("Website");
     const blog = link("Blog");
-    expect(website === undefined ? [] : menuChildren(website).map((child) => child.label)).toEqual(["Pages", "Enquiries"]);
+    expect(website === undefined ? [] : menuChildren(website).map((child) => child.label)).toEqual(["Enquiries"]);
     expect(blog === undefined ? [] : menuChildren(blog).map((child) => child.label)).toEqual(["Authors", "Categories"]);
+  });
+
+  it("lists Enquiries under the website only once it is live", () => {
+    const before = link("Website", { ...FULL, websiteLive: false });
+    expect(before === undefined ? ["x"] : menuChildren(before)).toEqual([]);
+    expect(searchRail(railSections({ ...FULL, websiteLive: false }), "enquiries")).toEqual([]);
   });
 
   it("lists Billing under Plan & billing, and Calls under Requests only for a paid account", () => {

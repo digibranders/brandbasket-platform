@@ -15,10 +15,10 @@ interface ConsoleShellProps {
 
 /** The staff console v2: the dark rail on desktop (a top bar and menu on phones) around the page. */
 export async function ConsoleShell({ userName, role, children }: ConsoleShellProps): Promise<ReactElement> {
-  const sections = railFor(role);
+  const links = railFor(role);
   const counts = await readRailCounts(role);
   const logo = adminBrand().logo;
-  const shared = { sections, counts, userName, role, signOut, logo };
+  const shared = { links, counts, userName, role, signOut, logo };
   return (
     <div className="flex min-h-dvh bg-bg lg:bg-ink">
       <a

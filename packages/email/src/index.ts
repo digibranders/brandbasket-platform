@@ -22,7 +22,15 @@ export { domainMovedEmail, type DomainMovedInput } from "./templates/domain-move
 export { domainRequestedEmail, type DomainRequestedInput } from "./templates/domain-requested";
 export { domainReadyEmail, type DomainReadyInput } from "./templates/domain-ready";
 export { onboardingSentEmail, type OnboardingSentInput } from "./templates/onboarding-sent";
-export { paymentReceivedEmail, type PaymentReceivedInput, type PaymentReceivedLine } from "./templates/payment-received";
+export { assertMinorUnits, emailDate, emailMoney, type EmailCurrency } from "./format";
+export { paymentFailedEmail, type PaymentFailedInput, type PaymentFailedPlan } from "./templates/payment-failed";
+export { paymentReceivedEmail, type PaymentReceivedInput } from "./templates/payment-received";
+export {
+  previewChangesReceivedEmail,
+  CHANGES_QUOTE_LIMIT,
+  clampChangesText,
+  type PreviewChangesReceivedInput,
+} from "./templates/preview-changes-received";
 export { previewApprovedEmail, type PreviewApprovedInput } from "./templates/preview-approved";
 export { previewReadyEmail, type PreviewReadyInput } from "./templates/preview-ready";
 export {

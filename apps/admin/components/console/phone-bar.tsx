@@ -10,7 +10,7 @@ import type { RailProps } from "./rail";
 import { RailAccount, RailNav } from "./rail-nav";
 
 /** Below `lg`: a light top bar with the logo, search and Menu; Menu opens the rail's links in a sheet. */
-export function PhoneBar({ sections, counts, userName, role, signOut, logo }: RailProps): ReactElement {
+export function PhoneBar({ links, counts, userName, role, signOut, logo }: RailProps): ReactElement {
   const pathname = usePathname();
   const [searching, setSearching] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -45,7 +45,7 @@ export function PhoneBar({ sections, counts, userName, role, signOut, logo }: Ra
               <X size={20} aria-hidden="true" />
             </button>
           </div>
-          <RailNav sections={sections} counts={counts} current={currentHref(sections, pathname)} tone="light" onNavigate={() => setMenuOpen(false)} />
+          <RailNav links={links} counts={counts} current={currentHref(links, pathname)} tone="light" onNavigate={() => setMenuOpen(false)} />
           <div className="mt-auto pt-3">
             <RailAccount userName={userName} role={role} signOut={signOut} tone="light" />
           </div>
