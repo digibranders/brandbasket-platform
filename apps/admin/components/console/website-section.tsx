@@ -1,5 +1,4 @@
 import type { ProjectStatus } from "@brandbasket/db";
-import { STAFF_STAGE_LABELS, staffStageOf } from "@brandbasket/shared/lib/project-stage";
 import type { ReactElement } from "react";
 import {
   putOnHoldAction,
@@ -10,11 +9,10 @@ import {
 import { buttonPrimary, buttonSecondary } from "@/components/console/buttons";
 import { fieldClasses, labelClasses } from "@/components/console/field-styles";
 import { Notice } from "@/components/console/notice";
-import { FactList, Section, type Fact } from "@/components/console/section";
+import { Section } from "@/components/console/section";
 import { loadWebsiteBuild, type WebsiteBuild } from "@/lib/server/website-build";
 import { HOLD_REASON_MAX, HOLD_REASON_MIN, readWebsiteMoveNotice, WEBSITE_MOVE_NOTICES } from "@/lib/website-form";
 
-const INDIA_DATE = new Intl.DateTimeFormat("en-IN", { timeZone: "Asia/Kolkata", dateStyle: "long" });
 const INDIA_MOMENT = new Intl.DateTimeFormat("en-IN", {
   timeZone: "Asia/Kolkata",
   day: "numeric",
@@ -30,28 +28,13 @@ const CAN_RESUME: readonly ProjectStatus[] = ["on_hold"];
 type Project = NonNullable<WebsiteBuild["project"]>;
 type Picture = NonNullable<WebsiteBuild["picture"]>;
 
-function dateFact(label: string, value: Date | null): readonly Fact[] {
-  return value === null ? [] : [{ label, value: INDIA_DATE.format(value) }];
-}
-
-function factsOf(project: Project): readonly Fact[] {
-  return [
-    { label: "Status", value: STAFF_STAGE_LABELS[staffStageOf(project.status)] },
-    ...(project.status === "on_hold" && project.onHoldReason !== null ? [{ label: "Reason", value: project.onHoldReason }] : []),
-    ...dateFact("Setup sent", project.onboardingSubmittedAt),
-    ...dateFact("First preview due", project.slaDueAt),
-    ...dateFact("Preview sent", project.previewSentAt),
-    ...dateFact("Went live", project.launchedAt),
-  ];
-}
-
 /** The stored picture when it is of the project's current link and was taken after that link was sent, else null. */
 function currentPicture(project: Project, picture: WebsiteBuild["picture"]): Picture | null {
   if (picture === null || picture.previewUrl !== project.previewUrl) return null;
   return project.previewSentAt === null || picture.capturedAt >= project.previewSentAt ? picture : null;
 }
 
-/** Starts the work on a project that was sent to us. Shown first on the Project tab while the project is waiting to start. */
+/** Starts the work on a project that was sent to us. The Project tab's next-step card shows it while the project is waiting to start. */
 export function StartBuildingForm({ businessId }: { readonly businessId: string }): ReactElement {
   return (
     <form action={startBuildingAction}>
@@ -64,8 +47,7 @@ export function StartBuildingForm({ businessId }: { readonly businessId: string 
 }
 
 /**
- * The staff moves for a customer's website build: the project's status and dates, the preview picture, and the buttons
- * that apply to the status. `notice` is the raw `website` search param.
+ * The staff moves for a customer's website build: the preview picture and the buttons that apply to the status. `notice` is the raw `website` search param.
  */
 export async function WebsiteSection({
   businessId,
@@ -96,7 +78,6 @@ export async function WebsiteSection({
         <p className="text-ink-soft">No project yet.</p>
       ) : (
         <>
-          <FactList items={factsOf(project)} />
           {previewUrl === null ? null : (
             <p className="mt-5 text-sm text-ink-soft">{fresh === null ? "Picture not taken" : `Picture taken ${INDIA_MOMENT.format(fresh.capturedAt)}`}</p>
           )}

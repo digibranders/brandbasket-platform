@@ -114,6 +114,17 @@ export async function listProjectEvents(
     .orderBy(projectEvents.occurredAt, projectEvents.id);
 }
 
+/** When the project last moved to `status`, or null if it never did. The console reads it through the staff connection. */
+export async function findLatestProjectEventAt(db: Database, input: { readonly projectId: string; readonly status: ProjectStatus }): Promise<Date | null> {
+  const [row] = await db
+    .select({ occurredAt: projectEvents.occurredAt })
+    .from(projectEvents)
+    .where(and(eq(projectEvents.projectId, input.projectId), eq(projectEvents.status, input.status)))
+    .orderBy(desc(projectEvents.occurredAt), desc(projectEvents.id))
+    .limit(1);
+  return row?.occurredAt ?? null;
+}
+
 export interface PreviewImageInput {
   readonly projectId: string;
   readonly businessId: string;

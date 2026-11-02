@@ -62,7 +62,8 @@ export function KickoffHome({
         aside={<Covering rows={intake} services={services} />}
         actions={
           canBook ? (
-            <div className="w-full">
+            <div className="grid w-full gap-3">
+              {state.missedAt === null ? null : <p className="text-[0.9375rem] text-ink-2">We missed each other on {slotLabel(state.missedAt.toISOString())}. Pick a new time.</p>}
               <KickoffPicker showLiveBy={hasWebsite} bookingUrl={bookingUrl} />
             </div>
           ) : (

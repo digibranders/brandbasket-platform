@@ -10,11 +10,11 @@ const DAY_FORMAT = new Intl.DateTimeFormat("en-GB", { weekday: "short", day: "nu
 export function websiteMilestones(state: ClientHomeState, input: { readonly kickoffAt: Date | null; readonly firstPreviewDueAt: Date | null; /** The day staff plan to go live (`YYYY-MM-DD`), or null while none is set. */ readonly launchPlannedOn?: string | null }): readonly Milestone[] {
   const day = (date: Date | null): string | null => (date === null ? null : DAY_FORMAT.format(date));
   const planned = input.launchPlannedOn === undefined || input.launchPlannedOn === null ? null : day(new Date(`${input.launchPlannedOn}T12:00:00+05:30`));
-  // Which bar is "now": 1 building, 2 the customer's review, 3 changes, 4 live.
-  const now = state.kind === "preview_ready" ? 2 : state.kind === "revisions" ? 3 : state.kind === "approved" ? 4 : state.kind === "launched" ? 5 : 1;
+  // Which bar is "now": 0 the kickoff (staff have not said it happened), 1 building, 2 the customer's review, 3 changes, 4 live.
+  const now = state.kind === "kickoff_unconfirmed" ? 0 : state.kind === "preview_ready" ? 2 : state.kind === "revisions" ? 3 : state.kind === "approved" ? 4 : state.kind === "launched" ? 5 : 1;
   const bar = (index: number): Milestone["state"] => (index < now ? "done" : index === now ? "now" : "next");
   return [
-    { label: "Kickoff", state: "done", note: day(input.kickoffAt) },
+    { label: "Kickoff", state: now === 0 ? "now" : "done", note: day(input.kickoffAt) },
     { label: "Building", state: state.kind === "on_hold" ? "now" : bar(1), note: state.kind === "on_hold" ? "Paused" : bar(1) === "now" ? (input.firstPreviewDueAt === null ? "Now" : `Preview by ${day(input.firstPreviewDueAt)}`) : null },
     { label: "Your review", state: bar(2), note: bar(2) === "now" ? "Now" : null },
     { label: "Changes", state: bar(3), note: bar(3) === "now" ? "Now" : bar(3) === "next" ? "If you need any" : null },

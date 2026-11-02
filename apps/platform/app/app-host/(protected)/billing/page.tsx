@@ -16,7 +16,7 @@ import { BillingDetails } from "@/components/panel/billing/billing-details";
 import { PaymentsList } from "@/components/panel/billing/payments-list";
 import { NoticeBanner } from "@/components/panel/notice-banner";
 import { DARK_BUTTON } from "@/components/v2/classes";
-import { PageColumns, PageFrame, PageSection } from "@/components/v2/page";
+import { PageFrame } from "@/components/v2/page";
 import { SectionTabs } from "@/components/v2/section-tabs";
 import { PLAN_TABS } from "@/lib/plan/tabs";
 import { PaymentWaiting } from "@/components/panel/payment-waiting";
@@ -24,6 +24,7 @@ import { PaymentMethod } from "@/components/panel/billing/payment-method";
 import { PlanSummary, priceNote } from "@/components/panel/billing/plan-summary";
 import { ReactivatePlan } from "@/components/panel/billing/reactivate-plan";
 import { ServicePicker } from "@/components/panel/billing/service-picker";
+import { SummaryCard } from "@/components/panel/billing/summary-card";
 import type { BillingDetailsView } from "@/lib/billing/billing-details-view";
 import { paymentMethodView, renewsAutomatically } from "@/lib/billing/payment-method-view";
 import { CHARGE_NOTICES, readChargeNotice } from "@/lib/billing/charge-notices";
@@ -61,8 +62,10 @@ function PaymentMethodSection({
 }
 
 /**
- * The page around every state of Billing: its title and line, then any notices across the top, then the columns. The plan and
- * how it is paid on the left, the payments on the right; a state with no payments leaves the right out.
+ * The page around every state of Billing: its title and line, any notices across the top, then a row of cards (the plan, how it
+ * is paid, who the invoices are made out to) and the payments as a table under them, full width. A state with no payments
+ * leaves the table out. The cards are the grid's own children, so `main` is a fragment of them; the first one (the plan, or
+ * what stands in for it) is a CARD_SPAN, which is the whole row until three fit across.
  */
 function BillingFrame({
   lede,
@@ -78,10 +81,14 @@ function BillingFrame({
   return (
     <PageFrame title="Plan & billing" lede={lede} tabs={<SectionTabs tabs={PLAN_TABS} label="Plan and billing" />}>
       {notices}
-      <PageColumns main={main} aside={payments} />
+      <div className="grid items-start gap-6 @3xl:grid-cols-2 @6xl:grid-cols-3">{main}</div>
+      {payments}
     </PageFrame>
   );
 }
+
+/** The plan's place in the row of cards: alone on the first row until the page is wide enough for three across. */
+const CARD_SPAN = "@3xl:col-span-2 @6xl:col-span-1";
 
 /** What Billing says about a plan payment the customer just returned from (`?payment=`). Fixed words only. */
 const PAYMENT_CONFIRMED = { ok: true, text: "Payment confirmed. Your website is back online." } as const;
@@ -159,11 +166,11 @@ export default async function BillingPage({ searchParams }: BillingPageProps): P
           lede={PAYMENT_RECEIVED_MESSAGE}
           main={
             <>
-              <PageSection id="next" title="What happens next">
+              <SummaryCard id="next" title="What happens next" className={CARD_SPAN}>
                 <p className="max-w-xl text-sm leading-relaxed text-ink">
                   There’s nothing more for you to pay. If you need us sooner, email <EmailUs />.
                 </p>
-              </PageSection>
+              </SummaryCard>
               <BillingDetailsSection view={billingDetails} />
             </>
           }
@@ -179,7 +186,7 @@ export default async function BillingPage({ searchParams }: BillingPageProps): P
         lede="Payment happens at the end of setup."
         main={
           <>
-            <PageSection id="paying" title="How paying works">
+            <SummaryCard id="paying" title="How paying works" className={CARD_SPAN}>
               <p className="max-w-xl text-sm leading-relaxed text-ink">
                 Once you’ve told us about your business, you’ll check your answers and pay on the last step, Check and
                 send. Your payment sends everything to us, and we start building.
@@ -194,7 +201,7 @@ export default async function BillingPage({ searchParams }: BillingPageProps): P
               <Link href={ready ? PAYMENT_STEP_HREF : onboardingStepHref(nextStep)} className={`${DARK_BUTTON} mt-6`}>
                 {ready ? "Go to Check and send" : "Finish setup"}
               </Link>
-            </PageSection>
+            </SummaryCard>
             <BillingDetailsSection view={billingDetails} />
           </>
         }
@@ -244,32 +251,34 @@ export default async function BillingPage({ searchParams }: BillingPageProps): P
       }
       main={
         <>
-          {returnView === "confirming" ? (
-            <PaymentWaiting
-              waitKey="billing:plan"
-              waitingText="We’ve received your payment. Confirming it with the bank…"
-              delayedText="Confirming your payment is taking longer than usual."
-              supportEmail={supportEmailOf(brand)}
-            />
-          ) : lapsed && reactivationPlan !== null && reactivation !== null ? (
-            <ReactivatePlan
-              planName={planLabel(reactivationPlan.name)}
-              monthlyAmount={monthlyPaymentAmount(reactivationPlan, reactivation.netCents - reactivation.discountCents)}
-              priceNote={priceNote(reactivationPlan, reactivation.discountCents, reactivation.netCents)}
-              action={reactivateAction}
-              services={reactivation.cancelled ? reactivation.services : null}
-            >
-              {reactivation.cancelled ? <ServicePicker selected={reactivation.services} currency={reactivationPlan.currency} /> : null}
-            </ReactivatePlan>
-          ) : lapsed || plan === null || subscription === null ? (
-            <PageSection id="plan" title="Your plan">
-              <p className="max-w-xl text-sm leading-relaxed text-ink-2">
-                We couldn’t find your plan’s details. Email us at <EmailUs /> and we’ll sort it out.
-              </p>
-            </PageSection>
-          ) : (
-            <PlanSummary plan={plan} subscription={subscription} now={new Date()} hasWebsite={billing.hasWebsite} brand={brand} />
-          )}
+          <div className={CARD_SPAN}>
+            {returnView === "confirming" ? (
+              <PaymentWaiting
+                waitKey="billing:plan"
+                waitingText="We’ve received your payment. Confirming it with the bank…"
+                delayedText="Confirming your payment is taking longer than usual."
+                supportEmail={supportEmailOf(brand)}
+              />
+            ) : lapsed && reactivationPlan !== null && reactivation !== null ? (
+              <ReactivatePlan
+                planName={planLabel(reactivationPlan.name)}
+                monthlyAmount={monthlyPaymentAmount(reactivationPlan, reactivation.netCents - reactivation.discountCents)}
+                priceNote={priceNote(reactivationPlan, reactivation.discountCents, reactivation.netCents)}
+                action={reactivateAction}
+                services={reactivation.cancelled ? reactivation.services : null}
+              >
+                {reactivation.cancelled ? <ServicePicker selected={reactivation.services} currency={reactivationPlan.currency} /> : null}
+              </ReactivatePlan>
+            ) : lapsed || plan === null || subscription === null ? (
+              <SummaryCard id="plan" title="Your plan">
+                <p className="max-w-xl text-sm leading-relaxed text-ink-2">
+                  We couldn’t find your plan’s details. Email us at <EmailUs /> and we’ll sort it out.
+                </p>
+              </SummaryCard>
+            ) : (
+              <PlanSummary plan={plan} subscription={subscription} now={new Date()} hasWebsite={billing.hasWebsite} brand={brand} />
+            )}
+          </div>
           <PaymentMethodSection method={paymentMethod} renews={renewsAutomatically(billing)} />
           <BillingDetailsSection view={billingDetails} />
         </>

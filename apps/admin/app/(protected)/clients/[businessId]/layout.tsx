@@ -2,7 +2,7 @@ import { findLiveBundledAddOns, findOpenClosureForBusiness } from "@brandbasket/
 import type { ReactElement, ReactNode } from "react";
 import { PLAN_TIER_LABELS } from "@brandbasket/shared/lib/billing/plan-tier";
 import { BILLING_CURRENCY_LABELS } from "@brandbasket/shared/lib/currency";
-import { PROJECT_STATUS_LABELS } from "@brandbasket/shared/lib/project-status";
+import { STAFF_STAGE_LABELS, staffStageOf } from "@brandbasket/shared/lib/project-stage";
 import { LocalDate } from "@brandbasket/shared/ui/panel/local-date-time";
 import { ClientTabs } from "@/components/client-tabs";
 import { Avatar } from "@/components/console/avatar";
@@ -42,7 +42,7 @@ export default async function ClientLayout({
           <span className="inline-flex flex-wrap items-center gap-x-3 gap-y-1">
             <span>
               {client.owner?.name ?? "No owner"} · {PLAN_TIER_LABELS[client.tier]} ·{" "}
-              {project === null ? "No project yet" : PROJECT_STATUS_LABELS[project.status]} · Billed in{" "}
+              {project === null ? "No project yet" : STAFF_STAGE_LABELS[staffStageOf(project.status)]} · Billed in{" "}
               {BILLING_CURRENCY_LABELS[client.currency]}
             </span>
             <ServiceTags addOns={addOns} />

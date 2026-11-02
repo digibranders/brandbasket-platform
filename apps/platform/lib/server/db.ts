@@ -39,6 +39,9 @@ export function getAppDb(): Database {
  * - lib/server/kickoff-sync.ts, the scheduled job that starts a website build once its kickoff call is over. It takes no
  *   input but the clock; it writes only a project's status and first-preview date and one "What we did" line, and is reached
  *   only through app/api/internal/start-builds-after-kickoff, which needs its own secret.
+ * - lib/server/missed-kickoff.ts, which reads the signed-in customer's own latest kickoff outcome from setup_call_outcomes
+ *   (staff-only, append only) to say on Home that the last call was missed. It reads one row for the business in the session,
+ *   returns only the call's start time, never the note or the staff member, and writes nothing.
  * - app/api/site/info/route.ts and app/api/site/events/route.ts, because the site token has already proven the business, so
  *   there is no customer session to scope a connection under -- and the public role can't read the module settings and
  *   services these need before they read anything.

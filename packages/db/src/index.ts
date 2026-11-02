@@ -265,6 +265,7 @@ export {
   DuplicateServiceIdError,
   getBusinessHours,
   getBusinessProfile,
+  getOwnerContact,
   getPrimaryDomain,
   getProjectBrief,
   InvalidHostnameError,
@@ -840,7 +841,7 @@ export { boughtSetupServicesFrom, listBoughtSetupServices, listServiceSetups, sa
 export {
   firstPreviewDueAfterKickoff,
   KICKOFF_PREVIEW_DUE_HOURS,
-  KICKOFF_SETTLE_HOURS,
+  KICKOFF_FALLBACK_START_HOURS,
   listKickoffBoard,
   listKickoffsToStart,
   markProjectReadyAfterKickoff,

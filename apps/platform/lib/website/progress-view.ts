@@ -1,5 +1,6 @@
 import type { ProjectStatus } from "@brandbasket/db";
-import { addWorkingDays, shortDay } from "@/lib/call-dates";
+import { revisionReadyDay } from "@brandbasket/shared/lib/working-days";
+import { shortDay } from "@/lib/call-dates";
 import { CUSTOMER_STAGE_HEADLINE } from "@brandbasket/shared/lib/project-customer-line";
 
 export type ProgressKind = "setup" | "kickoff" | "building" | "paused" | "preview" | "revising" | "approved" | "live" | "none";
@@ -87,5 +88,5 @@ export function progressView(input: ProgressInput): ProgressView {
 
 /** Two working days after the day a revision was asked for: where the page gets its "updated preview" date. */
 export function revisionDue(askedDay: string): string {
-  return addWorkingDays(askedDay, 2);
+  return revisionReadyDay(askedDay);
 }

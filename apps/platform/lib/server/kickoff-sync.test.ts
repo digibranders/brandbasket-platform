@@ -10,8 +10,8 @@ vi.mock("@brandbasket/db", async () => {
 });
 
 const NOW = new Date("2026-10-30T12:00:00.000Z");
-// KICKOFF_SETTLE_HOURS (2) before NOW: the elapsed-time cut-off the sync passes in "auto" mode.
-const ENDED_BEFORE = new Date("2026-10-30T10:00:00.000Z");
+// KICKOFF_FALLBACK_START_HOURS (24) before NOW: the cut-off for a call nobody marked, which the sync passes in both modes.
+const ENDED_BEFORE = new Date("2026-10-29T12:00:00.000Z");
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -40,7 +40,7 @@ describe("kickoffStartMode", () => {
 });
 
 describe("startBuildsAfterKickoff", () => {
-  it("in auto mode (the default), asks for the kickoffs that ended, held or not", async () => {
+  it("in auto mode (the default), asks for the held kickoffs and those that ended over 24 hours ago with no mark", async () => {
     vi.stubEnv("KICKOFF_AUTO_START", "on");
     await startBuildsAfterKickoff(NOW);
     expect(listKickoffsToStart).toHaveBeenCalledWith({}, { endedBefore: ENDED_BEFORE, confirmedOnly: false });

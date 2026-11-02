@@ -73,13 +73,13 @@ describe("completeKickoff", () => {
   });
 
   it("records no outcome when the latest one is already completed", async () => {
-    vi.mocked(findLatestKickoffOutcome).mockResolvedValue({ outcome: "completed", note: null, recordedAt: NOW, recordedByStaffId: "staff-1" });
+    vi.mocked(findLatestKickoffOutcome).mockResolvedValue({ outcome: "completed", note: null, callStartsAt: null, callEndsAt: null, recordedAt: NOW, recordedByStaffId: "staff-1" });
     await completeKickoff(DB, INPUT);
     expect(recordKickoffOutcome).not.toHaveBeenCalled();
   });
 
   it("records completed again after a call was rescheduled and then held", async () => {
-    vi.mocked(findLatestKickoffOutcome).mockResolvedValue({ outcome: "rescheduled", note: null, recordedAt: NOW, recordedByStaffId: "staff-1" });
+    vi.mocked(findLatestKickoffOutcome).mockResolvedValue({ outcome: "rescheduled", note: null, callStartsAt: null, callEndsAt: null, recordedAt: NOW, recordedByStaffId: "staff-1" });
     await completeKickoff(DB, INPUT);
     expect(recordKickoffOutcome).toHaveBeenCalledWith(DB, expect.objectContaining({ outcome: "completed", startsAt: null, endsAt: null }));
   });

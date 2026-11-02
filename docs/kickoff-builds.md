@@ -1,35 +1,54 @@
 # Starting the website build after the kickoff call
 
-A customer who buys the Managed Website books a kickoff call on Home. Nobody on the team marks the call as held for the build
-to start. By default, when the call's end time has passed, the website project moves from `onboarding` to `submitted` on its own,
-and the first preview is due 48 hours after the call. To wait for staff to confirm the call instead, see "Staff confirmation
-mode" below.
+A customer who buys the Managed Website books a kickoff call on Home. Cal.com cannot report who joined a Google Meet call, so
+staff are the source of truth for whether the call happened. The website project moves from `onboarding` to `submitted` when
+staff mark the call held, or, as a fallback so a forgotten call never blocks a customer for good, 24 hours after the call ended
+with no mark at all. The first preview is due 48 hours after the call. To start only on staff confirmation, see "Staff
+confirmation mode" below.
 
 ## How it works
 
 - `POST /api/internal/start-builds-after-kickoff` (`apps/platform/app/api/internal/start-builds-after-kickoff/route.ts`) runs
-  `startBuildsAfterKickoff` (`apps/platform/lib/server/kickoff-sync.ts`). It finds every kickoff that is over and whose project
+  `startBuildsAfterKickoff` (`apps/platform/lib/server/kickoff-sync.ts`). It finds every kickoff that may start and whose project
   has not started, and moves each with `markProjectReadyAfterKickoff` (`packages/db/src/queries/kickoff-build.ts`).
-- A call counts as over when staff marked it held, or its end time passed more than two hours ago (`KICKOFF_SETTLE_HOURS`), so
-  staff who write their notes straight after the call get there first.
+- A kickoff may start when staff marked it held, or its end time passed more than 24 hours ago
+  (`KICKOFF_FALLBACK_START_HOURS`) and nobody marked it.
+- A call staff marked as not attended ("Customer did not attend", "We did not attend" or "Call was rescheduled") loses its
+  booking (`clearUnheldKickoffBooking`), so it is never listed and never starts a build. The customer books again, and the new
+  call follows the same rule.
 - It is safe to run as often as wanted: a project that has already moved is not touched. Each move adds one "What we did" line
   the customer can read.
 - The route answers 503 when `KICKOFF_SYNC_TOKEN` is not set, 401 for a missing or wrong token, 502 when a build could not be
   started (the report is the body), and 200 otherwise. The report is `{ checked, started, failed }`.
-- In the console, staff only handle exceptions: "Did not happen" and "held by phone" on the Calls page, and notes in "Just
-  finished".
+
+## What the customer sees on Home
+
+- Before the call ends: "Kickoff booked", with the countdown.
+- After it ends, staff have marked nothing, and the build has not started: "We're confirming your call", with "Your call was at
+  {time}. If you couldn't join, you can book a new time." and a "Book a new time" button that opens the same time picker as
+  Reschedule. The time carries the day when the call was not today. Nothing says the call is done and no preview date is shown.
+- Staff marked it held: "We are getting your website started", then the build states.
+- Staff marked it as not attended by the customer or by us: "Book your kickoff" again, with "We missed each other on {day},
+  {time}. Pick a new time." above the picker. The time comes from the call times saved with the outcome in
+  `setup_call_outcomes`. "Call was rescheduled" shows the plain "Book your kickoff" screen.
+- The 24 hour fallback started the build: the usual build states.
+
+Only customers with the Managed Website who have paid see these; every other state is unchanged.
+
+## What staff do
+
+- Today lists "Did the kickoff happen?" for each business whose call ended and was not marked, from the last 14 days. It links
+  to the Calls page, where "Just finished" has the notes box with "Save and start the build", and the buttons "Customer did not
+  attend", "We did not attend" and "Call was rescheduled". Staff press either "did not attend" button when nobody joined. The
+  item goes once the call is marked held or its booking is removed.
 
 ## Staff confirmation mode
 
 `KICKOFF_AUTO_START` on the dashboard (`apps/platform`) chooses how a build starts. The default, `on` (also when unset or
-empty), is the behaviour above. With `KICKOFF_AUTO_START=off`, a build starts only when staff confirm the call: "Save and start
-the build" on the Calls page, or "Mark call as held" on the client page. The end time alone starts nothing.
+empty), is the behaviour above, including the 24 hour fallback. With `KICKOFF_AUTO_START=off`, a build starts only when staff
+confirm the call: "Save and start the build" on the Calls page, or "Mark call as held" on the client page. The end time alone
+starts nothing, however long ago it passed.
 
-- A call that ends without a confirmation stays on the Calls page under "Just finished". Today shows "N kickoff calls need an
-  outcome" (or "1 kickoff call needs an outcome"), linking to Calls, for calls that ended and are not marked held, from the last
-  14 days. Staff either confirm the call or record that it did not happen: "Customer did not attend", "We did not attend" or
-  "Call was rescheduled".
-- Today shows that count whichever way the switch is set.
 - The switch is read when the job runs. After a change, restart the dashboard.
 - Any value other than `on`, `off` or empty fails the job with a configuration error rather than guessing a mode.
 

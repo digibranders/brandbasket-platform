@@ -55,6 +55,8 @@ describe("setup call outcomes", () => {
     expect(await findLatestKickoffOutcome(dbs.staff.db, businessId)).toEqual({
       outcome: "completed",
       note: null,
+      callStartsAt: null,
+      callEndsAt: null,
       recordedAt: LATER,
       recordedByStaffId: STAFF,
     });
@@ -62,6 +64,23 @@ describe("setup call outcomes", () => {
     expect(rows).toHaveLength(2);
     expect(rows.find((row) => row.outcome === "customer_no_show")).toMatchObject({
       note: "Called twice, no answer",
+      callStartsAt: new Date("2026-10-26T09:00:00.000Z"),
+      callEndsAt: new Date("2026-10-26T09:30:00.000Z"),
+    });
+  });
+
+  it("returns the call's saved times with a no-show, so the customer can be told which call was missed", async () => {
+    await recordKickoffOutcome(dbs.staff.db, {
+      businessId,
+      outcome: "team_no_show",
+      note: null,
+      startsAt: new Date("2026-10-26T09:00:00.000Z"),
+      endsAt: new Date("2026-10-26T09:30:00.000Z"),
+      staffId: STAFF,
+      now: EARLIER,
+    });
+    expect(await findLatestKickoffOutcome(dbs.staff.db, businessId)).toMatchObject({
+      outcome: "team_no_show",
       callStartsAt: new Date("2026-10-26T09:00:00.000Z"),
       callEndsAt: new Date("2026-10-26T09:30:00.000Z"),
     });

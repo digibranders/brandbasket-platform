@@ -12,6 +12,7 @@ import { loadActiveServices } from "./active-services";
 import { loadIntake } from "./intake";
 import { getLiveWebsite, getProjectOverview } from "./onboarding";
 import { stillAhead } from "@/lib/home/due";
+import { loadMissedKickoffAt } from "./missed-kickoff";
 import { loadOverview, type OverviewData } from "./overview";
 import { loadRequestNeeds, loadWaitingOnYou } from "./requests";
 import { getSetupCallState, type SetupCallState } from "./setup-call";
@@ -39,6 +40,8 @@ export interface HomeData {
  */
 export async function loadHome(tenant: TenantContext, billing: CustomerBilling, now: Date): Promise<HomeData> {
   const [services, call, { project }, live] = await Promise.all([loadActiveServices(tenant), getSetupCallState(tenant), getProjectOverview(), getLiveWebsite()]);
+  // Only a business with no booking can be showing a miss, so the outcome is read only then and only for the website.
+  const missedKickoffAt = call.booking === null && services.includes("website") && billing.status === "paid" ? await loadMissedKickoffAt(tenant) : null;
   const state = deriveClientHomeState({
     now,
     billing: { status: billing.status, paymentUnderReview: billing.paymentUnderReview },
@@ -51,6 +54,7 @@ export async function loadHome(tenant: TenantContext, billing: CustomerBilling, 
             endsAt: call.booking.endsAtIso === null ? null : new Date(call.booking.endsAtIso),
             heldAt: call.booking.heldAtIso === null ? null : new Date(call.booking.heldAtIso),
           },
+    missedKickoffAt,
     project: project === null ? null : { status: project.status, slaDueAt: stillAhead(project.slaDueAt, now), onHoldReason: project.onHoldReason },
     live,
   });
