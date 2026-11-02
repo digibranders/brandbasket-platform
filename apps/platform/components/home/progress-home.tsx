@@ -57,6 +57,7 @@ export function ProgressHome({ state, data }: { readonly state: WebsiteState; re
   const copy = copyFor(state);
   const endsAt = data.call.booking?.endsAtIso ?? null;
   const milestones = websiteMilestones(state, { kickoffAt: endsAt === null ? null : new Date(endsAt), firstPreviewDueAt: data.project?.slaDueAt ?? null, launchPlannedOn: data.project?.launchPlannedOn ?? null });
+  // Nothing to open until there is a preview or a live site, so the in-progress states carry no button: the Website page only repeats this card.
   const action =
     state.kind === "preview_ready" ? (
       <Link href="/website" className={DARK_BUTTON}>
@@ -71,11 +72,7 @@ export function ProgressHome({ state, data }: { readonly state: WebsiteState; re
           Request an update
         </Link>
       </>
-    ) : (
-      <Link href="/website" className={SOFT_BUTTON}>
-        Open Website
-      </Link>
-    );
+    ) : undefined;
   const notes =
     data.kickoffNotes === null ? null : (
       <section aria-labelledby="home-notes" className={`${LIFT} grid content-start gap-2 p-6`}>

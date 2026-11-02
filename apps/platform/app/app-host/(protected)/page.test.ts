@@ -132,6 +132,12 @@ describe("while the website is built", () => {
     expect(html).toContain("We will email you, and show it here, when your first preview is ready.");
   });
 
+  it("offers no Open Website button until there is a preview or a live site", async () => {
+    for (const state of [{ kind: "starting" }, { kind: "preparing", dueAt: null }, { kind: "building", dueAt: null }, { kind: "revisions" }, { kind: "approved" }] as const) {
+      expect(await renderHome(home(state))).not.toContain("Open Website");
+    }
+  });
+
   it("shows the hold reason exactly as staff wrote it", async () => {
     const html = await renderHome(home({ kind: "on_hold", reason: "Waiting for your logo file" }));
     expect(html).toContain("Your build is paused");
