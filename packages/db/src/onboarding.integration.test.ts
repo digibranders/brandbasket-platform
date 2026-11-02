@@ -505,10 +505,10 @@ describe("brand assets after the website is built", () => {
   });
 
   it("lets staff add a photo and a logo for a business, which its own tenant then sees", async () => {
-    const photo = await recordBrandAssetForStaff(dbs.staff.db, businessA, { ...mediaInput(STAFF_USER, businessA) }, LIMITS);
-    const mark = await recordBrandAssetForStaff(dbs.staff.db, businessA, { ...logo(), uploadedByUserId: STAFF_USER }, LIMITS);
+    const photo = await recordBrandAssetForStaff(dbs.staff.db, businessA, { ...mediaInput(USER_A, businessA) }, LIMITS);
+    const mark = await recordBrandAssetForStaff(dbs.staff.db, businessA, { ...logo(), uploadedByUserId: USER_A }, LIMITS);
 
-    expect(photo.asset).toMatchObject({ businessId: businessA, purpose: "photo", uploadedByUserId: STAFF_USER });
+    expect(photo.asset).toMatchObject({ businessId: businessA, purpose: "photo", uploadedByUserId: USER_A });
     expect(mark.asset.purpose).toBe("logo");
     expect((await asTenant("A", (tx) => listMediaAssets(tx, "photo"))).map((asset) => asset.id)).toEqual([photo.asset.id]);
     expect(await asTenant("B", (tx) => listMediaAssets(tx, "photo"))).toEqual([]);
@@ -516,7 +516,7 @@ describe("brand assets after the website is built", () => {
 
   it("replaces the logo when staff add a new one, whoever added the old one, and hands back the replaced file", async () => {
     const first = await asTenant("A", (tx) => recordBrandAsset(tx, logo(), LIMITS));
-    const second = await recordBrandAssetForStaff(dbs.staff.db, businessA, { ...logo(), uploadedByUserId: STAFF_USER }, LIMITS);
+    const second = await recordBrandAssetForStaff(dbs.staff.db, businessA, { ...logo(), uploadedByUserId: USER_A }, LIMITS);
 
     expect(second.replacedStorageKeys).toEqual([first.asset.storageKey]);
     expect((await asTenant("A", (tx) => listMediaAssets(tx, "logo"))).map((asset) => asset.id)).toEqual([second.asset.id]);
@@ -525,14 +525,14 @@ describe("brand assets after the website is built", () => {
   it("counts the customer's own photos against the limit when staff add one", async () => {
     for (let index = 0; index < 2; index += 1) await asTenant("A", (tx) => recordBrandAsset(tx, mediaInput(USER_A, businessA), { maxPhotos: 2 }));
 
-    await expect(recordBrandAssetForStaff(dbs.staff.db, businessA, mediaInput(STAFF_USER, businessA), { maxPhotos: 2 })).rejects.toBeInstanceOf(
+    await expect(recordBrandAssetForStaff(dbs.staff.db, businessA, mediaInput(USER_A, businessA), { maxPhotos: 2 })).rejects.toBeInstanceOf(
       PhotoLimitReachedError,
     );
     expect(await asTenant("A", (tx) => listMediaAssets(tx, "photo"))).toHaveLength(2);
   });
 
   it("refuses a business id that is not a UUID", async () => {
-    await expect(recordBrandAssetForStaff(dbs.staff.db, "not-an-id", mediaInput(STAFF_USER, businessA), LIMITS)).rejects.toThrow("Business id must be a UUID");
+    await expect(recordBrandAssetForStaff(dbs.staff.db, "not-an-id", mediaInput(USER_A, businessA), LIMITS)).rejects.toThrow("Business id must be a UUID");
   });
 });
 
