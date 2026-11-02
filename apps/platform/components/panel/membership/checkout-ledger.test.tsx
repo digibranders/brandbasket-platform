@@ -181,4 +181,12 @@ describe("CheckoutLedger", () => {
     render(["managed-website"], false);
     expect(container.textContent).not.toContain("Change services");
   });
+
+  it("asks for a code before the billing details and the Pay button", () => {
+    render(["managed-website"], true, billingView());
+    const text = container.textContent ?? "";
+    expect(text.indexOf("Have a code?")).toBeGreaterThan(-1);
+    expect(text.indexOf("Billing details")).toBeGreaterThan(text.indexOf("Have a code?"));
+    expect(text.indexOf("Pay ₹")).toBeGreaterThan(text.indexOf("Have a code?"));
+  });
 });
