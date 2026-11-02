@@ -4,15 +4,15 @@ import config from "@/payload.config";
 import { getCustomerBilling } from "@/lib/server/customer-access";
 import { getCustomerTenant } from "@/lib/server/customer-tenant";
 import { serverEnv } from "@/lib/server/env";
-import { BodyTooLargeError, readLimitedBody } from "@/lib/server/read-limited-body";
+import { BodyTooLargeError, readLimitedBody } from "@brandbasket/shared/server/read-limited-body";
 import { allowsAnyLocalHost, isAppOrigin, resolveSurface, type SurfaceOrigins } from "@/lib/surfaces";
-import { parseUploadFileName } from "@/lib/uploads/file-name";
+import { parseUploadFileName } from "@brandbasket/shared/lib/uploads/file-name";
 import {
   isAcceptedUploadType,
   MAX_UPLOAD_BYTES,
   TOO_LARGE_MESSAGE,
   UPLOAD_FILE_NAME_HEADER,
-} from "@/lib/uploads/limits";
+} from "@brandbasket/shared/lib/uploads/limits";
 
 /**
  * `POST /api/content-media-uploads`: a customer's own fresh photo, straight into a Payload `media` document —

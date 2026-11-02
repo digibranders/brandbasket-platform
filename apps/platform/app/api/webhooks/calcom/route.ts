@@ -1,7 +1,7 @@
 import { handleCalcomWebhook, type CalcomWebhookResult } from "@/lib/server/calcom-webhook";
 import { noteWebhook, type WebhookOutcome } from "@/lib/server/webhook-log";
 import { failureReason } from "@/lib/webhook-event";
-import { BodyTooLargeError, readLimitedBody } from "@/lib/server/read-limited-body";
+import { BodyTooLargeError, readLimitedBody } from "@brandbasket/shared/server/read-limited-body";
 import { noteSecurityEvent } from "@/lib/server/security-events";
 
 /** A booking notice is a few kilobytes; this leaves room for Cal.com's extra fields without letting a stranger send megabytes. */

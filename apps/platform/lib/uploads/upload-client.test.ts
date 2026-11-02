@@ -1,9 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { MAX_UPLOAD_BYTES, TOO_LARGE_MESSAGE } from "./limits";
-import { prepareImageForUpload } from "./prepare-image";
+import { MAX_UPLOAD_BYTES, TOO_LARGE_MESSAGE } from "@brandbasket/shared/lib/uploads/limits";
+import { prepareImageForUpload } from "@brandbasket/shared/lib/uploads/prepare-image";
 import { LISTING_PICTURE_ROUTE, UPLOAD_ROUTE, uploadImage, uploadListingPicture } from "./upload-client";
 
-vi.mock("./prepare-image", () => ({ prepareImageForUpload: vi.fn() }));
+vi.mock("@brandbasket/shared/lib/uploads/prepare-image", () => ({ prepareImageForUpload: vi.fn() }));
 
 const mockedPrepare = vi.mocked(prepareImageForUpload);
 const fetchMock = vi.fn<typeof fetch>();

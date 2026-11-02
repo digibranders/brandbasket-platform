@@ -1,5 +1,5 @@
-import { MAX_UPLOAD_BYTES, TOO_LARGE_MESSAGE, UPLOAD_FILE_NAME_HEADER } from "./limits";
-import { prepareImageForUpload } from "./prepare-image";
+import { MAX_UPLOAD_BYTES, TOO_LARGE_MESSAGE, UPLOAD_FILE_NAME_HEADER } from "@brandbasket/shared/lib/uploads/limits";
+import { prepareImageForUpload } from "@brandbasket/shared/lib/uploads/prepare-image";
 
 /** `POST /api/content-media-uploads`'s own two response shapes. */
 type UploadResponseBody = { readonly media: { readonly id: string } } | { readonly error: string };

@@ -18,6 +18,7 @@ import { PROJECT_PREVIEW_NOTICES, readProjectPreviewNotice } from "@brandbasket/
 import { SUPPORT_STATUS_LABELS } from "@brandbasket/shared/lib/support";
 import { DeliveryFacts, FeedbackList, NextStepCard, PreviewVersionList } from "@/components/console/delivery-tab";
 import { Fold } from "@/components/console/fold";
+import { ClientBrandUploader } from "@/components/console/client-brand-uploader";
 import { ChangeFreeAddressForm, FreeAddressForm } from "@/components/console/free-address-form";
 import { KickoffCallSection } from "@/components/console/kickoff-call-section";
 import { Notice } from "@/components/console/notice";
@@ -308,6 +309,9 @@ export default async function ClientWebsitePage({
             ))}
           </ul>
         )}
+        <div className="mt-6">
+          <ClientBrandUploader businessId={client.businessId} />
+        </div>
       </Section>
       <KickoffCallSection businessId={client.businessId} />
 

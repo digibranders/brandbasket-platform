@@ -3,7 +3,7 @@ import { getCustomerTenant } from "@/lib/server/customer-tenant";
 import { getAppDb, getStaffDb } from "@/lib/server/db";
 import { serverEnv } from "@/lib/server/env";
 import { canAddListingPictures } from "@/lib/server/listing-pictures";
-import { BUSY_MESSAGE, BUSY_RETRY_AFTER_SECONDS, hasDecodeCapacity } from "@/lib/server/media-upload";
+import { BUSY_MESSAGE, BUSY_RETRY_AFTER_SECONDS, hasDecodeCapacity } from "@brandbasket/shared/server/media-upload";
 import { consumeUploadAllowance } from "@/lib/server/onboarding-media";
 import { handleProductPhotoRequest } from "@/lib/server/product-photo-request";
 import { storeProductPhoto } from "@/lib/server/product-photos";

@@ -4,7 +4,7 @@ import type { TenantContext } from "@brandbasket/shared/lib/access";
 import { PRODUCT_PHOTO_SIZE } from "@brandbasket/shared/lib/directory/pictures";
 import { deleteMediaFiles, mediaStorageKey, type MediaStorage } from "@brandbasket/shared/server/media-storage";
 import { storePictureCopies } from "./listing-pictures";
-import { processUpload, UploadRejectedError, type UploadRejection } from "./media-upload";
+import { processUpload, UploadRejectedError, type UploadRejection } from "@brandbasket/shared/server/media-upload";
 
 /*
  * A product's photo (docs/superpowers/specs/2026-10-12-product-photos-design.md): one per product, added from the

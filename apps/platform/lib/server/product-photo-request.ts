@@ -2,12 +2,12 @@ import "server-only";
 import type { TenantContext } from "@brandbasket/shared/lib/access";
 import { NO_LISTING_MESSAGE } from "@/lib/photos-view";
 import type { UploadAllowance } from "./onboarding-media";
+import { UPLOAD_REJECTION_STATUS } from "@brandbasket/shared/server/media-upload";
 import type { ProductPhotoOutcome, ProductPhotoRefusal } from "./product-photos";
 import {
   readUploadBody,
   refuseUpload,
   refuseUploadEnvelope,
-  UPLOAD_REJECTION_STATUS,
   UPLOAD_RELOAD_MESSAGE,
   UPLOAD_SIGNED_OUT_MESSAGE,
   type DecodeBusy,
