@@ -1,9 +1,10 @@
 import "server-only";
-import { isAuthApiError, isInvalidTokenError } from "@brandbasket/auth";
-import { consumeRateLimit, isPhoneAccountEmail, type RateLimitRule } from "@brandbasket/db";
+import { isInvalidTokenError } from "@brandbasket/auth";
+import { consumeRateLimit, findUserByPhone, isPhoneAccountEmail, phoneAccountEmail, type RateLimitRule } from "@brandbasket/db";
 import { clientIpFrom } from "@brandbasket/shared/lib/client-ip";
 import { headers } from "next/headers";
 import { generatePasswordResetEmail, getAuth } from "./auth";
+import type { AccountIdentifier } from "./customer-sign-in-form";
 import { getAppDb } from "./db";
 import { realDeployment } from "./email";
 import { createEmailDelivery, createOutboxTransport } from "@brandbasket/email";
@@ -13,20 +14,19 @@ import { currentBrand } from "./request-brand";
 import { errorLogInfo } from "@brandbasket/shared/server/error-log-info";
 
 /*
- * Getting back into an account (a one-time link to choose a new password) and proving an email address is its
- * owner's (a link that confirms it). Both run for people who are not signed in, so every entry is rate limited, and
- * nothing here ever says whether an address has an account.
+ * Getting back into an account: a one-time link to choose a new password. It runs for people who are not signed in,
+ * so every entry is rate limited, and nothing here ever says whether an address or a mobile number has an account.
  */
 
 const ONE_HOUR_SECONDS = 60 * 60;
 /** Per network: enough for a household or an office behind one address. */
 const RESET_REQUESTS_PER_CLIENT: RateLimitRule = { limit: 6, windowSeconds: ONE_HOUR_SECONDS };
-/** Per address, from anywhere: so a stranger cannot fill someone's inbox with reset emails. */
+/** Per address, from anywhere: so a stranger cannot fill someone's inbox with reset emails. Also per mobile number. */
 const RESET_REQUESTS_PER_EMAIL: RateLimitRule = { limit: 3, windowSeconds: ONE_HOUR_SECONDS };
 /** Per network: tries at a reset link. The token is 24 random characters, so this only bounds the noise. */
 const RESET_ATTEMPTS_PER_CLIENT: RateLimitRule = { limit: 10, windowSeconds: ONE_HOUR_SECONDS };
-/** Per network: opening a confirmation link, which a mail scanner may do before the owner does. */
-const CONFIRM_ATTEMPTS_PER_CLIENT: RateLimitRule = { limit: 30, windowSeconds: ONE_HOUR_SECONDS };
+/** Looked up in place of a mobile number with no usable account: no account has it, so the request takes the same path as any other. */
+const NO_ACCOUNT_EMAIL = "no-account@phone.brandbasket.invalid";
 
 async function clientIp(): Promise<string> {
   return clientIpFrom(await headers());
@@ -38,20 +38,32 @@ export type ResetRequestOutcome = "accepted" | "limited" | "failed";
 class ResetMailProbeComplete extends Error {}
 
 /**
- * Emails a reset link to `email` if it has an account. "accepted" says nothing about whether it does: the caller
- * shows the same message either way. `email` must already be normalised (trimmed, lowercase).
+ * Emails a reset link to the account `identifier` names, at the email address on file, if there is one. "accepted"
+ * says nothing about whether there is: the caller shows the same message either way. The identifier comes from
+ * parseAccountIdentifier, so an email is already normalised and a number is E.164.
  */
-export async function requestPasswordReset(email: string): Promise<ResetRequestOutcome> {
+export async function requestPasswordReset(identifier: AccountIdentifier): Promise<ResetRequestOutcome> {
   const db = getAppDb();
   const perClient = await consumeRateLimit(db, `password-reset:client:${await clientIp()}`, RESET_REQUESTS_PER_CLIENT);
   if (!perClient.allowed) return "limited";
-  // Over the per-address budget is answered like any other request: saying "limited" here would confirm nothing
-  // about the address, but it would tell a stranger their flood is landing.
-  const perEmail = await consumeRateLimit(db, `password-reset:email:${email}`, RESET_REQUESTS_PER_EMAIL);
-  if (!perEmail.allowed) return "accepted";
 
-  // An account opened with a mobile number has only a placeholder address: there is nobody to write to.
-  if (isPhoneAccountEmail(email)) return "accepted";
+  // An account opened with a mobile number alone has only a placeholder address: there is nobody to write to.
+  if (identifier.kind === "email" && isPhoneAccountEmail(identifier.email)) return "accepted";
+  // A number with no account takes every step an account's does, with an address nobody holds in its place.
+  const onFile = identifier.kind === "phone" ? await findUserByPhone(db, identifier.phone) : null;
+  const deliverable = onFile !== null && !isPhoneAccountEmail(onFile.email) ? onFile.email : null;
+  const email = identifier.kind === "email" ? identifier.email : (deliverable ?? NO_ACCOUNT_EMAIL);
+
+  // Over a per-address or per-number budget is answered like any other request: saying "limited" here would confirm
+  // nothing about the address, but it would tell a stranger their flood is landing. A number is also held to the
+  // account's address budget, so an account cannot be flooded by alternating between the two.
+  const budgets =
+    identifier.kind === "email"
+      ? [`password-reset:email:${identifier.email}`]
+      : [`password-reset:phone:${identifier.phone}`, `password-reset:email:${deliverable ?? phoneAccountEmail(identifier.phone)}`];
+  for (const key of budgets) {
+    if (!(await consumeRateLimit(db, key, RESET_REQUESTS_PER_EMAIL)).allowed) return "accepted";
+  }
 
   try {
     const message = await generatePasswordResetEmail(email);
@@ -101,27 +113,3 @@ export async function resetPassword(token: string, newPassword: string): Promise
     throw error;
   }
 }
-
-export type EmailConfirmationOutcome =
-  | { readonly kind: "confirmed" | "dead-link" | "failed" }
-  | { readonly kind: "limited"; readonly retryAfterSeconds: number };
-
-/**
- * Marks the address in a confirmation link as its owner's. Opening the link twice, or after the address is already
- * confirmed, is "confirmed" again. Temporary limits and faults retain the same-token retry path.
- */
-export async function confirmEmail(token: string): Promise<EmailConfirmationOutcome> {
-  const budget = await consumeRateLimit(getAppDb(), `confirm-email:client:${await clientIp()}`, CONFIRM_ATTEMPTS_PER_CLIENT);
-  if (!budget.allowed) return { kind: "limited", retryAfterSeconds: budget.retryAfterSeconds };
-  try {
-    await getAuth().api.verifyEmail({ query: { token } });
-    return { kind: "confirmed" };
-  } catch (error) {
-    // A token that is not one, has expired, or names an address with no account: all the same to the person.
-    if (isInvalidTokenError(error) || (isAuthApiError(error) && error.body?.code === "USER_NOT_FOUND")) return { kind: "dead-link" };
-    console.error("An email confirmation could not be completed.", errorLogInfo(error));
-    return { kind: "failed" };
-  }
-}
-
-export type ConfirmationSendOutcome = "sent" | "limited" | "failed";

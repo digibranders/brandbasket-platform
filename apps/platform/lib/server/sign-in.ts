@@ -15,14 +15,13 @@ import { noteSecurityEvent } from "./security-events";
 export type SignInOutcome = SignInFormState | { readonly status: "signed-in"; readonly userId: string };
 
 /**
- * Signs a customer in with their password and either the mobile number a free listing account was opened with or the
- * email a website client's account was made for. Better Auth signs in by email, so a number is first turned into its
- * account's address: the one stored for it, or, for a number with no account, the placeholder it would have had, so
- * a password is checked (and fails) either way and nothing tells a stranger which numbers have accounts.
+ * Signs a customer in with their password and either the email the account was made with or the mobile number given at
+ * sign-up. Better Auth signs in by email, so a number is first turned into its account's address, or, for a number with
+ * no account, the placeholder it would have had: a password is checked (and fails) either way, so nothing tells a
+ * stranger which numbers have accounts.
  */
 export async function signInWithPassword(formData: FormData): Promise<SignInOutcome> {
-  // A brand whose accounts are opened with an email asks for one; the number sign-in still works for an account that has one.
-  const parsed = parseCustomerSignInForm(formData, "email");
+  const parsed = parseCustomerSignInForm(formData);
   if (!parsed.success) return { status: "error", message: parsed.message, email: parsed.typed };
 
   const { identifier, password } = parsed.data;
@@ -30,19 +29,20 @@ export async function signInWithPassword(formData: FormData): Promise<SignInOutc
   const typed = String(formData.get("identifier") ?? "").trim();
   const requestHeaders = await headers();
 
-  // One budget per account, keyed by what it signs in with.
-  const accountKey = identifier.kind === "phone" ? identifier.phone : identifier.email;
-  const blocked = await firstBlockedSignInLimit(getAppDb(), accountKey, clientIpFrom(requestHeaders));
+  const email =
+    identifier.kind === "email"
+      ? identifier.email
+      : ((await findUserByPhone(getAppDb(), identifier.phone))?.email ?? phoneAccountEmail(identifier.phone));
+
+  // One budget per account, keyed by its address, so an account's number and its email share it instead of each
+  // getting a fresh one. A number with no account is keyed by its placeholder.
+  const blocked = await firstBlockedSignInLimit(getAppDb(), email, clientIpFrom(requestHeaders));
   if (blocked !== null) {
     // Not awaited: the person is told at once; the count and any alert happen beside it.
     void noteSecurityEvent("sign_in_blocked");
     return { status: "error", message: retryMessage(blocked.retryAfterSeconds), email: typed };
   }
 
-  const email =
-    identifier.kind === "email"
-      ? identifier.email
-      : ((await findUserByPhone(getAppDb(), identifier.phone))?.email ?? phoneAccountEmail(identifier.phone));
   let userId: string;
   try {
     ({ userId } = await signInCustomer({ email, password }, requestHeaders));

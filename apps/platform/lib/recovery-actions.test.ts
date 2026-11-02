@@ -23,8 +23,14 @@ it("returns a neutral retryable email delivery error instead of the sent stage",
 
 it("says the same thing whether or not the address has an account, and sends the reset link to the lowercased address", async () => {
   vi.mocked(requestPasswordReset).mockResolvedValue("accepted");
-  expect(await requestPasswordResetAction({ status: "idle" }, form({ identifier: " Owner@Example.COM " }))).toEqual({ status: "sent", email: "owner@example.com" });
-  expect(requestPasswordReset).toHaveBeenCalledWith("owner@example.com");
+  expect(await requestPasswordResetAction({ status: "idle" }, form({ identifier: " Owner@Example.COM " }))).toEqual({ status: "sent", kind: "email", typed: "owner@example.com" });
+  expect(requestPasswordReset).toHaveBeenCalledWith({ kind: "email", email: "owner@example.com" });
+});
+
+it("takes a mobile number as E.164, and answers with the number as typed", async () => {
+  vi.mocked(requestPasswordReset).mockResolvedValue("accepted");
+  expect(await requestPasswordResetAction({ status: "idle" }, form({ identifier: " 98200 11223 " }))).toEqual({ status: "sent", kind: "phone", typed: "98200 11223" });
+  expect(requestPasswordReset).toHaveBeenCalledWith({ kind: "phone", phone: "+919820011223" });
 });
 
 it("tells a network over its hourly budget to wait", async () => {
@@ -35,8 +41,8 @@ it("tells a network over its hourly budget to wait", async () => {
   });
 });
 
-it("asks for an email address, and never sends a code or a link for a mobile number", async () => {
-  for (const identifier of ["", "9820000000", "not an address"]) {
+it("asks for an email or a mobile number, and sends nothing for anything else", async () => {
+  for (const identifier of ["", "12345", "not an address", "meera@"]) {
     const result = await requestPasswordResetAction({ status: "idle" }, form({ identifier }));
     expect(result).toMatchObject({ status: "error" });
     expect(result.status === "error" ? result.message : "").toMatch(/email/i);

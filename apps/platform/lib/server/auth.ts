@@ -1,14 +1,13 @@
 import "server-only";
 import {
   createAuth,
-  EMAIL_CONFIRMATION_LIFETIME_SECONDS,
   PASSWORD_RESET_LIFETIME_SECONDS,
   type Auth,
   type AuthConfig,
   type AuthMailer,
 } from "@brandbasket/auth";
-import { confirmEmailEmail, passwordResetEmail, type EmailMessage } from "@brandbasket/email";
-import { confirmEmailPath, resetPasswordPath } from "@/lib/account-recovery-form";
+import { passwordResetEmail, type EmailMessage } from "@brandbasket/email";
+import { resetPasswordPath } from "@/lib/account-recovery-form";
 import { getAppDb } from "./db";
 import { customerEmailTransport } from "./email";
 import { serverEnv } from "@/lib/server/env";
@@ -32,15 +31,6 @@ function accountMailer(): AuthMailer {
           to: email,
           resetUrl: new URL(resetPasswordPath(token), await currentAppOrigin()).toString(),
           expiresInMinutes: PASSWORD_RESET_LIFETIME_SECONDS / 60,
-        }),
-      );
-    },
-    sendEmailConfirmation: async ({ email, token }) => {
-      await customerEmailTransport(getPublicDb()).send(
-        confirmEmailEmail({
-          to: email,
-          confirmUrl: new URL(confirmEmailPath(token), await currentAppOrigin()).toString(),
-          expiresInDays: EMAIL_CONFIRMATION_LIFETIME_SECONDS / (60 * 60 * 24),
         }),
       );
     },
@@ -70,9 +60,6 @@ export async function generatePasswordResetEmail(email: string): Promise<EmailMe
         to: recipient, resetUrl: new URL(resetPasswordPath(token), appOrigin).toString(),
         expiresInMinutes: PASSWORD_RESET_LIFETIME_SECONDS / 60,
       });
-    },
-    sendEmailConfirmation: async () => {
-      throw new Error("Email confirmation cannot run during reset token generation.");
     },
   }, false);
   await resetAuth.api.requestPasswordReset({ body: { email } });

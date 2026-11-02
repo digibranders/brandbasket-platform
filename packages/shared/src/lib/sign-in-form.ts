@@ -42,7 +42,10 @@ export function parseSignInForm(formData: FormData): SignInParseResult {
   };
 }
 
-/** What was typed in the sign-in form's identifier field, trimmed, so a refusal that comes before parsing can give it back. */
+/**
+ * What was typed in the sign-in form's first field, trimmed, so a refusal that comes before parsing can give it back.
+ * The staff console names the field `email`; the customer dashboard names it `identifier`.
+ */
 export function typedSignInIdentifier(formData: FormData): string {
-  return textValue(formData, "email").trim();
+  return (textValue(formData, "identifier") || textValue(formData, "email")).trim();
 }

@@ -6,7 +6,7 @@ export type ErrorApp = "platform" | "admin";
 
 const ERROR_CLASSES = ["Error", "TypeError", "ReferenceError", "RangeError", "SyntaxError", "URIError", "EvalError", "AggregateError", "DatabaseError", "DrizzleQueryError", "UnknownError"] as const;
 const BROWSER_FAMILIES = ["Chrome", "Safari", "Firefox", "Edge", "Other", "Server"] as const;
-const STATIC_SEGMENTS = new Set("app-host appointments patients practitioners services business account billing invoices payments charges profile settings team website listing photos videos directory signup sign-in sign-up sign-out reset-password forgot-password confirm-email verification setup onboarding support tickets errors clients leads affiliates referrals pricing geography outbox api auth site bookings availability info dashboard new edit details schedule calendar health support-attachments error-reports in".split(" "));
+const STATIC_SEGMENTS = new Set("app-host appointments patients practitioners services business account billing invoices payments charges profile settings team website listing photos videos directory signup sign-in sign-up sign-out reset-password forgot-password verification setup onboarding support tickets errors clients leads affiliates referrals pricing geography outbox api auth site bookings availability info dashboard new edit details schedule calendar health support-attachments error-reports in".split(" "));
 const FILE_PATTERN = /^(?:[a-f0-9]{6,}(?:\.[a-f0-9]+)?\.js|(?:page|route|error|global-error|layout|instrumentation|instrumentation-client)\.[tj]sx?)$/;
 const RELEASE_PATTERN = /^[a-f0-9]{7,64}$/;
 

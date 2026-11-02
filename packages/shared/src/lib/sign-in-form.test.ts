@@ -53,6 +53,12 @@ describe("typedSignInIdentifier", () => {
     expect(typedSignInIdentifier(data)).toBe("98200 11223");
   });
 
+  it("reads the customer dashboard's field, which is named identifier", () => {
+    const data = new FormData();
+    data.set("identifier", "  Owner@Example.com ");
+    expect(typedSignInIdentifier(data)).toBe("Owner@Example.com");
+  });
+
   it("is empty when the field was not sent", () => {
     expect(typedSignInIdentifier(new FormData())).toBe("");
   });
