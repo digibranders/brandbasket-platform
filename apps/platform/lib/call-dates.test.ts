@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { addWorkingDays, dayMonth, promiseDates, shortDay, slotDay, slotLabel, slotTime } from "@/lib/call-dates";
+import { addWorkingDays, dayMonth, promiseDates, shortDay, slotDay, slotHour, slotLabel, slotTime } from "@/lib/call-dates";
 
 describe("promiseDates", () => {
   it("promises a start within 48 hours and a live site 7 working days after the call", () => {
@@ -28,8 +28,11 @@ describe("labels", () => {
   it("writes days, times and slots the way the screens show them", () => {
     expect(shortDay("2026-11-05")).toBe("Thu 5 Nov");
     expect(slotDay("2026-10-27T08:30:00.000Z")).toBe("Tue");
-    expect(slotTime("2026-10-27T08:30:00.000Z")).toBe("14:00");
-    expect(slotLabel("2026-10-27T08:30:00.000Z")).toBe("Tue 27 Oct, 14:00");
+    expect(slotTime("2026-10-27T08:30:00.000Z")).toBe("2:00 pm");
+    expect(slotTime("2026-10-27T04:30:00.000Z")).toBe("10:00 am");
+    expect(slotHour("2026-10-27T08:30:00.000Z")).toBe(14);
+    expect(slotHour("2026-10-27T18:30:00.000Z")).toBe(0);
+    expect(slotLabel("2026-10-27T08:30:00.000Z")).toBe("Tue 27 Oct, 2:00 pm");
     expect(dayMonth(new Date("2026-10-26T05:00:00.000Z"))).toBe("26 Oct");
   });
 });

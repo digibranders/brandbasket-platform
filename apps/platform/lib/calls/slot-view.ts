@@ -1,5 +1,5 @@
 import type { CallReason } from "@brandbasket/db/call-reasons";
-import { slotLabel, slotTime } from "@/lib/call-dates";
+import { slotHour, slotLabel } from "@/lib/call-dates";
 
 /** A day's times split at noon in India, each part in the order given. */
 export interface DayTimes {
@@ -9,8 +9,8 @@ export interface DayTimes {
 
 export function splitDayTimes(times: readonly string[]): DayTimes {
   return {
-    morning: times.filter((iso) => Number(slotTime(iso).slice(0, 2)) < 12),
-    afternoon: times.filter((iso) => Number(slotTime(iso).slice(0, 2)) >= 12),
+    morning: times.filter((iso) => slotHour(iso) < 12),
+    afternoon: times.filter((iso) => slotHour(iso) >= 12),
   };
 }
 

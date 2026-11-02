@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { bookButtonLabel, defaultReasonOf, splitDayTimes } from "./slot-view";
 
-// Wed 2 Dec 2026 in India: 09:00, 11:30, 12:00, 14:00, 16:30.
+// Wed 2 Dec 2026 in India: 09:00, 11:30, 12:00, 2:00 pm, 16:30.
 const NINE = "2026-12-02T03:30:00.000Z";
 const ELEVEN_THIRTY = "2026-12-02T06:00:00.000Z";
 const NOON = "2026-12-02T06:30:00.000Z";
@@ -25,7 +25,7 @@ describe("bookButtonLabel", () => {
   });
 
   it("names the day, date, month and time once one is picked", () => {
-    expect(bookButtonLabel(TWO, false)).toBe("Book Wed 2 Dec, 14:00");
+    expect(bookButtonLabel(TWO, false)).toBe("Book Wed 2 Dec, 2:00 pm");
   });
 
   it("says Booking while the booking is on its way", () => {
