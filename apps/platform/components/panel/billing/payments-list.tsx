@@ -6,7 +6,7 @@ import { cn } from "@brandbasket/shared/lib/cn";
 import { LocalDate } from "@brandbasket/shared/ui/panel/local-date-time";
 import { SubmitButton } from "@brandbasket/shared/ui/panel/submit-button";
 import { payChargeAction } from "@/app/app-host/(protected)/billing/actions";
-import { SOFT_BUTTON } from "@/components/v2/classes";
+import { LIFT, SOFT_BUTTON } from "@/components/v2/classes";
 import { EmptyState, PageSection } from "@/components/v2/page";
 import type { BillingMonth, BillLine } from "@/lib/billing/billing-months";
 import { splitInvoiceNumber } from "@/lib/billing/invoice-title";
@@ -75,41 +75,61 @@ function PayButton({ chargeId, title }: { readonly chargeId: string; readonly ti
   );
 }
 
-/** One payment: what it was and what it came to, then its invoice number and date, then its state and its receipt. */
+/*
+ * The table's cells. Wide enough (a container of 48rem), each payment is a table row; narrower, the same cells are laid out as a
+ * card: what it was and what it came to, then its date and invoice, then its status and receipt. Every table element
+ * keeps its ARIA role, because a changed `display` would otherwise drop the table's meaning for a screen reader.
+ */
+const ROW = "grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-1 border-t border-line px-5 py-4 @3xl:table-row @3xl:px-0";
+const CELL = "@3xl:table-cell @3xl:px-5 @3xl:py-4 @3xl:align-middle";
+const HEAD = "px-5 py-3 text-left text-[0.8125rem] font-medium text-ink-3";
+
+/** One payment, as a row: its date, what it was, its invoice number, what it came to, its state and its receipt. */
 function PaymentRow({ line }: { readonly line: BillLine }): ReactElement {
   if (line.kind === "due") {
     return (
-      <li className="grid gap-1 py-3.5">
-        <div className="flex items-start justify-between gap-3">
-          <p className="min-w-0 text-sm font-semibold text-ink">{line.title}</p>
-          <p className="shrink-0 font-figure text-sm font-semibold tabular-nums text-ink">{line.amount}</p>
-        </div>
-        <p className="text-[0.8125rem] text-ink-2">
-          Added <LocalDate iso={line.addedIso} />
-          {line.taxNote === null ? null : `, ${line.taxNote}`}
-        </p>
-        <div className="mt-1.5 flex items-center justify-between gap-3">
+      <tr role="row" className={ROW}>
+        <td role="cell" className={cn(CELL, "col-span-2 row-start-2 text-[0.8125rem] text-ink-2 @3xl:text-[0.9375rem]")}>
+          <LocalDate iso={line.addedIso} />
+        </td>
+        <td role="cell" className={cn(CELL, "col-start-1 row-start-1 min-w-0")}>
+          <p className="text-[0.9375rem] font-semibold text-ink">{line.title}</p>
+          {line.taxNote === null ? null : <p className="text-[0.8125rem] text-ink-3">{line.taxNote}</p>}
+        </td>
+        <td role="cell" className={cn(CELL, "col-span-2 row-start-3 text-[0.8125rem] text-ink-3 @3xl:text-[0.9375rem]")}>
+          Not issued yet
+        </td>
+        <td role="cell" className={cn(CELL, "col-start-2 row-start-1 text-right font-figure text-[0.9375rem] font-semibold tabular-nums text-ink")}>{line.amount}</td>
+        <td role="cell" className={cn(CELL, "col-start-1 row-start-4 mt-1.5 @3xl:mt-0")}>
           <StatusPill tone="due" label="To pay" detail={null} />
+        </td>
+        <td role="cell" className={cn(CELL, "col-start-2 row-start-4 mt-1.5 justify-self-end text-right @3xl:mt-0")}>
           <PayButton chargeId={line.chargeId} title={line.title} />
-        </div>
-      </li>
+        </td>
+      </tr>
     );
   }
   const { row } = line;
   return (
-    <li className="grid gap-1 py-3.5">
-      <div className="flex items-start justify-between gap-3">
-        <p className="min-w-0 text-sm font-semibold text-ink">{row.description}</p>
-        <p className="shrink-0 font-figure text-sm font-semibold tabular-nums text-ink">{row.amount}</p>
-      </div>
-      <p className="text-[0.8125rem] text-ink-2">
-        <RowTitle title={row.title} /> · {row.paidAtIso === null ? "Not recorded" : <LocalDate iso={row.paidAtIso} />}
-      </p>
-      <div className="mt-1.5 flex items-center justify-between gap-3">
+    <tr role="row" className={ROW}>
+      <td role="cell" className={cn(CELL, "col-span-2 row-start-2 whitespace-nowrap text-[0.8125rem] text-ink-2 @3xl:text-[0.9375rem]")}>
+        {row.paidAtIso === null ? "Not recorded" : <LocalDate iso={row.paidAtIso} />}
+      </td>
+      <td role="cell" className={cn(CELL, "col-start-1 row-start-1 min-w-0")}>
+        <p className="text-[0.9375rem] font-semibold text-ink">{row.description}</p>
+        <p className="text-[0.8125rem] text-ink-3">{row.plan}</p>
+      </td>
+      <td role="cell" className={cn(CELL, "col-span-2 row-start-3 text-[0.8125rem] text-ink-2 @3xl:text-[0.9375rem]")}>
+        <RowTitle title={row.title} />
+      </td>
+      <td role="cell" className={cn(CELL, "col-start-2 row-start-1 text-right font-figure text-[0.9375rem] font-semibold tabular-nums text-ink")}>{row.amount}</td>
+      <td role="cell" className={cn(CELL, "col-start-1 row-start-4 mt-1.5 @3xl:mt-0")}>
         <StatusPill tone={row.tone} label={row.status} detail={row.statusDetail} />
+      </td>
+      <td role="cell" className={cn(CELL, "col-start-2 row-start-4 mt-1.5 justify-self-end text-right @3xl:mt-0")}>
         <ReceiptLink row={row} />
-      </div>
-    </li>
+      </td>
+    </tr>
   );
 }
 
@@ -122,13 +142,13 @@ function downloadableIds(months: readonly BillingMonth[]): string[] {
   return months.flatMap((month) => month.lines.flatMap((line) => (line.kind === "receipt" && line.row.downloadable ? [line.row.id] : [])));
 }
 
-/** A month's heading: its name and what it came to, with its receipts as one PDF when it has any. */
+/** A month's heading row: its name and what it came to, with its receipts as one PDF when it has any. */
 function MonthHeading({ month }: { readonly month: BillingMonth }): ReactElement {
   const ids = downloadableIds([month]);
   return (
-    <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+    <div className="flex flex-wrap items-center justify-between gap-x-4">
       <h3 className="font-display text-[0.9375rem] font-semibold tracking-[-0.01em] text-ink">{month.label}</h3>
-      <p className="flex items-baseline gap-3 text-[0.8125rem] text-ink-2">
+      <p className="flex items-center gap-3 text-[0.8125rem] text-ink-2">
         <span>
           <span className="sr-only">Total for {month.label}: </span>
           <span className="font-figure tabular-nums text-ink">{month.total}</span>
@@ -175,9 +195,10 @@ interface PaymentsListProps {
 const DEFAULT_EMPTY_BODY = "Once your first payment goes through, each month’s plan and any extras show here, with an invoice or receipt for every payment.";
 
 /**
- * The customer's payments, month by month: each month's plan payment and the extras added that month (paid, or still to pay
- * with a Pay button), as rows that wrap instead of cutting words short. Every payment keeps its PDF, a tax invoice or the
- * older receipt; each month downloads as one PDF, and Download all takes every one.
+ * The customer's payments as a table, a group of rows for each month: each month's plan payment and the extras added that month
+ * (paid, or still to pay with a Pay button). The columns are the date, what it was, its invoice number, the amount, the state
+ * and the receipt. Every payment keeps its PDF, a tax invoice or the older receipt; each month downloads as one PDF, and Download
+ * all takes every one. On a narrow page each row becomes a card, so no word is cut short.
  */
 export function PaymentsList({ months, emptyBody = DEFAULT_EMPTY_BODY }: PaymentsListProps): ReactElement {
   const [requestedPage, setRequestedPage] = useState(1);
@@ -202,16 +223,44 @@ export function PaymentsList({ months, emptyBody = DEFAULT_EMPTY_BODY }: Payment
         <EmptyState compact icon={Receipt} title="Nothing billed yet" text={emptyBody} />
       ) : (
         <div className="grid gap-6">
-          {pageMonths.map((month) => (
-            <section key={month.key} aria-label={month.label}>
-              <MonthHeading month={month} />
-              <ul className="mt-1 divide-y divide-line">
-                {month.lines.map((line) => (
-                  <PaymentRow key={lineKey(line)} line={line} />
-                ))}
-              </ul>
-            </section>
-          ))}
+          <div className={cn(LIFT, "overflow-hidden")}>
+            <table role="table" aria-labelledby="payments-title" className="block w-full border-collapse text-left @3xl:table">
+              <thead role="rowgroup" className="sr-only @3xl:not-sr-only @3xl:table-header-group">
+                <tr role="row" className="@3xl:table-row">
+                  <th role="columnheader" scope="col" className={cn(HEAD, "@3xl:w-44")}>
+                    Date
+                  </th>
+                  <th role="columnheader" scope="col" className={HEAD}>
+                    Description
+                  </th>
+                  <th role="columnheader" scope="col" className={cn(HEAD, "@3xl:w-60")}>
+                    Invoice
+                  </th>
+                  <th role="columnheader" scope="col" className={cn(HEAD, "@3xl:w-32 @3xl:text-right")}>
+                    Amount
+                  </th>
+                  <th role="columnheader" scope="col" className={cn(HEAD, "@3xl:w-36")}>
+                    Status
+                  </th>
+                  <th role="columnheader" scope="col" className={cn(HEAD, "@3xl:w-32 @3xl:text-right")}>
+                    <span className="sr-only">Receipt</span>
+                  </th>
+                </tr>
+              </thead>
+              {pageMonths.map((month) => (
+                <tbody key={month.key} role="rowgroup" aria-label={month.label} className="block @3xl:table-row-group">
+                  <tr role="row" className="block bg-bg @3xl:table-row @3xl:border-t @3xl:border-line">
+                    <th role="rowheader" colSpan={6} scope="rowgroup" className="block px-5 py-2 text-left font-normal @3xl:table-cell">
+                      <MonthHeading month={month} />
+                    </th>
+                  </tr>
+                  {month.lines.map((line) => (
+                    <PaymentRow key={lineKey(line)} line={line} />
+                  ))}
+                </tbody>
+              ))}
+            </table>
+          </div>
           {view.pageCount > 1 ? <Pager page={view.page} pageCount={view.pageCount} onPage={setRequestedPage} /> : null}
         </div>
       )}

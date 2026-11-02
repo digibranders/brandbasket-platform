@@ -2,12 +2,12 @@
 
 import { useEffect, useRef, useState, type ReactElement, type ReactNode } from "react";
 import { stateName } from "@brandbasket/shared/lib/directory/india-states";
-import { PageSection } from "@/components/v2/page";
 import { SOFT_BUTTON } from "@/components/v2/classes";
 import { saveBillingDetailsAction } from "@/app/app-host/(protected)/billing/actions";
 import { BillingDetailsForm, SAVED_TEXT } from "@/components/panel/billing/billing-details-form";
 import type { PanelFormAction } from "@/components/panel/form/panel-form";
 import type { BillingDetailsView } from "@/lib/billing/billing-details-view";
+import { SummaryCard } from "./summary-card";
 
 interface BillingDetailsProps {
   readonly view: BillingDetailsView;
@@ -44,7 +44,7 @@ export function BillingDetails({ view, variant }: BillingDetailsProps): ReactEle
 
   const facts =
     saved === null ? null : !inCheckout ? (
-      <dl className="grid gap-x-8 gap-y-4 text-sm sm:grid-cols-2">
+      <dl className={`grid gap-x-8 gap-y-4 text-[0.9375rem] ${editing ? "sm:grid-cols-2" : ""}`}>
         <Fact label="Billed to" value={saved.legalName} />
         <Fact label="GSTIN" value={saved.gstin ?? "Not given"} />
         <Fact label="Address" value={saved.address} />
@@ -107,9 +107,10 @@ export function BillingDetails({ view, variant }: BillingDetailsProps): ReactEle
 
   if (variant === "card") {
     return (
-      <PageSection id="billing-details" title="Billing details">
+      // Folded away it is one card in the row; open, its form needs the room, so it takes the whole row.
+      <SummaryCard id="billing-details" title="Billing details" className={editing ? "col-span-full" : undefined}>
         {body}
-      </PageSection>
+      </SummaryCard>
     );
   }
   return <CheckoutSection>{body}</CheckoutSection>;

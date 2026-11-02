@@ -33,7 +33,7 @@ const months: BillingMonth[] = [
 const render = (props: Parameters<typeof PaymentsList>[0]): string => renderToStaticMarkup(createElement(PaymentsList, props)).replaceAll("<!-- -->", "");
 
 describe("PaymentsList", () => {
-  it("lists each payment as a row with its words, number, amount, status and a Receipt link", () => {
+  it("lists each payment as a table row with its words, number, amount, status and a Receipt link", () => {
     const html = render({ months });
     expect(html).toContain(">Payments</h2>");
     expect(html).toContain("First payment, covering your first month");
@@ -44,13 +44,27 @@ describe("PaymentsList", () => {
     expect(html).toContain("Download all");
   });
 
-  it("keeps an extra still to pay as a row with its Pay button, and no table", () => {
+  it("keeps an extra still to pay as a row with its Pay button", () => {
     const html = render({ months });
     expect(html).toContain("Extra page: Gallery");
     expect(html).toContain("To pay");
+    expect(html).toContain("Not issued yet");
     expect(html).toContain("Pay<span class=\"sr-only\"> for Extra page: Gallery</span>");
-    expect(html).not.toContain("<table");
     expect(html).not.toContain("truncate");
+  });
+
+  it("draws a table with a column header for each cell and a heading row for the month", () => {
+    const html = render({ months });
+    expect(html).toContain("<table");
+    for (const name of ["Date", "Description", "Invoice", "Amount", "Status"]) {
+      expect(html).toContain(`scope="col"`);
+      expect(html).toMatch(new RegExp(`<th[^>]*>\\s*${name}\\s*</th>`));
+    }
+    expect(html).toContain("<span class=\"sr-only\">Receipt</span>");
+    expect(html).toContain("October 2026");
+    expect(html).toContain("Total for October 2026: ");
+    expect(html).toContain("Download month<span class=\"sr-only\"> October 2026</span>");
+    expect(html).toContain("Brandbasket services plan");
   });
 
   it("says nothing is billed yet instead of drawing an empty list", () => {
