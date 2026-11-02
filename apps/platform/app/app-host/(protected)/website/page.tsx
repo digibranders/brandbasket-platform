@@ -9,7 +9,6 @@ import { cn } from "@brandbasket/shared/lib/cn";
 import { DARK_BUTTON } from "@/components/v2/classes";
 import { EmptyState, PageColumns } from "@/components/v2/page";
 import { AddressCard } from "@/components/website/address-card";
-import { BoughtSection } from "@/components/website/bought-section";
 import { ProgressCard } from "@/components/website/preview-card";
 import { Timeline } from "@/components/website/timeline";
 import { requireWebsiteClient } from "@/lib/server/customer-access";
@@ -53,7 +52,7 @@ export default async function WebsitePage({ searchParams }: WebsitePageProps): P
   const roundsIncluded = project?.revisionRoundsIncluded ?? 0;
   const roundsGranted = project?.revisionRoundsGranted ?? 0;
   const showsTimeline = data.steps.length > 0 && view.kind !== "none";
-  const hasAside = showsTimeline || addressCard !== null || data.bought.length > 0;
+  const hasAside = showsTimeline || addressCard !== null;
 
   return (
     <PageColumns
@@ -91,7 +90,6 @@ export default async function WebsitePage({ searchParams }: WebsitePageProps): P
           <>
             {showsTimeline ? <Timeline steps={data.steps} /> : null}
             {addressCard === null ? null : <AddressCard view={addressCard} />}
-            {data.bought.length === 0 ? null : <BoughtSection rows={data.bought} payment={data.payment} />}
           </>
         ) : null
       }
