@@ -53,5 +53,5 @@ it("keeps the Ask for a fix label while a change waits", () => {
 
 it("the new request form keeps the full screenshots block", () => {
   const html = renderToStaticMarkup(createElement(AskForm, { options: intentOptions(["website"]), submissionKey: "ask-key-12345678" })).replaceAll("<!-- -->", "");
-  for (const kept of ["Screenshots", "Choose files", "or paste screenshots from clipboard", "Up to 3 images, 4 MB each (PNG, JPEG, WebP).", PRIVACY]) expect(html).toContain(kept);
+  for (const kept of ["Add a screenshot or photo (optional)", "Choose files", "or paste screenshots from clipboard", "Up to 3 images, 4 MB each (PNG, JPEG, WebP).", PRIVACY]) expect(html).toContain(kept);
 });

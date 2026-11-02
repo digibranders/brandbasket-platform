@@ -40,6 +40,8 @@ export interface RailInput {
   readonly hasAccess: boolean;
   /** False for a paid plan without the Managed Website service. */
   readonly hasWebsite: boolean;
+  /** The website is live. False hides Enquiries, which has nothing to show before launch. Left out, it is shown. */
+  readonly websiteLive?: boolean;
   /** Social & Ads and Local SEO + AEO bought (lib/server/active-services.ts). Left out, the link is not shown. */
   readonly hasSocial?: boolean;
   readonly hasSearch?: boolean;
@@ -74,15 +76,17 @@ function requestsLink(count: number | undefined, withCalls: boolean): RailLink {
   };
 }
 
-/** The website opens on its Overview tab. The other tabs are listed for search. */
-const WEBSITE: RailLink = {
-  href: WEBSITE_PATH,
-  label: "Website",
-  icon: "website",
-  mark: "website",
-  children: WEBSITE_TABS.slice(1).map((tab) => ({ href: tab.href, label: tab.label })),
-  alsoCurrent: sectionTabPaths(WEBSITE_TABS),
-};
+/** The website opens on its Overview tab. The other tabs are listed for search, and only once the website is live (the frame shows them then too). */
+function websiteLink(live: boolean): RailLink {
+  return {
+    href: WEBSITE_PATH,
+    label: "Website",
+    icon: "website",
+    mark: "website",
+    children: live ? WEBSITE_TABS.slice(1).map((tab) => ({ href: tab.href, label: tab.label })) : [],
+    alsoCurrent: sectionTabPaths(WEBSITE_TABS),
+  };
+}
 
 /** The blog is its own link under Website: it opens on the posts, with Authors and Categories as its other tabs. It goes with the website service. */
 const BLOG: RailLink = {
@@ -106,7 +110,7 @@ const PLAN: RailLink = {
 };
 
 export function railSections(input: RailInput): readonly RailSection[] {
-  const services = [...(input.hasWebsite ? [WEBSITE, BLOG] : []), ...(input.hasSocial === true ? [SOCIAL] : []), ...(input.hasSearch === true ? [SEARCH] : [])];
+  const services = [...(input.hasWebsite ? [websiteLink(input.websiteLive !== false), BLOG] : []), ...(input.hasSocial === true ? [SOCIAL] : []), ...(input.hasSearch === true ? [SEARCH] : [])];
   return [
     { label: null, links: [HOME] },
     ...(services.length > 0 ? [{ label: "Services", links: services }] : []),

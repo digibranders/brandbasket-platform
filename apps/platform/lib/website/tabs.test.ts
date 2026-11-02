@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { askAboutHref, currentTab } from "@/lib/website/tabs";
+import { askAboutHref, currentTab, WEBSITE_TABS } from "@/lib/website/tabs";
 import { readWebsiteNotice, websiteNoticeHref, WEBSITE_NOTICES } from "@/lib/website/notices";
 
 describe("currentTab", () => {
@@ -8,8 +8,9 @@ describe("currentTab", () => {
     expect(currentTab("/website/x")).toBeNull();
   });
 
-  it("marks Pages on /website/pages and not Overview", () => {
-    expect(currentTab("/website/pages")?.label).toBe("Pages");
+  it("has the two tabs Overview and Enquiries, and marks none on the old Pages address", () => {
+    expect(WEBSITE_TABS.map((tab) => tab.label)).toEqual(["Overview", "Enquiries"]);
+    expect(currentTab("/website/pages")).toBeNull();
   });
 
   it("does not cover the blog, which has its own link and tabs", () => {
@@ -27,6 +28,11 @@ describe("currentTab", () => {
 });
 
 describe("askAboutHref", () => {
+  it("carries nothing extra when no page is given", () => {
+    expect(askAboutHref()).toBe("/requests/new?kind=website");
+    expect(askAboutHref("")).toBe("/requests/new?kind=website");
+  });
+
   it("opens the Website request with the page filled in and encoded", () => {
     expect(askAboutHref("Home & About")).toBe("/requests/new?kind=website&page=Home%20%26%20About");
   });
