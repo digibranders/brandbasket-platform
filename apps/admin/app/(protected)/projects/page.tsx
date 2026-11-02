@@ -73,10 +73,6 @@ export default async function ProjectsPage({ searchParams }: ProjectsPageProps):
   const late = cards.filter(({ card }) => card.late).length;
   const dueToday = cards.filter(({ card }) => card.dueSoon).length;
 
-  const viewOptions: FilterOption[] = [
-    { href: href("board", builder, scope), label: "Board", current: view === "board" },
-    { href: href("list", builder, scope), label: "List", current: view === "list" },
-  ];
   const builderOptions: FilterOption[] = [
     { href: href(view, null, scope), label: "Anyone", current: builder === null },
     { href: href(view, "none", scope), label: "No builder", current: builder === "none" },
@@ -94,7 +90,6 @@ export default async function ProjectsPage({ searchParams }: ProjectsPageProps):
       <PageHeader title="Projects" meta={`${open} open · ${late} late · ${dueToday} due today`} />
       <SectionTabs role={viewer.role} page="/projects" />
       <div className="mt-6 flex flex-wrap items-center gap-6">
-        <FilterPills label="View" options={viewOptions} />
         <FilterPills label="Builder" options={builderOptions} />
       </div>
       <div className="mt-3 flex flex-wrap items-center gap-6">
