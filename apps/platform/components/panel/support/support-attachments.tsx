@@ -36,9 +36,11 @@ export const SupportAttachments = forwardRef<
      * attached or the paperclip has focus. Without it the widget keeps the full block the Ask for a change form uses.
      */
     readonly compact?: boolean;
+    /** The block's label when it is not compact. Left out, it reads "Screenshots (optional)". */
+    readonly label?: string;
     readonly children?: ReactNode;
   }
->(function SupportAttachments({ onChange, onBusy, disabled = false, compact = false, children }, ref): ReactElement {
+>(function SupportAttachments({ onChange, onBusy, disabled = false, compact = false, label, children }, ref): ReactElement {
   const [previews, setPreviews] = useState<readonly Preview[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -243,7 +245,11 @@ export const SupportAttachments = forwardRef<
     <div className="space-y-3">
       <div className="flex items-center justify-between">
         <label className="block text-[0.8125rem] font-semibold text-ink">
-          Screenshots <span className="font-normal text-ink-2">(optional)</span>
+          {label ?? (
+            <>
+              Screenshots <span className="font-normal text-ink-2">(optional)</span>
+            </>
+          )}
         </label>
         <span className="text-xs tabular-nums text-ink-2">
           {previews.length}/{SUPPORT_ATTACHMENT_LIMIT}

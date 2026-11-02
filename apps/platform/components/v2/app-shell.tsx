@@ -6,6 +6,8 @@ import { getAccountPanel } from "@/lib/server/account-panel";
 import { loadActiveServices } from "@/lib/server/active-services";
 import { requireCustomerAccess } from "@/lib/server/customer-access";
 import { ASK_FOR_A_CHANGE_PATH } from "@/lib/requests/links";
+import { getLiveWebsite } from "@/lib/server/onboarding";
+import { quietly } from "@/lib/server/quietly";
 import { requestBrand } from "@/lib/server/request-brand";
 import { loadRequestsBadge } from "@/lib/server/requests";
 import { signOut } from "@/lib/server/sign-out";
@@ -27,10 +29,13 @@ export async function AppShell({ userName, userEmail, isAffiliate = false, child
   const [brand, panel, services] = await Promise.all([requestBrand(), getAccountPanel(), loadActiveServices(tenant)]);
   // Quotes to answer and changes to check. The loader shows none rather than failing, so the shell always draws.
   const requestsCount = await loadRequestsBadge(tenant);
+  // Only a paid client with the website has a Website link to hide tabs under. A failed read shows the tabs, as a page that cannot tell does.
+  const websiteLive = billing.hasAccess && billing.hasWebsite ? (await quietly("rail", "the live website", true, async () => (await getLiveWebsite()) !== null)) : true;
   const sections = railSections({
     hasAccess: billing.hasAccess,
     // An unpaid client still sets up and pays on Check and send: only a paid plan without a website loses the section.
     hasWebsite: !billing.hasAccess || billing.hasWebsite,
+    websiteLive,
     hasSocial: services.includes("social"),
     hasSearch: services.includes("search"),
     requestsCount,

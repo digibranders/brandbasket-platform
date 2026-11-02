@@ -1,4 +1,5 @@
 import type { ProjectStatus } from "@brandbasket/db";
+import type { SupportStatus } from "@brandbasket/shared/lib/support";
 import { safeExternalHref } from "@brandbasket/shared/lib/safe-link";
 import { dayKey } from "@brandbasket/shared/lib/call-slots";
 import { BRAND_TIME_ZONE, shortDay, slotLabel } from "@/lib/call-dates";
@@ -171,4 +172,58 @@ export function stageChip(kind: ProgressKind): StageChip | null {
     case "none":
       return null;
   }
+}
+
+export type RecentChangeWord = "Received" | "In progress" | "Done";
+
+export interface RecentChange {
+  readonly ticketId: string;
+  readonly title: string;
+  /** The page the customer named, or null when they named none. */
+  readonly page: string | null;
+  /** "Mon 2 Nov, 4:05 pm", in India. */
+  readonly asked: string;
+  readonly word: RecentChangeWord;
+  readonly tone: StatusChipTone;
+}
+
+type StatusChipTone = "neutral" | "info" | "ok";
+
+/** The request's own status, in the three words this card uses. A question waiting on the customer is still being worked on. */
+const WORD_OF_STATUS: Readonly<Record<SupportStatus, RecentChangeWord>> = {
+  new: "Received",
+  triaged: "Received",
+  in_progress: "In progress",
+  waiting_on_you: "In progress",
+  resolved: "Done",
+  closed: "Done",
+};
+
+const TONE_OF_WORD: Readonly<Record<RecentChangeWord, StatusChipTone>> = { Received: "neutral", "In progress": "info", Done: "ok" };
+
+/** The part of a Requests row this card reads. */
+export interface RecentChangeSource {
+  readonly ticketId: string;
+  readonly subject: string;
+  readonly ticketStatus: SupportStatus;
+  readonly createdAt: Date;
+  readonly change: { readonly kind: string; readonly state: string; readonly page: string | null } | null;
+}
+
+export const RECENT_CHANGES_LIMIT = 5;
+
+/**
+ * The customer's website change requests, newest first, up to five. A request that was declined or withdrawn was not a change
+ * that happened, so it stays in Requests and is left out here rather than shown as Done.
+ */
+export function recentChanges(items: readonly RecentChangeSource[]): readonly RecentChange[] {
+  return items
+    .filter((item) => item.change?.kind === "website" && item.change.state !== "declined" && item.change.state !== "withdrawn")
+    .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+    .slice(0, RECENT_CHANGES_LIMIT)
+    .map((item): RecentChange => {
+      const word = WORD_OF_STATUS[item.ticketStatus];
+      const page = item.change?.page?.trim() ?? "";
+      return { ticketId: item.ticketId, title: item.subject, page: page === "" ? null : page, asked: slotLabel(item.createdAt.toISOString()), word, tone: TONE_OF_WORD[word] };
+    });
 }

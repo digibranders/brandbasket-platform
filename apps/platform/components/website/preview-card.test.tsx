@@ -129,7 +129,7 @@ describe("PreviewCard while the customer checks the preview", () => {
     expect(html).toContain("Further changes are quoted first.");
     expect(html).toContain(">Approve</button>");
     expect(html).toContain("Open preview");
-    expect(html).toContain('href="/requests/new?kind=website&amp;page="');
+    expect(html).toContain('href="/requests/new?kind=website"');
     expect(html).toContain(">Ask for a change</a>");
   });
 });

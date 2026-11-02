@@ -7,7 +7,7 @@ import { WEBSITE_TABS } from "@/lib/website/tabs";
 
 /**
  * The page frame, with the site's address under the title and, once the website is live, the tabs under that, around every
- * Website page (the website, enquiries and content layouts all draw it). Before launch Pages and Enquiries have nothing to
+ * Website page (the website, enquiries and content layouts all draw it). Before launch Enquiries has nothing to
  * show, so there are no tabs. The title is the page's one h1, so the pages inside begin with a section.
  */
 export async function WebsiteFrame({ children }: { readonly children: ReactNode }): Promise<ReactElement> {

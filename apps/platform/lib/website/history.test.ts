@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { changesView, detailRows, inProgressRow, stageChip, versionRows, type SentChanges, type SentVersion } from "@/lib/website/history";
+import { changesView, detailRows, inProgressRow, recentChanges, stageChip, versionRows, type RecentChangeSource, type SentChanges, type SentVersion } from "@/lib/website/history";
 
 // Version 1 went out Mon 2 Nov 3:57 pm in India; the customer asked for changes at 4:05 pm; version 2 followed on Wed 4 Nov.
 const V1: SentVersion = { version: 1, url: "https://www.example.com/preview", sentAt: new Date("2026-11-02T10:27:00.000Z") };
@@ -124,5 +124,41 @@ describe("stageChip", () => {
     expect(stageChip("live")).toEqual({ label: "Live", tone: "ok" });
     expect(stageChip("none")).toBeNull();
     for (const kind of ["setup", "kickoff", "building", "paused", "approved"] as const) expect(stageChip(kind)?.label).toBeTruthy();
+  });
+});
+
+describe("recentChanges", () => {
+  const source = (over: Partial<RecentChangeSource> & { readonly kind?: string; readonly state?: string; readonly page?: string | null } = {}): RecentChangeSource => {
+    const { kind = "website", state = "in_progress", page = null, ...rest } = over;
+    return { ticketId: "t", subject: "Change the heading", ticketStatus: "in_progress", createdAt: new Date("2026-11-02T10:35:00.000Z"), change: { kind, state, page }, ...rest };
+  };
+
+  it("words the request's status as Received, In progress or Done", () => {
+    const words = (["new", "triaged", "in_progress", "waiting_on_you", "resolved", "closed"] as const).map((ticketStatus) => recentChanges([source({ ticketStatus })])[0]?.word);
+    expect(words).toEqual(["Received", "Received", "In progress", "In progress", "Done", "Done"]);
+  });
+
+  it("lists only website changes, leaving out questions, other services, and requests that were declined or withdrawn", () => {
+    const rows = recentChanges([
+      source({ ticketId: "a" }),
+      source({ ticketId: "q", change: null }),
+      source({ ticketId: "s", kind: "social" }),
+      source({ ticketId: "d", state: "declined", ticketStatus: "closed" }),
+      source({ ticketId: "w", state: "withdrawn", ticketStatus: "closed" }),
+    ]);
+    expect(rows.map((row) => row.ticketId)).toEqual(["a"]);
+  });
+
+  it("puts the newest asked first, keeps five, and gives the asked time in India", () => {
+    const items = Array.from({ length: 7 }, (_, index) => source({ ticketId: `t${index}`, createdAt: new Date(Date.UTC(2026, 10, 1 + index, 4, 35)) }));
+    const rows = recentChanges(items);
+    expect(rows.map((row) => row.ticketId)).toEqual(["t6", "t5", "t4", "t3", "t2"]);
+    expect(rows[0]?.asked).toBe("Sat 7 Nov, 10:05 am");
+  });
+
+  it("gives the page the customer named, or null when there is none or it is blank", () => {
+    expect(recentChanges([source({ page: " Home " })])[0]?.page).toBe("Home");
+    expect(recentChanges([source({ page: "  " })])[0]?.page).toBeNull();
+    expect(recentChanges([source({ page: null })])[0]?.page).toBeNull();
   });
 });

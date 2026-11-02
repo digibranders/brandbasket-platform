@@ -17,10 +17,10 @@ beforeEach(() => {
 const render = async (): Promise<string> => renderToStaticMarkup(await WebsiteFrame({ children: <p>Inside</p> })).replaceAll("<!-- -->", "");
 
 describe("WebsiteFrame", () => {
-  it("shows Overview, Pages and Enquiries once the website is live", async () => {
+  it("shows Overview and Enquiries once the website is live", async () => {
     vi.mocked(getLiveWebsite).mockResolvedValue({ hostname: "www.example.com", launchedAt: null });
     const html = await render();
-    expect(html).toContain("Overview,Pages,Enquiries");
+    expect(html).toContain("Overview,Enquiries");
     expect(html).toContain("Inside");
   });
 
@@ -29,6 +29,7 @@ describe("WebsiteFrame", () => {
     const html = await render();
     expect(html).not.toContain("Overview");
     expect(html).not.toContain("Enquiries");
+    expect(html).not.toContain("Pages");
     expect(html).toContain("<h1");
     expect(html).toContain("Inside");
   });

@@ -9,15 +9,19 @@ import { cn } from "@brandbasket/shared/lib/cn";
 import { DARK_BUTTON } from "@/components/v2/classes";
 import { EmptyState, PageColumns } from "@/components/v2/page";
 import { AddressCard } from "@/components/website/address-card";
+import { ChangeYourselfCard } from "@/components/website/change-yourself-card";
 import { DetailsCard } from "@/components/website/details-card";
 import { LiveCard } from "@/components/website/live-card";
 import { PreviewCard } from "@/components/website/preview-card";
+import { RecentChangesCard } from "@/components/website/recent-changes-card";
 import { StageHeader } from "@/components/website/stage-header";
 import { Timeline } from "@/components/website/timeline";
 import { requireWebsiteClient } from "@/lib/server/customer-access";
+import { quietly } from "@/lib/server/quietly";
+import { loadRequests } from "@/lib/server/requests";
 import { loadWebsite } from "@/lib/server/website";
 import { addressCardView, siteAddress } from "@/lib/website/address";
-import { changesView, detailRows, inProgressRow, stageChip, versionRows } from "@/lib/website/history";
+import { changesView, detailRows, inProgressRow, recentChanges, stageChip, versionRows } from "@/lib/website/history";
 import { roundsLine, roundsUsedUp } from "@/lib/website/progress-view";
 import { readWebsiteNotice, WEBSITE_NOTICES } from "@/lib/website/notices";
 import { askAboutHref } from "@/lib/website/tabs";
@@ -75,6 +79,8 @@ export default async function WebsitePage({ searchParams }: WebsitePageProps): P
   const roundsIncluded = project?.revisionRoundsIncluded ?? 0;
   const roundsGranted = project?.revisionRoundsGranted ?? 0;
   const isLive = view.kind === "live";
+  // A failed read leaves the card out; an empty list is a real answer and the card says so.
+  const recent = isLive ? await quietly("website", "the recent changes", null, async () => recentChanges((await loadRequests(tenant, billing.hasWebsite)).items)) : null;
 
   return (
     <>
@@ -87,7 +93,8 @@ export default async function WebsitePage({ searchParams }: WebsitePageProps): P
             <PreviewCard
               rows={versionRows(data.versions, data.changes, status)}
               inProgress={inProgressRow(data.versions, status, data.previewDue)}
-              changes={changesView(data.changes, data.versions, roundsIncluded)}
+              // Once live, the same asks are listed under Recent changes.
+              changes={isLive ? null : changesView(data.changes, data.versions, roundsIncluded)}
               reviewing={view.kind === "preview"}
               pictureUrl={data.pictureUrl}
               previewUrl={project?.previewUrl ?? null}
@@ -97,11 +104,12 @@ export default async function WebsitePage({ searchParams }: WebsitePageProps): P
               roundsLine={roundsLine(roundsIncluded, roundsGranted)}
               roundsUsedUp={roundsUsedUp(roundsIncluded, roundsGranted)}
             />
+            {recent === null ? null : <RecentChangesCard changes={recent} />}
           </>
         }
         aside={
           <>
-            {isLive || data.steps.length === 0 ? null : <Timeline steps={data.steps} />}
+            {isLive ? <ChangeYourselfCard /> : data.steps.length === 0 ? null : <Timeline steps={data.steps} />}
             <DetailsCard
               rows={detailRows({
                 live: isLive,
@@ -114,7 +122,7 @@ export default async function WebsitePage({ searchParams }: WebsitePageProps): P
               })}
             />
             {addressCard === null ? null : <AddressCard view={addressCard} />}
-            {isLive ? null : <p className="text-[0.84375rem] leading-relaxed text-ink-2">Pages and Enquiries appear here once your website is live.</p>}
+            {isLive ? null : <p className="text-[0.84375rem] leading-relaxed text-ink-2">Enquiries appears here once your website is live.</p>}
           </>
         }
       />

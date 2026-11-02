@@ -1,7 +1,9 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { requireWebsiteClient } from "@/lib/server/customer-access";
+import { loadRequests } from "@/lib/server/requests";
 import { loadWebsite, type WebsiteData } from "@/lib/server/website";
+import type { RequestListItem } from "@brandbasket/db";
 import { progressView, type ProgressInput } from "@/lib/website/progress-view";
 import { websiteTimeline, type TimelineEvent } from "@/lib/website/timeline";
 import WebsitePage from "./page";
@@ -11,9 +13,11 @@ vi.mock("next/navigation", () => ({
   redirect: vi.fn((to: string) => {
     throw new Error(`REDIRECT:${to}`);
   }),
+  unstable_rethrow: vi.fn(),
 }));
 vi.mock("@/lib/server/customer-access", () => ({ requireWebsiteClient: vi.fn() }));
 vi.mock("@/lib/server/website", () => ({ loadWebsite: vi.fn() }));
+vi.mock("@/lib/server/requests", () => ({ loadRequests: vi.fn() }));
 vi.mock("./actions", () => ({ approvePreviewAction: vi.fn(), sendPreviewFeedbackAction: vi.fn() }));
 
 // En and em dash, written as escapes so this file holds none itself.
@@ -75,8 +79,26 @@ async function render(options: Stage): Promise<string> {
 
 beforeEach(() => {
   vi.resetAllMocks();
-  vi.mocked(requireWebsiteClient).mockResolvedValue({ tenant: { businessName: "Riverside Plumbing" }, billing: { status: "active", hasAccess: true } } as never);
+  vi.mocked(requireWebsiteClient).mockResolvedValue({ tenant: { businessName: "Riverside Plumbing" }, billing: { status: "active", hasAccess: true, hasWebsite: true } } as never);
+  vi.mocked(loadRequests).mockResolvedValue({ items: [], includedUsed: 0, includedAllowed: 2 });
 });
+
+/** A row of the Requests list: a website change unless said otherwise. */
+function request(overrides: Partial<RequestListItem> & { readonly page?: string | null; readonly kind?: string; readonly state?: string } = {}): RequestListItem {
+  const { page = null, kind = "website", state = "in_progress", ...rest } = overrides;
+  return {
+    ticketId: "ticket-1",
+    displayRef: "BB-1",
+    subject: "Update the hero heading",
+    ticketStatus: "in_progress",
+    category: "website_change",
+    createdAt: new Date("2026-11-02T10:35:00.000Z"),
+    lastActivityAt: new Date("2026-11-02T10:35:00.000Z"),
+    unread: false,
+    change: { kind, state, page } as never,
+    ...rest,
+  };
+}
 
 describe("the Website page", () => {
   it("sends a lapsed customer Home instead of the preview and its buttons", async () => {
@@ -198,16 +220,76 @@ describe("the Website page, every stage", () => {
     expect(html).toContain("Visit your website");
     expect(html).toContain('href="https://www.example.com/" target="_blank" rel="noopener noreferrer"');
     expect(html).toContain("Request an update");
-    expect(html).toContain('href="/requests/new?kind=website&amp;page="');
+    expect(html).toContain('href="/requests/new?kind=website"');
     expect(html).toContain("Live now");
-    expect(html).toContain("Done in Version 2");
+    // The preview rounds are not listed twice: once live, Recent changes is the list.
+    expect(html).not.toContain("Done in Version 2");
+    expect(html).not.toContain("Round 1 of 2");
     expect(html).toContain("Live since");
     expect(html).toContain("Mon 9 Nov");
     expect(html).toContain("Versions sent");
     expect(html).not.toContain("Changes used");
     expect(html).not.toContain("What happens next");
-    expect(html).not.toContain("Pages and Enquiries appear here");
+    expect(html).not.toContain("Enquiries appears here");
     expect(html).not.toContain(">Approve</button>");
+  });
+});
+
+describe("the live Overview", () => {
+  const live = { status: "live", live: true, versions: [V2, V1] } as const;
+
+  it("lists the website change requests under the history, newest first, with the page, when they were asked and a word for where each stands", async () => {
+    vi.mocked(loadRequests).mockResolvedValue({
+      items: [
+        request({ ticketId: "t-old", subject: "Update the hero heading", ticketStatus: "resolved", createdAt: new Date("2026-11-02T10:35:00.000Z"), change: { kind: "website", state: "shipped", page: "Home" } as never }),
+        request({ ticketId: "t-new", subject: "Add Sunday hours", ticketStatus: "in_progress", createdAt: new Date("2026-11-10T04:00:00.000Z"), change: { kind: "website", state: "in_progress", page: "Contact" } as never }),
+        request({ ticketId: "t-recv", subject: "Swap the banner photo", ticketStatus: "new", createdAt: new Date("2026-11-08T04:00:00.000Z"), change: { kind: "website", state: "requested", page: null } as never }),
+      ],
+      includedUsed: 0,
+      includedAllowed: 2,
+    });
+    const html = await render(live);
+    expect(html).toContain("Recent changes");
+    expect(html).toContain("Everything you asked us to change, and where it stands.");
+    expect(html).toContain('href="/requests"');
+    expect(html).toContain(">All requests</a>");
+    expect(html.indexOf("Add Sunday hours")).toBeLessThan(html.indexOf("Swap the banner photo"));
+    expect(html.indexOf("Swap the banner photo")).toBeLessThan(html.indexOf("Update the hero heading"));
+    expect(html).toContain("Contact \u00b7 asked Tue 10 Nov, 9:30 am");
+    expect(html).toContain("asked Mon 2 Nov, 4:05 pm");
+    expect(html.indexOf("Your preview")).toBeLessThan(html.indexOf("Recent changes"));
+    expect(html).toMatch(/Received<\/span>/);
+    expect(html).toMatch(/In progress<\/span>/);
+    expect(html).toMatch(/Done<\/span>/);
+  });
+
+  it("says plainly that there is nothing yet when no website change was asked", async () => {
+    vi.mocked(loadRequests).mockResolvedValue({ items: [request({ change: null, category: "support" as never })], includedUsed: 0, includedAllowed: 2 });
+    const html = await render(live);
+    expect(html).toContain("Recent changes");
+    expect(html).toContain("Nothing yet. Ask for a change any time.");
+  });
+
+  it("leaves the card out, and still draws the page, when the requests cannot be read", async () => {
+    vi.mocked(loadRequests).mockRejectedValue(new Error("db down"));
+    const spy = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const html = await render(live);
+    spy.mockRestore();
+    expect(html).not.toContain("Recent changes");
+    expect(html).toContain("Your preview");
+  });
+
+  it("puts Change it yourself first in the side column, with the two items and their Open buttons, and keeps Request an update", async () => {
+    const html = await render(live);
+    expect(html).toContain("Change it yourself");
+    expect(html).toContain("These update your website in about a minute.");
+    expect(html).toContain("Opening hours, holidays and the announcement");
+    expect(html).toContain('href="/details"');
+    expect(html).toContain("Write and publish whenever you like.");
+    expect(html).toContain('href="/content/blog"');
+    expect(html.match(/>Open<\/a>/g)).toHaveLength(2);
+    expect(html.indexOf("Change it yourself")).toBeLessThan(html.indexOf("The details"));
+    expect(html).toContain("Request an update");
   });
 });
 
@@ -223,10 +305,14 @@ describe("what the page no longer shows", () => {
     expect(live).not.toMatch(/receipt/i);
   });
 
-  it("says Pages and Enquiries come once live, in every stage before launch", async () => {
+  it("says Enquiries comes once live, in every stage before launch, and shows neither new card", async () => {
     for (const status of ["onboarding", "building", "preview", "revisions", "approved", "on_hold"] as const) {
-      expect(await render({ status, versions: [V1] }), status).toContain("Pages and Enquiries appear here once your website is live.");
+      const html = await render({ status, versions: [V1] });
+      expect(html, status).toContain("Enquiries appears here once your website is live.");
+      expect(html, status).not.toContain("Recent changes");
+      expect(html, status).not.toContain("Change it yourself");
     }
+    expect(loadRequests).not.toHaveBeenCalled();
   });
 
   it("uses no em or en dash in anything it draws", async () => {
