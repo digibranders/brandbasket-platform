@@ -18,7 +18,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { TenantContext } from "@brandbasket/shared/lib/access";
 import { ONBOARDING_LOCKED_MESSAGE } from "@/lib/onboarding/form-state";
 import type { MediaStorage } from "@brandbasket/shared/server/media-storage";
-import { processUpload, UploadRejectedError, type ProcessedUpload } from "./media-upload";
+import { processUpload, UploadRejectedError, type ProcessedUpload } from "@brandbasket/shared/server/media-upload";
 import {
   consumeUploadAllowance,
   isOnboardingOpen,
@@ -55,7 +55,7 @@ vi.mock("@brandbasket/db", () => {
     withTenantScope: vi.fn(),
   };
 });
-vi.mock("./media-upload", () => {
+vi.mock("@brandbasket/shared/server/media-upload", () => {
   class MockUploadRejectedError extends Error {
     constructor(
       readonly reason: string,

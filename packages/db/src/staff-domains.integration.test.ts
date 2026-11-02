@@ -1,6 +1,6 @@
 import { eq } from "drizzle-orm";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
-import { findBusinessSlug, saveFreeAddressForBusiness } from "./queries/staff-domains";
+import { changeFreeAddressForBusiness, findBusinessSlug, findPrimaryHostname, saveFreeAddressForBusiness } from "./queries/staff-domains";
 import { businesses, domains } from "./schema";
 import { openTestDatabases, resetTestDatabase, type TestDatabases } from "./testing";
 
@@ -54,6 +54,50 @@ describe("saveFreeAddressForBusiness", () => {
     expect(await saveFreeAddressForBusiness(dbs.staff.db, { businessId, hostname: "lotus.sites.example.in" })).toBe("taken");
 
     expect(await dbs.owner.db.select().from(domains).where(eq(domains.businessId, businessId))).toEqual([]);
+  });
+});
+
+describe("changeFreeAddressForBusiness", () => {
+  it("moves the primary address to the new hostname and sets it back to pending", async () => {
+    const businessId = await makeBusiness("harbour-bakery");
+    await dbs.staff.db.insert(domains).values({ businessId, hostname: "harbour.sites.example.in", isPrimary: true, status: "active" });
+
+    expect(await changeFreeAddressForBusiness(dbs.staff.db, { businessId, hostname: "Harbour-Bakery.Sites.Example.in" })).toBe("changed");
+
+    const rows = await dbs.owner.db.select().from(domains).where(eq(domains.businessId, businessId));
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({ hostname: "harbour-bakery.sites.example.in", isPrimary: true, status: "pending", removedAt: null });
+  });
+
+  it("changes nothing for a business with no primary domain", async () => {
+    const businessId = await makeBusiness("birch-dental");
+
+    expect(await changeFreeAddressForBusiness(dbs.staff.db, { businessId, hostname: "birch.sites.example.in" })).toBe("none");
+    expect(await dbs.owner.db.select().from(domains).where(eq(domains.businessId, businessId))).toEqual([]);
+  });
+
+  it("refuses a hostname another business holds, and keeps the old address", async () => {
+    const holder = await makeBusiness("lotus-cafe");
+    const businessId = await makeBusiness("lotus-kitchen");
+    await dbs.staff.db.insert(domains).values({ businessId: holder, hostname: "lotus.sites.example.in", isPrimary: true, status: "active" });
+    await dbs.staff.db.insert(domains).values({ businessId, hostname: "kitchen.sites.example.in", isPrimary: true, status: "pending" });
+
+    expect(await changeFreeAddressForBusiness(dbs.staff.db, { businessId, hostname: "lotus.sites.example.in" })).toBe("taken");
+
+    const rows = await dbs.owner.db.select({ hostname: domains.hostname }).from(domains).where(eq(domains.businessId, businessId));
+    expect(rows).toEqual([{ hostname: "kitchen.sites.example.in" }]);
+  });
+});
+
+describe("findPrimaryHostname", () => {
+  it("returns the primary hostname, ignoring a removed domain, or null when there is none", async () => {
+    const businessId = await makeBusiness("harbour-bakery");
+    expect(await findPrimaryHostname(dbs.staff.db, businessId)).toBeNull();
+
+    await dbs.staff.db.insert(domains).values({ businessId, hostname: "old.example.in", isPrimary: false, status: "pending", removedAt: new Date() });
+    await dbs.staff.db.insert(domains).values({ businessId, hostname: "harbour.sites.example.in", isPrimary: true, status: "pending" });
+
+    expect(await findPrimaryHostname(dbs.staff.db, businessId)).toBe("harbour.sites.example.in");
   });
 });
 

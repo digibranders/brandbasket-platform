@@ -2,7 +2,7 @@ import { z } from "zod";
 import { cleanLine } from "@brandbasket/shared/lib/validation/text";
 import { textField, type StepParseResult } from "@brandbasket/shared/lib/onboarding/form-result";
 
-export const MAX_PHOTOS = 20;
+export { MAX_PHOTOS } from "@brandbasket/shared/lib/uploads/limits";
 export const MAX_DESCRIPTION_LENGTH = 250;
 
 export interface BrandFormContext {

@@ -14,7 +14,9 @@ import {
   PlaceRegistryNotImportedError,
   ProjectNotApprovedError,
   ProjectNotReadyForPreviewError,
-  findBusinessSlug,
+  changeFreeAddressForBusiness,
+  findOpenProjectForStaff,
+  findPrimaryHostname,
   saveFreeAddressForBusiness,
   saveListingPlacement,
   saveWebsiteHosting,
@@ -711,34 +713,66 @@ export async function switchDomainAction(formData: FormData): Promise<void> {
 }
 
 /**
+ * Reads the name staff typed for a business's free address and returns the full `<name>.<base domain>` hostname. Sends staff
+ * back to the page with a notice when no base domain is set or the name cannot be used; a pasted full address is accepted.
+ */
+function freeAddressHostname(formData: FormData, businessId: string): string {
+  const baseDomain = clientSiteBaseDomain();
+  if (baseDomain === null) redirect(projectLaunchNoticeHref(businessId, "address-unavailable"));
+
+  const typed = formData.get("name");
+  const reading = readSubdomainName(typeof typed === "string" ? typed : "", baseDomain);
+  if (!reading.ok) redirect(projectLaunchNoticeHref(businessId, "address-invalid"));
+  return temporarySubdomainFor(reading.name);
+}
+
+/**
  * Gives a business with no domain of its own a free `<name>.<base domain>` address as its primary domain, so its build can
- * go live. The name is the business's slug. When another business already holds that address, one retry adds a short
- * disambiguator made from the business id. A business that already has a primary domain keeps it.
+ * go live. Staff type the name; nothing is made up from the business's name. A business that already has a primary domain
+ * keeps it, and an address another business holds is refused.
  */
 export async function useFreeAddressAction(formData: FormData): Promise<void> {
   const staff = await requireStaffAccess();
   const businessId = readId(formData.get("businessId"), "Free address's business");
+  const hostname = freeAddressHostname(formData, businessId);
 
-  const baseDomain = clientSiteBaseDomain();
-  if (baseDomain === null) redirect(projectLaunchNoticeHref(businessId, "address-unavailable"));
-
-  const db = getStaffDb();
-  const slug = await findBusinessSlug(db, businessId);
-  if (slug === null) throw new Error(`Business ${businessId} does not exist.`);
-  const reading = readSubdomainName(slug);
-  if (!reading.ok) redirect(projectLaunchNoticeHref(businessId, "address-unavailable"));
-
-  let hostname = temporarySubdomainFor(reading.name);
-  let outcome = await saveFreeAddressForBusiness(db, { businessId, hostname });
-  if (outcome === "taken") {
-    hostname = temporarySubdomainFor(reading.name, businessId.replaceAll("-", "").slice(-6));
-    outcome = await saveFreeAddressForBusiness(db, { businessId, hostname });
-  }
+  const outcome = await saveFreeAddressForBusiness(getStaffDb(), { businessId, hostname });
+  if (outcome === "taken") redirect(projectLaunchNoticeHref(businessId, "address-taken"));
   if (outcome !== "saved") redirect(projectLaunchNoticeHref(businessId, "address-unavailable"));
 
   await recordStaffAction(staff, { businessId, kind: "domain.free_address_saved", summary: "Gave a free address", data: { hostname } });
   revalidateClient(businessId);
   redirect(projectLaunchNoticeHref(businessId, "address-saved"));
+}
+
+/**
+ * Changes a business's free address to another name staff typed. Only a free address can change here (a domain the customer
+ * owns has its own flow), and only until the website is live on it, since moving a live site's address would take it offline.
+ */
+export async function changeFreeAddressAction(formData: FormData): Promise<void> {
+  const staff = await requireStaffAccess();
+  const businessId = readId(formData.get("businessId"), "Free address's business");
+  const hostname = freeAddressHostname(formData, businessId);
+
+  const db = getStaffDb();
+  const project = await findOpenProjectForStaff(db, businessId);
+  if (project === null || project.status === "live") redirect(projectLaunchNoticeHref(businessId, "address-locked"));
+
+  const current = await findPrimaryHostname(db, businessId);
+  if (current === null || !isTemporarySubdomain(current)) redirect(projectLaunchNoticeHref(businessId, "address-locked"));
+
+  const outcome = await changeFreeAddressForBusiness(db, { businessId, hostname });
+  if (outcome === "taken") redirect(projectLaunchNoticeHref(businessId, "address-taken"));
+  if (outcome !== "changed") redirect(projectLaunchNoticeHref(businessId, "address-unavailable"));
+
+  await recordStaffAction(staff, {
+    businessId,
+    kind: "domain.free_address_changed",
+    summary: "Changed their free address",
+    data: { from: current, to: hostname },
+  });
+  revalidateClient(businessId);
+  redirect(projectLaunchNoticeHref(businessId, "address-changed"));
 }
 
 /**

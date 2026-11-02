@@ -3,7 +3,7 @@ import { getAppDb } from "@/lib/server/db";
 import { serverEnv } from "@/lib/server/env";
 import { allowsAnyLocalHost } from "@/lib/surfaces";
 import { getMediaStorage } from "@brandbasket/shared/server/media-storage";
-import { BUSY_MESSAGE, BUSY_RETRY_AFTER_SECONDS, hasDecodeCapacity } from "@/lib/server/media-upload";
+import { BUSY_MESSAGE, BUSY_RETRY_AFTER_SECONDS, hasDecodeCapacity } from "@brandbasket/shared/server/media-upload";
 import { consumeUploadAllowance, isOnboardingOpen, storeOnboardingImage } from "@/lib/server/onboarding-media";
 import { handleUploadRequest } from "@/lib/server/upload-request";
 

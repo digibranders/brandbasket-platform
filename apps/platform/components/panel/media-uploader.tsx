@@ -19,7 +19,7 @@ import {
   type StepFormControls,
 } from "@/components/panel/step-form";
 import { MAX_DESCRIPTION_LENGTH, MAX_PHOTOS, photoDescriptionField } from "@/lib/onboarding/brand-form";
-import { MAX_UPLOAD_SIZE_LABEL, type UploadPurpose } from "@/lib/uploads/limits";
+import { MAX_UPLOAD_SIZE_LABEL, type UploadPurpose } from "@brandbasket/shared/lib/uploads/limits";
 import { uploadImage, type UploadResult } from "@/lib/uploads/upload-client";
 
 type Purpose = UploadPurpose;

@@ -5,7 +5,7 @@ import { useState, type ChangeEvent, type ReactElement } from "react";
 import { MediaThumbnail } from "@/components/panel/media-thumbnail";
 import { MAX_PHOTOS } from "@/lib/onboarding/brand-form";
 import type { BrandAssets, BrandImage } from "@/lib/server/brand-assets";
-import { MAX_UPLOAD_SIZE_LABEL, type UploadPurpose } from "@/lib/uploads/limits";
+import { MAX_UPLOAD_SIZE_LABEL, type UploadPurpose } from "@brandbasket/shared/lib/uploads/limits";
 import { BRAND_ASSETS_ROUTE, uploadImage, type UploadResult } from "@/lib/uploads/upload-client";
 
 interface BrandAssetsPanelProps {

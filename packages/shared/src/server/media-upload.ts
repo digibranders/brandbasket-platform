@@ -1,8 +1,8 @@
 import "server-only";
 import { createHash } from "node:crypto";
 import sharp, { type OutputInfo } from "sharp";
-import { MAX_IMAGE_DIMENSION, MAX_UPLOAD_BYTES, TOO_LARGE_MESSAGE } from "@/lib/uploads/limits";
-import { PICTURE_COPY_WIDTHS, type PictureCopyWidth } from "@brandbasket/shared/server/media-keys";
+import { MAX_IMAGE_DIMENSION, MAX_UPLOAD_BYTES, TOO_LARGE_MESSAGE } from "../lib/uploads/limits";
+import { PICTURE_COPY_WIDTHS, type PictureCopyWidth } from "./media-keys";
 import { createSemaphore, SemaphoreFullError } from "./semaphore";
 
 export { MAX_UPLOAD_BYTES };
@@ -53,6 +53,15 @@ export type UploadRejection = "empty" | "too-large" | "unsupported-type" | "unre
  * An upload we will not store. `message` is written for the customer; `retryAfterSeconds` is set when the same file
  * may succeed later, as for `busy`.
  */
+/** The HTTP status each reason an image is not stored answers with, shared by every image upload route. */
+export const UPLOAD_REJECTION_STATUS: Readonly<Record<UploadRejection, number>> = {
+  empty: 422,
+  "too-large": 413,
+  "unsupported-type": 415,
+  unreadable: 422,
+  busy: 503,
+};
+
 export class UploadRejectedError extends Error {
   readonly reason: UploadRejection;
   readonly retryAfterSeconds: number | null;

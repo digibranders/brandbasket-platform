@@ -1,7 +1,7 @@
 import "server-only";
 import { pictureCopyKey } from "@brandbasket/shared/server/media-keys";
 import type { MediaStorage } from "@brandbasket/shared/server/media-storage";
-import { makePictureCopies } from "./media-upload";
+import { makePictureCopies } from "@brandbasket/shared/server/media-upload";
 
 /*
  * Makes the smaller copies of pictures that were uploaded before copies existed (see storePictureCopies). Run by

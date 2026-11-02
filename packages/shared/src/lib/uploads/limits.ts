@@ -12,6 +12,9 @@ export const MAX_IMAGE_DIMENSION = 2400;
 export const ACCEPTED_UPLOAD_TYPES = ["image/jpeg", "image/png", "image/webp"] as const;
 export type AcceptedUploadType = (typeof ACCEPTED_UPLOAD_TYPES)[number];
 
+/** The most photos a business keeps at once, whoever adds them. */
+export const MAX_PHOTOS = 20;
+
 export const UPLOAD_PURPOSES = ["logo", "photo"] as const;
 export type UploadPurpose = (typeof UPLOAD_PURPOSES)[number];
 

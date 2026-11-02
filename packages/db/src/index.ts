@@ -252,6 +252,7 @@ export {
   newMediaAssetId,
   PhotoLimitReachedError,
   recordBrandAsset,
+  recordBrandAssetForStaff,
   recordUploadedMedia,
   removeBrandAsset,
   softDeleteMediaAsset,

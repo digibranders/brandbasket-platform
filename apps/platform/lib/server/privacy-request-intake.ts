@@ -22,7 +22,7 @@ import type {
   PrivacyRequestOtpOutcome,
 } from "./privacy-requests";
 import { parsePrivacyRequestFields, requestAbout, type PrivacyRequestInput } from "./privacy-request-fields";
-import { BodyTooLargeError, readLimitedBody } from "./read-limited-body";
+import { BodyTooLargeError, readLimitedBody } from "@brandbasket/shared/server/read-limited-body";
 import { hasValidWebsiteToken } from "./website-api-auth";
 
 /**
