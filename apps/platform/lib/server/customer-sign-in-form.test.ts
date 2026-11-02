@@ -9,33 +9,47 @@ function form(entries: Record<string, string>): FormData {
   return data;
 }
 
+const MISSING = "Enter your email or mobile number.";
+const INVALID = "Enter a valid email address or mobile number.";
+
 describe("parseAccountIdentifier", () => {
-  it("reads a mobile number, as an Indian one unless it carries a country code", () => {
-    expect(parseAccountIdentifier(" 98200 11223 ")).toEqual({ success: true, identifier: { kind: "phone", phone: "+919820011223" } });
-    expect(parseAccountIdentifier("+91 98200-11223")).toEqual({ success: true, identifier: { kind: "phone", phone: "+919820011223" } });
+  it.each([
+    ["10 digits", "9820011223"],
+    ["spaces", " 98200 11223 "],
+    ["dashes", "98200-11223"],
+    ["+91 and a space", "+91 98200 11223"],
+    ["+91 and dashes", "+91-98200-11223"],
+    ["+91 and no space", "+919820011223"],
+    ["91 with the 00 prefix", "0091 98200 11223"],
+    ["a leading zero", "09820011223"],
+  ])("reads a mobile number with %s as Indian E.164", (_name, typed) => {
+    expect(parseAccountIdentifier(typed)).toEqual({ success: true, identifier: { kind: "phone", phone: "+919820011223" } });
+  });
+
+  it("reads a number with another country code as that country's", () => {
+    expect(parseAccountIdentifier("+1 415 555 2671")).toEqual({ success: true, identifier: { kind: "phone", phone: "+14155552671" } });
   });
 
   it("reads anything with an @ as an email, trimmed and lowercased", () => {
     expect(parseAccountIdentifier(" Meera@Example.com ")).toEqual({ success: true, identifier: { kind: "email", email: "meera@example.com" } });
   });
 
-  it("does not take a phone account's placeholder address: that account signs in with its number", () => {
-    expect(parseAccountIdentifier("919820011223@phone.brandbasket.invalid")).toEqual({ success: false, message: "Enter your mobile number." });
+  it("does not take a phone account's placeholder address", () => {
+    expect(parseAccountIdentifier("919820011223@phone.brandbasket.invalid")).toEqual({ success: false, message: INVALID });
   });
 
   it("asks for one when empty", () => {
-    expect(parseAccountIdentifier("  ")).toEqual({ success: false, message: "Enter your mobile number." });
+    expect(parseAccountIdentifier("")).toEqual({ success: false, message: MISSING });
+    expect(parseAccountIdentifier("  ")).toEqual({ success: false, message: MISSING });
   });
 
-  it("asks for an email address instead when told the brand signs in with one", () => {
-    expect(parseAccountIdentifier("  ", "email")).toEqual({ success: false, message: "Enter your email address." });
-    expect(parseAccountIdentifier("919820011223@phone.brandbasket.invalid", "email")).toEqual({ success: false, message: "Enter your email address." });
-    expect(parseAccountIdentifier("Meera@Example.com", "email")).toEqual({ success: true, identifier: { kind: "email", email: "meera@example.com" } });
+  it.each(["12345", "hello", "98200 11223 ext 4", "+91 12345", "9820011223x", "()", "-"])("refuses %j with one message that covers both", (typed) => {
+    expect(parseAccountIdentifier(typed)).toEqual({ success: false, message: INVALID });
   });
 
-  it("refuses a number that is not one, and an email that is not one", () => {
-    expect(parseAccountIdentifier("12345")).toMatchObject({ success: false });
+  it("refuses an email that is not one, and one that is too long", () => {
     expect(parseAccountIdentifier("meera@")).toEqual({ success: false, message: "Enter a valid email address." });
+    expect(parseAccountIdentifier(`${"a".repeat(250)}@example.com`)).toEqual({ success: false, message: "That email address is too long." });
   });
 });
 
@@ -47,16 +61,19 @@ describe("parseCustomerSignInForm", () => {
     });
   });
 
-  it("asks a Brandbasket sign-in for its email, and reads one", () => {
-    expect(parseCustomerSignInForm(form({ identifier: "", password: "x" }), "email")).toMatchObject({ success: false, message: "Enter your email address." });
-    expect(parseCustomerSignInForm(form({ identifier: "Owner@Example.test", password: "correct-horse-battery" }), "email")).toEqual({
+  it("reads an email and a password", () => {
+    expect(parseCustomerSignInForm(form({ identifier: "Owner@Example.test", password: "correct-horse-battery" }))).toEqual({
       success: true,
       data: { identifier: { kind: "email", email: "owner@example.test" }, password: "correct-horse-battery" },
     });
   });
 
+  it("asks for an email or a mobile number when the field is empty", () => {
+    expect(parseCustomerSignInForm(form({ identifier: "", password: "x" }))).toMatchObject({ success: false, message: MISSING });
+  });
+
   it("echoes what was typed when it cannot be read", () => {
-    expect(parseCustomerSignInForm(form({ identifier: " 12345 ", password: "x" }))).toMatchObject({ success: false, typed: "12345" });
+    expect(parseCustomerSignInForm(form({ identifier: " 12345 ", password: "x" }))).toMatchObject({ success: false, message: INVALID, typed: "12345" });
   });
 
   it("asks for the password", () => {

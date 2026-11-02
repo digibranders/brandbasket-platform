@@ -52,7 +52,7 @@ describe("consentSignals", () => {
 
 describe("isUntrackedPath", () => {
   it("skips pages whose address holds a one-time secret", () => {
-    for (const path of ["/reset-password/abc123", "/confirm-email/abc123", "/setup/abc123", "/billing/confirm", "/billing/charges/confirm"]) {
+    for (const path of ["/reset-password/abc123", "/setup/abc123", "/billing/confirm", "/billing/charges/confirm"]) {
       expect(isUntrackedPath(path), path).toBe(true);
     }
   });

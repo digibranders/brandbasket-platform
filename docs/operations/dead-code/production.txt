@@ -61,7 +61,6 @@ apps/platform/lib/server/calcom-webhook.ts: verifyCalcomSignature, parseCalcomEv
 apps/platform/lib/server/call-scheduling.ts: calcomBookingMetadata, BOOKING_WINDOW_DAYS, calcomPage
 apps/platform/lib/server/checkout.ts: UnsafeCheckoutUrlError
 apps/platform/lib/server/customer-access.ts: CustomerBusinessMissingError, LISTING_ACCOUNT_HOME
-apps/platform/lib/server/customer-sign-in-form.ts: parseAccountIdentifier
 apps/platform/lib/server/directory-fields.ts: NAME_MISSING_MESSAGE, NAME_TOO_LONG_MESSAGE, PHONE_MISSING_MESSAGE, TEXT_TOO_LONG_MESSAGE, HIGHLIGHT_UNKNOWN_MESSAGE, TOO_MANY_HIGHLIGHTS_MESSAGE, MESSAGE_TOO_LONG_MESSAGE, COMMENT_MISSING_MESSAGE, COMMENT_TOO_LONG_MESSAGE, ADULT_REVIEW_MESSAGE, ADULT_COMMENT_MESSAGE, PAGE_PROBLEM_MESSAGE, UNKNOWN_BUSINESS_MESSAGE, parseReviewFields, parseCommentFields, parseEnquiryFields
 apps/platform/lib/server/directory-visitor.ts: startVisitorSession
 apps/platform/lib/server/discount-plans.ts: UnevenPlanDiscountError
@@ -220,7 +219,7 @@ apps/platform/lib/server/account-email-code.ts: AccountEmailCodeRequest, Account
 apps/platform/lib/server/account-exit.ts: CloseAccountOutcome
 apps/platform/lib/server/account-export.ts: AccountExportInput, AccountExportDatabases
 apps/platform/lib/server/account-panel.ts: AccountPanel
-apps/platform/lib/server/account-recovery.ts: ResetRequestOutcome, PasswordResetOutcome, EmailConfirmationOutcome, ConfirmationSendOutcome
+apps/platform/lib/server/account-recovery.ts: ResetRequestOutcome, PasswordResetOutcome
 apps/platform/lib/server/account-security.ts: ChangePasswordOutcome
 apps/platform/lib/server/add-ons.ts: AddOnsPage
 apps/platform/lib/server/affiliate-access.ts: AffiliateAccess
@@ -237,7 +236,7 @@ apps/platform/lib/server/charges.ts: RazorpayOrderPaid
 apps/platform/lib/server/chatbot-conversations.ts: LeadConversationOutcome
 apps/platform/lib/server/chatbots.ts: LeadsPage
 apps/platform/lib/server/checkout.ts: CheckoutOutcome
-apps/platform/lib/server/customer-sign-in-form.ts: SignInIdentifierMode, AccountIdentifier, IdentifierParseResult, CustomerSignInInput, CustomerSignInParseResult
+apps/platform/lib/server/customer-sign-in-form.ts: AccountIdentifier, IdentifierParseResult, CustomerSignInInput, CustomerSignInParseResult
 apps/platform/lib/server/directory-fields.ts: FieldRefusal, FieldResult, ReviewInput, CommentInput, EnquiryInput
 apps/platform/lib/server/directory-visitor.ts: VisitorSession, ResolvedVisitor
 apps/platform/lib/server/domain-check.ts: DomainCheck

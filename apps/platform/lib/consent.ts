@@ -54,10 +54,10 @@ export function consentSignals(measurement: boolean): Readonly<Record<"analytics
 }
 
 /**
- * Pages whose address carries a one-time secret (a password reset, email confirmation or account setup link). Tag Manager
+ * Pages whose address carries a one-time secret (a password reset or account setup link). Tag Manager
  * never starts on them, so the secret cannot reach an analytics report.
  */
-const SECRET_PATHS = /^\/(?:reset-password|confirm-email|setup)\/|^\/billing\/(?:charges\/)?confirm(?:\/|$)/;
+const SECRET_PATHS = /^\/(?:reset-password|setup)\/|^\/billing\/(?:charges\/)?confirm(?:\/|$)/;
 
 export function isUntrackedPath(pathname: string): boolean {
   return SECRET_PATHS.test(pathname);

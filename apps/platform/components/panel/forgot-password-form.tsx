@@ -19,9 +19,9 @@ const INPUT_CLASSES =
   "mt-2 block w-full rounded-control border border-ink-soft/65 bg-white px-4 py-3 text-base text-ink transition-colors duration-300 ease-calm placeholder:text-ink-soft/80 focus:border-accent";
 
 /**
- * Asks for the email the account signs in with and sends it a link to choose a new password. What it says afterwards is
- * the same whether or not the address has an account. The address is held here, so a refused submission leaves the form
- * as it was.
+ * Asks for the email or mobile number the account signs in with and emails the account a link to choose a new password.
+ * What it says afterwards is the same whether or not there is an account. What was typed is held here, so a refused
+ * submission leaves the form as it was.
  */
 export function ForgotPasswordForm({ action, brandName = clientBrandName() }: ForgotPasswordFormProps): ReactElement {
   const [state, formAction, isPending] = useActionState(action, initialForgotPasswordState);
@@ -42,8 +42,10 @@ export function ForgotPasswordForm({ action, brandName = clientBrandName() }: Fo
     return (
       <div className="space-y-5">
         <p ref={resultRef} tabIndex={-1} role="status" className="rounded-control bg-accent-pale px-4 py-3 text-sm text-accent-deep">
-          If {state.email} has a {brandName} account, we&rsquo;ve emailed it a link to choose a new password. The link works for
-          one hour.
+          {state.kind === "email"
+            ? <>If {state.typed} has a {brandName} account, we&rsquo;ve emailed it a link to choose a new password.</>
+            : <>If {state.typed} has a {brandName} account, we&rsquo;ve emailed a link to choose a new password to the email address on it.</>}{" "}
+          The link works for one hour.
         </p>
         <p className="text-sm text-ink-soft">
           Nothing in your inbox after a few minutes? Check spam, or{" "}
@@ -64,19 +66,20 @@ export function ForgotPasswordForm({ action, brandName = clientBrandName() }: Fo
     <form action={formAction} noValidate className="space-y-5">
       <div>
         <label htmlFor="forgot-identifier" className="block text-sm font-medium">
-          Email
+          Email or mobile number
           <RequiredMark />
         </label>
         <input
           id="forgot-identifier"
           name="identifier"
-          type="email"
+          type="text"
+          inputMode="email"
           required
           autoComplete="username"
           spellCheck={false}
           autoCapitalize="none"
           maxLength={254}
-          placeholder="you@yourbusiness.com"
+          placeholder="Email or mobile number"
           value={identifier}
           readOnly={isPending}
           onChange={(event) => setIdentifier(event.target.value)}

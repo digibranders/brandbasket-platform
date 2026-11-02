@@ -1,6 +1,6 @@
 import { users } from "@brandbasket/db";
 import { openTestDatabases, resetTestDatabase, type TestDatabases } from "@brandbasket/db/testing";
-import { count, eq } from "drizzle-orm";
+import { count } from "drizzle-orm";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { withAccountCreationGrant } from "./account-creation-grant";
 import { createAuth, PASSWORD_MIN_LENGTH, type AccountMail, type Auth } from "./create-auth";
@@ -183,11 +183,10 @@ describe("sign in", () => {
   });
 });
 
-describe("password reset and email confirmation", () => {
+describe("password reset", () => {
   const SECRET = "integration-test-secret-with-at-least-32-chars";
   const NEW_PASSWORD = "a-brand-new-password-7";
   let resets: AccountMail[];
-  let confirmations: AccountMail[];
   let mailing: Auth;
 
   function sessionCookie(headers: Headers): string {
@@ -196,14 +195,8 @@ describe("password reset and email confirmation", () => {
     return pair;
   }
 
-  async function emailConfirmed(): Promise<boolean | undefined> {
-    const rows = await dbs.staff.db.select({ emailVerified: users.emailVerified }).from(users).where(eq(users.email, OWNER.email));
-    return rows[0]?.emailVerified;
-  }
-
   beforeEach(async () => {
     resets = [];
-    confirmations = [];
     mailing = createAuth({
       db: dbs.app.db,
       secret: SECRET,
@@ -212,14 +205,9 @@ describe("password reset and email confirmation", () => {
       nextCookies: false,
       mailer: {
         sendPasswordReset: async (mail) => void resets.push(mail),
-        sendEmailConfirmation: async (mail) => void confirmations.push(mail),
       },
     });
     await withAccountCreationGrant(OWNER.email, () => mailing.api.signUpEmail({ body: OWNER }));
-  });
-
-  it("sends no confirmation on sign-up: the app asks for one when it wants it", () => {
-    expect(confirmations).toEqual([]);
   });
 
   it("emails a one-time reset token for an account, and none for an address with no account", async () => {
@@ -270,22 +258,5 @@ describe("password reset and email confirmation", () => {
   it("refuses to reset a password where no mailer is configured, rather than sending nothing", async () => {
     const failure = await captureFailure(auth.api.requestPasswordReset({ body: { email: OWNER.email } }));
     expectApiErrorCode(failure, "RESET_PASSWORD_DISABLED");
-  });
-
-  it("confirms the address from the emailed token, and refuses a token that is not one", async () => {
-    expect(await emailConfirmed()).toBe(false);
-    await mailing.api.sendVerificationEmail({ body: { email: OWNER.email } });
-    expect(confirmations).toHaveLength(1);
-    expect(confirmations[0]).toMatchObject({ email: OWNER.email });
-
-    const bogus = await captureFailure(mailing.api.verifyEmail({ query: { token: "not.a.token" } }));
-    expect(isInvalidTokenError(bogus)).toBe(true);
-    expect(await emailConfirmed()).toBe(false);
-
-    await mailing.api.verifyEmail({ query: { token: confirmations[0]?.token ?? "" } });
-    expect(await emailConfirmed()).toBe(true);
-    // Opening the link again is harmless.
-    await mailing.api.verifyEmail({ query: { token: confirmations[0]?.token ?? "" } });
-    expect(await emailConfirmed()).toBe(true);
   });
 });

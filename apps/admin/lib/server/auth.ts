@@ -25,9 +25,6 @@ export async function generateStaffPasswordResetEmail(email: string): Promise<Em
           expiresInMinutes: PASSWORD_RESET_LIFETIME_SECONDS / 60,
         });
       },
-      sendEmailConfirmation: async () => {
-        throw new Error("Email confirmation is not available on the staff console.");
-      },
     },
   });
   await resetAuth.api.requestPasswordReset({ body: { email } });

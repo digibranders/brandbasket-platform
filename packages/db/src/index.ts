@@ -321,6 +321,7 @@ export {
   PROJECT_STATUSES_PREVIEWABLE,
   recordProjectPreviewSent,
   requestProjectRevisions,
+  RevisionRoundsUsedUpError,
   submitProject,
   type Project,
   type ProjectLaunch,
@@ -811,7 +812,17 @@ export {
   type NewAddOnSubscription,
   type RecordedAddOnPayment,
 } from "./queries/add-ons";
-export { clearSiteSetting, findSiteSetting, findSiteSettingWithEditor, saveSiteSetting } from "./queries/site-settings";
+export { clearSiteSetting, findIncludedRevisionRounds, findSiteSetting, findSiteSettingWithEditor, saveSiteSetting } from "./queries/site-settings";
+export {
+  DEFAULT_REVISION_ROUNDS,
+  MAX_REVISION_ROUNDS,
+  MIN_REVISION_ROUNDS,
+  readRevisionRounds,
+  REVISION_ROUNDS_FIELD,
+  REVISION_ROUNDS_KEY,
+  revisionRoundsFromSetting,
+  type RevisionRoundsReading,
+} from "./revision-rounds";
 export {
   clearSetupCallHeld,
   clearUnheldKickoffBooking,

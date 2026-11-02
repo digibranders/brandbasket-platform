@@ -2,8 +2,8 @@ import { z } from "zod";
 import { newPasswordSchema } from "@/lib/setup-form";
 
 /*
- * Getting back into an account, and proving an email address is its owner's: the forms behind /forgot-password and
- * /reset-password/<token>, and the addresses the emails link to. Browser-safe, so the form components share the limits.
+ * Getting back into an account: the forms behind /forgot-password and /reset-password/<token>, and the address the
+ * email links to. Browser-safe, so the form components share the limits.
  */
 
 export const FORGOT_PASSWORD_PATH = "/forgot-password";
@@ -11,11 +11,6 @@ export const FORGOT_PASSWORD_PATH = "/forgot-password";
 /** The page a reset email opens. The token is one path segment; it is random letters and digits. */
 export function resetPasswordPath(token: string): string {
   return `/reset-password/${encodeURIComponent(token)}`;
-}
-
-/** The page a confirmation email opens. The token is a signed value with dots in it, so it is encoded. */
-export function confirmEmailPath(token: string): string {
-  return `/confirm-email/${encodeURIComponent(token)}`;
 }
 
 const resetSchema = z
@@ -30,13 +25,16 @@ const resetSchema = z
 
 /**
  * The form holds what was typed itself (its inputs are controlled), so a state carries only where the person is. An
- * address is sent a link (`sent`) whether or not it has an account.
+ * address or a mobile number is answered (`sent`) whether or not it has an account.
  */
 export type ForgotPasswordFormState =
   | { readonly status: "idle" }
   | { readonly status: "error"; readonly message: string }
-  /** Said whether or not the address has an account, so the form never tells a stranger which addresses do. */
-  | { readonly status: "sent"; readonly email: string };
+  /**
+   * Said whether or not the address or number has an account, so the form never tells a stranger which do. `typed` is
+   * the address (normalised) or the number (as typed) that was asked about; the link goes to the email on the account.
+   */
+  | { readonly status: "sent"; readonly kind: "email" | "phone"; readonly typed: string };
 
 export const initialForgotPasswordState: ForgotPasswordFormState = { status: "idle" };
 

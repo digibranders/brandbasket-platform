@@ -72,11 +72,19 @@ async function askForCode(): Promise<void> {
 }
 
 it("focuses the email result, preserving a clear stage announcement", async () => {
-  await render(createElement(ForgotPasswordForm, { action: async (): Promise<ForgotPasswordFormState> => ({ status: "sent", email: "owner@example.com" }) }));
+  await render(createElement(ForgotPasswordForm, { action: async (): Promise<ForgotPasswordFormState> => ({ status: "sent", kind: "email", typed: "owner@example.com" }) }));
   await type("identifier", "owner@example.com");
   await click("Email me a link");
   expect(document.activeElement?.getAttribute("role")).toBe("status");
   expect(container.textContent).toContain("emailed it a link");
+});
+
+it("says a link went to the email on the account when a mobile number was asked about, without showing any address", async () => {
+  await render(createElement(ForgotPasswordForm, { action: async (): Promise<ForgotPasswordFormState> => ({ status: "sent", kind: "phone", typed: "98200 11223" }) }));
+  await type("identifier", "98200 11223");
+  await click("Email me a link");
+  expect(container.textContent).toContain("If 98200 11223 has a Brandbasket account, we’ve emailed a link to choose a new password to the email address on it.");
+  expect(container.textContent).not.toContain("@");
 });
 
 it("keeps the address and focuses a neutral delivery failure", async () => {
@@ -87,11 +95,14 @@ it("keeps the address and focuses a neutral delivery failure", async () => {
   expect(document.activeElement?.getAttribute("role")).toBe("alert");
 });
 
-it("asks a password reset for an email only, and never offers a code or a mobile number", async () => {
+it("asks a password reset for an email or a mobile number in one text box, and never offers a code", async () => {
   await render(createElement(ForgotPasswordForm, { action: async (): Promise<ForgotPasswordFormState> => ({ status: "idle" }) }));
-  expect(container.querySelector('input[name="identifier"][type="email"]')).not.toBeNull();
+  const field = container.querySelector('input[name="identifier"]');
+  expect(field?.getAttribute("type")).toBe("text");
+  expect(field?.getAttribute("inputmode")).toBe("email");
+  expect(container.textContent).toContain("Email or mobile number");
   expect(container.querySelector('input[name="code"]')).toBeNull();
-  expect(container.textContent).not.toMatch(/mobile|number|text(ed)?\b|code/i);
+  expect(container.textContent).not.toMatch(/text(ed)?\b|code/i);
 });
 
 it("names the services the link chose and their package price above the details", async () => {

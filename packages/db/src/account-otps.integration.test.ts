@@ -141,8 +141,13 @@ describe("an account's phone number", () => {
     expect(await findUserByPhone(dbs.app.db, "+919820099999")).toBeNull();
   });
 
-  it("does not find a number nobody has proven is theirs", async () => {
+  it("finds the account holding a number given at sign-up, proven or not: the password decides who gets in", async () => {
     await dbs.staff.db.insert(users).values({ id: "unproven", name: "X", email: "x@example.com", phoneNumber: PHONE });
+    expect(await findUserByPhone(dbs.app.db, PHONE)).toEqual({ id: "unproven", name: "X", email: "x@example.com" });
+  });
+
+  it("finds nothing for an account that never gave a number", async () => {
+    await dbs.staff.db.insert(users).values({ id: "older", name: "X", email: "x@example.com" });
     expect(await findUserByPhone(dbs.app.db, PHONE)).toBeNull();
   });
 
@@ -158,7 +163,7 @@ describe("an account's phone number", () => {
 });
 
 describe("the mobile number an owner gives when signing up", () => {
-  it("is saved unproven, so it signs nobody in, and any account holding it makes it taken", async () => {
+  it("is saved unproven, and any account holding it makes it taken", async () => {
     await dbs.staff.db.insert(users).values({ id: "new-owner", name: "Asha", email: "asha@example.test" });
     expect(await phoneNumberIsTaken(dbs.staff.db, PHONE)).toBe(false);
 
@@ -167,7 +172,7 @@ describe("the mobile number an owner gives when signing up", () => {
     const [row] = await dbs.staff.db.select({ phone: users.phoneNumber, proven: users.phoneNumberVerified }).from(users).where(eq(users.id, "new-owner"));
     expect(row).toEqual({ phone: PHONE, proven: false });
     expect(await phoneNumberIsTaken(dbs.staff.db, PHONE)).toBe(true);
-    expect(await findUserByPhone(dbs.staff.db, PHONE)).toBeNull();
+    expect(await findUserByPhone(dbs.staff.db, PHONE)).toMatchObject({ id: "new-owner" });
   });
 
   it("is refused, with nothing saved, when another account already holds it", async () => {
