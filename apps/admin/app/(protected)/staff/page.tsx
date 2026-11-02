@@ -7,6 +7,7 @@ import { fieldClasses, labelClasses } from "@/components/console/field-styles";
 import { EmptyLine } from "@/components/console/hairline-list";
 import { Notice } from "@/components/console/notice";
 import { PageHeader } from "@/components/console/page-header";
+import { SectionTabs } from "@/components/console/section-tabs";
 import { Section } from "@/components/console/section";
 import { StatusPill, type PillTone } from "@/components/console/status-pill";
 import { TABLE, TD, TD_TIME, TH } from "@/components/console/table";
@@ -27,7 +28,7 @@ export default async function StaffPage({
 }: {
   readonly searchParams: Promise<Record<string, string | string[] | undefined>>;
 }): Promise<ReactElement> {
-  const { user } = await requireStaffCan("oversight");
+  const { user, staff: viewer } = await requireStaffCan("oversight");
   const db = getStaffDb();
   const [roster, invites, params] = await Promise.all([listStaffRoster(db), listOpenStaffInvites(db), searchParams]);
   const notice = readStaffNotice(params.notice);
@@ -37,6 +38,7 @@ export default async function StaffPage({
   return (
     <>
       <PageHeader title="Staff" meta={`${active} ${active === 1 ? "person" : "people"} · ${invites.length} invited`} />
+      <SectionTabs role={viewer.role} page="/staff" />
       {notice === null ? null : (
         <Notice tone={STAFF_NOTICES[notice].ok ? "ok" : "problem"} className="mt-6">
           {STAFF_NOTICES[notice].text}

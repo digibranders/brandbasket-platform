@@ -10,6 +10,7 @@ import { LocalDate } from "@brandbasket/shared/ui/panel/local-date-time";
 import { FilterPills } from "@/components/console/filter-pills";
 import { EmptyLine } from "@/components/console/hairline-list";
 import { PageHeader } from "@/components/console/page-header";
+import { SectionTabs } from "@/components/console/section-tabs";
 import { StatusPill } from "@/components/console/status-pill";
 import { TABLE, TD, TD_NUM, TD_TIME, TH } from "@/components/console/table";
 import { ServiceTags } from "@/components/service-tags";
@@ -95,6 +96,7 @@ export default async function ClientsPage({
   return (
     <>
       <PageHeader title="Clients" meta={`${paying} paying · ${rows.length - paying} signed up, not paid`} />
+      <SectionTabs role={staff.role} page="/clients" />
 
       <div className="mt-8 space-y-4">
         <form action="/clients" role="search" className="w-full sm:w-80">

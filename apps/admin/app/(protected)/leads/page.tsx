@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import type { ReactElement } from "react";
+import { SectionTabs } from "@/components/console/section-tabs";
 import { EnquiriesHeader } from "@/components/enquiries/enquiries-header";
 import { EnquiryList } from "@/components/enquiries/enquiry-list";
 import { readEnquiryQuery } from "@/lib/enquiries";
@@ -14,13 +15,14 @@ export default async function EnquiriesPage({
 }: {
   readonly searchParams: Promise<Record<string, string | string[] | undefined>>;
 }): Promise<ReactElement> {
-  const { user } = await requireStaffAccess();
+  const { user, staff: viewer } = await requireStaffAccess();
   await logStaffAccess({ staffUserId: user.id, action: "leads.list", targetType: "leads" });
   const query = readEnquiryQuery(await searchParams);
   const screen = await loadEnquiryScreen(query, user.id);
   return (
     <>
       <EnquiriesHeader query={query} weekCount={screen.weekCount} toContactCount={screen.toContactCount} />
+      <SectionTabs role={viewer.role} page="/leads" />
       <div className="mt-6">
         <EnquiryList all={screen.all} rows={screen.rows} query={query} selectedId={null} ownerNames={screen.ownerNames} now={screen.now} />
       </div>

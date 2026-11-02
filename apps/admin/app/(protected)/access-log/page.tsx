@@ -7,6 +7,7 @@ import { buttonSecondary, buttonSmall } from "@/components/console/buttons";
 import { fieldClasses, labelClasses } from "@/components/console/field-styles";
 import { EmptyLine } from "@/components/console/hairline-list";
 import { PageHeader } from "@/components/console/page-header";
+import { SectionTabs } from "@/components/console/section-tabs";
 import { Section } from "@/components/console/section";
 import { StatusPill } from "@/components/console/status-pill";
 import { TABLE, TD, TD_TIME, TH } from "@/components/console/table";
@@ -28,7 +29,7 @@ export default async function CompliancePage({
 }: {
   readonly searchParams: Promise<Record<string, string | string[] | undefined>>;
 }): Promise<ReactElement> {
-  const { user } = await requireStaffCan("oversight");
+  const { user, staff: viewer } = await requireStaffCan("oversight");
   await logStaffAccess({ staffUserId: user.id, action: "access_log.view" });
   const db = getStaffDb();
   const { filter, values, page } = parseAccessLogFilters(await searchParams);
@@ -44,6 +45,7 @@ export default async function CompliancePage({
   return (
     <>
       <PageHeader title="Compliance" meta="Who opened or exported personal data in this console, newest first. Review it every week." />
+      <SectionTabs role={viewer.role} page="/access-log" />
 
       <Section title="At a glance">
         <dl className="grid max-w-2xl grid-cols-[minmax(0,1fr)_auto] gap-x-6 gap-y-2 text-sm">
