@@ -265,6 +265,7 @@ export {
   DuplicateServiceIdError,
   getBusinessHours,
   getBusinessProfile,
+  getOwnerContact,
   getPrimaryDomain,
   getProjectBrief,
   InvalidHostnameError,

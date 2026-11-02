@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { headers } from "next/headers";
 import type { ReactElement } from "react";
-import { findAnnouncement, findBusinessTimeZone, findOwnListing, getBusinessHours, getBusinessProfile, listClosures, withTenantScope } from "@brandbasket/db";
+import { findAnnouncement, findBusinessTimeZone, findOwnListing, getBusinessHours, getBusinessProfile, getOwnerContact, listClosures, withTenantScope } from "@brandbasket/db";
 import { addDays, localDateIn } from "@brandbasket/shared/lib/calendar/local-date";
 import { upcomingClosures } from "@brandbasket/shared/lib/business-facts/closures";
 import { fromStoredHours, type OpeningHours } from "@brandbasket/shared/lib/onboarding/hours";
@@ -39,26 +39,31 @@ export default async function DetailsPage(): Promise<ReactElement> {
   const hasWebsite = billing.hasWebsite;
   const assets = await loadBrandAssets(tenant);
 
-  const { profile, timeZone, hoursRows, closures, announcement, listing } = await withTenantScope(getAppDb(), tenant, async (tx) => ({
-    profile: await getBusinessProfile(tx),
-    timeZone: await findBusinessTimeZone(tx, tenant.businessId),
-    hoursRows: hasWebsite ? await getBusinessHours(tx) : [],
-    closures: hasWebsite ? await listClosures(tx) : [],
-    announcement: hasWebsite ? await findAnnouncement(tx) : null,
-    // Only a business with a listing has a page to preview.
-    listing: hasWebsite ? await findOwnListing(tx) : null,
-  }));
+  const { profile, ownerContact, timeZone, hoursRows, closures, announcement, listing } = await withTenantScope(getAppDb(), tenant, async (tx) => {
+    const profile = await getBusinessProfile(tx);
+    return {
+      profile,
+      // Nothing saved yet: offer what the owner gave at sign-up.
+      ownerContact: profile === null ? await getOwnerContact(tx, tenant.userId) : null,
+      timeZone: await findBusinessTimeZone(tx, tenant.businessId),
+      hoursRows: hasWebsite ? await getBusinessHours(tx) : [],
+      closures: hasWebsite ? await listClosures(tx) : [],
+      announcement: hasWebsite ? await findAnnouncement(tx) : null,
+      // Only a business with a listing has a page to preview.
+      listing: hasWebsite ? await findOwnListing(tx) : null,
+    };
+  });
 
   const today = localDateIn(timeZone ?? "UTC", new Date());
   const hours = hoursRows.map(fromStoredHours).filter((day): day is OpeningHours => day !== null);
 
   // The saved number shows in its own country's layout; with nothing saved, the visitor's country is the best guess.
-  const savedPhone = savedPhoneStart(profile?.phone ?? null);
+  const savedPhone = savedPhoneStart(profile?.phone ?? ownerContact?.phone ?? null);
   const defaultPhoneCountry = savedPhone.country ?? visitorPhoneCountry(await headers());
   const contact: SavedContact = {
     displayName: profile?.displayName ?? tenant.businessName,
     phone: savedPhone.number === "" ? null : savedPhone.number,
-    email: profile?.email ?? null,
+    email: profile?.email ?? ownerContact?.email ?? null,
     addressLine1: profile?.addressLine1 ?? null,
     addressLine2: profile?.addressLine2 ?? null,
     city: profile?.city ?? null,

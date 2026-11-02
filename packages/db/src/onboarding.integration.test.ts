@@ -1,5 +1,6 @@
 import { and, asc, eq, sql, type SQL } from "drizzle-orm";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { phoneAccountEmail } from "./phone-account";
 import { createSetupInvite } from "./queries/invites";
 import { createLead } from "./queries/leads";
 import {
@@ -21,6 +22,7 @@ import {
   DuplicateServiceIdError,
   getBusinessHours,
   getBusinessProfile,
+  getOwnerContact,
   getPrimaryDomain,
   getProjectBrief,
   listServices,
@@ -309,6 +311,13 @@ describe("saving and reading every step", () => {
       saveBusinessContact(tx, { displayName: "Only contact", phone: null, email: "hello@example.test", addressLine1: null, addressLine2: null, city: null, region: null, postalCode: null, country: null, serviceAreas: null }),
     );
     expect(created).toMatchObject({ displayName: "Only contact", email: "hello@example.test", tagline: null });
+  });
+
+  it("offers the email and mobile given at sign-up, and nothing for a phone account's placeholder email", async () => {
+    await dbs.staff.db.update(users).set({ phoneNumber: "+919812345678" }).where(eq(users.id, USER_A));
+    expect(await asTenant("A", (tx) => getOwnerContact(tx, USER_A))).toEqual({ email: "ana@example.com", phone: "+919812345678" });
+    await dbs.staff.db.update(users).set({ email: phoneAccountEmail("+919812345678") }).where(eq(users.id, USER_A));
+    expect(await asTenant("A", (tx) => getOwnerContact(tx, USER_A))).toEqual({ email: null, phone: "+919812345678" });
   });
 
   it("upserts the profile and brief instead of adding rows", async () => {
