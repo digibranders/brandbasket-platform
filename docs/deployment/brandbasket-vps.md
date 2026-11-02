@@ -53,6 +53,29 @@ are made invisible to them (`InaccessiblePaths`, below). The user has no login s
 Timer offsets across the box, so nothing starts together: Firstfold website :00, Brandbasket autodeploy :20, Firstfold platform :30,
 Firstfold CI :45, Brandbasket CI :50; nightly Brandbasket backup 02:15 UTC, Firstfold's at 21:00, 21:30 and 22:00.
 
+## Deploying from GitHub Actions
+
+Building both apps needs more memory than the autodeploy unit may use (`MemoryHigh=5G`), and a stalled build slowed every project on
+the box. `.github/workflows/deploy.yml` therefore builds on a GitHub runner and the VPS only installs, migrates and switches.
+
+```
+ main passes CI ─▶ Deploy workflow (runner) ─ build both apps at /srv/brandbasket/releases/<sha> ─ tar ─▶ ssh (one forced command)
+                                                         VPS: brandbasket-gha-deploy ─▶ brandbasket-platform-release --prebuilt
+                                                              install ─ env check ─ migrations ─ switch platform, then admin ─ prune
+```
+
+- **Trigger:** the workflow runs after the CI workflow succeeds on `main`, or by hand (Actions, Deploy, Run workflow) for the head of `main`.
+- **The key** is one ed25519 key in `/root/.ssh/authorized_keys` with `restrict,command="/usr/local/sbin/brandbasket-gha-deploy"`. It can run
+  that script and nothing else; the script accepts only `deploy <40 hex sha>`, unpacks the archive as `brandbasket` and runs the release
+  script. The private half is the repository secret `DEPLOY_SSH_KEY`; `DEPLOY_KNOWN_HOSTS` holds the server's ed25519 host key line and the
+  variable `DEPLOY_HOST` its address.
+- **Prebuilt mode:** `brandbasket-platform-release --prebuilt <sha> platform admin` does everything the normal path does except the build
+  and the build queue. The env check, migrations (before any restart), health-checked switch and rollback are the same.
+- **Pausing the VPS side:** `brandbasket-platform-autodeploy.timer` and `brandbasket-ci.timer` are disabled while this is in use, so a
+  commit is never built twice. To go back, `systemctl enable --now` both and disable the workflow.
+- **Rollback:** unchanged, `brandbasket-platform-release --activate <app> <release>`.
+- **Install:** `deploy/vps/install.sh` puts `brandbasket-gha-deploy` in `/usr/local/sbin`. Adding the key line is a manual step on purpose.
+
 ## One heavy job at a time
 
 Four CPUs, and a build takes most of them. Every Brandbasket build, deploy or CI run holds four flock files for its whole run, and
