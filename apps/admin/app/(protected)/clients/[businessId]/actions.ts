@@ -68,6 +68,7 @@ import { getStaffDb } from "@/lib/server/db";
 import { DomainReadyRecipientMissingError, markDomainReady, type DomainReadyOutcome } from "@/lib/server/domain-ready";
 import { DomainSwitchRecipientMissingError, switchDomain } from "@/lib/server/domain-switch";
 import {
+  ProjectLaunchAddressUnverifiedError,
   ProjectLaunchChecksMissingError,
   ProjectLaunchDomainMissingError,
   ProjectLaunchRecipientMissingError,
@@ -241,19 +242,21 @@ export async function resendPreviewEmailAction(formData: FormData): Promise<void
 export async function markLiveAction(formData: FormData): Promise<void> {
   const staff = await requireStaffAccess();
   const businessId = readId(formData.get("businessId"), "Mark live's business");
+  const confirmUnverifiedAddress = formData.get("confirmUnverifiedAddress") === "yes";
 
   let notified: OwnerNotification;
   try {
-    notified = await launchProject(getStaffDb(), { businessId }, new Date());
+    notified = await launchProject(getStaffDb(), { businessId, confirmUnverifiedAddress }, new Date());
   } catch (error) {
     if (error instanceof ProjectNotApprovedError) redirect(projectLaunchNoticeHref(businessId, "not-approved"));
     if (error instanceof ProjectLaunchRecipientMissingError) redirect(projectLaunchNoticeHref(businessId, "no-owner"));
     if (error instanceof ProjectLaunchDomainMissingError) redirect(projectLaunchNoticeHref(businessId, "no-domain"));
     if (error instanceof ProjectLaunchChecksMissingError) redirect(projectLaunchNoticeHref(businessId, "checks-missing"));
+    if (error instanceof ProjectLaunchAddressUnverifiedError) redirect(projectLaunchNoticeHref(businessId, "address-unverified"));
     throw error;
   }
 
-  await recordStaffAction(staff, { businessId, kind: "project.marked_live", summary: "Marked the website live", data: { notified } });
+  await recordStaffAction(staff, { businessId, kind: "project.marked_live", summary: "Marked the website live", data: { notified, addressConfirmedByStaff: confirmUnverifiedAddress } });
   revalidateClient(businessId);
   redirect(projectLaunchNoticeHref(businessId, notified === "emailed" ? "launched" : notified === "no-email" ? "launched-no-email" : "launched-email-failed"));
 }

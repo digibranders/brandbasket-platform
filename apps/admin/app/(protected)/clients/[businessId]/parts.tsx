@@ -524,13 +524,28 @@ export function CheckAddressForm({ businessId }: { readonly businessId: string }
   );
 }
 
-function MarkLiveForm({ businessId, note }: { readonly businessId: string; readonly note?: string }): ReactElement {
+function MarkLiveForm({
+  businessId,
+  note,
+  offerOverride,
+}: {
+  readonly businessId: string;
+  readonly note?: string;
+  /** The last try found the address not loading: offer the box that lets staff go live anyway. */
+  readonly offerOverride: boolean;
+}): ReactElement {
   return (
     <form action={markLiveAction}>
       <p className="max-w-xl text-ink-soft">
         {note ?? "Once the real site is deployed and DNS points at their domain, mark it live here. The client is emailed their website address."}
       </p>
       <input type="hidden" name="businessId" value={businessId} />
+      {offerOverride ? (
+        <label className="mt-5 flex max-w-xl items-start gap-3 text-sm">
+          <input type="checkbox" name="confirmUnverifiedAddress" value="yes" className={checkboxClasses} />
+          <span>Mark live even though the address did not load</span>
+        </label>
+      ) : null}
       <button type="submit" className={`${buttonPrimary} mt-5`}>
         Mark live
       </button>
@@ -555,12 +570,15 @@ export function GoLivePanel({
   businessId,
   domain,
   previewUrl,
+  addressUnverified,
 }: {
   readonly businessId: string;
   readonly domain: { readonly hostname: string; readonly status: DomainStatus } | null;
   readonly previewUrl: string | null;
+  /** The last Mark live stopped because the address did not load. */
+  readonly addressUnverified: boolean;
 }): ReactElement {
-  if (domain === null || isTemporarySubdomain(domain.hostname)) return <MarkLiveForm businessId={businessId} />;
+  if (domain === null || isTemporarySubdomain(domain.hostname)) return <MarkLiveForm businessId={businessId} offerOverride={addressUnverified} />;
 
   const root = registrableDomain(domain.hostname);
   return (
@@ -598,6 +616,7 @@ export function GoLivePanel({
 
       <MarkLiveForm
         businessId={businessId}
+        offerOverride={addressUnverified}
         note={
           domain.status === "verifying"
             ? "Their DNS now points at the site. Open their address, check it loads, then mark it live. The client is emailed their website address."

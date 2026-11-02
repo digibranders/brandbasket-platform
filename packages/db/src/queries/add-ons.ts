@@ -590,7 +590,8 @@ export interface AddOnToContact {
 
 /**
  * What staff should get in touch about, oldest first: paid purchases (separate, or taken with the plan) not yet marked
- * contacted, and press releases still waiting. Staff connection only.
+ * contacted, and press releases still waiting. The Managed Website is not an add-on to start: it is the project itself,
+ * which the kickoff and the build already cover, so it is left out. Staff connection only.
  */
 export async function listAddOnsToContact(db: Runner, limit: number): Promise<AddOnToContact[]> {
   if (!Number.isSafeInteger(limit) || limit < 1) throw new RangeError("limit must be a positive integer");
@@ -617,7 +618,7 @@ export async function listAddOnsToContact(db: Runner, limit: number): Promise<Ad
     })
     .from(bundledAddOns)
     .innerJoin(businesses, eq(businesses.id, bundledAddOns.businessId))
-    .where(and(isNotNull(bundledAddOns.activatedAt), isNull(bundledAddOns.contactedAt)))
+    .where(and(isNotNull(bundledAddOns.activatedAt), isNull(bundledAddOns.contactedAt), ne(bundledAddOns.addOn, "managed-website")))
     .orderBy(asc(bundledAddOns.activatedAt), asc(bundledAddOns.id))
     .limit(limit);
   const releaseRows = await db

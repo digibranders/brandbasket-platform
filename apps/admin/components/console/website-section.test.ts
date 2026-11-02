@@ -2,7 +2,7 @@ import type { ProjectStatus } from "@brandbasket/db";
 import { renderToStaticMarkup } from "react-dom/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { loadWebsiteBuild } from "@/lib/server/website-build";
-import { WebsiteSection } from "./website-section";
+import { StartBuildingForm, WebsiteSection } from "./website-section";
 
 vi.mock("server-only", () => ({}));
 vi.mock("@/lib/server/website-build", () => ({ loadWebsiteBuild: vi.fn() }));
@@ -45,7 +45,7 @@ beforeEach(() => {
 
 describe("WebsiteSection buttons", () => {
   it.each([
-    ["submitted", ["Start building", "Put on hold"]],
+    ["submitted", ["Put on hold"]],
     ["building", ["Put on hold"]],
     ["revisions", ["Put on hold"]],
     ["preview", ["Put on hold"]],
@@ -65,7 +65,7 @@ describe("WebsiteSection buttons", () => {
 
   it("gives every form the business id and the hold form its reason box and line", async () => {
     const html = await render();
-    expect(html.match(new RegExp(`name="businessId" value="${BUSINESS}"`, "g"))).toHaveLength(2);
+    expect(html.match(new RegExp(`name="businessId" value="${BUSINESS}"`, "g"))).toHaveLength(1);
     expect(html).toContain("The customer reads this exactly as you type it.");
     expect(html).toContain('name="reason"');
     expect(html).toContain('maxLength="200"');
@@ -81,6 +81,14 @@ describe("WebsiteSection buttons", () => {
     const html = await render();
     expect(html).toContain("No project yet.");
     expect(buttons(html)).toEqual([]);
+  });
+});
+
+describe("StartBuildingForm", () => {
+  it("is one Start building button carrying the business id", () => {
+    const html = renderToStaticMarkup(StartBuildingForm({ businessId: BUSINESS }));
+    expect(buttons(html)).toEqual(["Start building"]);
+    expect(html).toContain(`name="businessId" value="${BUSINESS}"`);
   });
 });
 

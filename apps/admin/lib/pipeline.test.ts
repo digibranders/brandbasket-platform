@@ -71,7 +71,7 @@ describe("clientStage", () => {
   it.each<[ProjectStatus | null, string]>([
     [null, "setup"],
     ["onboarding", "setup"],
-    ["submitted", "building"],
+    ["submitted", "setup"],
     ["building", "building"],
     ["preview", "preview"],
     ["revisions", "preview"],
