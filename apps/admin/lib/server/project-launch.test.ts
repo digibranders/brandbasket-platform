@@ -10,7 +10,9 @@ import {
 import { websiteLiveEmail } from "@brandbasket/email";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { customerEmailTransport } from "./email";
+import { checkSiteAddress } from "./site-check";
 import {
+  ProjectLaunchAddressUnverifiedError,
   ProjectLaunchChecksMissingError,
   ProjectLaunchDomainMissingError,
   ProjectLaunchRecipientMissingError,
@@ -33,6 +35,7 @@ vi.mock("@brandbasket/db", async () => {
 });
 vi.mock("@brandbasket/email", () => ({ websiteLiveEmail: vi.fn() }));
 vi.mock("./email", () => ({ customerEmailTransport: vi.fn() }));
+vi.mock("./site-check", () => ({ checkSiteAddress: vi.fn() }));
 
 const mockedMarkLive = vi.mocked(markProjectLive);
 const mockedFindClient = vi.mocked(findClientDetail);
@@ -41,6 +44,7 @@ const mockedSetCheck = vi.mocked(setLaunchCheck);
 const mockedSetWebsiteUrl = vi.mocked(setBusinessWebsiteUrl);
 const mockedCreateTransport = vi.mocked(customerEmailTransport);
 const mockedWebsiteLiveEmail = vi.mocked(websiteLiveEmail);
+const mockedCheckAddress = vi.mocked(checkSiteAddress);
 const db = {} as Database;
 const NOW = new Date("2026-09-18T12:00:00.000Z");
 const send = vi.fn();
@@ -78,6 +82,7 @@ beforeEach(() => {
   mockedFindClient.mockResolvedValue(clientReadyToLaunch());
   mockedListChecks.mockResolvedValue(ALL_CHECKS);
   mockedSetCheck.mockResolvedValue(undefined);
+  mockedCheckAddress.mockResolvedValue({ ok: true, status: 200 });
   mockedCreateTransport.mockReturnValue({ send });
   mockedWebsiteLiveEmail.mockReturnValue({
     to: "riley@example.com",
@@ -184,6 +189,40 @@ describe("launchProject", () => {
     expect(mockedMarkLive).not.toHaveBeenCalled();
     expect(mockedSetWebsiteUrl).not.toHaveBeenCalled();
     expect(send).not.toHaveBeenCalled();
+  });
+});
+
+describe("launchProject address check", () => {
+  it("loads the domain before marking live and goes live when it loads", async () => {
+    await expect(launchProject(db, { businessId: "business-1" }, NOW)).resolves.toBe("emailed");
+    expect(mockedCheckAddress).toHaveBeenCalledWith("riverside-plumbing.com");
+    expect(mockedCheckAddress.mock.invocationCallOrder[0]).toBeLessThan(mockedMarkLive.mock.invocationCallOrder[0] ?? 0);
+  });
+
+  it("stops with the reason, marking nothing live and emailing nobody, when the address does not load", async () => {
+    mockedCheckAddress.mockResolvedValue({ ok: false, reason: "dns" });
+
+    const refusal = launchProject(db, { businessId: "business-1" }, NOW);
+    await expect(refusal).rejects.toThrow(ProjectLaunchAddressUnverifiedError);
+    await expect(refusal).rejects.toMatchObject({ reason: "dns" });
+    expect(mockedMarkLive).not.toHaveBeenCalled();
+    expect(mockedSetWebsiteUrl).not.toHaveBeenCalled();
+    expect(send).not.toHaveBeenCalled();
+  });
+
+  it("goes live anyway, without loading the address, when staff confirm it", async () => {
+    mockedCheckAddress.mockResolvedValue({ ok: false, reason: "tls" });
+
+    await expect(launchProject(db, { businessId: "business-1", confirmUnverifiedAddress: true }, NOW)).resolves.toBe("emailed");
+    expect(mockedCheckAddress).not.toHaveBeenCalled();
+    expect(mockedMarkLive).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not load the address while a launch check is unticked", async () => {
+    mockedListChecks.mockResolvedValue([]);
+
+    await expect(launchProject(db, { businessId: "business-1" }, NOW)).rejects.toThrow(ProjectLaunchChecksMissingError);
+    expect(mockedCheckAddress).not.toHaveBeenCalled();
   });
 });
 

@@ -24,7 +24,6 @@ const INDIA_MOMENT = new Intl.DateTimeFormat("en-IN", {
   hour12: false,
 });
 
-const CAN_START: readonly ProjectStatus[] = ["submitted"];
 const CAN_PAUSE: readonly ProjectStatus[] = ["submitted", "building", "revisions", "preview"];
 const CAN_RESUME: readonly ProjectStatus[] = ["on_hold"];
 
@@ -52,6 +51,18 @@ function currentPicture(project: Project, picture: WebsiteBuild["picture"]): Pic
   return project.previewSentAt === null || picture.capturedAt >= project.previewSentAt ? picture : null;
 }
 
+/** Starts the work on a project that was sent to us. Shown first on the Project tab while the project is waiting to start. */
+export function StartBuildingForm({ businessId }: { readonly businessId: string }): ReactElement {
+  return (
+    <form action={startBuildingAction}>
+      <input type="hidden" name="businessId" value={businessId} />
+      <button type="submit" className={`${buttonPrimary} !px-4 !py-2`}>
+        Start building
+      </button>
+    </form>
+  );
+}
+
 /**
  * The staff moves for a customer's website build: the project's status and dates, the preview picture, and the buttons
  * that apply to the status. `notice` is the raw `website` search param.
@@ -69,7 +80,6 @@ export async function WebsiteSection({
   const moved = readWebsiteMoveNotice(notice);
   const hidden = <input type="hidden" name="businessId" value={businessId} />;
   const status = project?.status ?? null;
-  const canStart = status !== null && CAN_START.includes(status);
   const canPause = status !== null && CAN_PAUSE.includes(status);
   const canResume = status !== null && CAN_RESUME.includes(status);
   const previewUrl = project?.previewUrl ?? null;
@@ -90,16 +100,8 @@ export async function WebsiteSection({
           {previewUrl === null ? null : (
             <p className="mt-5 text-sm text-ink-soft">{fresh === null ? "Picture not taken" : `Picture taken ${INDIA_MOMENT.format(fresh.capturedAt)}`}</p>
           )}
-          {canStart || canPause || canResume ? null : <p className="mt-5 text-ink-soft">Nothing to do here.</p>}
+          {canPause || canResume ? null : <p className="mt-5 text-ink-soft">Nothing to do here.</p>}
           <div className="mt-6 flex flex-wrap items-start gap-3">
-            {canStart ? (
-              <form action={startBuildingAction}>
-                {hidden}
-                <button type="submit" className={`${buttonPrimary} !px-4 !py-2`}>
-                  Start building
-                </button>
-              </form>
-            ) : null}
             {canResume ? (
               <form action={resumeBuildingAction}>
                 {hidden}

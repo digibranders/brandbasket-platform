@@ -14,6 +14,7 @@ import {
 import { websiteLiveEmail } from "@brandbasket/email";
 import { customerEmailTransport } from "./email";
 import type { OwnerNotification } from "./project-preview";
+import { checkSiteAddress, type SiteCheckFailure } from "./site-check";
 
 /** How long after going live staff may send the launch email again. */
 export const LAUNCH_RESEND_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
@@ -39,8 +40,20 @@ export class ProjectLaunchChecksMissingError extends Error {
   }
 }
 
+export class ProjectLaunchAddressUnverifiedError extends Error {
+  constructor(
+    businessId: string,
+    readonly reason: SiteCheckFailure,
+  ) {
+    super(`The address for business ${businessId} did not load over HTTPS (${reason}).`);
+    this.name = "ProjectLaunchAddressUnverifiedError";
+  }
+}
+
 export interface LaunchProjectInput {
   readonly businessId: string;
+  /** Staff chose to go live although the address did not load. Without it, an address that fails the check stops the launch. */
+  readonly confirmUnverifiedAddress?: boolean;
 }
 
 /** What resendLaunchEmail did: the send's outcome, or "not-allowed" when the site is not live within the resend window. */
@@ -65,7 +78,8 @@ async function emailLaunch(
  * and emails the owner their real website address. The client is read first: a business with no owner or no domain
  * throws before anything is written, so the project is never left live with no email and no website address. The
  * launch checks must all be ticked too (ProjectLaunchChecksMissingError); they are read before the project is marked live.
- * The project is marked live only once all of that is present.
+ * Then the domain is loaded once (checkSiteAddress): an address that does not load throws ProjectLaunchAddressUnverifiedError,
+ * a soft stop that staff pass by launching again with confirmUnverifiedAddress. The project is marked live only once all of that is present.
  *
  * Their website address is set to the domain they went live on. An owner who signs in with a mobile number has no email address: the project goes live, nothing is emailed, and the
  * answer says so, so the console can tell staff to call or message them (see sendProjectPreview).
@@ -78,6 +92,11 @@ export async function launchProject(db: Database, input: LaunchProjectInput, now
   if (client.project !== null) {
     const ticked = await listLaunchChecks(db, { projectId: client.project.id, businessId: input.businessId });
     if (missingLaunchChecks(ticked.map((check) => check.key)).length > 0) throw new ProjectLaunchChecksMissingError(input.businessId);
+  }
+
+  if (input.confirmUnverifiedAddress !== true) {
+    const address = await checkSiteAddress(client.domain.hostname);
+    if (!address.ok) throw new ProjectLaunchAddressUnverifiedError(input.businessId, address.reason);
   }
 
   await markProjectLive(db, { businessId: input.businessId, now });

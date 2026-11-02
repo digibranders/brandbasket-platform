@@ -3,9 +3,9 @@ import Link from "next/link";
 import type { ReactElement } from "react";
 import { cn } from "@brandbasket/shared/lib/cn";
 import { safeExternalHref } from "@brandbasket/shared/lib/safe-link";
-import { approvePreviewAction } from "@/app/app-host/(protected)/website/actions";
-import { DARK_BUTTON, LIFT, SOFT_BUTTON } from "@/components/v2/classes";
+import { DARK_BUTTON, LIFT } from "@/components/v2/classes";
 import { previewHost } from "@/lib/website/address";
+import { PreviewApprove } from "./preview-approve";
 import { PreviewFeedback } from "./preview-feedback";
 import type { ProgressView } from "@/lib/website/progress-view";
 import { askAboutHref } from "@/lib/website/tabs";
@@ -92,11 +92,7 @@ export function ProgressCard({ view, pictureUrl, previewUrl, address, businessNa
               Open preview
             </a>
           )}
-          <form action={approvePreviewAction} className="grid">
-            <button type="submit" className={cn(SOFT_BUTTON, "w-full")}>
-              Approve
-            </button>
-          </form>
+          <PreviewApprove />
           <PreviewFeedback submissionKey={feedbackKey} roundsLine={roundsLine} />
         </>
       ) : null}

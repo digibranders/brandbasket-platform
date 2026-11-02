@@ -230,8 +230,8 @@ export interface ProjectLaunch {
  * Marks a business's project live: status -> `live`, `launchedAt` stamped, and its current primary domain (if it
  * has one) marked `active`, all in one transaction. Only a project actually `approved` can be launched — the same
  * "condition is the gate" shape as every other staff transition in this file. This call trusts the caller that the
- * real site is actually deployed and DNS is pointed at it; it does not check that itself (there is nothing in this
- * codebase that could). Staff-privileged for the same reason as approveProjectPreview; see its doc comment.
+ * real site is actually deployed and DNS is pointed at it; it does not check that itself. The console's launchProject
+ * loads the address first (checkSiteAddress) and lets staff go live anyway. Staff-privileged for the same reason as approveProjectPreview; see its doc comment.
  */
 export async function markProjectLive(db: Runner, input: ProjectLaunch): Promise<Project> {
   return db.transaction(async (tx) => {

@@ -329,6 +329,15 @@ describe("a first payment with services", () => {
       expect(await listAddOnsToContact(dbs.staff.db, 10)).toEqual([]);
     });
 
+    it("leaves the Managed Website out, since the build is not an add-on to start", async () => {
+      const subscription = await openSubscription(bundleOf("managed-website", "local-seo-aeo"));
+      await payFirst(subscription);
+
+      const list = await listAddOnsToContact(dbs.staff.db, 10);
+      expect(list.map((item) => item.addOn)).toEqual(["local-seo-aeo"]);
+      expect(await findBundledAddOnsForSubscription(dbs.staff.db, subscription.id)).toHaveLength(2);
+    });
+
     it("marks a paid add-on contacted once, and not one that was never paid", async () => {
       await dbs.owner.db.insert(users).values({ id: STAFF, name: "Staff", email: "staff@example.test", emailVerified: true });
       const subscription = await openSubscription(bundleOf("digital-growth"));

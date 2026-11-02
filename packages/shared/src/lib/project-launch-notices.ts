@@ -7,6 +7,7 @@ export type ProjectLaunchNotice =
   | "no-owner"
   | "no-domain"
   | "checks-missing"
+  | "address-unverified"
   | "checks-saved"
   | "checks-not-allowed"
   | "resent"
@@ -33,6 +34,10 @@ export const PROJECT_LAUNCH_NOTICES: Readonly<Record<ProjectLaunchNotice, { read
   "no-owner": { text: "Nothing changed: this business has no owner account to email.", ok: false },
   "no-domain": { text: "Nothing changed: this business has no domain to launch it on.", ok: false },
   "checks-missing": { text: "Tick every launch check before going live.", ok: false },
+  "address-unverified": {
+    text: "Not marked live: the address did not load over HTTPS. Check DNS and the deployment, or tick the box beside Mark live to go live anyway.",
+    ok: false,
+  },
   "checks-saved": { text: "Launch checks saved.", ok: true },
   "checks-not-allowed": {
     text: "Nothing saved: launch checks can only be ticked while the project is approved.",

@@ -22,7 +22,7 @@ import { FreeAddressForm } from "@/components/console/free-address-form";
 import { KickoffCallSection } from "@/components/console/kickoff-call-section";
 import { Notice } from "@/components/console/notice";
 import { Quiet, Section } from "@/components/console/section";
-import { WebsiteSection } from "@/components/console/website-section";
+import { StartBuildingForm, WebsiteSection } from "@/components/console/website-section";
 import { billingNeedsAttention } from "@/lib/billing-attention";
 import { buildPanelState } from "@/lib/build-summary";
 import { isPastIncludedRounds } from "@/lib/build-rounds";
@@ -110,11 +110,16 @@ export default async function ClientProjectPage({
         </div>
       )}
 
+      {project !== null && project.status === "submitted" ? (
+        <Section title="Start building" aside="The next step">
+          <StartBuildingForm businessId={client.businessId} />
+        </Section>
+      ) : null}
       {nextStep === "preview" ? (
         <Section
           title="Send a preview"
           tone={late === null ? "plain" : "attention"}
-          aside={late === null ? "The next step" : <span className="font-semibold text-error">{late}</span>}
+          aside={late === null ? (project?.status === "submitted" ? undefined : "The next step") : <span className="font-semibold text-error">{late}</span>}
         >
           <SendPreviewForm businessId={client.businessId} />
         </Section>
@@ -139,7 +144,12 @@ export default async function ClientProjectPage({
           <div className="space-y-8">
             <LaunchChecksForm businessId={client.businessId} done={launchChecks.map((check) => check.key)} />
             {client.domain === null ? null : <CheckAddressForm businessId={client.businessId} />}
-            <GoLivePanel businessId={client.businessId} domain={client.domain} previewUrl={project?.previewUrl ?? null} />
+            <GoLivePanel
+              businessId={client.businessId}
+              domain={client.domain}
+              previewUrl={project?.previewUrl ?? null}
+              addressUnverified={launchNotice === "address-unverified"}
+            />
           </div>
         </Section>
       ) : null}
