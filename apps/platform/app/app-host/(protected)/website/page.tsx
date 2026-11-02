@@ -9,11 +9,15 @@ import { cn } from "@brandbasket/shared/lib/cn";
 import { DARK_BUTTON } from "@/components/v2/classes";
 import { EmptyState, PageColumns } from "@/components/v2/page";
 import { AddressCard } from "@/components/website/address-card";
-import { ProgressCard } from "@/components/website/preview-card";
+import { DetailsCard } from "@/components/website/details-card";
+import { LiveCard } from "@/components/website/live-card";
+import { PreviewCard } from "@/components/website/preview-card";
+import { StageHeader } from "@/components/website/stage-header";
 import { Timeline } from "@/components/website/timeline";
 import { requireWebsiteClient } from "@/lib/server/customer-access";
 import { loadWebsite } from "@/lib/server/website";
 import { addressCardView, siteAddress } from "@/lib/website/address";
+import { changesView, detailRows, inProgressRow, stageChip, versionRows } from "@/lib/website/history";
 import { roundsLine, roundsUsedUp } from "@/lib/website/progress-view";
 import { readWebsiteNotice, WEBSITE_NOTICES } from "@/lib/website/notices";
 import { askAboutHref } from "@/lib/website/tabs";
@@ -24,7 +28,7 @@ interface WebsitePageProps {
   readonly searchParams: Promise<{ readonly response?: string | string[] }>;
 }
 
-/** Progress: the preview or the status, what happens next, and the web address when it needs something. */
+/** Overview: where the website stands, every preview we sent, what the customer asked to change, what happens next and the details. */
 export default async function WebsitePage({ searchParams }: WebsitePageProps): Promise<ReactElement> {
   const { tenant, billing } = await requireWebsiteClient();
   // This is for paid accounts; Home tells the rest what is next.
@@ -34,6 +38,31 @@ export default async function WebsitePage({ searchParams }: WebsitePageProps): P
   const data = await loadWebsite(tenant, new Date());
   const { project, domain, live, view } = data;
 
+  const noticeLine =
+    notice === null ? null : (
+      <p role={WEBSITE_NOTICES[notice].ok ? "status" : "alert"} className={cn("text-[0.8125rem] font-semibold", WEBSITE_NOTICES[notice].ok ? "text-sage-deep" : "text-error")}>
+        {WEBSITE_NOTICES[notice].text}
+      </p>
+    );
+
+  if (view.kind === "none") {
+    return (
+      <>
+        {noticeLine}
+        <EmptyState
+          icon={Globe}
+          title={view.title}
+          text="When there is a website or a big change to build, you can follow it here."
+          action={
+            <Link href={askAboutHref("")} className={DARK_BUTTON}>
+              Ask for a change
+            </Link>
+          }
+        />
+      </>
+    );
+  }
+
   const domainIsTemporary = domain !== null && isTemporarySubdomain(domain.hostname);
   const address = siteAddress({ liveHostname: live?.hostname ?? null, domainHostname: domain?.hostname ?? null, domainIsTemporary });
   const addressCard = addressCardView({
@@ -42,57 +71,53 @@ export default async function WebsitePage({ searchParams }: WebsitePageProps): P
     live: live !== null,
     projectStatus: project?.status ?? null,
   });
-
-  const noticeLine =
-    notice === null ? null : (
-      <p role={WEBSITE_NOTICES[notice].ok ? "status" : "alert"} className={cn("text-[0.8125rem] font-semibold", WEBSITE_NOTICES[notice].ok ? "text-sage-deep" : "text-error")}>
-        {WEBSITE_NOTICES[notice].text}
-      </p>
-    );
+  const status = project?.status ?? null;
   const roundsIncluded = project?.revisionRoundsIncluded ?? 0;
   const roundsGranted = project?.revisionRoundsGranted ?? 0;
-  const showsTimeline = data.steps.length > 0 && view.kind !== "none";
-  const hasAside = showsTimeline || addressCard !== null;
+  const isLive = view.kind === "live";
 
   return (
-    <PageColumns
-      main={
-        <>
-          {noticeLine}
-          {view.kind === "none" ? (
-            <EmptyState
-              icon={Globe}
-              title={view.title}
-              text="When there is a website or a big change to build, you can follow it here."
-              action={
-                <Link href={askAboutHref("")} className={DARK_BUTTON}>
-                  Ask for a change
-                </Link>
-              }
-            />
-          ) : (
-            <ProgressCard
-              view={view}
+    <>
+      {noticeLine}
+      <StageHeader view={view} chip={stageChip(view.kind)} />
+      <PageColumns
+        main={
+          <>
+            {isLive && live !== null ? <LiveCard hostname={live.hostname} /> : null}
+            <PreviewCard
+              rows={versionRows(data.versions, data.changes, status)}
+              inProgress={inProgressRow(data.versions, status, data.previewDue)}
+              changes={changesView(data.changes, data.versions, roundsIncluded)}
+              reviewing={view.kind === "preview"}
               pictureUrl={data.pictureUrl}
               previewUrl={project?.previewUrl ?? null}
               address={address}
               businessName={tenant.businessName}
-              liveHostname={live?.hostname ?? null}
               feedbackKey={randomUUID()}
               roundsLine={roundsLine(roundsIncluded, roundsGranted)}
               roundsUsedUp={roundsUsedUp(roundsIncluded, roundsGranted)}
             />
-          )}
-        </>
-      }
-      aside={
-        hasAside ? (
-          <>
-            {showsTimeline ? <Timeline steps={data.steps} /> : null}
-            {addressCard === null ? null : <AddressCard view={addressCard} />}
           </>
-        ) : null
-      }
-    />
+        }
+        aside={
+          <>
+            {isLive || data.steps.length === 0 ? null : <Timeline steps={data.steps} />}
+            <DetailsCard
+              rows={detailRows({
+                live: isLive,
+                address,
+                plannedLaunch: data.plannedLaunch,
+                launchedAt: live?.launchedAt ?? project?.launchedAt ?? null,
+                roundsUsed: roundsGranted,
+                roundsIncluded,
+                versionsSent: data.versions.length,
+              })}
+            />
+            {addressCard === null ? null : <AddressCard view={addressCard} />}
+            {isLive ? null : <p className="text-[0.84375rem] leading-relaxed text-ink-2">Pages and Enquiries appear here once your website is live.</p>}
+          </>
+        }
+      />
+    </>
   );
 }

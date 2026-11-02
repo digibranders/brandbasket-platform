@@ -10,11 +10,13 @@ import {
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { getAppDb } from "./db";
 import { readLiveWebsite } from "./onboarding";
+import { loadPreviewVersions, loadSentChanges } from "./preview-versions";
 import { loadWebsite } from "./website";
 
 vi.mock("server-only", () => ({}));
 vi.mock("./db", () => ({ getAppDb: vi.fn() }));
 vi.mock("./onboarding", () => ({ readLiveWebsite: vi.fn() }));
+vi.mock("./preview-versions", () => ({ loadPreviewVersions: vi.fn(), loadSentChanges: vi.fn() }));
 vi.mock("@brandbasket/db", () => ({
   findLatestProject: vi.fn(),
   findPreviewImageInfo: vi.fn(),
@@ -58,6 +60,8 @@ beforeEach(() => {
   vi.mocked(listProjectEvents).mockResolvedValue([]);
   vi.mocked(findSetupCallBooking).mockResolvedValue(null);
   vi.mocked(findPreviewImageInfo).mockResolvedValue(null);
+  vi.mocked(loadPreviewVersions).mockResolvedValue([]);
+  vi.mocked(loadSentChanges).mockResolvedValue([]);
   vi.spyOn(console, "error").mockImplementation(() => undefined);
 });
 
@@ -124,6 +128,48 @@ describe("loadWebsite", () => {
     expect(data.steps).toEqual([]);
     expect(data.events).toEqual([]);
     expect(data.view.kind).toBe("preview");
+  });
+
+  it("reads the preview versions and the changes sent for the session's business and project", async () => {
+    const versions = [{ version: 1, url: "https://preview.example", sentAt: new Date("2026-10-26T06:00:00.000Z") }];
+    const changes = [{ ticketId: "ticket-1", round: 1, body: "Update the hero heading", sentAt: new Date("2026-10-26T07:00:00.000Z") }];
+    vi.mocked(loadPreviewVersions).mockResolvedValue(versions);
+    vi.mocked(loadSentChanges).mockResolvedValue(changes);
+    const data = await loadWebsite(tenant, NOW);
+    expect(loadPreviewVersions).toHaveBeenCalledWith(tenant, "project-1");
+    expect(loadSentChanges).toHaveBeenCalledWith(tenant, "project-1");
+    expect(data.versions).toEqual(versions);
+    expect(data.changes).toEqual(changes);
+  });
+
+  it("still shows the page, with no history of versions, when they cannot be read", async () => {
+    vi.mocked(loadPreviewVersions).mockRejectedValue(new Error("db down"));
+    vi.mocked(loadSentChanges).mockRejectedValue(new Error("db down"));
+    const data = await loadWebsite(tenant, NOW);
+    expect(data.versions).toEqual([]);
+    expect(data.changes).toEqual([]);
+    expect(data.view.kind).toBe("preview");
+  });
+
+  it("reads no versions when there is no project", async () => {
+    vi.mocked(findLatestProject).mockResolvedValue(null);
+    const data = await loadWebsite(tenant, NOW);
+    expect(loadPreviewVersions).not.toHaveBeenCalled();
+    expect(data.versions).toEqual([]);
+  });
+
+  it("promises the updated preview and the launch day only while they are still ahead", async () => {
+    vi.mocked(findLatestProject).mockResolvedValue(project({ status: "revisions", launchPlannedOn: "2026-10-30" }));
+    vi.mocked(listProjectEvents).mockResolvedValue([{ status: "revisions", reason: null, occurredAt: new Date("2026-10-26T06:00:00.000Z") }]);
+    // Asked on Mon 26 Oct, so the updated preview was due Wed 28 Oct.
+    const ahead = await loadWebsite(tenant, new Date("2026-10-28T06:00:00.000Z"));
+    expect(ahead.previewDue).toBe("2026-10-28");
+    expect(ahead.view.line).toBe("Your updated preview will be ready by Wed 28 Oct.");
+    expect(ahead.plannedLaunch).toBe("2026-10-30");
+    const late = await loadWebsite(tenant, new Date("2026-10-31T06:00:00.000Z"));
+    expect(late.previewDue).toBeNull();
+    expect(late.view.line).toBeNull();
+    expect(late.plannedLaunch).toBeNull();
   });
 
   it("fails when the project itself cannot be read", async () => {
