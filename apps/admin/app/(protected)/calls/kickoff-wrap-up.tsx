@@ -65,7 +65,7 @@ export async function KickoffWrapUp({ now }: { readonly now: Date }): Promise<Re
               {row.projectStatus !== null && BUILD_STARTED_STATUSES.has(row.projectStatus) ? (
                 <p className="text-sm text-ink-2">
                   The build started automatically. If the call did not happen, put the build on hold from the client page.{" "}
-                  <Link href={`/clients/${row.businessId}/project`} className="font-semibold text-ink">
+                  <Link href={`/clients/${row.businessId}/website`} className="font-semibold text-ink">
                     Open the client
                   </Link>
                 </p>

@@ -53,7 +53,7 @@ describe("markTeamCallHeldAction", () => {
 
   it("marks the call as the signed-in staff member, logs it and returns to the section with a notice", async () => {
     vi.mocked(markTeamCallHeld).mockResolvedValue(true);
-    await expect(markTeamCallHeldAction(form({ businessId: BUSINESS, callId: CALL }))).rejects.toThrow(`redirect:/clients/${BUSINESS}?calls=held#calls`);
+    await expect(markTeamCallHeldAction(form({ businessId: BUSINESS, callId: CALL }))).rejects.toThrow(`redirect:/clients/${BUSINESS}/requests?calls=held#calls`);
     expect(markTeamCallHeld).toHaveBeenCalledWith(DB, { id: CALL, businessId: BUSINESS, staffId: "staff-1", now: expect.any(Date) });
     expect(logStaffAccessOrThrow).toHaveBeenCalledWith({ staffUserId: "staff-1", action: "team_call.held", targetType: "team_call", targetId: CALL, businessId: BUSINESS });
     expect(revalidatePath).toHaveBeenCalledWith(`/clients/${BUSINESS}`);
@@ -61,7 +61,7 @@ describe("markTeamCallHeldAction", () => {
 
   it("writes no log entry, and says the call has changed, when it was not marked", async () => {
     vi.mocked(markTeamCallHeld).mockResolvedValue(false);
-    await expect(markTeamCallHeldAction(form({ businessId: BUSINESS, callId: CALL }))).rejects.toThrow(`redirect:/clients/${BUSINESS}?calls=gone#calls`);
+    await expect(markTeamCallHeldAction(form({ businessId: BUSINESS, callId: CALL }))).rejects.toThrow(`redirect:/clients/${BUSINESS}/requests?calls=gone#calls`);
     expect(logStaffAccessOrThrow).not.toHaveBeenCalled();
   });
 
@@ -76,7 +76,7 @@ describe("markTeamCallHeldAction", () => {
 describe("undoTeamCallHeldAction", () => {
   it("clears the mark, logs it and returns to the section", async () => {
     vi.mocked(clearTeamCallHeld).mockResolvedValue(true);
-    await expect(undoTeamCallHeldAction(form({ businessId: BUSINESS, callId: CALL }))).rejects.toThrow(`redirect:/clients/${BUSINESS}?calls=undone#calls`);
+    await expect(undoTeamCallHeldAction(form({ businessId: BUSINESS, callId: CALL }))).rejects.toThrow(`redirect:/clients/${BUSINESS}/requests?calls=undone#calls`);
     expect(clearTeamCallHeld).toHaveBeenCalledWith(DB, { id: CALL, businessId: BUSINESS, now: expect.any(Date) });
     expect(logStaffAccessOrThrow).toHaveBeenCalledWith({ staffUserId: "staff-1", action: "team_call.unheld", targetType: "team_call", targetId: CALL, businessId: BUSINESS });
   });
@@ -91,7 +91,7 @@ describe("undoTeamCallHeldAction", () => {
 describe("saveCallSummaryAction", () => {
   it("saves what was agreed on a call after the kickoff, and logs it", async () => {
     vi.mocked(saveTeamCallSummary).mockResolvedValue(true);
-    await expect(saveCallSummaryAction(form({ businessId: BUSINESS, callId: CALL, summary: "  Try braces ads in January  " }))).rejects.toThrow(`redirect:/clients/${BUSINESS}?calls=saved#calls`);
+    await expect(saveCallSummaryAction(form({ businessId: BUSINESS, callId: CALL, summary: "  Try braces ads in January  " }))).rejects.toThrow(`redirect:/clients/${BUSINESS}/requests?calls=saved#calls`);
     expect(saveTeamCallSummary).toHaveBeenCalledWith(DB, { id: CALL, businessId: BUSINESS, staffId: "staff-1", summary: "Try braces ads in January", now: expect.any(Date) });
     expect(saveSetupCallSummary).not.toHaveBeenCalled();
     expect(logStaffAccessOrThrow).toHaveBeenCalledWith({ staffUserId: "staff-1", action: "call.summary", targetType: "team_call", targetId: CALL, businessId: BUSINESS });

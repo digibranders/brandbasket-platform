@@ -66,7 +66,7 @@ describe("useFreeAddressAction", () => {
   it("offers nothing when no base domain is configured, and touches no business", async () => {
     vi.stubEnv("CLIENT_SITE_BASE_DOMAIN", "");
 
-    await expect(useFreeAddressAction(form({ businessId: BUSINESS }))).rejects.toThrow(`redirect:/clients/${BUSINESS}?launch=address-unavailable`);
+    await expect(useFreeAddressAction(form({ businessId: BUSINESS }))).rejects.toThrow(`redirect:/clients/${BUSINESS}/website?launch=address-unavailable`);
     expect(saveFreeAddressForBusiness).not.toHaveBeenCalled();
     expect(recordStaffAction).not.toHaveBeenCalled();
   });
@@ -82,7 +82,7 @@ describe("useFreeAddressAction", () => {
   it("saves the slug's free address, records it and says so", async () => {
     vi.mocked(saveFreeAddressForBusiness).mockResolvedValue("saved");
 
-    await expect(useFreeAddressAction(form({ businessId: BUSINESS }))).rejects.toThrow(`redirect:/clients/${BUSINESS}?launch=address-saved`);
+    await expect(useFreeAddressAction(form({ businessId: BUSINESS }))).rejects.toThrow(`redirect:/clients/${BUSINESS}/website?launch=address-saved`);
     expect(saveFreeAddressForBusiness).toHaveBeenCalledWith(DB, { businessId: BUSINESS, hostname: `${SLUG}.${SITES}` });
     expect(recordStaffAction).toHaveBeenCalledWith(
       STAFF,

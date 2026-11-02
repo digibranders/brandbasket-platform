@@ -140,7 +140,7 @@ describe("NextStepCard when changes are requested", () => {
   it("falls back to the subject when the message is missing, and to the old line when there is no feedback", () => {
     expect(card("revisions", { latestFeedback: { ...FEEDBACK, body: null } })).toContain("Preview feedback, round 1: Make the logo bigger");
     const none = card("revisions");
-    expect(none).toContain("They asked for changes. What they wrote is in Requests.");
+    expect(none).toContain("They asked for changes. What they wrote is in Messages.");
     expect(none).not.toContain("Open the request");
   });
 

@@ -1,5 +1,6 @@
 import { PROJECT_STATUSES_PREVIEWABLE, type ClientDetail, type ClientProject } from "@brandbasket/db";
 import { PROJECT_STATUSES_WAITING_ON_US } from "@brandbasket/shared/lib/project-status";
+import { NEXT_STEP_HEADLINES } from "@/lib/delivery-tab";
 import { lateReason } from "@/lib/pipeline";
 
 export type ClientNextStep = "preview" | "live" | null;
@@ -26,22 +27,20 @@ export function previewLateReason(project: ClientProject | null, now: Date): str
 
 export interface OverviewNextStep {
   readonly label: string;
-  /** The section on the Project tab to open at, or null for its top. */
+  /** The section on the Website tab to open at, or null for its top. */
   readonly anchor: "domain" | null;
 }
 
-/** The one line the Overview leads with. A domain move first, then the build or preview, then going live. */
+/**
+ * The one line the Overview leads with. A domain move first, then the build or preview, then going live. The words are
+ * the Website tab's next-step card headline for the same stage (NEXT_STEP_HEADLINES), so the two never disagree.
+ */
 export function overviewNextStep(client: Pick<ClientDetail, "project" | "movingTo">, now: Date): OverviewNextStep | null {
   if (client.movingTo !== null) return { label: "Move them to their own domain", anchor: "domain" };
-  const step = clientNextStep(client.project);
-  if (step === "preview") {
-    const late = previewLateReason(client.project, now);
-    const suffix = late === null ? "" : `: ${late.toLowerCase()}`;
-    // Nobody has started a submitted project, so the next thing is to start the build, not to send a preview. The button is the tab's first section.
-    return client.project?.status === "submitted"
-      ? { label: `Start building the website${suffix}`, anchor: null }
-      : { label: `Send the preview${suffix}`, anchor: null };
-  }
-  if (step === "live") return { label: "Go live", anchor: "domain" };
-  return null;
+  const { project } = client;
+  const step = clientNextStep(project);
+  if (project === null || step === null) return null;
+  if (step === "live") return { label: NEXT_STEP_HEADLINES[project.status], anchor: "domain" };
+  const late = previewLateReason(project, now);
+  return { label: `${NEXT_STEP_HEADLINES[project.status]}${late === null ? "" : `: ${late.toLowerCase()}`}`, anchor: null };
 }

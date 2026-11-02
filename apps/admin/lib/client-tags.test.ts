@@ -33,7 +33,7 @@ describe("readClientTagNotice", () => {
 describe("clientTagsHref", () => {
   it("returns to the client's Listing section with the notice", () => {
     expect(clientTagsHref("0192f3c4-0000-7000-8000-000000000001", "trusted")).toBe(
-      "/clients/0192f3c4-0000-7000-8000-000000000001?tags=trusted#listing",
+      "/clients/0192f3c4-0000-7000-8000-000000000001/website?tags=trusted#listing",
     );
   });
 });

@@ -20,7 +20,7 @@ function readBusinessId(formData: FormData): string {
 function finish(businessId: string): never {
   revalidatePath(`/clients/${businessId}`);
   revalidatePath("/clients");
-  redirect(`/clients/${businessId}/project#kickoff-call`);
+  redirect(`/clients/${businessId}/website#kickoff-call`);
 }
 
 /**

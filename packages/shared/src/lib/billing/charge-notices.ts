@@ -36,7 +36,7 @@ export const STAFF_CHARGE_NOTICES: Readonly<Record<StaffChargeNotice, { readonly
 };
 
 export function staffChargeNoticeHref(businessId: string, notice: StaffChargeNotice): string {
-  return `/clients/${businessId}?charges=${notice}#extras`;
+  return `/clients/${businessId}/billing?charges=${notice}#extras`;
 }
 
 export function readStaffChargeNotice(value: string | string[] | undefined): StaffChargeNotice | null {

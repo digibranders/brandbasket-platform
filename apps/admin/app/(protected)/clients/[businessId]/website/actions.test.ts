@@ -75,7 +75,7 @@ describe("a form whose business and project do not match", () => {
   it("logs and redirects with the business the move really changed", async () => {
     const OTHER = "0198f2c0-0000-7000-8000-0000000000b2";
     vi.mocked(cancelProject).mockResolvedValue({ ...MOVED, status: "cancelled" });
-    await expect(cancelProjectAction(form({ businessId: OTHER, projectId: PROJECT, confirm: "yes" }))).rejects.toThrow(`redirect:/clients/${BUSINESS}/project?move=cancelled`);
+    await expect(cancelProjectAction(form({ businessId: OTHER, projectId: PROJECT, confirm: "yes" }))).rejects.toThrow(`redirect:/clients/${BUSINESS}/website?move=cancelled`);
     expect(recordStaffAction).toHaveBeenCalledWith(STAFF, expect.objectContaining({ businessId: BUSINESS, kind: "project.cancelled" }));
   });
 });

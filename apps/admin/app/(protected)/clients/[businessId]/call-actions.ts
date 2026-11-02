@@ -19,7 +19,7 @@ function readId(formData: FormData, name: "businessId" | "callId"): string {
 
 function finish(businessId: string, notice: CallsNotice): never {
   revalidatePath(`/clients/${businessId}`);
-  redirect(`/clients/${businessId}?calls=${notice}#calls`);
+  redirect(`/clients/${businessId}/requests?calls=${notice}#calls`);
 }
 
 /** Staff mark a call after the kickoff as held. It must have started. */

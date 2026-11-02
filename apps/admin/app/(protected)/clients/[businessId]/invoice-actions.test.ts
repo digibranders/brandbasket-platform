@@ -71,13 +71,13 @@ describe("issueMissingInvoiceAction", () => {
     expect(revalidatePath).toHaveBeenCalledWith(`/clients/${BUSINESS}`);
     expect(revalidatePath).toHaveBeenCalledWith("/invoices");
     expect(recordStaffAction).toHaveBeenCalledWith(STAFF, { businessId: BUSINESS, kind: "invoice.issued", summary: "Issued a missing tax invoice", data: { paymentId: PAYMENT, result: "issued" } });
-    expect(redirect).toHaveBeenCalledWith(`/clients/${BUSINESS}?invoice=issued#tax-invoices`);
+    expect(redirect).toHaveBeenCalledWith(`/clients/${BUSINESS}/billing?invoice=issued#tax-invoices`);
   });
 
   it("shows a refusal as its notice", async () => {
     vi.mocked(issueClientMissingInvoice).mockResolvedValue("mismatch");
     await issueMissingInvoiceAction(form({ businessId: BUSINESS, paymentId: PAYMENT }));
-    expect(redirect).toHaveBeenCalledWith(`/clients/${BUSINESS}?invoice=mismatch#tax-invoices`);
+    expect(redirect).toHaveBeenCalledWith(`/clients/${BUSINESS}/billing?invoice=mismatch#tax-invoices`);
   });
 
   it("throws on an id that is not one, issuing nothing", async () => {
