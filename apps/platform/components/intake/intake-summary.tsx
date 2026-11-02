@@ -33,30 +33,6 @@ export function IntakeSummary({
         <p className="text-base text-ink-2">We will carry this into your kickoff call. It is a starting point, not a brief, and nothing in it is final.</p>
       </header>
 
-      <section aria-labelledby="intake-answers" className="grid gap-2">
-        <h2 id="intake-answers" className="font-display text-lg font-semibold text-ink">About your business</h2>
-        <dl className="divide-y divide-line rounded-control border border-line">
-          {rows.map((row) => (
-            <div key={row.field} className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 gap-y-1 px-4 py-3 sm:grid-cols-[11rem_minmax(0,1fr)_auto]">
-              <dt className="text-[0.9375rem] text-ink-2">{row.label}</dt>
-              <dd className={`min-w-0 break-words text-base ${row.value === null ? "text-ink-3" : "text-ink"} max-sm:col-span-2 max-sm:row-start-2`}>{row.value ?? "We will ask on the call"}</dd>
-              <Link href={personalizeHref(services, row.field)} className="text-[0.9375rem] font-semibold text-ink underline decoration-line underline-offset-4">
-                {row.value === null ? "Answer" : "Edit"}
-              </Link>
-            </div>
-          ))}
-        </dl>
-        {unanswered > 0 && firstUnansweredHref !== null ? (
-          <p className="text-[0.9375rem] text-ink-2">
-            {unanswered === 1 ? "One question is" : `${unanswered} questions are`} still open for your services.{" "}
-            <Link href={firstUnansweredHref} className="font-semibold text-ink underline decoration-line underline-offset-4">
-              Answer {unanswered === 1 ? "it" : "them"}
-            </Link>
-            , or skip them and we will cover them on the call.
-          </p>
-        ) : null}
-      </section>
-
       <section aria-labelledby="intake-services" className="grid gap-2">
         <h2 id="intake-services" className="font-display text-lg font-semibold text-ink">Your services</h2>
         <p className="text-[0.9375rem] text-ink-2">Already chosen by you. Add another before checkout and any package saving updates by itself.</p>
@@ -82,6 +58,30 @@ export function IntakeSummary({
           })}
         </ul>
         <p className="sr-only">Prices in {currency}. {formatMoney(0, currency)} to set up.</p>
+      </section>
+
+      <section aria-labelledby="intake-answers" className="grid gap-2">
+        <h2 id="intake-answers" className="font-display text-lg font-semibold text-ink">About your business</h2>
+        <dl className="divide-y divide-line rounded-control border border-line">
+          {rows.map((row) => (
+            <div key={row.field} className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 gap-y-1 px-4 py-3 sm:grid-cols-[11rem_minmax(0,1fr)_auto]">
+              <dt className="text-[0.9375rem] text-ink-2">{row.label}</dt>
+              <dd className={`min-w-0 break-words text-base ${row.value === null ? "text-ink-3" : "text-ink"} max-sm:col-span-2 max-sm:row-start-2`}>{row.value ?? "We will ask on the call"}</dd>
+              <Link href={personalizeHref(services, row.field)} className="text-[0.9375rem] font-semibold text-ink underline decoration-line underline-offset-4">
+                {row.value === null ? "Answer" : "Edit"}
+              </Link>
+            </div>
+          ))}
+        </dl>
+        {unanswered > 0 && firstUnansweredHref !== null ? (
+          <p className="text-[0.9375rem] text-ink-2">
+            {unanswered === 1 ? "One question is" : `${unanswered} questions are`} still open for your services.{" "}
+            <Link href={firstUnansweredHref} className="font-semibold text-ink underline decoration-line underline-offset-4">
+              Answer {unanswered === 1 ? "it" : "them"}
+            </Link>
+            , or skip them and we will cover them on the call.
+          </p>
+        ) : null}
       </section>
 
       <form action={continueToCheckoutAction} className="flex flex-wrap items-center justify-end gap-3 border-t border-line pt-5">
