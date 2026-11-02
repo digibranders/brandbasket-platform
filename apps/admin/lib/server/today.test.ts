@@ -106,7 +106,7 @@ describe("failed deliveries in the queue", () => {
     const items = await loadTodayItems(NOW, true);
     expect(countFailedDeliveries24h).toHaveBeenCalledWith(NOW);
     expect(items.filter((item) => item.kind === "delivery")).toEqual([
-      { key: "deliveries:failed", kind: "delivery", href: "/deliveries", title: "2 deliveries failed", detail: "", dueAt: null },
+      { key: "deliveries:failed", kind: "delivery", href: "/deliveries", title: "2 emails and webhooks failed", detail: "", dueAt: null },
     ]);
   });
 

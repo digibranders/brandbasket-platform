@@ -24,10 +24,10 @@ The app at console.brandbasket.in where Brandbasket staff run clients, billing, 
 | `app/(protected)/` | Sections: leads (Enquiries), clients (one route per tab under `[businessId]/`), projects, calls, support (Requests) and `support/errors`, payments, invoices, pricing, coupons, affiliates, ad-credit, deliveries, staff, settings, access-log, privacy-requests, breaches, outbox, search. Dormant and switched off: directory, geography, ads, deals |
 | `app/login/` | Staff sign-in |
 | `app/(protected)/**/actions.ts` | Server actions, beside the page that uses them |
-| `lib/console-rail.ts` | The rail's sections, items, roles and current-link rule |
+| `lib/console-rail.ts` | The menu's items, the pages each covers (and their tab strips), roles, counts and current-item rule |
 | `lib/server/` | Console server logic: auth, session, staff access, access log, activity (`activity.ts`), rail counts |
 | `lib/*.ts` | Form state, rules and view helpers, most with a `.test.ts` beside them |
-| `components/console/` | Building blocks: buttons, page header, section, figures, filter pills, tables, status pill, notice |
+| `components/console/` | Building blocks: buttons, page header, section tabs, section, figures, filter pills, tables, status pill, notice |
 | `components/console/` (shell) | `console-shell.tsx`, `rail.tsx`, `rail-nav.tsx`, `rail-icon.tsx`, `phone-bar.tsx`, `global-search.tsx` |
 | `app/console.css` | The gold token remap and the reduced-motion rule |
 

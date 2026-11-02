@@ -4,6 +4,7 @@ import type { ReactElement } from "react";
 import { Avatar } from "@/components/console/avatar";
 import { EmptyLine, HairlineList, HairlineRow } from "@/components/console/hairline-list";
 import { PageHeader } from "@/components/console/page-header";
+import { SectionTabs } from "@/components/console/section-tabs";
 import { adCreditDueRows } from "@/lib/ad-credit-due";
 import { getStaffDb } from "@/lib/server/db";
 import { requireStaffAccess } from "@/lib/server/staff-access";
@@ -16,13 +17,14 @@ export const metadata: Metadata = { title: "Ad credit due" };
  * paid subscription is listed, and a business that drops a service, cancels or asks to close drops off at once.
  */
 export default async function AdCreditDuePage(): Promise<ReactElement> {
-  const { user } = await requireStaffAccess();
+  const { user, staff: viewer } = await requireStaffAccess();
   await logStaffAccess({ staffUserId: user.id, action: "ad_credit.list", targetType: "ad_credit" });
   const rows = adCreditDueRows(await listAdCreditDue(getStaffDb(), new Date()));
 
   return (
     <>
       <PageHeader title="Ad credit due this month" meta="Packages bought together that include monthly ad credit, while they are paid and running." />
+      <SectionTabs role={viewer.role} page="/ad-credit" />
       {rows.length === 0 ? (
         <EmptyLine>No ad credit is due this month.</EmptyLine>
       ) : (

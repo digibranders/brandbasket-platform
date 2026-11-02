@@ -6,6 +6,7 @@ import type { ReactElement } from "react";
 import { FilterPills } from "@/components/console/filter-pills";
 import { EmptyLine } from "@/components/console/hairline-list";
 import { PageHeader } from "@/components/console/page-header";
+import { SectionTabs } from "@/components/console/section-tabs";
 import { TABLE, TD, TD_NUM, TH } from "@/components/console/table";
 import { TableScroll } from "@/components/console/table-scroll";
 import { AD_RESULTS_WINDOWS, adResultsHref, adResultsWindow, readAdResultsDays } from "@/lib/ad-results";
@@ -31,7 +32,7 @@ function moneyCell(inrCents: number, usdCents: number): string {
  * Leads are matched to a campaign by the line the ad page leaves on the enquiry. Finance and admin only.
  */
 export default async function AdResultsPage({ searchParams }: AdResultsPageProps): Promise<ReactElement> {
-  await requireStaffCan("money");
+  const { staff: viewer } = await requireStaffCan("money");
   const days = readAdResultsDays(await searchParams);
   const { from, to } = adResultsWindow(new Date(), days);
   const rows = buildAdFunnel(await listAdFunnelData(getStaffDb(), from, to));
@@ -40,6 +41,7 @@ export default async function AdResultsPage({ searchParams }: AdResultsPageProps
   return (
     <>
       <PageHeader title="Ad results" meta={`Last ${String(days)} days · ${String(total.leads)} leads · ${String(total.accounts)} accounts · ${String(total.paid)} paid`} />
+      <SectionTabs role={viewer.role} page="/ad-results" />
       <div className="mt-6">
         <FilterPills
           label="Choose the period"

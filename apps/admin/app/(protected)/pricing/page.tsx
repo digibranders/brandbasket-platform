@@ -19,6 +19,7 @@ import { buttonPrimary } from "@/components/console/buttons";
 import { fieldClasses, hintClasses, labelClasses } from "@/components/console/field-styles";
 import { Notice } from "@/components/console/notice";
 import { PageHeader } from "@/components/console/page-header";
+import { SectionTabs } from "@/components/console/section-tabs";
 import { Quiet, Section } from "@/components/console/section";
 import { PRICING_NOTICES, readPricingNotice } from "@/lib/pricing-notices";
 import { catalogueRows, packageRows } from "@/lib/service-packages";
@@ -192,7 +193,7 @@ export default async function PricingPage({
 }: {
   readonly searchParams: Promise<Record<string, string | string[] | undefined>>;
 }): Promise<ReactElement> {
-  await requireStaffCan("money");
+  const { staff: viewer } = await requireStaffCan("money");
   const [plans, changes, params] = await Promise.all([listPricingPlans(), listRecentPriceChanges(), searchParams]);
   const notice = readPricingNotice(params.saved);
 
@@ -202,6 +203,7 @@ export default async function PricingPage({
         title="Pricing"
         meta="What each service costs a month, the package offers, and what extras cost."
       />
+      <SectionTabs role={viewer.role} page="/pricing" />
       {notice === null ? null : (
         <Notice tone={PRICING_NOTICES[notice].ok ? "ok" : "problem"} className="mt-10">
           {PRICING_NOTICES[notice].text}

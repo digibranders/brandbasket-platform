@@ -103,11 +103,11 @@ describe("todaySummary", () => {
 describe("failed deliveries", () => {
   it("adds one item that links to the deliveries page", () => {
     const queue = todayQueue({ ...EMPTY, failedDeliveries: 3 });
-    expect(queue).toEqual([{ key: "deliveries:failed", kind: "delivery", href: "/deliveries", title: "3 deliveries failed", detail: "", dueAt: null }]);
+    expect(queue).toEqual([{ key: "deliveries:failed", kind: "delivery", href: "/deliveries", title: "3 emails and webhooks failed", detail: "", dueAt: null }]);
   });
 
-  it("says 1 delivery in the singular", () => {
-    expect(todayQueue({ ...EMPTY, failedDeliveries: 1 })[0]?.title).toBe("1 delivery failed");
+  it("keeps the same wording for a single failure", () => {
+    expect(todayQueue({ ...EMPTY, failedDeliveries: 1 })[0]?.title).toBe("1 emails and webhooks failed");
   });
 
   it("adds nothing when none failed or the count could not be read", () => {

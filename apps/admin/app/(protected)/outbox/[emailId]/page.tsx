@@ -35,7 +35,7 @@ export default async function OutboxMessagePage({
   return (
     <>
       <PageHeader
-        back={{ href: "/deliveries?direction=out", label: "Deliveries" }}
+        back={{ href: "/deliveries?direction=out", label: "Emails and webhooks" }}
         title={message.subject}
         meta={
           <>
