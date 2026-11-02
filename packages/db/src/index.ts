@@ -177,6 +177,7 @@ export {
 } from "./queries/staff";
 export {
   findEmail,
+  hasEmailContaining,
   listEmailDeliveries,
   listRecentEmails,
   purgeOldEmailMessages,

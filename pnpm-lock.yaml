@@ -392,6 +392,9 @@ importers:
       '@brandbasket/db':
         specifier: workspace:*
         version: link:../db
+      '@brandbasket/email':
+        specifier: workspace:*
+        version: link:../email
       '@pdf-lib/fontkit':
         specifier: 1.1.1
         version: 1.1.1

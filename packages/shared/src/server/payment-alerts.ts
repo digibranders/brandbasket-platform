@@ -9,26 +9,30 @@ import {
   findSubscriptionById,
   findTaxInvoiceByPaymentId,
   type Database,
+  type Payment,
 } from "@brandbasket/db";
 import { addOnById, isMonthlyAddOnId } from "../lib/billing/add-ons";
 import { displayPhone } from "./phone-display";
 import { paymentTeamsCard, planStatusTeamsCard, type PlanStatusAlert } from "../lib/payment-alert-card";
 import { sendTeamsAlert } from "./teams-alerts";
 
+/** A service as customers and staff read it: its title, or the id itself when it is not a catalogue service. */
+export function serviceTitle(id: string): string {
+  return isMonthlyAddOnId(id) ? addOnById(id).title : id;
+}
+
 /** What was bought, by name: the services a plan payment billed, the add-on, or the one-off charge's description. */
-async function servicesFor(db: Database, base: NonNullable<Awaited<ReturnType<typeof findPaymentAlertBase>>>): Promise<string[]> {
-  const { payment } = base;
-  const serviceName = (id: string): string => (isMonthlyAddOnId(id) ? addOnById(id).title : id);
+export async function paymentServiceNames(db: Database, payment: Payment): Promise<string[]> {
   if (payment.kind === "add_on") {
     const addOn = await findAddOnSubscriptionForPayment(db, payment.id);
-    return addOn === null ? [] : [serviceName(addOn.addOn)];
+    return addOn === null ? [] : [serviceTitle(addOn.addOn)];
   }
   if (payment.kind === "charge" || payment.kind === "extra_publish") {
     const charge = await findChargeByPaymentId(db, payment.businessId, payment.id);
     return charge === null ? [] : [charge.description];
   }
   const basis = await findPaymentInvoiceBasis(db, payment.id);
-  return basis === null ? [] : basis.lines.map((line) => serviceName(line.addOn));
+  return basis === null ? [] : basis.lines.map((line) => serviceTitle(line.addOn));
 }
 
 /**
@@ -41,7 +45,7 @@ export async function announcePayment(db: Database, secret: string, paymentId: s
     const base = await findPaymentAlertBase(db, paymentId);
     if (base === null) return;
     const { payment, business, owner } = base;
-    const [services, method, invoice] = await Promise.all([servicesFor(db, base), findPaymentForInvoice(db, paymentId), findTaxInvoiceByPaymentId(db, paymentId)]);
+    const [services, method, invoice] = await Promise.all([paymentServiceNames(db, payment), findPaymentForInvoice(db, paymentId), findTaxInvoiceByPaymentId(db, paymentId)]);
     const card = paymentTeamsCard({
       kind: payment.kind,
       amountCents: payment.amountCents,

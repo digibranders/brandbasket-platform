@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
-import { findEmail, listEmailDeliveries, purgeOldEmailMessages, recordEmail, updateEmailDelivery } from "./queries/emails";
+import { findEmail, hasEmailContaining, listEmailDeliveries, purgeOldEmailMessages, recordEmail, updateEmailDelivery } from "./queries/emails";
 import { emailMessages } from "./schema";
 import { openTestDatabases, resetTestDatabase, type TestDatabases } from "./testing";
 
@@ -64,3 +64,24 @@ describe("email delivery status", () => {
   });
 });
 
+
+describe("hasEmailContaining", () => {
+  const base = { toAddress: "asha@example.in", subject: "Payment received: ₹2,999", template: "payment-received", bodyHtml: "<p>b</p>", transport: "brevo" };
+  const link = "https://app.brandbasket.in/billing/receipts?ids=0192f3c4-0000-7000-8000-00000000000a";
+  const match = { template: "payment-received", toAddress: "asha@example.in", text: link, since: new Date(NOW.getTime() - DAY) };
+
+  it("finds a row of the template to the address that holds the text, whatever became of the delivery", async () => {
+    await expect(hasEmailContaining(dbs.staff.db, match)).resolves.toBe(false);
+    await recordEmail(dbs.staff.db, { ...base, bodyText: `Download your receipt: ${link}`, status: "failed", error: "Brevo answered 400" });
+    await expect(hasEmailContaining(dbs.staff.db, { ...match, since: new Date(0) })).resolves.toBe(true);
+  });
+
+  it("does not match another address, template, payment or an older row, and takes wildcard characters as themselves", async () => {
+    await recordEmail(dbs.staff.db, { ...base, bodyText: `Download your receipt: ${link}` });
+    await expect(hasEmailContaining(dbs.staff.db, { ...match, since: new Date(0), toAddress: "kavya@example.in" })).resolves.toBe(false);
+    await expect(hasEmailContaining(dbs.staff.db, { ...match, since: new Date(0), template: "payment-failed" })).resolves.toBe(false);
+    await expect(hasEmailContaining(dbs.staff.db, { ...match, since: new Date(0), text: link.replace("00000000000a", "00000000000b") })).resolves.toBe(false);
+    await expect(hasEmailContaining(dbs.staff.db, { ...match, since: new Date(0), text: "ids=%" })).resolves.toBe(false);
+    await expect(hasEmailContaining(dbs.staff.db, { ...match, since: new Date(Date.now() + DAY) })).resolves.toBe(false);
+  });
+});

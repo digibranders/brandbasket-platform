@@ -7,6 +7,7 @@ import { redirect, unstable_rethrow } from "next/navigation";
 import { requireCustomerAccess } from "@/lib/server/customer-access";
 import { getAppDb, getStaffDb } from "@/lib/server/db";
 import { reportServerError } from "@/lib/server/error-report";
+import { sendPreviewChangesReceived } from "@/lib/server/preview-changes-email";
 import { respondToPreview, type PreviewResponse } from "@/lib/server/project-response";
 import { sendSupportTicketAlert } from "@/lib/server/support-alerts";
 import { supportRateLimit } from "@/lib/server/support-limits";
@@ -76,6 +77,13 @@ export async function sendPreviewFeedbackAction(_previous: SupportFormState, for
         { category: "website_change", subject, description: body, attachmentIds },
         { user, businessId: tenant.businessId, businessName: tenant.businessName },
       ).catch((error: unknown) => console.error("[support-alert]", error));
+      await sendPreviewChangesReceived({
+        user,
+        body,
+        round: project.revisionRoundsGranted + 1,
+        rounds: project.revisionRoundsIncluded,
+        now: new Date(),
+      });
     }
     await linkFeedbackTicket(getStaffDb(), { ticketId: ticket.id, projectId: project.id, businessId: tenant.businessId, round: project.revisionRoundsGranted + 1 });
     await respond({ kind: "revisions" });
