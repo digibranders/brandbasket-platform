@@ -2,6 +2,7 @@ import type { ProjectStatus } from "@brandbasket/db";
 import {
   findBusinessWebsiteUrl,
   findLatestKickoffOutcome,
+  findLatestProjectEventAt,
   findOpenProjectForStaff,
   findSetupCallBooking,
   listFeedbackForProject,
@@ -44,6 +45,7 @@ vi.mock("@brandbasket/db", async () => {
     ...actual,
     findBusinessWebsiteUrl: vi.fn(),
     findLatestKickoffOutcome: vi.fn(),
+    findLatestProjectEventAt: vi.fn(),
     findOpenProjectForStaff: vi.fn(),
     findSetupCallBooking: vi.fn(),
     listFeedbackForProject: vi.fn(),
@@ -57,6 +59,8 @@ const PROJECT = "01a0f71b-8402-7d48-a90a-207e8c8a0001";
 const TICKET = "01a19bd4-4cef-7f21-a01c-419e207c7cee";
 const RAW_CODE = "FY-01A19BD44CE77F21A01C419E207C7CEED";
 const NEVER = new Date("2099-01-01T00:00:00Z");
+/** The late text the card shows beside the stage name. */
+const LATE = /Preview (\d+ days? late|overdue)/;
 
 function client(status: ProjectStatus | null): never {
   return {
@@ -129,6 +133,7 @@ beforeEach(() => {
   vi.mocked(findSetupCallBooking).mockResolvedValue(null);
   vi.mocked(findLatestKickoffOutcome).mockResolvedValue(null);
   vi.mocked(listLaunchChecks).mockResolvedValue([]);
+  vi.mocked(findLatestProjectEventAt).mockResolvedValue(null);
 });
 
 describe("the Delivery tab", () => {
@@ -198,6 +203,39 @@ describe("the Delivery tab by stage", () => {
     expect(html).not.toContain("FY-01A19BD4");
     expect(foldTag(html, "Customer feedback")).not.toContain(" open");
     expect(foldTag(html, "Preview versions")).not.toContain(" open");
+  });
+
+  it("changes requested: the due date and the late text come from the day the changes were asked, as the customer sees them", async () => {
+    vi.useFakeTimers();
+    try {
+      // Asked Mon 2 Nov 2026 in India, so the updated preview is promised Wed 4 Nov. The first preview's date (2099) is not used.
+      vi.mocked(findLatestProjectEventAt).mockResolvedValue(new Date("2026-11-02T10:00:00Z"));
+      vi.setSystemTime(new Date("2026-11-04T10:00:00Z"));
+      const onTime = await render("revisions", { feedback: true });
+      expect(onTime).toContain("Updated preview due");
+      expect(onTime).toContain("4 November 2026");
+      expect(onTime).not.toMatch(LATE);
+
+      vi.setSystemTime(new Date("2026-11-06T10:00:00Z"));
+      const late = await render("revisions", { feedback: true });
+      expect(late).toContain("Preview 1 day late");
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("changes requested with no recorded ask: Not given and no late text", async () => {
+    const html = await render("revisions", { feedback: true });
+    expect(html).toContain("Updated preview due");
+    expect(html).toContain("Not given");
+    expect(html).not.toMatch(LATE);
+  });
+
+  it("building: the first preview's date still decides late", async () => {
+    vi.mocked(findLatestProjectEventAt).mockResolvedValue(new Date("2026-11-02T10:00:00Z"));
+    const html = await render("building");
+    expect(html).not.toMatch(LATE);
+    expect(findLatestProjectEventAt).not.toHaveBeenCalled();
   });
 
   it("submitted: only Start building", async () => {

@@ -1,4 +1,7 @@
 import type { ProjectStatus } from "@brandbasket/db";
+import { addDays } from "@brandbasket/shared/lib/calendar/local-date";
+import { revisionReadyDay, workingDayOf } from "@brandbasket/shared/lib/working-days";
+import { lateReason } from "@/lib/pipeline";
 
 /** The words on the Delivery tab's next-step card, one per stage. Staff stage names come from project-stage.ts. */
 export const NEXT_STEP_HEADLINES: Readonly<Record<ProjectStatus, string>> = {
@@ -30,4 +33,18 @@ export function roundsText(used: number, included: number): string {
 /** A feedback round as staff read it. The ticket code behind it is for support, not for this page. */
 export function roundName(round: number): string {
   return `Round ${round}`;
+}
+
+/**
+ * The day the updated preview is promised for changes asked on `askedAt`: the same day the customer's Website page shows,
+ * because both read it from the shared working-days rule.
+ */
+export function updatedPreviewDay(askedAt: Date): string {
+  return revisionReadyDay(workingDayOf(askedAt));
+}
+
+/** How late the updated preview is. The promised day counts until the end of it in India, so it is not late on the day itself (India keeps a fixed +05:30). Null when it is not late. */
+export function updatedPreviewLateReason(dueDay: string, now: Date): string | null {
+  const endOfDay = new Date(`${addDays(dueDay, 1)}T00:00:00+05:30`);
+  return endOfDay.getTime() > now.getTime() ? null : lateReason(endOfDay, now);
 }

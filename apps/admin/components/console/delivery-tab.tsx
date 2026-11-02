@@ -150,7 +150,10 @@ export function NextStepCard({ late, ...rest }: NextStepCardProps): ReactElement
 
 interface DeliveryFactsProps {
   readonly status: ProjectStatus;
+  /** The first preview's promised time. */
   readonly slaDueAt: Date | null;
+  /** The day the updated preview is promised once changes were asked for (`YYYY-MM-DD`), or null when that is not known. */
+  readonly updatedPreviewDay: string | null;
   /** The open build's round and launch-day figures; null once the build is closed. */
   readonly build: { readonly rounds: RoundsFact; readonly launchPlannedOn: string | null } | null;
   /** Whether staff confirmed the kickoff call, or null when the stage has no kickoff to speak of. */
@@ -163,11 +166,20 @@ interface FactCell {
 }
 
 /** One row of facts under the next-step card. Wraps to fewer columns on a phone. */
-export function DeliveryFacts({ status, slaDueAt, build, kickoffConfirmed }: DeliveryFactsProps): ReactElement {
+export function DeliveryFacts({ status, slaDueAt, updatedPreviewDay, build, kickoffConfirmed }: DeliveryFactsProps): ReactElement {
   const due = dueDateLabel(status);
+  const notGiven = <span className="text-ink-2">Not given</span>;
+  const dueValue =
+    status === "revisions"
+      ? updatedPreviewDay === null
+        ? notGiven
+        : formatStoredDate(updatedPreviewDay)
+      : slaDueAt === null
+        ? notGiven
+        : <When date={slaDueAt} />;
   const cells: readonly FactCell[] = [
     { label: "Customer sees", value: CUSTOMER_STAGE_HEADLINE[status] },
-    ...(due === null ? [] : [{ label: due, value: slaDueAt === null ? <span className="text-ink-2">Not given</span> : <When date={slaDueAt} /> }]),
+    ...(due === null ? [] : [{ label: due, value: dueValue }]),
     ...(build === null ? [] : [{ label: "Rounds used", value: roundsText(build.rounds.used, build.rounds.included) }]),
     ...(build === null
       ? []

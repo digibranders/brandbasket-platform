@@ -1,7 +1,8 @@
 import { eq } from "drizzle-orm";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { findLatestProjectEventAt } from "./queries/project-website";
 import { findFeedbackLinkForTicket, linkFeedbackTicket, listFeedbackForProject } from "./queries/project-feedback";
-import { businesses, businessMembers, projectFeedbackTickets, projects, supportMessages, supportTickets, users } from "./schema";
+import { businesses, businessMembers, projectEvents, projectFeedbackTickets, projects, supportMessages, supportTickets, users } from "./schema";
 import { withUserScope } from "./scope";
 import { openTestDatabases, resetTestDatabase, type TestDatabases } from "./testing";
 
@@ -139,5 +140,19 @@ describe("project feedback tickets", () => {
 
     expect(await dbs.owner.db.select().from(projectFeedbackTickets).where(eq(projectFeedbackTickets.ticketId, ticketId))).toEqual([]);
     expect(await listFeedbackForProject(dbs.staff.db, { projectId, businessId })).toEqual([]);
+  });
+});
+
+describe("findLatestProjectEventAt", () => {
+  it("returns the newest time the project moved to that status, and null when it never did", async () => {
+    const earlier = new Date("2026-11-01T06:30:00Z");
+    const later = new Date("2026-11-03T06:30:00Z");
+    await dbs.owner.db.insert(projectEvents).values([
+      { projectId, businessId, status: "revisions", occurredAt: earlier },
+      { projectId, businessId, status: "revisions", occurredAt: later },
+    ]);
+
+    expect(await findLatestProjectEventAt(dbs.staff.db, { projectId, status: "revisions" })).toEqual(later);
+    expect(await findLatestProjectEventAt(dbs.staff.db, { projectId, status: "approved" })).toBeNull();
   });
 });

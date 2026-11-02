@@ -1,6 +1,7 @@
 import {
   findBusinessWebsiteUrl,
   findLatestKickoffOutcome,
+  findLatestProjectEventAt,
   findOpenProjectForStaff,
   findSetupCallBooking,
   listFeedbackForProject,
@@ -26,6 +27,7 @@ import { billingNeedsAttention } from "@/lib/billing-attention";
 import { buildPanelState } from "@/lib/build-summary";
 import { isPastIncludedRounds } from "@/lib/build-rounds";
 import { clientNextStep, previewLateReason } from "@/lib/client-next-step";
+import { updatedPreviewDay, updatedPreviewLateReason } from "@/lib/delivery-tab";
 import { readProjectMoveNotice } from "@/lib/project-move-notices";
 import { readWebsiteMoveNotice } from "@/lib/website-form";
 import { ProjectControls } from "@/components/project-controls";
@@ -55,7 +57,20 @@ export default async function ClientProjectPage({
   const nextStep = clientNextStep(project);
   const buildState = buildPanelState(project);
   const now = new Date();
-  const late = nextStep === "preview" ? previewLateReason(project, now) : null;
+  // Once changes are asked for, the promise is the updated preview's day, the same one the customer is shown, not the first preview's.
+  const changesAskedAt =
+    project !== null && project.status === "revisions"
+      ? await findLatestProjectEventAt(getStaffDb(), { projectId: project.id, status: "revisions" })
+      : null;
+  const updatedDay = changesAskedAt === null ? null : updatedPreviewDay(changesAskedAt);
+  const late =
+    project !== null && project.status === "revisions"
+      ? updatedDay === null
+        ? null
+        : updatedPreviewLateReason(updatedDay, now)
+      : nextStep === "preview"
+        ? previewLateReason(project, now)
+        : null;
   const logo = client.media.filter((asset) => asset.purpose === "logo");
   const photos = client.media.filter((asset) => asset.purpose === "photo");
   const feedback =
@@ -140,6 +155,7 @@ export default async function ClientProjectPage({
           <DeliveryFacts
             status={project.status}
             slaDueAt={project.slaDueAt}
+            updatedPreviewDay={updatedDay}
             build={build}
             kickoffConfirmed={kickoff === null ? null : kickoffConfirmed}
           />

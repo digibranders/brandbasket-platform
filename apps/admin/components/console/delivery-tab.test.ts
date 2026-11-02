@@ -154,7 +154,7 @@ describe("NextStepCard when changes are requested", () => {
 describe("DeliveryFacts", () => {
   const build = { rounds: { used: 1, included: 2 }, launchPlannedOn: "2026-11-20" };
   const facts = (status: ProjectStatus, extra: Partial<Parameters<typeof DeliveryFacts>[0]> = {}): string =>
-    renderToStaticMarkup(DeliveryFacts({ status, slaDueAt: new Date("2026-11-05T06:30:00Z"), build, kickoffConfirmed: null, ...extra }));
+    renderToStaticMarkup(DeliveryFacts({ status, slaDueAt: new Date("2026-11-05T06:30:00Z"), updatedPreviewDay: "2026-11-05", build, kickoffConfirmed: null, ...extra }));
 
   it("shows what the customer sees, in the customer's words", () => {
     expect(facts("building")).toContain("Customer sees");
@@ -173,6 +173,14 @@ describe("DeliveryFacts", () => {
 
   it("says Not given when a due stage has no date", () => {
     expect(facts("building", { slaDueAt: null })).toContain("Not given");
+    expect(facts("revisions", { updatedPreviewDay: null })).toContain("Not given");
+  });
+
+  it("shows the day the updated preview is promised in revisions, not the first preview's date", () => {
+    const html = facts("revisions", { slaDueAt: new Date("2026-11-01T06:30:00Z"), updatedPreviewDay: "2026-11-05" });
+    expect(html).toContain("Updated preview due");
+    expect(html).toContain("5 November 2026");
+    expect(html).not.toContain("1 Nov 2026");
   });
 
   it("shows rounds as N of M, from the one figure the controls use", () => {
