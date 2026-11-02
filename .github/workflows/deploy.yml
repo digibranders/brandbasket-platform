@@ -69,11 +69,17 @@ jobs:
           export CI=1 NEXT_TELEMETRY_DISABLED=1
           pnpm --workspace-concurrency=2 --filter @brandbasket/platform --filter @brandbasket/admin build
 
+      # Every node_modules is left out (the VPS installs its own) except the ones inside .next: the build writes the packages it
+      # loads at run time there (the Sentry hook's hashed module, for one), and the app will not start without them.
       - name: Pack
+        working-directory: /srv/brandbasket/releases/${{ env.SHA }}
         run: |
-          tar -C "/srv/brandbasket/releases/$SHA" -czf "$RUNNER_TEMP/release.tgz" \
-            --exclude=node_modules --exclude='apps/*/.next/cache' --exclude=.git .
+          find . -path ./.git -prune -o -path './apps/*/.next/cache' -prune \
+            -o -name node_modules -not -path '*/.next/*' -prune -o -print0 \
+            | tar --null --no-recursion -T - -czf "$RUNNER_TEMP/release.tgz"
           ls -lh "$RUNNER_TEMP/release.tgz"
+          tar -tzf "$RUNNER_TEMP/release.tgz" | grep -c '/\.next/node_modules/@sentry/server-runtime-injection' | grep -qv '^0$' \
+            || { echo "the archive lacks .next/node_modules; the apps would not start" >&2; exit 1; }
 
       - name: Ship, migrate and switch
         env:
