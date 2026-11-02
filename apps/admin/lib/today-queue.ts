@@ -131,7 +131,7 @@ export function todayQueue(input: TodayInput): readonly TodayItem[] {
             key: "deliveries:failed",
             kind: "delivery",
             href: "/deliveries",
-            title: `${input.failedDeliveries} emails and webhooks failed`,
+            title: `${input.failedDeliveries} ${input.failedDeliveries === 1 ? "email or webhook" : "emails and webhooks"} failed`,
             detail: "",
             dueAt: null,
           },
