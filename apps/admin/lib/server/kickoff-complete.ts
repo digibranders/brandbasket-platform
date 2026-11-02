@@ -28,8 +28,8 @@ export interface KickoffCompletionResult {
 /**
  * Staff say the kickoff happened, with or without notes: the call is marked held, the notes are saved, and a Managed
  * Website project waiting in onboarding is ready to build, with the first preview due 48 hours after the call. This is
- * the step a person takes only for a call held by phone or to write the notes sooner. A booked call's build starts by itself
- * two hours after it ends (lib/server/kickoff-sync.ts in the dashboard), and that run does not mark the call held. A call
+ * the step a person takes only for a call held by phone or to write the notes sooner. A booked call nobody marked starts its
+ * build by itself 24 hours after it ends (lib/server/kickoff-sync.ts in the dashboard), and that run does not mark the call held. A call
  * already held keeps its first held time. The call is recorded as completed unless its latest outcome already says so.
  */
 export async function completeKickoff(db: Database, input: KickoffCompletion): Promise<KickoffCompletionResult> {

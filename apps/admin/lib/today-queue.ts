@@ -17,6 +17,12 @@ export interface TodayItem {
   readonly dueAt: Date | null;
 }
 
+export interface KickoffNeedingOutcome {
+  readonly businessId: string;
+  readonly businessName: string;
+  readonly endsAt: Date;
+}
+
 export interface TodayInput {
   /** From attentionItems: payments to sort, add-ons to start, previews overdue and due, new enquiries. */
   readonly attention: readonly AttentionItem[];
@@ -28,8 +34,8 @@ export interface TodayInput {
   readonly newErrors: readonly Pick<ErrorIssue, "id" | "operation" | "route" | "occurrenceCount" | "firstSeenAt">[];
   /** Deliveries that failed in the last 24 hours (the rail's count); null when that count could not be read. */
   readonly failedDeliveries: number | null;
-  /** End times of kickoff calls that are over and not marked held; null when they could not be read. The count is its length. */
-  readonly kickoffsNeedingOutcome: readonly Date[] | null;
+  /** Kickoff calls that are over and not marked held (or as missed); null when they could not be read. One item each. */
+  readonly kickoffsNeedingOutcome: readonly KickoffNeedingOutcome[] | null;
   /** The end of the team's day: a preview due after it is not today's work. */
   readonly endOfToday: Date;
 }
@@ -131,21 +137,18 @@ export function todayQueue(input: TodayInput): readonly TodayItem[] {
           },
         ]
       : [];
-  // Every call here has already ended, so the item is overdue from the start; its clock is the earliest end time.
-  const kickoffEnds = input.kickoffsNeedingOutcome ?? [];
-  const kickoffs: readonly TodayItem[] =
-    kickoffEnds.length > 0
-      ? [
-          {
-            key: "kickoff:needs-outcome",
-            kind: "kickoff",
-            href: "/calls",
-            title: kickoffEnds.length === 1 ? "1 kickoff call needs an outcome" : `${kickoffEnds.length} kickoff calls need an outcome`,
-            detail: "",
-            dueAt: kickoffEnds.reduce((earliest, end) => (end.getTime() < earliest.getTime() ? end : earliest)),
-          },
-        ]
-      : [];
+  // Every call here has already ended, so each item is overdue from the start; its clock is the call's end time. Recording an
+  // outcome on the Calls page marks the call held or removes its booking, which takes it out of this list.
+  const kickoffs = (input.kickoffsNeedingOutcome ?? []).map(
+    (call): TodayItem => ({
+      key: `kickoff:${call.businessId}`,
+      kind: "kickoff",
+      href: "/calls",
+      title: "Did the kickoff happen?",
+      detail: `${call.businessName} · ended ${shortDate(call.endsAt)}, ${clock(call.endsAt)}`,
+      dueAt: call.endsAt,
+    }),
+  );
   return [...attention, ...requests, ...signups, ...errors, ...deliveries, ...kickoffs].sort(byDue);
 }
 

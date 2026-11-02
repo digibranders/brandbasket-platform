@@ -57,6 +57,11 @@ export function slotLabel(iso: string): string {
   return `${shortDay(dayKey(iso, BRAND_TIME_ZONE))}, ${slotTime(iso)}`;
 }
 
+/** "2:45 pm" for a call today, "Tue 27 Oct, 2:45 pm" on any other day (India's days), for a call that already took place. */
+export function callWhen(iso: string, now: Date): string {
+  return dayKey(iso, BRAND_TIME_ZONE) === dayKey(now.toISOString(), BRAND_TIME_ZONE) ? slotTime(iso) : slotLabel(iso);
+}
+
 /** "26 Oct" for a moment, in India. */
 export function dayMonth(date: Date): string {
   return new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", timeZone: BRAND_TIME_ZONE }).format(date);

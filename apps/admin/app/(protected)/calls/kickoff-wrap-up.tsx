@@ -22,9 +22,10 @@ const NO_SHOW_BUTTONS = [
 ] as const;
 
 /**
- * Kickoff calls that are over and not marked held. Nothing here is required for a normal call: the customer's Home moves
- * on when the call ends, and the website build starts by itself two hours later. This is where staff write the notes the
- * customer reads on Home (which starts the build at once), or say the call did not happen so the customer picks a new time.
+ * Kickoff calls that are over and not marked held. Cal.com cannot tell who joined a video call, so staff are the only source
+ * of truth: until they act, the customer's Home says we are confirming the call, and the website build starts by itself only
+ * 24 hours after the call ended. This is where staff write the notes the customer reads on Home (which starts the build at
+ * once), or say the call did not happen so the customer picks a new time. Today lists each call here until one is recorded.
  */
 export async function KickoffWrapUp({ now }: { readonly now: Date }): Promise<ReactElement> {
   const board = await listKickoffBoard(getStaffDb(), { now, lookBackDays: LOOK_BACK_DAYS });
@@ -47,7 +48,7 @@ export async function KickoffWrapUp({ now }: { readonly now: Date }): Promise<Re
               </div>
               <p className="text-sm text-ink-2">
                 {row.services.filter(isAddOnId).map((id) => addOnById(id).title).join(", ") || "No active service"}
-                {row.hasWebsite ? (row.projectStatus === "onboarding" ? " · build starts by itself" : ` · website ${row.projectStatus ?? "not started"}`) : ""}
+                {row.hasWebsite ? (row.projectStatus === "onboarding" ? " · build starts by itself 24 hours after the call" : ` · website ${row.projectStatus ?? "not started"}`) : ""}
               </p>
               <form action={completeKickoffAction} className="grid gap-2">
                 <input type="hidden" name="businessId" value={row.businessId} />

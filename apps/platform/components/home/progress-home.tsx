@@ -3,11 +3,13 @@ import type { ReactElement } from "react";
 import { DARK_BUTTON, LIFT, SOFT_BUTTON } from "@/components/v2/classes";
 import { PageColumns } from "@/components/v2/page";
 import { CUSTOMER_STAGE_HEADLINE } from "@brandbasket/shared/lib/project-customer-line";
+import { callWhen } from "@/lib/call-dates";
 import { websiteMilestones } from "@/lib/home/milestones";
 import type { ClientHomeState } from "@/lib/home/state";
 import type { HomeData } from "@/lib/server/home";
 import { ActivityList } from "./activity-list";
 import { Attention } from "./attention";
+import { BookNewTime } from "./kickoff-actions";
 import { Milestones } from "./milestones";
 import { StatusHero } from "./status-hero";
 import type { StatusTone } from "./status-word";
@@ -23,8 +25,10 @@ interface Copy {
   readonly text: string;
 }
 
-function copyFor(state: WebsiteState): Copy {
+function copyFor(state: WebsiteState, now: Date): Copy {
   switch (state.kind) {
+    case "kickoff_unconfirmed":
+      return { word: "Confirming", tone: "info", title: "We're confirming your call", text: `Your call was at ${callWhen(state.callAt.toISOString(), now)}. If you couldn't join, you can book a new time.` };
     case "starting":
       return { word: "Starting", tone: "info", title: "We are getting your website started", text: "Your kickoff is done. The date of your first preview appears here as soon as the build starts." };
     case "preparing":
@@ -54,12 +58,14 @@ function copyFor(state: WebsiteState): Copy {
  * approval happen on the Website page, never as a form here.
  */
 export function ProgressHome({ state, data }: { readonly state: WebsiteState; readonly data: HomeData }): ReactElement {
-  const copy = copyFor(state);
+  const copy = copyFor(state, new Date(data.call.readAtMs));
   const endsAt = data.call.booking?.endsAtIso ?? null;
   const milestones = websiteMilestones(state, { kickoffAt: endsAt === null ? null : new Date(endsAt), firstPreviewDueAt: data.project?.slaDueAt ?? null, launchPlannedOn: data.project?.launchPlannedOn ?? null });
   // Nothing to open until there is a preview or a live site, so the in-progress states carry no button: the Website page only repeats this card.
   const action =
-    state.kind === "preview_ready" ? (
+    state.kind === "kickoff_unconfirmed" ? (
+      <BookNewTime showLiveBy bookingUrl={data.call.url} />
+    ) : state.kind === "preview_ready" ? (
       <Link href="/website" className={DARK_BUTTON}>
         Review your website
       </Link>

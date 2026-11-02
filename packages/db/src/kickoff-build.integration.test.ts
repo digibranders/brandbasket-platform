@@ -1,7 +1,9 @@
 import { eq } from "drizzle-orm";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { findActivePlan, insertSubscription } from "./queries/billing";
-import { firstPreviewDueAfterKickoff, listKickoffBoard, listKickoffsToStart, markProjectReadyAfterKickoff } from "./queries/kickoff-build";
+import { firstPreviewDueAfterKickoff, KICKOFF_FALLBACK_START_HOURS, listKickoffBoard, listKickoffsToStart, markProjectReadyAfterKickoff } from "./queries/kickoff-build";
+import { recordKickoffOutcome } from "./queries/setup-call-outcomes";
+import { clearUnheldKickoffBooking } from "./queries/setup-calls";
 import { insertOnboardingProject } from "./queries/projects";
 import { bundledAddOns, businesses, projects, setupCallBookings, users } from "./schema";
 import { openTestDatabases, resetTestDatabase, seedPlansFromMigrations, type TestDatabases } from "./testing";
@@ -117,6 +119,52 @@ describe("listKickoffsToStart", () => {
     await booking(siteId, { startsAt: new Date("2026-10-01T08:30:00Z"), endsAt: new Date("2026-10-01T09:00:00Z") });
     expect(await listKickoffsToStart(dbs.staff.db, { endedBefore: NOW, confirmedOnly: true })).toEqual([]);
     expect((await listKickoffsToStart(dbs.staff.db, { endedBefore: NOW })).map((row) => row.businessId)).toEqual([siteId]);
+  });
+});
+
+describe("which kickoffs the sweep starts (the cut-off it passes is KICKOFF_FALLBACK_START_HOURS before now)", () => {
+  const HOUR = 3_600_000;
+  const cutoff = (now: Date) => new Date(now.getTime() - KICKOFF_FALLBACK_START_HOURS * HOUR);
+  const endedHoursAgo = (hours: number) => ({ startsAt: new Date(NOW.getTime() - (hours + 0.5) * HOUR), endsAt: new Date(NOW.getTime() - hours * HOUR) });
+  const startable = async (now: Date = NOW) => (await listKickoffsToStart(dbs.staff.db, { endedBefore: cutoff(now) })).map((row) => row.businessId);
+  const booking = (businessId: string, values: Partial<typeof setupCallBookings.$inferInsert>) => dbs.staff.db.insert(setupCallBookings).values({ businessId, ...values });
+
+  it("starts a call staff marked held, even one that ended a minute ago", async () => {
+    await booking(siteId, { ...endedHoursAgo(0.02), heldAt: NOW, heldByStaffId: STAFF });
+    expect(await startable()).toEqual([siteId]);
+  });
+
+  it("does not start an unmarked call before 24 hours have passed since it ended", async () => {
+    await booking(siteId, endedHoursAgo(23));
+    expect(await startable()).toEqual([]);
+  });
+
+  it("starts an unmarked call once 24 hours have passed since it ended", async () => {
+    await booking(siteId, endedHoursAgo(25));
+    expect(await startable()).toEqual([siteId]);
+  });
+
+  it("never starts a call staff marked as not attended, however long ago it ended", async () => {
+    const { startsAt, endsAt } = endedHoursAgo(30);
+    await booking(siteId, { startsAt, endsAt });
+    expect(await startable()).toEqual([siteId]);
+
+    // What the wrap-up's "did not attend" buttons do: the booking goes and the outcome keeps the call's times.
+    expect(await clearUnheldKickoffBooking(dbs.staff.db, siteId)).toBe(true);
+    await recordKickoffOutcome(dbs.staff.db, { businessId: siteId, outcome: "customer_no_show", note: null, startsAt, endsAt, staffId: STAFF, now: NOW });
+
+    expect(await startable()).toEqual([]);
+    expect(await startable(new Date(NOW.getTime() + 365 * 24 * HOUR))).toEqual([]);
+    expect((await statusOf(siteId))?.status).toBe("onboarding");
+  });
+
+  it("follows the new call after a no-show by the same rule", async () => {
+    await booking(siteId, endedHoursAgo(30));
+    await clearUnheldKickoffBooking(dbs.staff.db, siteId);
+    await recordKickoffOutcome(dbs.staff.db, { businessId: siteId, outcome: "team_no_show", note: null, startsAt: null, endsAt: null, staffId: STAFF, now: NOW });
+    await booking(siteId, endedHoursAgo(2));
+    expect(await startable()).toEqual([]);
+    expect(await startable(new Date(NOW.getTime() + 23 * HOUR))).toEqual([siteId]);
   });
 });
 
