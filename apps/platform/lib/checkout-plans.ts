@@ -1,5 +1,7 @@
 import { MONTHLY_ADD_ON_IDS, type MonthlyAddOnId } from "@brandbasket/shared/lib/billing/add-ons";
 import { PACKAGE_OFFERS, percentOf } from "@brandbasket/shared/lib/billing/packages";
+import type { MoneyCurrency } from "@brandbasket/shared/lib/money";
+import { pricesNote } from "@/lib/currency-words";
 
 /*
  * The words on the checkout page that belong to a plan, as plain data (docs/design/checkout-ledger.html in the BrandBasket
@@ -64,10 +66,14 @@ function offerPercent(planCount: number): string {
   return percentOf(offer.basisPoints);
 }
 
+/** The line under the page title: what to do, then what the prices are in (and whether they carry GST). */
+export function checkoutLead(currency: MoneyCurrency, taxRateBasisPoints: number): string {
+  return `Choose the services you want. ${pricesNote(currency, taxRateBasisPoints > 0)}`;
+}
+
 /** The page's own words. */
 export const CHECKOUT_COPY = {
   title: "Your plan",
-  lead: "Choose the services you want. Prices are in rupees and include GST.",
   packageNote: `Two plans are ${offerPercent(2)}% off, all three are ${offerPercent(3)}% off.`,
   allThree: `All three plans: ${offerPercent(MONTHLY_ADD_ON_IDS.length)}% off every month.`,
   getHeading: "What you get",

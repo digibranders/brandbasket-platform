@@ -23,5 +23,5 @@ export default async function SocialPage({ searchParams }: SocialPageProps): Pro
   const [data, { notice }, todo] = await Promise.all([loadSocial(tenant, billing, now), searchParams, loadTodo(tenant)]);
   // Not bought: Your plan is where Social & Ads is added.
   if (data === null) redirect(ADD_ONS_PATH);
-  return <SocialView data={data} notice={socialNoticeLine(notice)} now={now} setup={setupAsks(todo.items, todo.answers, "social")} />;
+  return <SocialView data={data} notice={socialNoticeLine(notice)} now={now} setup={setupAsks(todo.items, todo.answers, "social", billing.plan?.currency ?? "INR")} />;
 }

@@ -4,6 +4,7 @@ import Link from "next/link";
 import type { ReactElement, ReactNode } from "react";
 import { getConnectingDomain, withTenantScope } from "@brandbasket/db";
 import { cn } from "@brandbasket/shared/lib/cn";
+import type { MoneyCurrency } from "@brandbasket/shared/lib/money";
 import { ConnectDomainCard } from "@/components/panel/connect-domain-card";
 import { DomainSteps } from "@/components/domain/domain-steps";
 import { EmailUs } from "@/components/panel/email-us";
@@ -40,11 +41,14 @@ function Said({ id, title, children }: { readonly id: string; readonly title: st
   );
 }
 
-function HelpSection(): ReactElement {
+/** What a domain usually costs a year, in the money the customer thinks in. */
+const DOMAIN_YEARLY_COST: Readonly<Record<MoneyCurrency, string>> = { INR: "a few hundred rupees a year", USD: "about $10 to $15 a year" };
+
+function HelpSection({ currency }: { readonly currency: MoneyCurrency }): ReactElement {
   return (
     <PageSection id="help" title="Good to know">
       <ul className="list-disc space-y-2 pl-5 text-[0.84375rem] leading-relaxed text-ink-2">
-        <li>Don’t have a domain yet? You can buy one from any domain registrar, such as GoDaddy, Namecheap or Cloudflare. It usually costs a few hundred rupees a year.</li>
+        <li>Don’t have a domain yet? You can buy one from any domain registrar, such as GoDaddy, Namecheap or Cloudflare. It usually costs {DOMAIN_YEARLY_COST[currency]}.</li>
         <li>Not sure which company yours is with? It’s whoever you paid for the domain, or you can look it up with a “WHOIS” search.</li>
         <li>Once you’ve moved, your free address keeps working and forwards to your own domain, so links you’ve already shared still reach you.</li>
         <li>
@@ -77,7 +81,7 @@ function DnsNotesSection(): ReactElement {
  * DNS records and a check, kept for anyone who needs to look again. Which of it shows is decided by domainPageState.
  */
 export default async function DomainPage(): Promise<ReactElement> {
-  const { tenant } = await requireWebsiteClient();
+  const { tenant, billing } = await requireWebsiteClient();
   const [snapshot, live, connecting] = await Promise.all([
     getOnboardingSnapshot(),
     getLiveWebsite(),
@@ -190,7 +194,7 @@ export default async function DomainPage(): Promise<ReactElement> {
     steps === null && connect === null ? null : (
       <>
         {steps === null ? null : <DomainSteps steps={steps} />}
-        {connect !== null ? <DnsNotesSection /> : state === "free" || state === "move-requested" ? <HelpSection /> : null}
+        {connect !== null ? <DnsNotesSection /> : state === "free" || state === "move-requested" ? <HelpSection currency={billing.plan?.currency ?? "INR"} /> : null}
       </>
     );
 

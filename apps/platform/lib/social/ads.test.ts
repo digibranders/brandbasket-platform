@@ -14,34 +14,40 @@ const blank: SnapshotView = {
 
 describe("adsPanel", () => {
   it("shows spend against the budget, the share spent, enquiries and the ad money", () => {
-    const panel = adsPanel({ snapshot: { ...blank, adSpendCents: 624_000, adBudgetCents: 1_000_000, adEnquiries: 14 }, adCreditCents: 150_000 });
+    const panel = adsPanel({ snapshot: { ...blank, adSpendCents: 624_000, adBudgetCents: 1_000_000, adEnquiries: 14 }, adCreditCents: 150_000, currency: "INR" });
     expect(panel).toEqual({ spent: "₹6,240 of ₹10,000", percent: 62, enquiries: 14, adMoney: "₹1,500" });
   });
 
   it("shows the spend alone, with no percent, when there is no budget", () => {
-    expect(adsPanel({ snapshot: { ...blank, adSpendCents: 624_000 }, adCreditCents: 0 })).toEqual({ spent: "₹6,240", percent: null, enquiries: null, adMoney: null });
+    expect(adsPanel({ snapshot: { ...blank, adSpendCents: 624_000 }, adCreditCents: 0, currency: "INR" })).toEqual({ spent: "₹6,240", percent: null, enquiries: null, adMoney: null });
   });
 
   it("has no spend line and no percent when the spend was not measured", () => {
-    expect(adsPanel({ snapshot: { ...blank, adBudgetCents: 1_000_000, adEnquiries: 3 }, adCreditCents: 0 })).toEqual({ spent: null, percent: null, enquiries: 3, adMoney: null });
+    expect(adsPanel({ snapshot: { ...blank, adBudgetCents: 1_000_000, adEnquiries: 3 }, adCreditCents: 0, currency: "INR" })).toEqual({ spent: null, percent: null, enquiries: 3, adMoney: null });
   });
 
   it("keeps a measured zero for enquiries", () => {
-    expect(adsPanel({ snapshot: { ...blank, adEnquiries: 0 }, adCreditCents: 0 })?.enquiries).toBe(0);
+    expect(adsPanel({ snapshot: { ...blank, adEnquiries: 0 }, adCreditCents: 0, currency: "INR" })?.enquiries).toBe(0);
   });
 
   it("caps the percent at 100 and does not divide by a zero budget", () => {
-    expect(adsPanel({ snapshot: { ...blank, adSpendCents: 1_200_000, adBudgetCents: 1_000_000 }, adCreditCents: 0 })?.percent).toBe(100);
-    expect(adsPanel({ snapshot: { ...blank, adSpendCents: 0, adBudgetCents: 1_000_000 }, adCreditCents: 0 })?.percent).toBe(0);
-    expect(adsPanel({ snapshot: { ...blank, adSpendCents: 100, adBudgetCents: 0 }, adCreditCents: 0 })?.percent).toBeNull();
+    expect(adsPanel({ snapshot: { ...blank, adSpendCents: 1_200_000, adBudgetCents: 1_000_000 }, adCreditCents: 0, currency: "INR" })?.percent).toBe(100);
+    expect(adsPanel({ snapshot: { ...blank, adSpendCents: 0, adBudgetCents: 1_000_000 }, adCreditCents: 0, currency: "INR" })?.percent).toBe(0);
+    expect(adsPanel({ snapshot: { ...blank, adSpendCents: 100, adBudgetCents: 0 }, adCreditCents: 0, currency: "INR" })?.percent).toBeNull();
   });
 
   it("hides the ad money line when the credit is 0, and shows it when it is the only figure", () => {
-    expect(adsPanel({ snapshot: blank, adCreditCents: 0 })).toBeNull();
-    expect(adsPanel({ snapshot: null, adCreditCents: 300_000 })).toEqual({ spent: null, percent: null, enquiries: null, adMoney: "₹3,000" });
+    expect(adsPanel({ snapshot: blank, adCreditCents: 0, currency: "INR" })).toBeNull();
+    expect(adsPanel({ snapshot: null, adCreditCents: 300_000, currency: "INR" })).toEqual({ spent: null, percent: null, enquiries: null, adMoney: "₹3,000" });
+  });
+
+  it("writes a USD business's ad money and spend in dollars, never as rupees", () => {
+    const panel = adsPanel({ snapshot: { ...blank, adSpendCents: 1_250, adBudgetCents: 3_000 }, adCreditCents: 3_000, currency: "USD" });
+    expect(panel).toMatchObject({ spent: "$12.50 of $30", adMoney: "$30" });
+    expect(`${panel?.spent}${panel?.adMoney}`).not.toContain("₹");
   });
 
   it("returns null when nothing is known, never a panel of zeros", () => {
-    expect(adsPanel({ snapshot: null, adCreditCents: 0 })).toBeNull();
+    expect(adsPanel({ snapshot: null, adCreditCents: 0, currency: "INR" })).toBeNull();
   });
 });

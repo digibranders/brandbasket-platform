@@ -2,6 +2,7 @@ import { listAddOnsToContact, listClients, listLiveServiceLines, listOpenClosure
 import type { Metadata } from "next";
 import Link from "next/link";
 import type { ReactElement } from "react";
+import { staffCan } from "@brandbasket/shared/lib/access";
 import { formatMoney } from "@brandbasket/shared/lib/money";
 import { STAFF_STAGE_LABELS, type StaffStage } from "@brandbasket/shared/lib/project-stage";
 import { SearchIcon } from "@brandbasket/shared/ui/icons";
@@ -60,7 +61,7 @@ export default async function ClientsPage({
 }: {
   readonly searchParams: Promise<Record<string, string | string[] | undefined>>;
 }): Promise<ReactElement> {
-  const { user } = await requireStaffAccess();
+  const { user, staff } = await requireStaffAccess();
   await logStaffAccess({ staffUserId: user.id, action: "clients.list", targetType: "clients" });
   const params = await searchParams;
   const stage = readStage(params.stage);
@@ -72,7 +73,8 @@ export default async function ClientsPage({
   const [clients, closures, flagged, addOns] = await Promise.all([
     listClients(db, { include: ["paying", "not_paid", "leaving"] }),
     listOpenClosures(db),
-    listPaymentsNeedingAttention(db, { limit: ATTENTION_READ_LIMIT }),
+    // Flagged payments are money: other roles do not see them, so the query is not run for them.
+    staffCan(staff.role, "money") ? listPaymentsNeedingAttention(db, { limit: ATTENTION_READ_LIMIT }) : Promise.resolve([]),
     listAddOnsToContact(db, ATTENTION_READ_LIMIT),
   ]);
   const services = servicesByBusiness(await listLiveServiceLines(db, clients.map((client) => client.businessId)));

@@ -1,5 +1,6 @@
 import "server-only";
-import { countCallsBetween, countLateProjects, countLeadsToContact, countSupportQueues } from "@brandbasket/db";
+import { countCallsBetween, countLateProjects, countLeadsToContact, countSupportQueues, type StaffRole } from "@brandbasket/db";
+import { staffCan } from "@brandbasket/shared/lib/access";
 import { errorLogInfo } from "@brandbasket/shared/server/error-log-info";
 import type { RailCountKey, RailCounts } from "@/lib/console-rail";
 import { todayRange } from "@/lib/team-time";
@@ -19,17 +20,18 @@ export async function countOrNothing(key: RailCountKey, read: () => Promise<numb
 }
 
 /** The numbers beside the rail's entries (plan 41, contract C2). A phase that adds a count adds one entry here. */
-export async function readRailCounts(): Promise<RailCounts> {
+export async function readRailCounts(role: StaffRole): Promise<RailCounts> {
+  const canSeeMoney = staffCan(role, "money");
   const db = getStaffDb();
   const now = new Date();
   const day = todayRange(now);
   const [today, leads, requests, projects, calls, payments, deliveries] = await Promise.all([
-    countOrNothing("today", () => countTodayItems()),
+    countOrNothing("today", () => countTodayItems(canSeeMoney)),
     countOrNothing("leads", () => countLeadsToContact(db)),
     countOrNothing("requests", async () => (await countSupportQueues(db)).needsReply),
     countOrNothing("projects", () => countLateProjects(db, now)),
     countOrNothing("calls", () => countCallsBetween(db, day.start, day.end)),
-    countOrNothing("payments", () => readPaymentsCount(now)),
+    canSeeMoney ? countOrNothing("payments", () => readPaymentsCount(now)) : Promise.resolve(undefined),
     countOrNothing("deliveries", () => countFailedDeliveries24h(now)),
   ]);
   const read: readonly (readonly [RailCountKey, number | undefined])[] = [

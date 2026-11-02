@@ -3,7 +3,8 @@
 import { useActionState, type ReactElement } from "react";
 import { saveSetupItemAction } from "@/app/app-host/(protected)/setup-actions";
 import { SOFT_BUTTON } from "@/components/v2/classes";
-import { initialSetupFormState, SETUP_FIELDS, type SetupFormState, type SetupKey } from "@/lib/service-setup";
+import type { MoneyCurrency } from "@brandbasket/shared/lib/money";
+import { initialSetupFormState, setupFieldsFor, type SetupFormState, type SetupKey } from "@/lib/service-setup";
 
 const INPUT =
   "mt-1.5 block w-full rounded-control border border-ink-2/65 bg-surface px-3.5 py-2.5 text-sm text-ink placeholder:text-ink-2/80 focus:border-ink";
@@ -12,10 +13,11 @@ interface SetupItemFormProps {
   readonly setup: SetupKey;
   /** What was saved before, to start the fields with. */
   readonly saved: Readonly<Record<string, unknown>> | undefined;
+  readonly currency: MoneyCurrency;
 }
 
 /** The small form under one Social or Search item. Saved answers are only ever put in field values, never as HTML. */
-export function SetupItemForm({ setup, saved }: SetupItemFormProps): ReactElement {
+export function SetupItemForm({ setup, saved, currency }: SetupItemFormProps): ReactElement {
   const [state, action, pending] = useActionState<SetupFormState, FormData>(saveSetupItemAction, initialSetupFormState);
   const mine = state.status !== "idle" && state.key === setup ? state : null;
   const startValue = (name: string): string => {
@@ -26,7 +28,7 @@ export function SetupItemForm({ setup, saved }: SetupItemFormProps): ReactElemen
   return (
     <form action={action} className="grid max-w-xl gap-4 px-4 pb-4 pt-1">
       <input type="hidden" name="key" value={setup} />
-      {SETUP_FIELDS[setup].map((field) => {
+      {setupFieldsFor(setup, currency).map((field) => {
         const id = `${setup}-${field.name}`;
         const problem = mine?.status === "error" && mine.field === field.name ? mine.message : null;
         const described = problem === null ? undefined : `${id}-error`;

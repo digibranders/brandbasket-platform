@@ -21,7 +21,9 @@ import { websiteNoticeHref } from "@/lib/website/notices";
  * is the business's own. The business comes only from the session; nothing in the form is read.
  */
 async function respond(response: PreviewResponse): Promise<void> {
-  const { tenant } = await requireCustomerAccess();
+  const { tenant, billing } = await requireCustomerAccess();
+  // A page opened before access lapsed must not answer; Home explains what to do.
+  if (!billing.hasAccess) redirect("/");
   try {
     await respondToPreview(getStaffDb(), { businessId: tenant.businessId, businessName: tenant.businessName, response }, new Date());
   } catch (error) {
@@ -42,7 +44,8 @@ export async function approvePreviewAction(): Promise<void> {
  * the move to Revisions. The business and the person come from the session, never from the form.
  */
 export async function sendPreviewFeedbackAction(_previous: SupportFormState, formData: FormData): Promise<SupportFormState> {
-  const { user, tenant } = await requireCustomerAccess();
+  const { user, tenant, billing } = await requireCustomerAccess();
+  if (!billing.hasAccess) redirect("/");
   if (!canCreateSupportRequest(user.id)) return supportFormError("New requests are temporarily unavailable. Please try again later.");
   const parsed = parsePreviewFeedback(formData);
   if (!parsed.success) return supportFormError(parsed.message, parsed.field);

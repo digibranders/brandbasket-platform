@@ -6,7 +6,7 @@ import { revalidatePath } from "next/cache";
 import { requireCustomerAccess } from "@/lib/server/customer-access";
 import { getAppDb } from "@/lib/server/db";
 import { loadSetupServices } from "@/lib/server/first-look";
-import { isSetupKey, parseSetupItem, SETUP_FIELDS, SETUP_SERVICE, type SetupFormState } from "@/lib/service-setup";
+import { isSetupKey, parseSetupItem, setupFieldsFor, SETUP_SERVICE, type SetupFormState } from "@/lib/service-setup";
 
 /**
  * Saves one setup answer, asked on a service page, for the signed-in customer. The business comes from the session, never from the form;
@@ -14,16 +14,17 @@ import { isSetupKey, parseSetupItem, SETUP_FIELDS, SETUP_SERVICE, type SetupForm
  */
 export async function saveSetupItemAction(_previous: SetupFormState, formData: FormData): Promise<SetupFormState> {
   const { tenant, billing } = await requireCustomerAccess();
+  const currency = billing.plan?.currency ?? "INR";
   const key = String(formData.get("key") ?? "");
   if (!isSetupKey(key)) throw new Error("Unknown setup item.");
 
   const values: Record<string, string> = {};
-  for (const field of SETUP_FIELDS[key]) values[field.name] = String(formData.get(field.name) ?? "");
+  for (const field of setupFieldsFor(key, currency)) values[field.name] = String(formData.get(field.name) ?? "");
 
   // To do is for paid accounts: a page opened before access lapsed must not save.
   if (!billing.hasAccess) return { status: "error", key, field: "", message: "We could not save that. Please try again.", values };
 
-  const parsed = parseSetupItem(key, values);
+  const parsed = parseSetupItem(key, values, currency);
   if (!parsed.success) return { status: "error", key, field: parsed.field, message: parsed.message, values };
 
   const service = SETUP_SERVICE[key];

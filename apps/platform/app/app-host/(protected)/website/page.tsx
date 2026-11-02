@@ -1,6 +1,7 @@
 import { Globe } from "@phosphor-icons/react/dist/ssr";
 import type { Metadata } from "next";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { randomUUID } from "node:crypto";
 import type { ReactElement } from "react";
 import { isTemporarySubdomain } from "@brandbasket/shared/lib/onboarding/domain-form";
@@ -26,7 +27,9 @@ interface WebsitePageProps {
 
 /** Progress: the preview or the status, what happens next, and the web address when it needs something. */
 export default async function WebsitePage({ searchParams }: WebsitePageProps): Promise<ReactElement> {
-  const { tenant } = await requireWebsiteClient();
+  const { tenant, billing } = await requireWebsiteClient();
+  // This is for paid accounts; Home tells the rest what is next.
+  if (!billing.hasAccess) redirect("/");
   const { response } = await searchParams;
   const notice = readWebsiteNotice(response);
   const data = await loadWebsite(tenant, new Date());

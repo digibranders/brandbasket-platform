@@ -55,6 +55,12 @@ describe("loadSocial", () => {
     expect(data?.month).toBe("October");
   });
 
+  it("shows a USD business's ad money in dollars", async () => {
+    const usd = { subscription: { adCreditCents: 3000 }, plan: { currency: "USD" } } as never;
+    const data = await loadSocial(tenant, usd, now);
+    expect(data?.ads).toEqual({ spent: null, percent: null, enquiries: null, adMoney: "$30" });
+  });
+
   it("builds the month line, the ads panel and the report link", async () => {
     vi.mocked(listDeliverablesForBusiness).mockResolvedValue([row("a", "2026-10-02", "published"), row("b", "2026-10-28", "planned")]);
     vi.mocked(listMonthlySnapshots).mockResolvedValue([

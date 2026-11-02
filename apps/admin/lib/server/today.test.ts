@@ -12,6 +12,7 @@ import {
   sumCapturedPaymentsBetween,
   type KickoffBoardRow,
   type Lead,
+  type PaymentNeedingAttention,
 } from "@brandbasket/db";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { countFailedDeliveries24h } from "./deliveries";
@@ -87,13 +88,13 @@ function kickoffRow(values: Partial<KickoffBoardRow> & Pick<KickoffBoardRow, "bu
 describe("loadTodayItems", () => {
   it("keeps the rest of the queue when one source fails, and logs the failure", async () => {
     vi.mocked(listClients).mockRejectedValue(new Error("database down"));
-    const items = await loadTodayItems(NOW);
+    const items = await loadTodayItems(NOW, true);
     expect(items.map((item) => item.key)).toEqual(["lead:lead-1"]);
     expect(console.error).toHaveBeenCalled();
   });
 
   it("asks only for requests nobody has answered", async () => {
-    await loadTodayItems(NOW);
+    await loadTodayItems(NOW, true);
     expect(listSupportTicketsForStaff).toHaveBeenCalledWith({}, { queue: "needs_reply", limit: 25 });
     expect(listErrorIssues).toHaveBeenCalledWith({}, { status: "new" });
   });
@@ -102,7 +103,7 @@ describe("loadTodayItems", () => {
 describe("failed deliveries in the queue", () => {
   it("adds one item when deliveries failed in the last 24 hours", async () => {
     vi.mocked(countFailedDeliveries24h).mockResolvedValue(2);
-    const items = await loadTodayItems(NOW);
+    const items = await loadTodayItems(NOW, true);
     expect(countFailedDeliveries24h).toHaveBeenCalledWith(NOW);
     expect(items.filter((item) => item.kind === "delivery")).toEqual([
       { key: "deliveries:failed", kind: "delivery", href: "/deliveries", title: "2 deliveries failed", detail: "", dueAt: null },
@@ -110,13 +111,13 @@ describe("failed deliveries in the queue", () => {
   });
 
   it("adds no item when none failed", async () => {
-    const items = await loadTodayItems(NOW);
+    const items = await loadTodayItems(NOW, true);
     expect(items.some((item) => item.kind === "delivery")).toBe(false);
   });
 
   it("names deliveries as failed and adds no item when the count cannot be read", async () => {
     vi.mocked(countFailedDeliveries24h).mockRejectedValue(new Error("database down"));
-    const page = await loadTodayPage(NOW);
+    const page = await loadTodayPage(NOW, true);
     expect(page.failed).toEqual(["deliveries"]);
     expect(page.items.some((item) => item.kind === "delivery")).toBe(false);
     expect(page.items.map((item) => item.key)).toEqual(["lead:lead-1"]);
@@ -135,7 +136,7 @@ describe("kickoff calls needing an outcome in the queue", () => {
       kickoffRow({ businessId: "b-held", endsAt: ENDED_EARLIER, heldAt: new Date("2026-11-29T06:00:00.000Z") }),
       kickoffRow({ businessId: "b-started", endsAt: ENDED_EARLIER, projectStatus: "submitted" }),
     ]);
-    const items = await loadTodayItems(NOW);
+    const items = await loadTodayItems(NOW, true);
     expect(listKickoffBoard).toHaveBeenCalledWith({}, { now: NOW, lookBackDays: 14 });
     expect(items.filter((item) => item.kind === "kickoff")).toEqual([
       { key: "kickoff:needs-outcome", kind: "kickoff", href: "/calls", title: "2 kickoff calls need an outcome", detail: "", dueAt: ENDED_EARLIER },
@@ -144,18 +145,18 @@ describe("kickoff calls needing an outcome in the queue", () => {
 
   it("says 1 kickoff call in the singular", async () => {
     vi.mocked(listKickoffBoard).mockResolvedValue([kickoffRow({ businessId: "b-one", endsAt: ENDED_LATER })]);
-    const items = await loadTodayItems(NOW);
+    const items = await loadTodayItems(NOW, true);
     expect(items.find((item) => item.kind === "kickoff")?.title).toBe("1 kickoff call needs an outcome");
   });
 
   it("adds no item when no call is waiting for an outcome", async () => {
-    const items = await loadTodayItems(NOW);
+    const items = await loadTodayItems(NOW, true);
     expect(items.some((item) => item.kind === "kickoff")).toBe(false);
   });
 
   it("names kickoff calls as failed and adds no item when the board cannot be read", async () => {
     vi.mocked(listKickoffBoard).mockRejectedValue(new Error("database down"));
-    const page = await loadTodayPage(NOW);
+    const page = await loadTodayPage(NOW, true);
     expect(page.failed).toEqual(["kickoff calls"]);
     expect(page.items.some((item) => item.kind === "kickoff")).toBe(false);
     expect(page.items.map((item) => item.key)).toEqual(["lead:lead-1"]);
@@ -164,7 +165,35 @@ describe("kickoff calls needing an outcome in the queue", () => {
 
 describe("countTodayItems", () => {
   it("is the length of the queue", async () => {
-    expect(await countTodayItems()).toBe(1);
+    expect(await countTodayItems(true)).toBe(1);
+  });
+});
+
+describe("a role without the money capability", () => {
+  const FLAGGED = { paymentId: "pay-1", businessId: "oak", businessName: "Oak Cafe", raisedAt: new Date("2026-11-29T05:00:00.000Z") } as PaymentNeedingAttention;
+
+  it("never reads flagged payments or collected money, and the queue has no payment item", async () => {
+    vi.mocked(listPaymentsNeedingAttention).mockResolvedValue([FLAGGED]);
+    const page = await loadTodayPage(NOW, false);
+    expect(listPaymentsNeedingAttention).not.toHaveBeenCalled();
+    expect(sumCapturedPaymentsBetween).not.toHaveBeenCalled();
+    expect(page.items.some((item) => item.key.startsWith("payment:"))).toBe(false);
+    expect(page.failed).toEqual([]);
+    expect(page.figures.map((figure) => figure.label)).not.toContain("Collected this month");
+    expect(page.figures).toHaveLength(5);
+  });
+
+  it("shows both to a role with it", async () => {
+    vi.mocked(listPaymentsNeedingAttention).mockResolvedValue([FLAGGED]);
+    const page = await loadTodayPage(NOW, true);
+    expect(page.items.some((item) => item.key === "payment:pay-1")).toBe(true);
+    expect(page.figures.map((figure) => figure.label)).toContain("Collected this month");
+  });
+
+  it("counts the queue without the flagged payments", async () => {
+    vi.mocked(listPaymentsNeedingAttention).mockResolvedValue([FLAGGED]);
+    expect(await countTodayItems(true)).toBe(2);
+    expect(await countTodayItems(false)).toBe(1);
   });
 });
 
@@ -173,7 +202,7 @@ describe("loadTodayPage", () => {
     const call = { businessId: "b1", businessName: "Kumar Opticals", startsAt: new Date("2026-11-30T08:30:00.000Z"), endsAt: new Date("2026-11-30T09:00:00.000Z") };
     vi.mocked(listSetupCallsBetween).mockResolvedValue([call]);
     vi.mocked(readSystemHealth).mockResolvedValue([{ key: "email", label: "Email", state: "ok", detail: "last 09:40" }]);
-    const page = await loadTodayPage(NOW);
+    const page = await loadTodayPage(NOW, true);
     expect(page.items).toHaveLength(1);
     expect(page.figures).toHaveLength(6);
     expect(page.figures[2]?.value).toBe("₹2,999");
@@ -185,18 +214,18 @@ describe("loadTodayPage", () => {
   it("still draws the figures when the money and request counts fail", async () => {
     vi.mocked(sumCapturedPaymentsBetween).mockRejectedValue(new Error("down"));
     vi.mocked(countSupportTicketsByStatus).mockRejectedValue(new Error("down"));
-    const page = await loadTodayPage(NOW);
+    const page = await loadTodayPage(NOW, true);
     expect(page.figures.map((figure) => figure.value)).toEqual(["1", "0", "₹0", "0", "0", "0"]);
   });
 
   it("reports no failed sources when every queue source reads", async () => {
-    const page = await loadTodayPage(NOW);
+    const page = await loadTodayPage(NOW, true);
     expect(page.failed).toEqual([]);
   });
 
   it("names the failed source and keeps the other items", async () => {
     vi.mocked(listClients).mockRejectedValue(new Error("database down"));
-    const page = await loadTodayPage(NOW);
+    const page = await loadTodayPage(NOW, true);
     expect(page.failed).toEqual(["clients"]);
     expect(page.items.map((item) => item.key)).toEqual(["lead:lead-1"]);
   });
@@ -208,7 +237,7 @@ describe("loadTodayPage", () => {
     vi.mocked(listAddOnsToContact).mockRejectedValue(new Error("down"));
     vi.mocked(listSupportTicketsForStaff).mockRejectedValue(new Error("down"));
     vi.mocked(listErrorIssues).mockRejectedValue(new Error("down"));
-    const page = await loadTodayPage(NOW);
+    const page = await loadTodayPage(NOW, true);
     expect(page.items).toEqual([]);
     expect(page.failed).toHaveLength(6);
     expect(page.failed).toEqual(

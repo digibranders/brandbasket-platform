@@ -2,6 +2,7 @@ import { UserPlus } from "@phosphor-icons/react/dist/ssr";
 import type { Metadata } from "next";
 import Link from "next/link";
 import type { ReactElement } from "react";
+import { staffCan } from "@brandbasket/shared/lib/access";
 import { firstName } from "@brandbasket/shared/lib/names";
 import { buttonSecondary } from "@/components/console/buttons";
 import { Figures } from "@/components/console/figures";
@@ -20,11 +21,11 @@ export const metadata: Metadata = { title: "Today" };
 
 /** Everything that needs a person, the business at a glance, today's calls and whether every system is working. */
 export default async function TodayPage(): Promise<ReactElement> {
-  const { user } = await requireStaffAccess();
+  const { user, staff } = await requireStaffAccess();
   await logStaffAccess({ staffUserId: user.id, action: "today.view", targetType: "today" });
   const now = new Date();
   const endOfToday = todayRange(now).end;
-  const today = await loadTodayPage(now);
+  const today = await loadTodayPage(now, staffCan(staff.role, "money"));
   const late = today.items.filter((item) => item.dueAt !== null && item.dueAt.getTime() < now.getTime()).length;
 
   return (
