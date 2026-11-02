@@ -23,7 +23,7 @@ vi.mock("@/lib/server/project-launch", () => ({ LAUNCH_RESEND_WINDOW_MS: 7 * 24 
 vi.mock("./site-details", () => ({ SiteDetails: () => "[site details]" }));
 vi.mock("@/components/project-controls", () => ({ ProjectControls: () => "[project controls]" }));
 vi.mock("@/components/console/kickoff-call-section", () => ({ KickoffCallSection: () => "[kickoff call]" }));
-vi.mock("@/components/console/free-address-form", () => ({ FreeAddressForm: () => "[free address]" }));
+vi.mock("@/components/console/free-address-form", () => ({ FreeAddressForm: () => "[free address]", ChangeFreeAddressForm: () => "[change address]" }));
 vi.mock("@/components/console/website-section", () => ({ StartBuildingForm: () => "[start building]", WebsiteSection: () => "[website build]" }));
 vi.mock("@/app/(protected)/clients/[businessId]/actions", () => ({
   checkAddressAction: vi.fn(),

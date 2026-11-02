@@ -12,6 +12,16 @@ export async function findBusinessSlug(db: Database, businessId: string): Promis
   return rows[0]?.slug ?? null;
 }
 
+/** The hostname of the business's primary, non-removed domain, or null when it has none. */
+export async function findPrimaryHostname(db: Database, businessId: string): Promise<string | null> {
+  const rows = await db
+    .select({ hostname: domains.hostname })
+    .from(domains)
+    .where(and(eq(domains.businessId, businessId), eq(domains.isPrimary, true), isNull(domains.removedAt)))
+    .limit(1);
+  return rows[0]?.hostname ?? null;
+}
+
 /**
  * Gives a business a free `<name>.<base domain>` address as its primary domain, from the staff connection, for a business
  * whose build has no domain of its own yet. Mirrors the customer's temporary address (savePrimaryDomain): a pending primary
@@ -46,5 +56,29 @@ export async function saveFreeAddressForBusiness(
     if (!hasPostgresCode(error, UNIQUE_VIOLATION)) throw error;
     // Another request may have made the primary domain between the check above and this insert.
     return postgresConstraintOf(error) === ONE_PRIMARY_PER_BUSINESS ? "exists" : "taken";
+  }
+}
+
+/**
+ * Changes the hostname of a business's free address, from the staff connection: the primary non-removed domain keeps its row and
+ * goes back to `pending`, since a new address has not been checked yet. "none" means the business has no primary domain to
+ * change; "taken" means another business's live domain holds the hostname. The caller decides that the address is a free one
+ * and that its site is not live.
+ */
+export async function changeFreeAddressForBusiness(
+  db: Database,
+  input: { readonly businessId: string; readonly hostname: string },
+): Promise<"changed" | "none" | "taken"> {
+  const hostname = input.hostname.trim().toLowerCase();
+  try {
+    const rows = await db
+      .update(domains)
+      .set({ hostname, status: "pending", updatedAt: new Date() })
+      .where(and(eq(domains.businessId, input.businessId), eq(domains.isPrimary, true), isNull(domains.removedAt)))
+      .returning({ id: domains.id });
+    return rows.length > 0 ? "changed" : "none";
+  } catch (error) {
+    if (!hasPostgresCode(error, UNIQUE_VIOLATION)) throw error;
+    return "taken";
   }
 }
