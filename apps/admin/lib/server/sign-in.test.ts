@@ -10,7 +10,7 @@ import { logStaffAccess } from "./staff-access-log";
 
 // This module reaches a live database (via ./db and @brandbasket/db) and Better Auth (via ./auth), and
 // reads the incoming request (via next/headers). All of that is replaced with test doubles so
-// signInWithPassword's own decisions — parsing, rate-limit ordering, and error mapping — run in
+// signInWithPassword's own decisions: parsing, rate-limit ordering, and error mapping run in
 // isolation. `server-only` is mocked because ./auth and ./db import it; without a mock it throws
 // outside a genuine Next.js server context.
 //
