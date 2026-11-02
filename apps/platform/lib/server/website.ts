@@ -18,7 +18,9 @@ import { WEBSITE_PREVIEW_IMAGE_PATH } from "@/lib/website/tabs";
 import { getAppDb } from "./db";
 import { loadIntake } from "./intake";
 import { readLiveWebsite, type LiveWebsite } from "./onboarding";
-import { stillAhead } from "@/lib/home/due";
+import { dayStillAhead, stillAhead } from "@/lib/home/due";
+import type { SentChanges, SentVersion } from "@/lib/website/history";
+import { loadPreviewVersions, loadSentChanges } from "./preview-versions";
 import { quietly } from "./quietly";
 
 export interface WebsiteData {
@@ -30,6 +32,14 @@ export interface WebsiteData {
   /** The four rows under "What happens next". Empty when there is no project or the history could not be read. */
   readonly steps: readonly TimelineStep[];
   readonly view: ProgressView;
+  /** Every preview sent, newest first. Empty when none was sent or it could not be read. */
+  readonly versions: readonly SentVersion[];
+  /** The rounds of changes the customer sent, newest first. Empty when none or it could not be read. */
+  readonly changes: readonly SentChanges[];
+  /** The day the updated preview is due while changes are made (`YYYY-MM-DD`), only while it is still ahead. */
+  readonly previewDue: string | null;
+  /** The day staff plan to go live (`YYYY-MM-DD`), only while it is still ahead. */
+  readonly plannedLaunch: string | null;
   /** The preview picture's address, only when it was taken of the project's current preview link. */
   readonly pictureUrl: string | null;
 }
@@ -48,9 +58,9 @@ export async function loadWebsite(tenant: TenantContext, now: Date): Promise<Web
     return { project: latest, domain: await getPrimaryDomain(tx), live: await readLiveWebsite(tx) };
   });
 
-  const [history, picture] =
+  const [history, picture, versions, changes] =
     project === null
-      ? [null, null]
+      ? [null, null, [], []]
       : await Promise.all([
           quietly("website", "the project's history", null, () =>
             withTenantScope(db, tenant, async (tx) => ({
@@ -59,6 +69,8 @@ export async function loadWebsite(tenant: TenantContext, now: Date): Promise<Web
             })),
           ),
           quietly("website", "the preview picture", null, () => withTenantScope(db, tenant, (tx) => findPreviewImageInfo(tx))),
+          quietly("website", "the preview versions", [], () => loadPreviewVersions(tenant, project.id)),
+          quietly("website", "the changes sent", [], () => loadSentChanges(tenant, project.id)),
         ]);
 
   // A customer who answered the first questions is on the kickoff-first path: the setup checklist is not theirs to finish.
@@ -88,7 +100,7 @@ export async function loadWebsite(tenant: TenantContext, now: Date): Promise<Web
     project === null
       ? null
       : project.status === "revisions" && asked !== undefined
-        ? revisionDue(day(asked.at))
+        ? dayStillAhead(revisionDue(day(asked.at)), now)
         : (project.status === "submitted" || project.status === "building") && firstPreviewDue !== null
           ? day(firstPreviewDue)
           : null;
@@ -105,10 +117,14 @@ export async function loadWebsite(tenant: TenantContext, now: Date): Promise<Web
       roundsIncluded: project?.revisionRoundsIncluded ?? 0,
       roundsGranted: project?.revisionRoundsGranted ?? 0,
       previewDue,
-      liveBy: timeline === null ? null : (liveDate(timeline)?.liveBy ?? null),
+      liveBy: timeline === null ? null : dayStillAhead(liveDate(timeline)?.liveBy ?? null, now),
       kickoffFirst,
       kickoffDay: history?.callStartsAt == null ? null : day(history.callStartsAt),
     }),
+    versions,
+    changes,
+    previewDue,
+    plannedLaunch: dayStillAhead(project?.launchPlannedOn ?? null, now),
     pictureUrl: project !== null && picture !== null && picture.previewUrl === project.previewUrl ? `${WEBSITE_PREVIEW_IMAGE_PATH}?v=${picture.capturedAt.getTime()}` : null,
   };
 }

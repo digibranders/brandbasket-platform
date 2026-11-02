@@ -2,28 +2,32 @@ import { ArrowSquareOut } from "@phosphor-icons/react/dist/ssr";
 import Link from "next/link";
 import type { ReactElement } from "react";
 import { cn } from "@brandbasket/shared/lib/cn";
-import { safeExternalHref } from "@brandbasket/shared/lib/safe-link";
-import { DARK_BUTTON, LIFT } from "@/components/v2/classes";
+import { StatusWord } from "@/components/home/status-word";
+import { DARK_BUTTON, LIFT, SOFT_BUTTON } from "@/components/v2/classes";
 import { previewHost } from "@/lib/website/address";
+import type { ChangesView, InProgressRow, VersionRow } from "@/lib/website/history";
+import { askAboutHref } from "@/lib/website/tabs";
 import { PreviewApprove } from "./preview-approve";
 import { PreviewFeedback } from "./preview-feedback";
-import type { ProgressView } from "@/lib/website/progress-view";
-import { askAboutHref } from "@/lib/website/tabs";
 
-const CHIP = "w-fit rounded-md bg-sunken px-2 py-0.5 text-xs font-semibold text-ink";
-const TEXT_LINK = "w-fit text-[0.8125rem] font-semibold text-ink underline underline-offset-[3px]";
+const TEXT_LINK = "w-fit text-[0.9375rem] font-semibold text-ink underline underline-offset-[3px]";
 
-interface ProgressCardProps {
-  readonly view: ProgressView;
-  /** The picture of the current preview, or null when none was taken of it. */
+interface PreviewCardProps {
+  /** Every version we sent, newest first. */
+  readonly rows: readonly VersionRow[];
+  /** The version being made, while changes are in progress. */
+  readonly inProgress: InProgressRow | null;
+  /** The last round of changes the customer sent, or null when there is none. */
+  readonly changes: ChangesView | null;
+  /** The newest version is waiting for the customer: it carries Approve and Ask for changes. */
+  readonly reviewing: boolean;
+  /** The picture of the current preview, or null when none was taken of it. Drawn only while reviewing. */
   readonly pictureUrl: string | null;
   /** The preview link staff saved, or null. */
   readonly previewUrl: string | null;
   /** The site's address, or null when none is known yet. */
   readonly address: string | null;
   readonly businessName: string;
-  /** The live site's address, only once it is live. */
-  readonly liveHostname: string | null;
   /** A fresh key for the feedback form, so sending it twice by accident makes one ticket. */
   readonly feedbackKey: string;
   /** "Two rounds of changes are included.", shown under the feedback box. */
@@ -33,7 +37,7 @@ interface ProgressCardProps {
 }
 
 /** A browser window drawn with tokens: three dots and the preview's address, then the picture, or the site's name when there is none. */
-function BrowserFrame({ pictureUrl, previewUrl, address, businessName }: Pick<ProgressCardProps, "pictureUrl" | "previewUrl" | "address" | "businessName">): ReactElement {
+function BrowserFrame({ pictureUrl, previewUrl, address, businessName }: Pick<PreviewCardProps, "pictureUrl" | "previewUrl" | "address" | "businessName">): ReactElement {
   return (
     <div className="overflow-hidden rounded-[0.625rem] bg-sunken">
       <div className="flex items-center gap-1.5 px-3 py-2">
@@ -58,75 +62,114 @@ function BrowserFrame({ pictureUrl, previewUrl, address, businessName }: Pick<Pr
   );
 }
 
-/** The raised card at the top of Progress: for a preview, the picture and the three buttons; otherwise a status, its line and at most one way forward. */
-export function ProgressCard({ view, pictureUrl, previewUrl, address, businessName, liveHostname, feedbackKey, roundsLine, roundsUsedUp }: ProgressCardProps): ReactElement {
-  const previewing = view.kind === "preview";
-  const previewHref = previewUrl === null ? null : safeExternalHref(previewUrl);
-  const liveHref = liveHostname === null ? null : safeExternalHref(`https://${liveHostname}`);
+function OpenPreview({ href, primary }: { readonly href: string; readonly primary: boolean }): ReactElement {
   return (
-    <section aria-labelledby="progress-title" className={cn(LIFT, "grid content-start gap-4 p-5")}>
-      {previewing ? <BrowserFrame pictureUrl={pictureUrl} previewUrl={previewUrl} address={address} businessName={businessName} /> : null}
-      <div className="grid gap-2">
-        {previewing ? <span className={CHIP}>Ready to check</span> : null}
-        <h2 id="progress-title" className="font-display text-lg font-semibold tracking-[-0.02em] text-ink">
-          {view.title}
-        </h2>
-        {view.line === null ? null : <p className="text-[0.84375rem] leading-relaxed text-ink-2">{view.line}</p>}
+    <a href={href} target="_blank" rel="noopener noreferrer" className={primary ? DARK_BUTTON : SOFT_BUTTON}>
+      <ArrowSquareOut size={18} aria-hidden="true" />
+      Open preview
+    </a>
+  );
+}
+
+function VersionItem({ row, reviewing, answer }: { readonly row: VersionRow; readonly reviewing: boolean; readonly answer: ReactElement }): ReactElement {
+  const waiting = reviewing && row.newest;
+  return (
+    <li className="grid gap-4 py-4 first:pt-0 last:pb-0">
+      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-3">
+        <div className="min-w-0">
+          <p className="flex flex-wrap items-center gap-2 text-base font-semibold text-ink">
+            <span>Version {row.version}</span>
+            {row.live ? <StatusWord tone="ok">Live now</StatusWord> : null}
+          </p>
+          <p className="mt-0.5 break-words text-[0.9375rem] text-ink-2">
+            {row.host === null ? null : <>{row.host} &middot; </>}
+            Sent {row.sent}
+            {row.outcome === null ? null : <> &middot; {row.outcome}</>}
+          </p>
+        </div>
+        {row.href === null ? null : <OpenPreview href={row.href} primary={waiting} />}
       </div>
+      {waiting ? answer : null}
+    </li>
+  );
+}
 
-      {view.kind === "kickoff" ? (
-        <Link href="/" className={DARK_BUTTON}>
-          See your kickoff
-        </Link>
-      ) : null}
-
-      {view.kind === "setup" ? (
-        <Link href="/onboarding" className={DARK_BUTTON}>
-          Carry on setting up
-        </Link>
-      ) : null}
-
-      {previewing ? (
-        <>
-          {previewHref === null ? null : (
-            <a href={previewHref} target="_blank" rel="noopener noreferrer" className={DARK_BUTTON}>
-              <ArrowSquareOut size={18} aria-hidden="true" />
-              Open preview
-            </a>
-          )}
-          <PreviewApprove />
-          {roundsUsedUp ? (
-            <div className="grid gap-2">
-              <p className="text-[0.8125rem] text-ink-2">{roundsLine}</p>
-              <Link href={askAboutHref("")} className={TEXT_LINK}>
-                Ask for a change
-              </Link>
-            </div>
-          ) : (
-            <PreviewFeedback submissionKey={feedbackKey} roundsLine={roundsLine} />
-          )}
-        </>
-      ) : null}
-
-      {view.kind === "revising" ? (
-        <Link href="/requests" className={TEXT_LINK}>
-          See what you asked for
-        </Link>
-      ) : null}
-
-      {view.kind === "live" ? (
-        <>
-          {liveHref === null ? null : (
-            <a href={liveHref} target="_blank" rel="noopener noreferrer" className={DARK_BUTTON}>
-              <ArrowSquareOut size={18} aria-hidden="true" />
-              Open your website
-            </a>
-          )}
+/** The card on the Website page that holds every preview we sent, newest first, and the last round of changes the customer asked for. */
+export function PreviewCard({ rows, inProgress, changes, reviewing, pictureUrl, previewUrl, address, businessName, feedbackKey, roundsLine, roundsUsedUp }: PreviewCardProps): ReactElement {
+  const empty = rows.length === 0 && inProgress === null;
+  const answer = (
+    <div className="grid gap-3">
+      <PreviewApprove />
+      {roundsUsedUp ? (
+        <div className="grid gap-2">
+          <p className="text-[0.8125rem] text-ink-2">{roundsLine}</p>
           <Link href={askAboutHref("")} className={TEXT_LINK}>
             Ask for a change
           </Link>
-        </>
-      ) : null}
+        </div>
+      ) : (
+        <PreviewFeedback submissionKey={feedbackKey} roundsLine={roundsLine} />
+      )}
+    </div>
+  );
+  return (
+    <section aria-labelledby="preview-title" className={cn(LIFT, "grid content-start gap-5 p-5 md:p-6")}>
+      <div className="grid gap-1">
+        <h2 id="preview-title" className="font-display text-lg font-semibold tracking-[-0.02em] text-ink">
+          Your preview
+        </h2>
+        {empty ? null : <p className="text-[0.9375rem] text-ink-2">Every version we have sent you, newest first.</p>}
+      </div>
+
+      {reviewing ? <BrowserFrame pictureUrl={pictureUrl} previewUrl={previewUrl} address={address} businessName={businessName} /> : null}
+
+      {empty ? (
+        <p className="text-base text-ink-2">No preview has been sent yet.</p>
+      ) : (
+        <ul className="divide-y divide-line">
+          {inProgress === null ? null : (
+            <li className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 pb-4">
+              <div className="min-w-0">
+                <p className="text-base font-semibold text-ink">Version {inProgress.version}</p>
+                <p className="mt-0.5 text-[0.9375rem] text-ink-2">
+                  In progress
+                  {inProgress.readyBy === null ? null : (
+                    <>
+                      {" "}
+                      &middot; ready by {inProgress.readyBy}
+                    </>
+                  )}
+                </p>
+              </div>
+              <StatusWord tone="info">We are on it</StatusWord>
+            </li>
+          )}
+          {rows.map((row) => (
+            <VersionItem key={row.version} row={row} reviewing={reviewing} answer={answer} />
+          ))}
+        </ul>
+      )}
+
+      {changes === null ? null : (
+        <div className="grid gap-3 border-t border-line pt-5">
+          <h3 className="font-display text-[1.0625rem] font-semibold tracking-[-0.01em] text-ink">Your changes</h3>
+          <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 text-[0.9375rem] text-ink-2">
+            <p>
+              <span>
+                Round {changes.round} of {changes.of}
+              </span>{" "}
+              &middot; asked {changes.asked}
+            </p>
+            {changes.doneIn === null ? null : <p className="font-semibold text-ink">Done in Version {changes.doneIn}</p>}
+          </div>
+          {changes.text === null ? null : (
+            <blockquote className="line-clamp-6 whitespace-pre-line break-words rounded-lg bg-sunken px-4 py-3 text-base leading-relaxed text-ink">{changes.text}</blockquote>
+          )}
+          <Link href={changes.requestHref} className={TEXT_LINK}>
+            See your request
+          </Link>
+        </div>
+      )}
     </section>
   );
 }
