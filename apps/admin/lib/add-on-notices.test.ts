@@ -16,7 +16,7 @@ describe("the client page's add-on notices", () => {
   });
 
   it("scrolls back to the Add-ons section", () => {
-    expect(addOnNoticeHref("abc", "contacted")).toBe("/clients/abc?addOns=contacted#add-ons");
+    expect(addOnNoticeHref("abc", "contacted")).toBe("/clients/abc/billing?addOns=contacted#add-ons");
   });
 
   it("calls only a change that happened a success", () => {

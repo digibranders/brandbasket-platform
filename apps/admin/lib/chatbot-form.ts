@@ -104,7 +104,7 @@ export function readChatbotStatus(value: FormDataEntryValue | null): ChatbotStat
 }
 
 export function chatbotNoticeHref(businessId: string, notice: ChatbotNotice): string {
-  return `/clients/${businessId}?chatbots=${notice}#chatbots`;
+  return `/clients/${businessId}/billing?chatbots=${notice}#chatbots`;
 }
 
 /** The notice the address names, or null. */

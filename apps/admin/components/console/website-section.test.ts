@@ -93,7 +93,7 @@ describe("StartBuildingForm", () => {
 });
 
 describe("WebsiteSection facts", () => {
-  it("does not repeat the status and dates the Delivery tab already shows", async () => {
+  it("does not repeat the status and dates the Website tab already shows", async () => {
     vi.mocked(loadWebsiteBuild).mockResolvedValue({
       project: project("preview", {
         onboardingSubmittedAt: new Date("2026-10-20T06:30:00Z"),

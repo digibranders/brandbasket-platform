@@ -28,7 +28,7 @@ export const BUSINESS_MODULE_NOTICES: Readonly<Record<BusinessModuleNotice, { re
 
 /** `#features` scrolls the reader straight to the Features section, since the notice renders inside it. */
 export function businessModuleNoticeHref(businessId: string, notice: BusinessModuleNotice): string {
-  return `/clients/${businessId}?features=${notice}#features`;
+  return `/clients/${businessId}/website?features=${notice}#features`;
 }
 
 export function readBusinessModuleNotice(value: string | string[] | undefined): BusinessModuleNotice | null {

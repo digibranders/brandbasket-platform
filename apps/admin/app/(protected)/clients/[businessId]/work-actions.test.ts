@@ -139,7 +139,7 @@ describe("every action", () => {
 
 describe("addDeliverableAction", () => {
   it("stores the picture under deliverables/{id}/display, inserts it, logs and returns to the section", async () => {
-    await expect(addDeliverableAction(form({ ...POST, picture: picture() }))).rejects.toThrow(`redirect:/clients/${BUSINESS}?work=added#work`);
+    await expect(addDeliverableAction(form({ ...POST, picture: picture() }))).rejects.toThrow(`redirect:/clients/${BUSINESS}/billing?work=added#work`);
     const input = vi.mocked(insertDeliverable).mock.calls[0]?.[1];
     expect(input?.businessId).toBe(BUSINESS);
     expect(input?.kind).toBe("post");
@@ -193,7 +193,7 @@ describe("saveDeliverableAction", () => {
   const SAVE = { ...POST, id: ITEM, title: "New title" };
 
   it("updates one deliverable of this business and logs", async () => {
-    await expect(saveDeliverableAction(form(SAVE))).rejects.toThrow(`redirect:/clients/${BUSINESS}?work=saved#work`);
+    await expect(saveDeliverableAction(form(SAVE))).rejects.toThrow(`redirect:/clients/${BUSINESS}/billing?work=saved#work`);
     expect(findDeliverableForStaff).toHaveBeenCalledWith(DB, ITEM);
     expect(updateDeliverableFields).toHaveBeenCalledWith(DB, { id: ITEM, businessId: BUSINESS, title: "New title", caption: "Come in", dueOn: "2026-11-01", linkUrl: null, picture: undefined, now: NOW });
     expect(logStaffAccessOrThrow).toHaveBeenCalledWith(AUDIT("deliverable.save"));
@@ -260,7 +260,7 @@ describe("moveDeliverableAction", () => {
   const move = (move: string, extra: Record<string, string> = {}) => moveDeliverableAction(form({ businessId: BUSINESS, id: ITEM, move, ...extra }));
 
   it("sends a ready planned post for approval", async () => {
-    await expect(move("send")).rejects.toThrow(`redirect:/clients/${BUSINESS}?work=moved#work`);
+    await expect(move("send")).rejects.toThrow(`redirect:/clients/${BUSINESS}/billing?work=moved#work`);
     expect(moveDeliverable).toHaveBeenCalledWith(DB, { id: ITEM, businessId: BUSINESS, to: "awaiting_approval", now: NOW });
     expect(logStaffAccessOrThrow).toHaveBeenCalledWith(AUDIT("deliverable.send"));
     expect(addActivityEvent).not.toHaveBeenCalled();
@@ -359,7 +359,7 @@ describe("deleteDeliverableAction", () => {
 
   it("deletes a planned item and its file, then logs", async () => {
     vi.mocked(deleteDeliverable).mockResolvedValue({ imageKey: `deliverables/${ITEM}/display` });
-    await expect(del()).rejects.toThrow(`redirect:/clients/${BUSINESS}?work=deleted#work`);
+    await expect(del()).rejects.toThrow(`redirect:/clients/${BUSINESS}/billing?work=deleted#work`);
     expect(deleteDeliverable).toHaveBeenCalledWith(DB, { id: ITEM, businessId: BUSINESS });
     expect(deleteMediaFiles).toHaveBeenCalledWith({ put, get }, [`deliverables/${ITEM}/display`]);
     expect(logStaffAccessOrThrow).toHaveBeenCalledWith(AUDIT("deliverable.delete"));
@@ -382,7 +382,7 @@ describe("reports", () => {
   const REPORT = { businessId: BUSINESS, service: "search", month: "2026-10", url: "https://reports.example/oct" };
 
   it("saves one report link for a bought service and month", async () => {
-    await expect(saveReportAction(form(REPORT))).rejects.toThrow(`redirect:/clients/${BUSINESS}?work=report-saved#work`);
+    await expect(saveReportAction(form(REPORT))).rejects.toThrow(`redirect:/clients/${BUSINESS}/billing?work=report-saved#work`);
     expect(upsertMonthlyReport).toHaveBeenCalledWith(DB, { businessId: BUSINESS, service: "search", month: "2026-10-01", url: "https://reports.example/oct", staffId: "staff-1", now: NOW });
     expect(logStaffAccessOrThrow).toHaveBeenCalledWith(AUDIT("report.save"));
   });

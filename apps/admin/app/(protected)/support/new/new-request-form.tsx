@@ -15,7 +15,7 @@ const CATEGORY_OPTIONS: readonly SelectOption[] = SUPPORT_CATEGORIES.map((value)
 
 interface NewRequestFormProps {
   readonly clients: readonly SelectOption[];
-  /** A client chosen by the link that opened this page (a client page's Requests tab), or "". */
+  /** A client chosen by the link that opened this page (a client page's Messages tab), or "". */
   readonly preselected: string;
   readonly submissionKey: string;
 }

@@ -94,7 +94,7 @@ function StageBody({ businessId, status, rounds, latestFeedback, goLive }: Omit<
       return (
         <>
           {latestFeedback === null ? (
-            <p className="mt-3 max-w-xl text-sm text-ink-2">They asked for changes. What they wrote is in Requests.</p>
+            <p className="mt-3 max-w-xl text-sm text-ink-2">They asked for changes. What they wrote is in Messages.</p>
           ) : (
             <QuotedFeedback feedback={latestFeedback} rounds={rounds} />
           )}

@@ -102,7 +102,7 @@ export const ADD_ON_NOTICES: Readonly<Record<AddOnNotice, { readonly text: strin
 
 /** `#add-ons` scrolls the reader to the Add-ons section, since the notice renders inside it. */
 export function addOnNoticeHref(businessId: string, notice: AddOnNotice): string {
-  return `/clients/${businessId}?addOns=${notice}#add-ons`;
+  return `/clients/${businessId}/billing?addOns=${notice}#add-ons`;
 }
 
 /** The notice's words. The kept plan's start day is read when the page is drawn; once the plan has started there is none to say. */

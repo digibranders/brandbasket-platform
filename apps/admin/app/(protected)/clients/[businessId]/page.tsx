@@ -50,7 +50,7 @@ export default async function ClientOverviewPage({
     findClientIntake(db, client.businessId),
   ]);
   const next = overviewNextStep(client, now);
-  const projectHref = clientTabHref(client.businessId, "project");
+  const websiteHref = clientTabHref(client.businessId, "website");
   const done = new Set(client.completedSteps);
 
   return (
@@ -65,8 +65,8 @@ export default async function ClientOverviewPage({
           ) : (
             <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
               <p className="text-sm font-semibold text-ink">{next.label}</p>
-              <Link href={next.anchor === null ? projectHref : `${projectHref}#${next.anchor}`} className={buttonPrimary}>
-                Open project
+              <Link href={next.anchor === null ? websiteHref : `${websiteHref}#${next.anchor}`} className={buttonPrimary}>
+                Open website
               </Link>
             </div>
           )}
@@ -75,7 +75,7 @@ export default async function ClientOverviewPage({
         <section aria-labelledby="recent-title">
           <h2 id="recent-title" className={`${SECTION_TITLE} flex items-baseline justify-between`}>
             What happened
-            <Link href={clientTabHref(client.businessId, "activity")} className="text-xs font-semibold text-ink-2 hover:text-ink">
+            <Link href={`${clientTabHref(client.businessId, "requests")}#activity`} className="text-xs font-semibold text-ink-2 hover:text-ink">
               All activity
             </Link>
           </h2>

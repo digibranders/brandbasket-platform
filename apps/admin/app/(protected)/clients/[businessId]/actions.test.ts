@@ -178,14 +178,14 @@ describe("saveListingPlacementAction", () => {
     ["listing", "place-taken"],
   ] as const)("says why a business could not be taken over (%s)", async (reason, notice) => {
     vi.mocked(saveListingPlacement).mockRejectedValue(new ListingPlaceTakenError("k7m2q9a", reason));
-    await expect(saveListingPlacementAction(form(PLACEMENT))).rejects.toThrow(`redirect:/clients/${BUSINESS}?listing=${notice}#listing`);
+    await expect(saveListingPlacementAction(form(PLACEMENT))).rejects.toThrow(`redirect:/clients/${BUSINESS}/website?listing=${notice}#listing`);
   });
 });
 
 describe("the add-on actions", () => {
   const ROW = "01a0f71b-8402-7d48-a90a-207e8c8a8800";
   const RELEASE = "01a0f71b-8402-7d48-a90a-207e8c8a8811";
-  const NOTICE = (notice: string): string => `redirect:/clients/${BUSINESS}?addOns=${notice}#add-ons`;
+  const NOTICE = (notice: string): string => `redirect:/clients/${BUSINESS}/billing?addOns=${notice}#add-ons`;
   const END = { businessId: BUSINESS, addOnSubscriptionId: ROW, kind: "pause", confirm: "yes" };
 
   beforeEach(() => {
@@ -317,7 +317,7 @@ describe("the client's Verified and Trusted tags", () => {
   it("gives Trusted under the listing's own key and the client's shown name, never a key from the form", async () => {
     vi.mocked(trustDirectoryBusiness).mockResolvedValue(true);
     await expect(giveClientTrustedAction(form({ businessId: BUSINESS, listingKey: "gyms/thane/other/not-this-one" }))).rejects.toThrow(
-      `redirect:/clients/${BUSINESS}?tags=trusted#listing`,
+      `redirect:/clients/${BUSINESS}/website?tags=trusted#listing`,
     );
     expect(trustDirectoryBusiness).toHaveBeenCalledWith(
       DB,
@@ -328,19 +328,19 @@ describe("the client's Verified and Trusted tags", () => {
 
   it("says nothing changed when the client already had the tag", async () => {
     vi.mocked(trustDirectoryBusiness).mockResolvedValue(false);
-    await expect(giveClientTrustedAction(form({ businessId: BUSINESS }))).rejects.toThrow(`redirect:/clients/${BUSINESS}?tags=unchanged#listing`);
+    await expect(giveClientTrustedAction(form({ businessId: BUSINESS }))).rejects.toThrow(`redirect:/clients/${BUSINESS}/website?tags=unchanged#listing`);
   });
 
   it("takes Trusted away without touching the verification", async () => {
     vi.mocked(setDirectoryTrusted).mockResolvedValue(true);
-    await expect(removeClientTrustedAction(form({ businessId: BUSINESS }))).rejects.toThrow(`redirect:/clients/${BUSINESS}?tags=untrusted#listing`);
+    await expect(removeClientTrustedAction(form({ businessId: BUSINESS }))).rejects.toThrow(`redirect:/clients/${BUSINESS}/website?tags=untrusted#listing`);
     expect(setDirectoryTrusted).toHaveBeenCalledWith(DB, KEY, false, expect.any(Date));
     expect(upsertDirectoryVerification).not.toHaveBeenCalled();
   });
 
   it("gives Verified with no number of its own, since the website uses the client's", async () => {
     vi.mocked(upsertDirectoryVerification).mockResolvedValue({ replaced: false });
-    await expect(giveClientVerifiedAction(form({ businessId: BUSINESS }))).rejects.toThrow(`redirect:/clients/${BUSINESS}?tags=verified#listing`);
+    await expect(giveClientVerifiedAction(form({ businessId: BUSINESS }))).rejects.toThrow(`redirect:/clients/${BUSINESS}/website?tags=verified#listing`);
     expect(upsertDirectoryVerification).toHaveBeenCalledWith(DB, expect.objectContaining({ listingKey: KEY, phone: null, staffUserId: "staff-2" }));
     expect(vi.mocked(upsertDirectoryVerification).mock.calls[0]?.[1]).not.toHaveProperty("trusted");
   });
@@ -348,7 +348,7 @@ describe("the client's Verified and Trusted tags", () => {
   it("does nothing for a client with no listing yet", async () => {
     vi.mocked(findListingPlacement).mockResolvedValue(null);
     for (const action of [giveClientVerifiedAction, giveClientTrustedAction, removeClientTrustedAction]) {
-      await expect(action(form({ businessId: BUSINESS }))).rejects.toThrow(`redirect:/clients/${BUSINESS}?tags=no_listing#listing`);
+      await expect(action(form({ businessId: BUSINESS }))).rejects.toThrow(`redirect:/clients/${BUSINESS}/website?tags=no_listing#listing`);
     }
     expect(trustDirectoryBusiness).not.toHaveBeenCalled();
     expect(setDirectoryTrusted).not.toHaveBeenCalled();
@@ -374,7 +374,7 @@ describe("checkAddressAction", () => {
 
   it("says to add an address first when the client has none, and checks nothing", async () => {
     vi.mocked(findClientDetail).mockResolvedValue({ domain: null } as never);
-    await expect(checkAddressAction(form({ businessId: BUSINESS }))).rejects.toThrow(`redirect:/clients/${BUSINESS}?launch=check-no-domain`);
+    await expect(checkAddressAction(form({ businessId: BUSINESS }))).rejects.toThrow(`redirect:/clients/${BUSINESS}/website?launch=check-no-domain`);
     expect(checkSiteAddress).not.toHaveBeenCalled();
     expect(recordStaffAction).not.toHaveBeenCalled();
   });
@@ -382,7 +382,7 @@ describe("checkAddressAction", () => {
   it("checks the client's domain, records the result and says it loads", async () => {
     vi.mocked(findClientDetail).mockResolvedValue({ domain: { hostname: HOST, status: "active" } } as never);
     vi.mocked(checkSiteAddress).mockResolvedValue({ ok: true, status: 200 });
-    await expect(checkAddressAction(form({ businessId: BUSINESS }))).rejects.toThrow(`redirect:/clients/${BUSINESS}?launch=check-ok`);
+    await expect(checkAddressAction(form({ businessId: BUSINESS }))).rejects.toThrow(`redirect:/clients/${BUSINESS}/website?launch=check-ok`);
     expect(checkSiteAddress).toHaveBeenCalledWith(HOST);
     expect(recordStaffAction).toHaveBeenCalledWith(
       STAFF,
@@ -393,7 +393,7 @@ describe("checkAddressAction", () => {
   it("says the address did not load, with the reason recorded", async () => {
     vi.mocked(findClientDetail).mockResolvedValue({ domain: { hostname: HOST, status: "active" } } as never);
     vi.mocked(checkSiteAddress).mockResolvedValue({ ok: false, reason: "tls" });
-    await expect(checkAddressAction(form({ businessId: BUSINESS }))).rejects.toThrow(`redirect:/clients/${BUSINESS}?launch=check-failed`);
+    await expect(checkAddressAction(form({ businessId: BUSINESS }))).rejects.toThrow(`redirect:/clients/${BUSINESS}/website?launch=check-failed`);
     expect(recordStaffAction).toHaveBeenCalledWith(
       STAFF,
       expect.objectContaining({ data: expect.objectContaining({ ok: false, reason: "tls", status: null }) }),

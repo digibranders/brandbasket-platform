@@ -28,7 +28,7 @@ export const INVOICE_NOTICES: Readonly<Record<InvoiceNotice, { readonly text: st
 
 /** `#tax-invoices` scrolls the reader to the Tax invoices section, since the notice renders inside it. */
 export function invoiceNoticeHref(businessId: string, notice: InvoiceNotice): string {
-  return `/clients/${businessId}?invoice=${notice}#tax-invoices`;
+  return `/clients/${businessId}/billing?invoice=${notice}#tax-invoices`;
 }
 
 export function readInvoiceNotice(value: string | string[] | undefined): InvoiceNotice | null {

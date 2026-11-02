@@ -66,7 +66,7 @@ export const PROJECT_LAUNCH_NOTICES: Readonly<Record<ProjectLaunchNotice, { read
 };
 
 export function projectLaunchNoticeHref(businessId: string, notice: ProjectLaunchNotice): string {
-  return `/clients/${businessId}?launch=${notice}`;
+  return `/clients/${businessId}/website?launch=${notice}`;
 }
 
 export function readProjectLaunchNotice(value: string | string[] | undefined): ProjectLaunchNotice | null {

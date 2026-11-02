@@ -43,7 +43,7 @@ describe("website move notices", () => {
   });
 
   it("points the console back to the client's Website section", () => {
-    expect(websiteMoveHref("biz-1", "paused")).toBe("/clients/biz-1?build=paused#website-build");
+    expect(websiteMoveHref("biz-1", "paused")).toBe("/clients/biz-1/website?build=paused#website-build");
   });
 
   it("reads only the known notices", () => {
