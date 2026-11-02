@@ -3,17 +3,17 @@ import type { TenantContext } from "@brandbasket/shared/lib/access";
 import { ONBOARDING_LOCKED_MESSAGE } from "@/lib/onboarding/form-state";
 import { BRAND } from "@/lib/brand";
 import { isAppOrigin, resolveSurface, type SurfaceOrigins } from "@/lib/surfaces";
-import { parseUploadFileName } from "@/lib/uploads/file-name";
+import { parseUploadFileName } from "@brandbasket/shared/lib/uploads/file-name";
 import {
   isUploadPurpose,
   MAX_UPLOAD_BYTES,
   TOO_LARGE_MESSAGE,
   UPLOAD_FILE_NAME_HEADER,
   type UploadPurpose,
-} from "@/lib/uploads/limits";
-import type { UploadRejection } from "./media-upload";
+} from "@brandbasket/shared/lib/uploads/limits";
+import { UPLOAD_REJECTION_STATUS } from "@brandbasket/shared/server/media-upload";
 import type { ReceivedUpload, UploadAllowance, UploadedAsset, UploadOutcome, UploadRefusal } from "./onboarding-media";
-import { BodyTooLargeError, readLimitedBody } from "./read-limited-body";
+import { BodyTooLargeError, readLimitedBody } from "@brandbasket/shared/server/read-limited-body";
 
 /**
  * `POST /api/uploads`: one logo or photo per request, sent as the raw image bytes. The checks that need no database
@@ -62,15 +62,6 @@ export interface DecodeBusy {
 export type UploadResponseBody = { readonly asset: UploadedAsset } | { readonly error: string };
 
 const CONTENT_LENGTH = /^\d{1,15}$/;
-
-/** The status each reason an image is not stored answers with, shared by every image upload route. */
-export const UPLOAD_REJECTION_STATUS: Readonly<Record<UploadRejection, number>> = {
-  empty: 422,
-  "too-large": 413,
-  "unsupported-type": 415,
-  unreadable: 422,
-  busy: 503,
-};
 
 const REFUSAL_STATUS: Readonly<Record<UploadRefusal, number>> = {
   ...UPLOAD_REJECTION_STATUS,

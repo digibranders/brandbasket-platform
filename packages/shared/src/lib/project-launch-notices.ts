@@ -14,6 +14,10 @@ export type ProjectLaunchNotice =
   | "resend-failed"
   | "resend-not-allowed"
   | "address-saved"
+  | "address-changed"
+  | "address-invalid"
+  | "address-taken"
+  | "address-locked"
   | "address-unavailable"
   | "check-ok"
   | "check-failed"
@@ -53,6 +57,13 @@ export const PROJECT_LAUNCH_NOTICES: Readonly<Record<ProjectLaunchNotice, { read
     ok: false,
   },
   "address-saved": { text: "Their free address is saved.", ok: true },
+  "address-changed": { text: "Their free address is changed.", ok: true },
+  "address-invalid": {
+    text: "That name cannot be used. Use 3 to 40 letters, numbers or single hyphens, and not a name we keep for ourselves.",
+    ok: false,
+  },
+  "address-taken": { text: "Another business already has that address. Try a different name.", ok: false },
+  "address-locked": { text: "Nothing changed: the website is live on this address, or the business has no free address.", ok: false },
   "address-unavailable": {
     text: "No free address could be made. Check the site address setting or add the domain another way.",
     ok: false,

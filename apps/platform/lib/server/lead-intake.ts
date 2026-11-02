@@ -4,7 +4,7 @@ import { isHoneypotFilled, parseLeadForm } from "@brandbasket/shared/lib/lead-fo
 import { businessDetails } from "@brandbasket/shared/lib/site-config";
 import { parsePhoneEntry } from "@brandbasket/shared/lib/validation/phone";
 import { contactEnquiryRequestSchema, LEAD_REQUEST_FIELDS, leadApiRequestSchema, type LeadApiResponse } from "@/lib/leads-api";
-import { BodyTooLargeError, readLimitedBody } from "./read-limited-body";
+import { BodyTooLargeError, readLimitedBody } from "@brandbasket/shared/server/read-limited-body";
 import { hasValidWebsiteToken } from "./website-api-auth";
 
 /** Eight fields of at most 2,000 characters each fit well inside this, even as multi-byte UTF-8. */

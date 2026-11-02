@@ -1,4 +1,4 @@
-import { BodyTooLargeError, readLimitedBody } from "@/lib/server/read-limited-body";
+import { BodyTooLargeError, readLimitedBody } from "@brandbasket/shared/server/read-limited-body";
 import { handleOyeChatsWebhook, type OyeChatsWebhookResult } from "@/lib/server/oyechats-webhook";
 import { noteWebhook } from "@/lib/server/webhook-log";
 import { failureReason } from "@/lib/webhook-event";

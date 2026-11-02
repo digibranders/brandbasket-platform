@@ -1,5 +1,6 @@
-import { and, asc, eq, isNull, sql } from "drizzle-orm";
+import { and, asc, eq, inArray, isNull, sql } from "drizzle-orm";
 import { uuidv7 } from "uuidv7";
+import type { Database } from "../client";
 import type { ScopedTransaction } from "../scope";
 import { mediaAssets, type MediaAssetPurpose, type MediaAssetStatus } from "../schema";
 import { lockOnboardingProject, lockOnboardingProjectExclusively } from "./onboarding-data";
@@ -277,4 +278,67 @@ export async function removeBrandAsset(tx: ScopedTransaction, mediaId: string): 
     .where(and(eq(mediaAssets.id, mediaId), eq(mediaAssets.businessId, businessId), isNull(mediaAssets.deletedAt)))
     .returning({ storageKey: mediaAssets.storageKey });
   return rows[0]?.storageKey ?? null;
+}
+
+// ---------------------------------------------------------------------------------------------------------------
+// Brand assets added by staff
+// ---------------------------------------------------------------------------------------------------------------
+
+/**
+ * recordBrandAsset from the staff connection, for the business named: the same rules (a photo is refused with
+ * PhotoLimitReachedError at `maxPhotos`, a new logo replaces the old one) and the same per-business lock, so a staff upload
+ * and the customer's own upload run one after the other. There is no row-level security on this connection, so every
+ * statement names the business.
+ */
+export async function recordBrandAssetForStaff(
+  db: Database,
+  businessId: string,
+  input: NewMediaAsset,
+  limits: UploadLimits,
+): Promise<RecordedUpload> {
+  if (!isUuid(input.id)) throw new Error(`Media asset id must be a UUID, received "${input.id}"`);
+  if (!isUuid(businessId)) throw new Error(`Business id must be a UUID, received "${businessId}"`);
+  return db.transaction(async (tx) => {
+    await tx.execute(sql`select pg_advisory_xact_lock(hashtextextended(${`brand-assets:${businessId}`}, 0))`);
+    const existing = await tx
+      .select({ id: mediaAssets.id, storageKey: mediaAssets.storageKey })
+      .from(mediaAssets)
+      .where(
+        and(
+          eq(mediaAssets.businessId, businessId),
+          eq(mediaAssets.purpose, input.purpose),
+          eq(mediaAssets.status, "ready"),
+          isNull(mediaAssets.deletedAt),
+        ),
+      );
+    if (input.purpose === "photo" && existing.length >= limits.maxPhotos) throw new PhotoLimitReachedError(limits.maxPhotos);
+
+    const rows = await tx
+      .insert(mediaAssets)
+      .values({
+        id: input.id,
+        businessId,
+        purpose: input.purpose,
+        storageKey: input.storageKey,
+        originalFilename: input.originalFilename,
+        mimeType: input.mimeType,
+        bytes: input.bytes,
+        width: input.width,
+        height: input.height,
+        sha256: input.sha256,
+        altText: input.altText,
+        status: "ready",
+        uploadedByUserId: input.uploadedByUserId,
+      })
+      .returning(MEDIA_COLUMNS);
+    const asset = rows[0];
+    if (asset === undefined) throw new Error("Media asset insert returned no row");
+    if (input.purpose !== "logo" || existing.length === 0) return { asset, replacedStorageKeys: [] };
+
+    await tx
+      .update(mediaAssets)
+      .set({ deletedAt: new Date() })
+      .where(and(eq(mediaAssets.businessId, businessId), inArray(mediaAssets.id, existing.map((previous) => previous.id))));
+    return { asset, replacedStorageKeys: existing.map((previous) => previous.storageKey) };
+  });
 }
