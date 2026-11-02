@@ -1,5 +1,5 @@
 import "server-only";
-import { clearSiteSetting, findSiteSettingWithEditor, saveSiteSetting } from "@brandbasket/db";
+import { clearSiteSetting, findSiteSettingWithEditor, REVISION_ROUNDS_KEY, revisionRoundsFromSetting, saveSiteSetting } from "@brandbasket/db";
 import { SETUP_CALL_URL_KEY } from "@brandbasket/shared/lib/setup-call-link";
 import { getStaffDb } from "./db";
 
@@ -26,4 +26,28 @@ export async function saveSetupCallUrl(input: { readonly url: string | null; rea
     return;
   }
   await saveSiteSetting(db, { key: SETUP_CALL_URL_KEY, value: input.url, staffUserId: input.staffUserId, now });
+}
+
+export interface RevisionRoundsSetting {
+  readonly rounds: number;
+  /** False while nobody has saved it, so the number shown is the default. */
+  readonly isSaved: boolean;
+  readonly changedAt: Date | null;
+  readonly changedBy: string | null;
+}
+
+/** The rounds of changes a new build includes, as it stands, for the Settings page. */
+export async function loadRevisionRoundsSetting(): Promise<RevisionRoundsSetting> {
+  const setting = await findSiteSettingWithEditor(getStaffDb(), REVISION_ROUNDS_KEY);
+  return {
+    rounds: revisionRoundsFromSetting(setting?.value ?? null),
+    isSaved: setting !== null,
+    changedAt: setting?.updatedAt ?? null,
+    changedBy: setting?.updatedByEmail ?? null,
+  };
+}
+
+/** Saves the rounds a new build includes. The caller has already read and checked the number. */
+export async function saveRevisionRounds(input: { readonly rounds: number; readonly staffUserId: string }, now: Date): Promise<void> {
+  await saveSiteSetting(getStaffDb(), { key: REVISION_ROUNDS_KEY, value: String(input.rounds), staffUserId: input.staffUserId, now });
 }

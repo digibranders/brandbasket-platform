@@ -4,6 +4,7 @@ import { GatedSubmitButton } from "@brandbasket/shared/ui/forms/submit-gate";
 import { LocalDateTime } from "@brandbasket/shared/ui/panel/local-date-time";
 import { staffCan } from "@brandbasket/shared/lib/access";
 import { MAX_SETUP_CALL_URL_LENGTH, SETUP_CALL_URL_FIELD } from "@brandbasket/shared/lib/setup-call-link";
+import { MAX_REVISION_ROUNDS, MIN_REVISION_ROUNDS, REVISION_ROUNDS_FIELD } from "@brandbasket/db/revision-rounds";
 import { MAX_TEAMS_URL_LENGTH, TEAMS_DESTINATION_FIELD, TEAMS_DESTINATION_INFO, TEAMS_DESTINATIONS, TEAMS_URL_FIELD } from "@brandbasket/shared/lib/teams-webhook";
 import { buttonDanger, buttonPrimary, buttonSecondary } from "@/components/console/buttons";
 import { fieldClasses, hintClasses, labelClasses } from "@/components/console/field-styles";
@@ -14,14 +15,14 @@ import { Quiet, Section } from "@/components/console/section";
 import { findLatestWebsiteLeadAt } from "@brandbasket/db";
 import { getStaffDb } from "@/lib/server/db";
 import { readSettingsNotice, SETTINGS_NOTICES } from "@/lib/settings-notices";
-import { loadSetupCallSetting } from "@/lib/server/settings-admin";
+import { loadRevisionRoundsSetting, loadSetupCallSetting } from "@/lib/server/settings-admin";
 import { requireStaffAccess } from "@/lib/server/staff-access";
 import { loadTeamsStates } from "@/lib/server/teams-admin";
-import { removeTeamsWebhookAction, saveSetupCallUrlAction, saveTeamsWebhookAction, testTeamsWebhookAction } from "./actions";
+import { removeTeamsWebhookAction, saveRevisionRoundsAction, saveSetupCallUrlAction, saveTeamsWebhookAction, testTeamsWebhookAction } from "./actions";
 
 export const metadata: Metadata = { title: "Settings" };
 
-/** What staff can change without a developer: where the Book a call button on the dashboard goes, and where alerts are sent. */
+/** What staff can change without a developer: where the Book a call button on the dashboard goes, how many rounds of changes a new build includes, and where alerts are sent. */
 export default async function SettingsPage({
   searchParams,
 }: {
@@ -29,10 +30,12 @@ export default async function SettingsPage({
 }): Promise<ReactElement> {
   const { staff } = await requireStaffAccess();
   const canSetAlerts = staffCan(staff.role, "integrations");
-  const [setting, params, teams, latestWebsiteLead] = await Promise.all([
+  const canSetBuildRules = staffCan(staff.role, "buildRules");
+  const [setting, params, teams, rounds, latestWebsiteLead] = await Promise.all([
     loadSetupCallSetting(),
     searchParams,
     canSetAlerts ? loadTeamsStates() : null,
+    canSetBuildRules ? loadRevisionRoundsSetting() : null,
     findLatestWebsiteLeadAt(getStaffDb()),
   ]);
   const notice = readSettingsNotice(params.saved);
@@ -87,6 +90,44 @@ export default async function SettingsPage({
           </p>
         )}
       </Section>
+
+      {rounds === null ? null : (
+        <Section id="revision-rounds" title="Rounds of changes" aside="Admins only">
+          <form action={saveRevisionRoundsAction} className="max-w-2xl">
+            <label htmlFor="revision-rounds-input" className={labelClasses}>
+              Rounds included in a new build
+            </label>
+            <input
+              id="revision-rounds-input"
+              name={REVISION_ROUNDS_FIELD}
+              type="number"
+              inputMode="numeric"
+              min={MIN_REVISION_ROUNDS}
+              max={MAX_REVISION_ROUNDS}
+              step={1}
+              required
+              defaultValue={rounds.rounds}
+              className={`${fieldClasses} max-w-32`}
+            />
+            <p className={hintClasses}>
+              Each time a customer sends changes on a preview, one round is used. When they are all used, the customer cannot send
+              another until you give that build an extra round from its project page. Builds already under way keep the number they
+              started with. From {MIN_REVISION_ROUNDS} to {MAX_REVISION_ROUNDS}.
+            </p>
+            <GatedSubmitButton className={`${buttonPrimary} mt-5`} pendingLabel="Saving…">
+              Save rounds
+            </GatedSubmitButton>
+          </form>
+          <p className="mt-6 text-sm text-ink-soft">
+            {rounds.isSaved ? null : "Not saved yet, so new builds use the default. "}
+            {rounds.changedAt === null ? null : (
+              <>
+                Last changed {rounds.changedBy === null ? "" : `by ${rounds.changedBy} `}on <LocalDateTime iso={rounds.changedAt.toISOString()} variant="timestamp" />
+              </>
+            )}
+          </p>
+        </Section>
+      )}
 
       <Section id="website-form" title="Website form" aside={latestWebsiteLead === null ? "Nothing received yet" : "Reaching us"}>
         {latestWebsiteLead === null ? (

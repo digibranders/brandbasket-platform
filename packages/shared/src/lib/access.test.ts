@@ -77,6 +77,12 @@ describe("staffCan", () => {
     expect(staffCan("finance", "integrations")).toBe(false);
   });
 
+  it("keeps the build rules (rounds of changes included) to admins", () => {
+    expect(staffCan("support", "buildRules")).toBe(false);
+    expect(staffCan("finance", "buildRules")).toBe(false);
+    expect(staffCan("admin", "buildRules")).toBe(true);
+  });
+
   it("lets an admin do everything, in every capability that exists", () => {
     for (const capability of Object.keys(STAFF_CAPABILITIES) as (keyof typeof STAFF_CAPABILITIES)[]) {
       expect(staffCan("admin", capability)).toBe(true);

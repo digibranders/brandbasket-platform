@@ -28,6 +28,8 @@ interface ProgressCardProps {
   readonly feedbackKey: string;
   /** "Two rounds of changes are included.", shown under the feedback box. */
   readonly roundsLine: string;
+  /** Every included round is used: the feedback box gives way to the rounds line and a way to ask. */
+  readonly roundsUsedUp: boolean;
 }
 
 /** A browser window drawn with tokens: three dots and the preview's address, then the picture, or the site's name when there is none. */
@@ -57,7 +59,7 @@ function BrowserFrame({ pictureUrl, previewUrl, address, businessName }: Pick<Pr
 }
 
 /** The raised card at the top of Progress: for a preview, the picture and the three buttons; otherwise a status, its line and at most one way forward. */
-export function ProgressCard({ view, pictureUrl, previewUrl, address, businessName, liveHostname, feedbackKey, roundsLine }: ProgressCardProps): ReactElement {
+export function ProgressCard({ view, pictureUrl, previewUrl, address, businessName, liveHostname, feedbackKey, roundsLine, roundsUsedUp }: ProgressCardProps): ReactElement {
   const previewing = view.kind === "preview";
   const previewHref = previewUrl === null ? null : safeExternalHref(previewUrl);
   const liveHref = liveHostname === null ? null : safeExternalHref(`https://${liveHostname}`);
@@ -93,7 +95,16 @@ export function ProgressCard({ view, pictureUrl, previewUrl, address, businessNa
             </a>
           )}
           <PreviewApprove />
-          <PreviewFeedback submissionKey={feedbackKey} roundsLine={roundsLine} />
+          {roundsUsedUp ? (
+            <div className="grid gap-2">
+              <p className="text-[0.8125rem] text-ink-2">{roundsLine}</p>
+              <Link href={askAboutHref("")} className={TEXT_LINK}>
+                Ask for a change
+              </Link>
+            </div>
+          ) : (
+            <PreviewFeedback submissionKey={feedbackKey} roundsLine={roundsLine} />
+          )}
         </>
       ) : null}
 
