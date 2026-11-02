@@ -9,7 +9,8 @@ import { clientsWaitingOnUs } from "./waiting-clients";
 export interface FigureSources {
   readonly leads: readonly Pick<Lead, "createdAt">[];
   readonly clients: readonly ClientSummary[];
-  readonly collected: readonly CollectedAmount[];
+  /** Null for a role that may not see money: the figure is left out. */
+  readonly collected: readonly CollectedAmount[] | null;
   readonly ticketCounts: Readonly<Record<SupportStatus, number>> | null;
   readonly activeErrors: number;
 }
@@ -20,7 +21,7 @@ export interface FiguresInput {
   readonly leadsLastWeek: number;
   readonly payingClients: number;
   readonly newPayingThisMonth: number;
-  readonly collected: readonly CollectedAmount[];
+  readonly collected: readonly CollectedAmount[] | null;
   readonly inBuild: number;
   readonly previewsDueToday: number;
   readonly openRequests: number;
@@ -63,7 +64,7 @@ export function collectedText(collected: readonly CollectedAmount[]): { readonly
 /** The six figures at the top of Today. */
 export function businessFigures(input: FiguresInput): readonly FigureItem[] {
   const enquiries = input.leadsThisWeek - input.leadsLastWeek;
-  const collected = collectedText(input.collected);
+  const collected = input.collected === null ? null : collectedText(input.collected);
   return [
     {
       value: String(input.leadsThisWeek),
@@ -77,7 +78,7 @@ export function businessFigures(input: FiguresInput): readonly FigureItem[] {
       note: input.newPayingThisMonth === 0 ? "None new this month" : `+${input.newPayingThisMonth} this month`,
       tone: "good",
     },
-    { value: collected.value, label: "Collected this month", note: collected.note, tone: "good", long: true },
+    ...(collected === null ? [] : [{ value: collected.value, label: "Collected this month", note: collected.note, tone: "good", long: true } as const]),
     {
       value: String(input.inBuild),
       label: "In build",

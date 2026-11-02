@@ -1,6 +1,6 @@
 import { MONTHLY_ADD_ON_IDS } from "@brandbasket/shared/lib/billing/add-ons";
 import { describe, expect, it } from "vitest";
-import { CHECKOUT_COPY, CHECKOUT_PLAN_COPY, checkoutSteps } from "./checkout-plans";
+import { CHECKOUT_COPY, CHECKOUT_PLAN_COPY, checkoutLead, checkoutSteps } from "./checkout-plans";
 
 describe("the checkout's words", () => {
   it("has copy for every plan on sale", () => {
@@ -32,8 +32,13 @@ describe("the checkout's words", () => {
     }
   });
 
+  it("keeps the rupee lead as it was and leaves GST out of the dollar one", () => {
+    expect(checkoutLead("INR", 1_800)).toBe("Choose the services you want. Prices are in rupees and include GST.");
+    expect(checkoutLead("USD", 0)).toBe("Choose the services you want. Prices are in dollars.");
+  });
+
   it("uses no em or en dash anywhere", () => {
-    const text = JSON.stringify([CHECKOUT_COPY, checkoutSteps(["managed-website"]), checkoutSteps([]), Object.values(CHECKOUT_PLAN_COPY).map((copy) => [copy.gets, copy.blurb("₹1")])]);
+    const text = JSON.stringify([CHECKOUT_COPY, checkoutLead("INR", 1_800), checkoutLead("USD", 0), checkoutSteps(["managed-website"]), checkoutSteps([]), Object.values(CHECKOUT_PLAN_COPY).map((copy) => [copy.gets, copy.blurb("₹1")])]);
     expect(text).not.toMatch(/[–—]/);
   });
 });

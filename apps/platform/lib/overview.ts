@@ -1,4 +1,4 @@
-import { formatMoney } from "@brandbasket/shared/lib/money";
+import { formatMoney, type MoneyCurrency } from "@brandbasket/shared/lib/money";
 import { BRAND_TIME_ZONE } from "@/lib/call-dates";
 import type { ServiceKey } from "@/lib/first-look";
 import { websiteEnquiriesLine, type WebsiteEnquiries } from "@/lib/site-events";
@@ -52,6 +52,7 @@ export interface ResultLine {
 export function resultLines(input: {
   readonly services: readonly ServiceKey[];
   readonly chatbotLeads: number;
+  readonly currency: MoneyCurrency;
   readonly enquiries?: WebsiteEnquiries | null;
   readonly social: SnapshotView | null;
   readonly search: SnapshotView | null;
@@ -75,8 +76,8 @@ export function resultLines(input: {
       if (social.adSpendCents !== null) {
         parts.push(
           social.adBudgetCents === null
-            ? `${formatMoney(social.adSpendCents, "INR")} spent`
-            : `${formatMoney(social.adSpendCents, "INR")} spent of ${formatMoney(social.adBudgetCents, "INR")}`,
+            ? `${formatMoney(social.adSpendCents, input.currency)} spent`
+            : `${formatMoney(social.adSpendCents, input.currency)} spent of ${formatMoney(social.adBudgetCents, input.currency)}`,
         );
       }
       if (social.postsPublished !== null) parts.push(social.postsPublished === 1 ? "1 post published" : `${social.postsPublished} posts published`);

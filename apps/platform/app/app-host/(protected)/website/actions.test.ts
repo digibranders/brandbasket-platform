@@ -38,7 +38,7 @@ const tenant = { userId: "user-a", businessId: "business-1", businessName: "Cafe
 
 beforeEach(() => {
   vi.resetAllMocks();
-  vi.mocked(requireCustomerAccess).mockResolvedValue({ tenant } as never);
+  vi.mocked(requireCustomerAccess).mockResolvedValue({ tenant, billing: { hasAccess: true } } as never);
   vi.mocked(getStaffDb).mockReturnValue(staffDb);
   vi.mocked(respondToPreview).mockResolvedValue(undefined);
 });
@@ -64,6 +64,12 @@ describe("approvePreviewAction", () => {
     await expect(approvePreviewAction()).rejects.toThrow("REDIRECT:/login");
     expect(respondToPreview).not.toHaveBeenCalled();
   });
+
+  it("sends a lapsed customer Home and approves nothing", async () => {
+    vi.mocked(requireCustomerAccess).mockResolvedValue({ tenant, billing: { status: "lapsed", hasAccess: false } } as never);
+    await expect(approvePreviewAction()).rejects.toThrow("REDIRECT:/");
+    expect(respondToPreview).not.toHaveBeenCalled();
+  });
 });
 
 describe("sendPreviewFeedbackAction", () => {
@@ -77,7 +83,7 @@ describe("sendPreviewFeedbackAction", () => {
   }
 
   beforeEach(() => {
-    vi.mocked(requireCustomerAccess).mockResolvedValue({ user: { id: "user-a", email: "owner@example.test" }, tenant } as never);
+    vi.mocked(requireCustomerAccess).mockResolvedValue({ user: { id: "user-a", email: "owner@example.test" }, tenant, billing: { hasAccess: true } } as never);
     vi.mocked(canCreateSupportRequest).mockReturnValue(true);
     vi.mocked(supportRateLimit).mockResolvedValue(null);
     vi.mocked(getAppDb).mockReturnValue({ kind: "app-db" } as never);
@@ -143,6 +149,13 @@ describe("sendPreviewFeedbackAction", () => {
   it("stops a customer without access before any write", async () => {
     vi.mocked(requireCustomerAccess).mockRejectedValue(new Error("REDIRECT:/login"));
     await expect(sendPreviewFeedbackAction(INITIAL_SUPPORT_STATE, form())).rejects.toThrow("REDIRECT:/login");
+    expect(createSupportTicketWithOutcome).not.toHaveBeenCalled();
+    expect(respondToPreview).not.toHaveBeenCalled();
+  });
+
+  it("sends a lapsed customer Home and saves no feedback", async () => {
+    vi.mocked(requireCustomerAccess).mockResolvedValue({ user: { id: "user-a", email: "owner@example.test" }, tenant, billing: { status: "lapsed", hasAccess: false } } as never);
+    await expect(sendPreviewFeedbackAction(INITIAL_SUPPORT_STATE, form())).rejects.toThrow("REDIRECT:/");
     expect(createSupportTicketWithOutcome).not.toHaveBeenCalled();
     expect(respondToPreview).not.toHaveBeenCalled();
   });

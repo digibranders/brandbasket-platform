@@ -242,7 +242,9 @@ function expectedFirstPaymentCents(
  * Everything commits together or not at all: an error outside step 6 rolls back the payment too, and the provider's
  * payload can be confirmed again.
  *
- * The provider notifying us directly (Razorpay's webhook) must reach the same outcomes when its adapter is built.
+ * Only the fake provider's test checkout page reaches this. Razorpay's webhook (razorpay-webhook-handler.ts) records and
+ * activates the same payment through activateFirstPayment but does not send onboarding: step 6 is fake-provider only, and a
+ * Razorpay customer sends onboarding themselves from Check and send, which is also when the team is told it was sent.
  */
 export async function confirmFirstPayment(
   tenant: TenantContext,

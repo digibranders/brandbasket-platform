@@ -7,7 +7,7 @@ vi.mock("@/app/app-host/(protected)/setup-actions", () => ({ saveSetupItemAction
 import { ServiceSetupCard } from "@/components/setup/service-setup-card";
 import type { SetupAsk } from "@/lib/setup-asks";
 
-const ask = (setup: SetupAsk["setup"], label: string): SetupAsk => ({ key: setup, setup, label, hint: "So we can start", saved: undefined });
+const ask = (setup: SetupAsk["setup"], label: string): SetupAsk => ({ key: setup, setup, label, hint: "So we can start", saved: undefined, currency: "INR" });
 const render = (asks: readonly SetupAsk[]): string => renderToStaticMarkup(createElement(ServiceSetupCard, { asks })).replaceAll("<!-- -->", "");
 
 it("draws nothing when nothing is needed", () => {
@@ -31,4 +31,10 @@ it("says a few things when there are several, with a form for each", () => {
 
 it("never uses a dash in what it says", () => {
   expect(render([ask("budget", "Your ad budget")]).replace(/<[^>]+>/g, " ")).not.toMatch(/[–—]/);
+});
+
+it("words the budget question in dollars for a dollar business", () => {
+  const html = renderToStaticMarkup(createElement(ServiceSetupCard, { asks: [{ ...ask("budget", "Your ad budget"), currency: "USD" }] })).replaceAll("<!-- -->", "");
+  expect(html).toContain("Monthly ad budget in dollars");
+  expect(html).not.toMatch(/in rupees|₹/);
 });

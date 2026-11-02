@@ -9,7 +9,7 @@ import { DARK_BUTTON } from "@/components/v2/classes";
 import type { SearchData } from "@/lib/server/search";
 import type { SetupAsk } from "@/lib/setup-asks";
 
-const ask = (key: string, overrides: Partial<SetupAsk> = {}): SetupAsk => ({ key, setup: "areas", label: `Tell us ${key}`, hint: "Two minutes", saved: undefined, ...overrides });
+const ask = (key: string, overrides: Partial<SetupAsk> = {}): SetupAsk => ({ key, setup: "areas", label: `Tell us ${key}`, hint: "Two minutes", saved: undefined, currency: "INR", ...overrides });
 
 function data(overrides: Partial<SearchData> = {}): SearchData {
   return {

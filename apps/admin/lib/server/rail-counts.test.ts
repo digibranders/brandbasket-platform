@@ -48,16 +48,22 @@ describe("countOrNothing", () => {
 
 describe("readRailCounts", () => {
   it("reads every count", async () => {
-    expect(await readRailCounts()).toEqual({ today: 5, leads: 2, requests: 3, projects: 1, calls: 4, payments: 2, deliveries: 3 });
+    expect(await readRailCounts("admin")).toEqual({ today: 5, leads: 2, requests: 3, projects: 1, calls: 4, payments: 2, deliveries: 3 });
   });
 
   it("counts requests that need a reply, by the reply clock", async () => {
     vi.mocked(countSupportQueues).mockResolvedValue({ needsReply: 7, needsReplyOverADay: 2, waitingOnClient: 0, done: 0 });
-    expect((await readRailCounts()).requests).toBe(7);
+    expect((await readRailCounts("admin")).requests).toBe(7);
+  });
+
+  it("leaves the payments count and the flagged payments out of the Today count for a role without money", async () => {
+    expect(await readRailCounts("support")).toEqual({ today: 5, leads: 2, requests: 3, projects: 1, calls: 4, deliveries: 3 });
+    expect(readPaymentsCount).not.toHaveBeenCalled();
+    expect(countTodayItems).toHaveBeenCalledWith(false);
   });
 
   it("leaves out a count it could not read and keeps the rest", async () => {
     vi.mocked(countFailedDeliveries24h).mockRejectedValue(new Error("database down"));
-    expect(await readRailCounts()).toEqual({ today: 5, leads: 2, requests: 3, projects: 1, calls: 4, payments: 2 });
+    expect(await readRailCounts("admin")).toEqual({ today: 5, leads: 2, requests: 3, projects: 1, calls: 4, payments: 2 });
   });
 });

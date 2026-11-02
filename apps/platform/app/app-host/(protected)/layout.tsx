@@ -3,6 +3,7 @@ import { BillingBanner } from "@/components/panel/billing-banner";
 import { HiddenOnPaths } from "@/components/panel/hidden-on-paths";
 import { MembershipGateShell } from "@/components/panel/membership-gate-shell";
 import { AppShell } from "@/components/v2/app-shell";
+import { pricesNote } from "@/lib/currency-words";
 import { accountLabel } from "@/lib/server/account-label";
 import { getAffiliateAccess } from "@/lib/server/affiliate-access";
 import { ensureGeoCatalog } from "@/lib/server/geo-catalog";
@@ -18,11 +19,15 @@ const PAGES_WITH_THEIR_OWN_BANNER = ["/"] as const;
 
 export default async function AppProtectedLayout({ children }: AppProtectedLayoutProps): Promise<ReactElement> {
   // Open to a free listing account and to one awaiting its plan; each page decides for itself whether it is theirs.
-  const { user, tenant } = await requireCustomerAccess({ listingAccount: "allow", membershipCheckout: "allow" });
+  const { user, tenant, billing } = await requireCustomerAccess({ listingAccount: "allow", membershipCheckout: "allow" });
   await ensureGeoCatalog();
   const entry = await getCustomerBusinessEntry(tenant.userId, tenant.businessId);
   // An owner who chose Managed Website and has not paid has one page, the plan's, and no dashboard around it yet.
-  if (isAwaitingMembership(entry)) return <MembershipGateShell>{children}</MembershipGateShell>;
+  if (isAwaitingMembership(entry)) {
+    // A business with no plan yet is offered rupees (lib/server/membership-checkout.ts).
+    const note = billing.plan === null ? pricesNote("INR", true) : pricesNote(billing.plan.currency, billing.plan.taxRateBasisPoints > 0);
+    return <MembershipGateShell pricesNote={note}>{children}</MembershipGateShell>;
+  }
   const banner = await getBillingBanner();
   const isAffiliate = (await getAffiliateAccess()).kind === "granted";
 

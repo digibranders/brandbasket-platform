@@ -1,3 +1,4 @@
+import type { MoneyCurrency } from "@brandbasket/shared/lib/money";
 import type { ServiceKey } from "@/lib/first-look";
 import { isBlockingSetup, type SetupKey } from "@/lib/service-setup";
 import type { TodoItem } from "@/lib/todo";
@@ -9,6 +10,8 @@ export interface SetupAsk {
   readonly label: string;
   readonly hint: string;
   readonly saved: Readonly<Record<string, unknown>> | undefined;
+  /** The business's currency, for the budget question's wording. */
+  readonly currency: MoneyCurrency;
 }
 
 interface SavedAnswers {
@@ -17,10 +20,10 @@ interface SavedAnswers {
 }
 
 /** The open questions a service blocks on, in the order the checklist lists them. A question already answered, or not about delivery, is left out. */
-export function setupAsks(items: readonly TodoItem[], answers: SavedAnswers, service: "social" | "search"): readonly SetupAsk[] {
+export function setupAsks(items: readonly TodoItem[], answers: SavedAnswers, service: "social" | "search", currency: MoneyCurrency): readonly SetupAsk[] {
   return items.flatMap((item): SetupAsk[] =>
     item.kind === "form" && item.service === service && !item.done && isBlockingSetup(item.setup)
-      ? [{ key: item.key, setup: item.setup, label: item.label, hint: item.hint, saved: answers[service] }]
+      ? [{ key: item.key, setup: item.setup, label: item.label, hint: item.hint, saved: answers[service], currency }]
       : [],
   );
 }
