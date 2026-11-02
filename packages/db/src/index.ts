@@ -15,7 +15,7 @@ export * from "./queries/support-ticket-error-links";
 export * from "./queries/deliveries";
 export * from "./queries/staff-payments";
 export * from "./queries/staff-domains";
-export { assertValidRule, clearRateLimits, consumeRateLimit, windowStartFor, type RateLimitResult, type RateLimitRule } from "./rate-limit";
+export { assertValidRule, consumeRateLimit, windowStartFor, type RateLimitResult, type RateLimitRule } from "./rate-limit";
 export {
   BillingBusinessNotFoundError,
   cancelStaleSubscription,

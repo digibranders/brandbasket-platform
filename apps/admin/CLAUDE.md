@@ -8,7 +8,6 @@ The app at console.brandbasket.in where Brandbasket staff run clients, billing, 
 
 - Staff accounts are created only with `pnpm staff:create` on the server (`docs/STAFF-ACCESS.md`). Roles are `support`, `finance` and `admin`.
 - Every page and server action starts with `requireStaffAccess()` from `lib/server/staff-access.ts`. It also checks the session belongs to an active staff record, so a customer session opens nothing here.
-- Sign-in is two steps: password, then a 6-digit code emailed to the account (`lib/server/sign-in.ts`; the code logic is in `packages/auth/src/staff-sign-in-code.ts`). Only the code step starts a session, and the session carries `second_factor_at`; `lib/server/session.ts` ignores any session without it. Never call `signInEmail` here, it would start a password-only session. Lockouts: `pnpm staff:reset-2fa` (`docs/STAFF-ACCESS.md`).
 - Sessions are host-only cookies on this origin and last 12 hours.
 
 ## Data
