@@ -5,6 +5,7 @@ import { APIError, createAuthMiddleware } from "better-auth/api";
 import { nextCookies } from "better-auth/next-js";
 import { hasAccountCreationGrant } from "./account-creation-grant";
 import { PASSWORD_MAX_LENGTH, PASSWORD_MIN_LENGTH, passwordPolicyProblem } from "./password-policy";
+import { staffSecondFactor } from "./staff-second-factor";
 
 export { PASSWORD_MIN_LENGTH };
 
@@ -161,7 +162,7 @@ export function createAuth(config: AuthConfig) {
       },
     },
     hooks: { before: enforcePasswordPolicy },
-    plugins: config.nextCookies ? [nextCookies()] : [],
+    plugins: config.nextCookies ? [staffSecondFactor(), nextCookies()] : [staffSecondFactor()],
   });
 }
 

@@ -167,7 +167,7 @@ export async function confirmAccountEmailCode(
   const budget = await consumeRateLimit(db, `account-email-code-confirm:ip:${ipRateLimitKey(clientIp)}`, CONFIRM_IP_RULE, now);
   if (!budget.allowed) return { kind: "limited", scope: "network", retryAfterSeconds: budget.retryAfterSeconds };
 
-  const attempt = await claimAccountOtpAttempt(db, { otpId: input.otpId, maxAttempts: OTP_MAX_ATTEMPTS, now });
+  const attempt = await claimAccountOtpAttempt(db, { otpId: input.otpId, purpose: "signup", maxAttempts: OTP_MAX_ATTEMPTS, now });
   if (attempt === null) return { kind: "expired" };
 
   // With the local bypass on any six digits match; the attempt was still claimed above, so the step keeps its expiry and

@@ -25,7 +25,7 @@ Each app has its own `CLAUDE.md` (`apps/platform/`, `apps/admin/`) with app-spec
 |---|---|---|
 | `packages/db` | `@brandbasket/db` | Schema (`src/schema/*.ts`), migrations (`migrations/`), scoped queries (`src/queries/`), scope helpers (`src/scope.ts`), rate limiting, env and role scripts |
 | `packages/shared` | `@brandbasket/shared/...` | UI (`src/ui`, `src/ui/panel`, `src/ui/forms`), helpers (`src/lib`: `cn`, `money`, `access`, calendar), server logic (`src/server`: charges, add-ons, plan upgrades, tax invoicing), theme CSS (`src/styles/theme.css`) |
-| `packages/auth` | `@brandbasket/auth` | Better Auth setup and the `staff:create` command |
+| `packages/auth` | `@brandbasket/auth` | Better Auth setup, the staff sign-in code (second factor) and the `staff:create` and `staff:reset-2fa` commands |
 | `packages/billing` | `@brandbasket/billing` | Fake and Razorpay providers, Razorpay webhook verification, billing rules |
 | `packages/email` | `@brandbasket/email` | Templates, Brevo transport, the `email_messages` outbox |
 | `packages/cms` | `@brandbasket/cms` | Payload collections, config and migrations, in its own database `brandbasket_platform_payload` |
@@ -65,6 +65,7 @@ pnpm --filter @brandbasket/db db:generate   # new migration from the schema
 pnpm db:migrate              # dev database; db:migrate:test for the test database
 pnpm cms:migrate             # Payload migrations; cms:migrate:create to add one
 pnpm staff:create --email you@example.com --name "Your Name" --role admin
+pnpm staff:reset-2fa --email you@example.com [--new-email new@example.com]   # a locked-out staff member (docs/STAFF-ACCESS.md)
 pnpm env:check               # validate a server environment
 ```
 

@@ -142,7 +142,7 @@ describe("confirmAccountEmailCode", () => {
 
   it("confirms the right code once, and uses it up", async () => {
     expect(await confirmAccountEmailCode(input, IP, NOW)).toEqual({ kind: "confirmed" });
-    expect(claimAccountOtpAttempt).toHaveBeenCalledWith(DB, { otpId: OTP_ID, maxAttempts: 5, now: NOW });
+    expect(claimAccountOtpAttempt).toHaveBeenCalledWith(DB, { otpId: OTP_ID, purpose: "signup", maxAttempts: 5, now: NOW });
     expect(consumeAccountOtp).toHaveBeenCalledWith(DB, OTP_ID);
   });
 
