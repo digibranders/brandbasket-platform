@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { isSiteOffline } from "@/lib/offline-check";
+import { maintenanceDetails } from "@/lib/maintenance-page";
 import { maintenanceResponse } from "@/lib/maintenance-response";
 
 /**
@@ -10,8 +11,7 @@ import { maintenanceResponse } from "@/lib/maintenance-response";
  */
 export async function proxy(): Promise<Response> {
   if (!(await isSiteOffline())) return NextResponse.next();
-  const name = process.env.SITE_BUSINESS_NAME?.trim();
-  return maintenanceResponse(name === "" ? undefined : name);
+  return maintenanceResponse(maintenanceDetails());
 }
 
 // Everything but Next's own build files, which carry no content and which the maintenance page does not use.
