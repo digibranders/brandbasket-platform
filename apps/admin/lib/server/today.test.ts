@@ -128,7 +128,7 @@ describe("kickoff calls needing an outcome in the queue", () => {
   const ENDED_EARLIER = new Date("2026-11-29T05:00:00.000Z");
   const ENDED_LATER = new Date("2026-11-30T03:00:00.000Z");
 
-  it("asks for the board over the last 14 days and adds one item for calls that ended without being marked held", async () => {
+  it("asks for the board over the last 14 days and adds one item per business whose call ended without being marked held", async () => {
     vi.mocked(listKickoffBoard).mockResolvedValue([
       kickoffRow({ businessId: "b-late", endsAt: ENDED_LATER }),
       kickoffRow({ businessId: "b-early", endsAt: ENDED_EARLIER }),
@@ -139,14 +139,18 @@ describe("kickoff calls needing an outcome in the queue", () => {
     const items = await loadTodayItems(NOW, true);
     expect(listKickoffBoard).toHaveBeenCalledWith({}, { now: NOW, lookBackDays: 14 });
     expect(items.filter((item) => item.kind === "kickoff")).toEqual([
-      { key: "kickoff:needs-outcome", kind: "kickoff", href: "/calls", title: "2 kickoff calls need an outcome", detail: "", dueAt: ENDED_EARLIER },
+      { key: "kickoff:b-early", kind: "kickoff", href: "/calls", title: "Did the kickoff happen?", detail: "b-early · ended 29 Nov, 10:30", dueAt: ENDED_EARLIER },
+      { key: "kickoff:b-late", kind: "kickoff", href: "/calls", title: "Did the kickoff happen?", detail: "b-late · ended 30 Nov, 08:30", dueAt: ENDED_LATER },
     ]);
   });
 
-  it("says 1 kickoff call in the singular", async () => {
+  it("drops the item once the call is marked held, or its booking is removed by a no-show", async () => {
     vi.mocked(listKickoffBoard).mockResolvedValue([kickoffRow({ businessId: "b-one", endsAt: ENDED_LATER })]);
-    const items = await loadTodayItems(NOW, true);
-    expect(items.find((item) => item.kind === "kickoff")?.title).toBe("1 kickoff call needs an outcome");
+    expect((await loadTodayItems(NOW, true)).some((item) => item.key === "kickoff:b-one")).toBe(true);
+    vi.mocked(listKickoffBoard).mockResolvedValue([kickoffRow({ businessId: "b-one", endsAt: ENDED_LATER, heldAt: new Date("2026-11-30T03:30:00.000Z") })]);
+    expect((await loadTodayItems(NOW, true)).some((item) => item.kind === "kickoff")).toBe(false);
+    vi.mocked(listKickoffBoard).mockResolvedValue([]);
+    expect((await loadTodayItems(NOW, true)).some((item) => item.kind === "kickoff")).toBe(false);
   });
 
   it("adds no item when no call is waiting for an outcome", async () => {

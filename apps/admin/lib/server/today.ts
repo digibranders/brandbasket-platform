@@ -25,7 +25,7 @@ import type { FigureItem } from "@/components/console/figures";
 import { businessFigures, figuresInput } from "@/lib/business-figures";
 import { attentionItems } from "@/lib/pipeline";
 import { monthRange, todayRange } from "@/lib/team-time";
-import { todayQueue, type TodayItem } from "@/lib/today-queue";
+import { todayQueue, type KickoffNeedingOutcome, type TodayItem } from "@/lib/today-queue";
 import { clientsWaitingOnUs } from "@/lib/waiting-clients";
 import { getStaffDb } from "./db";
 import { countFailedDeliveries24h } from "./deliveries";
@@ -58,8 +58,8 @@ interface QueueSources {
   readonly newErrors: readonly ErrorIssue[];
   /** Failed deliveries in the last 24 hours; null when the read failed. */
   readonly failedDeliveries: number | null;
-  /** End times of kickoff calls that are over and not marked held; null when the read failed. */
-  readonly kickoffsNeedingOutcome: readonly Date[] | null;
+  /** Kickoff calls that are over and not marked held; null when the read failed. */
+  readonly kickoffsNeedingOutcome: readonly KickoffNeedingOutcome[] | null;
 }
 
 interface QueueRead {
@@ -80,11 +80,13 @@ async function readQueueSources(now: Date, canSeeMoney: boolean): Promise<QueueR
     guarded("requests needing a reply", async () => (await listSupportTicketsForStaff(db, { queue: "needs_reply", limit: NEW_TICKETS_READ_LIMIT })).items, [], failed),
     guarded("new errors", async () => (await listErrorIssues(db, { status: "new" })).issues, [], failed),
     guarded<number | null>("deliveries", () => countFailedDeliveries24h(now), null, failed),
-    guarded<Date[] | null>(
+    guarded<KickoffNeedingOutcome[] | null>(
       "kickoff calls",
       async () =>
         (await listKickoffBoard(db, { now, lookBackDays: KICKOFF_LOOK_BACK_DAYS })).flatMap((row) =>
-          row.heldAt === null && row.endsAt !== null && row.endsAt.getTime() <= now.getTime() && (row.projectStatus === null || row.projectStatus === "onboarding") ? [row.endsAt] : [],
+          row.heldAt === null && row.endsAt !== null && row.endsAt.getTime() <= now.getTime() && (row.projectStatus === null || row.projectStatus === "onboarding")
+            ? [{ businessId: row.businessId, businessName: row.businessName, endsAt: row.endsAt }]
+            : [],
         ),
       null,
       failed,

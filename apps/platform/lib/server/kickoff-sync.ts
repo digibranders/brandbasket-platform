@@ -1,13 +1,14 @@
 import "server-only";
-import { addActivityEvent, firstPreviewDueAfterKickoff, KICKOFF_SETTLE_HOURS, listKickoffsToStart, markProjectReadyAfterKickoff } from "@brandbasket/db";
+import { addActivityEvent, firstPreviewDueAfterKickoff, KICKOFF_FALLBACK_START_HOURS, listKickoffsToStart, markProjectReadyAfterKickoff } from "@brandbasket/db";
 import { errorLogInfo } from "@brandbasket/shared/server/error-log-info";
 import { LEADS_API_TOKEN_MIN_LENGTH } from "@/lib/leads-api";
 import { getStaffDb } from "./db";
 import { kickoffAutoStart } from "./env";
 
 /**
- * How the sync decides a kickoff is over. "auto": its end time has passed (the default). "confirmed-only": staff marked it
- * held (KICKOFF_AUTO_START=off).
+ * How the sync decides a build may start. "auto": staff marked the call held, or it ended more than
+ * KICKOFF_FALLBACK_START_HOURS ago with no mark (the default). "confirmed-only": staff marked it held
+ * (KICKOFF_AUTO_START=off).
  */
 export function kickoffStartMode(env: Readonly<Record<string, string | undefined>> = process.env): "auto" | "confirmed-only" {
   return kickoffAutoStart(env) === "on" ? "auto" : "confirmed-only";
@@ -32,16 +33,16 @@ export interface KickoffSyncReport {
 }
 
 /**
- * Starts the website build for every kickoff that is over: staff marked it held, or its end time passed more than
- * KICKOFF_SETTLE_HOURS ago (so staff who write notes straight after the call get there first). With KICKOFF_AUTO_START=off
- * only the held ones start. The first preview is due 48 hours after the call. Safe to run as often as wanted: a project that
+ * Starts the website build for every kickoff staff marked held, and for one that ended more than
+ * KICKOFF_FALLBACK_START_HOURS ago with no mark at all. A call staff marked as not attended has no booking, so it never
+ * starts. With KICKOFF_AUTO_START=off only the held ones start. The first preview is due 48 hours after the call. Safe to run as often as wanted: a project that
  * has already moved is not touched. Staff connection, for system work only (the exceptions in lib/server/db.ts): it takes no
  * input but the clock, and writes only the project status and one "What we did" line for the customer.
  */
 export async function startBuildsAfterKickoff(now: Date = new Date()): Promise<KickoffSyncReport> {
   const db = getStaffDb();
   const due = await listKickoffsToStart(db, {
-    endedBefore: new Date(now.getTime() - KICKOFF_SETTLE_HOURS * 3_600_000),
+    endedBefore: new Date(now.getTime() - KICKOFF_FALLBACK_START_HOURS * 3_600_000),
     confirmedOnly: kickoffStartMode(process.env) === "confirmed-only",
   });
   let started = 0;

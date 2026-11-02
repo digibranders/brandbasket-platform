@@ -117,23 +117,25 @@ describe("failed deliveries", () => {
 });
 
 describe("kickoff calls needing an outcome", () => {
-  it("adds one item that links to the Calls page, due at the earliest end time", () => {
-    const queue = todayQueue({
-      ...EMPTY,
-      kickoffsNeedingOutcome: [new Date("2026-11-30T05:00:00.000Z"), new Date("2026-11-29T05:00:00.000Z")],
-    });
+  const EARLY = { businessId: "b-early", businessName: "Green Leaf Cafe", endsAt: new Date("2026-11-29T05:00:00.000Z") };
+  const LATE = { businessId: "b-late", businessName: "Kestrel Bakery", endsAt: new Date("2026-11-30T05:00:00.000Z") };
+
+  it("adds one item per business that links to the Calls page, due when its call ended", () => {
+    const queue = todayQueue({ ...EMPTY, kickoffsNeedingOutcome: [LATE, EARLY] });
     expect(queue).toEqual([
-      { key: "kickoff:needs-outcome", kind: "kickoff", href: "/calls", title: "2 kickoff calls need an outcome", detail: "", dueAt: new Date("2026-11-29T05:00:00.000Z") },
+      { key: "kickoff:b-early", kind: "kickoff", href: "/calls", title: "Did the kickoff happen?", detail: "Green Leaf Cafe · ended 29 Nov, 10:30", dueAt: EARLY.endsAt },
+      { key: "kickoff:b-late", kind: "kickoff", href: "/calls", title: "Did the kickoff happen?", detail: "Kestrel Bakery · ended 30 Nov, 10:30", dueAt: LATE.endsAt },
     ]);
   });
 
-  it("says 1 kickoff call in the singular", () => {
-    expect(todayQueue({ ...EMPTY, kickoffsNeedingOutcome: [new Date("2026-11-30T05:00:00.000Z")] })[0]?.title).toBe("1 kickoff call needs an outcome");
+  it("is overdue, so it groups under Overdue", () => {
+    const queue = todayQueue({ ...EMPTY, kickoffsNeedingOutcome: [LATE] });
+    expect(groupTodayQueue(queue, NOW, END_OF_TODAY).map((group) => group.heading)).toEqual(["Overdue"]);
   });
 
-  it("is overdue, so it groups under Overdue", () => {
-    const queue = todayQueue({ ...EMPTY, kickoffsNeedingOutcome: [new Date("2026-11-30T05:00:00.000Z")] });
-    expect(groupTodayQueue(queue, NOW, END_OF_TODAY).map((group) => group.heading)).toEqual(["Overdue"]);
+  it("is gone once the call is marked: a business no longer in the list has no item", () => {
+    expect(todayQueue({ ...EMPTY, kickoffsNeedingOutcome: [EARLY, LATE] }).map((entry) => entry.key)).toEqual(["kickoff:b-early", "kickoff:b-late"]);
+    expect(todayQueue({ ...EMPTY, kickoffsNeedingOutcome: [LATE] }).map((entry) => entry.key)).toEqual(["kickoff:b-late"]);
   });
 
   it("adds nothing at zero or when the read failed", () => {
