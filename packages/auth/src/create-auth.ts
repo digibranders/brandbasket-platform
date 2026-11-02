@@ -42,8 +42,6 @@ const SESSION_LIFETIME_SECONDS = 60 * 60 * 24 * 7;
 export const STAFF_SESSION_LIFETIME_SECONDS = 60 * 60 * 12;
 /** How long a password reset link works. Short: it is as good as the password until it is used. */
 export const PASSWORD_RESET_LIFETIME_SECONDS = 60 * 60;
-/** How long an email confirmation link works. Long enough for an owner who reads their email the next day. */
-export const EMAIL_CONFIRMATION_LIFETIME_SECONDS = 60 * 60 * 24 * 3;
 
 /** One account email to write: who it is for, and the one-time token its link must carry. */
 export interface AccountMail {
@@ -58,7 +56,6 @@ export interface AccountMail {
  */
 export interface AuthMailer {
   readonly sendPasswordReset: (mail: AccountMail) => Promise<void>;
-  readonly sendEmailConfirmation: (mail: AccountMail) => Promise<void>;
 }
 const MIN_SECRET_LENGTH = 32;
 
@@ -70,8 +67,8 @@ export interface AuthConfig {
   /** Server actions need this to write session cookies. Scripts and tests run outside Next.js and must leave it off. */
   readonly nextCookies: boolean;
   /**
-   * Turns on password reset and email confirmation. Left out by scripts, tests and the staff console, which send
-   * neither: asking for a reset there is then refused instead of silently sending nothing.
+   * Turns on password reset. Left out by scripts and tests, which send none: asking for a reset there is then
+   * refused instead of silently sending nothing.
    */
   readonly mailer?: AuthMailer;
   /** How long a session lasts, in seconds. Left out, a week: the customer default. The staff console passes a shorter one. */
@@ -123,18 +120,6 @@ export function createAuth(config: AuthConfig) {
               mailer.sendPasswordReset({ email: user.email, name: user.name, token }),
           }),
     },
-    ...(mailer === undefined
-      ? {}
-      : {
-          emailVerification: {
-            // Sent when the app asks (a free listing sign-up), not on every sign-up: a client's account is made from
-            // the setup link sent to its address, which already proves it.
-            sendOnSignUp: false,
-            expiresIn: EMAIL_CONFIRMATION_LIFETIME_SECONDS,
-            sendVerificationEmail: ({ user, token }: { user: { email: string; name: string }; token: string }) =>
-              mailer.sendEmailConfirmation({ email: user.email, name: user.name, token }),
-          },
-        }),
     user: {
       // The number an older account signs in with (packages/db schema/auth.ts). Nothing opens an account with one any
       // more, and this app serves none of Better Auth's own HTTP routes, so no request body ever reaches these fields.

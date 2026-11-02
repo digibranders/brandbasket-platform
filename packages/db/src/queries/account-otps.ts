@@ -91,12 +91,15 @@ export interface PhoneAccount {
   readonly email: string;
 }
 
-/** The account that signs in with `phone` (E.164), or null. A number nobody has proven is theirs signs nobody in. */
+/**
+ * The account that holds `phone` (E.164), or null. The number is the one given at sign-up and is not proven, so it
+ * only finds the account: the password (or, to reset it, the email on file) is what proves who is asking.
+ */
 export async function findUserByPhone(db: Database, phone: string): Promise<PhoneAccount | null> {
   const rows = await db
     .select({ id: users.id, name: users.name, email: users.email })
     .from(users)
-    .where(and(eq(users.phoneNumber, phone), eq(users.phoneNumberVerified, true)))
+    .where(eq(users.phoneNumber, phone))
     .limit(1);
   return rows[0] ?? null;
 }
@@ -109,7 +112,7 @@ export async function phoneNumberIsTaken(db: Database, phone: string): Promise<b
 
 /**
  * Saves the mobile number (E.164) an owner gave when signing up. It stays unproven (`phone_number_verified` is left
- * false), so it is a contact number and signs nobody in. False, with nothing saved, when another account holds it.
+ * false). False, with nothing saved, when another account holds it.
  */
 export async function setUserPhoneNumber(db: Database, userId: string, phone: string): Promise<boolean> {
   try {

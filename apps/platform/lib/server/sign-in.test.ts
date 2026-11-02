@@ -84,14 +84,15 @@ describe("signInWithPassword", () => {
   it("returns the parse error for invalid form input, never checking limits or calling signInEmail", async () => {
     const outcome = await signInWithPassword(form({ identifier: "", password: "secret-pass" }));
 
-    expect(outcome).toEqual({ status: "error", message: "Enter your email address.", email: "" });
+    expect(outcome).toEqual({ status: "error", message: "Enter your email or mobile number.", email: "" });
     expect(mockedConsumeRateLimit).not.toHaveBeenCalled();
     expect(signInEmail).not.toHaveBeenCalled();
   });
 
-  it("asks for an email address, and signs in with one", async () => {
-    expect(await signInWithPassword(form({ identifier: " ", password: "secret-pass" }))).toEqual({ status: "error", message: "Enter your email address.", email: "" });
+  it("asks for an email or a mobile number, and signs in with an email", async () => {
+    expect(await signInWithPassword(form({ identifier: " ", password: "secret-pass" }))).toEqual({ status: "error", message: "Enter your email or mobile number.", email: "" });
     expect(await signInWithPassword(form(VALID_FORM))).toEqual({ status: "signed-in", userId: "user-1" });
+    expect(findUserByPhone).not.toHaveBeenCalled();
     expect(signInEmail).toHaveBeenCalledWith({ body: { email: NORMALISED_EMAIL, password: VALID_FORM.password }, headers: requestHeaders });
   });
 
@@ -135,17 +136,42 @@ describe("signInWithPassword", () => {
     });
   });
 
-  it("signs a mobile number in as the account that owns it, with the limits keyed by the number", async () => {
-    vi.mocked(findUserByPhone).mockResolvedValue({ id: "user-1", name: "Meera", email: PLACEHOLDER });
+  it("signs a mobile number in as the account that owns it, with the limits keyed by that account's email", async () => {
+    vi.mocked(findUserByPhone).mockResolvedValue({ id: "user-1", name: "Meera", email: NORMALISED_EMAIL });
 
     expect(await signInWithPassword(form(PHONE_FORM))).toEqual({ status: "signed-in", userId: "user-1" });
     expect(findUserByPhone).toHaveBeenCalledWith(expect.anything(), E164);
-    expect(signInEmail).toHaveBeenCalledWith({ body: { email: PLACEHOLDER, password: PHONE_FORM.password }, headers: requestHeaders });
+    expect(signInEmail).toHaveBeenCalledWith({ body: { email: NORMALISED_EMAIL, password: PHONE_FORM.password }, headers: requestHeaders });
+    // The same keys the account's email gets, so alternating between the two does not double the guesses.
     expect(mockedConsumeRateLimit.mock.calls.map((call) => call[1])).toEqual([
       "sign-in:client:203.0.113.7",
-      `sign-in:account-client:${E164}:203.0.113.7`,
-      `sign-in:account:${E164}`,
+      `sign-in:account-client:${NORMALISED_EMAIL}:203.0.113.7`,
+      `sign-in:account:${NORMALISED_EMAIL}`,
     ]);
+  });
+
+  it("keys the limits of a number with no account by its placeholder, so each number has its own budget", async () => {
+    vi.mocked(findUserByPhone).mockResolvedValue(null);
+
+    await signInWithPassword(form(PHONE_FORM));
+
+    expect(mockedConsumeRateLimit.mock.calls.map((call) => call[1])).toEqual([
+      "sign-in:client:203.0.113.7",
+      `sign-in:account-client:${PLACEHOLDER}:203.0.113.7`,
+      `sign-in:account:${PLACEHOLDER}`,
+    ]);
+  });
+
+  it("blocks a number over its budget without checking the password, and says what it says for an email", async () => {
+    vi.mocked(findUserByPhone).mockResolvedValue({ id: "user-1", name: "Meera", email: NORMALISED_EMAIL });
+    mockedConsumeRateLimit.mockResolvedValueOnce(ALLOWED).mockResolvedValueOnce(blockedAfter(120));
+
+    expect(await signInWithPassword(form(PHONE_FORM))).toEqual({
+      status: "error",
+      message: "Too many sign-in attempts. Try again in 2 minutes.",
+      email: "98200 11223",
+    });
+    expect(signInEmail).not.toHaveBeenCalled();
   });
 
   it("checks a password even for a number with no account, so the answer takes as long and says the same", async () => {

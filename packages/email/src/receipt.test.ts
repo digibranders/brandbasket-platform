@@ -2,7 +2,6 @@ import { describe, expect, it } from "vitest";
 import { emailLogoUrl } from "./brand";
 import { receiptButton, receiptCode, receiptDocument, receiptParagraph, receiptQuote, receiptRows } from "./receipt";
 import { changeRequestUpdateEmail, type ChangeRequestUpdate } from "./templates/change-request-update";
-import { confirmEmailEmail } from "./templates/confirm-email";
 import { domainMovedEmail } from "./templates/domain-moved";
 import { domainReadyEmail } from "./templates/domain-ready";
 import { passwordResetEmail } from "./templates/password-reset";
@@ -63,7 +62,6 @@ describe("receipt layout helpers", () => {
 const CUSTOMER = [
   { name: "signup-code", kicker: "Verification code", mail: signupCodeEmail({ to, code: "482913", expiresInMinutes: 15 }), button: null },
   { name: "privacy-request-code", kicker: "Confirmation code", mail: privacyRequestCodeEmail({ to, code: "482913", expiresInMinutes: 15 }), button: null },
-  { name: "confirm-email", kicker: "Confirm your email", mail: confirmEmailEmail({ to, confirmUrl: url, expiresInDays: 3 }), button: "Confirm my email" },
   { name: "password-reset", kicker: "Password reset", mail: passwordResetEmail({ to, resetUrl: url, expiresInMinutes: 30 }), button: "Choose a new password" },
   { name: "setup-link", kicker: "Set up your account", mail: setupLinkEmail({ to, businessName: "Rao Dental Care", setupUrl: url, expiresInDays: 7 }), button: "Set your password" },
   { name: "preview-ready", kicker: "Preview ready", mail: previewReadyEmail({ to, businessName: "Rao Dental Care", previewUrl: "https://preview.brandbasket.in/rao" }), button: "Open the preview" },
