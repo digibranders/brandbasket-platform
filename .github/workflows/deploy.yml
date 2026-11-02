@@ -1,0 +1,88 @@
+# Builds main on a GitHub runner and ships it to the VPS, which only installs, migrates and switches the apps.
+#
+# Why: building both apps on the VPS needs more memory than its deploy unit may use, and the build starved the machine for
+# every project that lives there. The runner has the memory; the VPS keeps the database, the env files and the switch.
+#
+# Runs after CI passes on main (or by hand from the Actions tab, which deploys the current head of main). The SSH key can
+# run one command on the server, `brandbasket-gha-deploy` (docs/deployment/brandbasket-vps.md).
+name: Deploy
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+
+# One deploy at a time, and a newer one waits instead of cancelling a deploy that is half way through a migration.
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    name: Build and deploy to the VPS
+    # A manual run is always allowed; an automatic one only when CI passed.
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    environment:
+      name: production
+      url: https://app.brandbasket.in
+
+    env:
+      SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
+
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ env.SHA }}
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: pnpm
+
+      # The release is built where it will run, /srv/brandbasket/releases/<sha>, so no path inside .next changes in transit.
+      - name: Copy the source to the release path
+        run: |
+          sudo mkdir -p "/srv/brandbasket/releases/$SHA"
+          sudo chown -R "$USER" /srv/brandbasket
+          git archive "$SHA" | tar -x -C "/srv/brandbasket/releases/$SHA"
+
+      - name: Install
+        working-directory: /srv/brandbasket/releases/${{ env.SHA }}
+        run: pnpm install --frozen-lockfile
+
+      # The same public values and placeholders the VPS compiles with (nothing secret; the real env files stay on the VPS).
+      - name: Build both apps
+        working-directory: /srv/brandbasket/releases/${{ env.SHA }}
+        run: |
+          set -a
+          source deploy/vps/brandbasket-platform-build.env
+          set +a
+          export CI=1 NEXT_TELEMETRY_DISABLED=1
+          pnpm --workspace-concurrency=2 --filter @brandbasket/platform --filter @brandbasket/admin build
+
+      - name: Pack
+        run: |
+          tar -C "/srv/brandbasket/releases/$SHA" -czf "$RUNNER_TEMP/release.tgz" \
+            --exclude=node_modules --exclude='apps/*/.next/cache' --exclude=.git .
+          ls -lh "$RUNNER_TEMP/release.tgz"
+
+      - name: Ship, migrate and switch
+        env:
+          DEPLOY_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+          DEPLOY_HOST: ${{ vars.DEPLOY_HOST }}
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$DEPLOY_KEY" > ~/.ssh/deploy_key && chmod 600 ~/.ssh/deploy_key
+          printf '%s\n' "$KNOWN_HOSTS" > ~/.ssh/known_hosts
+          ssh -i ~/.ssh/deploy_key -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes -o ServerAliveInterval=30 \
+            "root@$DEPLOY_HOST" "deploy $SHA" < "$RUNNER_TEMP/release.tgz"

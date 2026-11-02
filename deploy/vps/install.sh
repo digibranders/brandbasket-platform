@@ -372,6 +372,7 @@ step_autodeploy() {
   put 0644 "$HERE/heavy-lock.sh" "$LIB/heavy-lock.sh"
   put 0644 "$HERE/github-lib.sh" "$LIB/github-lib.sh"
   put 0755 "$HERE/brandbasket-platform-release" /usr/local/bin/brandbasket-platform-release
+  put 0755 "$HERE/brandbasket-gha-deploy" /usr/local/sbin/brandbasket-gha-deploy
   put 0755 "$HERE/brandbasket-platform-autodeploy" /usr/local/bin/brandbasket-platform-autodeploy
   say "== units and timer (:20 of every minute)"
   put 0644 "$HERE/systemd/brandbasket-platform-autodeploy.service" "$UNIT_DIR/brandbasket-platform-autodeploy.service"
