@@ -34,7 +34,7 @@ html[data-brand="brandbasket"][data-app="console"] {
   position: relative;
   display: flex;
   flex-direction: column;
-  min-height: 720px;
+  min-height: 0;
   overflow: hidden;
   padding: clamp(28px, 3.4vw, 64px);
   border-radius: 24px;
@@ -46,7 +46,7 @@ html[data-brand="brandbasket"][data-app="console"] {
 .auth-brand-story h2 { font-family: var(--font-red-hat-display), sans-serif; font-size: clamp(42px, 4.25vw, 72px); line-height: 1.08; font-weight: 500; letter-spacing: -0.055em; }
 .auth-brand-story h2 span { color: var(--color-rattan-ink); }
 .auth-brand-story p { margin-top: 22px; color: var(--color-ink-2); font-size: 16px; line-height: 1.7; }
-.auth-art { position: relative; width: min(100%, 490px); height: 340px; min-height: 300px; margin: auto; isolation: isolate; }
+.auth-art { position: relative; width: min(100%, 490px); height: 340px; min-height: 0; flex: 1 1 340px; max-height: 390px; margin: 24px auto; isolation: isolate; }
 .auth-art-orbit { position: absolute; inset: 7% -5% -20%; border: 1px solid var(--color-rattan); border-radius: 50%; opacity: 0.32; transform: rotate(-20deg) scaleX(1.2); }
 .auth-art-orbit::before { content: ""; position: absolute; inset: 28px; border: 1px solid var(--color-rattan); border-radius: 50%; }
 .auth-basket-handle { position: absolute; left: 31%; top: 8%; width: 39%; height: 66%; border: 22px solid var(--color-rattan); border-bottom: 0; border-radius: 50% 50% 0 0; transform: rotate(-9deg); }
@@ -63,7 +63,7 @@ html[data-brand="brandbasket"][data-app="console"] {
 .auth-art-spark { position: absolute; width: 36px; height: 36px; color: var(--color-rattan-ink); }
 .auth-art-spark-one { top: 8%; right: 8%; transform: rotate(12deg); }
 .auth-art-spark-two { bottom: 7%; right: 9%; width: 22px; height: 22px; }
-.auth-brand-footer { position: relative; z-index: 1; display: flex; justify-content: space-between; gap: 16px; margin-top: 30px; padding-top: 18px; border-top: 1px solid color-mix(in srgb, var(--color-rattan) 30%, transparent); font-size: 12px; color: var(--color-rattan-ink); }
+.auth-brand-footer { position: relative; z-index: 1; display: flex; justify-content: space-between; gap: 16px; margin-top: auto; padding-top: 18px; border-top: 1px solid color-mix(in srgb, var(--color-rattan) 30%, transparent); font-size: 12px; color: var(--color-rattan-ink); }
 .auth-form-panel { display: flex; flex-direction: column; min-width: 0; padding: 32px clamp(32px, 5.8vw, 100px) 22px; }
 .auth-form-top { display: flex; align-items: center; justify-content: flex-end; gap: 8px; font-size: 12px; color: var(--color-ink-2); }
 .auth-form-content { width: 100%; max-width: 400px; margin: auto; padding: 64px 0; }
@@ -101,7 +101,21 @@ html[data-brand="brandbasket"][data-app="console"] {
 .auth-form-footer { display: flex; flex-wrap: wrap; justify-content: center; gap: 5px 8px; color: var(--color-ink-2); font-size: 12px; line-height: 1.8; text-align: center; }
 .auth-form-footer a { display: inline-flex; align-items: center; gap: 3px; color: var(--color-ink); text-decoration: underline; text-underline-offset: 3px; }
 .console-auth :is(a, button, input):focus-visible { outline: 2px solid var(--color-rattan-ink); outline-offset: 4px; }
-@media (min-width: 1440px) { .auth-art { height: 390px; } }
+/* Keep the desktop frame in the viewport. Only the form scrolls when its content genuinely needs more room. */
+@media (min-width: 768px) {
+  .console-auth { height: 100dvh; min-height: 0; grid-template-rows: minmax(0, 1fr); }
+  .auth-brand-panel { padding-block: clamp(24px, 4dvh, 64px); }
+  .auth-brand-header, .auth-brand-story, .auth-brand-footer { flex-shrink: 0; }
+  .auth-brand-story { margin-top: clamp(24px, 5dvh, 72px); }
+  .auth-brand-story h2 { font-size: clamp(40px, min(4.25vw, 7.5dvh), 72px); }
+  .auth-form-panel { min-height: 0; overflow-y: auto; }
+  .auth-form-top, .auth-form-content, .auth-form-footer { flex-shrink: 0; }
+  .auth-form-content { padding-block: clamp(24px, 6dvh, 64px); }
+}
+@media (min-width: 768px) and (max-height: 640px) {
+  .auth-art { display: none; }
+  .auth-brand-story { margin-block: auto; }
+}
 @media (max-width: 1100px) and (min-width: 768px) {
   .auth-brand-panel { padding: 28px; }
   .auth-brand-header { align-items: flex-start; flex-direction: column; gap: 12px; }
