@@ -64,12 +64,12 @@ describe("viewStaffInvite", () => {
 });
 
 describe("acceptStaffInvite", () => {
-  it("creates a verified account, claims the invite, adds the staff row, and starts no session", async () => {
+  it("creates a verified account, claims the invite, adds the staff row and signs them in", async () => {
     expect(await acceptStaffInvite("tok", FORM)).toEqual({ status: "joined" });
     expect(createVerifiedEmailAccountWithGrant).toHaveBeenCalledWith(expect.anything(), { name: "staff-db" }, { email: INVITE.email, name: "Nikhil Jain", password: "a-long-pass-7!" });
     expect(claimStaffInvite).toHaveBeenCalledWith({ name: "staff-db" }, "inv-1");
     expect(addStaffMember).toHaveBeenCalledWith({ name: "staff-db" }, { userId: "new-user", role: "support" });
-    expect(signInEmail).not.toHaveBeenCalled();
+    expect(signInEmail).toHaveBeenCalledWith(expect.objectContaining({ body: { email: INVITE.email, password: "a-long-pass-7!" } }));
   });
 
   it("lets a signed-in owner of the address join without a password", async () => {

@@ -1,13 +1,13 @@
 # Cloudflare Access for the staff console
 
 **Status: not done.** This page is for the owner. Nothing here has been applied; every step is in the Cloudflare dashboard (and
-one check on the server). Until it is done, `console.brandbasket.in` is protected by the console's own sign-in only: password,
-then an emailed code (`docs/STAFF-ACCESS.md`).
+one check on the server). Until it is done, `console.brandbasket.in` is protected by the console's own sign-in only: a password
+(`docs/STAFF-ACCESS.md`).
 
 What it adds: before anyone reaches the console's sign-in page, Cloudflare asks them to prove their email address with a
 one-time PIN and checks it against a list. A stranger with a stolen password never sees the page.
 
-What it does not change: the console keeps its own password and code. Access is a second wall in front, not a replacement.
+What it does not change: the console keeps its own password. Access is a second wall in front, not a replacement.
 
 ## Before you start
 
@@ -83,13 +83,13 @@ No other service calls the console from outside: the Razorpay webhook and the si
    (`brandbasket.cloudflareaccess.com`), not on the console's sign-in.
 2. Enter an email that is **not** on the list. You should get no PIN and no way in.
 3. Enter a listed email, then the PIN from your inbox. You should now reach the console's own sign-in page; sign in with the
-   password and the emailed code as usual.
+   password as usual.
 4. From a terminal (no cookie), `curl -sI https://console.brandbasket.in/login | head -3` should show `302` with a `location`
    on `cloudflareaccess.com`, not `200`.
 5. Check `https://app.brandbasket.in/login` still opens normally with no Access page.
 
 If something is wrong, open the application in the Cloudflare dashboard and switch its policy off or delete the application;
-the console is then back to password and code only.
+the console is then back to password only.
 
 ## 8. nginx and the origin: what to check on the server
 
@@ -112,7 +112,7 @@ sudo nginx -t
 
 Know the limit: `nginx` checks that the request came **from a Cloudflare address**, not that it came **through your Cloudflare
 zone and Access**. Someone with their own Cloudflare account could, in theory, point a record of theirs at the server's IPv6
-address and reach the console without passing your Access policy. They would still face the console's password and emailed code.
+address and reach the console without passing your Access policy. They would still face the console's password.
 To close this fully, either validate the `Cf-Access-Jwt-Assertion` header at the origin (Cloudflare documents the keys at
 `https://<team>.cloudflareaccess.com/cdn-cgi/access/certs`) or enable per-zone Authenticated Origin Pulls with your own client
 certificate and `ssl_verify_client on` in the console's server block. Neither is set up; they are changes to `deploy/vps/nginx/`
@@ -122,6 +122,5 @@ that need their own review and a deploy, so ask for them as a follow-up if you w
 
 - Add a person: edit the `Staff` policy and add their email. Remove a person the day they leave, in the policy **and** by setting
   `active = false` on their `staff_members` row (`docs/STAFF-ACCESS.md`).
-- A person who is locked out of Access, not the console: check that their address is on the list and spelt as they type it. The
-  console's `pnpm staff:reset-2fa` does not affect Access.
+- A person who is locked out of Access, not the console: check that their address is on the list and spelt as they type it.
 - Update `docs/STAFF-ACCESS.md` recommendation 1 and the "Owner decisions" note in `docs/deployment/brandbasket-vps.md` once it is done.

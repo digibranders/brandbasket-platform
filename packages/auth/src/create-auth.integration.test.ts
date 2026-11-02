@@ -1,6 +1,6 @@
-import { users } from "@brandbasket/db";
+import { sessions, users } from "@brandbasket/db";
 import { openTestDatabases, resetTestDatabase, type TestDatabases } from "@brandbasket/db/testing";
-import { count } from "drizzle-orm";
+import { count, isNull } from "drizzle-orm";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { withAccountCreationGrant } from "./account-creation-grant";
 import { createAuth, PASSWORD_MIN_LENGTH, type AccountMail, type Auth } from "./create-auth";
@@ -180,6 +180,20 @@ describe("sign in", () => {
 
     const afterSignOut = await auth.api.getSession({ headers: new Headers({ cookie: cookiePair }) });
     expect(afterSignOut).toBeNull();
+  });
+
+  // The console's emailed code was removed; sessions made while it existed carry sessions.second_factor_at, new ones do not.
+  it("reads a password-only session and one that still carries the retired second_factor_at the same way", async () => {
+    const signInResult = await auth.api.signInEmail({
+      body: { email: OWNER.email, password: OWNER.password },
+      returnHeaders: true,
+    });
+    const cookiePair = signInResult.headers.get("set-cookie")?.split(";")[0] ?? "";
+    expect(await dbs.owner.db.select({ id: sessions.id }).from(sessions).where(isNull(sessions.secondFactorAt))).toHaveLength(1);
+    expect((await auth.api.getSession({ headers: new Headers({ cookie: cookiePair }) }))?.user.email).toBe(OWNER.email);
+
+    await dbs.owner.db.update(sessions).set({ secondFactorAt: new Date() });
+    expect((await auth.api.getSession({ headers: new Headers({ cookie: cookiePair }) }))?.user.email).toBe(OWNER.email);
   });
 });
 
