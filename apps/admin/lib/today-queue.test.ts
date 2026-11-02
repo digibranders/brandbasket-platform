@@ -107,7 +107,7 @@ describe("failed deliveries", () => {
   });
 
   it("keeps the same wording for a single failure", () => {
-    expect(todayQueue({ ...EMPTY, failedDeliveries: 1 })[0]?.title).toBe("1 emails and webhooks failed");
+    expect(todayQueue({ ...EMPTY, failedDeliveries: 1 })[0]?.title).toBe("1 email or webhook failed");
   });
 
   it("adds nothing when none failed or the count could not be read", () => {
