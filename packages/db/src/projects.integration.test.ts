@@ -8,7 +8,12 @@ import {
   ProjectNotReadyForPreviewError,
   recordProjectPreviewSent,
   requestProjectRevisions,
+  insertOnboardingProject,
+  RevisionRoundsUsedUpError,
 } from "./queries/projects";
+import { grantRevisionRound } from "./queries/project-staff";
+import { REVISION_ROUNDS_KEY } from "./revision-rounds";
+import { saveSiteSetting } from "./queries/site-settings";
 import { businesses, businessMembers, domains, projects, users, type ProjectStatus } from "./schema";
 import { withTenantScope, type ScopedTransaction } from "./scope";
 import { openTestDatabases, resetTestDatabase, type TestDatabases } from "./testing";
@@ -177,6 +182,99 @@ describe("requestProjectRevisions", () => {
     await expect(requestProjectRevisions(dbs.staff.db, { businessId, now: SENT_AT })).rejects.toThrow(
       ProjectNotAwaitingResponseError,
     );
+  });
+});
+
+describe("the cap on rounds of changes", () => {
+  async function readProject(): Promise<typeof projects.$inferSelect> {
+    const [row] = await dbs.staff.db.select().from(projects).where(eq(projects.id, projectId));
+    if (row === undefined) throw new Error("Project missing");
+    return row;
+  }
+
+  async function askForChanges(): Promise<void> {
+    await setProjectStatus("preview");
+    await requestProjectRevisions(dbs.staff.db, { businessId, now: SENT_AT });
+  }
+
+  it("refuses a round once the included ones are used, and leaves the project as it was", async () => {
+    await askForChanges();
+    await askForChanges();
+    await setProjectStatus("preview");
+
+    await expect(requestProjectRevisions(dbs.staff.db, { businessId, now: SENT_AT })).rejects.toBeInstanceOf(RevisionRoundsUsedUpError);
+
+    expect(await readProject()).toMatchObject({ status: "preview", revisionRoundsGranted: 2, revisionRoundsIncluded: 2 });
+  });
+
+  it("allows no changes at all when the build includes none", async () => {
+    await dbs.staff.db.update(projects).set({ revisionRoundsIncluded: 0 }).where(eq(projects.id, projectId));
+    await setProjectStatus("preview");
+
+    await expect(requestProjectRevisions(dbs.staff.db, { businessId, now: SENT_AT })).rejects.toBeInstanceOf(RevisionRoundsUsedUpError);
+  });
+
+  it("lets only one of two requests for the last round through", async () => {
+    await askForChanges();
+    await setProjectStatus("preview");
+
+    const results = await Promise.allSettled([
+      requestProjectRevisions(dbs.staff.db, { businessId, now: SENT_AT }),
+      requestProjectRevisions(dbs.staff.db, { businessId, now: SENT_AT }),
+    ]);
+
+    expect(results.filter((result) => result.status === "fulfilled")).toHaveLength(1);
+    expect((await readProject()).revisionRoundsGranted).toBe(2);
+  });
+
+  it("opens again when staff add a round, and counts it as used once the customer sends it", async () => {
+    await askForChanges();
+    await askForChanges();
+    await setProjectStatus("preview");
+    await grantRevisionRound(dbs.staff.db, projectId);
+
+    const result = await requestProjectRevisions(dbs.staff.db, { businessId, now: SENT_AT });
+
+    expect(result).toMatchObject({ status: "revisions", revisionRoundsGranted: 3, revisionRoundsIncluded: 3 });
+  });
+
+  it("still says nothing is waiting, not that the rounds are used, when there is no preview", async () => {
+    await askForChanges();
+    await askForChanges();
+    await setProjectStatus("building");
+
+    await expect(requestProjectRevisions(dbs.staff.db, { businessId, now: SENT_AT })).rejects.toBeInstanceOf(ProjectNotAwaitingResponseError);
+  });
+});
+
+describe("insertOnboardingProject and the rounds setting", () => {
+  async function openProjectFor(slug: string): Promise<typeof projects.$inferSelect> {
+    const [business] = await dbs.staff.db.insert(businesses).values({ slug, name: slug, currency: "INR" }).returning({ id: businesses.id });
+    if (business === undefined) throw new Error("Business was not inserted");
+    const opened = await dbs.staff.db.transaction((tx) => insertOnboardingProject(tx, business.id));
+    const [row] = await dbs.staff.db.select().from(projects).where(eq(projects.id, opened.id));
+    if (row === undefined) throw new Error("Project missing");
+    return row;
+  }
+
+  it("gives a new project the default two rounds while nothing is set", async () => {
+    expect((await openProjectFor("no-setting")).revisionRoundsIncluded).toBe(2);
+  });
+
+  it("gives a new project the saved number and leaves projects already open as they were", async () => {
+    await saveSiteSetting(dbs.staff.db, { key: REVISION_ROUNDS_KEY, value: "4", staffUserId: OWNER, now: SENT_AT });
+
+    expect((await openProjectFor("after-setting")).revisionRoundsIncluded).toBe(4);
+    const [seeded] = await dbs.staff.db.select().from(projects).where(eq(projects.id, projectId));
+    expect(seeded?.revisionRoundsIncluded).toBe(2);
+  });
+
+  it("takes zero as a real number, and falls back to the default for a value nobody should have saved", async () => {
+    await saveSiteSetting(dbs.staff.db, { key: REVISION_ROUNDS_KEY, value: "0", staffUserId: OWNER, now: SENT_AT });
+    expect((await openProjectFor("zero")).revisionRoundsIncluded).toBe(0);
+
+    await saveSiteSetting(dbs.staff.db, { key: REVISION_ROUNDS_KEY, value: "lots", staffUserId: OWNER, now: SENT_AT });
+    expect((await openProjectFor("garbage")).revisionRoundsIncluded).toBe(2);
   });
 });
 

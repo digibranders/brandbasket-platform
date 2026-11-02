@@ -20,7 +20,7 @@ export function ServiceSetupCard({ asks }: { readonly asks: readonly SetupAsk[] 
           <li key={ask.key} className="pt-4 first:pt-2">
             <h3 className="px-4 text-[0.9375rem] font-semibold text-ink">{ask.label}</h3>
             <p className="px-4 pb-2 text-[0.8125rem] text-ink-2">{ask.hint}</p>
-            <SetupItemForm setup={ask.setup} saved={ask.saved} />
+            <SetupItemForm setup={ask.setup} saved={ask.saved} currency={ask.currency} />
           </li>
         ))}
       </ul>

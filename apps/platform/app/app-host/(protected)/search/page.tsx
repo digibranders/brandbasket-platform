@@ -17,5 +17,5 @@ export default async function SearchPage(): Promise<ReactElement> {
   const [data, todo] = await Promise.all([loadSearch(tenant, new Date()), loadTodo(tenant)]);
   // A business that did not buy Search sees Your plan instead.
   if (data === null) redirect(ADD_ONS_PATH);
-  return <SearchView data={data} setup={setupAsks(todo.items, todo.answers, "search")} />;
+  return <SearchView data={data} setup={setupAsks(todo.items, todo.answers, "search", billing.plan?.currency ?? "INR")} />;
 }

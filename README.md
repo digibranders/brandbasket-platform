@@ -30,7 +30,7 @@ Then edit `apps/platform/.env.local` (and `apps/admin/.env.local`) so the databa
 APP_ORIGIN=http://app.brandbasket.localhost:3198
 NEXT_PUBLIC_APP_URL=http://app.brandbasket.localhost:3198
 ADMIN_ORIGIN=http://console.brandbasket.localhost:3199
-EMAIL_CODE_BYPASS=true        # local only: any 6 digits confirm an email sign-up
+EMAIL_CODE_BYPASS=true        # local only: any 6 digits confirm an email sign-up or the console sign-in code (also in apps/admin/.env.local)
 ```
 
 Start the dashboard with `cd apps/platform && npx next dev -p 3198`, and the staff console with
@@ -50,13 +50,14 @@ Payload pushes schema changes itself.
   box, and a plan (Managed Website). A 6-digit code is emailed to the address (10 minutes, 5 tries, rate limited per
   network, per address and overall); the account is opened only once it is entered, with the address already confirmed.
   The owner then pays on the plan's page and lands on the dashboard.
-- **Sign in**: email and password. **Forgot password**: a one-time link by email.
+- **Sign in**: password, with the email or the mobile number given at sign-up. **Forgot password**: a one-time link, emailed to the
+  address on the account, asked for with either.
 - **Email delivery**: with `BREVO_API_KEY` set, mail goes out through Brevo (API v3) as "Brandbasket" from
   `BRANDBASKET_MAIL_FROM` (default `no-reply@brandbasket.in`), with a redacted copy in the database outbox. Without it, mail is
   only recorded in the outbox (`email_messages`, which staff read in the console); locally the sign-up code and reset
   links stay readable there. A server that real customers can reach (an https `APP_ORIGIN`) refuses to start without
   `BREVO_API_KEY`, and refuses `EMAIL_CODE_BYPASS`.
-- Accounts opened with a mobile number (Brandbasket's path) still sign in with it.
+- The mobile number is saved unverified (it is only used to find the account), and nothing is ever sent to it.
 
 ## Scripts
 

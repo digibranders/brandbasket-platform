@@ -55,6 +55,26 @@ describe("SignInForm agreement note", () => {
   });
 });
 
+describe("SignInForm customer identifier", () => {
+  it("takes an email or a mobile number in one plain text field", () => {
+    const rendered = renderForm(initialSignInState, "phone-or-email");
+    expect(rendered).toContain('name="identifier"');
+    expect(rendered).toContain('type="text"');
+    expect(rendered).not.toContain('type="email"');
+    expect(rendered).toContain('inputMode="email"');
+    expect(rendered).toContain('autoComplete="username"');
+    expect(rendered).toContain("Email or mobile number");
+    expect(rendered).toContain('placeholder="Email or mobile number *"');
+  });
+
+  it("gives the staff console its email field, unchanged", () => {
+    const rendered = renderForm(initialSignInState, "email");
+    expect(rendered).toContain('name="email"');
+    expect(rendered).toContain('type="email"');
+    expect(rendered).toContain('placeholder="you@example.com *"');
+  });
+});
+
 describe("SignInForm notice", () => {
   it("uses username autocomplete for the staff email identifier", () => {
     const rendered = renderForm(initialSignInState, "email");

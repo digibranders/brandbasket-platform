@@ -13,7 +13,7 @@ import { cn } from "@brandbasket/shared/lib/cn";
 import { STACK } from "@/components/v2/classes";
 import { PageHeader } from "@/components/v2/page";
 import { ReferralCodeForm } from "@/components/panel/referral-code-form";
-import { CHECKOUT_COPY, CHECKOUT_PLAN_COPY, checkoutSteps } from "@/lib/checkout-plans";
+import { CHECKOUT_COPY, CHECKOUT_PLAN_COPY, checkoutLead, checkoutSteps } from "@/lib/checkout-plans";
 import { ledgerRows, ledgerSummary, type LedgerCode, type LedgerPricing, type LedgerRow } from "@/lib/checkout-ledger";
 import type { BillingDetailsView } from "@/lib/billing/billing-details-view";
 import { useOpeningPayment } from "@/lib/billing/opening-payment";
@@ -134,7 +134,7 @@ export function CheckoutLedger({
 
   return (
     <div className={cn(STACK, "max-[860px]:pb-24")}>
-      <PageHeader title={CHECKOUT_COPY.title} lede={CHECKOUT_COPY.lead} />
+      <PageHeader title={CHECKOUT_COPY.title} lede={checkoutLead(pricing.currency, pricing.taxRateBasisPoints)} />
 
       {paymentFailed ? (
         <p role="alert" className="rounded-lg bg-rattan-wash px-4 py-3 text-sm text-rattan-ink">

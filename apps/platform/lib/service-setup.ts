@@ -5,6 +5,9 @@
  * Saved answers are shown back in form fields only; never render them as HTML.
  */
 
+import type { MoneyCurrency } from "@brandbasket/shared/lib/money";
+import { CURRENCY_NAMES } from "@/lib/currency-words";
+
 export const SETUP_KEYS = ["accounts", "offers", "budget", "areas"] as const;
 export type SetupKey = (typeof SETUP_KEYS)[number];
 
@@ -65,6 +68,20 @@ export const SETUP_FIELDS: Readonly<Record<SetupKey, readonly SetupField[]>> = {
   ],
 };
 
+/**
+ * The saved budget answer is named adBudgetRupees from before dollar customers; it holds the amount in the business's own
+ * currency, and only its wording changes with the currency.
+ */
+const BUDGET_FIELD = "adBudgetRupees";
+const BUDGET_EXAMPLE: Readonly<Record<MoneyCurrency, string>> = { INR: "10000", USD: "150" };
+
+/** SETUP_FIELDS for one business: the budget field says rupees or dollars to match what it is billed in. */
+export function setupFieldsFor(key: SetupKey, currency: MoneyCurrency): readonly SetupField[] {
+  return SETUP_FIELDS[key].map((field) =>
+    field.name === BUDGET_FIELD ? { ...field, label: `Monthly ad budget in ${CURRENCY_NAMES[currency]}`, placeholder: BUDGET_EXAMPLE[currency] } : field,
+  );
+}
+
 export type SetupParse =
   | { readonly success: true; readonly answers: Readonly<Record<string, string | number>> }
   | { readonly success: false; readonly field: string; readonly message: string };
@@ -103,8 +120,8 @@ function pageLink(raw: string, hosts: readonly string[]): string | null {
 
 const GOOGLE_HOSTS = ["google.com", "g.page", "goo.gl", "share.google"] as const;
 
-/** Checks one item's form. `input` is the form's text values, untrimmed. */
-export function parseSetupItem(key: SetupKey, input: Readonly<Record<string, string>>): SetupParse {
+/** Checks one item's form. `input` is the form's text values, untrimmed; `currency` is the business's, for the budget's wording. */
+export function parseSetupItem(key: SetupKey, input: Readonly<Record<string, string>>, currency: MoneyCurrency): SetupParse {
   const value = (name: string): string => (input[name] ?? "").trim();
   switch (key) {
     case "accounts": {
@@ -124,14 +141,14 @@ export function parseSetupItem(key: SetupKey, input: Readonly<Record<string, str
       return { success: true, answers: { offers } };
     }
     case "budget": {
-      const digits = value("adBudgetRupees").replace(/[₹,\s]/g, "");
+      const digits = value(BUDGET_FIELD).replace(/[₹$,\s]/g, "");
       if (!/^\d{1,7}$/.test(digits) || Number(digits) < 1 || Number(digits) > BUDGET_MAX) {
-        return fail("adBudgetRupees", "Enter the monthly amount in rupees, for example 10000.");
+        return fail(BUDGET_FIELD, `Enter the monthly amount in ${CURRENCY_NAMES[currency]}, for example ${BUDGET_EXAMPLE[currency]}.`);
       }
       const area = value("adArea");
       if (area.length < 2) return fail("adArea", "Say how far from you the ads should reach, for example 4 km around your business.");
       if (area.length > AREA_MAX) return fail("adArea", `Keep it to ${AREA_MAX} characters or fewer.`);
-      return { success: true, answers: { adBudgetRupees: Number(digits), adArea: area } };
+      return { success: true, answers: { [BUDGET_FIELD]: Number(digits), adArea: area } };
     }
     case "areas": {
       const areas = value("areas");

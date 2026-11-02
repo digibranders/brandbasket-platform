@@ -16,9 +16,10 @@ export const JOURNEY_STAGE_LABELS: Readonly<Record<JourneyStage, string>> = {
   live: "Live",
 };
 
+/** `submitted` is "Ready to start" for staff (project-stage.ts): nobody has begun, so the track still reads "Setting up". */
 const STAGE_BY_PROJECT_STATUS: Readonly<Record<ProjectStatus, JourneyStage | "paused">> = {
   onboarding: "setup",
-  submitted: "building",
+  submitted: "setup",
   building: "building",
   preview: "preview",
   revisions: "preview",

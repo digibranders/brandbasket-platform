@@ -115,6 +115,11 @@ describe("businessFigures", () => {
     ]);
   });
 
+  it("leaves out the collected figure when the role may not see money", () => {
+    const labels = businessFigures({ ...BASE, collected: null }).map((figure) => figure.label);
+    expect(labels).toEqual(["New enquiries, 7 days", "Paying clients", "In build", "Open requests", "Errors to look at"]);
+  });
+
   it("uses calm words when nothing is waiting", () => {
     const figures = businessFigures({ ...BASE, leadsThisWeek: 5, leadsLastWeek: 8, newPayingThisMonth: 0, previewsDueToday: 0, newRequests: 0, activeErrors: 0 });
     expect(figures.map((figure) => [figure.note, figure.tone])).toEqual([

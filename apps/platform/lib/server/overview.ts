@@ -107,7 +107,7 @@ export async function loadOverview(tenant: TenantContext, billing: CustomerBilli
     todo: todo.items,
     requests: [...postsRow, ...needsYouFrom(needs)],
     included: allowed === 0 || used === null ? null : { used, allowed },
-    results: resultLines({ services: todo.services, chatbotLeads: leads, enquiries, social: social === undefined ? null : toView(social), search: search === undefined ? null : toView(search) }),
+    results: resultLines({ services: todo.services, chatbotLeads: leads, currency: billing.plan?.currency ?? "INR", enquiries, social: social === undefined ? null : toView(social), search: search === undefined ? null : toView(search) }),
     activity: activityRows({
       events: events.map((event) => ({ id: event.id, occurredAt: event.occurredAt, title: event.title, service: event.service })),
       previewSentAt: overview.project?.previewSentAt ?? null,

@@ -50,7 +50,7 @@ export async function loadSocial(tenant: TenantContext, billing: CustomerBilling
   return {
     posts,
     monthLine: monthLine(posts, now),
-    ads: adsPanel({ snapshot: snapshots.find((row) => row.service === "social") ?? null, adCreditCents: billing.subscription?.adCreditCents ?? 0 }),
+    ads: adsPanel({ snapshot: snapshots.find((row) => row.service === "social") ?? null, adCreditCents: billing.subscription?.adCreditCents ?? 0, currency: billing.plan?.currency ?? "INR" }),
     report: report?.url ?? null,
     month: monthName(now),
   };

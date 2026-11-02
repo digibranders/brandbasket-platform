@@ -43,19 +43,19 @@ export interface AccountOtpAttempt {
 
 /**
  * Atomically claims one of the code's `maxAttempts` tries and returns what the code is for, or null when there was
- * none to claim (no such code, used, expired, or out of tries). Every condition is in the one UPDATE's WHERE, so two
- * confirms racing for the last try can never both get it. Callers compare the submitted code, and that the purpose
- * and address are the ones they expect, only after a successful claim.
+ * none to claim (no such code, used, expired, out of tries, or made for another purpose). Every condition is in the
+ * one UPDATE's WHERE, so two confirms racing for the last try can never both get it. Callers compare the submitted
+ * code, and that the address is the one they expect, only after a successful claim.
  */
 export async function claimAccountOtpAttempt(
   db: Database,
-  input: { readonly otpId: string; readonly maxAttempts: number; readonly now: Date },
+  input: { readonly otpId: string; readonly purpose: AccountOtpPurpose; readonly maxAttempts: number; readonly now: Date },
 ): Promise<AccountOtpAttempt | null> {
   if (!isUuid(input.otpId)) return null;
   const rows = await db
     .update(accountOtps)
     .set({ attempts: sql`${accountOtps.attempts} + 1` })
-    .where(and(eq(accountOtps.id, input.otpId), lt(accountOtps.attempts, input.maxAttempts), gt(accountOtps.expiresAt, input.now)))
+    .where(and(eq(accountOtps.id, input.otpId), eq(accountOtps.purpose, input.purpose), lt(accountOtps.attempts, input.maxAttempts), gt(accountOtps.expiresAt, input.now)))
     .returning({
       attempts: accountOtps.attempts,
       purpose: accountOtps.purpose,
@@ -91,12 +91,15 @@ export interface PhoneAccount {
   readonly email: string;
 }
 
-/** The account that signs in with `phone` (E.164), or null. A number nobody has proven is theirs signs nobody in. */
+/**
+ * The account that holds `phone` (E.164), or null. The number is the one given at sign-up and is not proven, so it
+ * only finds the account: the password (or, to reset it, the email on file) is what proves who is asking.
+ */
 export async function findUserByPhone(db: Database, phone: string): Promise<PhoneAccount | null> {
   const rows = await db
     .select({ id: users.id, name: users.name, email: users.email })
     .from(users)
-    .where(and(eq(users.phoneNumber, phone), eq(users.phoneNumberVerified, true)))
+    .where(eq(users.phoneNumber, phone))
     .limit(1);
   return rows[0] ?? null;
 }
@@ -109,7 +112,7 @@ export async function phoneNumberIsTaken(db: Database, phone: string): Promise<b
 
 /**
  * Saves the mobile number (E.164) an owner gave when signing up. It stays unproven (`phone_number_verified` is left
- * false), so it is a contact number and signs nobody in. False, with nothing saved, when another account holds it.
+ * false). False, with nothing saved, when another account holds it.
  */
 export async function setUserPhoneNumber(db: Database, userId: string, phone: string): Promise<boolean> {
   try {

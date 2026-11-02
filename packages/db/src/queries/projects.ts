@@ -2,6 +2,7 @@ import { and, desc, eq, inArray, isNull, notInArray, sql } from "drizzle-orm";
 import type { Database } from "../client";
 import type { ScopedTransaction } from "../scope";
 import { domains, projects, type ProjectKind, type ProjectStatus } from "../schema";
+import { findIncludedRevisionRounds } from "./site-settings";
 import { isUuid } from "./tenant";
 
 /** The one promised duration: the first preview is due this long after onboarding is submitted (spec §5.3). */
@@ -36,6 +37,14 @@ export class ProjectNotAwaitingResponseError extends Error {
   constructor(id: string) {
     super(`Project ${id} is not awaiting a response to a preview.`);
     this.name = "ProjectNotAwaitingResponseError";
+  }
+}
+
+/** The preview is waiting, but every round of changes the build includes has been used. Staff can grant another. */
+export class RevisionRoundsUsedUpError extends Error {
+  constructor(businessId: string) {
+    super(`Business ${businessId} has used all the rounds of changes its build includes.`);
+    this.name = "RevisionRoundsUsedUpError";
   }
 }
 
@@ -136,8 +145,8 @@ export async function submitProject(tx: ScopedTransaction, submission: ProjectSu
 }
 
 /**
- * Opens the onboarding project for a business that has just been created. System work only: the app role cannot
- * insert projects. Takes any transaction because it runs inside the staff-side account creation.
+ * Opens the onboarding project for a business that has just been created, with the rounds of changes the console
+ * setting gives new builds today. System work only: the app role cannot insert projects. Takes any transaction because it runs inside the staff-side account creation.
  */
 export async function insertOnboardingProject(
   tx: ScopedTransaction,
@@ -145,7 +154,7 @@ export async function insertOnboardingProject(
 ): Promise<{ readonly id: string }> {
   const rows = await tx
     .insert(projects)
-    .values({ businessId, kind: "initial_build", status: "onboarding" })
+    .values({ businessId, kind: "initial_build", status: "onboarding", revisionRoundsIncluded: await findIncludedRevisionRounds(tx) })
     .returning({ id: projects.id });
   const project = rows[0];
   if (project === undefined) throw new Error("Project insert returned no row");
@@ -205,20 +214,34 @@ export async function approveProjectPreview(db: Runner, input: ProjectPreviewRes
 
 /**
  * Asking for changes, moving the business's project back to `revisions` and counting the round in
- * `revisionRoundsGranted`, tracked against `revisionRoundsIncluded` for whoever later needs to know how many rounds
- * a business has used. This is a plain status move: the customer's written feedback is saved as a support ticket first
- * (sendPreviewFeedbackAction in the dashboard), not here. Staff-privileged for the same reason as
- * approveProjectPreview; see its doc comment.
+ * `revisionRoundsGranted`. A round is only counted while fewer have been used than `revisionRoundsIncluded`: the check
+ * sits in the same statement as the move, so two requests racing for the last round cannot both get it. When the
+ * preview is waiting but the rounds are used up it throws RevisionRoundsUsedUpError; staff granting a round
+ * (grantRevisionRound) raises the allowance and opens it again. This is a plain status move: the customer's written
+ * feedback is saved as a support ticket first (sendPreviewFeedbackAction in the dashboard), not here. Staff-privileged
+ * for the same reason as approveProjectPreview; see its doc comment.
  */
 export async function requestProjectRevisions(db: Runner, input: ProjectPreviewResponse): Promise<Project> {
   const rows = await db
     .update(projects)
     .set({ status: "revisions", revisionRoundsGranted: sql`${projects.revisionRoundsGranted} + 1` })
-    .where(and(eq(projects.businessId, input.businessId), eq(projects.status, "preview")))
+    .where(
+      and(
+        eq(projects.businessId, input.businessId),
+        eq(projects.status, "preview"),
+        sql`${projects.revisionRoundsGranted} < ${projects.revisionRoundsIncluded}`,
+      ),
+    )
     .returning(PROJECT_COLUMNS);
   const project = rows[0];
-  if (project === undefined) throw new ProjectNotAwaitingResponseError(input.businessId);
-  return project;
+  if (project !== undefined) return project;
+  const waiting = await db
+    .select({ id: projects.id })
+    .from(projects)
+    .where(and(eq(projects.businessId, input.businessId), eq(projects.status, "preview")))
+    .limit(1);
+  if (waiting.length > 0) throw new RevisionRoundsUsedUpError(input.businessId);
+  throw new ProjectNotAwaitingResponseError(input.businessId);
 }
 
 export interface ProjectLaunch {
@@ -230,8 +253,8 @@ export interface ProjectLaunch {
  * Marks a business's project live: status -> `live`, `launchedAt` stamped, and its current primary domain (if it
  * has one) marked `active`, all in one transaction. Only a project actually `approved` can be launched — the same
  * "condition is the gate" shape as every other staff transition in this file. This call trusts the caller that the
- * real site is actually deployed and DNS is pointed at it; it does not check that itself (there is nothing in this
- * codebase that could). Staff-privileged for the same reason as approveProjectPreview; see its doc comment.
+ * real site is actually deployed and DNS is pointed at it; it does not check that itself. The console's launchProject
+ * loads the address first (checkSiteAddress) and lets staff go live anyway. Staff-privileged for the same reason as approveProjectPreview; see its doc comment.
  */
 export async function markProjectLive(db: Runner, input: ProjectLaunch): Promise<Project> {
   return db.transaction(async (tx) => {

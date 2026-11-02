@@ -11,6 +11,7 @@ import { setupPageHref } from "@/lib/setup-asks";
 import { loadActiveServices } from "./active-services";
 import { loadIntake } from "./intake";
 import { getLiveWebsite, getProjectOverview } from "./onboarding";
+import { stillAhead } from "@/lib/home/due";
 import { loadOverview, type OverviewData } from "./overview";
 import { loadRequestNeeds, loadWaitingOnYou } from "./requests";
 import { getSetupCallState, type SetupCallState } from "./setup-call";
@@ -50,11 +51,11 @@ export async function loadHome(tenant: TenantContext, billing: CustomerBilling, 
             endsAt: call.booking.endsAtIso === null ? null : new Date(call.booking.endsAtIso),
             heldAt: call.booking.heldAtIso === null ? null : new Date(call.booking.heldAtIso),
           },
-    project: project === null ? null : { status: project.status, slaDueAt: project.slaDueAt, onHoldReason: project.onHoldReason },
+    project: project === null ? null : { status: project.status, slaDueAt: stillAhead(project.slaDueAt, now), onHoldReason: project.onHoldReason },
     live,
   });
   const layout = homeLayoutOf(state);
-  const base = { state, services, call, project: project === null ? null : { slaDueAt: project.slaDueAt, previewSentAt: project.previewSentAt, launchPlannedOn: project.launchPlannedOn }, kickoffNotes: call.booking?.summary ?? null };
+  const base = { state, services, call, project: project === null ? null : { slaDueAt: stillAhead(project.slaDueAt, now), previewSentAt: project.previewSentAt, launchPlannedOn: project.launchPlannedOn }, kickoffNotes: call.booking?.summary ?? null };
   if (layout === "billing") return { ...base, intake: [], attention: [], overview: null };
 
   const [{ answers }, needs, waiting] = await Promise.all([loadIntake(tenant), loadRequestNeeds(tenant), loadWaitingOnYou(tenant)]);

@@ -10,7 +10,7 @@ import { requestPasswordResetAction } from "./actions";
 
 export const metadata: Metadata = { title: "Reset your password" };
 
-/** Asks for the email the account signs in with, and sends it a one-time link to choose a new password. */
+/** Asks for the email or mobile number the account signs in with, and emails the account a one-time link to choose a new password. */
 export default async function ForgotPasswordPage(): Promise<ReactElement> {
   const access = await getCustomerAccess();
   if (access.kind === "granted") redirect("/");
@@ -23,7 +23,7 @@ export default async function ForgotPasswordPage(): Promise<ReactElement> {
           Forgot your <em>password?</em>
         </>
       }
-      lede="Tell us the email you sign in with and we'll email you a link to choose a new password."
+      lede="Tell us the email or mobile number you sign in with and we'll email you a link to choose a new password."
     >
       <TurnstileScope>
         <ForgotPasswordForm action={requestPasswordResetAction} brandName={brand.shortName} />

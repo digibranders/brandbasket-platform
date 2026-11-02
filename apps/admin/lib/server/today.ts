@@ -68,13 +68,14 @@ interface QueueRead {
   readonly failed: readonly string[];
 }
 
-async function readQueueSources(now: Date): Promise<QueueRead> {
+/** `canSeeMoney` is the staff member's "money" capability: without it the flagged payments are not read at all. */
+async function readQueueSources(now: Date, canSeeMoney: boolean): Promise<QueueRead> {
   const db = getStaffDb();
   const failed: string[] = [];
   const [clients, leads, flagged, addOns, newTickets, newErrors, failedDeliveries, kickoffsNeedingOutcome] = await Promise.all([
     guarded("clients", () => listClients(db), [], failed),
     guarded("leads", () => listLeads(db, {}), [], failed),
-    guarded("flagged payments", () => listPaymentsNeedingAttention(db, { limit: ATTENTION_READ_LIMIT }), [], failed),
+    canSeeMoney ? guarded("flagged payments", () => listPaymentsNeedingAttention(db, { limit: ATTENTION_READ_LIMIT }), [], failed) : Promise.resolve([]),
     guarded("add-ons to contact", () => listAddOnsToContact(db, ATTENTION_READ_LIMIT), [], failed),
     guarded("requests needing a reply", async () => (await listSupportTicketsForStaff(db, { queue: "needs_reply", limit: NEW_TICKETS_READ_LIMIT })).items, [], failed),
     guarded("new errors", async () => (await listErrorIssues(db, { status: "new" })).issues, [], failed),
@@ -111,13 +112,13 @@ function queueFrom(sources: QueueSources, now: Date): readonly TodayItem[] {
 }
 
 /** Everything that needs a person right now, late first. */
-export async function loadTodayItems(now: Date): Promise<readonly TodayItem[]> {
-  return queueFrom((await readQueueSources(now)).sources, now);
+export async function loadTodayItems(now: Date, canSeeMoney: boolean): Promise<readonly TodayItem[]> {
+  return queueFrom((await readQueueSources(now, canSeeMoney)).sources, now);
 }
 
 /** The rail's Today count: the length of the queue. */
-export async function countTodayItems(): Promise<number> {
-  return (await loadTodayItems(new Date())).length;
+export async function countTodayItems(canSeeMoney: boolean): Promise<number> {
+  return (await loadTodayItems(new Date(), canSeeMoney)).length;
 }
 
 export interface TodayPage {
@@ -129,14 +130,14 @@ export interface TodayPage {
   readonly systems: readonly SystemLine[];
 }
 
-/** Everything the Today page draws, each source read once. */
-export async function loadTodayPage(now: Date): Promise<TodayPage> {
+/** Everything the Today page draws, each source read once. Without `canSeeMoney` the collected figure and flagged payments are neither read nor shown. */
+export async function loadTodayPage(now: Date, canSeeMoney: boolean): Promise<TodayPage> {
   const db = getStaffDb();
   const month = monthRange(now);
   const today = todayRange(now);
   const [queue, collected, ticketCounts, activeErrors, calls, systems] = await Promise.all([
-    readQueueSources(now),
-    guarded("money collected", () => sumCapturedPaymentsBetween(db, month.start, month.end), []),
+    readQueueSources(now, canSeeMoney),
+    canSeeMoney ? guarded("money collected", () => sumCapturedPaymentsBetween(db, month.start, month.end), []) : Promise.resolve(null),
     guarded<Readonly<Record<SupportStatus, number>> | null>("request counts", () => countSupportTicketsByStatus(db), null),
     guarded("open errors", () => countActiveErrorIssues(db), 0),
     guarded("calls today", () => listSetupCallsBetween(db, today.start, today.end), []),

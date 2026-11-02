@@ -1,6 +1,7 @@
 import { findDeliverableForBusiness, withTenantScope } from "@brandbasket/db";
 import { randomUUID } from "node:crypto";
 import type { Metadata } from "next";
+import { redirect } from "next/navigation";
 import type { ReactElement } from "react";
 import { z } from "zod";
 import { AskForm } from "@/components/requests/ask-form";
@@ -23,6 +24,8 @@ export default async function AskForAChangePage({
   readonly searchParams: Promise<Record<string, string | string[] | undefined>>;
 }): Promise<ReactElement> {
   const { tenant, billing } = await requireCustomerAccess();
+  // This is for paid accounts; Home tells the rest what is next.
+  if (!billing.hasAccess) redirect("/");
   const query = await searchParams;
   const about = z.uuid().safeParse(one(query.about));
   const [services, data, post] = await Promise.all([

@@ -13,7 +13,6 @@ export { createOutboxTransport, OUTBOX_TRANSPORT_NAME, type EmailTransport, type
 export { affiliateLinkEmail, type AffiliateLinkInput } from "./templates/affiliate-link";
 export { bookingCodeEmail, type BookingCodeInput } from "./templates/booking-code";
 export { changeRequestUpdateEmail, type ChangeRequestUpdate, type ChangeRequestUpdateInput } from "./templates/change-request-update";
-export { confirmEmailEmail, type ConfirmEmailInput } from "./templates/confirm-email";
 export { leadReceivedEmail, type LeadReceivedInput } from "./templates/lead-received";
 export { listingEnquiryEmail, type ListingEnquiryInput } from "./templates/listing-enquiry";
 export { passwordResetEmail, type PasswordResetInput } from "./templates/password-reset";
@@ -31,6 +30,7 @@ export {
   type PreviewRevisionsRequestedInput,
 } from "./templates/preview-revisions-requested";
 export { signupCodeEmail, type SignupCodeInput } from "./templates/signup-code";
+export { staffSignInCodeEmail, type StaffSignInCodeInput } from "./templates/staff-sign-in-code";
 export { setupLinkEmail, type SetupLinkInput } from "./templates/setup-link";
 export { supportRequestOpenedEmail, type SupportRequestOpenedInput } from "./templates/support-request-opened";
 export { staffInviteEmail, type StaffInviteInput } from "./templates/staff-invite";

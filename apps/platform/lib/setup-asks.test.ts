@@ -18,22 +18,22 @@ describe("setupAsks", () => {
   const items = [item("accounts", "social"), item("offers", "social"), item("budget", "social", true), item("areas", "search")];
 
   it("lists a service's open questions that block delivery, in order, with what was saved for it", () => {
-    expect(setupAsks(items, ANSWERS, "social")).toEqual([{ key: "accounts", setup: "accounts", label: "About accounts", hint: "Two minutes", saved: { accounts: "x" } }]);
-    expect(setupAsks(items, ANSWERS, "search").map((ask) => ask.key)).toEqual(["areas"]);
+    expect(setupAsks(items, ANSWERS, "social", "INR")).toEqual([{ key: "accounts", setup: "accounts", label: "About accounts", hint: "Two minutes", saved: { accounts: "x" }, currency: "INR" }]);
+    expect(setupAsks(items, ANSWERS, "search", "INR").map((ask) => ask.key)).toEqual(["areas"]);
   });
 
   it("leaves out an answered question and the question about what to promote", () => {
-    expect(setupAsks(items, ANSWERS, "social").map((ask) => ask.key)).not.toContain("budget");
-    expect(setupAsks(items, ANSWERS, "social").map((ask) => ask.key)).not.toContain("offers");
+    expect(setupAsks(items, ANSWERS, "social", "INR").map((ask) => ask.key)).not.toContain("budget");
+    expect(setupAsks(items, ANSWERS, "social", "INR").map((ask) => ask.key)).not.toContain("offers");
   });
 
   it("leaves out a website checklist item, which is not asked here", () => {
     const link: TodoItem = { key: "business", label: "Your business", hint: "", service: "website", done: false, kind: "link", href: "/onboarding/business" };
-    expect(setupAsks([link], ANSWERS, "social")).toEqual([]);
+    expect(setupAsks([link], ANSWERS, "social", "INR")).toEqual([]);
   });
 
   it("is empty when every blocking question is answered", () => {
-    expect(setupAsks([item("accounts", "social", true), item("budget", "social", true)], ANSWERS, "social")).toEqual([]);
+    expect(setupAsks([item("accounts", "social", true), item("budget", "social", true)], ANSWERS, "social", "INR")).toEqual([]);
   });
 });
 

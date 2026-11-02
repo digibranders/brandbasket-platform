@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { and, eq, lt, sql } from "drizzle-orm";
+import { and, eq, inArray, lt, sql } from "drizzle-orm";
 import type { Database } from "./client";
 import { rateLimitBuckets } from "./schema";
 
@@ -34,6 +34,12 @@ export function windowStartFor(now: Date, windowSeconds: number): Date {
  */
 export function bucketKeyFor(key: string): string {
   return createHash("sha256").update(key).digest("base64url");
+}
+
+/** Forgets every hit recorded for `keys`: the recovery command's way of lifting a lockout without waiting out the window. */
+export async function clearRateLimits(db: Database, keys: readonly string[]): Promise<void> {
+  if (keys.length === 0) return;
+  await db.delete(rateLimitBuckets).where(inArray(rateLimitBuckets.key, keys.map(bucketKeyFor)));
 }
 
 /**

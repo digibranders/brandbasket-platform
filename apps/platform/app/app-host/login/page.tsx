@@ -103,7 +103,7 @@ export default async function AppLoginPage({ searchParams }: AppLoginPageProps):
             action={signInCustomer}
             turnstileAction="sign_in"
             submitLabel="Sign in"
-            identifier="customer-email"
+            identifier="phone-or-email"
             forgotPasswordHref={FORGOT_PASSWORD_PATH}
             notice={noticeText}
             agreementNote={

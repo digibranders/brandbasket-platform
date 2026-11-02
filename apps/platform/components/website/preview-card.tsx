@@ -3,9 +3,9 @@ import Link from "next/link";
 import type { ReactElement } from "react";
 import { cn } from "@brandbasket/shared/lib/cn";
 import { safeExternalHref } from "@brandbasket/shared/lib/safe-link";
-import { approvePreviewAction } from "@/app/app-host/(protected)/website/actions";
-import { DARK_BUTTON, LIFT, SOFT_BUTTON } from "@/components/v2/classes";
+import { DARK_BUTTON, LIFT } from "@/components/v2/classes";
 import { previewHost } from "@/lib/website/address";
+import { PreviewApprove } from "./preview-approve";
 import { PreviewFeedback } from "./preview-feedback";
 import type { ProgressView } from "@/lib/website/progress-view";
 import { askAboutHref } from "@/lib/website/tabs";
@@ -28,6 +28,8 @@ interface ProgressCardProps {
   readonly feedbackKey: string;
   /** "Two rounds of changes are included.", shown under the feedback box. */
   readonly roundsLine: string;
+  /** Every included round is used: the feedback box gives way to the rounds line and a way to ask. */
+  readonly roundsUsedUp: boolean;
 }
 
 /** A browser window drawn with tokens: three dots and the preview's address, then the picture, or the site's name when there is none. */
@@ -57,7 +59,7 @@ function BrowserFrame({ pictureUrl, previewUrl, address, businessName }: Pick<Pr
 }
 
 /** The raised card at the top of Progress: for a preview, the picture and the three buttons; otherwise a status, its line and at most one way forward. */
-export function ProgressCard({ view, pictureUrl, previewUrl, address, businessName, liveHostname, feedbackKey, roundsLine }: ProgressCardProps): ReactElement {
+export function ProgressCard({ view, pictureUrl, previewUrl, address, businessName, liveHostname, feedbackKey, roundsLine, roundsUsedUp }: ProgressCardProps): ReactElement {
   const previewing = view.kind === "preview";
   const previewHref = previewUrl === null ? null : safeExternalHref(previewUrl);
   const liveHref = liveHostname === null ? null : safeExternalHref(`https://${liveHostname}`);
@@ -92,12 +94,17 @@ export function ProgressCard({ view, pictureUrl, previewUrl, address, businessNa
               Open preview
             </a>
           )}
-          <form action={approvePreviewAction} className="grid">
-            <button type="submit" className={cn(SOFT_BUTTON, "w-full")}>
-              Approve
-            </button>
-          </form>
-          <PreviewFeedback submissionKey={feedbackKey} roundsLine={roundsLine} />
+          <PreviewApprove />
+          {roundsUsedUp ? (
+            <div className="grid gap-2">
+              <p className="text-[0.8125rem] text-ink-2">{roundsLine}</p>
+              <Link href={askAboutHref("")} className={TEXT_LINK}>
+                Ask for a change
+              </Link>
+            </div>
+          ) : (
+            <PreviewFeedback submissionKey={feedbackKey} roundsLine={roundsLine} />
+          )}
         </>
       ) : null}
 

@@ -45,7 +45,7 @@ nothing else on the row can change.
 
 ## Running it
 
-It runs inside the nightly support maintenance (`brandbasket-maintenance.timer`, 03:00 IST). To preview or run it
+It runs inside the daily support maintenance (`brandbasket-maintenance.timer`, 03:30 UTC, which is 09:00 IST). To preview or run it
 by hand, see `retention-run.md`. Its output is counts only.
 
 After any restore from backup, run the account erase job and `pnpm retention:run` once, so data erased since the backup

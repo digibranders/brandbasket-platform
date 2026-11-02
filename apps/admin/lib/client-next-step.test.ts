@@ -69,9 +69,9 @@ describe("overviewNextStep", () => {
     expect(overviewNextStep({ project: project({ status: "live" }), movingTo: { hostname: "omsweets.in", status: "pending" } }, NOW)).toEqual({ label: "Move them to their own domain", anchor: "domain" });
   });
 
-  it("starts a submitted build, late or not, linking to the website build on the Project tab", () => {
-    expect(overviewNextStep({ project: project({}), movingTo: null }, NOW)).toEqual({ label: "Start building the website: preview 2 days late", anchor: "website-build" });
-    expect(overviewNextStep({ project: project({ slaDueAt: null }), movingTo: null }, NOW)).toEqual({ label: "Start building the website", anchor: "website-build" });
+  it("starts a submitted build, late or not, linking to the top of the Project tab, where Start building is", () => {
+    expect(overviewNextStep({ project: project({}), movingTo: null }, NOW)).toEqual({ label: "Start building the website: preview 2 days late", anchor: null });
+    expect(overviewNextStep({ project: project({ slaDueAt: null }), movingTo: null }, NOW)).toEqual({ label: "Start building the website", anchor: null });
   });
 
   it("keeps sending the preview while building or in revisions, late or not", () => {
@@ -85,7 +85,7 @@ describe("overviewNextStep", () => {
   });
 
   it("starts the build and goes live for kickoff-first projects", () => {
-    expect(overviewNextStep({ project: project({ onboardingSubmittedAt: null, slaDueAt: null }), movingTo: null }, NOW)).toEqual({ label: "Start building the website", anchor: "website-build" });
+    expect(overviewNextStep({ project: project({ onboardingSubmittedAt: null, slaDueAt: null }), movingTo: null }, NOW)).toEqual({ label: "Start building the website", anchor: null });
     expect(overviewNextStep({ project: project({ status: "approved", onboardingSubmittedAt: null }), movingTo: null }, NOW)).toEqual({ label: "Go live", anchor: "domain" });
   });
 

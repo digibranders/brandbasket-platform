@@ -1,14 +1,14 @@
 import { describe, expect, it } from "vitest";
-import { doneSetupKeys, parseSetupItem, SETUP_FIELDS, SETUP_KEYS } from "@/lib/service-setup";
+import { doneSetupKeys, parseSetupItem, SETUP_FIELDS, SETUP_KEYS, setupFieldsFor } from "@/lib/service-setup";
 
 describe("parseSetupItem accounts", () => {
   it("accepts a page link with or without the scheme and keeps the answer an admin choice", () => {
-    const result = parseSetupItem("accounts", { instagramUrl: "instagram.com/saidental", facebookUrl: "", adminAccess: "added" });
+    const result = parseSetupItem("accounts", { instagramUrl: "instagram.com/saidental", facebookUrl: "", adminAccess: "added" }, "INR");
     expect(result).toEqual({ success: true, answers: { instagramUrl: "https://instagram.com/saidental", facebookUrl: "", adminAccess: "added" } });
   });
 
   it("needs at least one page", () => {
-    expect(parseSetupItem("accounts", { instagramUrl: "", facebookUrl: "", adminAccess: "not_yet" })).toEqual({
+    expect(parseSetupItem("accounts", { instagramUrl: "", facebookUrl: "", adminAccess: "not_yet" }, "INR")).toEqual({
       success: false,
       field: "instagramUrl",
       message: "Add at least one of your Instagram or Facebook pages.",
@@ -16,12 +16,12 @@ describe("parseSetupItem accounts", () => {
   });
 
   it("refuses a link on the wrong site and one with a login in it", () => {
-    expect(parseSetupItem("accounts", { instagramUrl: "https://example.com/x", facebookUrl: "", adminAccess: "added" })).toMatchObject({ success: false, field: "instagramUrl" });
-    expect(parseSetupItem("accounts", { instagramUrl: "", facebookUrl: "https://me:pw@facebook.com/x", adminAccess: "added" })).toMatchObject({ success: false, field: "facebookUrl" });
+    expect(parseSetupItem("accounts", { instagramUrl: "https://example.com/x", facebookUrl: "", adminAccess: "added" }, "INR")).toMatchObject({ success: false, field: "instagramUrl" });
+    expect(parseSetupItem("accounts", { instagramUrl: "", facebookUrl: "https://me:pw@facebook.com/x", adminAccess: "added" }, "INR")).toMatchObject({ success: false, field: "facebookUrl" });
   });
 
   it("refuses a long link, a bare host, a port, and keeps only the host and path", () => {
-    const parse = (instagramUrl: string) => parseSetupItem("accounts", { instagramUrl, facebookUrl: "", adminAccess: "added" });
+    const parse = (instagramUrl: string) => parseSetupItem("accounts", { instagramUrl, facebookUrl: "", adminAccess: "added" }, "INR");
     expect(parse(`instagram.com/${"a".repeat(5000)}`)).toMatchObject({ success: false, field: "instagramUrl" });
     expect(parse("instagram.com")).toMatchObject({ success: false, field: "instagramUrl" });
     expect(parse("l.instagram.com/?u=x")).toMatchObject({ success: false, field: "instagramUrl" });
@@ -30,38 +30,38 @@ describe("parseSetupItem accounts", () => {
   });
 
   it("refuses an admin answer that is not one of the three", () => {
-    expect(parseSetupItem("accounts", { instagramUrl: "instagram.com/a", facebookUrl: "", adminAccess: "yes" })).toMatchObject({ success: false, field: "adminAccess" });
+    expect(parseSetupItem("accounts", { instagramUrl: "instagram.com/a", facebookUrl: "", adminAccess: "yes" }, "INR")).toMatchObject({ success: false, field: "adminAccess" });
   });
 });
 
 describe("parseSetupItem offers, budget and areas", () => {
   it("needs a line about offers and trims it", () => {
-    expect(parseSetupItem("offers", { offers: "  Free check-up in December  " })).toEqual({ success: true, answers: { offers: "Free check-up in December" } });
-    expect(parseSetupItem("offers", { offers: "   " })).toMatchObject({ success: false, field: "offers" });
-    expect(parseSetupItem("offers", { offers: "x".repeat(501) })).toMatchObject({ success: false, field: "offers" });
+    expect(parseSetupItem("offers", { offers: "  Free check-up in December  " }, "INR")).toEqual({ success: true, answers: { offers: "Free check-up in December" } });
+    expect(parseSetupItem("offers", { offers: "   " }, "INR")).toMatchObject({ success: false, field: "offers" });
+    expect(parseSetupItem("offers", { offers: "x".repeat(501) }, "INR")).toMatchObject({ success: false, field: "offers" });
   });
 
   it("reads the budget in rupees with commas and the rupee sign, and needs an area", () => {
-    expect(parseSetupItem("budget", { adBudgetRupees: "₹10,000", adArea: "4 km around your business" })).toEqual({
+    expect(parseSetupItem("budget", { adBudgetRupees: "₹10,000", adArea: "4 km around your business" }, "INR")).toEqual({
       success: true,
       answers: { adBudgetRupees: 10000, adArea: "4 km around your business" },
     });
-    expect(parseSetupItem("budget", { adBudgetRupees: "ten", adArea: "Thane" })).toMatchObject({ success: false, field: "adBudgetRupees" });
-    expect(parseSetupItem("budget", { adBudgetRupees: "0", adArea: "Thane" })).toMatchObject({ success: false, field: "adBudgetRupees" });
-    expect(parseSetupItem("budget", { adBudgetRupees: "5000", adArea: "" })).toMatchObject({ success: false, field: "adArea" });
+    expect(parseSetupItem("budget", { adBudgetRupees: "ten", adArea: "Thane" }, "INR")).toMatchObject({ success: false, field: "adBudgetRupees" });
+    expect(parseSetupItem("budget", { adBudgetRupees: "0", adArea: "Thane" }, "INR")).toMatchObject({ success: false, field: "adBudgetRupees" });
+    expect(parseSetupItem("budget", { adBudgetRupees: "5000", adArea: "" }, "INR")).toMatchObject({ success: false, field: "adArea" });
   });
 
   it("needs the areas, takes competitors as optional and a Google link that is https", () => {
-    expect(parseSetupItem("areas", { areas: "Naupada and Thane West", competitors: "", googleBusinessUrl: "" })).toEqual({
+    expect(parseSetupItem("areas", { areas: "Naupada and Thane West", competitors: "", googleBusinessUrl: "" }, "INR")).toEqual({
       success: true,
       answers: { areas: "Naupada and Thane West", competitors: "", googleBusinessUrl: "" },
     });
-    expect(parseSetupItem("areas", { areas: "", competitors: "", googleBusinessUrl: "" })).toMatchObject({ success: false, field: "areas" });
-    expect(parseSetupItem("areas", { areas: "Thane", competitors: "", googleBusinessUrl: "http://g.page/x" })).toMatchObject({ success: false, field: "googleBusinessUrl" });
+    expect(parseSetupItem("areas", { areas: "", competitors: "", googleBusinessUrl: "" }, "INR")).toMatchObject({ success: false, field: "areas" });
+    expect(parseSetupItem("areas", { areas: "Thane", competitors: "", googleBusinessUrl: "http://g.page/x" }, "INR")).toMatchObject({ success: false, field: "googleBusinessUrl" });
   });
 
   it("takes a Google link only from Google's own hosts, without a login in it, and stores it normalised", () => {
-    const parse = (googleBusinessUrl: string) => parseSetupItem("areas", { areas: "Thane", competitors: "", googleBusinessUrl });
+    const parse = (googleBusinessUrl: string) => parseSetupItem("areas", { areas: "Thane", competitors: "", googleBusinessUrl }, "INR");
     expect(parse("https://user:pw@g.page/x")).toMatchObject({ success: false, field: "googleBusinessUrl" });
     expect(parse("https://evil.com/x")).toMatchObject({ success: false, field: "googleBusinessUrl" });
     expect(parse("https://maps.google.com/?cid=1")).toMatchObject({ success: true, answers: { googleBusinessUrl: "https://maps.google.com/?cid=1" } });
@@ -69,10 +69,10 @@ describe("parseSetupItem offers, budget and areas", () => {
   });
 
   it("says the limit is allowed in the too-long messages", () => {
-    expect(parseSetupItem("offers", { offers: "x".repeat(501) })).toMatchObject({ message: "Keep it to 500 characters or fewer." });
-    expect(parseSetupItem("budget", { adBudgetRupees: "5000", adArea: "x".repeat(121) })).toMatchObject({ message: "Keep it to 120 characters or fewer." });
-    expect(parseSetupItem("areas", { areas: "x".repeat(301), competitors: "", googleBusinessUrl: "" })).toMatchObject({ message: "Keep it to 300 characters or fewer." });
-    expect(parseSetupItem("areas", { areas: "Thane", competitors: "x".repeat(301), googleBusinessUrl: "" })).toMatchObject({ message: "Keep it to 300 characters or fewer." });
+    expect(parseSetupItem("offers", { offers: "x".repeat(501) }, "INR")).toMatchObject({ message: "Keep it to 500 characters or fewer." });
+    expect(parseSetupItem("budget", { adBudgetRupees: "5000", adArea: "x".repeat(121) }, "INR")).toMatchObject({ message: "Keep it to 120 characters or fewer." });
+    expect(parseSetupItem("areas", { areas: "x".repeat(301), competitors: "", googleBusinessUrl: "" }, "INR")).toMatchObject({ message: "Keep it to 300 characters or fewer." });
+    expect(parseSetupItem("areas", { areas: "Thane", competitors: "x".repeat(301), googleBusinessUrl: "" }, "INR")).toMatchObject({ message: "Keep it to 300 characters or fewer." });
   });
 });
 
@@ -89,7 +89,7 @@ describe("parseSetupItem limits", () => {
       { key: "areas", input: { areas: "Thane", competitors: long, googleBusinessUrl: "" }, field: "competitors" },
       { key: "areas", input: { areas: "Thane", competitors: "", googleBusinessUrl: `https://g.page/${long}` }, field: "googleBusinessUrl" },
     ] as const;
-    for (const { key, input, field } of cases) expect(parseSetupItem(key, input)).toMatchObject({ success: false, field });
+    for (const { key, input, field } of cases) expect(parseSetupItem(key, input, "INR")).toMatchObject({ success: false, field });
   });
 });
 
@@ -122,6 +122,26 @@ describe("SETUP_FIELDS", () => {
   });
 });
 
+describe("the ad budget in a business's own currency", () => {
+  const budgetField = (currency: "INR" | "USD") => setupFieldsFor("budget", currency).find((field) => field.name === "adBudgetRupees");
+
+  it("keeps the rupee wording exactly for a rupee business", () => {
+    expect(budgetField("INR")).toMatchObject({ label: "Monthly ad budget in rupees", placeholder: "10000" });
+    expect(parseSetupItem("budget", { adBudgetRupees: "abc", adArea: "Thane" }, "INR")).toMatchObject({ message: "Enter the monthly amount in rupees, for example 10000." });
+  });
+
+  it("says dollars to a dollar business, and takes a dollar sign", () => {
+    expect(budgetField("USD")).toMatchObject({ label: "Monthly ad budget in dollars", placeholder: "150" });
+    expect(parseSetupItem("budget", { adBudgetRupees: "abc", adArea: "Thane" }, "USD")).toMatchObject({ message: "Enter the monthly amount in dollars, for example 150." });
+    expect(parseSetupItem("budget", { adBudgetRupees: "$1,500", adArea: "Thane" }, "USD")).toEqual({ success: true, answers: { adBudgetRupees: 1500, adArea: "Thane" } });
+  });
+
+  it("changes only the budget field", () => {
+    expect(setupFieldsFor("accounts", "USD")).toEqual(SETUP_FIELDS.accounts);
+    expect(setupFieldsFor("budget", "USD").map((field) => `${field.label} ${field.placeholder ?? ""}`).join(" ")).not.toMatch(/rupees|₹/i);
+  });
+});
+
 describe("example text", () => {
   it("suits any business, not one kind", () => {
     const text = JSON.stringify(SETUP_FIELDS);
@@ -130,6 +150,6 @@ describe("example text", () => {
     expect(fields.find((field) => field.name === "instagramUrl")?.placeholder).toBe("instagram.com/yourbusiness");
     expect(fields.find((field) => field.name === "facebookUrl")?.placeholder).toBe("facebook.com/yourbusiness");
     expect(fields.find((field) => field.name === "adArea")?.placeholder).toBe("4 km around your business");
-    expect(parseSetupItem("budget", { adBudgetRupees: "5000", adArea: "" })).toMatchObject({ message: expect.stringContaining("4 km around your business") });
+    expect(parseSetupItem("budget", { adBudgetRupees: "5000", adArea: "" }, "INR")).toMatchObject({ message: expect.stringContaining("4 km around your business") });
   });
 });

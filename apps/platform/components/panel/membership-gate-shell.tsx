@@ -7,6 +7,8 @@ import { requestBrand } from "@/lib/server/request-brand";
 import { signOut } from "@/lib/server/sign-out";
 
 interface MembershipGateShellProps {
+  /** What the prices are in, from pricesNote for the business's plan. */
+  readonly pricesNote: string;
   readonly children: ReactNode;
 }
 
@@ -15,7 +17,7 @@ interface MembershipGateShellProps {
  * superpowers/specs/2026-09-30-single-entry-premium-design.md). They have no dashboard until they pay, so there are
  * no sections to show: the logo (which says what the product is, and goes nowhere), a way out, the page and a one-line footer. The same quiet ground as the sign-in screen they came from.
  */
-export async function MembershipGateShell({ children }: MembershipGateShellProps): Promise<ReactElement> {
+export async function MembershipGateShell({ pricesNote, children }: MembershipGateShellProps): Promise<ReactElement> {
   const brand = await requestBrand();
   const legal = legalLinksFor(brand);
   return (
@@ -33,7 +35,7 @@ export async function MembershipGateShell({ children }: MembershipGateShellProps
       {/* One quiet line, so the page ends instead of stopping: who takes the payment, and where to read the terms or ask for help. */}
       <footer className="mx-auto w-full max-w-5xl border-t border-line pb-20 pt-6 text-xs leading-relaxed text-ink-soft lg:pb-6">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <p>Secure payment. Prices are in rupees and include GST.</p>
+          <p>Secure payment. {pricesNote}</p>
           <nav aria-label="Legal and help" className="flex flex-wrap gap-x-5 gap-y-1">
             <a href={legal.terms} className="underline-offset-4 transition-colors duration-300 ease-calm hover:text-ink hover:underline">
               Terms

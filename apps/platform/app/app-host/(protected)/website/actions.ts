@@ -1,6 +1,6 @@
 "use server";
 
-import { createSupportTicketWithOutcome, findLatestProject, linkFeedbackTicket, ProjectNotAwaitingResponseError, SupportQueryError, withTenantScope } from "@brandbasket/db";
+import { createSupportTicketWithOutcome, findLatestProject, linkFeedbackTicket, ProjectNotAwaitingResponseError, RevisionRoundsUsedUpError, SupportQueryError, withTenantScope } from "@brandbasket/db";
 import { errorLogInfo } from "@brandbasket/shared/server/error-log-info";
 import { revalidatePath } from "next/cache";
 import { redirect, unstable_rethrow } from "next/navigation";
@@ -12,6 +12,7 @@ import { sendSupportTicketAlert } from "@/lib/server/support-alerts";
 import { supportRateLimit } from "@/lib/server/support-limits";
 import { canCreateSupportRequest } from "@/lib/server/support-rollout";
 import { supportFormError, type SupportFormState } from "@/lib/support-form-state";
+import { ROUNDS_USED_UP, roundsUsedUp } from "@/lib/website/progress-view";
 import { feedbackSubject, parsePreviewFeedback } from "@/lib/website/feedback";
 import { websiteNoticeHref } from "@/lib/website/notices";
 
@@ -21,7 +22,9 @@ import { websiteNoticeHref } from "@/lib/website/notices";
  * is the business's own. The business comes only from the session; nothing in the form is read.
  */
 async function respond(response: PreviewResponse): Promise<void> {
-  const { tenant } = await requireCustomerAccess();
+  const { tenant, billing } = await requireCustomerAccess();
+  // A page opened before access lapsed must not answer; Home explains what to do.
+  if (!billing.hasAccess) redirect("/");
   try {
     await respondToPreview(getStaffDb(), { businessId: tenant.businessId, businessName: tenant.businessName, response }, new Date());
   } catch (error) {
@@ -39,10 +42,12 @@ export async function approvePreviewAction(): Promise<void> {
  * Sends the customer's feedback on a preview. It is project work, not a maintenance change, so it opens a plain ticket for
  * the team (its subject says it is preview feedback and which round) and never a change request: it does not count against the month's included
  * edits. The ticket is saved first, and a retry with the same form key finds it again, so a failure after it only repeats
- * the move to Revisions. The business and the person come from the session, never from the form.
+ * the move to Revisions. The business and the person come from the session, never from the form. Once every included round
+ * is used it sends nothing and says further changes are quoted first; staff granting a round lets the next send through.
  */
 export async function sendPreviewFeedbackAction(_previous: SupportFormState, formData: FormData): Promise<SupportFormState> {
-  const { user, tenant } = await requireCustomerAccess();
+  const { user, tenant, billing } = await requireCustomerAccess();
+  if (!billing.hasAccess) redirect("/");
   if (!canCreateSupportRequest(user.id)) return supportFormError("New requests are temporarily unavailable. Please try again later.");
   const parsed = parsePreviewFeedback(formData);
   if (!parsed.success) return supportFormError(parsed.message, parsed.field);
@@ -51,6 +56,8 @@ export async function sendPreviewFeedbackAction(_previous: SupportFormState, for
   const { body, attachmentIds, submissionKey } = parsed.data;
   const project = await withTenantScope(getAppDb(), tenant, (tx) => findLatestProject(tx));
   if (project === null || project.status !== "preview") redirect(websiteNoticeHref("not-ready"));
+  // Checked before the ticket is written; requestProjectRevisions checks again so two sends cannot both take the last round.
+  if (roundsUsedUp(project.revisionRoundsIncluded, project.revisionRoundsGranted)) return supportFormError(ROUNDS_USED_UP);
 
   const subject = feedbackSubject(body, project.revisionRoundsGranted + 1);
   try {
@@ -75,6 +82,7 @@ export async function sendPreviewFeedbackAction(_previous: SupportFormState, for
   } catch (error) {
     unstable_rethrow(error);
     console.error("[website] could not send preview feedback", errorLogInfo(error));
+    if (error instanceof RevisionRoundsUsedUpError) return supportFormError(ROUNDS_USED_UP);
     if (error instanceof SupportQueryError) return supportFormError("Check what you wrote and your screenshots, then try again.");
     await reportServerError(error, { app: "platform", operation: "server_action", route: "/website" });
     return supportFormError("Your changes could not be sent. What you wrote is still here; try again.");

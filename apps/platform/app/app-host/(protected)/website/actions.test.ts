@@ -1,4 +1,4 @@
-import { createSupportTicketWithOutcome, findLatestProject, linkFeedbackTicket, ProjectNotAwaitingResponseError, withTenantScope } from "@brandbasket/db";
+import { createSupportTicketWithOutcome, findLatestProject, linkFeedbackTicket, ProjectNotAwaitingResponseError, RevisionRoundsUsedUpError, withTenantScope } from "@brandbasket/db";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { requireCustomerAccess } from "@/lib/server/customer-access";
 import { getAppDb, getStaffDb } from "@/lib/server/db";
@@ -22,8 +22,9 @@ vi.mock("next/navigation", () => ({
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 vi.mock("@brandbasket/db", () => {
   class ProjectNotAwaitingResponseError extends Error {}
+  class RevisionRoundsUsedUpError extends Error {}
   class SupportQueryError extends Error {}
-  return { ProjectNotAwaitingResponseError, SupportQueryError, createSupportTicketWithOutcome: vi.fn(), findLatestProject: vi.fn(), linkFeedbackTicket: vi.fn(), withTenantScope: vi.fn() };
+  return { ProjectNotAwaitingResponseError, RevisionRoundsUsedUpError, SupportQueryError, createSupportTicketWithOutcome: vi.fn(), findLatestProject: vi.fn(), linkFeedbackTicket: vi.fn(), withTenantScope: vi.fn() };
 });
 vi.mock("@/lib/server/customer-access", () => ({ requireCustomerAccess: vi.fn() }));
 vi.mock("@/lib/server/db", () => ({ getAppDb: vi.fn(), getStaffDb: vi.fn() }));
@@ -38,7 +39,7 @@ const tenant = { userId: "user-a", businessId: "business-1", businessName: "Cafe
 
 beforeEach(() => {
   vi.resetAllMocks();
-  vi.mocked(requireCustomerAccess).mockResolvedValue({ tenant } as never);
+  vi.mocked(requireCustomerAccess).mockResolvedValue({ tenant, billing: { hasAccess: true } } as never);
   vi.mocked(getStaffDb).mockReturnValue(staffDb);
   vi.mocked(respondToPreview).mockResolvedValue(undefined);
 });
@@ -64,6 +65,12 @@ describe("approvePreviewAction", () => {
     await expect(approvePreviewAction()).rejects.toThrow("REDIRECT:/login");
     expect(respondToPreview).not.toHaveBeenCalled();
   });
+
+  it("sends a lapsed customer Home and approves nothing", async () => {
+    vi.mocked(requireCustomerAccess).mockResolvedValue({ tenant, billing: { status: "lapsed", hasAccess: false } } as never);
+    await expect(approvePreviewAction()).rejects.toThrow("REDIRECT:/");
+    expect(respondToPreview).not.toHaveBeenCalled();
+  });
 });
 
 describe("sendPreviewFeedbackAction", () => {
@@ -77,12 +84,12 @@ describe("sendPreviewFeedbackAction", () => {
   }
 
   beforeEach(() => {
-    vi.mocked(requireCustomerAccess).mockResolvedValue({ user: { id: "user-a", email: "owner@example.test" }, tenant } as never);
+    vi.mocked(requireCustomerAccess).mockResolvedValue({ user: { id: "user-a", email: "owner@example.test" }, tenant, billing: { hasAccess: true } } as never);
     vi.mocked(canCreateSupportRequest).mockReturnValue(true);
     vi.mocked(supportRateLimit).mockResolvedValue(null);
     vi.mocked(getAppDb).mockReturnValue({ kind: "app-db" } as never);
     vi.mocked(withTenantScope).mockImplementation(async (_db, _tenant, work) => work({} as never));
-    vi.mocked(findLatestProject).mockResolvedValue({ id: "project-1", status: "preview", revisionRoundsGranted: 1 } as never);
+    vi.mocked(findLatestProject).mockResolvedValue({ id: "project-1", status: "preview", revisionRoundsGranted: 1, revisionRoundsIncluded: 2 } as never);
     vi.mocked(createSupportTicketWithOutcome).mockResolvedValue({ ticket: { id: "ticket-1", displayRef: "FY-1" }, created: true } as never);
     vi.mocked(sendSupportTicketAlert).mockResolvedValue(undefined);
   });
@@ -134,6 +141,38 @@ describe("sendPreviewFeedbackAction", () => {
     await expect(sendPreviewFeedbackAction(INITIAL_SUPPORT_STATE, form())).rejects.toThrow("REDIRECT:/website?response=not-ready");
   });
 
+  it("sends nothing and says further changes are quoted first once every included round is used", async () => {
+    vi.mocked(findLatestProject).mockResolvedValue({ id: "project-1", status: "preview", revisionRoundsGranted: 2, revisionRoundsIncluded: 2 } as never);
+    expect(await sendPreviewFeedbackAction(INITIAL_SUPPORT_STATE, form())).toMatchObject({ status: "error", message: "Further changes are quoted first." });
+    expect(createSupportTicketWithOutcome).not.toHaveBeenCalled();
+    expect(linkFeedbackTicket).not.toHaveBeenCalled();
+    expect(respondToPreview).not.toHaveBeenCalled();
+  });
+
+  it("sends nothing for a build that includes no rounds", async () => {
+    vi.mocked(findLatestProject).mockResolvedValue({ id: "project-1", status: "preview", revisionRoundsGranted: 0, revisionRoundsIncluded: 0 } as never);
+    expect(await sendPreviewFeedbackAction(INITIAL_SUPPORT_STATE, form())).toMatchObject({ status: "error", message: "Further changes are quoted first." });
+    expect(respondToPreview).not.toHaveBeenCalled();
+  });
+
+  it("takes feedback again after staff add a round", async () => {
+    vi.mocked(findLatestProject).mockResolvedValue({ id: "project-1", status: "preview", revisionRoundsGranted: 2, revisionRoundsIncluded: 3 } as never);
+    await expect(sendPreviewFeedbackAction(INITIAL_SUPPORT_STATE, form())).rejects.toThrow("REDIRECT:/website?response=changes-sent");
+    expect(linkFeedbackTicket).toHaveBeenCalledWith(staffDb, expect.objectContaining({ round: 3 }));
+    expect(respondToPreview).toHaveBeenCalledTimes(1);
+  });
+
+  it("answers with the same sentence when the last round was taken between the read and the move", async () => {
+    vi.mocked(respondToPreview).mockRejectedValue(new RevisionRoundsUsedUpError("business-1"));
+    expect(await sendPreviewFeedbackAction(INITIAL_SUPPORT_STATE, form())).toMatchObject({ status: "error", message: "Further changes are quoted first." });
+  });
+
+  it("sends a lapsed customer Home before the rounds are looked at", async () => {
+    vi.mocked(requireCustomerAccess).mockResolvedValue({ user: { id: "user-a", email: "owner@example.test" }, tenant, billing: { status: "lapsed", hasAccess: false } } as never);
+    vi.mocked(findLatestProject).mockResolvedValue({ id: "project-1", status: "preview", revisionRoundsGranted: 2, revisionRoundsIncluded: 2 } as never);
+    await expect(sendPreviewFeedbackAction(INITIAL_SUPPORT_STATE, form())).rejects.toThrow("REDIRECT:/");
+  });
+
   it("stops at the rate limit with its sentence, before saving anything", async () => {
     vi.mocked(supportRateLimit).mockResolvedValue("Please wait 60 seconds before sending another request.");
     expect(await sendPreviewFeedbackAction(INITIAL_SUPPORT_STATE, form())).toMatchObject({ status: "error", message: "Please wait 60 seconds before sending another request." });
@@ -143,6 +182,13 @@ describe("sendPreviewFeedbackAction", () => {
   it("stops a customer without access before any write", async () => {
     vi.mocked(requireCustomerAccess).mockRejectedValue(new Error("REDIRECT:/login"));
     await expect(sendPreviewFeedbackAction(INITIAL_SUPPORT_STATE, form())).rejects.toThrow("REDIRECT:/login");
+    expect(createSupportTicketWithOutcome).not.toHaveBeenCalled();
+    expect(respondToPreview).not.toHaveBeenCalled();
+  });
+
+  it("sends a lapsed customer Home and saves no feedback", async () => {
+    vi.mocked(requireCustomerAccess).mockResolvedValue({ user: { id: "user-a", email: "owner@example.test" }, tenant, billing: { status: "lapsed", hasAccess: false } } as never);
+    await expect(sendPreviewFeedbackAction(INITIAL_SUPPORT_STATE, form())).rejects.toThrow("REDIRECT:/");
     expect(createSupportTicketWithOutcome).not.toHaveBeenCalled();
     expect(respondToPreview).not.toHaveBeenCalled();
   });

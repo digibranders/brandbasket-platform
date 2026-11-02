@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 import { bookingCodeEmail } from "./booking-code";
-import { confirmEmailEmail } from "./confirm-email";
 import { leadReceivedEmail } from "./lead-received";
 import { listingEnquiryEmail } from "./listing-enquiry";
 import { passwordResetEmail } from "./password-reset";
@@ -20,6 +19,7 @@ import { setupLinkEmail } from "./setup-link";
 import { affiliateLinkEmail } from "./affiliate-link";
 import { staffInviteEmail } from "./staff-invite";
 import { signupCodeEmail } from "./signup-code";
+import { staffSignInCodeEmail } from "./staff-sign-in-code";
 import { supportReplyAlertEmail } from "./support-reply-alert";
 import { supportTicketAlertEmail } from "./support-ticket-alert";
 import { systemErrorAlertEmail } from "./system-error-alert";
@@ -438,23 +438,6 @@ describe("passwordResetEmail", () => {
   });
 });
 
-describe("confirmEmailEmail", () => {
-  const email = confirmEmailEmail({ to: "owner@example.com", confirmUrl: "http://app.localhost:3000/confirm-email/tok.en", expiresInDays: 3 });
-
-  it("carries the link and how long it lasts", () => {
-    expect(email.subject).toBe("Confirm your email for Brandbasket");
-    expect(email.template).toBe("confirm-email");
-    for (const body of [email.bodyText, email.bodyHtml]) {
-      expect(body).toContain("http://app.localhost:3000/confirm-email/tok.en");
-      expect(body).toContain("expires in 3 days");
-    }
-  });
-
-  it("refuses a link that is not a web address", () => {
-    expect(() => confirmEmailEmail({ to: "owner@example.com", confirmUrl: "/confirm-email/x", expiresInDays: 3 })).toThrow("confirmUrl");
-  });
-});
-
 describe("listingEnquiryEmail", () => {
   const input = {
     to: "owner@example.com",
@@ -629,7 +612,6 @@ describe("emails that sign someone in keep their link out of the outbox", () => 
   const TOKEN = "Kq8vR2mN4tY7wZ1x";
   const cases = [
     ["password-reset", passwordResetEmail({ to: "asha@example.in", resetUrl: `https://app.brandbasket.in/reset-password/${TOKEN}`, expiresInMinutes: 60 })],
-    ["confirm-email", confirmEmailEmail({ to: "asha@example.in", confirmUrl: `https://app.brandbasket.in/confirm-email/${TOKEN}`, expiresInDays: 7 })],
     ["setup-link", setupLinkEmail({ to: "asha@example.in", businessName: "Bloom Dental", setupUrl: `https://app.brandbasket.in/setup/${TOKEN}`, expiresInDays: 7 })],
   ] as const;
 
@@ -690,6 +672,36 @@ describe("signupCodeEmail", () => {
 
   it("is addressed without header-breaking characters", () => {
     expect(signupCodeEmail({ ...input, to: "owner@example.com\r\nBcc: x@y.z" }).to).not.toMatch(/[\r\n]/);
+  });
+});
+
+describe("staffSignInCodeEmail", () => {
+  const input = { to: "asha@brandbasket.in", code: "482913", expiresInMinutes: 5 };
+  const email = staffSignInCodeEmail(input);
+
+  it("carries the code and how long it lasts", () => {
+    expect(email.template).toBe("staff-sign-in-code");
+    expect(email.subject).toBe("Your Brandbasket console sign-in code");
+    for (const body of [email.bodyText, email.bodyHtml]) {
+      expect(body).toContain("482913");
+      expect(body).toContain("expires in 5 minutes");
+    }
+    expect(JSON.stringify(email)).not.toMatch(/[\u2013\u2014]/);
+  });
+
+  it("keeps the code out of the subject, and out of the copy the outbox stores", () => {
+    expect(email.subject).not.toContain("482913");
+    for (const text of [email.outboxCopy?.subject, email.outboxCopy?.bodyText, email.outboxCopy?.bodyHtml]) {
+      expect(text).not.toContain("482913");
+    }
+    // Local development reads the code from the outbox: this flag lets only that inbox keep the full message.
+    expect(email.outboxCopy?.linkWithheld).toBe(true);
+  });
+
+  it("refuses anything but a six-digit code", () => {
+    for (const code of ["12345", "1234567", "12345a", "<b>1</b>", ""]) {
+      expect(() => staffSignInCodeEmail({ ...input, code })).toThrow("code");
+    }
   });
 });
 

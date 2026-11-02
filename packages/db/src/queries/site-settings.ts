@@ -1,6 +1,7 @@
 import { eq } from "drizzle-orm";
 import type { Database } from "../client";
 import type { ScopedTransaction } from "../scope";
+import { REVISION_ROUNDS_KEY, revisionRoundsFromSetting } from "../revision-rounds";
 import { siteSettings, users, type SiteSetting } from "../schema";
 
 type Runner = Database | ScopedTransaction;
@@ -37,4 +38,10 @@ export async function findSiteSettingWithEditor(
     .limit(1);
   const row = rows[0];
   return row === undefined ? null : { ...row.setting, updatedByEmail: row.email };
+}
+
+/** The rounds of changes a new build includes: the console setting, or the default when none is saved. */
+export async function findIncludedRevisionRounds(db: Runner): Promise<number> {
+  const setting = await findSiteSetting(db, REVISION_ROUNDS_KEY);
+  return revisionRoundsFromSetting(setting?.value ?? null);
 }

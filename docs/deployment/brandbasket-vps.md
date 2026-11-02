@@ -164,7 +164,7 @@ Then, on the server, `cd /root/brandbasket-src && bash deploy/vps/install.sh <st
 
 Housekeeping once it works: delete `DEPLOY_SSH_KEY`, `DEPLOY_KNOWN_HOSTS` and the `droplet` environment in this repository's GitHub
 settings (nothing uses them now), and decide about Cloudflare Access for the console (nginx already refuses requests that did not
-come through Cloudflare).
+come through Cloudflare; steps in `cloudflare-access.md`).
 
 ## Everyday operations
 
@@ -375,8 +375,9 @@ timing of a build next to Firstfold's apps.
 
 ## Owner decisions
 
-- Cloudflare Access in front of the console: not needed for staging (nginx refuses non-Cloudflare requests); the console's own sign-in
-  has no second factor (`docs/STAFF-ACCESS.md`), so set it up before real staff use it.
+- Cloudflare Access in front of the console: not needed for staging (nginx refuses non-Cloudflare requests). The console's own
+  sign-in is a password plus an emailed code (`docs/STAFF-ACCESS.md`); Access adds an independent wall in front. Not set up yet;
+  steps in `docs/deployment/cloudflare-access.md`.
 - Starting `brandbasket-erase.timer`: it deletes customer data 30 days after a closure. Not enabled by anything here.
 - Alert recipients: Brandbasket's handler mails `BRANDBASKET_TEAM_EMAIL` from `platform.env.local`, default `support@brandbasket.in`.
   Set it there if the team address differs, and fill `BREVO_API_KEY` (alerts only log until then).

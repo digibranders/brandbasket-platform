@@ -12,7 +12,12 @@ import { askForChangeAction } from "./actions";
 
 vi.mock("server-only", () => ({}));
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
-vi.mock("next/navigation", () => ({ unstable_rethrow: vi.fn() }));
+vi.mock("next/navigation", () => ({
+  redirect: vi.fn((to: string) => {
+    throw new Error(`REDIRECT:${to}`);
+  }),
+  unstable_rethrow: vi.fn(),
+}));
 vi.mock("@/lib/server/db", () => ({ getAppDb: vi.fn(() => ({ kind: "app-db" })) }));
 vi.mock("@/lib/server/customer-access", () => ({ requireCustomerAccess: vi.fn() }));
 vi.mock("@/lib/server/first-look", () => ({ loadSetupServices: vi.fn() }));
@@ -46,6 +51,13 @@ beforeEach(() => {
 });
 
 describe("askForChangeAction", () => {
+  it.each(["unpaid", "lapsed"] as const)("sends a %s customer Home and writes nothing", async (status) => {
+    vi.mocked(requireCustomerAccess).mockResolvedValue({ user, tenant, billing: { status, hasAccess: false, hasWebsite: false } } as never);
+    await expect(askForChangeAction(INITIAL_SUPPORT_STATE, form(GOOD))).rejects.toThrow("REDIRECT:/");
+    expect(createSupportTicketWithOutcome).not.toHaveBeenCalled();
+    expect(sendSupportTicketAlert).not.toHaveBeenCalled();
+  });
+
   it("sends the request as the signed-in person for their own business, whatever the form says about either", async () => {
     const state = await askForChangeAction(INITIAL_SUPPORT_STATE, form({ ...GOOD, businessId: "someone-elses", userId: "someone-else" }));
     expect(state).toMatchObject({ status: "saved", ticketId: "ticket-1", reference: "FY-1", message: "Sent. We will reply here." });

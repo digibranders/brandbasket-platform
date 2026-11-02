@@ -22,6 +22,7 @@ import { getAppDb } from "./db";
 import { loadIntake } from "./intake";
 import { firstPaymentView, type FirstPaymentView } from "./first-look";
 import { readLiveWebsite, type LiveWebsite } from "./onboarding";
+import { stillAhead } from "@/lib/home/due";
 import { quietly } from "./quietly";
 
 export interface WebsiteData {
@@ -82,7 +83,7 @@ export async function loadWebsite(tenant: TenantContext, now: Date): Promise<Web
           project: {
             status: project.status,
             onboardingSubmittedAt: project.onboardingSubmittedAt,
-            slaDueAt: project.slaDueAt,
+            slaDueAt: stillAhead(project.slaDueAt, now),
             previewSentAt: project.previewSentAt,
             launchedAt: project.launchedAt,
             launchPlannedOn: project.launchPlannedOn,
@@ -93,13 +94,14 @@ export async function loadWebsite(tenant: TenantContext, now: Date): Promise<Web
         };
 
   const asked = events.findLast((event) => event.status === "revisions");
+  const firstPreviewDue = project === null ? null : stillAhead(project.slaDueAt, now);
   const previewDue =
     project === null
       ? null
       : project.status === "revisions" && asked !== undefined
         ? revisionDue(day(asked.at))
-        : (project.status === "submitted" || project.status === "building") && project.slaDueAt !== null
-          ? day(project.slaDueAt)
+        : (project.status === "submitted" || project.status === "building") && firstPreviewDue !== null
+          ? day(firstPreviewDue)
           : null;
 
   return {

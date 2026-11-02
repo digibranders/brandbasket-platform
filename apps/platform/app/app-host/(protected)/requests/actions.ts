@@ -3,7 +3,7 @@
 import { createSupportTicketWithOutcome, SupportQueryError } from "@brandbasket/db";
 import { errorLogInfo } from "@brandbasket/shared/server/error-log-info";
 import { revalidatePath } from "next/cache";
-import { unstable_rethrow } from "next/navigation";
+import { redirect, unstable_rethrow } from "next/navigation";
 import { intentOptions, intentRule, parseAskForm, titleFromText } from "@/lib/requests/form";
 import { requireCustomerAccess } from "@/lib/server/customer-access";
 import { getAppDb } from "@/lib/server/db";
@@ -32,7 +32,9 @@ async function failure(error: unknown): Promise<SupportFormState> {
  * team is told once, however often the form is sent.
  */
 export async function askForChangeAction(_previous: SupportFormState, formData: FormData): Promise<SupportFormState> {
-  const { user, tenant } = await requireCustomerAccess();
+  const { user, tenant, billing } = await requireCustomerAccess();
+  // A form opened before access lapsed must not send; Home explains what to do.
+  if (!billing.hasAccess) redirect("/");
   if (!canCreateSupportRequest(user.id)) return supportFormError("New requests are temporarily unavailable. Please try again later.");
   const services = (await loadSetupServices(tenant)) ?? [];
   const parsed = parseAskForm(formData, intentOptions(services).map((option) => option.value));

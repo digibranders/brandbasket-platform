@@ -4,20 +4,17 @@ import { z } from "zod";
 import { parsePhoneEntry } from "@brandbasket/shared/lib/validation/phone";
 
 /*
- * What a customer signs in with: the mobile number a free listing account was opened with, or the email a website
- * client's account was made for. One field takes either; anything with an @ is read as an email. Server-side: reading
- * a phone number needs the full number library, which the browser is not sent.
+ * What a customer signs in or asks for a new password with: the mobile number given at sign-up, or the email the
+ * account was made with. One field takes either; anything with an @ is read as an email. Server-side: reading a phone
+ * number needs the full number library, which the browser is not sent.
  */
 
 /** Most owners are in India, so a number without a country code is read as Indian. */
 const DEFAULT_PHONE_COUNTRY = "IN";
 const MAX_IDENTIFIER_LENGTH = 254;
 const MAX_PASSWORD_LENGTH = 128;
-const MISSING_MESSAGE = "Enter your mobile number.";
-const MISSING_EMAIL_MESSAGE = "Enter your email address.";
-
-/** What the sign-in field asks for: a number or an address (Brandbasket), or an address (Brandbasket, whose accounts have one). */
-export type SignInIdentifierMode = "phone-or-email" | "email";
+const MISSING_MESSAGE = "Enter your email or mobile number.";
+const INVALID_MESSAGE = "Enter a valid email address or mobile number.";
 
 const emailSchema = z.string().max(MAX_IDENTIFIER_LENGTH, "That email address is too long.").pipe(z.email("Enter a valid email address."));
 
@@ -29,20 +26,19 @@ export type IdentifierParseResult =
   | { readonly success: true; readonly identifier: AccountIdentifier }
   | { readonly success: false; readonly message: string };
 
-export function parseAccountIdentifier(typed: string, mode: SignInIdentifierMode = "phone-or-email"): IdentifierParseResult {
-  const missing = mode === "email" ? MISSING_EMAIL_MESSAGE : MISSING_MESSAGE;
+export function parseAccountIdentifier(typed: string): IdentifierParseResult {
   const value = typed.trim();
-  if (value === "") return { success: false, message: missing };
+  if (value === "") return { success: false, message: MISSING_MESSAGE };
   if (value.includes("@")) {
     const email = emailSchema.safeParse(value.toLowerCase());
     if (!email.success) return { success: false, message: email.error.issues[0]?.message ?? "Enter a valid email address." };
     // A phone account's placeholder address is not a way in: signing in by it would get that account a second
     // password-guessing budget beside the one kept for its number.
-    if (isPhoneAccountEmail(email.data)) return { success: false, message: missing };
+    if (isPhoneAccountEmail(email.data)) return { success: false, message: INVALID_MESSAGE };
     return { success: true, identifier: { kind: "email", email: email.data } };
   }
   const phone = parsePhoneEntry({ country: DEFAULT_PHONE_COUNTRY, number: value }, MISSING_MESSAGE);
-  if (!phone.success) return { success: false, message: phone.message };
+  if (!phone.success) return { success: false, message: INVALID_MESSAGE };
   if (phone.e164 === null) return { success: false, message: MISSING_MESSAGE };
   return { success: true, identifier: { kind: "phone", phone: phone.e164 } };
 }
@@ -62,9 +58,9 @@ function textValue(formData: FormData, key: string): string {
   return typeof value === "string" ? value : "";
 }
 
-export function parseCustomerSignInForm(formData: FormData, mode: SignInIdentifierMode = "phone-or-email"): CustomerSignInParseResult {
+export function parseCustomerSignInForm(formData: FormData): CustomerSignInParseResult {
   const typed = textValue(formData, "identifier").trim();
-  const identifier = parseAccountIdentifier(typed, mode);
+  const identifier = parseAccountIdentifier(typed);
   if (!identifier.success) return { success: false, message: identifier.message, typed };
   const password = textValue(formData, "password");
   if (password === "") return { success: false, message: "Enter your password.", typed };
