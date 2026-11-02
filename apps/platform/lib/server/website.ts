@@ -1,8 +1,6 @@
 import "server-only";
 import {
-  findFirstPayment,
   findLatestProject,
-  findLiveBundledAddOns,
   findPreviewImageInfo,
   findSetupCallBooking,
   getPrimaryDomain,
@@ -16,11 +14,9 @@ import { dayKey } from "@brandbasket/shared/lib/call-slots";
 import { BRAND_TIME_ZONE } from "@/lib/call-dates";
 import { liveDate, websiteTimeline, type TimelineEvent, type TimelineStep } from "@/lib/website/timeline";
 import { progressView, revisionDue, type ProgressView } from "@/lib/website/progress-view";
-import { boughtRows, type BoughtRow } from "@/lib/website/bought";
 import { WEBSITE_PREVIEW_IMAGE_PATH } from "@/lib/website/tabs";
 import { getAppDb } from "./db";
 import { loadIntake } from "./intake";
-import { firstPaymentView, type FirstPaymentView } from "./first-look";
 import { readLiveWebsite, type LiveWebsite } from "./onboarding";
 import { stillAhead } from "@/lib/home/due";
 import { quietly } from "./quietly";
@@ -36,18 +32,14 @@ export interface WebsiteData {
   readonly view: ProgressView;
   /** The preview picture's address, only when it was taken of the project's current preview link. */
   readonly pictureUrl: string | null;
-  /** The services the plan pays for, with their dates. Empty when they could not be read. */
-  readonly bought: readonly BoughtRow[];
-  /** What the first payment was and when, with its receipt; null when there is none or it could not be read. */
-  readonly payment: FirstPaymentView | null;
 }
 
 const day = (date: Date): string => dayKey(date.toISOString(), BRAND_TIME_ZONE);
 
 /**
  * Everything the Website page draws, for the signed-in business only. The project, the domain and the live site must be
- * readable (the page cannot say anything true without them); the history, the kickoff call, the picture and what the plan
- * covers are read apart and quietly, so a failure there leaves that part out and the page still works.
+ * readable (the page cannot say anything true without them); the history, the kickoff call and the picture
+ * are read apart and quietly, so a failure there leaves that part out and the page still works.
  */
 export async function loadWebsite(tenant: TenantContext, now: Date): Promise<WebsiteData> {
   const db = getAppDb();
@@ -71,9 +63,6 @@ export async function loadWebsite(tenant: TenantContext, now: Date): Promise<Web
 
   // A customer who answered the first questions is on the kickoff-first path: the setup checklist is not theirs to finish.
   const kickoffFirst = await quietly("website", "the first questions", false, async () => (await loadIntake(tenant)).completedAt !== null);
-  const plan = await quietly("website", "what the plan covers", null, () =>
-    withTenantScope(db, tenant, async (tx) => ({ lines: await findLiveBundledAddOns(tx, tenant.businessId), first: await findFirstPayment(tx, tenant.businessId) })),
-  );
 
   const events = history?.events ?? [];
   const timeline =
@@ -120,8 +109,6 @@ export async function loadWebsite(tenant: TenantContext, now: Date): Promise<Web
       kickoffFirst,
       kickoffDay: history?.callStartsAt == null ? null : day(history.callStartsAt),
     }),
-    bought: plan === null ? [] : boughtRows(plan.lines),
-    payment: plan === null ? null : firstPaymentView(plan.first),
     pictureUrl: project !== null && picture !== null && picture.previewUrl === project.previewUrl ? `${WEBSITE_PREVIEW_IMAGE_PATH}?v=${picture.capturedAt.getTime()}` : null,
   };
 }
