@@ -93,21 +93,6 @@ function TimeZoneForm({ businessId, timeZone }: { readonly businessId: string; r
   );
 }
 
-/** Switching Appointments on, once a time zone is set. */
-function SwitchOnForm({ businessId, timeZone }: { readonly businessId: string; readonly timeZone: string | null }): ReactElement {
-  const canEnable = resolvedTimeZone(timeZone) !== null;
-  return (
-    <form action={setModuleAction} className="mt-3">
-      <input type="hidden" name="businessId" value={businessId} />
-      <input type="hidden" name="module" value="appointments" />
-      <input type="hidden" name="enabled" value="on" />
-      <button type="submit" disabled={!canEnable} className={buttonSecondary}>
-        {canEnable ? "Switch on" : "Set a time zone first"}
-      </button>
-    </form>
-  );
-}
-
 /** Switching Appointments off, with the required acknowledgement that requests stop coming in. */
 function SwitchOffForm({
   businessId,
@@ -136,24 +121,25 @@ function SwitchOffForm({
   );
 }
 
-/** The Features section on a client's page: their time zone, and the modules switched on for their business. */
+/**
+ * The Features section on a client's page: their time zone, and Appointments while it is on for them. Appointments
+ * cannot be switched on (owner, 2026-10-19), so a business without it shows nothing; one that has it can be switched off.
+ */
 export function ClientFeatures({ businessId, timeZone, enabledModules, appointmentCounts, notice }: ClientFeaturesProps): ReactElement {
   const appointmentsOn = enabledModules.includes("appointments");
   return (
     <div>
       <TimeZoneForm businessId={businessId} timeZone={timeZone} />
 
-      <div className="mt-8">
-        <p className="flex flex-wrap items-center gap-3">
-          <span className={labelClasses}>{BUSINESS_MODULE_LABELS.appointments}</span>
-          <StatusDot tone={appointmentsOn ? "done" : "quiet"} label={appointmentsOn ? "On" : "Off"} />
-        </p>
-        {appointmentsOn ? (
+      {appointmentsOn ? (
+        <div className="mt-8">
+          <p className="flex flex-wrap items-center gap-3">
+            <span className={labelClasses}>{BUSINESS_MODULE_LABELS.appointments}</span>
+            <StatusDot tone="done" label="On" />
+          </p>
           <SwitchOffForm businessId={businessId} counts={appointmentCounts} />
-        ) : (
-          <SwitchOnForm businessId={businessId} timeZone={timeZone} />
-        )}
-      </div>
+        </div>
+      ) : null}
 
       {notice === null ? null : (
         <Notice tone={BUSINESS_MODULE_NOTICES[notice].ok ? "ok" : "problem"} className="mt-6">
