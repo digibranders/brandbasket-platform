@@ -69,11 +69,24 @@ jobs:
           export CI=1 NEXT_TELEMETRY_DISABLED=1
           pnpm --workspace-concurrency=2 --filter @brandbasket/platform --filter @brandbasket/admin build
 
+      # The VPS installs its own dependencies, so the install folders are left out. A plain --exclude=node_modules also
+      # drops apps/*/.next/node_modules, the hashed packages the build makes for server-only modules (Sentry's
+      # server-runtime-injection among them), and the app then fails to start with "Cannot find module". So only the
+      # install folders are pruned, by exact path, and the check below fails the run if a build folder was dropped.
       - name: Pack
         run: |
-          tar -C "/srv/brandbasket/releases/$SHA" -czf "$RUNNER_TEMP/release.tgz" \
-            --exclude=node_modules --exclude='apps/*/.next/cache' --exclude=.git .
+          REL="/srv/brandbasket/releases/$SHA"
+          cd "$REL"
+          find . \( -regex '\./node_modules' -o -regex '\./apps/[^/]*/node_modules' -o -regex '\./packages/[^/]*/node_modules' \
+            -o -regex '\./apps/[^/]*/\.next/cache' -o -regex '\./\.git' \) -prune -o -print0 \
+            | tar --no-recursion --null -T - -czf "$RUNNER_TEMP/release.tgz"
           ls -lh "$RUNNER_TEMP/release.tgz"
+          for app in apps/platform apps/admin; do
+            if [ -d "$REL/$app/.next/node_modules" ] && ! tar -tzf "$RUNNER_TEMP/release.tgz" | grep -q "^\./$app/\.next/node_modules/"; then
+              echo "::error::$app/.next/node_modules is missing from the release package"
+              exit 1
+            fi
+          done
 
       - name: Ship, migrate and switch
         env:
