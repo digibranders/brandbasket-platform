@@ -42,12 +42,17 @@ export function slotDay(iso: string): string {
   return new Intl.DateTimeFormat("en-GB", { weekday: "short", timeZone: BRAND_TIME_ZONE }).format(new Date(iso));
 }
 
-/** "14:00" for a slot's start, in India. */
+/** "2:00 pm" for a slot's start, in India. */
 export function slotTime(iso: string): string {
-  return new Intl.DateTimeFormat("en-GB", { hour: "2-digit", minute: "2-digit", hourCycle: "h23", timeZone: BRAND_TIME_ZONE }).format(new Date(iso));
+  return new Intl.DateTimeFormat("en-GB", { hour: "numeric", minute: "2-digit", hour12: true, timeZone: BRAND_TIME_ZONE }).format(new Date(iso));
 }
 
-/** "Tue 27 Oct, 14:00" for a slot's start, in India. */
+/** The hour of a slot's start on a 24 hour clock (0 to 23), in India: for splitting a day at noon. */
+export function slotHour(iso: string): number {
+  return Number(new Intl.DateTimeFormat("en-GB", { hour: "2-digit", hourCycle: "h23", timeZone: BRAND_TIME_ZONE }).format(new Date(iso)));
+}
+
+/** "Tue 27 Oct, 2:00 pm" for a slot's start, in India. */
 export function slotLabel(iso: string): string {
   return `${shortDay(dayKey(iso, BRAND_TIME_ZONE))}, ${slotTime(iso)}`;
 }

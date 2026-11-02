@@ -34,7 +34,7 @@ describe("callRows", () => {
 
   it("writes the time in India, the reason in the customer's words, and lets only a call still ahead be changed or cancelled", () => {
     const { upcoming } = callRows({ calls: [call({ id: "soon", reason: "other" })], kickoff: null, now: NOW });
-    expect(upcoming[0]).toMatchObject({ about: "Something else", when: "Wed 2 Dec, 14:00", canChange: true, canCancel: true, callId: "soon" });
+    expect(upcoming[0]).toMatchObject({ about: "Something else", when: "Wed 2 Dec, 2:00 pm", canChange: true, canCancel: true, callId: "soon" });
     const underway = callRows({ calls: [call({ id: "now", startsAt: new Date("2026-12-01T06:00:00.000Z"), endsAt: new Date("2026-12-01T06:45:00.000Z") })], kickoff: null, now: NOW });
     expect(underway.upcoming[0]).toMatchObject({ canChange: false, canCancel: false });
   });
@@ -73,7 +73,7 @@ describe("callRows", () => {
         about: "Kickoff",
         reason: null,
         note: null,
-        when: "Tue 27 Oct, 14:00",
+        when: "Tue 27 Oct, 2:00 pm",
         startsAtIso: "2026-10-27T08:30:00.000Z",
         endsAtIso: "2026-10-27T09:00:00.000Z",
         agreed: "6 pages in blue and white",
@@ -103,7 +103,7 @@ describe("upcomingCount and the limit", () => {
 describe("nextCallLine", () => {
   it("is the time of the soonest call, or null when none is booked", () => {
     const { upcoming } = callRows({ calls: [call({ id: "later", startsAt: new Date("2026-12-09T08:30:00.000Z"), endsAt: new Date("2026-12-09T09:00:00.000Z") }), call({ id: "soon" })], kickoff: null, now: NOW });
-    expect(nextCallLine(upcoming)).toBe("Wed 2 Dec, 14:00");
+    expect(nextCallLine(upcoming)).toBe("Wed 2 Dec, 2:00 pm");
     expect(nextCallLine([])).toBeNull();
   });
 });
