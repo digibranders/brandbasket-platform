@@ -88,7 +88,7 @@ describe("every request action", () => {
 
 describe("sendQuoteAction", () => {
   it("quotes at the plan's price as the signed-in staff member, logs it, emails the customer and returns to the section", async () => {
-    await expect(sendQuoteAction(form(QUOTE_FORM))).rejects.toThrow(`redirect:/clients/${BUSINESS}?requests=quoted&mail=emailed#requests`);
+    await expect(sendQuoteAction(form(QUOTE_FORM))).rejects.toThrow(`redirect:/clients/${BUSINESS}/requests?requests=quoted&mail=emailed#requests`);
     expect(sendChangeQuote).toHaveBeenCalledWith(DB, { requestId: REQUEST, staffId: "staff-1", what: "New page", hours: 3, workingDays: 5, unitCents: 50_000, currency: "INR", now: expect.any(Date) });
     expect(logStaffAccessOrThrow).toHaveBeenCalledWith({ staffUserId: "staff-1", action: "change_request.quote", targetType: "change_request", targetId: REQUEST, businessId: BUSINESS });
     expect(notifyRequester).toHaveBeenCalledWith(DB, TICKET, {
@@ -120,7 +120,7 @@ describe("sendQuoteAction", () => {
   });
 
   it("changes nothing for a form that is not valid, or a business with no plan", async () => {
-    await expect(sendQuoteAction(form({ ...QUOTE_FORM, hours: "0" }))).rejects.toThrow(`redirect:/clients/${BUSINESS}?requests=invalid#requests`);
+    await expect(sendQuoteAction(form({ ...QUOTE_FORM, hours: "0" }))).rejects.toThrow(`redirect:/clients/${BUSINESS}/requests?requests=invalid#requests`);
     vi.mocked(requestPricing).mockResolvedValue(null);
     await expect(sendQuoteAction(form(QUOTE_FORM))).rejects.toThrow("requests=no-plan");
     expect(sendChangeQuote).not.toHaveBeenCalled();

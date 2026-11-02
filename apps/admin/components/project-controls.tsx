@@ -13,7 +13,7 @@ import {
   cancelProjectAction,
   grantRoundAction,
   planLaunchAction,
-} from "@/app/(protected)/clients/[businessId]/project/actions";
+} from "@/app/(protected)/clients/[businessId]/website/actions";
 
 interface ProjectControlsProps {
   readonly businessId: string;

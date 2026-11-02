@@ -39,7 +39,7 @@ export const PROJECT_PREVIEW_NOTICES: Readonly<Record<ProjectPreviewNotice, { re
 };
 
 export function projectPreviewNoticeHref(businessId: string, notice: ProjectPreviewNotice): string {
-  return `/clients/${businessId}?preview=${notice}`;
+  return `/clients/${businessId}/website?preview=${notice}`;
 }
 
 export function readProjectPreviewNotice(value: string | string[] | undefined): ProjectPreviewNotice | null {

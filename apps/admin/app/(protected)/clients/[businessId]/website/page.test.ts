@@ -13,13 +13,14 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { isWebsiteBought } from "@/lib/server/bought-services";
 import { openClientTab } from "@/lib/server/client-page";
-import ClientProjectPage from "./page";
+import ClientWebsitePage from "./page";
 
 vi.mock("server-only", () => ({}));
 vi.mock("@/lib/server/db", () => ({ getStaffDb: () => ({ name: "staff-db" }) }));
 vi.mock("@/lib/server/client-page", () => ({ openClientTab: vi.fn() }));
 vi.mock("@/lib/server/bought-services", () => ({ isWebsiteBought: vi.fn() }));
 vi.mock("@/lib/server/project-launch", () => ({ LAUNCH_RESEND_WINDOW_MS: 7 * 24 * 60 * 60 * 1000 }));
+vi.mock("./site-details", () => ({ SiteDetails: () => "[site details]" }));
 vi.mock("@/components/project-controls", () => ({ ProjectControls: () => "[project controls]" }));
 vi.mock("@/components/console/kickoff-call-section", () => ({ KickoffCallSection: () => "[kickoff call]" }));
 vi.mock("@/components/console/free-address-form", () => ({ FreeAddressForm: () => "[free address]" }));
@@ -118,7 +119,7 @@ async function render(
   vi.mocked(listPreviewVersions).mockResolvedValue(options.versions ? VERSIONS : []);
   vi.mocked(isWebsiteBought).mockResolvedValue(options.bought ?? true);
   vi.mocked(findOpenProjectForStaff).mockResolvedValue(status === null || status === "live" ? null : openBuild(status));
-  const element = await ClientProjectPage({ params: Promise.resolve({ businessId: BUSINESS }), searchParams: Promise.resolve(options.search ?? {}) });
+  const element = await ClientWebsitePage({ params: Promise.resolve({ businessId: BUSINESS }), searchParams: Promise.resolve(options.search ?? {}) });
   return renderToStaticMarkup(element);
 }
 
@@ -136,10 +137,10 @@ beforeEach(() => {
   vi.mocked(findLatestProjectEventAt).mockResolvedValue(null);
 });
 
-describe("the Delivery tab", () => {
+describe("the Website tab", () => {
   it("opens with the next-step card, then the facts, then the folds", async () => {
     const html = await render("building", { versions: true, feedback: true });
-    const order = ["Next step", "Customer sees", "Preview versions", "Customer feedback", "More controls", "Notes for the builder"].map((text) => html.indexOf(text));
+    const order = ["Next step", "Customer sees", "Preview versions", "Customer feedback", "More controls", "Notes for the builder", "[kickoff call]", "Site details"].map((text) => html.indexOf(text));
     expect(order.every((at) => at >= 0)).toBe(true);
     expect([...order].sort((a, b) => a - b)).toEqual(order);
   });
@@ -172,7 +173,30 @@ describe("the Delivery tab", () => {
   });
 });
 
-describe("the Delivery tab by stage", () => {
+describe("Site details", () => {
+  it("holds the customer's site data in one fold, shut, after the delivery path", async () => {
+    const html = await render("building");
+    expect(html.match(/<summary[^>]*><span[^>]*>Site details/g)).toHaveLength(1);
+    expect(foldTag(html, "Site details")).not.toContain(" open");
+    expect(html.indexOf("[site details]")).toBeGreaterThan(html.indexOf("Site details"));
+    expect(html.indexOf("[kickoff call]")).toBeLessThan(html.indexOf("Site details"));
+  });
+
+  it("is there with no project, so the site data stays reachable", async () => {
+    const html = await render(null);
+    expect(html).toContain("No project yet.");
+    expect(html).toContain("[site details]");
+  });
+
+  it("opens when a notice it prints is in the address", async () => {
+    for (const key of ["website", "hosting", "features", "listing", "tags"]) {
+      expect(foldTag(await render("building", { search: { [key]: "saved" } }), "Site details"), key).toContain(" open");
+    }
+    expect(foldTag(await render("building", { search: { preview: "sent" } }), "Site details")).not.toContain(" open");
+  });
+});
+
+describe("the Website tab by stage", () => {
   it("building: the first preview form, folds shut", async () => {
     const html = await render("building", { versions: true, feedback: true });
     expect(html).toContain("Send the first preview");

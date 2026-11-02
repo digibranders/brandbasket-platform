@@ -30,7 +30,7 @@ export const DOMAIN_CONNECT_NOTICES: Readonly<Record<DomainConnectNotice, { read
 };
 
 export function domainConnectNoticeHref(businessId: string, notice: DomainConnectNotice): string {
-  return `/clients/${businessId}?dns=${notice}#domain`;
+  return `/clients/${businessId}/website?dns=${notice}#domain`;
 }
 
 export function readDomainConnectNotice(value: string | string[] | undefined): DomainConnectNotice | null {

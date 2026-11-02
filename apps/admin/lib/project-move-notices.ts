@@ -1,4 +1,4 @@
-/** What the Project tab says after a staff move on a build. */
+/** What the Website tab says after a staff move on a build. */
 export type ProjectMoveNotice =
   | "cancelled"
   | "assigned"
@@ -22,7 +22,7 @@ export const PROJECT_MOVE_NOTICES: Readonly<Record<ProjectMoveNotice, { readonly
 };
 
 export function projectMoveNoticeHref(businessId: string, notice: ProjectMoveNotice): string {
-  return `/clients/${businessId}/project?move=${notice}`;
+  return `/clients/${businessId}/website?move=${notice}`;
 }
 
 export function readProjectMoveNotice(value: string | string[] | undefined): ProjectMoveNotice | null {

@@ -11,7 +11,7 @@ describe("the client page's tax invoice notices", () => {
   });
 
   it("scrolls to the Tax invoices section", () => {
-    expect(invoiceNoticeHref("abc", "issued")).toBe("/clients/abc?invoice=issued#tax-invoices");
+    expect(invoiceNoticeHref("abc", "issued")).toBe("/clients/abc/billing?invoice=issued#tax-invoices");
   });
 
   it("calls only an issued invoice a success", () => {

@@ -51,7 +51,7 @@ function readFields(formData: FormData): Record<string, string> {
 
 function finish(businessId: string, notice: WorkNotice): never {
   revalidatePath(`/clients/${businessId}`);
-  redirect(`/clients/${businessId}?work=${notice}#work`);
+  redirect(`/clients/${businessId}/billing?work=${notice}#work`);
 }
 
 /** Records the action, then returns to the section: a failed audit write surfaces instead of the redirect. */

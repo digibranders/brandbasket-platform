@@ -34,5 +34,5 @@ export function clientListingKey(placement: {
 }
 
 export function clientTagsHref(businessId: string, notice: ClientTagNotice): string {
-  return `/clients/${businessId}?tags=${notice}#listing`;
+  return `/clients/${businessId}/website?tags=${notice}#listing`;
 }

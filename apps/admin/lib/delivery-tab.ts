@@ -3,7 +3,7 @@ import { addDays } from "@brandbasket/shared/lib/calendar/local-date";
 import { revisionReadyDay, workingDayOf } from "@brandbasket/shared/lib/working-days";
 import { lateReason } from "@/lib/pipeline";
 
-/** The words on the Delivery tab's next-step card, one per stage. Staff stage names come from project-stage.ts. */
+/** The words on the Website tab's next-step card, and the Overview's next-step line, one per stage. Staff stage names come from project-stage.ts. */
 export const NEXT_STEP_HEADLINES: Readonly<Record<ProjectStatus, string>> = {
   onboarding: "Waiting for the customer's setup",
   submitted: "Start building",

@@ -33,7 +33,7 @@ function finish(businessId: string, notice: ProjectMoveNotice): never {
   revalidatePath("/");
   revalidatePath("/projects");
   revalidatePath(`/clients/${businessId}`);
-  revalidatePath(`/clients/${businessId}/project`);
+  revalidatePath(`/clients/${businessId}/website`);
   redirect(projectMoveNoticeHref(businessId, notice));
 }
 

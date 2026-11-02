@@ -34,7 +34,7 @@ function currentPicture(project: Project, picture: WebsiteBuild["picture"]): Pic
   return project.previewSentAt === null || picture.capturedAt >= project.previewSentAt ? picture : null;
 }
 
-/** Starts the work on a project that was sent to us. The Project tab's next-step card shows it while the project is waiting to start. */
+/** Starts the work on a project that was sent to us. The Website tab's next-step card shows it while the project is waiting to start. */
 export function StartBuildingForm({ businessId }: { readonly businessId: string }): ReactElement {
   return (
     <form action={startBuildingAction}>

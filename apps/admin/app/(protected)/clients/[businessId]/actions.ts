@@ -335,13 +335,13 @@ export async function setWebsiteUrlAction(formData: FormData): Promise<void> {
   try {
     await setBusinessWebsiteUrl(getStaffDb(), businessId, typeof raw === "string" ? raw : null);
   } catch (error) {
-    if (error instanceof InvalidWebsiteUrlError) redirect(`/clients/${businessId}?website=invalid`);
+    if (error instanceof InvalidWebsiteUrlError) redirect(`/clients/${businessId}/website?website=invalid`);
     throw error;
   }
 
   await recordStaffAction(staff, { businessId, kind: "website.url_saved", summary: "Saved the website address", data: { websiteUrl: typeof raw === "string" && raw !== "" ? raw : null } });
   revalidateClient(businessId);
-  redirect(`/clients/${businessId}?website=saved`);
+  redirect(`/clients/${businessId}/website?website=saved`);
 }
 
 /** Saves which Vercel project the client's website runs on, so the hourly sync can pause it if their plan lapses. */
@@ -349,7 +349,7 @@ export async function saveWebsiteHostingAction(formData: FormData): Promise<void
   const staff = await requireStaffAccess();
   const businessId = readId(formData.get("businessId"), "The hosting's business");
   const hosting = parseHostingForm(formData.get("vercelProjectId"), formData.get("vercelTeamId"));
-  if (!hosting.success) redirect(`/clients/${businessId}?hosting=invalid`);
+  if (!hosting.success) redirect(`/clients/${businessId}/website?hosting=invalid`);
 
   await saveWebsiteHosting(getStaffDb(), { businessId, vercelProjectId: hosting.vercelProjectId, vercelTeamId: hosting.vercelTeamId });
   await recordStaffAction(staff, {
@@ -359,7 +359,7 @@ export async function saveWebsiteHostingAction(formData: FormData): Promise<void
     data: { vercelProjectId: hosting.vercelProjectId, vercelTeamId: hosting.vercelTeamId },
   });
   revalidateClient(businessId);
-  redirect(`/clients/${businessId}?hosting=saved`);
+  redirect(`/clients/${businessId}/website?hosting=saved`);
 }
 
 /**
@@ -455,25 +455,25 @@ export async function saveListingPlacementAction(formData: FormData): Promise<vo
   const parsed = parsePlacementForm(formData);
   if (!parsed.success) {
     const field = encodeURIComponent(parsed.field ?? "form");
-    redirect(`/clients/${businessId}?listing=invalid&listingField=${field}#listing`);
+    redirect(`/clients/${businessId}/website?listing=invalid&listingField=${field}#listing`);
   }
 
   try {
     await saveListingPlacement(getStaffDb(), businessId, parsed.data, new Date());
   } catch (error) {
-    if (error instanceof ListingAddressTakenError) redirect(`/clients/${businessId}?listing=taken#listing`);
+    if (error instanceof ListingAddressTakenError) redirect(`/clients/${businessId}/website?listing=taken#listing`);
     if (error instanceof ListingPlaceTakenError) {
-      redirect(`/clients/${businessId}?listing=${error.reason === "added" ? "place-added" : "place-taken"}#listing`);
+      redirect(`/clients/${businessId}/website?listing=${error.reason === "added" ? "place-added" : "place-taken"}#listing`);
     }
-    if (error instanceof ListingPlaceFixedError) redirect(`/clients/${businessId}?listing=place-fixed#listing`);
-    if (error instanceof PlaceRegistryNotImportedError) redirect(`/clients/${businessId}?listing=no-places#listing`);
-    if (error instanceof UnknownPlaceError) redirect(`/clients/${businessId}?listing=invalid&listingField=takeOverPlaceId#listing`);
+    if (error instanceof ListingPlaceFixedError) redirect(`/clients/${businessId}/website?listing=place-fixed#listing`);
+    if (error instanceof PlaceRegistryNotImportedError) redirect(`/clients/${businessId}/website?listing=no-places#listing`);
+    if (error instanceof UnknownPlaceError) redirect(`/clients/${businessId}/website?listing=invalid&listingField=takeOverPlaceId#listing`);
     throw error;
   }
 
   await recordStaffAction(staff, { businessId, kind: "listing.placement_saved", summary: "Saved the listing placement" });
   revalidateClient(businessId);
-  redirect(`/clients/${businessId}?listing=saved#listing`);
+  redirect(`/clients/${businessId}/website?listing=saved#listing`);
 }
 
 /**

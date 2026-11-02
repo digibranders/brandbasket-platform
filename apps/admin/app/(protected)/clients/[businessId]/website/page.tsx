@@ -1,36 +1,45 @@
 import {
-  countAppointments,
-  findBusinessTimeZone,
   findBusinessWebsiteUrl,
-  findListingPlacement,
-  findPlaces,
-  getSiteKey,
-  hasLiveProject,
-  lastSiteHitAt,
-  listEnabledModules,
-  listHostedSites,
-  listUpcomingDirectoryPromotions,
-  readDirectoryStatuses,
+  findLatestKickoffOutcome,
+  findLatestProjectEventAt,
+  findOpenProjectForStaff,
+  findSetupCallBooking,
+  listFeedbackForProject,
+  listLaunchChecks,
+  listPreviewVersions,
 } from "@brandbasket/db";
 import type { Metadata } from "next";
 import type { ReactElement } from "react";
-import { readBusinessModuleNotice } from "@brandbasket/shared/lib/business-module-notices";
-import { formatPromotionDay, promotionStatus, promotionTagDisplay } from "@brandbasket/shared/lib/directory/promotion";
-import { WEEKDAYS } from "@brandbasket/shared/lib/onboarding/business-fields";
-import { displayPhoneText } from "@brandbasket/shared/server/phone-display";
-import { ClientFeatures } from "@/components/client-features";
-import { ClientListing } from "@/components/client-listing";
-import { ClientListingTags } from "@/components/client-listing-tags";
-import { labelClasses } from "@/components/console/field-styles";
+import { DOMAIN_CONNECT_NOTICES, readDomainConnectNotice } from "@brandbasket/shared/lib/domain-connect-notices";
+import { isTemporarySubdomain } from "@brandbasket/shared/lib/onboarding/domain-form";
+import { clientPaymentState } from "@brandbasket/shared/lib/billing/client-payment";
+import { PROJECT_LAUNCH_NOTICES, readProjectLaunchNotice } from "@brandbasket/shared/lib/project-launch-notices";
+import { PROJECT_PREVIEW_NOTICES, readProjectPreviewNotice } from "@brandbasket/shared/lib/project-preview-notices";
+import { SUPPORT_STATUS_LABELS } from "@brandbasket/shared/lib/support";
+import { DeliveryFacts, FeedbackList, NextStepCard, PreviewVersionList } from "@/components/console/delivery-tab";
+import { Fold } from "@/components/console/fold";
+import { FreeAddressForm } from "@/components/console/free-address-form";
+import { KickoffCallSection } from "@/components/console/kickoff-call-section";
+import { Notice } from "@/components/console/notice";
 import { Quiet, Section } from "@/components/console/section";
-import { adminBrand } from "@/lib/brand";
-import { clientListingKey, readClientTagNotice } from "@/lib/client-tags";
-import { isWebsiteBought } from "@/lib/server/bought-services";
+import { WebsiteSection } from "@/components/console/website-section";
+import { billingNeedsAttention } from "@/lib/billing-attention";
+import { buildPanelState } from "@/lib/build-summary";
+import { isPastIncludedRounds } from "@/lib/build-rounds";
+import { clientNextStep, previewLateReason } from "@/lib/client-next-step";
+import { updatedPreviewDay, updatedPreviewLateReason } from "@/lib/delivery-tab";
+import { readProjectMoveNotice } from "@/lib/project-move-notices";
+import { readWebsiteMoveNotice } from "@/lib/website-form";
+import { ProjectControls } from "@/components/project-controls";
 import { openClientTab } from "@/lib/server/client-page";
+import { isWebsiteBought } from "@/lib/server/bought-services";
 import { getStaffDb } from "@/lib/server/db";
-import { serverEnv } from "@/lib/server/env";
-import { getSiteApiToken } from "@/lib/server/site-token";
-import { addressOf, CustomerLink, Facts, HostingBlock, hoursForDay, readListingNotice, SiteApiTokenBlock, TrackingBlock, WebsiteUrlBlock } from "../parts";
+import { LAUNCH_RESEND_WINDOW_MS } from "@/lib/server/project-launch";
+import { CustomerLink, DNS_STATUS_TEXT, Facts, MoveDomainPanel, ResendLaunchEmailForm, When } from "../parts";
+import { SiteDetails } from "./site-details";
+
+/** The query keys whose notices the Site details fold prints. */
+const SITE_DETAIL_NOTICES = ["website", "hosting", "features", "listing", "tags"] as const;
 
 export const metadata: Metadata = { title: "Client website" };
 
@@ -42,157 +51,259 @@ export default async function ClientWebsitePage({
   readonly searchParams: Promise<Record<string, string | string[] | undefined>>;
 }): Promise<ReactElement> {
   const { businessId } = await params;
-  const { client } = await openClientTab(businessId, "website");
+  const { granted, client } = await openClientTab(businessId, "website");
   const sp = await searchParams;
-  const db = getStaffDb();
-  const renderedAt = new Date();
-  const [siteApiToken, siteKey, lastEventAt, websiteUrl, hostedSites, timeZone, enabledModules, appointmentCounts, listingPlacement, listingLive, promotions, websiteBought] = await Promise.all([
-    getSiteApiToken(client.businessId),
-    getSiteKey(db, client.businessId),
-    lastSiteHitAt(db, client.businessId),
-    findBusinessWebsiteUrl(db, client.businessId),
-    listHostedSites(db, client.businessId),
-    findBusinessTimeZone(db, client.businessId),
-    listEnabledModules(db, client.businessId),
-    countAppointments(db, client.businessId),
-    findListingPlacement(db, client.businessId),
-    hasLiveProject(db, client.businessId),
-    listUpcomingDirectoryPromotions(db, client.businessId, renderedAt),
-    isWebsiteBought(db, client.businessId),
-  ]);
-  const websiteNotice = sp.website === "saved" || sp.website === "invalid" ? sp.website : null;
-  const hostingNotice = sp.hosting === "saved" || sp.hosting === "invalid" ? sp.hosting : null;
-  const featuresNotice = readBusinessModuleNotice(sp.features);
-  const listingNotice = readListingNotice(sp.listing, sp.listingField);
-  const tagsNotice = readClientTagNotice(sp.tags);
-  const listingPlaceId = listingPlacement?.placeId ?? null;
-  // The tags are kept under the listing's place, or under its key until it has one.
-  const listingKey = listingPlacement === null ? null : clientListingKey(listingPlacement);
-  const listingStatus =
-    listingKey === null
-      ? undefined
-      : (await readDirectoryStatuses(db, listingPlaceId === null ? { placeIds: [], unplacedKeys: [listingKey] } : { placeIds: [listingPlaceId], unplacedKeys: [] })).get(
-          listingPlaceId ?? listingKey,
-        );
-  const listingPlace = listingPlaceId === null ? null : ((await findPlaces(db, [listingPlaceId])).get(listingPlaceId) ?? null);
-  const promotion = promotionStatus(promotions, renderedAt);
-  const listingPromotion =
-    promotion.running === null || promotion.endsAt === null
+  const previewNotice = readProjectPreviewNotice(sp.preview);
+  const launchNotice = readProjectLaunchNotice(sp.launch);
+  const dnsNotice = readDomainConnectNotice(sp.dns);
+  const [websiteUrl, websiteBought] = await Promise.all([findBusinessWebsiteUrl(getStaffDb(), client.businessId), isWebsiteBought(getStaffDb(), client.businessId)]);
+  const { project } = client;
+  const nextStep = clientNextStep(project);
+  const buildState = buildPanelState(project);
+  const now = new Date();
+  // Once changes are asked for, the promise is the updated preview's day, the same one the customer is shown, not the first preview's.
+  const changesAskedAt =
+    project !== null && project.status === "revisions"
+      ? await findLatestProjectEventAt(getStaffDb(), { projectId: project.id, status: "revisions" })
+      : null;
+  const updatedDay = changesAskedAt === null ? null : updatedPreviewDay(changesAskedAt);
+  const late =
+    project !== null && project.status === "revisions"
+      ? updatedDay === null
+        ? null
+        : updatedPreviewLateReason(updatedDay, now)
+      : nextStep === "preview"
+        ? previewLateReason(project, now)
+        : null;
+  const logo = client.media.filter((asset) => asset.purpose === "logo");
+  const photos = client.media.filter((asset) => asset.purpose === "photo");
+  const feedback =
+    project === null ? [] : await listFeedbackForProject(getStaffDb(), { projectId: project.id, businessId: client.businessId });
+  const previewVersions =
+    project === null ? [] : await listPreviewVersions(getStaffDb(), { projectId: project.id, businessId: client.businessId });
+  const kickoff =
+    project === null || (project.status !== "submitted" && project.status !== "building")
       ? null
-      : { label: promotionTagDisplay(promotion.running.tag), until: formatPromotionDay(promotion.endsAt), visible: promotion.visible };
-  const { profile } = client;
+      : {
+          booking: await findSetupCallBooking(getStaffDb(), client.businessId),
+          outcome: await findLatestKickoffOutcome(getStaffDb(), client.businessId),
+        };
+  const kickoffConfirmed = kickoff !== null && (Boolean(kickoff.booking?.heldAt) || kickoff.outcome?.outcome === "completed");
+  const launchChecks =
+    project === null || nextStep !== "live"
+      ? []
+      : await listLaunchChecks(getStaffDb(), { projectId: project.id, businessId: client.businessId });
+  const billingAttention = billingNeedsAttention(clientPaymentState(client.billing, now), client.billing);
+  const openBuild = project === null ? null : await findOpenProjectForStaff(getStaffDb(), client.businessId);
+  const build =
+    openBuild === null
+      ? null
+      : { rounds: { used: openBuild.revisionRoundsUsed, included: openBuild.revisionRoundsIncluded }, launchPlannedOn: openBuild.launchPlannedOn };
+  const latestFeedback = feedback[0] ?? null;
+  const roundsPastAllowance = openBuild !== null && isPastIncludedRounds(openBuild.revisionRoundsUsed, openBuild.revisionRoundsIncluded);
+  const launchEmailOpen =
+    project !== null &&
+    project.status === "live" &&
+    project.launchedAt !== null &&
+    now.getTime() - project.launchedAt.getTime() <= LAUNCH_RESEND_WINDOW_MS;
+  const hasControls = websiteBought || launchEmailOpen;
+  // A move or build notice is printed inside the controls, so a fold that is shut would hide the answer to what was just pressed.
+  const controlsOpen = project?.status === "on_hold" || readProjectMoveNotice(sp.move) !== null || readWebsiteMoveNotice(sp.build) !== null;
+  // The same holds for the site details: their notices are printed inside the fold.
+  const siteDetailsOpen = SITE_DETAIL_NOTICES.some((key) => sp[key] !== undefined);
 
   return (
     <>
-      <Section title="Their website">
-        <div className="max-w-2xl space-y-8">
-          <WebsiteUrlBlock businessId={client.businessId} websiteUrl={websiteUrl} notice={websiteNotice} />
-          {websiteBought ? (
-            <>
-              <HostingBlock businessId={client.businessId} hosting={hostedSites[0] ?? null} notice={hostingNotice} />
-              <div>
-                <h3 className={labelClasses}>Site API token</h3>
-                <div className="mt-2">
-                  <SiteApiTokenBlock businessId={client.businessId} token={siteApiToken} />
-                </div>
-              </div>
-              <div>
-                <h3 className={labelClasses}>Site tracking</h3>
-                <div className="mt-2">
-                  <TrackingBlock businessId={client.businessId} siteKey={siteKey?.key ?? null} appOrigin={serverEnv().APP_ORIGIN} lastEventAt={lastEventAt} />
-                </div>
-              </div>
-            </>
+      {previewNotice === null && launchNotice === null && dnsNotice === null ? null : (
+        <div className="mb-8 space-y-3">
+          {previewNotice === null ? null : (
+            <Notice tone={PROJECT_PREVIEW_NOTICES[previewNotice].ok ? "ok" : "problem"}>{PROJECT_PREVIEW_NOTICES[previewNotice].text}</Notice>
+          )}
+          {launchNotice === null ? null : (
+            <Notice tone={PROJECT_LAUNCH_NOTICES[launchNotice].ok ? "ok" : "problem"}>{PROJECT_LAUNCH_NOTICES[launchNotice].text}</Notice>
+          )}
+          {dnsNotice === null ? null : (
+            <Notice tone={DOMAIN_CONNECT_NOTICES[dnsNotice].ok ? "ok" : "problem"}>{DOMAIN_CONNECT_NOTICES[dnsNotice].text}</Notice>
+          )}
+        </div>
+      )}
+
+      {billingAttention || roundsPastAllowance ? (
+        <div className="mb-8 space-y-3">
+          {billingAttention ? (
+            <Notice tone="problem">Billing needs attention for this client. The build stage is unchanged. Check Plan and billing before doing more work.</Notice>
+          ) : null}
+          {roundsPastAllowance ? (
+            <Notice tone="problem">
+              This build is past its included rounds of changes. Decide before doing more work; nothing is charged automatically.
+            </Notice>
           ) : null}
         </div>
-      </Section>
-
-      <Section title="Features" id="features" aside="Time zone and modules">
-        <ClientFeatures
-          businessId={client.businessId}
-          timeZone={timeZone}
-          enabledModules={enabledModules}
-          appointmentCounts={appointmentCounts}
-          notice={featuresNotice}
-        />
-      </Section>
-
-      {adminBrand().sellsDirectory ? (
-        <Section title="Listing" id="listing" aside={adminBrand().directoryName}>
-          <ClientListing
-            businessId={client.businessId}
-            displayName={profile?.displayName ?? client.businessName}
-            placement={listingPlacement}
-            place={listingPlace}
-            live={listingLive}
-            promotion={listingPromotion}
-            notice={listingNotice}
-          />
-          {listingPlacement === null ? null : (
-            <div className="mt-10">
-              <ClientListingTags
-                businessId={client.businessId}
-                businessName={profile?.displayName ?? client.businessName}
-                staffVerified={listingStatus !== undefined}
-                trusted={listingStatus?.trusted ?? false}
-                notice={tagsNotice}
-              />
-            </div>
-          )}
-        </Section>
       ) : null}
 
-      <Section title="Business details">
-        {profile === null ? (
-          <Quiet>Not filled in yet.</Quiet>
+      {project === null ? (
+        <Quiet>No project yet.</Quiet>
+      ) : (
+        <>
+          <NextStepCard
+            businessId={client.businessId}
+            status={project.status}
+            late={late}
+            rounds={build?.rounds ?? null}
+            latestFeedback={latestFeedback}
+            goLive={{
+              doneChecks: launchChecks.map((check) => check.key),
+              domain: client.domain,
+              previewUrl: project.previewUrl,
+              addressUnverified: launchNotice === "address-unverified",
+            }}
+          />
+          <DeliveryFacts
+            status={project.status}
+            slaDueAt={project.slaDueAt}
+            updatedPreviewDay={updatedDay}
+            build={build}
+            kickoffConfirmed={kickoff === null ? null : kickoffConfirmed}
+          />
+        </>
+      )}
+      {client.movingTo !== null && client.domain !== null ? (
+        <Section title="Move to their own domain" id="domain" aside="Asked by the customer">
+          <MoveDomainPanel
+            businessId={client.businessId}
+            current={client.domain.hostname}
+            movingTo={client.movingTo}
+            siteUrl={websiteUrl ?? project?.previewUrl ?? null}
+          />
+        </Section>
+      ) : null}
+      {previewVersions.length === 0 ? null : (
+        <Fold title="Preview versions" count={previewVersions.length} open={project?.status === "preview"}>
+          <PreviewVersionList versions={previewVersions} />
+        </Fold>
+      )}
+      {feedback.length === 0 ? null : (
+        <Fold title="Customer feedback" count={feedback.length}>
+          <FeedbackList
+            items={feedback.map((item) => ({
+              ticketId: item.ticketId,
+              round: item.round,
+              subject: item.subject,
+              body: item.body,
+              createdAt: item.createdAt,
+              statusLabel: SUPPORT_STATUS_LABELS[item.status],
+            }))}
+          />
+        </Fold>
+      )}
+      {hasControls ? (
+        <Fold title="More controls" open={controlsOpen}>
+          {launchEmailOpen ? (
+            <Section title="Launch email">
+              <ResendLaunchEmailForm businessId={client.businessId} />
+            </Section>
+          ) : null}
+          {websiteBought ? <ProjectControls businessId={client.businessId} notice={sp.move} /> : null}
+          {websiteBought ? <WebsiteSection businessId={client.businessId} staffId={granted.user.id} notice={sp.build} /> : null}
+        </Fold>
+      ) : null}
+
+      <Section title="Domain" id={client.movingTo === null && nextStep !== "live" ? "domain" : undefined}>
+        {client.domain === null ? (
+          <>
+            <Quiet>Not given yet.</Quiet>
+            {project !== null && buildState === "active" && project.status !== "cancelled" && project.status !== "live" ? (
+              <div className="mt-6">
+                <FreeAddressForm businessId={client.businessId} />
+              </div>
+            ) : null}
+          </>
+        ) : isTemporarySubdomain(client.domain.hostname) ? (
+          <Facts
+            items={[
+              { label: "Domain", value: client.domain.hostname },
+              { label: "Ownership", value: "Our temporary address, not their own domain yet" },
+            ]}
+          />
         ) : (
           <Facts
             items={[
-              { label: "Name on the website", value: profile.displayName },
-              { label: "Tagline", value: profile.tagline },
-              { label: "Public phone", value: displayPhoneText(profile.phone) },
-              { label: "Public email", value: profile.email },
-              { label: "Address", value: addressOf(profile) },
-              { label: "Areas they serve", value: profile.serviceAreas },
-              { label: "Google Business Profile", value: profile.googleBusinessUrl === null ? null : <CustomerLink url={profile.googleBusinessUrl} /> },
-              { label: "About the business", value: profile.description },
+              { label: "Domain", value: client.domain.hostname },
+              { label: "DNS", value: DNS_STATUS_TEXT[client.domain.status] ?? client.domain.status },
+              {
+                label: "Ownership",
+                value:
+                  client.domain.ownerConfirmedAt === null ? (
+                    "Not confirmed"
+                  ) : (
+                    <>
+                      Confirmed <When date={client.domain.ownerConfirmedAt} />
+                    </>
+                  ),
+              },
             ]}
           />
         )}
       </Section>
 
-      <Section title="Opening hours">
-        {client.hours.length === 0 ? (
-          <Quiet>Not filled in yet.</Quiet>
+      <Section title="Notes for the builder">
+        {client.brief === null ? (
+          <Quiet>Nothing yet.</Quiet>
         ) : (
-          <dl className="max-w-md divide-y divide-line">
-            {WEEKDAYS.map((label, day) => (
-              <div key={label} className="flex justify-between gap-4 py-2.5">
-                <dt>{label}</dt>
-                <dd className="text-right tabular-nums text-ink-2">{hoursForDay(client.hours, day)}</dd>
-              </div>
-            ))}
-          </dl>
+          <Facts
+            items={[
+              { label: "Anything we should know", value: client.brief.notesForBuilder },
+              { label: "How it should feel", value: client.brief.styleLikes },
+              {
+                label: "Websites they like",
+                value:
+                  client.brief.referenceUrls.length === 0 ? null : (
+                    <ul className="space-y-1">
+                      {client.brief.referenceUrls.map((url, index) => (
+                        // Links may repeat, so the position is the key.
+                        <li key={index}>
+                          <CustomerLink url={url} />
+                        </li>
+                      ))}
+                    </ul>
+                  ),
+              },
+            ]}
+          />
         )}
       </Section>
 
-      <Section title="What they offer" aside={client.services.length === 0 ? undefined : `${client.services.length} listed`}>
-        {client.services.length === 0 ? (
-          <Quiet>None added yet.</Quiet>
+      <Section title="Logo and photos" aside={client.media.length === 0 ? undefined : `${client.media.length} uploaded`}>
+        {client.media.length === 0 ? (
+          <Quiet>Nothing uploaded yet.</Quiet>
         ) : (
-          <ol className="max-w-2xl divide-y divide-line">
-            {client.services.map((service) => (
-              <li key={service.id} className="py-3 first:pt-0">
-                <p className="flex flex-wrap justify-between gap-2">
-                  <span className="font-medium">{service.name}</span>
-                  {service.priceText === null ? null : <span className="tabular-nums text-ink-2">{service.priceText}</span>}
-                </p>
-                {service.summary === null ? null : <p className="mt-1 text-sm text-ink-2">{service.summary}</p>}
+          <ul className="grid grid-cols-2 gap-5 sm:grid-cols-3 xl:grid-cols-4">
+            {[...logo, ...photos].map((asset) => (
+              <li key={asset.id}>
+                <a href={`/media/${asset.id}`} target="_blank" rel="noopener noreferrer" className="group block overflow-hidden rounded-xl">
+                  {/* Served from our own route with staff access checked; next/image would cache it publicly. */}
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={`/media/${asset.id}`}
+                    alt={asset.altText ?? ""}
+                    width={asset.width}
+                    height={asset.height}
+                    loading="lazy"
+                    className="aspect-square w-full bg-sunken object-cover transition-transform duration-500 group-hover:scale-[1.03]"
+                  />
+                </a>
+                <p className="mt-2 text-sm font-medium">{asset.purpose === "logo" ? "Logo" : "Photo"}</p>
+                <p className="mt-0.5 text-sm text-ink-2">{asset.altText ?? "No description"}</p>
               </li>
             ))}
-          </ol>
+          </ul>
         )}
       </Section>
+      <KickoffCallSection businessId={client.businessId} />
+
+      <Fold title="Site details" open={siteDetailsOpen}>
+        <SiteDetails client={client} query={sp} />
+      </Fold>
     </>
   );
 }

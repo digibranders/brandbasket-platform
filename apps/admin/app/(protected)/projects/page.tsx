@@ -37,7 +37,7 @@ function href(view: "board" | "list", builder: string | null, scope: ProjectScop
 function Card({ card }: { readonly card: BoardCard }): ReactElement {
   return (
     <Link
-      href={`/clients/${card.row.businessId}/project`}
+      href={`/clients/${card.row.businessId}/website`}
       className={cn(
         "grid gap-1.5 rounded-lg bg-surface p-3 transition-colors duration-200 hover:bg-white",
         card.late && "shadow-[inset_3px_0_0_var(--color-error)]",
@@ -134,7 +134,7 @@ export default async function ProjectsPage({ searchParams }: ProjectsPageProps):
               {cards.map(({ column, card }) => (
                 <tr key={card.row.projectId}>
                   <td className={TD}>
-                    <Link href={`/clients/${card.row.businessId}/project`} className="font-semibold text-ink">
+                    <Link href={`/clients/${card.row.businessId}/website`} className="font-semibold text-ink">
                       {card.row.businessName}
                     </Link>
                   </td>
