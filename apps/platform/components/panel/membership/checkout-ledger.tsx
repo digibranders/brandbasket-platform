@@ -224,18 +224,7 @@ export function CheckoutLedger({
             {summary.adCredit === null ? null : <p className="mt-1 text-right text-[0.8125rem] font-semibold text-sage-deep">{summary.adCredit.label}</p>}
           </div>
 
-          {billed ? (
-            <form id="checkout-pay" ref={gstFormRef} action={gstFormAction} noValidate>
-              {payFields}
-            </form>
-          ) : (
-            <form id="checkout-pay" action={usdAction}>
-              {payFields}
-            </form>
-          )}
-          <p className="mt-3 text-[0.8125rem] text-ink-2">{renewalTerms(summary, { ...pricing, initialTermMonths }, code?.months ?? null)}</p>
-
-          <div className="mt-3.5 flex flex-wrap gap-x-[22px] gap-y-1.5 border-t border-line pt-3.5">
+          <div className="my-3.5 flex flex-wrap gap-x-[22px] gap-y-1.5 border-t border-line pt-3.5">
             <details className="min-w-0 open:basis-full" open={code !== null || lapsedCode !== null}>
               <summary className={DETAILS_SUMMARY}>Have a code? (optional)</summary>
               <div className="mt-2.5">
@@ -252,6 +241,17 @@ export function CheckoutLedger({
               </div>
             </details>
           </div>
+
+          {billed ? (
+            <form id="checkout-pay" ref={gstFormRef} action={gstFormAction} noValidate>
+              {payFields}
+            </form>
+          ) : (
+            <form id="checkout-pay" action={usdAction}>
+              {payFields}
+            </form>
+          )}
+          <p className="mt-3 text-[0.8125rem] text-ink-2">{renewalTerms(summary, { ...pricing, initialTermMonths }, code?.months ?? null)}</p>
         </section>
 
         <aside aria-label="About your plan">
