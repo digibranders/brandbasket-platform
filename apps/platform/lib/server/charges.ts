@@ -23,6 +23,7 @@ import { basketDeps } from "./add-ons";
 import { getBillingProvider } from "./billing";
 import type { GrantedCustomer } from "./customer-access";
 import { getAppDb, getStaffDb } from "./db";
+import { sendPaymentReceipt } from "./payment-emails";
 import { announcePaymentToTeams } from "./teams";
 
 /** How many open charges the Billing page lists. More than this many unpaid extras at once is not a real case. */
@@ -146,6 +147,8 @@ async function recordVerifiedChargePayment({ confirmed, method, now }: RecordInp
   });
   // Teams is told once the payment has committed, for a payment recorded for the first time.
   if (newPaymentId !== null) void announcePaymentToTeams(newPaymentId);
+  // Only a charge that was paid is a receipt: a refused one is kept for staff and bought nothing.
+  if (newPaymentId !== null && outcome === "paid") void sendPaymentReceipt(newPaymentId);
   // A paid add-on is on; the provider is told to bill it from the next renewal, with the payment's transaction committed.
   if (outcome === "paid") await finishAddOnAfterPayment(basketDeps(), { businessId: confirmed.businessId, chargeId: confirmed.chargeId, now });
   return outcome;

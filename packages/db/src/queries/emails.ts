@@ -1,4 +1,4 @@
-import { and, desc, eq, ilike, inArray, lt, or, sql, type SQL } from "drizzle-orm";
+import { and, desc, eq, gte, ilike, inArray, lt, or, sql, type SQL } from "drizzle-orm";
 import type { Database } from "../client";
 import type { ScopedTransaction } from "../scope";
 import { emailMessages, type EmailStatus } from "../schema";
@@ -57,6 +57,30 @@ const EMAIL_COLUMNS = {
 
 export async function recordEmail(db: Database | ScopedTransaction, email: RecordedEmail): Promise<void> {
   await db.insert(emailMessages).values({ ...email, status: email.status ?? (email.transport === "brevo" ? "sent" : "local_only") });
+}
+
+/**
+ * Whether an email of this template to this address, written at or after `since`, holds `text` in its body. The outbox has no key
+ * of its own, so a sender that must not repeat itself (a receipt names its payment in its link) asks here before it sends. A
+ * row counts whatever became of it: a failed delivery is retried from the console, not by a second email.
+ */
+export async function hasEmailContaining(
+  db: Database,
+  match: { readonly template: string; readonly toAddress: string; readonly text: string; readonly since: Date },
+): Promise<boolean> {
+  const rows = await db
+    .select({ id: emailMessages.id })
+    .from(emailMessages)
+    .where(
+      and(
+        eq(emailMessages.template, match.template),
+        eq(emailMessages.toAddress, match.toAddress),
+        gte(emailMessages.createdAt, match.since),
+        ilike(emailMessages.bodyText, containsPattern(match.text)),
+      ),
+    )
+    .limit(1);
+  return rows.length > 0;
 }
 
 /** Emails for the console's Deliveries page, newest first. */

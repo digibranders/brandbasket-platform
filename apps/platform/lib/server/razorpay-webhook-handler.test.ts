@@ -44,6 +44,7 @@ vi.mock("./payload-tenant-sync", () => ({ syncTenantForBusiness: vi.fn() }));
 vi.mock("./keep-plan", () => ({ restoreKeptPlan: vi.fn(async () => true) }));
 vi.mock("./charges", () => ({ recordRazorpayChargePayment: vi.fn() }));
 vi.mock("./payment-failure", () => ({ recordRazorpayPaymentFailure: vi.fn() }));
+vi.mock("./payment-emails", () => ({ sendPaymentReceipt: vi.fn(async () => undefined) }));
 vi.mock("./teams", () => ({ announcePaymentToTeams: vi.fn(async () => undefined), announcePlanStatusToTeams: vi.fn(async () => undefined) }));
 vi.mock("./conversions", () => ({ reportFirstPaymentToAds: vi.fn(async () => undefined) }));
 // A transaction that is also its own savepoint: both run the callback straight away.
@@ -81,6 +82,7 @@ import { recordRazorpayChargePayment } from "./charges";
 import { recordRazorpayPaymentFailure } from "./payment-failure";
 import { restoreKeptPlan } from "./keep-plan";
 import { reportFirstPaymentToAds } from "./conversions";
+import { sendPaymentReceipt } from "./payment-emails";
 import { announcePaymentToTeams, announcePlanStatusToTeams } from "./teams";
 import { syncTenantForBusiness } from "./payload-tenant-sync";
 import { handleRazorpayWebhookEvent } from "./razorpay-webhook-handler";
@@ -1802,11 +1804,15 @@ describe("an add-on subscription", () => {
       await handleRazorpayWebhookEvent(CHARGE);
       expect(announcePaymentToTeams).toHaveBeenCalledTimes(1);
       expect(announcePaymentToTeams).toHaveBeenCalledWith("pay_row_addon");
+      expect(sendPaymentReceipt).toHaveBeenCalledTimes(1);
+      expect(sendPaymentReceipt).toHaveBeenCalledWith("pay_row_addon");
 
       vi.mocked(announcePaymentToTeams).mockClear();
+      vi.mocked(sendPaymentReceipt).mockClear();
       vi.mocked(applyAddOnPayment).mockResolvedValueOnce({ kind: "already-recorded", cancelAtProvider: [] });
       await handleRazorpayWebhookEvent(CHARGE);
       expect(announcePaymentToTeams).not.toHaveBeenCalled();
+      expect(sendPaymentReceipt).not.toHaveBeenCalled();
     });
 
     it("tells Teams about money kept for staff on an add-on whose checkout was replaced", async () => {
@@ -1815,6 +1821,7 @@ describe("an add-on subscription", () => {
       vi.spyOn(console, "warn").mockImplementation(() => undefined);
       await handleRazorpayWebhookEvent(CHARGE);
       expect(announcePaymentToTeams).toHaveBeenCalledWith("pay_addon_unapplied");
+      expect(sendPaymentReceipt).not.toHaveBeenCalled();
     });
 
     it("cancels the halted rows the payment closed at the provider, once the transaction has committed", async () => {
@@ -2064,12 +2071,15 @@ describe("telling Teams about a payment", () => {
     expect(announcePaymentToTeams).toHaveBeenCalledTimes(1);
     expect(announcePaymentToTeams).toHaveBeenCalledWith("pay_row_1");
     expect(reportFirstPaymentToAds).toHaveBeenCalledWith("pay_row_1");
+    expect(sendPaymentReceipt).toHaveBeenCalledTimes(1);
+    expect(sendPaymentReceipt).toHaveBeenCalledWith("pay_row_1");
   });
 
   it("announces a customer's first payment", async () => {
     vi.mocked(findSubscriptionByProviderId).mockResolvedValue({ ...SUBSCRIPTION, activatedAt: null, commitmentEndsAt: null } as never);
     await handleRazorpayWebhookEvent(CHARGED);
     expect(announcePaymentToTeams).toHaveBeenCalledWith("pay_row_first");
+    expect(sendPaymentReceipt).toHaveBeenCalledWith("pay_row_first");
   });
 
   it("does not announce a payment that was delivered before, so a redelivery never repeats the alert", async () => {
@@ -2077,6 +2087,7 @@ describe("telling Teams about a payment", () => {
     vi.mocked(activateRenewalPayment).mockResolvedValueOnce({ alreadyRecorded: true, payment: { id: "pay_row_1" }, discountEnded: false } as never);
     await handleRazorpayWebhookEvent(CHARGED);
     expect(announcePaymentToTeams).not.toHaveBeenCalled();
+    expect(sendPaymentReceipt).not.toHaveBeenCalled();
   });
 
   it("announces money that arrived for the wrong amount, which bought nothing", async () => {
@@ -2085,6 +2096,7 @@ describe("telling Teams about a payment", () => {
     await handleRazorpayWebhookEvent({ ...CHARGED, amountCents: 1 });
     expect(recordUnappliedPayment).toHaveBeenCalled();
     expect(announcePaymentToTeams).toHaveBeenCalledWith("pay_unapplied");
+    expect(sendPaymentReceipt).not.toHaveBeenCalled();
   });
 
   it("announces nothing when recording the payment fails, since nothing was recorded", async () => {
@@ -2093,5 +2105,6 @@ describe("telling Teams about a payment", () => {
     vi.spyOn(console, "error").mockImplementation(() => undefined);
     await expect(handleRazorpayWebhookEvent(CHARGED)).rejects.toThrow("database down");
     expect(announcePaymentToTeams).not.toHaveBeenCalled();
+    expect(sendPaymentReceipt).not.toHaveBeenCalled();
   });
 });

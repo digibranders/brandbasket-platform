@@ -37,6 +37,7 @@ import { recordRazorpayPaymentFailure } from "./payment-failure";
 import { getStaffDb } from "./db";
 import { restoreKeptPlan } from "./keep-plan";
 import { reportFirstPaymentToAds } from "./conversions";
+import { sendPaymentReceipt } from "./payment-emails";
 import { announcePaymentToTeams, announcePlanStatusToTeams } from "./teams";
 import { syncTenantForBusiness } from "./payload-tenant-sync";
 import { syncSiteHostingForBusiness } from "./site-hosting";
@@ -142,10 +143,16 @@ export async function handleRazorpayWebhookEvent(event: RazorpayWebhookEvent): P
   const discountEndedFor: string[] = [];
   // Payments this delivery recorded for the first time: Teams is told about each once the transaction has committed.
   const announce: string[] = [];
+  // The payments among them that were applied: the customer is emailed a receipt for each, never for one kept for staff to refund.
+  const receipts: string[] = [];
   // Businesses whose lapsed plan this charge brought back: their paused website is unpaused once the transaction commits.
   const resumedBusinesses = new Set<string>();
   const noted = <T extends { readonly payment: { readonly id: string }; readonly alreadyRecorded: boolean }>(recorded: T): T => {
     if (!recorded.alreadyRecorded) announce.push(recorded.payment.id);
+    return recorded;
+  };
+  const noteApplied = <T extends { readonly payment: { readonly id: string }; readonly alreadyRecorded: boolean }>(recorded: T): T => {
+    if (!noted(recorded).alreadyRecorded) receipts.push(recorded.payment.id);
     return recorded;
   };
   const newMember = await getStaffDb()
@@ -324,7 +331,7 @@ export async function handleRazorpayWebhookEvent(event: RazorpayWebhookEvent): P
             paidThroughAt: event.currentEnd,
             method: event.method,
           });
-          noted(reactivation);
+          noteApplied(reactivation);
           if (reactivation.discountEnded) discountEndedFor.push(subscription.id);
           resumedBusinesses.add(subscription.businessId);
           return null;
@@ -340,7 +347,7 @@ export async function handleRazorpayWebhookEvent(event: RazorpayWebhookEvent): P
           discountAmountCents: subscription.discountAmountCents,
           method: event.method,
         });
-        noted(activation);
+        noteApplied(activation);
         if (activation.discountEnded) discountEndedFor.push(subscription.id);
         return activation.openedMembership === null ? null : { businessId: subscription.businessId, ...activation.openedMembership };
       } else {
@@ -394,7 +401,7 @@ export async function handleRazorpayWebhookEvent(event: RazorpayWebhookEvent): P
           providerStatus: "active",
           method: event.method,
         });
-        noted(renewal);
+        noteApplied(renewal);
         if (renewal.discountEnded) discountEndedFor.push(subscription.id);
         resumedBusinesses.add(subscription.businessId);
         // The first renewal at Premium's price is the move completing: the subscription now names Premium. A redelivery
@@ -449,6 +456,7 @@ export async function handleRazorpayWebhookEvent(event: RazorpayWebhookEvent): P
     void announcePaymentToTeams(paymentId);
     void reportFirstPaymentToAds(paymentId);
   }
+  for (const paymentId of receipts) void sendPaymentReceipt(paymentId);
   if (newMember !== null) await syncTenantForBusiness({ businessId: newMember.businessId, name: newMember.businessName });
   // The last month of a code's discount was just paid: the provider bills the basket without it from the next renewal.
   for (const subscriptionId of discountEndedFor) await moveProviderAfterDiscountEnds(basketDeps(), subscriptionId, new Date());
@@ -495,6 +503,7 @@ async function handleAddOnCharge(event: ChargedEvent, initial: AddOnSubscription
   const provider = getRazorpayProvider();
   // The payments this delivery recorded for the first time: Teams is told about each once the transaction has committed.
   const announce: string[] = [];
+  const receipts: string[] = [];
   const toCancel = await getStaffDb()
     .transaction(async (tx): Promise<readonly ProviderSubscriptionRef[]> => {
       await lockBusinessForBilling(tx, initial.businessId);
@@ -536,6 +545,7 @@ async function handleAddOnCharge(event: ChargedEvent, initial: AddOnSubscription
       const applied = await applyAddOnPayment(tx, record, new Date());
       if (applied.kind === "refused") refused(applied.reason);
       if (applied.kind !== "already-recorded" && applied.paymentId !== null) announce.push(applied.paymentId);
+      if (applied.kind === "applied") receipts.push(applied.paymentId);
       return applied.cancelAtProvider;
     })
     .catch((error: unknown) => {
@@ -554,6 +564,7 @@ async function handleAddOnCharge(event: ChargedEvent, initial: AddOnSubscription
     void announcePaymentToTeams(paymentId);
     void reportFirstPaymentToAds(paymentId);
   }
+  for (const paymentId of receipts) void sendPaymentReceipt(paymentId);
   for (const target of toCancel) {
     await cancelAtProvider(provider, {
       businessId: initial.businessId,

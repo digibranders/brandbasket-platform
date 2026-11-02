@@ -11,6 +11,7 @@ import {
   initialTermLabel,
   initialTermPhrase,
   renewalCharge,
+  renewalChargeCents,
 } from "./terms";
 
 type PlanTerms = Pick<
@@ -189,6 +190,14 @@ describe("changesNote", () => {
         extraBlogPostsAmountCents: 500,
       }),
     ).toMatch(/^Your first 3 hours of changes are free/);
+  });
+});
+
+describe("renewalChargeCents", () => {
+  it("is the amount renewalCharge formats, in minor units, and null when nothing would be charged", () => {
+    expect(renewalChargeCents(INR, 50_000)).toBe(249_900);
+    expect(renewalChargeCents(INR, 0, 100_000)).toBe(399_900);
+    expect(renewalChargeCents(USD, 6_500)).toBeNull();
   });
 });
 

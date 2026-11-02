@@ -29,6 +29,7 @@ import { notifyTeamOnboardingSent } from "./onboarding-alert";
 import { syncTenantForBusiness } from "./payload-tenant-sync";
 import { syncSiteHostingForBusiness } from "./site-hosting";
 import { reportFirstPaymentToAds } from "./conversions";
+import { sendPaymentReceipt } from "./payment-emails";
 import { announcePaymentToTeams } from "./teams";
 import { confirmFirstPayment, verifyCheckoutFor } from "./payment-confirmation";
 
@@ -44,6 +45,7 @@ vi.mock("./db", () => ({ getStaffDb: vi.fn() }));
 vi.mock("./onboarding-alert", () => ({ notifyTeamOnboardingSent: vi.fn() }));
 vi.mock("./payload-tenant-sync", () => ({ syncTenantForBusiness: vi.fn() }));
 vi.mock("./site-hosting", () => ({ syncSiteHostingForBusiness: vi.fn() }));
+vi.mock("./payment-emails", () => ({ sendPaymentReceipt: vi.fn(async () => undefined) }));
 vi.mock("./teams", () => ({ announcePaymentToTeams: vi.fn(async () => undefined) }));
 vi.mock("./conversions", () => ({ reportFirstPaymentToAds: vi.fn(async () => undefined) }));
 vi.mock("./onboarding", () => {
@@ -298,6 +300,8 @@ describe("telling Teams about a confirmed payment", () => {
     expect(announcePaymentToTeams).toHaveBeenCalledTimes(1);
     expect(announcePaymentToTeams).toHaveBeenCalledWith("pay-1");
     expect(reportFirstPaymentToAds).toHaveBeenCalledWith("pay-1");
+    expect(sendPaymentReceipt).toHaveBeenCalledTimes(1);
+    expect(sendPaymentReceipt).toHaveBeenCalledWith("pay-1");
     expect(calls.indexOf("teams")).toBeGreaterThan(calls.indexOf("send"));
   });
 
@@ -310,6 +314,7 @@ describe("telling Teams about a confirmed payment", () => {
 
     expect(announcePaymentToTeams).not.toHaveBeenCalled();
     expect(reportFirstPaymentToAds).not.toHaveBeenCalled();
+    expect(sendPaymentReceipt).not.toHaveBeenCalled();
   });
 });
 
@@ -563,6 +568,9 @@ describe("confirmFirstPayment", () => {
     await expect(confirmFirstPayment(tenant, { token: tokenOf(website.checkoutUrl) }, NOW)).resolves.toEqual({ kind: "needs-attention" });
     expect(activateReactivationPayment).toHaveBeenCalledTimes(1);
     expect(recordUnappliedPayment).toHaveBeenCalledWith(staffTx, expect.objectContaining({ reason: "amount_mismatch", amountCents: 299_900 }));
+    // Staff are told about the money, but the customer is sent no receipt for a payment that bought nothing.
+    expect(announcePaymentToTeams).toHaveBeenCalledTimes(2);
+    expect(sendPaymentReceipt).toHaveBeenCalledTimes(1);
   });
 
   it("activates an Indian first payment, which is the plan's price with the 18% GST inside it", async () => {
