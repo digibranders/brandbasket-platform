@@ -7,6 +7,9 @@
 #                                                            the env files, run both databases' migrations, then switch
 #                                                            each <app> to it
 #   brandbasket-platform-release --build-only <release> <app>...   build and link env files only
+#   brandbasket-platform-release --prebuilt <release> <app>...     the same as the first form, for a release GitHub Actions
+#                                                            already built (releases/<release> holds the source and each
+#                                                            app's .next): install dependencies and link env files, no build
 #   brandbasket-platform-release --activate <app> <release>  switch one app to an already-built release (manual
 #                                                            rollback); pauses the autodeploy
 #   brandbasket-platform-release --list                      releases, newest first, and which app runs which
@@ -49,6 +52,9 @@ die() { echo "error: $*" >&2; exit 1; }
 # Wherever it was started from (brandbasket cannot read root's home, which upsets find).
 cd "$ROOT"
 ARGS=("$@")
+# --prebuilt: GitHub Actions built the apps; this script installs, migrates and switches. Set after ARGS so a re-exec keeps the flag.
+PREBUILT=0
+if [[ "${1:-}" == --prebuilt ]]; then PREBUILT=1; shift; fi
 # shellcheck source=heavy-lock.sh
 source /usr/local/lib/brandbasket/heavy-lock.sh
 
@@ -126,7 +132,12 @@ build() {
     if [[ "${FF_RELEASE_CHECKS:-0}" == 1 ]]; then echo "== step: typecheck"; nice -n 10 pnpm typecheck; fi
     if [[ "${FF_RELEASE_CHECKS:-0}" == 1 ]]; then echo "== step: test"; nice -n 10 pnpm -r test; fi
     # Two builds at a time, as Firstfold's platform deploy measures it (about 4.4 GB peak against the 6G cap).
-    echo "== step: build $*"; nice -n 10 pnpm --workspace-concurrency=2 "${filters[@]}" build
+    if (( PREBUILT )); then
+      for app in "$@"; do is_built "$app" "$release" || die "$app has no build in $release"; done
+      echo "== step: build $* (done by GitHub Actions)"
+    else
+      echo "== step: build $*"; nice -n 10 pnpm --workspace-concurrency=2 "${filters[@]}" build
+    fi
   )
   # An app folder a release does not have gets no link.
   for app in "${APPS[@]}"; do
@@ -229,7 +240,7 @@ case "${1:-}" in
     take_lock
     build "$2" "${@:3}" ;;
   *)
-    queue_turn brandbasket-platform-release 2700 "$@"
+    (( PREBUILT )) || queue_turn brandbasket-platform-release 2700 "${ARGS[@]}"
     valid_release "${1:-}"; [[ $# -ge 2 ]] || die "name at least one app"
     release=$1; shift
     for app in "$@"; do valid_app "$app"; done

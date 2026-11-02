@@ -9,7 +9,7 @@ vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: mocks.refresh }
 
 import { KickoffPicker } from "@/components/first-look/kickoff-picker";
 
-// Tue 27 Oct 2026, 10:00 and 14:00 in India; then 10:00 on Wed 28, Thu 29 and Fri 30.
+// Tue 27 Oct 2026, 10:00 am and 2:00 pm in India; then 10:00 am on Wed 28, Thu 29 and Fri 30.
 const SLOTS = ["2026-10-27T04:30:00.000Z", "2026-10-27T08:30:00.000Z", "2026-10-28T04:30:00.000Z", "2026-10-29T04:30:00.000Z", "2026-10-30T04:30:00.000Z"];
 
 let root: Root;
@@ -48,9 +48,9 @@ it("books the picked time in India's time zone, says when the site can be live, 
 
   expect(button("More days")).toBeDefined();
   expect(button("Pick a time").disabled).toBe(true);
-  await click("14:00");
+  await click("2:00 pm");
   expect(container.textContent).toContain("your website can be live by Thu 5 Nov");
-  await click("Book Tue 27 Oct, 14:00");
+  await click("Book Tue 27 Oct, 2:00 pm");
   expect(mocks.bookCallSlot).toHaveBeenCalledWith(SLOTS[1], "Asia/Kolkata");
   expect(mocks.refresh).toHaveBeenCalled();
 });
@@ -59,12 +59,12 @@ it("says so when the picked time was just taken", async () => {
   mocks.loadCallSlots.mockResolvedValue({ status: "ok", slots: SLOTS });
   mocks.bookCallSlot.mockResolvedValue({ ok: false, reason: "taken" });
   await render(createElement(KickoffPicker, { showLiveBy: false, bookingUrl: null }));
-  await click("10:00");
-  await click("Book Tue 27 Oct, 10:00");
+  await click("10:00 am");
+  await click("Book Tue 27 Oct, 10:00 am");
   expect(container.querySelector('[role="alert"]')?.textContent).toBe("That time was just taken. Please pick another.");
   expect(mocks.refresh).not.toHaveBeenCalled();
-  expect([...container.querySelectorAll("button")].some((item) => item.textContent === "10:00")).toBe(false);
-  expect(button("14:00")).toBeDefined();
+  expect([...container.querySelectorAll("button")].some((item) => item.textContent === "10:00 am")).toBe(false);
+  expect(button("2:00 pm")).toBeDefined();
 });
 
 it("offers the booking page when the times cannot be listed here", async () => {
@@ -92,10 +92,10 @@ it("keeps the picked time and says so when booking throws", async () => {
   mocks.loadCallSlots.mockResolvedValue({ status: "ok", slots: SLOTS });
   mocks.bookCallSlot.mockRejectedValue(new Error("network"));
   await render(createElement(KickoffPicker, { showLiveBy: false, bookingUrl: null }));
-  await click("14:00");
-  await click("Book Tue 27 Oct, 14:00");
+  await click("2:00 pm");
+  await click("Book Tue 27 Oct, 2:00 pm");
   expect(container.querySelector('[role="alert"]')?.textContent).toBe("We could not book that time. Please try again.");
-  expect(button("14:00").getAttribute("aria-pressed")).toBe("true");
-  expect(button("Book Tue 27 Oct, 14:00").disabled).toBe(false);
+  expect(button("2:00 pm").getAttribute("aria-pressed")).toBe("true");
+  expect(button("Book Tue 27 Oct, 2:00 pm").disabled).toBe(false);
   expect(mocks.refresh).not.toHaveBeenCalled();
 });

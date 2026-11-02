@@ -238,7 +238,7 @@ describe("loadCalls and loadNextCall", () => {
 
   it("gives the soonest call for Overview, and none when a read fails", async () => {
     vi.mocked(listTeamCalls).mockResolvedValue([stored()]);
-    expect(await loadNextCall(tenant, NOW)).toBe("Wed 2 Dec, 14:00");
+    expect(await loadNextCall(tenant, NOW)).toBe("Wed 2 Dec, 2:00 pm");
     vi.mocked(listTeamCalls).mockRejectedValue(new Error("database down"));
     expect(await loadNextCall(tenant, NOW)).toBeNull();
   });

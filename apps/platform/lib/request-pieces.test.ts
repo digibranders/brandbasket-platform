@@ -99,7 +99,7 @@ it("shows the conversation with the customer as You and the team under its own n
   const html = renderToStaticMarkup(createElement(Thread, { messages, attachments })).replaceAll("<!-- -->", "");
   expect(html).toContain("You, ");
   expect(html).toContain(`${TEAM_NAME}, `);
-  expect(html).toContain("27 Nov 18:02");
+  expect(html).toContain("27 Nov 6:02 pm");
   expect(html).toContain("Page: </dt>");
   expect(html).toContain('href="/support-attachments/a1"');
   expect(html).toContain("Screenshot 1");
