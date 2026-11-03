@@ -7,17 +7,21 @@ import {
   getSiteKey,
   hasLiveProject,
   lastSiteHitAt,
+  latestGa4Day,
+  latestGscDay,
   listEnabledModules,
   listHostedSites,
   listReportSources,
   listUpcomingDirectoryPromotions,
   readDirectoryStatuses,
 } from "@brandbasket/db";
-import type { ClientDetail } from "@brandbasket/db";
+import type { ClientDetail, StaffRole } from "@brandbasket/db";
 import type { ReactElement } from "react";
+import { flagIsOn } from "@brandbasket/shared/lib/launch-flags";
 import { readBusinessModuleNotice } from "@brandbasket/shared/lib/business-module-notices";
 import { formatPromotionDay, promotionStatus, promotionTagDisplay } from "@brandbasket/shared/lib/directory/promotion";
 import { WEEKDAYS } from "@brandbasket/shared/lib/onboarding/business-fields";
+import { isTemporarySubdomain } from "@brandbasket/shared/lib/onboarding/domain-form";
 import { displayPhoneText } from "@brandbasket/shared/server/phone-display";
 import { ClientFeatures } from "@/components/client-features";
 import { ClientListing } from "@/components/client-listing";
@@ -26,27 +30,34 @@ import { labelClasses } from "@/components/console/field-styles";
 import { Quiet, Section } from "@/components/console/section";
 import { adminBrand } from "@/lib/brand";
 import { clientListingKey, readClientTagNotice } from "@/lib/client-tags";
+import { canManageGoogle } from "@/lib/google-card";
+import { readGoogleNotice } from "@/lib/google-card-notices";
 import { isWebsiteBought } from "@/lib/server/bought-services";
 import { getStaffDb } from "@/lib/server/db";
 import { serverEnv } from "@/lib/server/env";
 import { getSiteApiToken } from "@/lib/server/site-token";
-import { addressOf, AnalyticsBlock, CustomerLink, Facts, HostingBlock, hoursForDay, readListingNotice, SiteApiTokenBlock, TrackingBlock, WebsiteUrlBlock } from "../parts";
+import { GoogleCard } from "../google-card";
+import { addressOf, CustomerLink, Facts, HostingBlock, hoursForDay, readListingNotice, SiteApiTokenBlock, TrackingBlock, WebsiteUrlBlock } from "../parts";
 
 /** The customer's site data: their website, features, listing, business details, opening hours and what they offer. It sits in the Website tab's "Site details" fold. */
 export async function SiteDetails({
   client,
   query: sp,
+  staffRole,
 }: {
   readonly client: ClientDetail;
+  readonly staffRole: StaffRole;
   readonly query: Readonly<Record<string, string | string[] | undefined>>;
 }): Promise<ReactElement> {
   const db = getStaffDb();
   const renderedAt = new Date();
-  const [siteApiToken, siteKey, lastEventAt, reportSources, websiteUrl, hostedSites, timeZone, enabledModules, appointmentCounts, listingPlacement, listingLive, promotions, websiteBought] = await Promise.all([
+  const [siteApiToken, siteKey, lastEventAt, reportSources, gscLatestDay, ga4LatestDay, websiteUrl, hostedSites, timeZone, enabledModules, appointmentCounts, listingPlacement, listingLive, promotions, websiteBought] = await Promise.all([
     getSiteApiToken(client.businessId),
     getSiteKey(db, client.businessId),
     lastSiteHitAt(db, client.businessId),
     listReportSources(db, client.businessId),
+    latestGscDay(db, client.businessId),
+    latestGa4Day(db, client.businessId),
     findBusinessWebsiteUrl(db, client.businessId),
     listHostedSites(db, client.businessId),
     findBusinessTimeZone(db, client.businessId),
@@ -99,20 +110,27 @@ export async function SiteDetails({
                   <TrackingBlock businessId={client.businessId} siteKey={siteKey?.key ?? null} appOrigin={serverEnv().APP_ORIGIN} lastEventAt={lastEventAt} />
                 </div>
               </div>
-              <div>
-                <h3 className={labelClasses}>Google Analytics</h3>
-                <div className="mt-2">
-                  <AnalyticsBlock
-                    businessId={client.businessId}
-                    source={reportSources.find((row) => row.source === "ga4") ?? null}
-                    serviceAccountEmail={serverEnv().GA4_SERVICE_ACCOUNT_EMAIL?.trim() || null}
-                  />
-                </div>
-              </div>
             </>
           ) : null}
         </div>
       </Section>
+
+      {websiteBought ? (
+        <GoogleCard
+          businessId={client.businessId}
+          gsc={reportSources.find((row) => row.source === "gsc") ?? null}
+          ga4={reportSources.find((row) => row.source === "ga4") ?? null}
+          gscLatestDay={gscLatestDay}
+          ga4LatestDay={ga4LatestDay}
+          hostname={client.domain?.hostname ?? null}
+          freeAddress={client.domain !== null && isTemporarySubdomain(client.domain.hostname)}
+          tagEnabled={flagIsOn(serverEnv().GOOGLE_ANALYTICS_TAG_ENABLED)}
+          canManage={canManageGoogle(staffRole)}
+          notice={readGoogleNotice(sp.google)}
+          serviceAccountEmail={serverEnv().GA4_SERVICE_ACCOUNT_EMAIL?.trim() || null}
+          now={renderedAt}
+        />
+      ) : null}
 
       <Section title="Features" id="features" aside="Time zone and modules">
         <ClientFeatures

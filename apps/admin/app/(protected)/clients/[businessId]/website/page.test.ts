@@ -115,7 +115,7 @@ async function render(
   status: ProjectStatus | null,
   options: { readonly feedback?: boolean; readonly versions?: boolean; readonly bought?: boolean; readonly search?: Record<string, string> } = {},
 ): Promise<string> {
-  vi.mocked(openClientTab).mockResolvedValue({ granted: { user: { id: "staff-1" } }, client: client(status) } as never);
+  vi.mocked(openClientTab).mockResolvedValue({ granted: { user: { id: "staff-1" }, staff: { role: "admin" } }, client: client(status) } as never);
   vi.mocked(listFeedbackForProject).mockResolvedValue(options.feedback ? FEEDBACK : []);
   vi.mocked(listPreviewVersions).mockResolvedValue(options.versions ? VERSIONS : []);
   vi.mocked(isWebsiteBought).mockResolvedValue(options.bought ?? true);
@@ -190,7 +190,7 @@ describe("Site details", () => {
   });
 
   it("opens when a notice it prints is in the address", async () => {
-    for (const key of ["website", "hosting", "features", "listing", "tags"]) {
+    for (const key of ["website", "hosting", "features", "listing", "tags", "google"]) {
       expect(foldTag(await render("building", { search: { [key]: "saved" } }), "Site details"), key).toContain(" open");
     }
     expect(foldTag(await render("building", { search: { preview: "sent" } }), "Site details")).not.toContain(" open");

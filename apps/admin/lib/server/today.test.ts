@@ -16,6 +16,7 @@ import {
 } from "@brandbasket/db";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { countFailedDeliveries24h } from "./deliveries";
+import { readGoogleToday } from "./google-today";
 import { readSystemHealth } from "./system-health";
 import { countTodayItems, loadTodayItems, loadTodayPage } from "./today";
 
@@ -40,6 +41,7 @@ vi.mock("@brandbasket/db", async () => {
 vi.mock("./db", () => ({ getStaffDb: () => ({}) }));
 vi.mock("./system-health", () => ({ readSystemHealth: vi.fn() }));
 vi.mock("./deliveries", () => ({ countFailedDeliveries24h: vi.fn() }));
+vi.mock("./google-today", () => ({ readGoogleToday: vi.fn() }));
 
 const NOW = new Date("2026-11-30T06:00:00.000Z");
 
@@ -65,6 +67,7 @@ beforeEach(() => {
   vi.mocked(readSystemHealth).mockResolvedValue([]);
   vi.mocked(countFailedDeliveries24h).mockResolvedValue(0);
   vi.mocked(listKickoffBoard).mockResolvedValue([]);
+  vi.mocked(readGoogleToday).mockResolvedValue([]);
 });
 
 afterEach(() => {
@@ -163,6 +166,31 @@ describe("kickoff calls needing an outcome in the queue", () => {
     const page = await loadTodayPage(NOW, true);
     expect(page.failed).toEqual(["kickoff calls"]);
     expect(page.items.some((item) => item.kind === "kickoff")).toBe(false);
+    expect(page.items.map((item) => item.key)).toEqual(["lead:lead-1"]);
+  });
+});
+
+describe("Google rows", () => {
+  const GOOGLE_ITEM = { key: "google:sign-in", kind: "google", href: "/settings#google", title: "Brandbasket Google sign-in was lost", detail: "", action: "Open Settings", dueAt: new Date("2026-11-29T06:00:00.000Z") } as const;
+
+  it("puts the Google rows in the queue and the rail's count, and asks for the sign-in only for a role that may see it", async () => {
+    vi.mocked(readGoogleToday).mockResolvedValue([GOOGLE_ITEM]);
+    expect((await loadTodayItems(NOW, true, true)).map((item) => item.key)).toEqual(["google:sign-in", "lead:lead-1"]);
+    expect(readGoogleToday).toHaveBeenLastCalledWith(NOW, true);
+    expect(await countTodayItems(true, false)).toBe(2);
+    expect(readGoogleToday).toHaveBeenLastCalledWith(expect.any(Date), false);
+    await loadTodayPage(NOW, false, true);
+    expect(readGoogleToday).toHaveBeenLastCalledWith(NOW, true);
+  });
+
+  it("adds nothing when all is well", async () => {
+    expect((await loadTodayItems(NOW, true, true)).some((item) => item.kind === "google")).toBe(false);
+  });
+
+  it("keeps the rest of the queue when the Google read fails, and says so", async () => {
+    vi.mocked(readGoogleToday).mockRejectedValue(new Error("database down"));
+    const page = await loadTodayPage(NOW, true, true);
+    expect(page.failed).toEqual(["Google"]);
     expect(page.items.map((item) => item.key)).toEqual(["lead:lead-1"]);
   });
 });

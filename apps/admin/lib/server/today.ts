@@ -29,6 +29,7 @@ import { todayQueue, type KickoffNeedingOutcome, type TodayItem } from "@/lib/to
 import { clientsWaitingOnUs } from "@/lib/waiting-clients";
 import { getStaffDb } from "./db";
 import { countFailedDeliveries24h } from "./deliveries";
+import { readGoogleToday } from "./google-today";
 import { readSystemHealth, type SystemLine } from "./system-health";
 
 /** Far more flagged payments and add-ons than are ever open at once, so none is left out. */
@@ -60,6 +61,8 @@ interface QueueSources {
   readonly failedDeliveries: number | null;
   /** Kickoff calls that are over and not marked held; null when the read failed. */
   readonly kickoffsNeedingOutcome: readonly KickoffNeedingOutcome[] | null;
+  /** Google problems (a site that cannot be verified, a silent source, a lost sign-in for admins). */
+  readonly google: readonly TodayItem[];
 }
 
 interface QueueRead {
@@ -68,11 +71,14 @@ interface QueueRead {
   readonly failed: readonly string[];
 }
 
-/** `canSeeMoney` is the staff member's "money" capability: without it the flagged payments are not read at all. */
-async function readQueueSources(now: Date, canSeeMoney: boolean): Promise<QueueRead> {
+/**
+ * `canSeeMoney` is the staff member's "money" capability: without it the flagged payments are not read at all.
+ * `canSeeGoogleAccount` is their "integrations" capability: without it the lost Google sign-in is not read.
+ */
+async function readQueueSources(now: Date, canSeeMoney: boolean, canSeeGoogleAccount: boolean): Promise<QueueRead> {
   const db = getStaffDb();
   const failed: string[] = [];
-  const [clients, leads, flagged, addOns, newTickets, newErrors, failedDeliveries, kickoffsNeedingOutcome] = await Promise.all([
+  const [clients, leads, flagged, addOns, newTickets, newErrors, failedDeliveries, kickoffsNeedingOutcome, google] = await Promise.all([
     guarded("clients", () => listClients(db), [], failed),
     guarded("leads", () => listLeads(db, {}), [], failed),
     canSeeMoney ? guarded("flagged payments", () => listPaymentsNeedingAttention(db, { limit: ATTENTION_READ_LIMIT }), [], failed) : Promise.resolve([]),
@@ -91,8 +97,9 @@ async function readQueueSources(now: Date, canSeeMoney: boolean): Promise<QueueR
       null,
       failed,
     ),
+    guarded<readonly TodayItem[]>("Google", () => readGoogleToday(now, canSeeGoogleAccount), [], failed),
   ]);
-  return { sources: { clients, leads, flagged, addOns, newTickets, newErrors, failedDeliveries, kickoffsNeedingOutcome }, failed };
+  return { sources: { clients, leads, flagged, addOns, newTickets, newErrors, failedDeliveries, kickoffsNeedingOutcome, google }, failed };
 }
 
 function queueFrom(sources: QueueSources, now: Date): readonly TodayItem[] {
@@ -109,18 +116,19 @@ function queueFrom(sources: QueueSources, now: Date): readonly TodayItem[] {
     newErrors: sources.newErrors,
     failedDeliveries: sources.failedDeliveries,
     kickoffsNeedingOutcome: sources.kickoffsNeedingOutcome,
+    google: sources.google,
     endOfToday: todayRange(now).end,
   });
 }
 
 /** Everything that needs a person right now, late first. */
-export async function loadTodayItems(now: Date, canSeeMoney: boolean): Promise<readonly TodayItem[]> {
-  return queueFrom((await readQueueSources(now, canSeeMoney)).sources, now);
+export async function loadTodayItems(now: Date, canSeeMoney: boolean, canSeeGoogleAccount = false): Promise<readonly TodayItem[]> {
+  return queueFrom((await readQueueSources(now, canSeeMoney, canSeeGoogleAccount)).sources, now);
 }
 
 /** The rail's Today count: the length of the queue. */
-export async function countTodayItems(canSeeMoney: boolean): Promise<number> {
-  return (await loadTodayItems(new Date(), canSeeMoney)).length;
+export async function countTodayItems(canSeeMoney: boolean, canSeeGoogleAccount = false): Promise<number> {
+  return (await loadTodayItems(new Date(), canSeeMoney, canSeeGoogleAccount)).length;
 }
 
 export interface TodayPage {
@@ -133,12 +141,12 @@ export interface TodayPage {
 }
 
 /** Everything the Today page draws, each source read once. Without `canSeeMoney` the collected figure and flagged payments are neither read nor shown. */
-export async function loadTodayPage(now: Date, canSeeMoney: boolean): Promise<TodayPage> {
+export async function loadTodayPage(now: Date, canSeeMoney: boolean, canSeeGoogleAccount = false): Promise<TodayPage> {
   const db = getStaffDb();
   const month = monthRange(now);
   const today = todayRange(now);
   const [queue, collected, ticketCounts, activeErrors, calls, systems] = await Promise.all([
-    readQueueSources(now, canSeeMoney),
+    readQueueSources(now, canSeeMoney, canSeeGoogleAccount),
     canSeeMoney ? guarded("money collected", () => sumCapturedPaymentsBetween(db, month.start, month.end), []) : Promise.resolve(null),
     guarded<Readonly<Record<SupportStatus, number>> | null>("request counts", () => countSupportTicketsByStatus(db), null),
     guarded("open errors", () => countActiveErrorIssues(db), 0),

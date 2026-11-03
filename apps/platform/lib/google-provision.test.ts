@@ -45,6 +45,18 @@ describe("skipReason and isComplete", () => {
     expect(skipReason(candidate(), CONFIG)).toBeNull();
     expect(skipReason(candidate({ hostname: "sites.brandbasket.in.evil.example" }), CONFIG)).toBeNull();
   });
+  it("leaves a detached business alone, whichever source staff removed, and picks it up again once they provision it", () => {
+    expect(skipReason(candidate({ gsc: source({ status: "removed" }) }), CONFIG)).toBe("detached");
+    expect(skipReason(candidate({ ga4: source({ status: "removed" }), gsc: DONE_GSC }), CONFIG)).toBe("detached");
+    expect(skipReason(candidate({ ga4: DONE_GA4, gsc: DONE_GSC }), CONFIG)).toBeNull();
+    expect(skipReason(candidate({ hostingPaused: true, gsc: source({ status: "removed" }) }), CONFIG)).toBe("hosting-paused");
+  });
+  it("makes nothing for a detached business", async () => {
+    const { deps, calls, saved } = fakes();
+    expect(await provisionOne(candidate({ gsc: source({ externalId: "https://kulkarni.example/", status: "removed" }) }), deps)).toEqual({ businessId: "01a1a150-aaaa", result: "skipped", note: "detached" });
+    expect(calls).toEqual([]);
+    expect(saved).toEqual([]);
+  });
   it("is complete only when both sources are done, and not after a domain change", () => {
     expect(isComplete(candidate({ ga4: DONE_GA4, gsc: DONE_GSC }), CONFIG)).toBe(true);
     expect(isComplete(candidate({ ga4: DONE_GA4, gsc: { ...DONE_GSC, externalId: "https://old.example/" } }), CONFIG)).toBe(false);

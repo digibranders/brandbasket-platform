@@ -815,7 +815,20 @@ export {
   type NewAddOnSubscription,
   type RecordedAddOnPayment,
 } from "./queries/add-ons";
-export { listProvisionCandidates, saveProvisionedSource, type ProvisionCandidate, type ProvisionedSourceInput, type ProvisionSource } from "./queries/google-provisioning";
+export {
+  countGoogleSources,
+  detachGoogle,
+  listGoogleAttention,
+  listProvisionCandidates,
+  provisionGoogleAgain,
+  retryGoogleVerification,
+  saveProvisionedSource,
+  type GoogleAttentionCutoffs,
+  type GoogleAttentionRow,
+  type ProvisionCandidate,
+  type ProvisionedSourceInput,
+  type ProvisionSource,
+} from "./queries/google-provisioning";
 export {
   findGoogleConnection,
   listGoogleConnections,
@@ -959,15 +972,24 @@ export {
 } from "./queries/site-hits";
 export {
   findAnalyticsConnection,
+  findSearchConnection,
   latestGa4Day,
   latestGscDay,
   listGa4Properties,
   listGscSites,
+  listSearchDays,
+  listSearchLists,
   listVisitDays,
   listVisitLists,
+  SEARCH_DIMENSIONS,
+  SEARCH_METRICS,
   VISIT_DIMENSIONS,
   VISIT_METRICS,
   type Ga4Property,
+  type SearchDay,
+  type SearchDimension,
+  type SearchList,
+  type SearchMetric,
   type VisitDay,
   type VisitDimension,
   type VisitList,

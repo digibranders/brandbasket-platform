@@ -4,12 +4,12 @@ import { loadSetupAsks } from "@/features/setup/loader";
 import { loadReportLink } from "@/features/social/loader";
 import type { CustomerContext } from "@/lib/guards";
 import { SearchScreen } from "./components/search-screen";
-import { loadSearchNumbers, loadSearchWork } from "./loader";
+import { loadSearchNumbers, loadSearchPresence, loadSearchWork } from "./loader";
 import { pageOne } from "./rules";
 
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn() }), unstable_rethrow: vi.fn() }));
 vi.mock("@sentry/nextjs", () => ({ captureException: vi.fn(() => "event-1") }));
-vi.mock("./loader", () => ({ loadSearchNumbers: vi.fn(), loadSearchWork: vi.fn() }));
+vi.mock("./loader", () => ({ loadSearchNumbers: vi.fn(), loadSearchPresence: vi.fn(), loadSearchWork: vi.fn() }));
 vi.mock("@/features/social/loader", () => ({ loadReportLink: vi.fn() }));
 vi.mock("@/features/setup/loader", () => ({ loadSetupAsks: vi.fn(), loadNotBought: vi.fn() }));
 
@@ -23,6 +23,7 @@ beforeEach(() => {
   vi.mocked(loadSetupAsks).mockResolvedValue([]);
   vi.mocked(loadReportLink).mockResolvedValue(null);
   vi.mocked(loadSearchWork).mockResolvedValue({ items: [], month: "November" });
+  vi.mocked(loadSearchPresence).mockReturnValue(null);
   vi.mocked(loadSearchNumbers).mockResolvedValue({ pageOne: pageOne({ keywordsPageOne: 9, keywordsPageOnePrev: 6, updatedAt: NOW }), month: "November" });
 });
 
