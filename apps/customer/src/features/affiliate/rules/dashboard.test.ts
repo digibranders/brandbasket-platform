@@ -11,6 +11,7 @@ import {
   payingLine,
   payoutRow,
   monthsWindowStart,
+  rewardLine,
   primaryCashOut,
 } from "./dashboard";
 
@@ -121,6 +122,8 @@ describe("the month by month list", () => {
     );
     expect(list?.currency).toBe("USD");
     expect(list?.rows.map((row) => row.month)).toEqual(["2027-01", "2026-12", "2026-11"]);
+    // Months of last year carry their year, so December is never read as this December.
+    expect(list?.rows.map((row) => row.label)).toEqual(["Jan", "Dec 2026", "Nov 2026"]);
     expect(list?.current.payingMembers).toBe(3);
   });
 
@@ -134,6 +137,17 @@ describe("payingLine", () => {
     expect(payingLine(0)).toBe("None paying");
     expect(payingLine(1)).toBe("1 paying");
     expect(payingLine(12)).toBe("12 paying");
+  });
+});
+
+describe("rewardLine", () => {
+  it("joins the reward and how long it runs into the line under the greeting", () => {
+    expect(rewardLine("10% of each payment", "first 12 paid months")).toBe("You earn 10% of each payment, first 12 paid months");
+    expect(rewardLine("₹200 a month", "every paid month")).toBe("You earn ₹200 a month, every paid month");
+  });
+
+  it("does not capitalise a reward of nothing mid-sentence", () => {
+    expect(rewardLine("Nothing", "every paid month")).toBe("You earn nothing, every paid month");
   });
 });
 

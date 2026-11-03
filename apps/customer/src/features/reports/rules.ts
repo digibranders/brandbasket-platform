@@ -40,9 +40,8 @@ export function pdfPath(key: MonthKey, service: ReportService): string {
 }
 
 /**
- * What a report document holds, as the screen reads it. The report composer (plan 58) is not built, so the stored shape
- * was never fixed; this is the shape the screen needs and the composer must write. A document that does not fit is not
- * guessed at: it is shown as unreadable and reported.
+ * What a report document holds, as the screen reads it. The composer (packages/shared/src/lib/reports/content.ts) writes
+ * this shape and keeps the same limits. A document that does not fit is not guessed at: it is shown as unreadable and reported.
  */
 export const REPORT_CONTENT_VERSION = 1;
 
@@ -53,6 +52,11 @@ export const reportContentSchema = z.object({
   figures: z.array(z.object({ label: z.string().trim().min(1).max(60), value: z.string().trim().min(1).max(40) })).min(1).max(8),
   /** What we did this month, one line each. */
   whatWeDid: z.array(z.string().trim().min(1).max(300)).max(20),
+  /** Ranked lists (top searches, most viewed pages, where enquiries came from), already worded. Optional: older documents have none. */
+  lists: z
+    .array(z.object({ title: z.string().trim().min(1).max(60), rows: z.array(z.object({ label: z.string().trim().min(1).max(120), value: z.string().trim().min(1).max(40) })).min(1).max(10) }))
+    .max(4)
+    .optional(),
 });
 export type ReportContent = z.infer<typeof reportContentSchema>;
 

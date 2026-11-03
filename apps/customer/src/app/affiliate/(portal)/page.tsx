@@ -2,7 +2,7 @@ import { describeAffiliateReward, describeRewardCycles } from "@brandbasket/shar
 import type { Metadata } from "next";
 import { PageHeader } from "@/components";
 import { AffiliateDashboard } from "@/features/affiliate/components/affiliate-dashboard";
-import { firstNameOf } from "@/features/affiliate/rules/dashboard";
+import { firstNameOf, rewardLine } from "@/features/affiliate/rules/dashboard";
 import { EARNING_LIMIT, loadCodes, loadEarnings, loadFigures, loadMonthly, loadPayouts, MONTHS_SHOWN, PAYOUT_LIMIT } from "@/features/affiliate/server/dashboard";
 import { requireAffiliate } from "@/lib/guards";
 import { load } from "@/lib/loaded";
@@ -25,7 +25,7 @@ export default async function AffiliatePage() {
   ]);
   return (
     <>
-      <PageHeader title={`Hello, ${firstNameOf(user.name)}.`} description={`You earn ${describeAffiliateReward(affiliate)}, ${describeRewardCycles(affiliate.rewardCycles)}`} />
+      <PageHeader title={`Hello, ${firstNameOf(user.name)}.`} description={rewardLine(describeAffiliateReward(affiliate), describeRewardCycles(affiliate.rewardCycles))} />
       <AffiliateDashboard
         affiliate={affiliate}
         now={now}

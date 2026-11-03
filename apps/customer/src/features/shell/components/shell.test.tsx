@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { NuqsTestingAdapter } from "nuqs/adapters/testing";
 import type { ReactNode } from "react";
@@ -66,6 +66,19 @@ describe("AppShell", () => {
     await expectNoAxeViolations(container);
   });
 
+  it("folds the sidebar to an icon rail and remembers it", async () => {
+    window.localStorage.removeItem("bb.sidebar.collapsed");
+    shell();
+    await userEvent.click(screen.getByRole("button", { name: "Collapse sidebar" }));
+    const main = screen.getByRole("navigation", { name: "Main" });
+    // Labels stay for screen readers and hover titles.
+    expect(within(main).getByRole("link", { name: "Requests" }).getAttribute("title")).toBe("Requests");
+    expect(screen.getByRole("button", { name: "Expand sidebar" }).getAttribute("aria-expanded")).toBe("false");
+    expect(window.localStorage.getItem("bb.sidebar.collapsed")).toBe("1");
+    await userEvent.click(screen.getByRole("button", { name: "Expand sidebar" }));
+    expect(window.localStorage.getItem("bb.sidebar.collapsed")).toBe("0");
+  });
+
   it("shows the billing banner on every page but Home", () => {
     shell();
     expect(screen.getByText("Your plan has ended.")).toBeTruthy();
@@ -84,6 +97,15 @@ describe("AppShell", () => {
     expect(screen.getAllByRole("option").map((option) => option.textContent)).toEqual(["Website: Pages"]);
     await userEvent.keyboard("{Enter}");
     expect(navigation.push).toHaveBeenCalledWith("/website/pages");
+  });
+
+  it("opens search ready to type, with focus in the search box", async () => {
+    shell();
+    act(() => {
+      fireEvent.keyDown(window, { key: "k", metaKey: true });
+    });
+    const box = await screen.findByRole("combobox", { name: "Search pages" });
+    await waitFor(() => expect(document.activeElement).toBe(box));
   });
 
   it("says when nothing matches", async () => {

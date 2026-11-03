@@ -1,0 +1,12 @@
+# Starts brandbasket-monthly-reports.service once a month, at 21:30 UTC on the 1st (03:00 on the 2nd in India), after the Indian
+# month has ended and after the nightly site analytics roll-up (21:00 UTC). Installed, not enabled (docs/monthly-reports.md).
+[Unit]
+Description=Brandbasket monthly customer reports
+
+[Timer]
+OnCalendar=*-*-01 21:30:00 UTC
+Persistent=true
+RandomizedDelaySec=300
+
+[Install]
+WantedBy=timers.target

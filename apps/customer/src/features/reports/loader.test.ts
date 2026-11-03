@@ -6,6 +6,8 @@ import type { SentReport } from "./rules";
 
 vi.mock("@/lib/db", () => ({ getAppDb: () => ({ name: "app-db" }) }));
 vi.mock("@brandbasket/db", () => ({ listSentReports: vi.fn(), withTenantScope: vi.fn() }));
+const storage = vi.hoisted(() => ({ get: vi.fn() }));
+vi.mock("@brandbasket/shared/server/media-storage", () => ({ getMediaStorage: () => storage }));
 vi.mock("@sentry/nextjs", () => ({ captureException: vi.fn(() => "event-1") }));
 
 const customer = { tenant: { businessId: "b1" }, businessId: "b1" } as unknown as CustomerContext;
@@ -61,8 +63,18 @@ describe("loadReportPdf", () => {
     expect(await loadReportPdf(customer, "2026-09", "website")).toBeNull();
   });
 
-  it("fails loudly when a PDF key exists, because nothing can read it", async () => {
-    vi.mocked(listSentReports).mockResolvedValue([report({ pdfKey: "reports/r1.pdf" })] as never);
-    await expect(loadReportPdf(customer, "2026-10", "website")).rejects.toThrow("no reader");
+  const ID = "01920000-0000-7000-8000-000000000001";
+
+  it("gives the stored file of a sent report from the report's own storage key", async () => {
+    vi.mocked(listSentReports).mockResolvedValue([report({ id: ID, pdfKey: `reports/${ID}.pdf` })] as never);
+    storage.get.mockResolvedValue({ bytes: new Uint8Array([37, 80, 68, 70]), contentType: "application/pdf" });
+    expect(await loadReportPdf(customer, "2026-10", "website")).toEqual(new Uint8Array([37, 80, 68, 70]));
+    expect(storage.get).toHaveBeenCalledWith(`reports/${ID}/pdf`);
+  });
+
+  it("fails loudly when the report has a PDF key but the file is gone, so it reaches Sentry", async () => {
+    vi.mocked(listSentReports).mockResolvedValue([report({ id: ID, pdfKey: `reports/${ID}.pdf` })] as never);
+    storage.get.mockResolvedValue(null);
+    await expect(loadReportPdf(customer, "2026-10", "website")).rejects.toThrow("not in storage");
   });
 });

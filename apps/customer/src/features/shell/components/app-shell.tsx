@@ -1,7 +1,7 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, useSyncExternalStore, type ReactNode } from "react";
 import { Banner } from "@/ui";
 import type { ShellView } from "../loader";
 import { countOf, isSearchShortcut, navModel, phoneTabs, searchTargets } from "../rules";
@@ -11,14 +11,46 @@ import { Sidebar } from "./sidebar";
 import { TabBar } from "./tab-bar";
 import { TopBar } from "./top-bar";
 
+const COLLAPSED_KEY = "bb.sidebar.collapsed";
+const collapsedListeners = new Set<() => void>();
+
+/** The folded state lives in this browser's storage (blocked storage reads as open and still toggles for the visit). */
+let collapsedFallback = false;
+
+function readCollapsed(): boolean {
+  try {
+    return window.localStorage.getItem(COLLAPSED_KEY) === "1";
+  } catch {
+    return collapsedFallback;
+  }
+}
+
+function subscribeCollapsed(listener: () => void): () => void {
+  collapsedListeners.add(listener);
+  return () => collapsedListeners.delete(listener);
+}
+
+function toggleCollapsed(): void {
+  const next = !readCollapsed();
+  collapsedFallback = next;
+  try {
+    window.localStorage.setItem(COLLAPSED_KEY, next ? "1" : "0");
+  } catch {
+    // Not remembered beyond this visit.
+  }
+  collapsedListeners.forEach((listener) => listener());
+}
+
 /**
  * The signed-in workspace's frame (plan 60, section 9): sticky sidebar, sticky top bar and one scrolling page column on
- * desktop; top bar, page and a five-tab bar on phones. Holds search (Command or Control K) and the billing banner.
+ * desktop; top bar, page and a five-tab bar on phones. Holds search (Command or Control K), the billing banner and
+ * whether the sidebar is folded to its icon rail (kept in this browser; the page works without storage).
  */
 export function AppShell({ view, children }: { readonly view: ShellView; readonly children: ReactNode }) {
   const pathname = usePathname();
   const [searching, setSearching] = useState(false);
   const [signOutError, setSignOutError] = useState<string | null>(null);
+  const collapsed = useSyncExternalStore(subscribeCollapsed, readCollapsed, () => false);
 
   const model = useMemo(
     () =>
@@ -59,6 +91,8 @@ export function AppShell({ view, children }: { readonly view: ShellView; readonl
           businessName={view.business.name}
           services={view.business.services}
           person={view.person}
+          collapsed={collapsed}
+          onToggle={toggleCollapsed}
           onSignOutError={setSignOutError}
         />
         <div className="flex min-w-0 flex-1 flex-col">

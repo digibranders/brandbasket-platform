@@ -82,6 +82,15 @@ export function deliverablePictureKey(deliverableId: string): string {
   return `deliverables/${deliverableId}/display`;
 }
 
+/**
+ * `reports/{reportId}/pdf`: where a sent monthly report's PDF is stored. The database holds the report's own marker,
+ * `reports/{id}.pdf` (report_documents.pdf_key); the dot cannot be in a storage key, so this is the key behind it.
+ */
+export function reportPdfStorageKey(reportId: string): string {
+  if (!UUID_PATTERN.test(reportId)) throw new InvalidMediaKeyError("the report id is not a lowercase UUID");
+  return `reports/${reportId}/pdf`;
+}
+
 /** Throws unless `key` has the shape of a key mediaStorageKey (or its tests' shorter ones) builds. */
 export function validateMediaKey(key: string): void {
   if (key.length === 0 || key.length > MAX_KEY_LENGTH) throw new InvalidMediaKeyError("wrong length");

@@ -1,7 +1,7 @@
-import { and, asc, desc, eq, gte, inArray, lte, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gte, inArray, lte, ne, sql } from "drizzle-orm";
 import type { Database } from "../client";
 import { canMoveReport, type ConnectedSource, type ReportService, type ReportSource, type ReportState, type SourceStatus } from "../report-states";
-import { metricBreakdowns, metricDaily, reportDocuments, reportSourceRuns, reportSources, type MetricDaily, type ReportDocument, type ReportSourceRow, type ReportSourceRun } from "../schema";
+import { businesses, metricBreakdowns, metricDaily, reportDocuments, reportSourceRuns, reportSources, type MetricDaily, type ReportDocument, type ReportSourceRow, type ReportSourceRun } from "../schema";
 import type { ScopedTransaction } from "../scope";
 
 type Runner = Database | ScopedTransaction;
@@ -198,4 +198,29 @@ export async function listSentReports(db: Runner, businessId: string): Promise<R
     .from(reportDocuments)
     .where(and(eq(reportDocuments.businessId, businessId), eq(reportDocuments.state, "sent")))
     .orderBy(desc(reportDocuments.month), asc(reportDocuments.service));
+}
+
+/** Records that the report's PDF is in storage. Allowed while the report is not yet sent; the key is always `reports/<id>.pdf`. Staff connection. */
+export async function setReportPdfKey(db: Runner, input: { readonly id: string; readonly now: Date }): Promise<void> {
+  const rows = await db
+    .update(reportDocuments)
+    .set({ pdfKey: `reports/${input.id}.pdf`, updatedAt: input.now })
+    .where(and(eq(reportDocuments.id, input.id), ne(reportDocuments.state, "sent")))
+    .returning({ id: reportDocuments.id });
+  if (rows.length === 0) throw new ReportMoveError("not-found", `Report ${input.id} is not there, or is already sent`);
+}
+
+export interface ReportForReview extends ReportDocument {
+  readonly businessName: string;
+}
+
+/** The staff queue: every report not yet sent, or all of one month's, with the business's name, oldest month first. Staff connection. */
+export async function listReportsForReview(db: Runner, filter: { readonly month?: string; readonly states?: readonly ReportState[] } = {}): Promise<ReportForReview[]> {
+  const rows = await db
+    .select({ report: reportDocuments, businessName: businesses.name })
+    .from(reportDocuments)
+    .innerJoin(businesses, eq(businesses.id, reportDocuments.businessId))
+    .where(and(inArray(reportDocuments.state, [...(filter.states ?? ["draft", "held", "approved"])]), filter.month === undefined ? undefined : eq(reportDocuments.month, filter.month)))
+    .orderBy(asc(reportDocuments.month), asc(businesses.name), asc(reportDocuments.service));
+  return rows.map((row) => ({ ...row.report, businessName: row.businessName }));
 }

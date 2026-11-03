@@ -31,7 +31,8 @@ export function CopyCodeButton({ code }: { readonly code: string }) {
 
   return (
     <>
-      <Button size="sm" icon={state === "copied" ? "Check" : "Copy"} onClick={() => void copy()}>
+      {/* Named with its code: a table of codes has one of these per row. */}
+      <Button size="sm" icon={state === "copied" ? "Check" : "Copy"} aria-label={`${state === "copied" ? "Copied" : "Copy code"} ${code}`} onClick={() => void copy()}>
         {state === "copied" ? "Copied" : "Copy code"}
       </Button>
       <span role="status" aria-live="polite" className="sr-only">
