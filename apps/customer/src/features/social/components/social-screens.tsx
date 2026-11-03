@@ -4,9 +4,20 @@ import { loadSetupAsks } from "@/features/setup/loader";
 import { formatDate, formatNumber } from "@/lib/format";
 import type { CustomerContext } from "@/lib/guards";
 import { load, type Loaded } from "@/lib/loaded";
-import { Badge, Icon, LinkButton, Meter } from "@/ui";
-import { loadAccounts, loadAds, loadPosts, loadReportLink, loadWaitingPostCount, type AdsData, type PostsView } from "../loader";
-import { monthCounts, monthLine, SOCIAL_ACCOUNTS_PATH, SOCIAL_ADS_PATH, SOCIAL_CONTENT_PATH, SOCIAL_PATH, ASK_FOR_CHANGE_HREF } from "../rules";
+import { Badge, Icon, LinkButton, Meter, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/ui";
+import { loadAccounts, loadAds, loadCampaigns, loadPosts, loadReach, loadReportLink, loadWaitingPostCount, type AdsData, type PostsView } from "../loader";
+import {
+  ASK_FOR_CHANGE_HREF,
+  campaignsUpdatedAt,
+  monthCounts,
+  monthLine,
+  SOCIAL_ACCOUNTS_PATH,
+  SOCIAL_ADS_PATH,
+  SOCIAL_CONTENT_PATH,
+  SOCIAL_PATH,
+  type CampaignRow,
+  type ReachView,
+} from "../rules";
 import { ApprovalsSection, CalendarPanel, DEFAULT_DESCRIPTION, SocialHeader, Stack, ThisWeekPanel, waitingIn } from "./parts";
 
 interface ScreenProps {
@@ -35,15 +46,27 @@ function metrics(posts: Loaded<PostsView>, ads: Loaded<AdsData>, now: Date): Met
   return out;
 }
 
+/** The reach figures staff entered, each with the month it is for and when it was entered. Empty when none was. */
+function reachMetrics(reach: ReachView): Metric[] {
+  const source = { period: reach.month, asOf: reach.enteredAt };
+  return [
+    ...(reach.reach === null ? [] : [{ label: "People reached", value: reach.reach, ...source }]),
+    ...(reach.followers === null ? [] : [{ label: "Followers", value: reach.followers, ...source }]),
+    ...(reach.profileVisits === null ? [] : [{ label: "Profile visits", value: reach.profileVisits, ...source }]),
+  ];
+}
+
 /** Social & Ads Overview: approvals first, then the month's figures that have a source, and this week's posts. */
 export async function SocialOverview({ customer, now = new Date() }: ScreenProps) {
-  const [posts, ads, report, asks] = await Promise.all([
+  const [posts, ads, reach, report, asks] = await Promise.all([
     load("social.posts", () => loadPosts(customer, now)),
     load("social.ads", () => loadAds(customer, now)),
+    load("social.reach", () => loadReach(customer, now)),
     load("social.report", () => loadReportLink(customer, "social")),
     load("social.setup", () => loadSetupAsks(customer, "social")),
   ]);
   const strip = metrics(posts, ads, now);
+  const reachStrip = reach.ok && reach.data !== null ? reachMetrics(reach.data) : [];
   const line = posts.ok ? monthLine(posts.data.posts, now) : null;
   return (
     <>
@@ -52,6 +75,12 @@ export async function SocialOverview({ customer, now = new Date() }: ScreenProps
         {asks.ok ? <SetupCard asks={asks.data} /> : <Panel title="What we need from you"><PanelError failure={asks.error} what="what we need from you" /></Panel>}
         <ApprovalsSection customer={customer} posts={posts} layout="rows" now={now} />
         {strip.length === 0 ? null : <MetricStrip label="This month" metrics={strip} />}
+        {reachStrip.length === 0 ? null : <MetricStrip label="Social reach" metrics={reachStrip} />}
+        {reach.ok ? null : (
+          <Panel title="Social reach">
+            <PanelError failure={reach.error} what="your social reach" />
+          </Panel>
+        )}
         {ads.ok ? null : (
           <Panel title="Ads">
             <PanelError failure={ads.error} what="your ad figures" />
@@ -79,7 +108,11 @@ export async function SocialContent({ customer, now = new Date() }: ScreenProps)
 
 /** Ads: spend against budget, leads and cost per lead from the month's figures, and the ad money we add. Panels without a source are not drawn. */
 export async function SocialAds({ customer, now = new Date() }: ScreenProps) {
-  const [ads, waiting] = await Promise.all([load("social.ads", () => loadAds(customer, now)), waitingFor(customer)]);
+  const [ads, campaigns, waiting] = await Promise.all([
+    load("social.ads", () => loadAds(customer, now)),
+    load("social.campaigns", () => loadCampaigns(customer, now)),
+    waitingFor(customer),
+  ]);
   return (
     <>
       <SocialHeader customer={customer} current={SOCIAL_ADS_PATH} waiting={waiting} />
@@ -109,8 +142,59 @@ export async function SocialAds({ customer, now = new Date() }: ScreenProps) {
             )
           }
         </PanelData>
+        {campaigns.ok && campaigns.data.campaigns.length === 0 ? null : (
+          <PanelData
+            data={campaigns}
+            title="Campaigns"
+            what="your campaigns"
+            flush
+            meta={({ month, campaigns: rows }) => {
+              const updated = campaignsUpdatedAt(rows);
+              return updated === null ? month : `${month}. Updated ${formatDate(updated, now)}`;
+            }}
+          >
+            {({ campaigns: rows }) => <CampaignsTable rows={rows} />}
+          </PanelData>
+        )}
       </Stack>
     </>
+  );
+}
+
+const NOT_AVAILABLE = "Not available";
+
+function CampaignsTable({ rows }: { readonly rows: readonly CampaignRow[] }) {
+  return (
+    <Table aria-label="Campaigns">
+      <TableHead>
+        <TableHeader>Campaign</TableHeader>
+        <TableHeader hideOnPhone>Where</TableHeader>
+        <TableHeader align="end">Spent</TableHeader>
+        <TableHeader align="end" hideOnPhone>
+          Budget
+        </TableHeader>
+        <TableHeader align="end">Leads</TableHeader>
+        <TableHeader align="end" hideOnPhone>
+          Per lead
+        </TableHeader>
+      </TableHead>
+      <TableBody>
+        {rows.map((row) => (
+          <TableRow key={row.id}>
+            <TableCell className="font-medium text-ink">{row.name}</TableCell>
+            <TableCell hideOnPhone>{row.platform}</TableCell>
+            <TableCell align="end">{row.spent}</TableCell>
+            <TableCell align="end" hideOnPhone>
+              {row.budget ?? NOT_AVAILABLE}
+            </TableCell>
+            <TableCell align="end">{row.leads === null ? NOT_AVAILABLE : formatNumber(row.leads)}</TableCell>
+            <TableCell align="end" hideOnPhone>
+              {row.leads === null ? NOT_AVAILABLE : (row.costPerLead ?? "No leads")}
+            </TableCell>
+          </TableRow>
+        ))}
+      </TableBody>
+    </Table>
   );
 }
 

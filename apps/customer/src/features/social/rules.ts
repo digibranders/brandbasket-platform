@@ -1,4 +1,4 @@
-import type { ConnectedAccount, Deliverable, MonthlySnapshot } from "@brandbasket/db";
+import type { AdCampaignSnapshot, ConnectedAccount, Deliverable, MonthlySnapshot } from "@brandbasket/db";
 import { addDays, localDateIn, mondayOf } from "@brandbasket/shared/lib/calendar/local-date";
 import type { MoneyCurrency } from "@brandbasket/shared/lib/money";
 import { z } from "zod";
@@ -287,6 +287,79 @@ export function adsView(input: { readonly snapshot: SnapshotFigures | null; read
     updatedAt: spend === null && budget === null && leads === null ? null : (snapshot?.updatedAt ?? null),
   };
   return spend === null && !hasBudget && leads === null && view.adMoney === null ? null : view;
+}
+
+// ---- Ad campaigns ----
+
+export const CAMPAIGN_PLATFORM_NAMES: Readonly<Record<AdCampaignSnapshot["platform"], string>> = { meta: "Meta", google: "Google" };
+
+/** One campaign's month as the Ads table draws it. A figure staff did not enter is null: the table says so, never a zero. */
+export interface CampaignRow {
+  readonly id: string;
+  readonly name: string;
+  readonly platform: string;
+  readonly spent: string;
+  readonly budget: string | null;
+  readonly leads: number | null;
+  /** Spend divided by leads, only when leads is above zero. */
+  readonly costPerLead: string | null;
+  readonly updatedAt: Date;
+}
+
+export type CampaignSource = Pick<AdCampaignSnapshot, "id" | "name" | "platform" | "spendCents" | "budgetCents" | "leads" | "updatedAt">;
+
+/** The campaigns in name order. Cost per lead is worked out from the spend and at least one lead; with none it stays null. */
+export function campaignRows(rows: readonly CampaignSource[], currency: MoneyCurrency): CampaignRow[] {
+  return [...rows]
+    .sort((a, b) => a.name.localeCompare(b.name, "en-IN", { sensitivity: "base" }) || a.id.localeCompare(b.id))
+    .map((row) => ({
+      id: row.id,
+      name: row.name,
+      platform: CAMPAIGN_PLATFORM_NAMES[row.platform],
+      spent: formatMoney(row.spendCents, currency),
+      budget: row.budgetCents === null ? null : formatMoney(row.budgetCents, currency),
+      leads: row.leads,
+      costPerLead: row.leads === null || row.leads <= 0 ? null : formatMoney(Math.round(row.spendCents / row.leads), currency),
+      updatedAt: row.updatedAt,
+    }));
+}
+
+/** The most recent time staff touched any of the campaigns; null for none. */
+export function campaignsUpdatedAt(rows: readonly Pick<CampaignRow, "updatedAt">[]): Date | null {
+  return rows.reduce<Date | null>((latest, row) => (latest === null || row.updatedAt > latest ? row.updatedAt : latest), null);
+}
+
+// ---- Social reach ----
+
+/** The reach figures staff entered for one month, each null when not entered. */
+export interface ReachView {
+  /** "October", or "October 2025" when the month is not in the current year. */
+  readonly month: string;
+  readonly reach: string | null;
+  readonly followers: string | null;
+  readonly profileVisits: string | null;
+  /** When staff entered them. */
+  readonly enteredAt: Date;
+}
+
+type ReachSource = Pick<MonthlySnapshot, "month" | "reach" | "followers" | "profileVisits" | "updatedAt">;
+
+/** "October", with the year when it is not the India year of `now`. `month` is `YYYY-MM-01`. */
+export function monthLabel(month: string, now: Date): string {
+  const name = MONTH_NAMES[Number(month.slice(5, 7)) - 1] ?? "";
+  return month.slice(0, 4) === monthKey(now).slice(0, 4) ? name : `${name} ${month.slice(0, 4)}`;
+}
+
+/** The reach figures, or null when none was entered: the panel is left out, never shown as zeros. */
+export function reachView(row: ReachSource | null, now: Date): ReachView | null {
+  if (row === null || (row.reach === null && row.followers === null && row.profileVisits === null)) return null;
+  return {
+    month: monthLabel(row.month, now),
+    reach: row.reach === null ? null : formatNumber(row.reach),
+    followers: row.followers === null ? null : formatNumber(row.followers),
+    profileVisits: row.profileVisits === null ? null : formatNumber(row.profileVisits),
+    enteredAt: row.updatedAt,
+  };
 }
 
 // ---- Connected accounts ----

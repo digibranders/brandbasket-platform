@@ -37,6 +37,9 @@ const SERVICES: Readonly<
       { name: "adEnquiries", label: "Enquiries from ads" },
       { name: "postsPublished", label: "Posts published" },
       { name: "postsPlanned", label: "Posts planned" },
+      { name: "reach", label: "People reached on social" },
+      { name: "followers", label: "Followers" },
+      { name: "profileVisits", label: "Profile visits" },
     ],
     columns: [
       { label: "Ad spend", show: (row) => (row.adSpendCents === null ? null : formatMoney(row.adSpendCents, "INR")) },
@@ -44,6 +47,9 @@ const SERVICES: Readonly<
       { label: "Enquiries", show: (row) => (row.adEnquiries === null ? null : String(row.adEnquiries)) },
       { label: "Posts published", show: (row) => (row.postsPublished === null ? null : String(row.postsPublished)) },
       { label: "Posts planned", show: (row) => (row.postsPlanned === null ? null : String(row.postsPlanned)) },
+      { label: "Reach", show: (row) => (row.reach === null ? null : String(row.reach)) },
+      { label: "Followers", show: (row) => (row.followers === null ? null : String(row.followers)) },
+      { label: "Profile visits", show: (row) => (row.profileVisits === null ? null : String(row.profileVisits)) },
     ],
   },
   search: {

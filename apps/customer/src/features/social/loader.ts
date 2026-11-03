@@ -1,8 +1,32 @@
 import "server-only";
-import { latestMonthlyReport, listConnectedAccounts, listDeliverablesForBusiness, listMonthlySnapshots, listWaitingPosts, withTenantScope } from "@brandbasket/db";
+import {
+  latestMonthlyReport,
+  latestSocialReach,
+  listAdCampaigns,
+  listConnectedAccounts,
+  listDeliverablesForBusiness,
+  listMonthlySnapshots,
+  listWaitingPosts,
+  withTenantScope,
+} from "@brandbasket/db";
 import { getAppDb } from "@/lib/db";
 import type { CustomerContext } from "@/lib/guards";
-import { accountRows, adsView, monthKey, monthName, postViews, postWindow, reportHref, type AccountRow, type AdsView, type PostView } from "./rules";
+import {
+  accountRows,
+  adsView,
+  campaignRows,
+  monthKey,
+  monthName,
+  postViews,
+  postWindow,
+  reachView,
+  reportHref,
+  type AccountRow,
+  type AdsView,
+  type CampaignRow,
+  type PostView,
+  type ReachView,
+} from "./rules";
 
 type Reader = Pick<CustomerContext, "tenant" | "businessId">;
 
@@ -47,6 +71,23 @@ export async function loadAds(customer: Reader & Pick<CustomerContext, "billing"
     }),
     month: monthName(now),
   };
+}
+
+export interface CampaignsData {
+  readonly campaigns: readonly CampaignRow[];
+  readonly month: string;
+}
+
+/** The month's ad campaigns staff entered in `ad_campaign_snapshots`; an empty list when there are none. */
+export async function loadCampaigns(customer: Reader & Pick<CustomerContext, "currency">, now: Date): Promise<CampaignsData> {
+  const rows = await withTenantScope(getAppDb(), customer.tenant, (tx) => listAdCampaigns(tx, customer.businessId, monthKey(now)));
+  return { campaigns: campaignRows(rows, customer.currency), month: monthName(now) };
+}
+
+/** The newest month with social reach figures staff entered in `monthly_snapshots`, or null when there are none. */
+export async function loadReach(customer: Reader, now: Date): Promise<ReachView | null> {
+  const row = await withTenantScope(getAppDb(), customer.tenant, (tx) => latestSocialReach(tx, customer.businessId));
+  return reachView(row, now);
 }
 
 /** The latest monthly report's link (staff paste it; https only), or null. */

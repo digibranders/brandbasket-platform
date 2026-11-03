@@ -8,6 +8,7 @@ import { eraseSupportDataForUser } from "./support";
 import type { ScopedTransaction } from "../scope";
 import {
   businessInvites,
+  siteChecks,
   connectedAccounts,
   notificationPreferences,
   notificationReads,
@@ -50,6 +51,7 @@ import {
   metricDaily,
   monthlyReports,
   monthlySnapshots,
+  adCampaignSnapshots,
   onboardingProgress,
   patients,
   practitionerHours,
@@ -341,6 +343,7 @@ export async function eraseClosedAccount(db: Database, input: { readonly closure
     await tx.delete(activityEvents).where(eq(activityEvents.businessId, businessId));
     await tx.delete(businessActivity).where(eq(businessActivity.businessId, businessId));
     await tx.delete(monthlySnapshots).where(eq(monthlySnapshots.businessId, businessId));
+    await tx.delete(adCampaignSnapshots).where(eq(adCampaignSnapshots.businessId, businessId));
     await tx.delete(deliverables).where(eq(deliverables.businessId, businessId));
     await tx.delete(monthlyReports).where(eq(monthlyReports.businessId, businessId));
     await tx.delete(siteEvents).where(eq(siteEvents.businessId, businessId));
@@ -365,6 +368,7 @@ export async function eraseClosedAccount(db: Database, input: { readonly closure
     // and each person's notification settings for it (other members block erasure, so only the leaving user has any).
     await eraseEnquiriesOfBusiness(tx, businessId);
     await tx.delete(websitePages).where(eq(websitePages.businessId, businessId));
+    await tx.delete(siteChecks).where(eq(siteChecks.businessId, businessId));
     await tx.delete(connectedAccounts).where(eq(connectedAccounts.businessId, businessId));
     await tx.delete(businessInvites).where(eq(businessInvites.businessId, businessId));
     await tx.delete(notificationPreferences).where(or(eq(notificationPreferences.businessId, businessId), eq(notificationPreferences.userId, userId)));

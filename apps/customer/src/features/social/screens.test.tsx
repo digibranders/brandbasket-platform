@@ -1,16 +1,24 @@
-import { render, screen } from "@testing-library/react";
+import { cleanup, render, screen } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { loadSetupAsks } from "@/features/setup/loader";
 import type { CustomerContext } from "@/lib/guards";
 import { ToastProvider } from "@/ui";
 import { SocialAccounts, SocialAds, SocialContent, SocialOverview } from "./components/social-screens";
-import { loadAccounts, loadAds, loadPosts, loadReportLink, loadWaitingPostCount } from "./loader";
-import { accountRows, adsView, type PostView } from "./rules";
+import { loadAccounts, loadAds, loadCampaigns, loadPosts, loadReach, loadReportLink, loadWaitingPostCount } from "./loader";
+import { accountRows, adsView, campaignRows, reachView, type CampaignSource, type PostView } from "./rules";
 
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn() }), unstable_rethrow: vi.fn() }));
 vi.mock("@sentry/nextjs", () => ({ captureException: vi.fn(() => "event-1") }));
-vi.mock("./loader", () => ({ loadPosts: vi.fn(), loadAds: vi.fn(), loadAccounts: vi.fn(), loadReportLink: vi.fn(), loadWaitingPostCount: vi.fn() }));
+vi.mock("./loader", () => ({
+  loadPosts: vi.fn(),
+  loadAds: vi.fn(),
+  loadCampaigns: vi.fn(),
+  loadReach: vi.fn(),
+  loadAccounts: vi.fn(),
+  loadReportLink: vi.fn(),
+  loadWaitingPostCount: vi.fn(),
+}));
 vi.mock("@/features/setup/loader", () => ({ loadSetupAsks: vi.fn(), loadNotBought: vi.fn() }));
 vi.mock("./actions", () => ({ approvePostsAction: vi.fn() }));
 
@@ -30,7 +38,14 @@ beforeEach(() => {
   vi.mocked(loadReportLink).mockResolvedValue(null);
   vi.mocked(loadWaitingPostCount).mockResolvedValue({ count: 0, byDueOn: null });
   vi.mocked(loadAds).mockResolvedValue({ ads: null, month: "November" });
+  vi.mocked(loadCampaigns).mockResolvedValue({ campaigns: [], month: "November" });
+  vi.mocked(loadReach).mockResolvedValue(null);
 });
+
+const ENTERED = new Date("2026-11-03T05:00:00.000Z");
+function campaign(id: string, name: string, over: Partial<CampaignSource> = {}): CampaignSource {
+  return { id, name, platform: "meta", spendCents: 412_000, budgetCents: 500_000, leads: 9, updatedAt: ENTERED, ...over };
+}
 
 describe("Social & Ads Overview", () => {
   it("shows an error state, never 'No posts are waiting', when the posts cannot be read", async () => {
@@ -91,6 +106,30 @@ describe("Social & Ads Overview", () => {
     expect(screen.getByText("₹500")).toBeTruthy();
     expect(screen.getByText("Posts published")).toBeTruthy();
     expect(screen.getAllByText(/Updated Tue 3 Nov/).length).toBeGreaterThan(0);
+  });
+
+  it("shows the reach figures staff entered, each with its month and the date it was entered", async () => {
+    vi.mocked(loadPosts).mockResolvedValue({ month: "November", posts: [] });
+    vi.mocked(loadReach).mockResolvedValue(reachView({ month: "2026-10-01", reach: 52_300, followers: 1_204, profileVisits: null, updatedAt: ENTERED }, NOW));
+    wrap(await SocialOverview({ customer: customer(), now: NOW }));
+    expect(screen.getByText("People reached")).toBeTruthy();
+    expect(screen.getByText("52,300")).toBeTruthy();
+    expect(screen.getByText("Followers")).toBeTruthy();
+    expect(screen.getByText("1,204")).toBeTruthy();
+    expect(screen.queryByText("Profile visits")).toBeNull();
+    expect(screen.getAllByText("October. Updated Tue 3 Nov")).toHaveLength(2);
+  });
+
+  it("leaves reach out when none was entered, and shows its error on its own when it cannot be read", async () => {
+    vi.mocked(loadPosts).mockResolvedValue({ month: "November", posts: [{ ...post("a", "2026-11-25", "awaiting_approval") }] });
+    wrap(await SocialOverview({ customer: customer(), now: NOW }));
+    expect(screen.queryByText("People reached")).toBeNull();
+    expect(screen.queryByText("Social reach")).toBeNull();
+    cleanup();
+    vi.mocked(loadReach).mockRejectedValue(new Error("down"));
+    wrap(await SocialOverview({ customer: customer(), now: NOW }));
+    expect(screen.getByText("We could not load your social reach.")).toBeTruthy();
+    expect(screen.getAllByRole("button", { name: "Approve" })).toHaveLength(1);
   });
 
   it("shows the ads error on its own and keeps the approvals", async () => {
@@ -162,6 +201,35 @@ describe("Ads", () => {
     wrap(await SocialAds({ customer: customer(), now: NOW }));
     expect(screen.getByText("We could not load your ad figures.")).toBeTruthy();
     expect(screen.queryByText("No ad figures for this month yet.")).toBeNull();
+  });
+
+  it("lists the campaigns with spend, budget, leads and cost per lead, and when they were updated", async () => {
+    vi.mocked(loadCampaigns).mockResolvedValue({
+      campaigns: campaignRows([campaign("b", "Winter checkup", { spendCents: 120_000, budgetCents: null, leads: 0 }), campaign("a", "Full body checkup, Dadar")], "INR"),
+      month: "November",
+    });
+    wrap(await SocialAds({ customer: customer(), now: NOW }));
+    expect(screen.getByRole("heading", { name: "Campaigns" })).toBeTruthy();
+    expect(screen.getByText("November. Updated Tue 3 Nov")).toBeTruthy();
+    const rows = screen.getAllByRole("row").map((row) => row.textContent);
+    expect(rows[1]).toBe("Full body checkup, DadarMeta₹4,120₹5,0009₹457.78");
+    expect(rows[2]).toBe("Winter checkupMeta₹1,200Not available0No leads");
+  });
+
+  it("says a figure is not available instead of showing a zero, and gives no cost per lead without leads", async () => {
+    vi.mocked(loadCampaigns).mockResolvedValue({ campaigns: campaignRows([campaign("a", "Home collection", { leads: null, budgetCents: null })], "INR"), month: "November" });
+    wrap(await SocialAds({ customer: customer(), now: NOW }));
+    expect(screen.getAllByText("Not available")).toHaveLength(3);
+    expect(screen.queryByText("₹0")).toBeNull();
+  });
+
+  it("draws no campaigns panel when none were entered, and shows an error when they cannot be read", async () => {
+    wrap(await SocialAds({ customer: customer(), now: NOW }));
+    expect(screen.queryByRole("heading", { name: "Campaigns" })).toBeNull();
+    cleanup();
+    vi.mocked(loadCampaigns).mockRejectedValue(new Error("down"));
+    wrap(await SocialAds({ customer: customer(), now: NOW }));
+    expect(screen.getByText("We could not load your campaigns.")).toBeTruthy();
   });
 });
 

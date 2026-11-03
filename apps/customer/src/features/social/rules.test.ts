@@ -7,6 +7,8 @@ import {
   approveAllIds,
   approveAllLabel,
   approveIdsSchema,
+  campaignRows,
+  campaignsUpdatedAt,
   canApprove,
   changePostHref,
   dueLabel,
@@ -15,12 +17,14 @@ import {
   monthCounts,
   monthKey,
   monthLine,
+  monthLabel,
   monthName,
   needsOkBy,
   postKindLabel,
   postStatusKey,
   postViews,
   postWindow,
+  reachView,
   socialTabs,
   splitPosts,
   waitingHeadline,
@@ -221,5 +225,60 @@ describe("socialTabs", () => {
     expect(socialTabs(0)[1]).not.toHaveProperty("count");
     expect(socialTabs(null)[1]).not.toHaveProperty("count");
     expect(socialTabs(null).map((tab) => tab.href)).toEqual(["/social", "/social/content", "/social/ads", "/social/accounts"]);
+  });
+});
+
+describe("campaignRows", () => {
+  const row = (id: string, name: string, over: Partial<Parameters<typeof campaignRows>[0][number]> = {}) => ({
+    id,
+    name,
+    platform: "meta" as const,
+    spendCents: 412_000,
+    budgetCents: 500_000,
+    leads: 9,
+    updatedAt: new Date("2026-11-03T05:00:00.000Z"),
+    ...over,
+  });
+
+  it("formats the money for the customer's currency and works out cost per lead from spend and leads", () => {
+    expect(campaignRows([row("a", "Full body checkup")], "INR")[0]).toMatchObject({ platform: "Meta", spent: "₹4,120", budget: "₹5,000", leads: 9, costPerLead: "₹457.78" });
+    expect(campaignRows([row("a", "Full body checkup", { spendCents: 35_000, budgetCents: 65_000, leads: 2 })], "USD")[0]).toMatchObject({ spent: "$350", budget: "$650", costPerLead: "$175" });
+  });
+
+  it("gives no cost per lead without leads or with zero leads, and keeps unknown budget and leads null", () => {
+    expect(campaignRows([row("a", "A", { leads: null })], "INR")[0]).toMatchObject({ leads: null, costPerLead: null });
+    expect(campaignRows([row("a", "A", { leads: 0 })], "INR")[0]).toMatchObject({ leads: 0, costPerLead: null });
+    expect(campaignRows([row("a", "A", { budgetCents: null })], "INR")[0]?.budget).toBeNull();
+  });
+
+  it("sorts by name, ignoring case, without changing the list it was given", () => {
+    const input = [row("1", "winter checkup"), row("2", "Diabetes screening")];
+    expect(campaignRows(input, "INR").map((entry) => entry.name)).toEqual(["Diabetes screening", "winter checkup"]);
+    expect(input[0]?.name).toBe("winter checkup");
+  });
+
+  it("reports the latest time any campaign was updated", () => {
+    expect(campaignsUpdatedAt([])).toBeNull();
+    const rows = campaignRows([row("1", "A", { updatedAt: new Date("2026-11-01T00:00:00Z") }), row("2", "B", { updatedAt: new Date("2026-11-03T00:00:00Z") })], "INR");
+    expect(campaignsUpdatedAt(rows)).toEqual(new Date("2026-11-03T00:00:00Z"));
+  });
+});
+
+describe("reachView", () => {
+  const entered = new Date("2026-11-03T05:00:00.000Z");
+  const base = { month: "2026-10-01", reach: null, followers: null, profileVisits: null, updatedAt: entered };
+
+  it("is null when there is no row or no reach figure was entered", () => {
+    expect(reachView(null, NOW)).toBeNull();
+    expect(reachView(base, NOW)).toBeNull();
+  });
+
+  it("keeps only the figures entered, formatted, with the month and the date entered", () => {
+    expect(reachView({ ...base, reach: 52_300, profileVisits: 0 }, NOW)).toEqual({ month: "October", reach: "52,300", followers: null, profileVisits: "0", enteredAt: entered });
+  });
+
+  it("adds the year to a month outside the current year", () => {
+    expect(monthLabel("2025-12-01", NOW)).toBe("December 2025");
+    expect(monthLabel("2026-01-01", NOW)).toBe("January");
   });
 });

@@ -852,7 +852,15 @@ export {
 } from "./queries/kickoff-build";
 export { completeClientIntake, findClientIntake, saveClientIntakeAnswers, type ClientIntakeAnswers } from "./queries/client-intakes";
 export { addActivityEvent, listActivityEvents, removeActivityEvent } from "./queries/activity-events";
-export { listMonthlySnapshots, upsertMonthlySnapshot, type SnapshotFigures } from "./queries/monthly-snapshots";
+export { latestSocialReach, listMonthlySnapshots, upsertMonthlySnapshot, type SnapshotFigures } from "./queries/monthly-snapshots";
+export {
+  addAdCampaign,
+  listAdCampaigns,
+  removeAdCampaign,
+  updateAdCampaign,
+  type AdCampaignFigures,
+  type AdCampaignSaveResult,
+} from "./queries/ad-campaigns";
 export {
   approveDeliverables,
   countSiteEvents,
