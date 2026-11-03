@@ -66,6 +66,19 @@ describe("AppShell", () => {
     await expectNoAxeViolations(container);
   });
 
+  it("folds the sidebar to an icon rail and remembers it", async () => {
+    window.localStorage.removeItem("bb.sidebar.collapsed");
+    shell();
+    await userEvent.click(screen.getByRole("button", { name: "Collapse sidebar" }));
+    const main = screen.getByRole("navigation", { name: "Main" });
+    // Labels stay for screen readers and hover titles.
+    expect(within(main).getByRole("link", { name: "Requests" }).getAttribute("title")).toBe("Requests");
+    expect(screen.getByRole("button", { name: "Expand sidebar" }).getAttribute("aria-expanded")).toBe("false");
+    expect(window.localStorage.getItem("bb.sidebar.collapsed")).toBe("1");
+    await userEvent.click(screen.getByRole("button", { name: "Expand sidebar" }));
+    expect(window.localStorage.getItem("bb.sidebar.collapsed")).toBe("0");
+  });
+
   it("shows the billing banner on every page but Home", () => {
     shell();
     expect(screen.getByText("Your plan has ended.")).toBeTruthy();
