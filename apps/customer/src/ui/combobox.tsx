@@ -37,7 +37,7 @@ export function Combobox({ options, value, defaultValue, onValueChange, name, pl
       disabled={disabled}
     >
       <BaseCombobox.InputGroup className={cx("relative", className)}>
-        <BaseCombobox.Input id={id} placeholder={placeholder} className={cx(CONTROL, "h-control pr-10 pl-3")} />
+        <BaseCombobox.Input id={id} placeholder={placeholder} className={cx(CONTROL, "w-full h-control pr-10 pl-3")} />
         <BaseCombobox.Trigger
           aria-label={openLabel}
           className="absolute inset-y-0 right-0 flex w-10 items-center justify-center text-ink-3 outline-none focus-visible:text-ink"

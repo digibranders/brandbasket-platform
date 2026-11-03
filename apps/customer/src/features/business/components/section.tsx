@@ -14,7 +14,8 @@ export interface SectionProps {
 export function Section({ title, where, titleRef, children }: SectionProps) {
   return (
     <div className="grid gap-4 border-b border-border-subtle p-4 last:border-b-0 md:grid-cols-3 md:gap-6">
-      <div className="md:col-span-1">
+      {/* Stays in view under the top bar while its fields scroll past (desktop). */}
+      <div className="md:sticky md:top-topbar md:col-span-1 md:-mt-4 md:self-start md:pt-4">
         <h3 ref={titleRef} tabIndex={titleRef === undefined ? undefined : -1} className="type-sub outline-none">
           {title}
         </h3>

@@ -22,7 +22,7 @@ export function PhoneInput({ countryCode = "+91", className, ...rest }: PhoneInp
       <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center type-body text-ink-3">
         {countryCode}
       </span>
-      <BaseInput {...rest} type="tel" inputMode="tel" autoComplete={rest.autoComplete ?? "tel-national"} className={cx(CONTROL, "h-control pr-3 pl-12")} />
+      <BaseInput {...rest} type="tel" inputMode="tel" autoComplete={rest.autoComplete ?? "tel-national"} className={cx(CONTROL, "w-full h-control pr-3 pl-12")} />
     </div>
   );
 }
