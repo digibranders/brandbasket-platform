@@ -32,9 +32,9 @@ describe("the Teams cards carry what the alert emails carry", () => {
   });
 
   it("shows what a website visitor picked and their city, after the business type", () => {
-    const card = parts(leadTeamsCard({ name: "Neha", businessName: "Green Leaf Cafe", businessType: "Not given", wants: "Website, Social & Ads", city: "Pune", email: "neha@example.com", phone: null, message: null, leadUrl: "https://console.example/leads/9" }));
+    const card = parts(leadTeamsCard({ name: "Neha", businessName: "Green Leaf Cafe", businessType: "Not given", wants: "Website, Social media", city: "Pune", email: "neha@example.com", phone: null, message: null, leadUrl: "https://console.example/leads/9" }));
     expect(card.body[2]?.facts?.map((fact) => fact.title)).toEqual(["Business type", "Wants", "City", "Email"]);
-    expect(card.body[2]?.facts?.[1]?.value).toBe("Website, Social & Ads");
+    expect(card.body[2]?.facts?.[1]?.value).toBe("Website, Social media");
   });
 
   it("names a bug report by its kind and subject, with the reporter, the details and the browser", () => {

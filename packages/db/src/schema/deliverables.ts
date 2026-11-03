@@ -8,7 +8,7 @@ import type { SetupService } from "./client-activity";
 import { createdAt, updatedAt } from "./columns";
 
 /**
- * One piece of Social & Ads or Search work: a post (waits for the customer's OK), a page we improved or a listing we
+ * One piece of Social media or Search work: a post (waits for the customer's OK), a page we improved or a listing we
  * fixed. Staff write it (named columns only, see 0193), the customer reads their own, and the customer's one write
  * is the function approve_deliverables. A post's picture is a file in media storage under
  * `deliverables/{id}/display`; the `image_*` columns describe it.

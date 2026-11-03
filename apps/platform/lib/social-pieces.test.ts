@@ -2,7 +2,7 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { expect, it, vi } from "vitest";
 
-vi.mock("@/app/app-host/(protected)/social/actions", () => ({ approvePostsAction: vi.fn() }));
+vi.mock("@/app/app-host/(protected)/social/actions", () => ({ approvePostsAction: vi.fn(), connectChannelAction: vi.fn() }));
 vi.mock("@/app/app-host/(protected)/setup-actions", () => ({ saveSetupItemAction: vi.fn() }));
 
 import { ApproveBar } from "@/components/social/approve-bar";
@@ -105,7 +105,7 @@ const NOW = new Date("2026-12-01T05:00:00.000Z");
 const WAITING = [post({ id: "w1", dueOn: "2026-12-01" }), post({ id: "w2", dueOn: "2026-12-02", title: "Brushes" }), post({ id: "w3", dueOn: "2026-12-03", title: "Meet the team" })];
 
 function view(overrides: Partial<SocialData> = {}, notice: { ok: boolean; text: string } | null = null): string {
-  const data: SocialData = { posts: WAITING, monthLine: "December: 0 of 3 posts out.", ads: null, report: null, month: "December", ...overrides };
+  const data: SocialData = { connect: null, posts: WAITING, monthLine: "December: 0 of 3 posts out.", report: null, ...overrides };
   return text(createElement(SocialView, { data, notice, now: NOW }));
 }
 
@@ -120,8 +120,8 @@ it("with posts waiting, says how many and by when, shows each and has the one da
 });
 
 it("keeps a line under the title when there is no month line yet", () => {
-  expect(view({ monthLine: null })).toContain("Your posts and ads, and what they have brought in.");
-  expect(view()).not.toContain("Your posts and ads, and what they have brought in.");
+  expect(view({ monthLine: null })).toContain("Your posts, and what they have brought in.");
+  expect(view()).not.toContain("Your posts, and what they have brought in.");
 });
 
 it("with nothing waiting, says so, says what will appear, and offers Ask for a change as the one dark button", () => {
@@ -133,22 +133,18 @@ it("with nothing waiting, says so, says what will appear, and offers Ask for a c
   expect(html).toContain('href="/requests/new?kind=social"');
 });
 
-it("sits in the page frame: the title, the month line, and the ads and the week in the aside", () => {
-  const html = view({ ads: { spent: "₹6,240", percent: null, enquiries: null, adMoney: null } });
-  expect(html).toContain(">Social &amp; Ads</h1>");
+it("sits in the page frame: the title, the month line, and the week in the aside", () => {
+  const html = view();
+  expect(html).toContain(">Social media</h1>");
   expect(html).toContain("@container");
-  expect(html.indexOf("Ads in December")).toBeGreaterThan(html.indexOf("Approve all 3"));
-  expect(html.indexOf("This week")).toBeGreaterThan(html.indexOf("Ads in December"));
+  expect(html.indexOf("This week")).toBeGreaterThan(html.indexOf("Approve all 3"));
 });
 
-it("shows the ads panel with the figures it has and leaves out a line whose figure is not known", () => {
-  const full = view({ ads: { spent: "₹6,240 of ₹10,000", percent: 62, enquiries: 21, adMoney: "₹1,500" } });
-  expect(full).toContain("Ads in December");
-  for (const part of ["Spent", "₹6,240 of ₹10,000", "Enquiries from ads", "21", "Ad money added by us", "₹1,500"]) expect(full).toContain(part);
-  const partial = view({ ads: { spent: "₹6,240", percent: null, enquiries: null, adMoney: null } });
-  expect(partial).toContain("Spent");
-  for (const part of ["Enquiries from ads", "Ad money added by us"]) expect(partial).not.toContain(part);
-  expect(view({ ads: null })).not.toContain("Ads in December");
+it("does not carry the ads: they have their own page", () => {
+  const html = view({ monthLine: null });
+  expect(html).not.toContain("Ads in");
+  expect(html).not.toContain("Spent");
+  expect(html).not.toMatch(/\bads?\b/i);
 });
 
 it("offers the monthly report only when there is one, in a new tab", () => {
@@ -166,6 +162,6 @@ it("says what just happened when there is a notice, as a problem when it is one"
 });
 
 it("never uses a dash in what it says", () => {
-  const html = view({ ads: { spent: "₹6,240 of ₹10,000", percent: 62, enquiries: 21, adMoney: "₹1,500" }, report: "https://reports.example.com/december" }) + card({}, { showApprove: true }) + bar(4) + text(createElement(WeekList, { posts: [post()] }));
+  const html = view({ report: "https://reports.example.com/december" }) + card({}, { showApprove: true }) + bar(4) + text(createElement(WeekList, { posts: [post()] }));
   expect(html.replace(/<[^>]+>/g, " ")).not.toMatch(/[–—]/);
 });

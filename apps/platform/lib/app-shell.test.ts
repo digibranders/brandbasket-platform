@@ -39,9 +39,9 @@ beforeEach(() => {
 });
 
 describe("AppShell's service links", () => {
-  it("adds Social & Ads and Local SEO + AEO for the services bought, from the one active-services read", async () => {
+  it("adds Social media, Ads and Local SEO + AEO for the services bought, from the one active-services read", async () => {
     vi.mocked(loadActiveServices).mockResolvedValue(["website", "social", "search"]);
-    expect(labels((await rail()).sections, "Services")).toEqual(["Website", "Blog", "Social & Ads", "Local SEO + AEO"]);
+    expect(labels((await rail()).sections, "Services")).toEqual(["Website", "Blog", "Social media", "Ads", "Local SEO + AEO"]);
     expect(loadActiveServices).toHaveBeenCalledTimes(1);
     expect(loadActiveServices).toHaveBeenCalledWith(tenant);
   });

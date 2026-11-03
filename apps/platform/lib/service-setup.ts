@@ -8,14 +8,14 @@
 import type { MoneyCurrency } from "@brandbasket/shared/lib/money";
 import { CURRENCY_NAMES } from "@/lib/currency-words";
 
-export const SETUP_KEYS = ["accounts", "offers", "budget", "areas"] as const;
+export const SETUP_KEYS = ["website", "accounts", "offers", "budget", "areas"] as const;
 export type SetupKey = (typeof SETUP_KEYS)[number];
 
 /**
- * The answers we cannot start without: where to post and advertise, how much to spend, and which areas to work on. "What to
+ * The answers we cannot start without: the website the posts are written from, where to post and advertise, how much to spend, and which areas to work on. "What to
  * promote" is no longer asked: it comes up on the kickoff call. Only these are asked of the customer after it.
  */
-export const BLOCKING_SETUP_KEYS: readonly SetupKey[] = ["accounts", "budget", "areas"];
+export const BLOCKING_SETUP_KEYS: readonly SetupKey[] = ["website", "accounts", "budget", "areas"];
 
 export function isBlockingSetup(key: SetupKey): boolean {
   return BLOCKING_SETUP_KEYS.includes(key);
@@ -23,6 +23,7 @@ export function isBlockingSetup(key: SetupKey): boolean {
 
 /** Which service's saved answers each item lives in (service_setup.service). */
 export const SETUP_SERVICE: Readonly<Record<SetupKey, "social" | "search">> = {
+  website: "social",
   accounts: "social",
   offers: "social",
   budget: "social",
@@ -41,6 +42,7 @@ export interface SetupField {
 }
 
 export const SETUP_FIELDS: Readonly<Record<SetupKey, readonly SetupField[]>> = {
+  website: [{ name: "websiteUrl", label: "Your website address", kind: "text", hint: "We read it to learn what you sell and how you talk, then write your posts from it.", placeholder: "www.yourshop.in" }],
   accounts: [
     { name: "instagramUrl", label: "Instagram page", kind: "text", placeholder: "instagram.com/yourbusiness" },
     { name: "facebookUrl", label: "Facebook page", kind: "text", placeholder: "facebook.com/yourbusiness" },
@@ -118,12 +120,40 @@ function pageLink(raw: string, hosts: readonly string[]): string | null {
   return onHost(url.hostname, hosts) ? `https://${url.hostname}${url.pathname}` : null;
 }
 
+/**
+ * The website address to write posts from: a public site name, with https:// added when it is missing. Keeps the host and the
+ * path only, so nothing in a query or a login can come along. A bare address, a number address, a local name or one with a
+ * port is refused: it is read from outside later, and only a public site can be.
+ */
+function websiteAddress(raw: string): string | null {
+  const text = raw.trim();
+  if (text === "" || text.length > LINK_MAX) return null;
+  let url: URL;
+  try {
+    url = new URL(/^https?:\/\//i.test(text) ? text : `https://${text}`);
+  } catch {
+    return null;
+  }
+  if (url.username !== "" || url.password !== "" || url.port !== "") return null;
+  const host = url.hostname.toLowerCase();
+  const labels = host.split(".");
+  const publicName = labels.length >= 2 && labels.every((label) => /^[a-z0-9]([a-z0-9-]*[a-z0-9])?$/.test(label)) && /[a-z]/.test(labels[labels.length - 1] ?? "");
+  if (!publicName || ["localhost", "local", "internal", "test", "invalid", "example"].includes(labels[labels.length - 1] ?? "")) return null;
+  const path = url.pathname.replace(/\/+$/, "");
+  return `https://${host}${path}`;
+}
+
 const GOOGLE_HOSTS = ["google.com", "g.page", "goo.gl", "share.google"] as const;
 
 /** Checks one item's form. `input` is the form's text values, untrimmed; `currency` is the business's, for the budget's wording. */
 export function parseSetupItem(key: SetupKey, input: Readonly<Record<string, string>>, currency: MoneyCurrency): SetupParse {
   const value = (name: string): string => (input[name] ?? "").trim();
   switch (key) {
+    case "website": {
+      const website = websiteAddress(value("websiteUrl"));
+      if (website === null) return fail("websiteUrl", "That does not look like a website address. Paste the address of your site, for example www.yourshop.in.");
+      return { success: true, answers: { websiteUrl: website } };
+    }
     case "accounts": {
       const instagram = pageLink(value("instagramUrl"), ["instagram.com"]);
       if (instagram === null) return fail("instagramUrl", "That does not look like an Instagram link. Paste the address of your page.");
@@ -181,6 +211,7 @@ const filled = (answers: Answers, name: string): boolean => typeof answers?.[nam
 /** Which items are done, read from the saved answers of each service. */
 export function doneSetupKeys(saved: { readonly social: Answers; readonly search: Answers }): SetupKey[] {
   const done: SetupKey[] = [];
+  if (filled(saved.social, "websiteUrl")) done.push("website");
   if (filled(saved.social, "instagramUrl") || filled(saved.social, "facebookUrl")) done.push("accounts");
   if (filled(saved.social, "offers")) done.push("offers");
   const budget = saved.social?.["adBudgetRupees"];

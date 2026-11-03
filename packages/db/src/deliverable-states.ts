@@ -10,7 +10,7 @@ export type DeliverableKind = (typeof DELIVERABLE_KINDS)[number];
 export const DELIVERABLE_STATUSES = ["planned", "awaiting_approval", "approved", "published"] as const;
 export type DeliverableStatus = (typeof DELIVERABLE_STATUSES)[number];
 
-/** A post belongs to Social & Ads; a page and a listing belong to Search. */
+/** A post belongs to Social media; a page and a listing belong to Search. */
 export type DeliverableService = "social" | "search";
 
 export function serviceOfKind(kind: DeliverableKind): DeliverableService {

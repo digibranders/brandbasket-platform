@@ -4,7 +4,7 @@ import { andList } from "@/lib/first-look";
 /** What a call is about, as staff read it in the alert: the same words as the console's calls list. */
 const REASON_NAMES: Readonly<Record<CallReason, string>> = {
   website: "Website",
-  social: "Social & Ads",
+  social: "Social media",
   search: "Search",
   billing: "Billing",
   other: "Something else",

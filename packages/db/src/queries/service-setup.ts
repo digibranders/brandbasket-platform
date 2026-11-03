@@ -31,7 +31,7 @@ const SERVICE_OF_ADD_ON: Readonly<Record<string, SetupService>> = { "digital-gro
 const SERVICE_ORDER: readonly SetupService[] = ["social", "search"];
 const PAID_SUBSCRIPTION_STATUSES: readonly string[] = ["active", "scheduled", "past_due"];
 
-/** Which of Social & Ads and Search the business has bought, from its add-ons taken with the plan and those bought later. */
+/** Which of Social media and Search the business has bought, from its add-ons taken with the plan and those bought later. */
 export function boughtSetupServicesFrom(
   bundled: readonly Pick<BundledAddOn, "addOn" | "status" | "endRequestedAt">[],
   subscriptions: readonly Pick<AddOnSubscription, "addOn" | "status">[],

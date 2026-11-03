@@ -10,7 +10,7 @@ export const SERVICE_KEY_OF: Readonly<Record<MonthlyAddOnId, ServiceKey>> = {
   "local-seo-aeo": "search",
 };
 
-export const SERVICE_NAMES: Readonly<Record<ServiceKey, string>> = { website: "Website", social: "Social & Ads", search: "Local SEO + AEO" };
+export const SERVICE_NAMES: Readonly<Record<ServiceKey, string>> = { website: "Website", social: "Social media", search: "Local SEO + AEO" };
 
 const SERVICE_WORDS: Readonly<Record<ServiceKey, string>> = { website: "website", social: "social", search: "search" };
 

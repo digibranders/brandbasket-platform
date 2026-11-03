@@ -12,7 +12,7 @@ function form(fields: Record<string, string | string[]>): FormData {
 
 describe("kindOptions", () => {
   it("offers the services the customer bought, then Billing and Something else", () => {
-    expect(kindOptions(["website", "social"]).map((option) => option.label)).toEqual(["Website", "Social & Ads", "Billing", "Something else"]);
+    expect(kindOptions(["website", "social"]).map((option) => option.label)).toEqual(["Website", "Social media", "Billing", "Something else"]);
     expect(kindOptions([]).map((option) => option.value)).toEqual(["billing", "other"]);
     expect(kindOptions(["search", "website", "social"]).map((option) => option.value)).toEqual(["website", "social", "search", "billing", "other"]);
   });

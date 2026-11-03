@@ -11,7 +11,7 @@ export const LEAD_SOURCE_LABELS: Readonly<Record<LeadSource, string>> = {
 };
 
 /** The plans on the website's basket, by the ids the website sends (brandbasket-website lib/pricing.ts PLAN_IDS). */
-const WEBSITE_PLAN_LABELS: Readonly<Record<string, string>> = { website: "Website", growth: "Social & Ads", search: "Search" };
+const WEBSITE_PLAN_LABELS: Readonly<Record<string, string>> = { website: "Website", growth: "Social media", search: "Search" };
 
 /** The website's plan ids by name; an id this list does not know is shown as it is. */
 export function websitePlanLabels(plans: readonly string[]): readonly string[] {

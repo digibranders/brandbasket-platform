@@ -142,7 +142,7 @@ describe("PaymentWelcome", () => {
     search = "welcome=1";
     render(["website", "social", "search"]);
     expect([...dialog().querySelectorAll("li")].map((row) => row.textContent)).toEqual([
-      "Website", "Social & Ads", "Local SEO + AEO",
+      "Website", "Social media", "Local SEO + AEO",
     ]);
   });
 
@@ -153,7 +153,7 @@ describe("PaymentWelcome", () => {
     expect(dialog().textContent).toContain("Welcome to Brandbasket.");
     expect(dialog().textContent).toContain("Website");
     expect(dialog().textContent).toContain("Local SEO + AEO");
-    expect(dialog().textContent).not.toContain("Social & Ads");
+    expect(dialog().textContent).not.toContain("Social media");
   });
 
   it("stays closed on any other visit", () => {

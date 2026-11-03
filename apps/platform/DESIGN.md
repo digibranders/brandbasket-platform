@@ -24,7 +24,7 @@ anything from you, and how do you reach us.
 | `warn`, `warn-wash` | #8a5300, #fdf1dc | Waiting for the customer, counts |
 | `info`, `info-wash` | #2456a6, #e9f0fb | In progress |
 | `error`, `error-wash` | #b42318, #fdecea | Problems |
-| `c-site`, `c-growth`, `c-search` | #c48a47, #1f7a74, #3558a0 | Service marks: Website, Social & Ads, Local SEO + AEO |
+| `c-site`, `c-growth`, `c-search` | #c48a47, #1f7a74, #3558a0 | Service marks: Website, Social media, Local SEO + AEO |
 
 A status colour always comes with a word. A service mark is a small square beside a service's name, never a fill. No
 other hex values in new code. Light theme only.
@@ -71,7 +71,7 @@ at 390px with no sideways scroll.
 The sidebar (`lib/rail.ts`, drawn by `components/v2/rail.tsx`) has four groups:
 
 - **Home**
-- **Services**: Website (tabs Overview, Pages, Enquiries), Blog (tabs Posts, Authors, Categories) right under it, Social & Ads,
+- **Services**: Website (tabs Overview, Pages, Enquiries), Blog (tabs Posts, Authors, Categories) right under it, Social media, Ads (a sample page for now),
   Local SEO + AEO. Website and Blog go together; each of the others only when the
   customer has it (`lib/server/active-services.ts`).
 - **Manage**: Requests (with the number waiting on the customer), Business.
@@ -118,7 +118,7 @@ nothing new in that style. When one is rebuilt (the phases in the implementation
 
 | Family | Where |
 |---|---|
-| Every page body | Home, Requests, Website, Business, Plan & billing, Settings, Social & Ads, Local SEO + AEO: titles and frames are v3, the sections inside are rebuilt phase by phase |
+| Every page body | Home, Requests, Website, Business, Plan & billing, Settings, Social media, Local SEO + AEO: titles and frames are v3, the sections inside are rebuilt phase by phase |
 | Website content editors | Blog post, author and category editors, blog settings and the rich text editor (`content/*`) |
 | Account entry | Sign in, join, forgot and reset password, confirm email, restore account, setup links (`EntryScreen`, `AuthScreen`) |
 | Before the first payment | Checkout (`plan`), `billing/pay`, `billing/confirm`, `billing/charges/*`, `restore-account/keep-plan`, `PaymentWaiting`, the billing banner |

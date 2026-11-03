@@ -7,7 +7,7 @@ import { dueLabel } from "@/lib/social/week";
 /** What a request can be about, in the words of the form. */
 export const KIND_LABELS: Readonly<Record<ChangeKind, string>> = {
   website: "Website",
-  social: "Social & Ads",
+  social: "Social media",
   search: "Local SEO + AEO",
   billing: "Billing",
   other: "Something else",

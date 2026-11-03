@@ -45,11 +45,12 @@ describe("railSections", () => {
 describe("the service links", () => {
   const services = (input: Partial<Parameters<typeof railSections>[0]>) => railSections({ ...FULL, ...input }).find((section) => section.label === "Services");
 
-  it("lists Website, the Blog under it, Social & Ads and Local SEO + AEO in that order for a customer with all three", () => {
+  it("lists Website, the Blog under it, Social media, Ads and Local SEO + AEO in that order for a customer with all three", () => {
     expect(services({ hasSocial: true, hasSearch: true })?.links.map((entry) => [entry.label, entry.href, entry.mark])).toEqual([
       ["Website", "/website", "website"],
       ["Blog", "/content/blog", undefined],
-      ["Social & Ads", "/social", "social"],
+      ["Social media", "/social", "social"],
+      ["Ads", "/ads", "social"],
       ["Local SEO + AEO", "/search", "search"],
     ]);
   });
@@ -60,8 +61,8 @@ describe("the service links", () => {
     expect(labels).not.toContain("Search");
   });
 
-  it("has Social & Ads and no Website link for a plan without the website", () => {
-    expect(services({ hasWebsite: false, hasSocial: true })?.links.map((entry) => entry.label)).toEqual(["Social & Ads"]);
+  it("has Social media and Ads, and no Website link, for a plan without the website", () => {
+    expect(services({ hasWebsite: false, hasSocial: true })?.links.map((entry) => entry.label)).toEqual(["Social media", "Ads"]);
   });
 
   it("leaves a service out when it is not bought, or not said", () => {
@@ -71,7 +72,8 @@ describe("the service links", () => {
 
   it("can be found by search", () => {
     const sections = railSections({ ...FULL, hasSocial: true, hasSearch: true });
-    expect(searchRail(sections, "social").map((target) => target.label)).toEqual(["Social & Ads"]);
+    expect(searchRail(sections, "social").map((target) => target.label)).toEqual(["Social media"]);
+    expect(searchRail(sections, "ads").map((target) => [target.label, target.href])).toEqual([["Ads", "/ads"]]);
     expect(searchRail(sections, "seo").map((target) => target.href)).toEqual(["/search"]);
   });
 
@@ -163,8 +165,8 @@ describe("phoneTabs", () => {
     expect(labels({ ...FULL, hasSocial: true })).toEqual(["Home", "Website", "Requests", "Business"]);
   });
 
-  it("uses Social & Ads as the service tab, and keeps Business, for a plan without the website", () => {
-    expect(labels({ ...FULL, hasWebsite: false, hasSocial: true })).toEqual(["Home", "Social & Ads", "Requests", "Business"]);
+  it("uses Social media as the service tab, and keeps Business, for a plan without the website", () => {
+    expect(labels({ ...FULL, hasWebsite: false, hasSocial: true })).toEqual(["Home", "Social media", "Requests", "Business"]);
   });
 
   it("has no service tab when none is bought", () => {

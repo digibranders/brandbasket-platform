@@ -1,6 +1,31 @@
 import { describe, expect, it } from "vitest";
 import { doneSetupKeys, parseSetupItem, SETUP_FIELDS, SETUP_KEYS, setupFieldsFor } from "@/lib/service-setup";
 
+describe("parseSetupItem website", () => {
+  const parse = (websiteUrl: string) => parseSetupItem("website", { websiteUrl }, "INR");
+
+  it("adds https:// to a bare address and keeps only the host and the path", () => {
+    expect(parse("www.yourshop.in")).toEqual({ success: true, answers: { websiteUrl: "https://www.yourshop.in" } });
+    expect(parse("  HTTP://YourShop.in/menu/?utm=1#top ")).toEqual({ success: true, answers: { websiteUrl: "https://yourshop.in/menu" } });
+    expect(parse("https://shop.example.co.in/")).toEqual({ success: true, answers: { websiteUrl: "https://shop.example.co.in" } });
+  });
+
+  it.each([
+    ["nothing", ""],
+    ["not an address", "my shop"],
+    ["a name with no dot", "yourshop"],
+    ["a local name", "localhost"],
+    ["an internal name", "intranet.local"],
+    ["a number address", "http://192.168.1.10"],
+    ["a port", "https://yourshop.in:8080"],
+    ["a login in the address", "https://me:pw@yourshop.in"],
+    ["a page that is not a web page", "javascript:alert(1)"],
+    ["too long", `https://yourshop.in/${"a".repeat(200)}`],
+  ])("refuses %s", (_name, value) => {
+    expect(parse(value)).toMatchObject({ success: false, field: "websiteUrl" });
+  });
+});
+
 describe("parseSetupItem accounts", () => {
   it("accepts a page link with or without the scheme and keeps the answer an admin choice", () => {
     const result = parseSetupItem("accounts", { instagramUrl: "instagram.com/saidental", facebookUrl: "", adminAccess: "added" }, "INR");
@@ -82,6 +107,7 @@ describe("parseSetupItem limits", () => {
     const cases = [
       { key: "accounts", input: { instagramUrl: `instagram.com/${long}`, facebookUrl: "", adminAccess: "added" }, field: "instagramUrl" },
       { key: "accounts", input: { instagramUrl: "", facebookUrl: `facebook.com/${long}`, adminAccess: "added" }, field: "facebookUrl" },
+      { key: "website", input: { websiteUrl: `https://yourshop.in/${long}` }, field: "websiteUrl" },
       { key: "offers", input: { offers: long }, field: "offers" },
       { key: "budget", input: { adBudgetRupees: long, adArea: "Thane" }, field: "adBudgetRupees" },
       { key: "budget", input: { adBudgetRupees: "5000", adArea: long }, field: "adArea" },
@@ -105,6 +131,11 @@ describe("doneSetupKeys", () => {
         search: { areas: "Thane" },
       }),
     ).toEqual(["accounts", "budget", "areas"]);
+  });
+
+  it("counts the website once an address is saved, and not a blank one", () => {
+    expect(doneSetupKeys({ social: { websiteUrl: "https://yourshop.in" }, search: undefined })).toEqual(["website"]);
+    expect(doneSetupKeys({ social: { websiteUrl: "  " }, search: undefined })).toEqual([]);
   });
 
   it("does not count a budget without an area, or a blank offer", () => {

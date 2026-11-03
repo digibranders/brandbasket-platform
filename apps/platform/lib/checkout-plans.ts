@@ -47,7 +47,7 @@ const WEBSITE_STEPS: readonly CheckoutStep[] = [
   { title: "Your website is live", note: "Within 7 working days of the call" },
 ];
 
-/** "What happens next" for a basket without it (Social & Ads and/or Search): there is no website to build. */
+/** "What happens next" for a basket without it (Social media and/or Search): there is no website to build. */
 const NO_WEBSITE_STEPS: readonly CheckoutStep[] = [
   PAY_STEP,
   KICKOFF_STEP,
