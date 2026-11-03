@@ -18,7 +18,7 @@ export type ConnectedSource = (typeof CONNECTED_SOURCES)[number];
 export const REPORT_STATES = ["draft", "held", "approved", "sent"] as const;
 export type ReportState = (typeof REPORT_STATES)[number];
 
-export const SOURCE_STATUSES = ["pending", "connected", "access_lost"] as const;
+export const SOURCE_STATUSES = ["pending", "awaiting_setup", "connected", "access_lost", "removed"] as const;
 export type SourceStatus = (typeof SOURCE_STATUSES)[number];
 
 /** Where a report may go next. Staff hold a draft or approve it; only an approved report is sent, and it can be pulled back to held first. */

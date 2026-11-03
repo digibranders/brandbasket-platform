@@ -21,6 +21,11 @@ describe("mapPaced", () => {
     expect(out).toEqual([2, 4, 6, 8, 10, 12, 14]);
     expect(peak).toBe(MAX_IN_FLIGHT);
   });
+  it("adds the minimum gap to every start", async () => {
+    const waits: number[] = [];
+    await mapPaced([1], async () => 0, { sleep: async (ms) => void waits.push(ms), random: () => 0, minGapMs: 12_000 });
+    expect(waits).toEqual([12_000]);
+  });
   it("starts each item after a random wait", async () => {
     const waits: number[] = [];
     await mapPaced([1, 2], async () => 0, { sleep: async (ms) => void waits.push(ms), random: () => 0.5 });

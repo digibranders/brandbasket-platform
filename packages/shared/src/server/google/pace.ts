@@ -11,6 +11,8 @@ const START_JITTER_MS = 3_000;
 export interface PaceOptions {
   readonly sleep?: (ms: number) => Promise<void>;
   readonly random?: () => number;
+  /** A further wait before each item, on top of the random one: go live makes about six writes per business, against Google's per minute caps. */
+  readonly minGapMs?: number;
 }
 
 const realSleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
@@ -23,7 +25,7 @@ export async function mapPaced<T, R>(items: readonly T[], work: (item: T) => Pro
   let next = 0;
   const lane = async (): Promise<void> => {
     for (let index = next++; index < items.length; index = next++) {
-      await sleep(Math.floor(random() * START_JITTER_MS));
+      await sleep(Math.floor(random() * START_JITTER_MS) + (options.minGapMs ?? 0));
       results[index] = await work(items[index] as T);
     }
   };

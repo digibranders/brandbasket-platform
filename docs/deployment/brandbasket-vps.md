@@ -369,6 +369,32 @@ day, and say "From Google Analytics". They show nothing at all until `CUSTOMER_V
 8. Run it once and read the result: `systemctl start brandbasket-google-sync.service && journalctl -u brandbasket-google-sync -n 20`.
    A good run prints lines starting `Google Analytics:` and `Search Console:`. Then `systemctl enable --now brandbasket-google-sync.timer`.
 
+### Go live: `brandbasket-google-provision`
+
+`brandbasket-google-provision.timer` runs `pnpm google:provision` every 15 minutes. For every business whose latest project is live and
+whose primary domain is its own (a free address, a name ending in `.` plus `CLIENT_SITE_BASE_DOMAIN`, never gets a property, and neither
+does a site taken offline for a lapsed plan) it does these steps, each stored before the next, so a second run changes nothing:
+
+1. Analytics: makes the client's property in the "Brandbasket clients" account (named after the business and the first part of its id,
+   Asia/Kolkata, INR), its web stream (the `G-` id is kept in `report_sources.measurement_id`) and the key events `form_send`, `call_tap`
+   and `whatsapp_tap`. The source row stays `awaiting_setup` ("Tag off") and is not pulled.
+2. Search Console: asks Google for the meta tag token, sets `NEXT_PUBLIC_GSC_VERIFICATION` on the client's Vercel project and builds the
+   newest production deployment again, once (not again for 30 minutes).
+3. When the live page shows the token, asks Google to verify, adds the site to Search Console and lets the nightly pull read it.
+4. Lists `GOOGLE_SECOND_OWNER_EMAIL` as a second owner and reads the owners back. With none set, this step is skipped and noted.
+5. When `GOOGLE_ANALYTICS_TAG_ENABLED=1` (only after counsel's answer on cookies, plan 62 decision 4): sets `NEXT_PUBLIC_GA4_ID`, builds
+   again once, and the Analytics source starts being pulled.
+
+It needs the Setting up sites sign-in connected in the console, `VERCEL_API_TOKEN`, `GOOGLE_ACCOUNT_EMAIL`, `GOOGLE_OAUTH_CLIENT_ID` and
+`GOOGLE_OAUTH_CLIENT_SECRET` in the platform's env file. Optional: `GOOGLE_SECOND_OWNER_EMAIL`, `GOOGLE_ANALYTICS_ACCOUNT_NAME`.
+It paces itself (three businesses at once, 12 seconds between each lane's businesses) to stay far under Google's write limits, so about
+15 businesses a minute. A refused account stops the run and exits 1. Read what it would do first with
+`pnpm google:provision -- --dry-run`, try one business with `pnpm google:provision -- --only <businessId>`, then
+`systemctl start brandbasket-google-provision.service && journalctl -u brandbasket-google-provision -n 20` (a good run prints a line
+starting `Google go live:`) and only then `systemctl enable --now brandbasket-google-provision.timer`. A site whose domain changes is
+verified again from the start; the old numbers stay. Until the site template serves the verification tag (plan 62 step 4), the job
+sets the variable and waits, and the site stays `awaiting_setup`.
+
 ### A customer's own Analytics property (optional)
 
 By default a customer's site gets a new property in our account (plan 62). A customer who wants us to read their existing property

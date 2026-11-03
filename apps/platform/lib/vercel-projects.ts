@@ -52,3 +52,46 @@ async function vercelMessage(response: Response): Promise<string | null> {
     return null;
   }
 }
+
+/** One authenticated Vercel call that expects JSON back. Errors carry the status and Vercel's own message, never the token. */
+async function vercelJson(site: Pick<HostedSite, "vercelTeamId">, options: VercelCallOptions, call: { readonly method: "GET" | "POST"; readonly path: string; readonly query?: string; readonly body?: unknown; readonly what: string }): Promise<unknown> {
+  if (options.token === null) throw new Error("VERCEL_API_TOKEN is not set.");
+  const params = new URLSearchParams(call.query ?? "");
+  if (site.vercelTeamId !== null) params.set("teamId", site.vercelTeamId);
+  const query = params.toString();
+  let response: Response;
+  try {
+    response = await (options.fetch ?? fetch)(`${VERCEL_API}${call.path}${query === "" ? "" : `?${query}`}`, {
+      method: call.method,
+      headers: { Authorization: `Bearer ${options.token}`, "Content-Type": "application/json" },
+      body: call.body === undefined ? undefined : JSON.stringify(call.body),
+      signal: AbortSignal.timeout(TIMEOUT_MS),
+    });
+  } catch {
+    throw new Error(`Could not reach Vercel to ${call.what}.`);
+  }
+  if (!response.ok) {
+    const message = await vercelMessage(response);
+    throw new Error(`Vercel answered ${response.status} to ${call.what}${message === null ? "." : `: ${message}`}`);
+  }
+  return response.json().catch(() => null);
+}
+
+/** Sets (or replaces) one production environment variable on a client's project. The site reads it at its next build. */
+export async function setVercelProjectEnv(site: Pick<HostedSite, "vercelProjectId" | "vercelTeamId">, key: string, value: string, options: VercelCallOptions): Promise<void> {
+  await vercelJson(site, options, {
+    method: "POST",
+    path: `/v10/projects/${encodeURIComponent(site.vercelProjectId)}/env`,
+    query: "upsert=true",
+    body: { key, value, type: "plain", target: ["production"] },
+    what: `set ${key}`,
+  });
+}
+
+/** Builds the project's newest ready production deployment again, so a changed environment variable takes effect. */
+export async function redeployProduction(site: Pick<HostedSite, "vercelProjectId" | "vercelTeamId">, options: VercelCallOptions): Promise<void> {
+  const list = await vercelJson(site, options, { method: "GET", path: "/v6/deployments", query: `projectId=${encodeURIComponent(site.vercelProjectId)}&target=production&state=READY&limit=1`, what: "list deployments" });
+  const latest = typeof list === "object" && list !== null ? (list as { deployments?: { uid?: unknown; name?: unknown }[] }).deployments?.[0] : undefined;
+  if (typeof latest?.uid !== "string" || typeof latest.name !== "string") throw new Error("The project has no ready production deployment to build again.");
+  await vercelJson(site, options, { method: "POST", path: "/v13/deployments", query: "forceNew=1", body: { name: latest.name, deploymentId: latest.uid, target: "production" }, what: "redeploy" });
+}

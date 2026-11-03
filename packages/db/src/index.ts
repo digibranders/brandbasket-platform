@@ -815,6 +815,7 @@ export {
   type NewAddOnSubscription,
   type RecordedAddOnPayment,
 } from "./queries/add-ons";
+export { listProvisionCandidates, saveProvisionedSource, type ProvisionCandidate, type ProvisionedSourceInput, type ProvisionSource } from "./queries/google-provisioning";
 export {
   findGoogleConnection,
   listGoogleConnections,

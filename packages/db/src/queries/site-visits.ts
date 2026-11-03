@@ -1,9 +1,12 @@
-import { and, asc, eq, gte, inArray, lte, sql } from "drizzle-orm";
+import { and, asc, eq, gte, inArray, lte, notInArray, sql } from "drizzle-orm";
 import type { Database } from "../client";
-import type { ReportSource } from "../report-states";
+import type { ReportSource, SourceStatus } from "../report-states";
 import { metricBreakdowns, metricDaily, reportSources, type ReportSourceRow } from "../schema";
 import type { ScopedTransaction } from "../scope";
 import { currentBusinessId } from "./tenant";
+
+/** A source that is set up but not collecting yet, or taken away: the nightly pull leaves it alone. */
+const PAUSED_SOURCE_STATUSES: SourceStatus[] = ["awaiting_setup", "removed"];
 
 /** The sources a customer's visits can come from: our own tracking script, or their Google Analytics. */
 export type VisitSource = Extract<ReportSource, "own" | "ga4">;
@@ -93,7 +96,7 @@ export interface Ga4Property {
 
 /** Every business with a Google Analytics property, whatever its last status: a lost grant is retried, so a customer who fixes it comes back by itself. */
 export async function listGa4Properties(db: Database): Promise<Ga4Property[]> {
-  const rows = await db.select({ businessId: reportSources.businessId, propertyId: reportSources.externalId }).from(reportSources).where(eq(reportSources.source, "ga4"));
+  const rows = await db.select({ businessId: reportSources.businessId, propertyId: reportSources.externalId }).from(reportSources).where(and(eq(reportSources.source, "ga4"), notInArray(reportSources.status, PAUSED_SOURCE_STATUSES)));
   return rows;
 }
 
@@ -108,7 +111,7 @@ export async function latestGa4Day(db: Database, businessId: string): Promise<st
 
 /** Every business with a Search Console site (the address in `external_id`), whatever its last status: a lost grant is retried each night. */
 export async function listGscSites(db: Database): Promise<{ businessId: string; siteUrl: string }[]> {
-  return db.select({ businessId: reportSources.businessId, siteUrl: reportSources.externalId }).from(reportSources).where(eq(reportSources.source, "gsc"));
+  return db.select({ businessId: reportSources.businessId, siteUrl: reportSources.externalId }).from(reportSources).where(and(eq(reportSources.source, "gsc"), notInArray(reportSources.status, PAUSED_SOURCE_STATUSES)));
 }
 
 /** The last day this business has a Search Console clicks number for, or null when none: the job pulls a long window the first time. */
