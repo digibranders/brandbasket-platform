@@ -5,10 +5,13 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import { cx } from "./cx";
 
-const LIST = "flex gap-5 overflow-x-auto border-b border-border";
+// The base line is an inset shadow, not a border: tabs pulled onto a border made the bar 1px taller than its box, and
+// overflow-x then showed a vertical scrollbar under every page header. The bar still scrolls sideways on phones.
+const LIST = "flex gap-5 overflow-x-auto shadow-[inset_0_-1px_0_var(--border)] [scrollbar-width:none]";
 const TAB =
-  "-mb-px inline-flex h-tab shrink-0 items-center gap-2 border-b-2 border-transparent type-body whitespace-nowrap text-ink-3 no-underline transition-colors duration-100 hover:text-ink focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring md:h-10";
-const CURRENT = "border-primary font-medium text-ink";
+  "inline-flex h-tab shrink-0 items-center gap-2 border-b-2 border-transparent type-body whitespace-nowrap text-ink-3 no-underline transition-colors duration-100 hover:text-ink focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring md:h-10";
+// A variant, so it outranks TAB's own colours: plain classes of equal weight lost, and the current tab showed no underline.
+const CURRENT = "aria-[current=page]:border-primary aria-[current=page]:font-medium aria-[current=page]:text-ink";
 const COUNT = "rounded-full bg-neutral-wash px-1.5 type-label text-neutral-text";
 
 export interface TabLink {
@@ -25,7 +28,7 @@ export function TabLinks({ items, current, "aria-label": label }: { readonly ite
       {items.map((item) => {
         const active = item.href === current;
         return (
-          <Link key={item.href} href={item.href} aria-current={active ? "page" : undefined} className={cx(TAB, active && CURRENT)}>
+          <Link key={item.href} href={item.href} aria-current={active ? "page" : undefined} className={cx(TAB, CURRENT)}>
             {item.label}
             {item.count === undefined ? null : <span className={COUNT}>{item.count}</span>}
           </Link>
