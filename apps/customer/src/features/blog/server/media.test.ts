@@ -4,9 +4,11 @@ import { handleBlogUpload, IMAGE_TYPE_MESSAGE, readImageTarget, TARGET_GONE_MESS
 
 const ORIGIN = "https://app.brandbasket.in";
 const TENANT = { businessId: "0192f3c4-1111-7000-8000-000000000001" } as never;
+/** A PNG's signature and a few bytes: what detectImageType reads. */
+const PNG_BYTES = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 13]);
 
 function request(query: string, overrides: { readonly origin?: string; readonly type?: string; readonly body?: Uint8Array } = {}): Request {
-  const bytes = overrides.body ?? new Uint8Array([1, 2, 3]);
+  const bytes = overrides.body ?? PNG_BYTES;
   const body = new ReadableStream<Uint8Array>({
     start(controller) {
       if (bytes.byteLength > 0) controller.enqueue(bytes);
@@ -23,7 +25,7 @@ function request(query: string, overrides: { readonly origin?: string; readonly 
 }
 
 function deps(overrides: Partial<BlogUploadDeps> = {}): BlogUploadDeps {
-  return { getTenant: vi.fn(async () => TENANT), appOrigin: ORIGIN, anyLocalHost: false, ownsTarget: vi.fn(async () => true), store: vi.fn(async () => undefined), ...overrides };
+  return { getTenant: vi.fn(async () => TENANT), appOrigin: ORIGIN, anyLocalHost: false, ownsTarget: vi.fn(async () => true), consumeAllowance: vi.fn(async () => ({ allowed: true }) as const), store: vi.fn(async () => undefined), ...overrides };
 }
 
 async function errorOf(response: Response): Promise<string> {
@@ -80,5 +82,27 @@ describe("handleBlogUpload", () => {
     const response = await handleBlogUpload(request("?post=7"), given);
     expect(response.status).toBe(201);
     expect(given.store).toHaveBeenCalledWith(TENANT, { kind: "post", id: "7" }, expect.objectContaining({ mimeType: "image/png", filename: "cover.png" }));
+    expect(given.consumeAllowance).toHaveBeenCalledWith(TENANT);
+  });
+
+  it("judges the type by the file's own bytes, not the Content-Type it was sent with", async () => {
+    const given = deps();
+    const disguised = await handleBlogUpload(request("?post=7", { body: new TextEncoder().encode("<svg onload=alert(1)>") }), given);
+    expect(disguised.status).toBe(415);
+    expect(await errorOf(disguised)).toBe(IMAGE_TYPE_MESSAGE);
+    expect(given.store).not.toHaveBeenCalled();
+    // A PNG sent as a JPEG is stored as what it is.
+    await handleBlogUpload(request("?post=7", { type: "image/jpeg" }), given);
+    expect(given.store).toHaveBeenCalledWith(TENANT, { kind: "post", id: "7" }, expect.objectContaining({ mimeType: "image/png" }));
+  });
+
+  it("spends the business's hourly upload budget and refuses with Retry-After when it is used up", async () => {
+    const message = "You've uploaded a lot of images in the last hour. Try again in 5 minutes.";
+    const given = deps({ consumeAllowance: vi.fn(async () => ({ allowed: false, retryAfterSeconds: 300, message }) as const) });
+    const response = await handleBlogUpload(request("?post=7"), given);
+    expect(response.status).toBe(429);
+    expect(response.headers.get("Retry-After")).toBe("300");
+    expect(await errorOf(response)).toBe(message);
+    expect(given.store).not.toHaveBeenCalled();
   });
 });

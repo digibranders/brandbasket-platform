@@ -38,6 +38,12 @@ export function CheckoutScreen({ view }: { readonly view: CheckoutView }) {
           </p>
         </Shell>
       );
+    case "owner-only":
+      return (
+        <Shell>
+          <Banner tone="info">Only the owner of this account can pay. Ask them to sign in and finish the checkout.</Banner>
+        </Shell>
+      );
     case "pay":
       return <PayScreen view={view} />;
     default: {

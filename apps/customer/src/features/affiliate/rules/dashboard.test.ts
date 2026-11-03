@@ -1,4 +1,4 @@
-import type { AffiliateCashOut } from "@brandbasket/db";
+import type { AffiliateCashOut, AffiliatePayout } from "@brandbasket/db";
 import { describe, expect, it } from "vitest";
 import {
   cashOutFigure,
@@ -9,6 +9,7 @@ import {
   moneyFigure,
   monthRows,
   payingLine,
+  payoutRow,
   monthsWindowStart,
   primaryCashOut,
 } from "./dashboard";
@@ -146,5 +147,13 @@ describe("firstNameOf", () => {
 describe("dayAsDate", () => {
   it("starts the day in India, so 1 November is still 1 November on screen", () => {
     expect(dayAsDate("2026-11-01").toISOString()).toBe("2026-10-31T18:30:00.000Z");
+  });
+});
+
+describe("payoutRow", () => {
+  it("works out what reached the affiliate: the payout less what was withheld", () => {
+    const payout = { id: "p1", reference: "UTR123", amountCents: 800_000, withheldCents: 80_000, withheldReason: "TDS", currency: "INR", paidOn: "2026-10-12" } as unknown as AffiliatePayout;
+    expect(payoutRow(payout)).toEqual({ ...payout, receivedCents: 720_000 });
+    expect(payoutRow({ ...payout, withheldCents: 0, withheldReason: null }).receivedCents).toBe(800_000);
   });
 });

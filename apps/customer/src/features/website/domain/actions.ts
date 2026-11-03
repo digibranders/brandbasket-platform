@@ -1,6 +1,6 @@
 "use server";
 
-import { DomainTakenError, findLatestProject, getConnectingDomain, getPrimaryDomain, recordDomainDnsCheck, requestDomainMove, withTenantScope } from "@brandbasket/db";
+import { consumeRateLimit, DomainTakenError, findLatestProject, getConnectingDomain, getPrimaryDomain, recordDomainDnsCheck, requestDomainMove, withTenantScope, type RateLimitRule } from "@brandbasket/db";
 import { clientSiteBaseDomain, isTemporarySubdomain, parseDomainForm, reservedHostnamesFrom } from "@brandbasket/shared/lib/onboarding/domain-form";
 import { siteConfig } from "@brandbasket/shared/lib/site-config";
 import { revalidatePath } from "next/cache";
@@ -13,25 +13,32 @@ import { notifyTeamDomainConnected, notifyTeamDomainRequested } from "../alerts"
 import { VIEWER_MESSAGE } from "../rules/notices";
 import { WEBSITE_DOMAIN_PATH } from "../rules/paths";
 import { checkDomainDns, type DomainCheck } from "./dns-check";
-import { CHECK_FAILED_MESSAGE, MOVE_NOT_AVAILABLE_MESSAGE, MOVE_TAKEN_MESSAGE, NO_DOMAIN_TO_CHECK_MESSAGE, NOT_TIME_TO_CONNECT_MESSAGE } from "./rules";
+import { CHECK_FAILED_MESSAGE, MOVE_NOT_AVAILABLE_MESSAGE, MOVE_TAKEN_MESSAGE, NO_DOMAIN_TO_CHECK_MESSAGE, NOT_TIME_TO_CONNECT_MESSAGE, TOO_MANY_CHECKS_MESSAGE } from "./rules";
 
 /*
  * Ported from apps/platform app/app-host/(protected)/project/actions.ts (checkDomainAction) and domain/actions.ts
  * (requestOwnDomainAction).
  */
 
+/** Someone waiting on DNS presses Check every few minutes at most; a loop is not that. */
+const DOMAIN_CHECKS_PER_BUSINESS: RateLimitRule = { limit: 20, windowSeconds: 60 * 60 };
+
 /**
  * "Check my domain": looks up the DNS of the business's own STORED domain, never a form value, so it cannot probe arbitrary
  * names. Runs once staff have asked the customer to connect it, and for a live site too (only a domain in the DNS step changes
  * status). The result is recorded on the staff connection, because the customer role cannot change a domain's status; the
- * guard proves the business is the caller's own. The team is told the first time it is found connected.
+ * guard proves the business is the caller's own. The team is told the first time it is found connected. A viewer may not
+ * write, and each business gets a budget of lookups, since every one is a DNS query and a staff write.
  */
 export async function checkDomainAction(): Promise<ActionResult<DomainCheck>> {
   const context = await requireWebsite();
+  if (context.role === "viewer") return actionFail(VIEWER_MESSAGE);
   const domain = await withTenantScope(getAppDb(), context.tenant, getConnectingDomain);
   if (domain === null || isTemporarySubdomain(domain.hostname)) return actionFail(NO_DOMAIN_TO_CHECK_MESSAGE);
   if (domain.status === "pending") return actionFail(NOT_TIME_TO_CONNECT_MESSAGE);
   try {
+    const budget = await consumeRateLimit(getAppDb(), `domain-check:business:${context.businessId}`, DOMAIN_CHECKS_PER_BUSINESS);
+    if (!budget.allowed) return actionFail(TOO_MANY_CHECKS_MESSAGE);
     const check = await checkDomainDns(domain.hostname);
     const recorded = await recordDomainDnsCheck(getStaffDb(), { businessId: context.businessId, hostname: domain.hostname, result: check.overall });
     if (recorded.becameConnected) await notifyTeamDomainConnected({ id: context.businessId, name: context.businessName }, domain.hostname);

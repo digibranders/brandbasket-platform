@@ -112,6 +112,15 @@ describe("loadBillingOverview", () => {
     expect(lapsed.reactivation).toEqual({ ok: true, data: { planName: expect.any(String), monthlyAmount: "₹2,999", chosen: null, picker: null } });
   });
 
+  it("prices a reactivation less the kept code through the shared renewal figure, and refuses one that leaves nothing", async () => {
+    const lapsedOwner = customerWith("owner", { status: "lapsed", hasAccess: false });
+    vi.mocked(findReactivationPlan).mockResolvedValue(PLAN as never);
+    vi.mocked(findReactivation).mockResolvedValue({ cancelled: false, services: ["managed-website"], netCents: 299_900, discountCents: 30_000 });
+    expect((await loadBillingOverview(lapsedOwner, {}, NOW)).reactivation).toMatchObject({ ok: true, data: { monthlyAmount: "₹2,699" } });
+    vi.mocked(findReactivation).mockResolvedValue({ cancelled: false, services: ["managed-website"], netCents: 299_900, discountCents: 299_900 });
+    expect((await loadBillingOverview(lapsedOwner, {}, NOW)).reactivation).toMatchObject({ ok: false });
+  });
+
   it("returns the panel's failure, never an empty list, when the services cannot be read", async () => {
     vi.mocked(loadAddOnsPage).mockRejectedValue(new Error("db down"));
     const view = await loadBillingOverview(customerWith("owner"), {}, NOW);

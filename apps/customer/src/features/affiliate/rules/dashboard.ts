@@ -2,7 +2,7 @@
  * Ported from apps/platform lib/affiliate-dashboard.ts. The cash-out bar and its shares (cashOutShares) are not ported: the
  * dashboard is plain tables now, and what the bar drew is rows.
  */
-import type { AffiliateCashOut, AffiliateMonthlyActivity, BillingCurrency, ListedReferralCode } from "@brandbasket/db";
+import type { AffiliateCashOut, AffiliateMonthlyActivity, AffiliatePayout, BillingCurrency, ListedReferralCode } from "@brandbasket/db";
 import { formatMoney } from "@/lib/format";
 
 /** What an affiliate's code is doing, in one word and one tone. Colour never stands alone: the word says the same. */
@@ -128,4 +128,14 @@ export function firstNameOf(name: string): string {
 /** A calendar day staff entered (`YYYY-MM-DD`) as the start of that day in India, ready for formatDate. */
 export function dayAsDate(day: string): Date {
   return new Date(`${day}T00:00:00+05:30`);
+}
+
+/** A payout as the dashboard lists it, with what reached the affiliate worked out here rather than in the table. */
+export interface PayoutRow extends AffiliatePayout {
+  readonly receivedCents: number;
+}
+
+/** What reached the affiliate: the payout less what was withheld (no shared billing function covers a payout). */
+export function payoutRow(payout: AffiliatePayout): PayoutRow {
+  return { ...payout, receivedCents: payout.amountCents - payout.withheldCents };
 }

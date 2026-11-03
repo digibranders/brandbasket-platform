@@ -5,7 +5,7 @@ import { notifyTeamDomainConnected, notifyTeamDomainRequested } from "../alerts"
 import { VIEWER_MESSAGE } from "../rules/notices";
 import { checkDomainAction, requestOwnDomainAction } from "./actions";
 import { checkDomainDns } from "./dns-check";
-import { CHECK_FAILED_MESSAGE, MOVE_NOT_AVAILABLE_MESSAGE, MOVE_TAKEN_MESSAGE, NO_DOMAIN_TO_CHECK_MESSAGE, NOT_TIME_TO_CONNECT_MESSAGE } from "./rules";
+import { CHECK_FAILED_MESSAGE, MOVE_NOT_AVAILABLE_MESSAGE, MOVE_TAKEN_MESSAGE, NO_DOMAIN_TO_CHECK_MESSAGE, NOT_TIME_TO_CONNECT_MESSAGE, TOO_MANY_CHECKS_MESSAGE } from "./rules";
 
 const BUSINESS_ID = "0192f3c4-1111-7000-8000-000000000001";
 
@@ -21,7 +21,7 @@ let connecting: { hostname: string; status: string; isPrimary: boolean } | null;
 let primary: { hostname: string; status: string } | null;
 let projectStatus: string;
 const moves: string[] = [];
-const db = vi.hoisted(() => ({ recordDomainDnsCheck: vi.fn(), requestDomainMove: vi.fn() }));
+const db = vi.hoisted(() => ({ recordDomainDnsCheck: vi.fn(), requestDomainMove: vi.fn(), consumeRateLimit: vi.fn() }));
 
 vi.mock("@brandbasket/db", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@brandbasket/db")>()),
@@ -31,6 +31,7 @@ vi.mock("@brandbasket/db", async (importOriginal) => ({
   findLatestProject: async () => ({ status: projectStatus }),
   recordDomainDnsCheck: db.recordDomainDnsCheck,
   requestDomainMove: db.requestDomainMove,
+  consumeRateLimit: db.consumeRateLimit,
 }));
 
 function context(role: "owner" | "viewer" = "owner") {
@@ -52,6 +53,7 @@ beforeEach(() => {
   projectStatus = "live";
   vi.mocked(requireWebsite).mockResolvedValue(context() as never);
   db.recordDomainDnsCheck.mockResolvedValue({ becameConnected: false });
+  db.consumeRateLimit.mockResolvedValue({ allowed: true });
   db.requestDomainMove.mockImplementation(async (_tx: unknown, input: { hostname: string }) => {
     moves.push(input.hostname);
   });
@@ -73,6 +75,25 @@ describe("checkDomainAction", () => {
     connecting = { hostname: "apex.in", status: "pending", isPrimary: true };
     expect(await checkDomainAction()).toEqual({ ok: false, message: NOT_TIME_TO_CONNECT_MESSAGE });
     expect(checkDomainDns).not.toHaveBeenCalled();
+  });
+
+  it("refuses a viewer before any lookup or write", async () => {
+    vi.mocked(requireWebsite).mockResolvedValue(context("viewer") as never);
+    expect(await checkDomainAction()).toEqual({ ok: false, message: VIEWER_MESSAGE });
+    expect(db.consumeRateLimit).not.toHaveBeenCalled();
+    expect(checkDomainDns).not.toHaveBeenCalled();
+    expect(db.recordDomainDnsCheck).not.toHaveBeenCalled();
+  });
+
+  it("counts checks per business and stops at the hourly budget", async () => {
+    vi.mocked(checkDomainDns).mockResolvedValue({ overall: "connected", records: [] });
+    await checkDomainAction();
+    expect(db.consumeRateLimit).toHaveBeenCalledWith({}, `domain-check:business:${BUSINESS_ID}`, { limit: 20, windowSeconds: 3600 });
+    vi.clearAllMocks();
+    db.consumeRateLimit.mockResolvedValue({ allowed: false, retryAfterSeconds: 60 });
+    expect(await checkDomainAction()).toEqual({ ok: false, message: TOO_MANY_CHECKS_MESSAGE });
+    expect(checkDomainDns).not.toHaveBeenCalled();
+    expect(db.recordDomainDnsCheck).not.toHaveBeenCalled();
   });
 
   it("says try again when the DNS service cannot be reached", async () => {

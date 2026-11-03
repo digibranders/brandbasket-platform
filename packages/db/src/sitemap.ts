@@ -11,12 +11,19 @@ export type ParsedSitemap =
 
 const ENTITIES: Readonly<Record<string, string>> = { amp: "&", lt: "<", gt: ">", quot: '"', apos: "'" };
 
+const MAX_CODE_POINT = 0x10ffff;
+
+/** The character a numeric reference names, or nothing for one beyond Unicode (String.fromCodePoint would throw). */
+function fromCodePoint(codePoint: number): string {
+  return codePoint <= MAX_CODE_POINT ? String.fromCodePoint(codePoint) : "";
+}
+
 function decodeXmlText(value: string): string {
   const unwrapped = value.replace(/^<!\[CDATA\[([\s\S]*)\]\]>$/, "$1");
   return unwrapped.replace(/&(amp|lt|gt|quot|apos|#\d+|#x[0-9a-f]+);/gi, (_match, entity: string) => {
     const lower = entity.toLowerCase();
-    if (lower.startsWith("#x")) return String.fromCodePoint(Number.parseInt(lower.slice(2), 16));
-    if (lower.startsWith("#")) return String.fromCodePoint(Number.parseInt(lower.slice(1), 10));
+    if (lower.startsWith("#x")) return fromCodePoint(Number.parseInt(lower.slice(2), 16));
+    if (lower.startsWith("#")) return fromCodePoint(Number.parseInt(lower.slice(1), 10));
     return ENTITIES[lower] ?? "";
   });
 }

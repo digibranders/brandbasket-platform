@@ -4,8 +4,10 @@ import path from "node:path";
 import type { TenantContext } from "@brandbasket/shared/lib/access";
 import { parseUploadFileName } from "@brandbasket/shared/lib/uploads/file-name";
 import { isAcceptedUploadType, UPLOAD_FILE_NAME_HEADER } from "@brandbasket/shared/lib/uploads/limits";
+import { detectImageType } from "@brandbasket/shared/server/media-upload";
 import type { Payload } from "payload";
 import { readUploadBody, refuseUpload, refuseUploadEnvelope, UPLOAD_RELOAD_MESSAGE, UPLOAD_SIGNED_OUT_MESSAGE } from "@/features/checklist/server/upload-request";
+import type { UploadAllowance } from "@/lib/server-media/onboarding-media";
 import { isDocId, relationId } from "../rules/paths";
 import { ownedOrNull, requireOwnedBlogPost, requireOwnedTaxonomyDoc } from "./store";
 
@@ -41,6 +43,8 @@ export interface BlogUploadDeps {
   readonly anyLocalHost: boolean;
   /** False when the post or author is missing or another business's. Checked before the body is read. */
   readonly ownsTarget: (tenant: TenantContext, target: BlogImageTarget) => Promise<boolean>;
+  /** Spends one of the business's hourly uploads: the same budget as /api/uploads. Checked before the body is read. */
+  readonly consumeAllowance: (tenant: TenantContext) => Promise<UploadAllowance>;
   readonly store: (tenant: TenantContext, target: BlogImageTarget, image: ReceivedImage) => Promise<void>;
 }
 
@@ -49,8 +53,9 @@ export const IMAGE_TYPE_MESSAGE = "Choose a JPEG, PNG or WEBP image.";
 
 /**
  * `POST /website/blog/media?post=<id>` or `?author=<id>`, the raw image bytes in the body. The envelope checks (Host,
- * Origin, Content-Length, 4 MB) come first, then the target, the session and its rights, the type, ownership, and the
- * body last, counted again whatever Content-Length claimed.
+ * Origin, Content-Length, 4 MB) come first, then the target, the session and its rights, the declared type, ownership, the
+ * hourly upload budget, and the body last, counted again whatever Content-Length claimed. The file's own first bytes decide
+ * its type; the declared one is only an early refusal.
  */
 export async function handleBlogUpload(request: Request, deps: BlogUploadDeps): Promise<Response> {
   const refused = refuseUploadEnvelope(request, deps.appOrigin, deps.anyLocalHost);
@@ -67,11 +72,16 @@ export async function handleBlogUpload(request: Request, deps: BlogUploadDeps): 
   if (!isAcceptedUploadType(mimeType)) return refuseUpload(415, IMAGE_TYPE_MESSAGE);
   if (!(await deps.ownsTarget(tenant, target))) return refuseUpload(404, TARGET_GONE_MESSAGE);
 
+  const allowance = await deps.consumeAllowance(tenant);
+  if (!allowance.allowed) return refuseUpload(429, allowance.message, { "Retry-After": String(allowance.retryAfterSeconds) });
+
   const bytes = await readUploadBody(request);
   if (bytes instanceof Response) return bytes;
   if (bytes.byteLength === 0) return refuseUpload(422, "That file is empty.");
+  const detected = detectImageType(bytes.subarray(0, 12));
+  if (detected === null) return refuseUpload(415, IMAGE_TYPE_MESSAGE);
 
-  await deps.store(tenant, target, { bytes, mimeType, filename: parseUploadFileName(request.headers.get(UPLOAD_FILE_NAME_HEADER)) });
+  await deps.store(tenant, target, { bytes, mimeType: detected, filename: parseUploadFileName(request.headers.get(UPLOAD_FILE_NAME_HEADER)) });
   return Response.json({ ok: true }, { status: 201, headers: { "Cache-Control": "no-store" } });
 }
 

@@ -5,6 +5,7 @@ import { Badge, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } 
 import type { TeamMember } from "../loader";
 import { ROLE_HELP, roleLabel, type PendingInvite } from "../rules";
 import { InviteDialog } from "./invite-dialog";
+import { RemoveMemberButton } from "./remove-member-button";
 import { RevokeInviteButton } from "./revoke-invite-button";
 
 export interface TeamPanelsProps {
@@ -24,6 +25,9 @@ export function TeamPanels({ members, invites }: TeamPanelsProps) {
               <TableHeader>Name</TableHeader>
               <TableHeader>Role</TableHeader>
               <TableHeader hideOnPhone>Joined</TableHeader>
+              <TableHeader align="end">
+                <span className="sr-only">Actions</span>
+              </TableHeader>
             </TableHead>
             <TableBody>
               {rows.map((member) => (
@@ -37,6 +41,7 @@ export function TeamPanels({ members, invites }: TeamPanelsProps) {
                     <Badge tone={member.role === "owner" ? "accent" : "neutral"}>{roleLabel(member.role)}</Badge>
                   </TableCell>
                   <TableCell hideOnPhone>{formatDate(member.joinedAt, now)}</TableCell>
+                  <TableCell align="end">{member.role === "owner" || member.isYou ? null : <RemoveMemberButton userId={member.userId} name={member.name} />}</TableCell>
                 </TableRow>
               ))}
             </TableBody>

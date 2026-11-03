@@ -13,6 +13,9 @@ export const START_PATH = "/start";
 export const INTAKE_STEP_PARAM = "q";
 export const INTAKE_SUMMARY_STEP = "summary";
 
+/** The same words the other features use for a viewer's refused write. */
+export const VIEWER_MESSAGE = "Only the owner or an editor can change this.";
+
 /** The questions opened on a basket and a step (a question's field, or the summary). With no step it opens where the customer left off. */
 export function startHref(services: readonly MonthlyAddOnId[], step?: string): string {
   const params = new URLSearchParams({ [MEMBERSHIP_SERVICES_PARAM]: services.join(",") });

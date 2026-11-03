@@ -40,6 +40,8 @@ export const OWN_ADDRESS_MESSAGE = "That is your own address. You already have a
 export const ALREADY_INVITED_MESSAGE = "That address already has an invitation. Revoke it first to send a new one.";
 export const INVITE_SEND_FAILED_MESSAGE = "We could not send the invitation. Nothing was saved. Try again in a moment.";
 export const TOO_MANY_INVITES_MESSAGE = "That is a lot of invitations in a short time. Please wait a while and try again.";
+export const REMOVE_SELF_MESSAGE = "You can’t remove yourself from your own business.";
+export const REMOVE_REFUSED_MESSAGE = "That person can’t be removed. Reload the page to see who has access.";
 
 export type InviteStatus = "open" | "expired";
 

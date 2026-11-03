@@ -1,4 +1,4 @@
-import type { Affiliate, AffiliateCodeUsage, AffiliateEarning, AffiliateEarningStatus, AffiliateMonthlyActivity, AffiliatePayout, ListedReferralCode } from "@brandbasket/db";
+import type { Affiliate, AffiliateCodeUsage, AffiliateEarning, AffiliateEarningStatus, AffiliateMonthlyActivity, ListedReferralCode } from "@brandbasket/db";
 import { describeDiscountMonths, describeReferralDiscount } from "@brandbasket/shared/lib/billing/referral-value";
 import { MetricStrip, Panel, PanelData, PanelError, type Metric } from "@/components";
 import { formatDate, formatMoney, formatNumber, formatQuantity } from "@/lib/format";
@@ -13,6 +13,7 @@ import {
   payingLine,
   primaryCashOut,
   type CodeStatus,
+  type PayoutRow,
 } from "../rules/dashboard";
 import type { CodesView, FiguresView } from "../server/dashboard";
 import { CopyCodeButton } from "./copy-code-button";
@@ -24,7 +25,7 @@ export interface AffiliateDashboardProps {
   readonly figures: Loaded<FiguresView>;
   readonly monthly: Loaded<readonly AffiliateMonthlyActivity[]>;
   readonly earnings: Loaded<readonly AffiliateEarning[]>;
-  readonly payouts: Loaded<readonly AffiliatePayout[]>;
+  readonly payouts: Loaded<readonly PayoutRow[]>;
   /** How many months the monthly table covers. */
   readonly monthsShown: number;
   readonly earningLimit: number;
@@ -245,7 +246,7 @@ export function AffiliateDashboard({ affiliate, now, codes, figures, monthly, ea
   );
 }
 
-function PayoutsPanel({ payouts, limit, now }: { readonly payouts: Loaded<readonly AffiliatePayout[]>; readonly limit: number; readonly now: Date }) {
+function PayoutsPanel({ payouts, limit, now }: { readonly payouts: Loaded<readonly PayoutRow[]>; readonly limit: number; readonly now: Date }) {
   // No payouts yet is nothing to show; a failed read still says so.
   if (payouts.ok && payouts.data.length === 0) return null;
   return (
@@ -263,7 +264,7 @@ function PayoutsPanel({ payouts, limit, now }: { readonly payouts: Loaded<readon
                 <TableCell>{payout.reference}</TableCell>
                 <TableCell>{formatDate(dayAsDate(payout.paidOn), now)}</TableCell>
                 <TableCell align="end">
-                  {formatMoney(payout.amountCents - payout.withheldCents, payout.currency)}
+                  {formatMoney(payout.receivedCents, payout.currency)}
                   {payout.withheldCents === 0 ? null : (
                     <span className="block type-meta">
                       of {formatMoney(payout.amountCents, payout.currency)}, {formatMoney(payout.withheldCents, payout.currency)} withheld{payout.withheldReason === null ? "" : `: ${payout.withheldReason}`}

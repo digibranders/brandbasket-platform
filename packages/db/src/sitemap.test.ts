@@ -45,4 +45,9 @@ describe("parseSitemap", () => {
     expect(parseSitemap("<!doctype html><html><body>Not found</body></html>")).toEqual({ kind: "invalid" });
     expect(parseSitemap("")).toEqual({ kind: "invalid" });
   });
+  it("drops a numeric reference beyond Unicode instead of throwing, and keeps the rest of the sitemap", () => {
+    const xml = `<urlset><url><loc>https://a.example/a&#x110000;b</loc></url><url><loc>https://a.example/c&#99999999999;d</loc></url><url><loc>https://a.example/&#x10FFFF;e&#65;</loc></url></urlset>`;
+
+    expect(parseSitemap(xml)).toEqual({ kind: "urlset", urls: ["https://a.example/ab", "https://a.example/cd", "https://a.example/%F4%8F%BF%BFeA"] });
+  });
 });

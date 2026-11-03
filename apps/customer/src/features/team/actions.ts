@@ -7,6 +7,7 @@ import {
   BusinessInviteOpenError,
   consumeRateLimit,
   createBusinessInvite,
+  removeBusinessMember,
   revokeBusinessInvite,
   withTenantScope,
   type RateLimitRule,
@@ -30,6 +31,8 @@ import {
   inviteTokenSchema,
   OWN_ADDRESS_MESSAGE,
   refusalMessage,
+  REMOVE_REFUSED_MESSAGE,
+  REMOVE_SELF_MESSAGE,
   roleLabel,
   TOO_MANY_INVITES_MESSAGE,
 } from "./rules";
@@ -104,6 +107,31 @@ export async function revokeInviteAction(inviteId: string): Promise<ActionResult
   } catch (error) {
     unstable_rethrow(error);
     reportError(error, { area: "team.invite.revoke" });
+    return actionFail(FAILED);
+  }
+  revalidatePath(TEAM_PATH);
+  return actionOk();
+}
+
+/** Better Auth's text ids: short, never empty. Anything else names nobody. */
+const removeSchema = z.object({ userId: z.string().min(1).max(128) });
+
+/**
+ * Takes an editor or a viewer off the team; their next page sends them to sign in. Written on the staff connection, which alone
+ * may delete business_members (sanctioned in src/lib/db.ts), scoped to the session's business; the query never removes an owner,
+ * and the owner may not remove themselves.
+ */
+export async function removeMemberAction(userId: string): Promise<ActionResult> {
+  const customer = await requireOwner();
+  const parsed = removeSchema.safeParse({ userId });
+  if (!parsed.success) return actionFail(REMOVE_REFUSED_MESSAGE);
+  if (parsed.data.userId === customer.user.id) return actionFail(REMOVE_SELF_MESSAGE);
+  try {
+    const removed = await removeBusinessMember(getStaffDb(), { businessId: customer.businessId, userId: parsed.data.userId });
+    if (!removed) return actionFail(REMOVE_REFUSED_MESSAGE);
+  } catch (error) {
+    unstable_rethrow(error);
+    reportError(error, { area: "team.member.remove" });
     return actionFail(FAILED);
   }
   revalidatePath(TEAM_PATH);

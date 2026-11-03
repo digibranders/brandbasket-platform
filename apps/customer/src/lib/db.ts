@@ -60,7 +60,9 @@ export function getAppDb(): Database {
  *   and the read-only data download of the user's own records and, for owners, their business's records.
  * - src/features/team/loader.ts: listing the session business's members (owner only, read only); a member can read only
  *   their own business_members row under RLS. src/features/team/actions.ts: accepting an invitation, the only insert into
- *   business_members; the token is the guard, the user and email come from the session, rate limited per user.
+ *   business_members; the token is the guard, the user and email come from the session, rate limited per user. And removing
+ *   a member (owner only): the one delete from business_members, scoped by the session's business id, never an owner row,
+ *   never the owner themselves.
  * - src/features/affiliate/server/{dashboard,setup}.ts: the affiliate tables are staff-only. The dashboard reads the
  *   session's own affiliate; setup is keyed by a single-use token and rate limited per network.
  */

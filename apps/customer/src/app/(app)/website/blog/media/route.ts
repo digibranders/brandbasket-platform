@@ -2,8 +2,10 @@ import { handleBlogUpload, ownsImageTarget, storeBlogImage } from "@/features/bl
 import { getBlogPayload } from "@/features/blog/server/payload";
 import { canWriteBlog } from "@/features/blog/server/access";
 import { refuseUpload, UPLOAD_RELOAD_MESSAGE } from "@/features/checklist/server/upload-request";
+import { getAppDb } from "@/lib/db";
 import { serverEnv } from "@/lib/env";
 import { requireWebsite } from "@/lib/guards";
+import { consumeUploadAllowance } from "@/lib/server-media/onboarding-media";
 import { getSessionUser } from "@/lib/session";
 import type { TenantContext } from "@brandbasket/shared/lib/access";
 
@@ -31,6 +33,7 @@ export async function POST(request: Request): Promise<Response> {
     appOrigin: serverEnv().APP_ORIGIN,
     anyLocalHost: process.env.NODE_ENV === "development",
     ownsTarget: async (tenant, target) => ownsImageTarget(await getBlogPayload(), tenant.businessId, target),
+    consumeAllowance: (tenant) => consumeUploadAllowance(getAppDb(), tenant),
     store: async (tenant, target, image) => storeBlogImage(await getBlogPayload(), tenant.businessId, target, image),
   });
 }

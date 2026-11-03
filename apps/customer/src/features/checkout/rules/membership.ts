@@ -2,7 +2,7 @@ import { chargedAmountCents, gstInsideCents } from "@brandbasket/billing/tax";
 import { MONTHLY_ADD_ON_IDS, type MonthlyAddOnId } from "@brandbasket/shared/lib/billing/add-ons";
 import { bundleLines, bundleNetCents, readBundleSelection, WEBSITE_ALONE, type BundleLine } from "@brandbasket/shared/lib/billing/bundle";
 import { adCreditCentsAtCheckout, packageBasisPointsFor } from "@brandbasket/shared/lib/billing/packages";
-import { initialTermPhrase } from "@brandbasket/shared/lib/billing/terms";
+import { initialTermPhrase, renewalChargeCents } from "@brandbasket/shared/lib/billing/terms";
 import { formatMoney, type MoneyCurrency } from "@brandbasket/shared/lib/money";
 
 /*
@@ -141,7 +141,8 @@ export function membershipPriceParts(
 ): { readonly amount: string; readonly terms: string; readonly was: string | null } {
   // The plan row costs nothing: the services on the subscription's lines are the price.
   const listCents = plan.recurringAmountCents + bundledAddOnNetCents;
-  const amount = formatMoney(listCents - discountCents, plan.currency);
+  // The shared renewal figure (chargedAmountCents). Null means nothing is left to charge, which reads ₹0 as it always did.
+  const amount = formatMoney(renewalChargeCents(plan, discountCents, bundledAddOnNetCents) ?? 0, plan.currency);
   return {
     amount,
     terms: plan.taxRateBasisPoints === 0 ? "a month" : "a month, GST included",

@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { acceptInviteAction, inviteAction, revokeInviteAction } from "./actions";
+import { acceptInviteAction, inviteAction, removeMemberAction, revokeInviteAction } from "./actions";
+import { REMOVE_REFUSED_MESSAGE, REMOVE_SELF_MESSAGE } from "./rules";
 
 class Redirected extends Error {
   constructor(readonly to: string) {
@@ -13,6 +14,7 @@ const mocks = vi.hoisted(() => ({
   consumeRateLimit: vi.fn(),
   createBusinessInvite: vi.fn(),
   revokeBusinessInvite: vi.fn(),
+  removeBusinessMember: vi.fn(),
   acceptBusinessInvite: vi.fn(),
   withTenantScope: vi.fn(),
   send: vi.fn(),
@@ -35,6 +37,7 @@ vi.mock("@brandbasket/db", () => ({
   consumeRateLimit: mocks.consumeRateLimit,
   createBusinessInvite: mocks.createBusinessInvite,
   revokeBusinessInvite: mocks.revokeBusinessInvite,
+  removeBusinessMember: mocks.removeBusinessMember,
   withTenantScope: mocks.withTenantScope,
 }));
 vi.mock("@brandbasket/email", () => ({ businessInviteEmail: (input: unknown) => ({ template: "business-invite", input }) }));
@@ -141,6 +144,38 @@ describe("revokeInviteAction", () => {
     expect(mocks.revokeBusinessInvite).not.toHaveBeenCalled();
     mocks.revokeBusinessInvite.mockResolvedValue(false);
     expect(await revokeInviteAction(INVITE_ID)).toMatchObject({ ok: false, message: expect.stringContaining("already used or taken back") });
+  });
+});
+
+describe("removeMemberAction", () => {
+  it("is for the owner: anyone else is sent away by the guard and nothing is removed", async () => {
+    mocks.requireOwner.mockRejectedValue(new Redirected("/"));
+    await expect(removeMemberAction("editor-1")).rejects.toThrow(Redirected);
+    expect(mocks.removeBusinessMember).not.toHaveBeenCalled();
+  });
+
+  it("removes the member from the session's business on the staff connection", async () => {
+    mocks.removeBusinessMember.mockResolvedValue(true);
+    expect(await removeMemberAction("editor-1")).toEqual({ ok: true });
+    expect(mocks.removeBusinessMember).toHaveBeenCalledWith({ name: "staff" }, { businessId: TENANT.businessId, userId: "editor-1" });
+  });
+
+  it("refuses the owner removing themselves, and an id that names nobody, before the database", async () => {
+    expect(await removeMemberAction("owner-1")).toEqual({ ok: false, message: REMOVE_SELF_MESSAGE });
+    expect(await removeMemberAction("")).toEqual({ ok: false, message: REMOVE_REFUSED_MESSAGE });
+    expect(await removeMemberAction("x".repeat(129))).toEqual({ ok: false, message: REMOVE_REFUSED_MESSAGE });
+    expect(mocks.removeBusinessMember).not.toHaveBeenCalled();
+  });
+
+  it("says so when the person is an owner or no longer a member", async () => {
+    mocks.removeBusinessMember.mockResolvedValue(false);
+    expect(await removeMemberAction("owner-2")).toEqual({ ok: false, message: REMOVE_REFUSED_MESSAGE });
+  });
+
+  it("explains a fault in words and reports it", async () => {
+    mocks.removeBusinessMember.mockRejectedValue(new Error("db down"));
+    expect(await removeMemberAction("editor-1")).toMatchObject({ ok: false });
+    expect(mocks.report).toHaveBeenCalledWith(expect.any(Error), { area: "team.member.remove" });
   });
 });
 

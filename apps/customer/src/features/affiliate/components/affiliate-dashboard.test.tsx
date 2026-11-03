@@ -1,4 +1,5 @@
-import type { Affiliate, AffiliateCashOut, AffiliateEarning, AffiliateMonthlyActivity, AffiliatePayout, ListedReferralCode } from "@brandbasket/db";
+import type { PayoutRow } from "../rules/dashboard";
+import type { Affiliate, AffiliateCashOut, AffiliateEarning, AffiliateMonthlyActivity, ListedReferralCode } from "@brandbasket/db";
 import { render, screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { expectNoAxeViolations } from "@/ui/test-axe";
@@ -24,7 +25,7 @@ const CODE = {
 } as unknown as ListedReferralCode;
 const CASH_OUT: AffiliateCashOut = { currency: "INR", earnedCents: 1_000_000, pendingCents: 200_000, cashedOutCents: 800_000, withheldCents: 0, receivedCents: 800_000, cancelledCents: 0 };
 const EARNING = { id: "e1", code: "ASHA10", amountCents: 50_000, currency: "INR", cycleNumber: 2, status: "paid", createdAt: new Date("2026-10-10T10:00:00Z") } as unknown as AffiliateEarning;
-const PAYOUT = { id: "p1", reference: "UTR123", amountCents: 800_000, withheldCents: 80_000, withheldReason: "TDS", currency: "INR", paidOn: "2026-10-12" } as unknown as AffiliatePayout;
+const PAYOUT = { id: "p1", reference: "UTR123", amountCents: 800_000, withheldCents: 80_000, receivedCents: 720_000, withheldReason: "TDS", currency: "INR", paidOn: "2026-10-12" } as unknown as PayoutRow;
 const MONTH: AffiliateMonthlyActivity = { month: "2026-10", currency: "INR", payingMembers: 2, cents: 100_000, refunded: 0 };
 
 function props(overrides: Partial<AffiliateDashboardProps> = {}): AffiliateDashboardProps {

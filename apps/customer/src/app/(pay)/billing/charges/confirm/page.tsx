@@ -36,9 +36,10 @@ export default async function ChargeTestCheckoutPage({ searchParams }: { readonl
   // The provider comes from the environment of the running server, so this page is never built ahead of time.
   await connection();
   if (!isFakeBillingProvider()) notFound();
-  const { tenant } = await requireCustomer();
+  const { tenant, role } = await requireCustomer();
   const { token } = await searchParams;
-  const confirmed = typeof token === "string" ? await verifyChargePaymentFor(tenant, { token }) : null;
+  // Not owner only: an editor opens charges too (the blog's Unlock more posts). A viewer opens none, so pays none.
+  const confirmed = typeof token === "string" && role !== "viewer" ? await verifyChargePaymentFor(tenant, { token }) : null;
   const charge = confirmed === null ? null : await withTenantScope(getAppDb(), tenant, (tx) => findChargeForBusiness(tx, tenant.businessId, confirmed.chargeId));
   if (typeof token !== "string" || confirmed === null || charge === null) {
     return (
@@ -55,6 +56,7 @@ export default async function ChargeTestCheckoutPage({ searchParams }: { readonl
     "use server";
     if (!isFakeBillingProvider()) notFound();
     const customer = await requireCustomer();
+    if (customer.role === "viewer") redirect(chargeReturnHref(chargeKind, NOTICE_AFTER.invalid, ticketId));
     const result = await confirmFakeChargePayment(customer.tenant, { token: paymentToken }, new Date());
     redirect(chargeReturnHref(chargeKind, NOTICE_AFTER[result], ticketId));
   }

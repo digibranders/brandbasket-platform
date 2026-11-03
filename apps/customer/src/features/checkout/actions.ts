@@ -6,7 +6,7 @@ import { notFound, redirect } from "next/navigation";
 import { z } from "zod";
 import { actionFail, actionOk, type ActionResult } from "@/lib/action-result";
 import { formDataObject } from "@/lib/form";
-import { requireCustomer } from "@/lib/guards";
+import { requireCustomer, requireOwner, type CustomerContext } from "@/lib/guards";
 import { reportError } from "@/lib/report";
 import { chargeNoticeHref, chargePayPath } from "./rules/charge-notices";
 import { MEMBERSHIP_PATH } from "./rules/membership";
@@ -19,7 +19,9 @@ import { applyReferralCodeFor, removeReferralCodeFor } from "./server/referrals"
 /*
  * The checkout's actions, ported from apps/platform app/app-host/(protected)/plan/actions.ts, onboarding/review/actions.ts and
  * billing/actions.ts. Nothing about money is read from a form: the basket (catalogue ids only), the code and the package offer
- * are priced again on the server, and again under the business's billing lock when the checkout opens.
+ * are priced again on the server, and again under the business's billing lock when the checkout opens. Paying, codes and billing
+ * details are the owner's (plan 60: owners manage billing), and these write on the staff connection, so each action asks for
+ * the owner; without `write`, so an unpaid or lapsed owner still gets through to pay.
  */
 
 const UNKNOWN_PLAN_MESSAGE = "We couldn't tell which plan that was. Reload the page and try again.";
@@ -42,7 +44,7 @@ function servicesOf(value: z.output<typeof ServiceList>) {
  * checkout rate limit. On success the customer is sent to the provider.
  */
 export async function startPaymentAction(_previous: ActionResult | null, formData: FormData): Promise<ActionResult> {
-  const customer = await requireCustomer();
+  const customer = await requireOwner();
   const parsed = PayForm.safeParse(formDataObject(formData));
   if (!parsed.success) return actionFail(UNKNOWN_PLAN_MESSAGE);
   if (formData.has("addressLine1")) {
@@ -65,7 +67,7 @@ export async function startPaymentAction(_previous: ActionResult | null, formDat
  * checked again in applyReferralCodeFor (20 tries an hour, one message for every invalid code), and again when the checkout opens.
  */
 export async function applyCodeAction(_previous: ActionResult | null, formData: FormData): Promise<ActionResult> {
-  const customer = await requireCustomer();
+  const customer = await requireOwner();
   const parsed = CodeForm.safeParse(formDataObject(formData));
   if (!parsed.success) return actionFail("That code isn’t valid. Check it with whoever gave it to you, or carry on without it.", { referralCode: "Enter the code again." });
   const entry = await loadBusinessEntry(customer);
@@ -81,7 +83,7 @@ export async function applyCodeAction(_previous: ActionResult | null, formData: 
 
 /** Takes an applied code off again, before paying. Refused once the business has paid. */
 export async function removeCodeAction(): Promise<ActionResult> {
-  const customer = await requireCustomer();
+  const customer = await requireOwner();
   const outcome = await removeReferralCodeFor(customer);
   if (outcome.kind === "refused") return actionFail(outcome.problem.message);
   revalidatePath(MEMBERSHIP_PATH);
@@ -90,13 +92,13 @@ export async function removeCodeAction(): Promise<ActionResult> {
 
 /** Saves billing details on their own (Plan & billing uses this too). */
 export async function saveBillingDetailsAction(_previous: ActionResult | null, formData: FormData): Promise<ActionResult> {
-  const customer = await requireCustomer();
+  const customer = await requireOwner();
   const saved = await saveBillingDetailsSafely(customer, formData);
   if (saved.ok) revalidatePath(MEMBERSHIP_PATH);
   return saved;
 }
 
-async function saveBillingDetailsSafely(customer: Awaited<ReturnType<typeof requireCustomer>>, formData: FormData): Promise<ActionResult> {
+async function saveBillingDetailsSafely(customer: CustomerContext, formData: FormData): Promise<ActionResult> {
   try {
     return await saveBillingDetailsFor(customer, formData);
   } catch (error) {
@@ -120,7 +122,7 @@ const ChargeForm = z.object({ chargeId: z.uuid() });
  * comes from the charge row. Razorpay opens on /checkout/charges/<id>; the fake provider's test page is its own address.
  */
 export async function payChargeAction(_previous: ActionResult | null, formData: FormData): Promise<ActionResult> {
-  const customer = await requireCustomer();
+  const customer = await requireOwner();
   const parsed = ChargeForm.safeParse(formDataObject(formData));
   if (!parsed.success) notFound();
   const started = await startCustomerChargePayment(customer, parsed.data.chargeId);

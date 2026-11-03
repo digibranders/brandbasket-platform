@@ -111,6 +111,7 @@ export type ConnectDomainState =
 export const CHECK_FAILED_MESSAGE = "We couldn’t look that up just now. Try again in a minute.";
 export const NO_DOMAIN_TO_CHECK_MESSAGE = "There’s no domain of your own to check yet.";
 export const NOT_TIME_TO_CONNECT_MESSAGE = "It isn’t time to connect your domain yet. We’ll email you when it is.";
+export const TOO_MANY_CHECKS_MESSAGE = "That’s a lot of checks in a short time. Please wait a while and try again.";
 
 export const MOVE_NOT_AVAILABLE_MESSAGE = "You can ask for your own domain once your website is live on its free address. Until then, choose it in your setup.";
 export const MOVE_TAKEN_MESSAGE = "That domain is already connected to another website. Email us and we’ll sort it out.";

@@ -17,7 +17,7 @@ vi.mock("./server/membership-checkout", () => ({ loadMembershipCheckout: vi.fn()
 const PLAN = { initialAmountCents: 0, recurringAmountCents: 0, currency: "INR", taxRateBasisPoints: 1_800, initialTermMonths: 1 };
 
 function customer(billing: Record<string, unknown> = {}) {
-  return { tenant: { businessId: "biz-1" }, billing: { status: "unpaid", subscription: null, paymentUnderReview: false, ...billing } } as never;
+  return { role: "owner", tenant: { businessId: "biz-1" }, billing: { status: "unpaid", subscription: null, paymentUnderReview: false, ...billing } } as never;
 }
 
 function view(overrides: Partial<MembershipCheckoutView> = {}): MembershipCheckoutView {
@@ -49,6 +49,14 @@ describe("loadCheckout", () => {
 
   it("sends a lapsed business to Plan & billing to reactivate", async () => {
     await expect(loadCheckout(customer({ status: "lapsed" }), {})).rejects.toThrow("redirect:/billing");
+  });
+
+  it("shows a member who is not the owner that paying is the owner's, without reading the checkout", async () => {
+    for (const role of ["editor", "viewer"]) {
+      const member = { ...(customer() as object), role } as never;
+      expect(await loadCheckout(member, {})).toEqual({ kind: "owner-only" });
+    }
+    expect(loadMembershipCheckout).not.toHaveBeenCalled();
   });
 
   it("asks a new account the questions first", async () => {

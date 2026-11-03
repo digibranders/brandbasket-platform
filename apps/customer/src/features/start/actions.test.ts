@@ -2,6 +2,7 @@ import { NO_ANSWERS } from "@brandbasket/shared/lib/intake/questions";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { requireCustomer } from "@/lib/guards";
 import { continueToCheckoutAction, saveAnswerAction, toggleServiceAction } from "./actions";
+import { VIEWER_MESSAGE } from "./rules";
 import { completeIntake, loadIntake, saveIntakeAnswer, saveIntakeServices } from "./server";
 
 vi.mock("server-only", () => ({}));
@@ -23,7 +24,7 @@ function form(entries: Record<string, string | readonly string[]>): FormData {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  vi.mocked(requireCustomer).mockResolvedValue({ tenant: TENANT } as never);
+  vi.mocked(requireCustomer).mockResolvedValue({ tenant: TENANT, role: "owner" } as never);
   vi.mocked(loadIntake).mockResolvedValue({ answers: { ...NO_ANSWERS, businessType: "clinic" }, completedAt: null });
 });
 
@@ -33,6 +34,17 @@ describe("the questions' actions run the guard first", () => {
     await expect(saveAnswerAction(null, form({ field: "businessType", value: "clinic" }))).rejects.toThrow("redirect:/login");
     await expect(toggleServiceAction(null, form({ toggle: "digital-growth" }))).rejects.toThrow("redirect:/login");
     await expect(continueToCheckoutAction(null, form({}))).rejects.toThrow("redirect:/login");
+    expect(saveIntakeAnswer).not.toHaveBeenCalled();
+    expect(saveIntakeServices).not.toHaveBeenCalled();
+    expect(completeIntake).not.toHaveBeenCalled();
+  });
+
+  it("refuses a viewer in words, and writes nothing", async () => {
+    vi.mocked(requireCustomer).mockResolvedValue({ tenant: { ...TENANT, role: "viewer" }, role: "viewer" } as never);
+    const refused = { ok: false, message: VIEWER_MESSAGE };
+    expect(await saveAnswerAction(null, form({ field: "businessType", value: "clinic" }))).toEqual(refused);
+    expect(await toggleServiceAction(null, form({ toggle: "digital-growth" }))).toEqual(refused);
+    expect(await continueToCheckoutAction(null, form({}))).toEqual(refused);
     expect(saveIntakeAnswer).not.toHaveBeenCalled();
     expect(saveIntakeServices).not.toHaveBeenCalled();
     expect(completeIntake).not.toHaveBeenCalled();

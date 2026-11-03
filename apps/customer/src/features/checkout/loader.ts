@@ -55,7 +55,9 @@ export type CheckoutView =
   /** Back from the provider before its word arrived: the page reloads until the payment is recorded. */
   | { readonly kind: "waiting"; readonly waitKey: string }
   /** No plan is on sale in the business's currency. */
-  | { readonly kind: "no-plan" };
+  | { readonly kind: "no-plan" }
+  /** A member who is not the owner: paying is the owner's (the actions refuse anyone else). */
+  | { readonly kind: "owner-only" };
 
 type Params = Readonly<Record<string, string | string[] | undefined>>;
 
@@ -70,6 +72,8 @@ export async function loadCheckout(customer: CustomerContext, params: Params, no
   if (billing.status === "paid") redirect(notice === "received" ? MEMBER_WELCOME_HREF : "/");
   // Restarting a lapsed plan is reactivation, on Plan & billing, never a new first payment.
   if (billing.status === "lapsed") redirect("/billing");
+  // Not a redirect: the workspace layout sends an unpaid sign-up back here, so sending a non-owner Home would loop.
+  if (customer.role !== "owner") return { kind: "owner-only" };
 
   const entry = await loadBusinessEntry(customer);
   const signUp = entry.kind === "listing";

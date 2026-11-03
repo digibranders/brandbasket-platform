@@ -12,11 +12,10 @@ import {
   type AffiliateCodeUsage,
   type AffiliateEarning,
   type AffiliateMonthlyActivity,
-  type AffiliatePayout,
   type ListedReferralCode,
 } from "@brandbasket/db";
 import { getStaffDb } from "@/lib/db";
-import { monthsWindowStart } from "../rules/dashboard";
+import { monthsWindowStart, payoutRow, type PayoutRow } from "../rules/dashboard";
 import { countMembers, type MemberCounts } from "../rules/members";
 
 /*
@@ -64,6 +63,6 @@ export async function loadEarnings(affiliate: Affiliate): Promise<readonly Affil
   return listAffiliateEarnings(getStaffDb(), affiliate.id, EARNING_LIMIT);
 }
 
-export async function loadPayouts(affiliate: Affiliate): Promise<readonly AffiliatePayout[]> {
-  return listAffiliatePayouts(getStaffDb(), affiliate.id, PAYOUT_LIMIT);
+export async function loadPayouts(affiliate: Affiliate): Promise<readonly PayoutRow[]> {
+  return (await listAffiliatePayouts(getStaffDb(), affiliate.id, PAYOUT_LIMIT)).map(payoutRow);
 }

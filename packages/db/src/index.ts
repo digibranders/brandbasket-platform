@@ -157,7 +157,7 @@ export {
   saveProviderDiscountPlan,
   type DiscountPlanKey,
 } from "./queries/discount-plans";
-export { listMembershipsForUser, type BusinessMembership } from "./queries/memberships";
+export { listMembershipsForUser, removeBusinessMember, type BusinessMembership } from "./queries/memberships";
 export {
   addStaffMember,
   countActiveAdmins,

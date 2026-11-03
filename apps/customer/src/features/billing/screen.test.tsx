@@ -1,4 +1,4 @@
-import { render, screen, within } from "@testing-library/react";
+import { cleanup, render, screen, within } from "@testing-library/react";
 import { NuqsTestingAdapter } from "nuqs/adapters/testing";
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -138,6 +138,16 @@ describe("Invoices", () => {
     wrap(await InvoicesScreen({ customer }));
     expect(screen.queryByRole("link", { name: "PDF" })).toBeNull();
     expect(screen.queryByRole("link", { name: "Download all" })).toBeNull();
+  });
+
+  it("offers Pay on an open charge to the owner only (payChargeAction is owner only)", async () => {
+    const due = { kind: "due", id: "c1", number: "Extra blog posts", date: new Date("2026-10-27T06:00:00Z"), amountCents: 99_900, amount: "₹999", status: "To pay", tone: "warn" } as const;
+    vi.mocked(loadInvoices).mockResolvedValue({ invoices: [{ row: due, lines: [], total: "₹999" }], billedTo: null, canDownload: false });
+    wrap(await InvoicesScreen({ customer }));
+    expect(screen.getByRole("button", { name: "Pay" })).toBeTruthy();
+    cleanup();
+    wrap(await InvoicesScreen({ customer: { ...customer, role: "editor" } }));
+    expect(screen.queryByRole("button", { name: "Pay" })).toBeNull();
   });
 
   it("shows the error state when the invoices fail to load", async () => {

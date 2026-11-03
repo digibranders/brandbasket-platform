@@ -3,14 +3,15 @@ import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ToastProvider } from "@/ui";
-import { inviteAction, revokeInviteAction } from "../actions";
+import { inviteAction, removeMemberAction, revokeInviteAction } from "../actions";
 import type { PendingInvite } from "../rules";
 import type { TeamMember } from "../loader";
+import { RemoveMemberButton } from "./remove-member-button";
 import { RevokeInviteButton } from "./revoke-invite-button";
 import { TeamPanels } from "./team-panels";
 
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn(), push: vi.fn() }) }));
-vi.mock("../actions", () => ({ inviteAction: vi.fn(), revokeInviteAction: vi.fn(), acceptInviteAction: vi.fn() }));
+vi.mock("../actions", () => ({ inviteAction: vi.fn(), revokeInviteAction: vi.fn(), removeMemberAction: vi.fn(), acceptInviteAction: vi.fn() }));
 
 const MEMBERS: TeamMember[] = [
   { userId: "u1", name: "Anand Verma", email: "anand@apex.in", role: "owner", joinedAt: new Date("2026-09-01T10:00:00Z"), isYou: true },
@@ -94,5 +95,31 @@ describe("RevokeInviteButton", () => {
     renderWithToasts(<RevokeInviteButton inviteId="i1" email="front@apex.in" />);
     await userEvent.click(screen.getByRole("button", { name: "Revoke the invitation to front@apex.in" }));
     expect(await screen.findByText("That invitation was already used or taken back.")).toBeTruthy();
+  });
+});
+
+describe("RemoveMemberButton", () => {
+  it("shows Remove for each member who is not the owner, never on the owner's row", () => {
+    renderWithToasts(<TeamPanels members={{ ok: true, data: MEMBERS }} invites={{ ok: true, data: [] }} />);
+    expect(screen.getByRole("button", { name: "Remove Dr. Shalini Verma" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Remove Anand Verma" })).toBeNull();
+  });
+
+  it("removes only after the confirmation", async () => {
+    vi.mocked(removeMemberAction).mockResolvedValue({ ok: true });
+    renderWithToasts(<RemoveMemberButton userId="u2" name="Dr. Shalini Verma" />);
+    await userEvent.click(screen.getByRole("button", { name: "Remove Dr. Shalini Verma" }));
+    expect(await screen.findByText("Remove Dr. Shalini Verma?")).toBeTruthy();
+    expect(removeMemberAction).not.toHaveBeenCalled();
+    await userEvent.click(screen.getByRole("button", { name: "Remove" }));
+    expect(removeMemberAction).toHaveBeenCalledWith("u2");
+  });
+
+  it("keeps the dialog open and says why when it could not", async () => {
+    vi.mocked(removeMemberAction).mockResolvedValue({ ok: false, message: "That person can’t be removed. Reload the page to see who has access." });
+    renderWithToasts(<RemoveMemberButton userId="u2" name="Dr. Shalini Verma" />);
+    await userEvent.click(screen.getByRole("button", { name: "Remove Dr. Shalini Verma" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Remove" }));
+    expect((await screen.findByRole("alert")).textContent).toContain("can’t be removed");
   });
 });

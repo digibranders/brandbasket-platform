@@ -11,7 +11,7 @@ import { isFakeBillingProvider } from "@/features/checkout/server/billing";
 import { loadBusinessEntry } from "@/features/checkout/server/entry";
 import { confirmFirstPayment, projectIsOpen, verifyCheckoutFor } from "@/features/checkout/server/payment-confirmation";
 import { formatMoney } from "@/lib/format";
-import { requireCustomer } from "@/lib/guards";
+import { requireOwner } from "@/lib/guards";
 
 export const metadata: Metadata = {
   title: "Test payment",
@@ -29,7 +29,8 @@ export default async function TestCheckoutPage({ searchParams }: { readonly sear
   // The provider comes from the environment of the running server, so this page is never built ahead of time.
   await connection();
   if (!isFakeBillingProvider()) notFound();
-  const customer = await requireCustomer();
+  // Paying is the owner's, as in startPaymentAction; anyone else is sent Home, which holds an unpaid sign-up on /checkout.
+  const customer = await requireOwner();
   const { tenant, billing } = customer;
   // A refreshed confirm page after paying records nothing and just moves on.
   if (billing.hasAccess) redirect(afterPaymentHref(await projectIsOpen(tenant)));
@@ -49,7 +50,7 @@ export default async function TestCheckoutPage({ searchParams }: { readonly sear
   async function pay(): Promise<void> {
     "use server";
     if (!isFakeBillingProvider()) notFound();
-    const current = await requireCustomer();
+    const current = await requireOwner();
     // Read before the payment: confirming it is what turns a sign-up account into a client.
     const buying = (await loadBusinessEntry(current)).kind === "listing" ? "managed" : null;
     const result = await confirmFirstPayment(current.tenant, { token: checkoutToken }, new Date());

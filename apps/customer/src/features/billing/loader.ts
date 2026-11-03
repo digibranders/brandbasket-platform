@@ -4,7 +4,7 @@ import type { MonthlyAddOnId } from "@brandbasket/shared/lib/billing/add-ons";
 import { addOnPrice, addOnById, MONTHLY_ADD_ON_IDS } from "@brandbasket/shared/lib/billing/add-ons";
 import { paymentReturnView, readPaymentReturn, type PaymentReturnView } from "@brandbasket/shared/lib/billing/payment-return";
 import { planLabel } from "@brandbasket/shared/lib/billing/receipt-title";
-import { monthlyPaymentAmount } from "@brandbasket/shared/lib/billing/terms";
+import { renewalCharge } from "@brandbasket/shared/lib/billing/terms";
 import { getAppDb } from "@/lib/db";
 import { formatDate, formatMoney } from "@/lib/format";
 import type { CustomerContext } from "@/lib/guards";
@@ -206,9 +206,13 @@ export async function loadReactivationCard(customer: CustomerContext, params: Pa
         href: `/billing?services=${servicesAfterToggle(reactivation.services, addOn).join(",")}`,
       }))
     : null;
+  // The basket less the code a lapse keeps, through the shared renewal figure. A discount that leaves nothing was refused
+  // before this too (chargedAmountCents threw); the panel shows its error state rather than a price nobody is charged.
+  const monthlyAmount = renewalCharge(plan, reactivation.discountCents, reactivation.netCents);
+  if (monthlyAmount === null) throw new RangeError(`The reactivation discount leaves nothing to charge for business ${customer.businessId}.`);
   return {
     planName: planLabel(plan.name),
-    monthlyAmount: monthlyPaymentAmount(plan, reactivation.netCents - reactivation.discountCents),
+    monthlyAmount,
     chosen: reactivation.cancelled ? reactivation.services : null,
     picker,
   };

@@ -8,13 +8,13 @@ import { actionFail, type ActionResult } from "@/lib/action-result";
 import { parseForm } from "@/lib/form";
 import { requireCustomer } from "@/lib/guards";
 import { membershipHrefWithServices, readSelectedServices, servicesAfterToggle } from "../checkout/rules/membership";
-import { INTAKE_SUMMARY_STEP, SERVICE_KEY_OF, startHref } from "./rules";
+import { INTAKE_SUMMARY_STEP, SERVICE_KEY_OF, startHref, VIEWER_MESSAGE } from "./rules";
 import { completeIntake, loadIntake, saveIntakeAnswer, saveIntakeServices } from "./server";
 
 /*
  * The questions' actions, ported from apps/platform app/app-host/(protected)/personalize/actions.ts. Open to the signed-in
- * member of a business, like the old page's actions; the business is the session's, never the form's. Answers are upserts, so
- * a repeated submit is harmless.
+ * member of a business who may write (a viewer is refused here, before the database's policy would throw); the business is the
+ * session's, never the form's. Answers are upserts, so a repeated submit is harmless.
  */
 
 const MAX_BASKET = 200;
@@ -33,7 +33,8 @@ const basketOf = (services: string) => readSelectedServices({ services });
  * against the question's own options; a refused answer comes back as a message beside the question and writes nothing.
  */
 export async function saveAnswerAction(_previous: ActionResult | null, formData: FormData): Promise<ActionResult> {
-  const { tenant } = await requireCustomer();
+  const { tenant, role } = await requireCustomer();
+  if (role === "viewer") return actionFail(VIEWER_MESSAGE);
   const parsed = parseForm(AnswerForm, formData);
   if (!parsed.ok) return parsed;
   const services = basketOf(parsed.data.services);
@@ -52,7 +53,8 @@ export async function saveAnswerAction(_previous: ActionResult | null, formData:
 
 /** Adds a service to the basket, or takes it out (never the last one), and stays on the summary: new questions appear there. */
 export async function toggleServiceAction(_previous: ActionResult | null, formData: FormData): Promise<ActionResult> {
-  const { tenant } = await requireCustomer();
+  const { tenant, role } = await requireCustomer();
+  if (role === "viewer") return actionFail(VIEWER_MESSAGE);
   const parsed = parseForm(ToggleForm, formData);
   if (!parsed.ok) return parsed;
   const services = basketOf(parsed.data.services);
@@ -67,7 +69,8 @@ export async function toggleServiceAction(_previous: ActionResult | null, formDa
  * checkout opens on this basket. The kickoff call covers what was left.
  */
 export async function continueToCheckoutAction(_previous: ActionResult | null, formData: FormData): Promise<ActionResult> {
-  const { tenant } = await requireCustomer();
+  const { tenant, role } = await requireCustomer();
+  if (role === "viewer") return actionFail(VIEWER_MESSAGE);
   const parsed = parseForm(BasketForm, formData);
   if (!parsed.ok) return parsed;
   const services = basketOf(parsed.data.services);

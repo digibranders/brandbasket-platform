@@ -1,6 +1,6 @@
 import { notFound, redirect } from "next/navigation";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { requireCustomer } from "@/lib/guards";
+import { requireCustomer, requireOwner } from "@/lib/guards";
 import { applyCodeAction, lookupPincodeAction, payChargeAction, removeCodeAction, saveBillingDetailsAction, startPaymentAction } from "./actions";
 import { lookupBillingPincode, saveBillingDetailsFor } from "./server/billing-details";
 import { startCustomerChargePayment } from "./server/charges";
@@ -18,7 +18,7 @@ vi.mock("next/navigation", () => ({
     throw new Error("not-found");
   }),
 }));
-vi.mock("@/lib/guards", () => ({ requireCustomer: vi.fn() }));
+vi.mock("@/lib/guards", () => ({ requireCustomer: vi.fn(), requireOwner: vi.fn() }));
 vi.mock("@/lib/report", () => ({ reportError: vi.fn() }));
 vi.mock("./server/billing-details", () => ({ saveBillingDetailsFor: vi.fn(), lookupBillingPincode: vi.fn() }));
 vi.mock("./server/charges", () => ({ startCustomerChargePayment: vi.fn() }));
@@ -38,12 +38,14 @@ function form(entries: Record<string, string | readonly string[]>): FormData {
 beforeEach(() => {
   vi.clearAllMocks();
   vi.mocked(requireCustomer).mockResolvedValue(CUSTOMER);
+  vi.mocked(requireOwner).mockResolvedValue(CUSTOMER);
   vi.mocked(loadBusinessEntry).mockResolvedValue({ kind: "listing", signupChoice: "managed" });
 });
 
 describe("every checkout action runs the guard first", () => {
   it("reads and writes nothing when the guard turns the person away", async () => {
     vi.mocked(requireCustomer).mockRejectedValue(new Error("redirect:/login"));
+    vi.mocked(requireOwner).mockRejectedValue(new Error("redirect:/login"));
     await expect(startPaymentAction(null, form({ tier: "managed" }))).rejects.toThrow("redirect:/login");
     await expect(applyCodeAction(null, form({ referralCode: "FRIEND10" }))).rejects.toThrow("redirect:/login");
     await expect(removeCodeAction()).rejects.toThrow("redirect:/login");
@@ -54,6 +56,23 @@ describe("every checkout action runs the guard first", () => {
     expect(applyReferralCodeFor).not.toHaveBeenCalled();
     expect(saveBillingDetailsFor).not.toHaveBeenCalled();
     expect(lookupBillingPincode).not.toHaveBeenCalled();
+    expect(startCustomerChargePayment).not.toHaveBeenCalled();
+  });
+
+  it("keeps paying, codes and billing details to the owner, whatever the billing state", async () => {
+    // requireOwner sends a member who is not the owner Home; without `write`, an unpaid or lapsed owner gets through.
+    vi.mocked(requireOwner).mockRejectedValue(new Error("redirect:/"));
+    await expect(startPaymentAction(null, form({ tier: "managed" }))).rejects.toThrow("redirect:/");
+    await expect(applyCodeAction(null, form({ referralCode: "FRIEND10" }))).rejects.toThrow("redirect:/");
+    await expect(removeCodeAction()).rejects.toThrow("redirect:/");
+    await expect(saveBillingDetailsAction(null, form({}))).rejects.toThrow("redirect:/");
+    await expect(payChargeAction(null, form({ chargeId: CHARGE_ID }))).rejects.toThrow("redirect:/");
+    expect(vi.mocked(requireOwner).mock.calls.every((call) => call.length === 0)).toBe(true);
+    expect(startMembershipCheckoutFor).not.toHaveBeenCalled();
+    expect(startCheckoutFor).not.toHaveBeenCalled();
+    expect(applyReferralCodeFor).not.toHaveBeenCalled();
+    expect(removeReferralCodeFor).not.toHaveBeenCalled();
+    expect(saveBillingDetailsFor).not.toHaveBeenCalled();
     expect(startCustomerChargePayment).not.toHaveBeenCalled();
   });
 });

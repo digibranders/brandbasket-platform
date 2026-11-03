@@ -173,7 +173,7 @@ export async function InvoicesScreen({ customer }: { readonly customer: Customer
       <BillingHeader current={BILLING_TABS[1].href} />
       {loaded.ok ? (
         <Panel flush action={downloadAll}>
-          <InvoicesTable invoices={loaded.data.invoices} billedTo={loaded.data.billedTo} canDownload={loaded.data.canDownload} canPay={customer.role !== "viewer"} />
+          <InvoicesTable invoices={loaded.data.invoices} billedTo={loaded.data.billedTo} canDownload={loaded.data.canDownload} canPay={customer.role === "owner"} />
         </Panel>
       ) : (
         <Panel title="Invoices">
