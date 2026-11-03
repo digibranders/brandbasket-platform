@@ -1,8 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
 import { Ga4Error, type Ga4Reader } from "./client";
+import { GoogleAccessLost } from "../google/oauth";
 import { monthsOf, pullWindow, runGa4Sync, type Ga4Store } from "./sync";
 
 const NOW = new Date("2026-11-03T04:00:00.000Z");
+const FAST = { pace: { sleep: async () => undefined, random: () => 0 } };
 const row = (dimension: string, ...metrics: number[]) => ({ dimensionValues: [{ value: dimension }], metricValues: metrics.map((value) => ({ value: String(value) })) });
 
 function fakes(latest: string | null = null) {
@@ -47,8 +49,8 @@ describe("runGa4Sync", () => {
   it("writes the days, the lists that have rows, the run and a connected status for each business", async () => {
     const { store, calls } = fakes();
     const reader: Ga4Reader = { runReport: async (property, request) => answer(property, request as never) as never };
-    const report = await runGa4Sync(reader, store, NOW);
-    expect(report).toEqual({ properties: 2, ok: 2, accessLost: 0, failed: 0, failures: [] });
+    const report = await runGa4Sync(reader, store, NOW, FAST);
+    expect(report).toEqual({ properties: 2, ok: 2, accessLost: 0, failed: 0, failures: [], lowestDailyTokens: null });
     const daily = calls.filter((c) => c.kind === "daily");
     expect(daily).toHaveLength(2);
     expect((daily[0]?.args[1] as unknown[]).length).toBe(60 * 5);
@@ -56,7 +58,7 @@ describe("runGa4Sync", () => {
     expect(calls.filter((c) => c.kind === "list" && c.args[2] === "channel").map((c) => c.args[0])).toEqual(["b1", "b1"]);
     expect(calls.filter((c) => c.kind === "list" && c.args[2] === "page")).toHaveLength(4);
     expect(calls.filter((c) => c.kind === "run").every((c) => c.args[3] === null)).toBe(true);
-    expect(calls.filter((c) => c.kind === "status").map((c) => c.args.slice(0, 3))).toEqual([["b1", "connected", null], ["b2", "connected", null]]);
+    expect(calls.filter((c) => c.kind === "status").map((c) => c.args.slice(0, 3)).sort()).toEqual([["b1", "connected", null], ["b2", "connected", null]]);
   });
 
   it("marks a lost grant or a wrong property access_lost, keeps going, and stores the class only", async () => {
@@ -67,7 +69,7 @@ describe("runGa4Sync", () => {
         return answer(property, request as never) as never;
       },
     };
-    const report = await runGa4Sync(reader, store, NOW);
+    const report = await runGa4Sync(reader, store, NOW, FAST);
     expect(report).toMatchObject({ ok: 1, accessLost: 1, failed: 0 });
     expect(calls.find((c) => c.kind === "status" && c.args[0] === "b1")?.args.slice(1, 3)).toEqual(["access_lost", "access_lost"]);
     expect(calls.find((c) => c.kind === "run" && c.args[0] === "b1")?.args[3]).toBe("access_lost");
@@ -77,9 +79,32 @@ describe("runGa4Sync", () => {
   it("records a transient failure as a run only, leaving the status alone, and reports it", async () => {
     const { store, calls } = fakes();
     const reader: Ga4Reader = { runReport: vi.fn(async () => { throw new Error("socket hang up"); }) };
-    const report = await runGa4Sync(reader, store, NOW);
+    const report = await runGa4Sync(reader, store, NOW, FAST);
     expect(report.failures).toEqual([{ businessId: "b1", failure: "error" }, { businessId: "b2", failure: "error" }]);
     expect(calls.filter((c) => c.kind === "status")).toHaveLength(0);
     expect(calls.filter((c) => c.kind === "run").map((c) => c.args[3])).toEqual(["error", "error"]);
+  });
+
+  it("tries a slowed down request again, and reports the lowest daily budget left", async () => {
+    const { store } = fakes();
+    let slowed = true;
+    const reader: Ga4Reader = {
+      runReport: async (property, request) => {
+        if (slowed) {
+          slowed = false;
+          throw new Ga4Error("quota", "slow");
+        }
+        return { ...(answer(property, request as never) as object), propertyQuota: { tokensPerDay: { remaining: property === "111" ? 150000 : 90000 } } } as never;
+      },
+    };
+    const report = await runGa4Sync(reader, store, NOW, FAST);
+    expect(report).toMatchObject({ ok: 2, failed: 0, lowestDailyTokens: 90000 });
+  });
+
+  it("stops the whole run when the Brandbasket account itself is refused, instead of failing every business", async () => {
+    const { store, calls } = fakes();
+    const reader: Ga4Reader = { runReport: async () => { throw new GoogleAccessLost(); } };
+    await expect(runGa4Sync(reader, store, NOW, FAST)).rejects.toBeInstanceOf(GoogleAccessLost);
+    expect(calls.filter((call) => call.kind === "status" || call.kind === "run")).toEqual([]);
   });
 });

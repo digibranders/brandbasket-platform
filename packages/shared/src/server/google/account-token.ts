@@ -47,3 +47,18 @@ export function createAccountTokenSource(db: Database, options: AccountTokenOpti
     }
   };
 }
+
+/**
+ * The account's token, or the service account's when the account is not connected or was refused. Analytics only: the service
+ * account cannot read Search Console, so that pull never uses this.
+ */
+export function withFallback(primary: TokenSource, fallback: TokenSource): TokenSource {
+  return async () => {
+    try {
+      return await primary();
+    } catch (error) {
+      if (error instanceof GoogleAccessLost) return fallback();
+      throw error;
+    }
+  };
+}

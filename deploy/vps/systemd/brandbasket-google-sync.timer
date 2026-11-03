@@ -1,0 +1,12 @@
+# Starts brandbasket-google-sync.service every night at 22:30 UTC (04:00 in India), after Google has settled the day. Installed, not
+# enabled (docs/deployment/brandbasket-vps.md, "Google").
+[Unit]
+Description=Brandbasket Google pull every night
+
+[Timer]
+OnCalendar=*-*-* 22:30:00 UTC
+Persistent=true
+RandomizedDelaySec=300
+
+[Install]
+WantedBy=timers.target

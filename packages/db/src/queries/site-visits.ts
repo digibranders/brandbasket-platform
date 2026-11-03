@@ -105,3 +105,17 @@ export async function latestGa4Day(db: Database, businessId: string): Promise<st
     .where(and(eq(metricDaily.businessId, businessId), eq(metricDaily.metric, "ga4.visits")));
   return row?.day ?? null;
 }
+
+/** Every business with a Search Console site (the address in `external_id`), whatever its last status: a lost grant is retried each night. */
+export async function listGscSites(db: Database): Promise<{ businessId: string; siteUrl: string }[]> {
+  return db.select({ businessId: reportSources.businessId, siteUrl: reportSources.externalId }).from(reportSources).where(eq(reportSources.source, "gsc"));
+}
+
+/** The last day this business has a Search Console clicks number for, or null when none: the job pulls a long window the first time. */
+export async function latestGscDay(db: Database, businessId: string): Promise<string | null> {
+  const [row] = await db
+    .select({ day: sql<string | null>`max(${metricDaily.day})::text` })
+    .from(metricDaily)
+    .where(and(eq(metricDaily.businessId, businessId), eq(metricDaily.metric, "gsc.clicks")));
+  return row?.day ?? null;
+}

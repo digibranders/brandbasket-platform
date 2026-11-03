@@ -959,7 +959,9 @@ export {
 export {
   findAnalyticsConnection,
   latestGa4Day,
+  latestGscDay,
   listGa4Properties,
+  listGscSites,
   listVisitDays,
   listVisitLists,
   VISIT_DIMENSIONS,
