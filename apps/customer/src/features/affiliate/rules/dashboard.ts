@@ -67,7 +67,7 @@ export function monthsWindowStart(now: Date, count: number): Date {
 export interface MonthRow {
   /** `YYYY-MM`. */
   readonly month: string;
-  /** "Oct". */
+  /** "Oct", or "Dec 2025" for a month of an earlier year. */
   readonly label: string;
   /** Members who paid that month and kept it. */
   readonly payingMembers: number;
@@ -103,7 +103,10 @@ export function monthRows(activity: readonly AffiliateMonthlyActivity[], now: Da
   const byMonth = new Map(activity.filter((row) => row.currency === currency).map((row) => [row.month, row]));
   const months = Array.from({ length: count }, (_, index) => {
     const at = new Date(Date.UTC(year, month - index, 1));
-    return { key: `${String(at.getUTCFullYear())}-${String(at.getUTCMonth() + 1).padStart(2, "0")}`, label: MONTH_NAMES[at.getUTCMonth()] ?? "" };
+    const name = MONTH_NAMES[at.getUTCMonth()] ?? "";
+    // The year only when it is not this one, as dates are written everywhere else: "Dec 2025" beside "Jan".
+    const label = at.getUTCFullYear() === year ? name : `${name} ${String(at.getUTCFullYear())}`;
+    return { key: `${String(at.getUTCFullYear())}-${String(at.getUTCMonth() + 1).padStart(2, "0")}`, label };
   });
   const best = Math.max(1, ...months.map(({ key }) => byMonth.get(key)?.cents ?? 0));
   const rows = months.map(({ key, label }): MonthRow => {
@@ -118,6 +121,14 @@ export function monthRows(activity: readonly AffiliateMonthlyActivity[], now: Da
 /** "2 paying", "1 paying", "None paying": how many members paid in a month. */
 export function payingLine(count: number): string {
   return count === 0 ? "None paying" : `${String(count)} paying`;
+}
+
+/**
+ * The line under the greeting: "You earn 10% of each payment, first 12 paid months". The shared reward words start with a
+ * capital when the reward is nothing ("Nothing"), which reads wrong mid-sentence.
+ */
+export function rewardLine(reward: string, cycles: string): string {
+  return `You earn ${reward.charAt(0).toLowerCase()}${reward.slice(1)}, ${cycles}`;
 }
 
 /** The first name, for the greeting. */

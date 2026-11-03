@@ -8,7 +8,7 @@ export {
   type EmailMessage,
   type EmailOutboxCopy,
 } from "./message";
-export { emailBrandName, emailSenderDefaults, emailTeamInboxDefault, type EmailAddress } from "./brand";
+export { emailBrandName, emailLogoUrl, emailSenderDefaults, emailTeamInboxDefault, type EmailAddress } from "./brand";
 export { createOutboxTransport, OUTBOX_TRANSPORT_NAME, type EmailTransport, type OutboxOptions } from "./outbox";
 export { affiliateLinkEmail, type AffiliateLinkInput } from "./templates/affiliate-link";
 export { businessInviteEmail, type BusinessInviteInput } from "./templates/business-invite";
@@ -25,6 +25,7 @@ export { domainReadyEmail, type DomainReadyInput } from "./templates/domain-read
 export { onboardingSentEmail, type OnboardingSentInput } from "./templates/onboarding-sent";
 export { assertMinorUnits, emailDate, emailMoney, type EmailCurrency } from "./format";
 export { paymentFailedEmail, type PaymentFailedInput, type PaymentFailedPlan } from "./templates/payment-failed";
+export { monthlyReportEmail, type MonthlyReportInput } from "./templates/monthly-report";
 export { paymentReceivedEmail, type PaymentReceivedInput } from "./templates/payment-received";
 export {
   previewChangesReceivedEmail,

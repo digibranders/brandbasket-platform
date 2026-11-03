@@ -178,6 +178,52 @@ export async function upsertEnquiryFromSiteEvent(db: SqlRunner, eventId: string)
   return (await copyTaps(db, sql`e.id = ${eventId}::uuid`)) > 0;
 }
 
+export interface EnquiryContentsInput {
+  readonly businessId: string;
+  /** A form on the customer's site, or a lead from an ad. */
+  readonly kind: Extract<EnquiryKind, "form" | "ad_lead">;
+  readonly source: string | null;
+  readonly name: string | null;
+  readonly phone: string | null;
+  readonly email: string | null;
+  readonly message: string | null;
+  readonly receivedAt: Date;
+  /** When these details must be erased. Always after `receivedAt`. */
+  readonly retainUntil: Date;
+  /** Names what it came from ("form:<id>", "meta_lead:<id>"), so a delivery that arrives twice adds one row. */
+  readonly sourceRef: string;
+}
+
+const trimmedOrNull = (value: string | null): string | null => value?.trim() || null;
+
+/**
+ * Stores an enquirer's details from a form or an ad lead, with the date they must be erased by (gate G2: nothing calls
+ * this unless ENQUIRY_FORM_CONTENTS_ENABLED is on; see `acceptEnquiryContents` in @brandbasket/shared). A repeat of the same
+ * `sourceRef` changes nothing. Staff connection only. Returns whether a row was added.
+ */
+export async function recordEnquiryContents(db: Database, input: EnquiryContentsInput): Promise<boolean> {
+  if (!isUuid(input.businessId)) throw new Error(`businessId must be a UUID, received "${input.businessId}"`);
+  const details = { name: trimmedOrNull(input.name), phone: trimmedOrNull(input.phone), email: trimmedOrNull(input.email), message: trimmedOrNull(input.message) };
+  if (Object.values(details).every((value) => value === null)) {
+    throw new Error("An enquiry with contents needs at least one of name, phone, email or message. A tap with no details is counted by the site tracking.");
+  }
+  if (input.retainUntil.getTime() <= input.receivedAt.getTime()) throw new Error("retainUntil must be after receivedAt.");
+  const rows = await db
+    .insert(enquiries)
+    .values({
+      businessId: input.businessId,
+      kind: input.kind,
+      source: trimmedOrNull(input.source),
+      ...details,
+      receivedAt: input.receivedAt,
+      retainUntil: input.retainUntil,
+      sourceRef: input.sourceRef,
+    })
+    .onConflictDoNothing({ target: [enquiries.businessId, enquiries.kind, enquiries.sourceRef] })
+    .returning({ id: enquiries.id });
+  return rows.length > 0;
+}
+
 /** Account erasure: the enquirers' details go with the business. */
 export async function eraseEnquiriesOfBusiness(db: Database | ScopedTransaction, businessId: string): Promise<void> {
   await db.delete(enquiries).where(eq(enquiries.businessId, businessId));

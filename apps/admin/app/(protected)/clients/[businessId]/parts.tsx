@@ -2,6 +2,7 @@ import {
   LAUNCH_CHECK_KEYS,
   type ClientDetail,
   type ClientHours,
+  type ReportSourceRow,
   type DomainStatus,
   type HostedSite,
   type LaunchCheckKey,
@@ -52,7 +53,7 @@ import {
   setWebsiteUrlAction,
   switchDomainAction,
 } from "./actions";
-import { createSiteKeyAction } from "./tracking-actions";
+import { createSiteKeyAction, saveAnalyticsPropertyAction } from "./tracking-actions";
 
 /** A moment in the reader's own zone, named. */
 export function When({ date }: { readonly date: Date }): ReactElement {
@@ -134,6 +135,58 @@ export function TrackingBlock({
       <p className="mt-3 text-sm text-ink-2">{lastEventAt === null ? "No event received yet." : <>Last event received <When date={lastEventAt} />.</>}</p>
       <p className={hintClasses}>Add it to every page of their site. A site we build also gets data-bb-forms=&quot;server&quot; on the tag, so a form send is not counted twice.</p>
     </div>
+  );
+}
+
+/**
+ * The Google Analytics property we pull this client's visits from (gate G1). It only works after the customer has added our
+ * service account as a Viewer on the property; the status line says which step is waiting.
+ */
+export function AnalyticsBlock({
+  businessId,
+  source,
+  serviceAccountEmail,
+}: {
+  readonly businessId: string;
+  readonly source: ReportSourceRow | null;
+  readonly serviceAccountEmail: string | null;
+}): ReactElement {
+  const shareWith = serviceAccountEmail === null ? "our service account" : serviceAccountEmail;
+  return (
+    <form action={saveAnalyticsPropertyAction}>
+      <input type="hidden" name="businessId" value={businessId} />
+      <label htmlFor="analytics-property" className={labelClasses}>
+        Property ID
+      </label>
+      <p className={hintClasses}>
+        Digits only, from Admin, Property details in their Google Analytics. They must add {shareWith} as a Viewer first.
+      </p>
+      <div className="flex flex-wrap items-end gap-3">
+        <input
+          id="analytics-property"
+          name="propertyId"
+          inputMode="numeric"
+          pattern="\d{5,15}"
+          required
+          defaultValue={source?.externalId ?? ""}
+          className={`${fieldClasses} min-w-0 flex-1 basis-64`}
+        />
+        <GatedSubmitButton className={buttonSecondary} pendingLabel="Saving…">
+          Save
+        </GatedSubmitButton>
+      </div>
+      {source === null ? null : (
+        <p className="mt-3 text-sm text-ink-2">
+          {source.status === "connected" ? (
+            source.lastOkAt === null ? "Connected." : <>Connected. Last pulled <When date={source.lastOkAt} />.</>
+          ) : source.status === "access_lost" ? (
+            `No access. Ask them to add ${shareWith} as a Viewer on this property, or check the ID.`
+          ) : (
+            "Waiting for the first nightly pull."
+          )}
+        </p>
+      )}
+    </form>
   );
 }
 

@@ -1,15 +1,28 @@
 import { createHash, randomBytes } from "node:crypto";
 import { appendFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { and, count, eq, like, ne } from "drizzle-orm";
+import { and, count, eq, like, ne, sql } from "drizzle-orm";
 import { createAuth, createVerifiedEmailAccountWithGrant } from "@brandbasket/auth";
+import { discountCentsFor } from "../../billing/src/referral";
+import { chargedAmountCents } from "../../billing/src/tax";
 import { addMonthsUtc } from "../../billing/src/term";
+import { AFFILIATE_LOGIN_LINK_DAYS, affiliateSetupPath } from "../../shared/src/lib/affiliate-links";
 import { adCreditCentsAtCheckout, packageLines } from "../../shared/src/lib/billing/packages";
 import { monthBoundsIst } from "../../shared/src/lib/change-requests";
 import { activateFirstPayment, activateRenewalPayment } from "../../shared/src/server/billing-activation";
 import { createDatabase, type Database } from "../src/client";
 import { findWorkspaceRoot, loadLocalEnv, requireEnv } from "../src/local-env";
 import { setUserPhoneNumber } from "../src/queries/account-otps";
+import {
+  cancelAffiliateEarning,
+  claimAffiliateLoginLink,
+  createAffiliate,
+  findAffiliateByUserId,
+  issueAffiliateLoginLink,
+  listOwedEarningIds,
+  recordAffiliatePayout,
+  type Affiliate,
+} from "../src/queries/affiliates";
 import { findActivePlan, findLatestSubscriptionForBusiness, openCheckoutSubscription, updateSubscriptionProviderStatus, type PaymentMethodDetails } from "../src/queries/billing";
 import { bundledNetCents, type NewBundledAddOn } from "../src/queries/bundled-add-ons";
 import { acceptBusinessInvite, createBusinessInvite, listBusinessInvites } from "../src/queries/business-invites";
@@ -28,9 +41,10 @@ import { findSiteSetting, saveSiteSetting } from "../src/queries/site-settings";
 import { listPreviewVersions, recordPreviewVersion } from "../src/queries/project-preview-versions";
 import { approveProjectPreview, insertOnboardingProject, markProjectLive, recordProjectPreviewSent, requestProjectRevisions } from "../src/queries/projects";
 import { setProjectBuilding } from "../src/queries/project-website";
-import { composeReport, moveReport, setReportSourceStatus, upsertReportSource } from "../src/queries/reports";
+import { composeReport, moveReport, recordSourceRun, setReportSourceStatus, upsertBreakdown, upsertDailyMetrics, upsertReportSource } from "../src/queries/reports";
 import { findSetupCallBooking, markSetupCallHeld, recordSetupCallBooking, saveSetupCallSummary } from "../src/queries/setup-calls";
 import { recordFailedPayment } from "../src/queries/staff-payments";
+import { createReferralCode, listReferralCodes, type NewReferralCode, type ReferralCode } from "../src/queries/referrals";
 import { createSupportTicketWithOutcome } from "../src/queries/support";
 import { saveBillingProfile } from "../src/queries/tax-invoices";
 import { markTeamCallHeld, recordTeamCall, saveTeamCallSummary } from "../src/queries/team-calls";
@@ -38,6 +52,9 @@ import { syncWebsitePages } from "../src/queries/website-pages";
 import { withCustomerRole } from "../src/scope";
 import { slugify } from "../src/slug";
 import {
+  affiliateEarnings,
+  affiliatePayouts,
+  affiliates,
   businessMembers,
   businesses,
   changeRequests,
@@ -60,14 +77,18 @@ import {
  *   3 lapsed            Reddy Driving School        plan ended, site offline, history still readable
  *   4 renewal failing   Chatterjee Photo Studio     last renewal failed, still inside the paid period
  *   5 unpaid sign-up    Iyer Filter Coffee House    a sign-up that chose Managed Website and has not paid
+ * The live one also gets 60 days of first-party visit numbers (seedVisits), for the Website screen's Visits panels.
+ * Plus an affiliate (Rohan Mehta, /affiliate) with three codes, four members in different states, earnings over six
+ * months, one payout with tax kept back and one refunded month; and a second affiliate with an open setup link.
  * Every write goes through the same query helpers the apps use. Written directly, because no helper exists: staff_members
  * (the seed's one staff account), site_events (call, WhatsApp and form taps) and businesses.country_code / state_code for
- * the four website businesses. Re-running is safe: each step checks what exists first, accounts already made are reused,
+ * the four website businesses and the affiliate's members, and affiliate_earnings.created_at (set to its payment's date).
+ * Re-running is safe: each step checks what exists first, accounts already made are reused,
  * and nothing is ever deleted.
  * Run with `pnpm --filter @brandbasket/db db:seed:v4` (the script sets the react-server condition the shared billing code needs).
  */
 
-const SEEDABLE_DATABASES: readonly string[] = ["brandbasket_platform_v4", "brandbasket_platform_preview"];
+const SEEDABLE_DATABASES: readonly string[] = ["brandbasket_platform_v4", "brandbasket_platform_v4b", "brandbasket_platform_preview"];
 const LOCAL_HOSTS: ReadonlySet<string> = new Set(["localhost", "127.0.0.1", "[::1]"]);
 const MINUTE_MS = 60_000;
 const HOUR_MS = 3_600_000;
@@ -406,7 +427,8 @@ async function seedBilling(context: Context, spec: Spec, businessId: string, slu
     await updateSubscriptionProviderStatus(db, { provider: FAKE, providerSubscriptionId, status: "cancelled", providerStatus: "cancelled", now: periodStart });
   }
   const [invoices] = await db.select({ n: count() }).from(taxInvoices).where(eq(taxInvoices.businessId, businessId));
-  if ((invoices?.n ?? 0) !== spec.renewals + 1) throw new Error(`${spec.name}: expected ${spec.renewals + 1} tax invoices, found ${invoices?.n ?? 0}. Check the billing log above.`);
+  // At least: the e2e flows pay for add-ons on these businesses, so a re-run after them finds more invoices than the seed made.
+  if ((invoices?.n ?? 0) < spec.renewals + 1) throw new Error(`${spec.name}: expected ${spec.renewals + 1} tax invoices, found ${invoices?.n ?? 0}. Check the billing log above.`);
 }
 
 /* ---------------------------------------------------------------------------------------------------------------- */
@@ -684,6 +706,55 @@ async function seedRequests(context: Context, businessId: string, userId: string
 /* Reports, snapshots, accounts, calls, team                                                                          */
 /* ---------------------------------------------------------------------------------------------------------------- */
 
+/** Where a day's visits came from and which pages they looked at, as shares that add up to 100. */
+const VISIT_CHANNELS: readonly (readonly [string, number])[] = [["search", 48], ["direct", 22], ["social", 14], ["referral", 8], ["paid", 5], ["email", 3]];
+const VISIT_PAGE_SHARES: readonly number[] = [32, 9, 18, 15, 10, 6, 10];
+
+/**
+ * Sixty days of first-party visit numbers up to yesterday (what the nightly roll-up writes as `own.*`) and the two months'
+ * channel and page lists, so the customer's Website screen and Home strip can be seen. Sample numbers, local databases only.
+ * Weekdays are busier than weekends. Re-running replaces the same days with the same numbers.
+ */
+async function seedVisits(context: Context, businessId: string, paths: readonly string[]): Promise<void> {
+  const { db, today, now } = context;
+  const random = randomStream(`visits:${businessId}`);
+  const yesterday = shiftDate(today, -1);
+  const days: { readonly day: string; readonly visits: number; readonly visitors: number; readonly pageviews: number }[] = [];
+  for (let back = 59; back >= 0; back -= 1) {
+    const day = shiftDate(yesterday, -back);
+    const weekend = [0, 6].includes(new Date(`${day}T12:00:00Z`).getUTCDay());
+    const visits = Math.round((weekend ? 52 : 84) * (0.75 + random() * 0.5));
+    days.push({ day, visits, visitors: Math.round(visits * 0.82), pageviews: Math.round(visits * (1.9 + random() * 0.5)) });
+  }
+  await upsertDailyMetrics(
+    db,
+    businessId,
+    days.flatMap((entry) => [
+      { metric: "own.visits", day: entry.day, value: entry.visits },
+      { metric: "own.visitors", day: entry.day, value: entry.visitors },
+      { metric: "own.pageviews", day: entry.day, value: entry.pageviews },
+    ]),
+    now,
+  );
+  await recordSourceRun(db, { businessId, source: "own", windowStart: days[0]?.day ?? yesterday, windowEnd: yesterday, error: null, now });
+  const months = [monthStartOf(shiftDate(monthStartOf(today), -1)), monthStartOf(today)];
+  for (const month of months) {
+    const inMonth = days.filter((entry) => entry.day.startsWith(month.slice(0, 7)));
+    const visits = inMonth.reduce((sum, entry) => sum + entry.visits, 0);
+    const views = inMonth.reduce((sum, entry) => sum + entry.pageviews, 0);
+    if (inMonth.length === 0) continue;
+    await upsertBreakdown(db, { businessId, source: "own", month, dimension: "channel", rows: VISIT_CHANNELS.map(([key, share]) => ({ key, count: Math.round((visits * share) / 100) })), now });
+    await upsertBreakdown(db, {
+      businessId,
+      source: "own",
+      month,
+      dimension: "page",
+      rows: paths.map((path, index) => ({ key: path, count: Math.round((views * (VISIT_PAGE_SHARES[index] ?? 5)) / 100) })).sort((a, b) => b.count - a.count),
+      now,
+    });
+  }
+}
+
 async function seedReports(context: Context, businessId: string, host: string): Promise<void> {
   const { db, today, now } = context;
   const thisMonth = monthStartOf(today);
@@ -893,6 +964,7 @@ async function seedBusiness(context: Context, spec: Spec, index: number): Promis
     const siteHost = must(host, `${spec.name} has no host.`);
     const pages = spec.stage === "live" ? ["/", "/about", "/services", "/services/back-pain-physiotherapy", "/services/sports-injury-recovery", "/services/knee-and-joint-care", "/contact"] : ["/", "/about", "/services", "/contact"];
     await seedWebsitePages(context, businessId, siteHost, pages);
+    if (spec.stage === "live") await seedVisits(context, businessId, pages);
   }
   if (spec.stage === "live") {
     const siteHost = must(host, `${spec.name} has no host.`);
@@ -916,6 +988,281 @@ async function seedBusiness(context: Context, spec: Spec, index: number): Promis
     await seedConnectedAccounts(context, businessId, spec.handle, spec.name, false);
   }
   return { email, businessId };
+}
+
+/* ---------------------------------------------------------------------------------------------------------------- */
+/* Affiliate                                                                                                          */
+/* ---------------------------------------------------------------------------------------------------------------- */
+
+const AFFILIATE_EMAIL = "affiliate+seed-v4@example.test";
+const PENDING_AFFILIATE_EMAIL = "affiliate+pending-seed-v4@example.test";
+/** Before this many days ago every earning was paid out in one transfer; after it they are still owed. */
+const PAYOUT_CUTOFF_DAYS = 50;
+
+type MemberCode = "main" | "friends";
+
+/** A business that paid on one of the affiliate's codes, and how its plan stands now. */
+interface MemberSpec {
+  readonly name: string;
+  readonly code: MemberCode;
+  readonly stateCode: string;
+  readonly city: string;
+  readonly line1: string;
+  readonly postalCode: string;
+  readonly firstPaidDaysAgo: number;
+  readonly renewals: number;
+  readonly ending: "active" | "cancelled" | "past_due";
+  /** The paid month whose payment was refunded: staff cancel the earning it made. */
+  readonly refundedCycle: number | null;
+  readonly method: PaymentMethodDetails;
+}
+
+const MEMBERS: readonly MemberSpec[] = [
+  { name: "Sharma Dental Care", code: "main", stateCode: "dl", city: "New Delhi", line1: "B-12, Lajpat Nagar II", postalCode: "110024", firstPaidDaysAgo: 160, renewals: 5, ending: "active", refundedCycle: null, method: upi("sharma.dental@okhdfcbank") },
+  { name: "Gupta Hardware Store", code: "main", stateCode: "up", city: "Lucknow", line1: "45, Aminabad Road", postalCode: "226018", firstPaidDaysAgo: 95, renewals: 3, ending: "active", refundedCycle: 3, method: card("rupay", "1190", "debit", "Punjab National Bank") },
+  { name: "Nair Yoga Studio", code: "main", stateCode: "kl", city: "Kochi", line1: "2nd Floor, Marine Drive Arcade", postalCode: "682031", firstPaidDaysAgo: 125, renewals: 1, ending: "cancelled", refundedCycle: null, method: upi("nair.yoga@okaxis") },
+  { name: "Bose Sweets", code: "friends", stateCode: "wb", city: "Kolkata", line1: "88, Rashbehari Avenue", postalCode: "700029", firstPaidDaysAgo: 52, renewals: 0, ending: "past_due", refundedCycle: null, method: upi("bose.sweets@oksbi") },
+];
+
+/** One payment a member made: their first, or a renewal. In date order across members, so a payout can fall between them. */
+interface MemberPayment {
+  readonly member: MemberSpec;
+  readonly cycle: number;
+  readonly paidAt: Date;
+  readonly paidThroughAt: Date;
+}
+
+interface SeededMember {
+  readonly spec: MemberSpec;
+  readonly businessId: string;
+  readonly subscriptionId: string;
+  readonly providerSubscriptionId: string;
+  readonly discountCents: number;
+  readonly discountMonths: number | null;
+}
+
+/** The affiliate's account and record, linked the way the setup link links them (issue, then claim for the account). */
+async function ensureAffiliate(context: Context): Promise<Affiliate> {
+  const userId = await ensureAccount(context, { email: AFFILIATE_EMAIL, name: "Rohan Mehta", label: "affiliate, opens /affiliate (code MEHTA300)" });
+  const linked = await findAffiliateByUserId(context.db, userId);
+  if (linked !== null) return linked;
+  const affiliate = await createAffiliate(context.db, {
+    name: "Rohan Mehta",
+    email: AFFILIATE_EMAIL,
+    phone: "+919820145678",
+    reward: { kind: "percent", basisPoints: 1000 },
+    rewardCurrency: null,
+    rewardCycles: 12,
+    notes: "Seeded for the customer app v4 affiliate screens.",
+    createdByStaffId: context.staffId,
+  });
+  const link = await issueAffiliateLoginLink(context.db, { affiliateId: affiliate.id, expiresInDays: AFFILIATE_LOGIN_LINK_DAYS, now: context.now });
+  if (link.kind !== "issued") throw new Error(`Could not open a login link for the seeded affiliate: ${link.kind}.`);
+  const claimed = await claimAffiliateLoginLink(context.db, { token: link.token, userId, now: context.now });
+  if (claimed !== "claimed") throw new Error(`Could not link the seeded affiliate to its account: ${claimed}.`);
+  return affiliate;
+}
+
+/** The affiliate's three codes: the live one most members used, one used up by its only member, and one that expired. */
+async function ensureAffiliateCodes(context: Context, affiliate: Affiliate): Promise<Record<MemberCode, ReferralCode>> {
+  const existing = await listReferralCodes(context.db, { affiliateId: affiliate.id }, 50);
+  const ensure = async (input: Omit<NewReferralCode, "currency" | "affiliateId" | "createdByStaffId">): Promise<ReferralCode> =>
+    existing.find((code) => code.code === input.code) ?? createReferralCode(context.db, { ...input, currency: CURRENCY, affiliateId: affiliate.id, createdByStaffId: context.staffId });
+  const main = await ensure({ code: "MEHTA300", discount: { kind: "amount", amountCents: 30_000 }, discountMonths: 3, expiresAt: null, maxRedemptions: null });
+  const friends = await ensure({ code: "MEHTA-FRIENDS", discount: { kind: "percent", basisPoints: 1000 }, discountMonths: null, expiresAt: null, maxRedemptions: 1 });
+  await ensure({ code: "MEHTA-DIWALI", discount: { kind: "amount", amountCents: 50_000 }, discountMonths: 1, expiresAt: new Date(context.now.getTime() - 20 * DAY_MS), maxRedemptions: null });
+  return { main, friends };
+}
+
+/** A member's business, billing profile and the subscription opened with their code. Found again by name on a re-run. */
+async function ensureMember(context: Context, spec: MemberSpec, code: ReferralCode): Promise<SeededMember> {
+  const { db } = context;
+  const found = await db.select({ id: businesses.id }).from(businesses).where(eq(businesses.name, spec.name)).limit(1);
+  const businessId = found[0]?.id ?? (await db.transaction(async (tx) => (await insertBusiness(tx, spec.name, CURRENCY)).id));
+  await db.update(businesses).set({ countryCode: "IN", stateCode: spec.stateCode }).where(eq(businesses.id, businessId));
+  await saveBillingProfile(db, { businessId, legalName: spec.name, gstin: null, addressLine1: spec.line1, addressLine2: null, city: spec.city, postalCode: spec.postalCode, stateCode: spec.stateCode, email: null, phone: null });
+
+  const plan = must(await findActivePlan(db, CURRENCY, "managed"), `No active ${CURRENCY} managed plan. Run the migrations first.`);
+  const lines = bundleFor(["managed-website"]);
+  const discount = must(code.discount, `${code.code} has no discount.`);
+  // The checkout's own rule: the code is worth its discount against the basket's package net, frozen on the subscription.
+  const discountCents = discountCentsFor(discount, bundledNetCents(lines));
+  const providerSubscriptionId = fakeSubscriptionId(`seed_v4_member_${slugify(spec.name)}`);
+  const subscription =
+    (await findLatestSubscriptionForBusiness(db, businessId)) ??
+    (await openCheckoutSubscription(db, {
+      businessId,
+      planId: plan.id,
+      provider: FAKE,
+      providerSubscriptionId,
+      replacing: null,
+      now: new Date(context.now.getTime() - spec.firstPaidDaysAgo * DAY_MS),
+      bundledAddOns: lines,
+      referralCodeId: code.id,
+      discountAmountCents: discountCents,
+      discountMonthsLeft: code.discountMonths,
+      adCreditCents: adCreditCentsAtCheckout({ services: ["managed-website"], forfeited: false, hasEverPaid: false }, CURRENCY),
+    }));
+  return { spec, businessId, subscriptionId: subscription.id, providerSubscriptionId, discountCents, discountMonths: code.discountMonths };
+}
+
+/** Every payment the members made, oldest first. Monthly plan: each renewal falls a calendar month after the last. */
+function memberPayments(now: Date, termMonths: number): MemberPayment[] {
+  return MEMBERS.flatMap((member) => {
+    const firstPaidAt = new Date(now.getTime() - member.firstPaidDaysAgo * DAY_MS);
+    const payments: MemberPayment[] = [{ member, cycle: 1, paidAt: firstPaidAt, paidThroughAt: addMonthsUtc(firstPaidAt, termMonths) }];
+    for (let renewal = 1; renewal <= member.renewals; renewal += 1) {
+      const paidAt = addMonthsUtc(firstPaidAt, termMonths + renewal - 1);
+      payments.push({ member, cycle: renewal + 1, paidAt, paidThroughAt: addMonthsUtc(paidAt, 1) });
+    }
+    return payments;
+  }).sort((a, b) => a.paidAt.getTime() - b.paidAt.getTime());
+}
+
+/** One member payment through the apps' own activation, which writes the affiliate's earning in the same transaction. */
+async function payAsMember(context: Context, member: SeededMember, payment: MemberPayment): Promise<void> {
+  const plan = must(await findActivePlan(context.db, CURRENCY, "managed"), `No active ${CURRENCY} managed plan.`);
+  const lines = bundleFor(["managed-website"]);
+  const seedKey = `seed_v4_member_${slugify(member.spec.name)}`;
+  if (payment.cycle === 1) {
+    await context.db.transaction((tx) =>
+      activateFirstPayment(tx, { businessId: member.businessId, subscriptionId: member.subscriptionId, plan, provider: FAKE, providerPaymentId: `${seedKey}_initial`, paidAt: payment.paidAt, discountAmountCents: member.discountCents, method: member.spec.method }),
+    );
+    return;
+  }
+  const discounted = member.discountMonths === null || payment.cycle <= member.discountMonths;
+  const discountCents = discounted ? member.discountCents : 0;
+  const netCents = bundledNetCents(lines);
+  await context.db.transaction((tx) =>
+    activateRenewalPayment(tx, {
+      businessId: member.businessId,
+      subscriptionId: member.subscriptionId,
+      commitmentEndsAt: addMonthsUtc(new Date(context.now.getTime() - member.spec.firstPaidDaysAgo * DAY_MS), plan.initialTermMonths),
+      provider: FAKE,
+      providerPaymentId: `${seedKey}_renewal_${payment.cycle - 1}`,
+      amountCents: chargedAmountCents(netCents, discountCents),
+      currency: CURRENCY,
+      paidAt: payment.paidAt,
+      paidThroughAt: payment.paidThroughAt,
+      periodStart: payment.paidAt,
+      method: member.spec.method,
+      invoicedPrice: { plan, bundledAddOns: lines, netAmountCents: 0, discountAmountCents: discountCents, retentionDiscountCents: 0 },
+    }),
+  );
+}
+
+/** Settles every earning owed so far in one transfer, with tax kept back, as the console's Record payout does. Once only. */
+async function ensurePayout(context: Context, affiliate: Affiliate, paidOn: string): Promise<void> {
+  const [made] = await context.db.select({ n: count() }).from(affiliatePayouts).where(eq(affiliatePayouts.affiliateId, affiliate.id));
+  if ((made?.n ?? 0) > 0) return;
+  const earningIds = await listOwedEarningIds(context.db, affiliate.id, CURRENCY);
+  if (earningIds.length === 0) throw new Error("The seeded affiliate has nothing owed to pay out.");
+  const owed = await context.db.select({ amountCents: affiliateEarnings.amountCents }).from(affiliateEarnings).where(and(eq(affiliateEarnings.affiliateId, affiliate.id), eq(affiliateEarnings.status, "owed")));
+  const amountCents = owed.reduce((total, row) => total + row.amountCents, 0);
+  // Tax deducted at source on commission (section 194H), 2%, rounded down to whole paise.
+  const withheldCents = Math.floor((amountCents * 2) / 100);
+  const outcome = await recordAffiliatePayout(context.db, {
+    affiliateId: affiliate.id,
+    currency: CURRENCY,
+    earningIds,
+    paidOn,
+    reference: "UPI 431907652218",
+    withheldCents,
+    withheldReason: "TDS at 2%",
+    recordedByStaffId: context.staffId,
+  });
+  if (outcome.kind !== "recorded") throw new Error(`The seeded payout was refused: ${outcome.kind}.`);
+}
+
+/** Members who left or stopped paying: one cancelled after two months, one whose last renewal failed. */
+async function settleMemberEndings(context: Context, members: readonly SeededMember[]): Promise<void> {
+  const plan = must(await findActivePlan(context.db, CURRENCY, "managed"), `No active ${CURRENCY} managed plan.`);
+  for (const member of members) {
+    if (member.spec.ending === "cancelled") {
+      await updateSubscriptionProviderStatus(context.db, { provider: FAKE, providerSubscriptionId: member.providerSubscriptionId, status: "cancelled", providerStatus: "cancelled", now: context.now });
+    }
+    if (member.spec.ending === "past_due") {
+      const failedAt = addMonthsUtc(new Date(context.now.getTime() - member.spec.firstPaidDaysAgo * DAY_MS), plan.initialTermMonths + member.spec.renewals);
+      await recordFailedPayment(context.db, {
+        businessId: member.businessId,
+        provider: FAKE,
+        providerPaymentId: `seed_v4_member_${slugify(member.spec.name)}_renewal_failed`,
+        kind: "renewal",
+        amountCents: chargedAmountCents(bundledNetCents(bundleFor(["managed-website"])), member.discountCents),
+        currency: CURRENCY,
+        failureReason: "The UPI mandate was paused by the customer.",
+        failedAt,
+      });
+      await updateSubscriptionProviderStatus(context.db, { provider: FAKE, providerSubscriptionId: member.providerSubscriptionId, status: "past_due", providerStatus: "pending", now: context.now });
+    }
+  }
+}
+
+/** A refunded month: staff cancel the earning it made while it is still owed. Does nothing once it is cancelled. */
+async function refundMemberMonths(context: Context, affiliate: Affiliate, members: readonly SeededMember[]): Promise<void> {
+  for (const member of members) {
+    if (member.spec.refundedCycle === null) continue;
+    const rows = await context.db
+      .select({ id: affiliateEarnings.id })
+      .from(affiliateEarnings)
+      .where(and(eq(affiliateEarnings.businessId, member.businessId), eq(affiliateEarnings.cycleNumber, member.spec.refundedCycle), eq(affiliateEarnings.status, "owed")))
+      .limit(1);
+    const earning = rows[0];
+    if (earning !== undefined) await cancelAffiliateEarning(context.db, { affiliateId: affiliate.id, earningId: earning.id, staffUserId: context.staffId, now: context.now });
+  }
+}
+
+/**
+ * A second affiliate who has not opened their account yet, with a setup link open, so /affiliate/setup/<token> shows the
+ * new-account form. The link goes in the logins file. A link that is still open is kept; a lapsed one is replaced.
+ */
+async function ensurePendingAffiliate(context: Context): Promise<void> {
+  const found = await context.db.select({ id: affiliates.id, expiresAt: affiliates.loginTokenExpiresAt }).from(affiliates).where(eq(affiliates.email, PENDING_AFFILIATE_EMAIL)).limit(1);
+  const existing = found[0];
+  if (existing !== undefined && existing.expiresAt !== null && existing.expiresAt > context.now) return;
+  const affiliateId =
+    existing?.id ??
+    (
+      await createAffiliate(context.db, {
+        name: "Kavita Rao",
+        email: PENDING_AFFILIATE_EMAIL,
+        phone: null,
+        reward: { kind: "amount", amountCents: 20_000 },
+        rewardCurrency: CURRENCY,
+        rewardCycles: null,
+        notes: "Seeded with an open setup link for the customer app v4.",
+        createdByStaffId: context.staffId,
+      })
+    ).id;
+  const link = await issueAffiliateLoginLink(context.db, { affiliateId, expiresInDays: AFFILIATE_LOGIN_LINK_DAYS, now: context.now });
+  if (link.kind !== "issued") throw new Error(`Could not open a setup link for the pending affiliate: ${link.kind}.`);
+  const heading = context.headingWritten ? "" : `\n${LOGINS_HEADING}, added ${context.today}\n`;
+  appendFileSync(context.loginsFile, `${heading}${PENDING_AFFILIATE_EMAIL}  ${affiliateSetupPath(link.token)}  (pending affiliate: setup link, open on the customer app, works once, until ${istDate(link.expiresAt)})\n`);
+  context.headingWritten = true;
+  console.log(`  Setup link opened for ${PENDING_AFFILIATE_EMAIL} (in local-test-logins.txt)`);
+}
+
+async function seedAffiliate(context: Context): Promise<void> {
+  console.log("Affiliate: Rohan Mehta");
+  const affiliate = await ensureAffiliate(context);
+  const codes = await ensureAffiliateCodes(context, affiliate);
+  const members = new Map<string, SeededMember>();
+  for (const spec of MEMBERS) members.set(spec.name, await ensureMember(context, spec, codes[spec.code]));
+  const plan = must(await findActivePlan(context.db, CURRENCY, "managed"), `No active ${CURRENCY} managed plan.`);
+  const cutoff = new Date(context.now.getTime() - PAYOUT_CUTOFF_DAYS * DAY_MS);
+  const payments = memberPayments(context.now, plan.initialTermMonths);
+  const seededOf = (payment: MemberPayment): SeededMember => must(members.get(payment.member.name), `${payment.member.name} was not seeded.`);
+  for (const payment of payments.filter((entry) => entry.paidAt < cutoff)) await payAsMember(context, seededOf(payment), payment);
+  await ensurePayout(context, affiliate, istDate(new Date(cutoff.getTime() + 3 * DAY_MS)));
+  for (const payment of payments.filter((entry) => entry.paidAt >= cutoff)) await payAsMember(context, seededOf(payment), payment);
+  // Written directly, no helper exists: a live earning is written in its payment's own transaction, so it carries the day the
+  // member paid. The seed pays months in the past today, so each earning takes its payment's date the way it would have.
+  await context.db.execute(
+    sql`update ${affiliateEarnings} set created_at = payments.paid_at from payments where payments.id = ${affiliateEarnings.paymentId} and ${affiliateEarnings.affiliateId} = ${affiliate.id} and ${affiliateEarnings.createdAt} <> payments.paid_at`,
+  );
+  await refundMemberMonths(context, affiliate, [...members.values()]);
+  await settleMemberEndings(context, [...members.values()]);
+  await ensurePendingAffiliate(context);
 }
 
 /**
@@ -962,10 +1309,12 @@ try {
     const result = await seedBusiness(context, spec, index);
     seeded.push({ name: spec.name, stage: spec.stage, ...result });
   }
+  await seedAffiliate(context);
   const repaired = await repairSeedSubscriptionIds(handle.db);
   if (repaired > 0) console.log(`Renamed ${repaired} seeded subscription id${repaired === 1 ? "" : "s"} to ones the fake provider accepts.`);
   console.log("\nSeeded businesses (passwords are in local-test-logins.txt):");
   for (const entry of seeded) console.log(`  ${entry.stage.padEnd(8)} ${entry.name.padEnd(28)} ${entry.email}  ${entry.businessId}`);
+  console.log(`  affiliate ${"Rohan Mehta".padEnd(27)} ${AFFILIATE_EMAIL}`);
 } finally {
   await handle.close();
 }

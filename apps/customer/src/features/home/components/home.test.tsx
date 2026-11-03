@@ -17,11 +17,12 @@ const series = (current: number, previous: number): { ok: true; data: EnquirySer
 const figures = (data: Partial<StripFigures> = {}): { ok: true; data: StripFigures } => ({ ok: true, data: { month: "November", adLeads: null, pageOne: null, ...data } });
 
 describe("LastThirtyDays", () => {
-  it("shows Leads from ads and Google page one when they were measured, and never Website visits", () => {
+  it("shows Leads from ads and Google page one when they were measured, and no visits while the switch is off", () => {
     render(
       <LastThirtyDays
         series={series(63, 40)}
         figures={figures({ adLeads: { count: 5, updatedAt: NOW }, pageOne: { count: 10, change: "Up from 8", diff: 2, checkedAt: NOW } })}
+        visits={null}
       />,
     );
     expect(screen.getByText("Leads from ads")).toBeTruthy();
@@ -32,8 +33,25 @@ describe("LastThirtyDays", () => {
     expect(screen.getByText("+2")).toBeTruthy();
   });
 
+  it("shows Visits with its period, change and date once a day has been counted, and nothing for a source with no days", () => {
+    const summary = { source: "own" as const, total: 3184, change: 12, period: "Last 30 days", days: [], updatedAt: NOW };
+    render(<LastThirtyDays series={series(63, 40)} figures={figures()} visits={{ ok: true, data: { summary, lists: null } }} />);
+    expect(screen.getByText("Visits")).toBeTruthy();
+    expect(screen.getByText("3,184")).toBeTruthy();
+    expect(screen.getByText("+12%")).toBeTruthy();
+    expect(screen.getByText(/Last 30 days\. Updated/)).toBeTruthy();
+  });
+
+  it("draws no Visits figure when no day was counted, and says so when the read failed", () => {
+    const { unmount } = render(<LastThirtyDays series={series(63, 40)} figures={figures()} visits={{ ok: true, data: null }} />);
+    expect(screen.queryByText("Visits")).toBeNull();
+    unmount();
+    render(<LastThirtyDays series={series(63, 40)} figures={figures()} visits={{ ok: false, error: { at: NOW } as never }} />);
+    expect(screen.getByText(/We could not load your visits/)).toBeTruthy();
+  });
+
   it("leaves out what is not known and any change with nothing to compare", () => {
-    render(<LastThirtyDays series={series(63, 0)} figures={figures()} />);
+    render(<LastThirtyDays series={series(63, 0)} figures={figures()} visits={null} />);
     expect(screen.getByText("Enquiries")).toBeTruthy();
     expect(screen.queryByText("Leads from ads")).toBeNull();
     expect(screen.queryByText("Google page one")).toBeNull();
@@ -42,12 +60,12 @@ describe("LastThirtyDays", () => {
 
   it("never shows a bare 0 change", () => {
     // A change is drawn in a type-label span; the values are not.
-    const { container } = render(<LastThirtyDays series={series(0, 0)} figures={figures({ pageOne: { count: 6, change: "Same as last month", diff: 0, checkedAt: NOW } })} />);
+    const { container } = render(<LastThirtyDays series={series(0, 0)} figures={figures({ pageOne: { count: 6, change: "Same as last month", diff: 0, checkedAt: NOW } })} visits={null} />);
     expect(container.querySelector(".type-label")).toBeNull();
   });
 
   it("draws nothing when there is nothing to show", () => {
-    const { container } = render(<LastThirtyDays series={null} figures={figures()} />);
+    const { container } = render(<LastThirtyDays series={null} figures={figures()} visits={null} />);
     expect(container.firstChild).toBeNull();
   });
 });
@@ -68,6 +86,7 @@ describe("HomeScreen", () => {
     needs: null,
     enquiries: null,
     figures: null,
+    visits: null,
     services: null,
     activity: null,
     coming: null,

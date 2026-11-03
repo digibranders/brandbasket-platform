@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useId, useState, type KeyboardEvent } from "react";
+import { useId, useRef, useState, type KeyboardEvent } from "react";
 import { Dialog, Icon, Input } from "@/ui";
 import { cx } from "@/ui/cx";
 import { NEW_REQUEST, searchNav, type NavTarget } from "../rules";
@@ -19,6 +19,8 @@ export interface CommandSearchProps {
 export function CommandSearch({ open, onOpenChange, targets }: CommandSearchProps) {
   const router = useRouter();
   const listId = useId();
+  // Command or Control K opens it ready to type, not on the close button.
+  const input = useRef<HTMLInputElement>(null);
   const [query, setQuery] = useState("");
   const [active, setActive] = useState(0);
   const results = searchNav(targets, query);
@@ -52,10 +54,11 @@ export function CommandSearch({ open, onOpenChange, targets }: CommandSearchProp
   const optionId = (index: number) => `${listId}-${index}`;
 
   return (
-    <Dialog open={open} onOpenChange={close} title="Search">
+    <Dialog open={open} onOpenChange={close} title="Search" initialFocus={input}>
       <div className="relative">
         <Icon name="MagnifyingGlass" size="sm" className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-ink-3" />
         <Input
+          ref={input}
           role="combobox"
           aria-label="Search pages"
           aria-expanded

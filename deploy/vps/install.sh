@@ -413,7 +413,9 @@ step_backups() {
     "$HERE/systemd/brandbasket-site-hosting.service" "$HERE/systemd/brandbasket-site-hosting.timer" \
     "$HERE/systemd/brandbasket-site-rollup.service" "$HERE/systemd/brandbasket-site-rollup.timer" \
     "$HERE/systemd/brandbasket-kickoff-builds.service" "$HERE/systemd/brandbasket-kickoff-builds.timer" \
-    "$HERE/systemd/brandbasket-site-health.service" "$HERE/systemd/brandbasket-site-health.timer"
+    "$HERE/systemd/brandbasket-site-health.service" "$HERE/systemd/brandbasket-site-health.timer" \
+    "$HERE/systemd/brandbasket-ga4-sync.service" "$HERE/systemd/brandbasket-ga4-sync.timer" \
+    "$HERE/systemd/brandbasket-monthly-reports.service" "$HERE/systemd/brandbasket-monthly-reports.timer"
   say "== programs"
   dir 0700 root:root /etc/brandbasket
   dir 0700 root:root /var/backups/brandbasket
@@ -426,11 +428,11 @@ step_backups() {
   put 0755 "$REPO/scripts/server/run-site-rollup-job.sh" /usr/local/sbin/brandbasket-site-rollup-job
   put 0755 "$REPO/scripts/server/run-kickoff-builds-job.sh" /usr/local/sbin/brandbasket-kickoff-builds-job
   say "== units"
-  for f in brandbasket-backup brandbasket-restore-test brandbasket-maintenance brandbasket-erase brandbasket-site-hosting brandbasket-site-rollup brandbasket-kickoff-builds brandbasket-site-health; do
+  for f in brandbasket-backup brandbasket-restore-test brandbasket-maintenance brandbasket-erase brandbasket-site-hosting brandbasket-site-rollup brandbasket-kickoff-builds brandbasket-site-health brandbasket-ga4-sync brandbasket-monthly-reports; do
     put 0644 "$HERE/systemd/$f.service" "$UNIT_DIR/$f.service"
     put 0644 "$HERE/systemd/$f.timer" "$UNIT_DIR/$f.timer"
   done
-  install_failure_alerts brandbasket-backup brandbasket-restore-test brandbasket-maintenance brandbasket-site-hosting brandbasket-site-rollup brandbasket-kickoff-builds brandbasket-site-health
+  install_failure_alerts brandbasket-backup brandbasket-restore-test brandbasket-maintenance brandbasket-site-hosting brandbasket-site-rollup brandbasket-kickoff-builds brandbasket-site-health brandbasket-ga4-sync brandbasket-monthly-reports
   act "systemctl daemon-reload" systemctl daemon-reload
   say "== timers"
   if [[ -f /var/lib/brandbasket/last-backup-ok && -f /var/lib/brandbasket/last-offsite-ok ]]; then
@@ -445,6 +447,8 @@ step_backups() {
   say "  brandbasket-erase.timer: installed, NOT enabled. It deletes customer data; the owner decides: systemctl enable --now brandbasket-erase.timer"
   say "  brandbasket-site-hosting.timer: installed, NOT enabled. It pauses lapsed websites; set VERCEL_API_TOKEN, read a --dry-run, then: systemctl enable --now brandbasket-site-hosting.timer"
   say "  brandbasket-site-health.timer: installed, NOT enabled. Migrate first (site_checks), run 'systemctl start brandbasket-site-health.service' once and read its journal, then: systemctl enable --now brandbasket-site-health.timer"
+  say "  brandbasket-ga4-sync.timer: installed, NOT enabled. Needs GA4_SERVICE_ACCOUNT_JSON (docs/deployment/brandbasket-vps.md, 'Google Analytics'); run 'systemctl start brandbasket-ga4-sync.service' once and read its journal, then: systemctl enable --now brandbasket-ga4-sync.timer"
+  say "  brandbasket-monthly-reports.timer: installed, NOT enabled. It only writes drafts for staff to review. Read a --dry-run first (docs/monthly-reports.md), then: systemctl enable --now brandbasket-monthly-reports.timer"
 }
 
 # --- main -----------------------------------------------------------------------------------------------------------------

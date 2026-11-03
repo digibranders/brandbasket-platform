@@ -33,7 +33,7 @@ const monthsAgo = (months: number, dayOffset: number): Date => {
   at.setUTCMonth(at.getUTCMonth() - months);
   return new Date(at.getTime() + dayOffset * DAY);
 };
-const NOTHING_SCHEDULED = { leads: 0, enquiries: 0, visitors: 0, exitFeedback: 0, privacyRequests: 0, breachRecords: 0, staffAccessLog: 0, consentRecords: 0 };
+const NOTHING_SCHEDULED = { leads: 0, enquiries: 0, enquiryDetails: 0, visitors: 0, exitFeedback: 0, privacyRequests: 0, breachRecords: 0, staffAccessLog: 0, consentRecords: 0 };
 
 let dbs: TestDatabases;
 

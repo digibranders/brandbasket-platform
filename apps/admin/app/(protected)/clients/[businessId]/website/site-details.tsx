@@ -9,6 +9,7 @@ import {
   lastSiteHitAt,
   listEnabledModules,
   listHostedSites,
+  listReportSources,
   listUpcomingDirectoryPromotions,
   readDirectoryStatuses,
 } from "@brandbasket/db";
@@ -29,7 +30,7 @@ import { isWebsiteBought } from "@/lib/server/bought-services";
 import { getStaffDb } from "@/lib/server/db";
 import { serverEnv } from "@/lib/server/env";
 import { getSiteApiToken } from "@/lib/server/site-token";
-import { addressOf, CustomerLink, Facts, HostingBlock, hoursForDay, readListingNotice, SiteApiTokenBlock, TrackingBlock, WebsiteUrlBlock } from "../parts";
+import { addressOf, AnalyticsBlock, CustomerLink, Facts, HostingBlock, hoursForDay, readListingNotice, SiteApiTokenBlock, TrackingBlock, WebsiteUrlBlock } from "../parts";
 
 /** The customer's site data: their website, features, listing, business details, opening hours and what they offer. It sits in the Website tab's "Site details" fold. */
 export async function SiteDetails({
@@ -41,10 +42,11 @@ export async function SiteDetails({
 }): Promise<ReactElement> {
   const db = getStaffDb();
   const renderedAt = new Date();
-  const [siteApiToken, siteKey, lastEventAt, websiteUrl, hostedSites, timeZone, enabledModules, appointmentCounts, listingPlacement, listingLive, promotions, websiteBought] = await Promise.all([
+  const [siteApiToken, siteKey, lastEventAt, reportSources, websiteUrl, hostedSites, timeZone, enabledModules, appointmentCounts, listingPlacement, listingLive, promotions, websiteBought] = await Promise.all([
     getSiteApiToken(client.businessId),
     getSiteKey(db, client.businessId),
     lastSiteHitAt(db, client.businessId),
+    listReportSources(db, client.businessId),
     findBusinessWebsiteUrl(db, client.businessId),
     listHostedSites(db, client.businessId),
     findBusinessTimeZone(db, client.businessId),
@@ -95,6 +97,16 @@ export async function SiteDetails({
                 <h3 className={labelClasses}>Site tracking</h3>
                 <div className="mt-2">
                   <TrackingBlock businessId={client.businessId} siteKey={siteKey?.key ?? null} appOrigin={serverEnv().APP_ORIGIN} lastEventAt={lastEventAt} />
+                </div>
+              </div>
+              <div>
+                <h3 className={labelClasses}>Google Analytics</h3>
+                <div className="mt-2">
+                  <AnalyticsBlock
+                    businessId={client.businessId}
+                    source={reportSources.find((row) => row.source === "ga4") ?? null}
+                    serviceAccountEmail={serverEnv().GA4_SERVICE_ACCOUNT_EMAIL?.trim() || null}
+                  />
                 </div>
               </div>
             </>

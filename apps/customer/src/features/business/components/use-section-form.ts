@@ -1,10 +1,12 @@
 "use client";
 
 import { useCallback, useEffect, useState, useTransition, type FormEvent } from "react";
-import type { ActionFailure, ActionResult } from "@/lib/action-result";
+import { actionFail, type ActionFailure, type ActionResult } from "@/lib/action-result";
 import { useToast } from "@/ui";
 import { formSnapshot, toFormData } from "../rules";
 import { useSaveBarHost } from "./save-bar-host";
+
+const SAVE_FAILED = "We could not save that. Try again.";
 
 export interface SectionForm {
   readonly values: Readonly<Record<string, string>>;
@@ -57,7 +59,15 @@ export function useSectionForm({ id, initial, action, saved }: Options): Section
   const submit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     startTransition(async () => {
-      const result = await action(toFormData(values));
+      let result: ActionResult;
+      try {
+        result = await action(toFormData(values));
+      } catch {
+        // The request never got an answer (offline, a dropped connection). Keep the form and what was typed on screen
+        // instead of handing the whole page to the route's error screen. These actions never redirect, so nothing of
+        // Next's own is caught here.
+        result = actionFail(SAVE_FAILED);
+      }
       if (result.ok) {
         setFailure(null);
         toast(saved);

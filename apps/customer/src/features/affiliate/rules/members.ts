@@ -16,19 +16,36 @@ export class TooManyMembersError extends Error {
 }
 
 export interface MemberCounts {
+  /** Businesses that have paid on one of the codes. */
   readonly total: number;
-  /** Members whose plan is running (status `active`). */
+  /** Of those, the ones whose latest plan on a code is running (status `active`). */
   readonly paying: number;
 }
 
+/** One subscription that paid on one of the codes, newest first, as listAffiliateMembers returns them. */
+export interface MemberSubscription {
+  readonly businessId: string;
+  readonly status: string;
+}
+
+/**
+ * A member is a business, not a subscription: a code carried onto a reactivated or kept plan (plan 18) gives the same business
+ * a second row. The list is newest first, so a business's first row is its latest plan and decides whether it is paying.
+ */
+export function membersOf(rows: readonly MemberSubscription[]): MemberCounts {
+  const latest = new Map<string, string>();
+  for (const row of rows) if (!latest.has(row.businessId)) latest.set(row.businessId, row.status);
+  return { total: latest.size, paying: [...latest.values()].filter((status) => status === "active").length };
+}
+
 export async function countMembers(
-  fetchMembers: (limit: number) => Promise<readonly { readonly status: string }[]>,
+  fetchMembers: (limit: number) => Promise<readonly MemberSubscription[]>,
   page: number = MEMBER_PAGE,
   ceiling: number = MEMBER_CEILING,
 ): Promise<MemberCounts> {
   for (let limit = page; ; limit *= 2) {
     const rows = await fetchMembers(limit);
-    if (rows.length < limit) return { total: rows.length, paying: rows.filter((row) => row.status === "active").length };
+    if (rows.length < limit) return membersOf(rows);
     if (limit >= ceiling) throw new TooManyMembersError(ceiling);
   }
 }

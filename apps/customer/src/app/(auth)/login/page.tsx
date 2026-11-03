@@ -1,6 +1,6 @@
 import { turnstileSiteKey } from "@brandbasket/shared/server/turnstile-request";
 import type { Metadata } from "next";
-import { redirect } from "next/navigation";
+import { permanentRedirect, redirect } from "next/navigation";
 import { inviteReturn, signUpHrefFromLogin, type SearchParams } from "@/features/entry/rules/account-entry";
 import { loginNotice } from "@/features/entry/rules/login-notice";
 import { EntryScreen } from "@/features/entry/components/entry-screen";
@@ -17,7 +17,8 @@ export const dynamic = "force-dynamic";
 export default async function LoginPage({ searchParams }: { readonly searchParams: Promise<SearchParams> }) {
   const params = await searchParams;
   const signUp = signUpHrefFromLogin(params);
-  if (signUp !== null) redirect(signUp);
+  // Old sign-up links are permanent redirects (PARITY Part 2); the signed-in hop below is not.
+  if (signUp !== null) permanentRedirect(signUp);
   const signedIn = await signedInEntry(false);
   if (signedIn?.kind === "elsewhere") redirect(signedIn.href);
   if (signedIn?.kind === "no-business") return <NoBusiness label={signedIn.label} />;

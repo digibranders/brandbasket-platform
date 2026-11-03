@@ -166,7 +166,7 @@ describe("the panels", () => {
 
   it("reads nothing but the booking page for a payment task", async () => {
     const panels = await loadHomePanels(customer({ status: "unpaid" }), view("payment_required"), NOW);
-    expect(panels).toMatchObject({ checklist: null, needs: null, enquiries: null, figures: null, services: null, activity: null, coming: null, included: null });
+    expect(panels).toMatchObject({ checklist: null, needs: null, enquiries: null, figures: null, visits: null, services: null, activity: null, coming: null, included: null });
     expect(listRequestNeeds).not.toHaveBeenCalled();
   });
 

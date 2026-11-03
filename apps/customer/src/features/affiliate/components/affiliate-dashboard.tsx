@@ -71,7 +71,7 @@ function CodesTable({ codes, usage, affiliate, now }: { readonly codes: readonly
                 <Badge tone={CODE_TONE[status.tone]}>{status.label}</Badge>
               </TableCell>
               <TableCell hideOnPhone>{gives(code)}</TableCell>
-              <TableCell align="end">{used?.members ?? 0}</TableCell>
+              <TableCell align="end">{formatNumber(used?.members ?? 0)}</TableCell>
               <TableCell align="end" hideOnPhone>
                 {code.discount === null ? "None" : formatMoney(used?.discountGivenCents ?? 0, code.currency)}
               </TableCell>
@@ -158,17 +158,17 @@ function Monthly({ monthly, now, count }: { readonly monthly: Loaded<readonly Af
           <TableHeader align="end">Members who paid</TableHeader>
           <TableHeader align="end">Earned</TableHeader>
           <TableHeader align="end" hideOnPhone>
-            Refunded
+            Refunded payments
           </TableHeader>
         </TableHead>
         <TableBody>
           {months.rows.map((row) => (
             <TableRow key={row.month}>
               <TableCell>{row.label}</TableCell>
-              <TableCell align="end">{row.payingMembers}</TableCell>
+              <TableCell align="end">{formatNumber(row.payingMembers)}</TableCell>
               <TableCell align="end">{formatMoney(row.cents, months.currency)}</TableCell>
               <TableCell align="end" hideOnPhone>
-                {row.refunded}
+                {formatNumber(row.refunded)}
               </TableCell>
             </TableRow>
           ))}
@@ -218,7 +218,6 @@ export function AffiliateDashboard({ affiliate, now, codes, figures, monthly, ea
           <Table aria-label="Earnings">
             <TableHead>
               <TableHeader>Month paid</TableHeader>
-              <TableHeader hideOnPhone>Date</TableHeader>
               <TableHeader align="end">Amount</TableHeader>
               <TableHeader>Status</TableHeader>
             </TableHead>
@@ -227,9 +226,11 @@ export function AffiliateDashboard({ affiliate, now, codes, figures, monthly, ea
                 <TableRow key={earning.id}>
                   <TableCell>
                     {monthLabel(earning.cycleNumber, affiliate.rewardCycles)}
-                    <span className="type-meta"> ({earning.code})</span>
+                    {/* The date stays on phones too: an amount is never shown without when it was earned. */}
+                    <span className="block type-meta">
+                      {formatDate(earning.createdAt, now)}, {earning.code}
+                    </span>
                   </TableCell>
-                  <TableCell hideOnPhone>{formatDate(earning.createdAt, now)}</TableCell>
                   <TableCell align="end">{formatMoney(earning.amountCents, earning.currency)}</TableCell>
                   <TableCell>
                     <Badge tone={EARNING_TONE[earning.status]}>{EARNING_LABEL[earning.status]}</Badge>
@@ -254,14 +255,14 @@ function PayoutsPanel({ payouts, limit, now }: { readonly payouts: Loaded<readon
       {(rows) => (
         <Table aria-label="Payouts">
           <TableHead>
-            <TableHeader>Reference</TableHeader>
+            <TableHeader hideOnPhone>Reference</TableHeader>
             <TableHeader>Date</TableHeader>
             <TableHeader align="end">Received</TableHeader>
           </TableHead>
           <TableBody>
             {rows.map((payout) => (
               <TableRow key={payout.id}>
-                <TableCell>{payout.reference}</TableCell>
+                <TableCell hideOnPhone>{payout.reference}</TableCell>
                 <TableCell>{formatDate(dayAsDate(payout.paidOn), now)}</TableCell>
                 <TableCell align="end">
                   {formatMoney(payout.receivedCents, payout.currency)}

@@ -14,6 +14,7 @@ import {
 import { errorLogInfo } from "@brandbasket/shared/server/error-log-info";
 import { revalidatePath } from "next/cache";
 import { unstable_rethrow } from "next/navigation";
+import { startCustomerChargePayment } from "@/features/checkout/server/charges";
 import { actionFail, actionOk, type ActionResult } from "@/lib/action-result";
 import { getAppDb } from "@/lib/db";
 import { requireBilling, requireCustomer, type CustomerContext } from "@/lib/guards";
@@ -166,8 +167,9 @@ export async function reopenRequestAction(formData: FormData): Promise<ActionRes
 }
 
 /**
- * "Accept and pay": the customer's yes to a quote. Opens the charge for it (the same charge if it is pressed twice) and
- * returns where to pay it; the work starts when the money is recorded. The quote's id comes from the form, the business it
+ * "Accept and pay": the customer's yes to a quote. Opens the charge for it (the same charge if it is pressed twice), opens
+ * the payment on it (one Razorpay order per charge, recorded before the customer is sent on, because the pay page only reads
+ * the stored order) and returns where to pay it; the work starts when the money is recorded. The quote's id comes from the form, the business it
  * must belong to from the session.
  */
 export async function acceptQuoteAction(formData: FormData): Promise<ActionResult<{ href: string }>> {
@@ -180,8 +182,12 @@ export async function acceptQuoteAction(formData: FormData): Promise<ActionResul
     const ticketId = await withTenantScope(getAppDb(), customer.tenant, (tx) => findTicketIdOfChangeRequest(tx, customer.businessId, ids.requestId));
     if (ticketId === null) return actionFail(refusalMessage("changed"));
     const { chargeId } = await openQuoteCharge(customer, ids.requestId, new Date());
+    const started = await startCustomerChargePayment(customer, chargeId);
     refresh();
-    return actionOk({ href: chargePath(chargeId) });
+    // The fake provider (local and staging) has its own test page; Razorpay opens on the charge's pay page.
+    if (started.kind === "redirect") return actionOk({ href: started.url });
+    if (started.kind === "razorpay") return actionOk({ href: chargePath(chargeId) });
+    return actionFail(refusalMessage("changed"));
   } catch (error) {
     unstable_rethrow(error);
     const refusal = refusalOf(error instanceof ChangeRequestError ? error.code : null);
