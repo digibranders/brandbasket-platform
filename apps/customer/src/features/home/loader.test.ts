@@ -1,8 +1,8 @@
-import { countIncludedEdits, listActivityEvents, listRequestNeeds, listWaitingOnYou } from "@brandbasket/db";
+import { countIncludedEdits, findSiteHealthFacts, listActivityEvents, listRequestNeeds, listWaitingOnYou } from "@brandbasket/db";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { loadChecklistSummary } from "@/features/checklist/loader";
 import { callsOpenFor, readBookingUrl, readKickoffFacts, readMissedKickoffAt, readTeamCalls } from "@/features/calls/server/calls";
-import { loadHomePanels, loadHomeState, loadIncludedEdits, loadNeedsYou, type HomeStateView } from "./loader";
+import { loadHomePanels, loadHomeState, loadIncludedEdits, loadNeedsYou, loadServices, type HomeStateView } from "./loader";
 
 vi.mock("next/navigation", () => ({ unstable_rethrow: vi.fn() }));
 vi.mock("@/lib/report", () => ({ reportError: vi.fn(() => undefined) }));
@@ -19,6 +19,7 @@ vi.mock("@/features/calls/server/calls", () => ({
 vi.mock("@brandbasket/db", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@brandbasket/db")>()),
   countIncludedEdits: vi.fn(),
+  findSiteHealthFacts: vi.fn(),
   listActivityEvents: vi.fn(),
   listDeliverablesForBusiness: vi.fn(async () => []),
   listEnquiries: vi.fn(async () => []),
@@ -125,6 +126,17 @@ describe("the panels", () => {
     const panels = await loadHomePanels(customer({ status: "unpaid" }), view("payment_required"), NOW);
     expect(panels).toMatchObject({ checklist: null, needs: null, enquiries: null, services: null, activity: null, coming: null, included: null });
     expect(listRequestNeeds).not.toHaveBeenCalled();
+  });
+
+  it("adds the site health to the website's line once live, and leaves the line as it was when the checks cannot be read", async () => {
+    const live = { ...view("ongoing"), live: { hostname: "apex.in", launchedAt: NOW } } as HomeStateView;
+    vi.mocked(findSiteHealthFacts).mockResolvedValue({ latest: { status: "up", checkedAt: NOW }, firstCheckedAt: NOW, up: 1, down: 0, certificate: null, phoneSpeed: null });
+    const loaded = await loadServices(customer(), live, NOW);
+    expect(loaded.ok && loaded.data.find((row) => row.service === "website")?.line).toBe("Live at apex.in. Up now. Last check: Today, 12:00. Checking since Fri 20 Nov.");
+    vi.mocked(findSiteHealthFacts).mockRejectedValue(new Error("down"));
+    const failed = await loadServices(customer(), live, NOW);
+    expect(failed.ok && failed.data.find((row) => row.service === "website")?.line).toBe("Live at apex.in.");
+    expect((await loadServices(customer(), view("ongoing"), NOW)).ok).toBe(true);
   });
 
   it("has no included edits without the website, and an error when they cannot be counted", async () => {

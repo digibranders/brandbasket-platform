@@ -21,6 +21,8 @@ import { canBookCalls } from "@/features/calls/loader";
 import { callRows, reasonOptions, type CallRow, type ReasonOption } from "@/features/calls/rules";
 import { callsOpenFor, readBookingUrl, readKickoffFacts, readMissedKickoffAt, readTeamCalls, type LiveWebsite } from "@/features/calls/server/calls";
 import { loadChecklistSummary, type ChecklistSummary } from "@/features/checklist/loader";
+import { loadSiteHealth } from "@/features/website/loader";
+import { homeHealthLine } from "@/features/website/rules/health";
 import { getAppDb } from "@/lib/db";
 import { APP_TIME_ZONE, formatDate } from "@/lib/format";
 import type { CustomerContext } from "@/lib/guards";
@@ -192,12 +194,19 @@ export function loadServices(customer: CustomerContext, view: HomeStateView, now
       snapshots: await listMonthlySnapshots(tx, customer.businessId, monthKey(now)),
       posts: await readWaitingPosts(customer, tx),
     }));
+    // Its own load, so a failed read leaves the rest of the line (and the panel) as it was; the failure is reported.
+    const health = view.live !== null && customer.services.includes("website") ? await loadSiteHealth(customer.tenant, now) : null;
+    const healthLine = health !== null && health.ok ? homeHealthLine(health.data, now) : null;
     const social = snapshots.find((row) => row.service === "social");
     const search = snapshots.find((row) => row.service === "search");
     return customer.services.map((service): ServiceLine => {
       switch (service) {
         case "website":
-          return { service, line: view.live === null ? null : `Live at ${view.live.hostname}.`, needsYou: view.state.kind === "preview_ready" };
+          return {
+            service,
+            line: view.live === null ? null : [`Live at ${view.live.hostname}.`, healthLine].filter((part) => part !== null).join(" "),
+            needsYou: view.state.kind === "preview_ready",
+          };
         case "social": {
           const published = social?.postsPublished ?? null;
           const waiting = posts.count === 0 ? null : posts.count === 1 ? "1 post is waiting for your approval." : `${String(posts.count)} posts are waiting for your approval.`;

@@ -4,6 +4,7 @@ import {
   findLatestProject,
   findPreviewImageInfo,
   findSetupCallBooking,
+  findSiteHealthFacts,
   getPrimaryDomain,
   isPackageOfferForfeited,
   listEnquiries,
@@ -12,6 +13,7 @@ import {
   listWebsitePages,
   withTenantScope,
   type Project,
+  type SiteHealthFacts,
   type WebsitePage,
 } from "@brandbasket/db";
 import type { TenantContext } from "@brandbasket/shared/lib/access";
@@ -20,6 +22,7 @@ import { cache } from "react";
 import { getAppDb, getStaffDb } from "@/lib/db";
 import type { CustomerContext } from "@/lib/guards";
 import { load, type Loaded } from "@/lib/loaded";
+import { uptimeSince } from "./rules/health";
 import { websiteOffer, type WebsiteOffer } from "./rules/not-bought";
 import { enquiriesSince, SITE_ENQUIRY_KINDS, type StoredDomain } from "./rules/overview";
 import { WEBSITE_PREVIEW_IMAGE_PATH } from "./rules/paths";
@@ -71,6 +74,8 @@ export interface WebsiteOverview {
   readonly preview: Loaded<{ readonly versions: readonly PreviewVersion[]; readonly pictureUrl: string | null }> | null;
   /** Website enquiries in the last 30 days, once live. */
   readonly enquiries: Loaded<number> | null;
+  /** The site health checks, once live. */
+  readonly health: Loaded<SiteHealthFacts> | null;
 }
 
 // shortcut: counts from the newest 200 website enquiries (listEnquiries' page limit), so a business above 200 in 30 days reads 200; upgrade when packages/db has a count by period.
@@ -79,9 +84,9 @@ const ENQUIRY_SCAN_LIMIT = 200;
 export async function loadWebsiteOverview(context: CustomerContext, core: WebsiteCore, now: Date): Promise<WebsiteOverview> {
   const { tenant } = context;
   const { project } = core;
-  if (project === null) return { history: null, kickoffFirst: null, preview: null, enquiries: null };
+  if (project === null) return { history: null, kickoffFirst: null, preview: null, enquiries: null, health: null };
   const db = getAppDb();
-  const [history, kickoffFirst, preview, enquiries] = await Promise.all([
+  const [history, kickoffFirst, preview, enquiries, health] = await Promise.all([
     load("website.history", () =>
       withTenantScope(db, tenant, async (tx) => ({
         events: (await listProjectEvents(tx, project.id)).map((event) => ({ status: event.status, at: event.occurredAt })),
@@ -111,8 +116,14 @@ export async function loadWebsiteOverview(context: CustomerContext, core: Websit
       : load("website.enquiries", async () =>
           enquiriesSince(await withTenantScope(db, tenant, (tx) => listEnquiries(tx, { kind: SITE_ENQUIRY_KINDS, limit: ENQUIRY_SCAN_LIMIT })), now),
         ),
+    core.live === null ? null : loadSiteHealth(tenant, now),
   ]);
-  return { history, kickoffFirst, preview, enquiries };
+  return { history, kickoffFirst, preview, enquiries, health };
+}
+
+/** The stored site health checks, for the Website page's panel and Home's Your services. */
+export function loadSiteHealth(tenant: TenantContext, now: Date): Promise<Loaded<SiteHealthFacts>> {
+  return load("website.health", () => withTenantScope(getAppDb(), tenant, (tx) => findSiteHealthFacts(tx, uptimeSince(now))));
 }
 
 /** The Not bought screen's offer: the Managed Website priced with the package discount the business would get. */

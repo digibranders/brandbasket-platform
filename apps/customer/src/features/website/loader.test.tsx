@@ -21,6 +21,7 @@ const db = vi.hoisted(() => ({
   findSetupCallBooking: vi.fn(),
   findClientIntake: vi.fn(),
   listEnquiries: vi.fn(),
+  findSiteHealthFacts: vi.fn(),
 }));
 vi.mock("@brandbasket/db", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@brandbasket/db")>()),
@@ -69,6 +70,7 @@ beforeEach(() => {
   db.findPreviewImageInfo.mockResolvedValue(null);
   db.listPreviewVersions.mockResolvedValue([{ version: 1, previewUrl: "https://preview.test/apex", sentAt: NOW, sentByStaffId: null }]);
   db.listEnquiries.mockResolvedValue([]);
+  db.findSiteHealthFacts.mockResolvedValue({ latest: null, firstCheckedAt: null, up: 0, down: 0, certificate: null, phoneSpeed: null });
 });
 
 describe("loadWebsiteOverview", () => {
@@ -112,14 +114,43 @@ describe("WebsiteScreen", () => {
     expect(screen.queryByText("Finish your setup")).toBeNull();
   });
 
-  it("shows no visits, sources, uptime or site health once live, and no Pages tab without pages", async () => {
+  it("shows no visits or sources once live, and no Pages tab without pages", async () => {
     const websiteCore = core("live", true);
     render(<WebsiteScreen {...screenProps(websiteCore, await loadWebsiteOverview(context, websiteCore, NOW), { ok: true, data: [] })} />);
     expect(screen.getByText("Enquiries from the site")).toBeTruthy();
-    for (const absent of [/visits/i, /uptime/i, /site health/i, /where visitors come from/i]) expect(screen.queryByText(absent)).toBeNull();
+    for (const absent of [/visits/i, /where visitors come from/i]) expect(screen.queryByText(absent)).toBeNull();
     expect(screen.queryByRole("link", { name: "Pages" })).toBeNull();
     expect(screen.getByRole("link", { name: "Domain" })).toBeTruthy();
     expect(screen.getByRole("link", { name: "Ask for a change" }).getAttribute("href")).toBe("/requests?new=1&about=website");
+  });
+
+  it("reads site health only once live, and says checks start before there is one", async () => {
+    expect((await loadWebsiteOverview(context, core("preview"), NOW)).health).toBeNull();
+    const websiteCore = core("live", true);
+    render(<WebsiteScreen {...screenProps(websiteCore, await loadWebsiteOverview(context, websiteCore, NOW), { ok: true, data: [] })} />);
+    expect(screen.getByText("Site health")).toBeTruthy();
+    expect(screen.getByText("Checks start once your website is live.")).toBeTruthy();
+  });
+
+  it("shows the checks as measured, and the panel's own error when they cannot be read", async () => {
+    db.findSiteHealthFacts.mockResolvedValue({
+      latest: { status: "up", checkedAt: NOW },
+      firstCheckedAt: new Date("2026-10-01T00:00:00Z"),
+      up: 999,
+      down: 1,
+      certificate: { expiresAt: new Date("2027-02-04T00:00:00Z"), checkedAt: NOW },
+      phoneSpeed: { score: 82, checkedAt: NOW },
+    });
+    const websiteCore = core("live", true);
+    const { unmount } = render(<WebsiteScreen {...screenProps(websiteCore, await loadWebsiteOverview(context, websiteCore, NOW), { ok: true, data: [] })} />);
+    for (const text of ["Your website is up", "Online 99.9% of the last 30 days", "Secure connection valid until Thu 4 Feb 2027", "Speed on phones: 82 out of 100"]) {
+      expect(screen.getByText(text)).toBeTruthy();
+    }
+    unmount();
+    db.findSiteHealthFacts.mockRejectedValue(new Error("connection lost"));
+    render(<WebsiteScreen {...screenProps(websiteCore, await loadWebsiteOverview(context, websiteCore, NOW), { ok: true, data: [] })} />);
+    expect(screen.getByText(/We could not load your site health/)).toBeTruthy();
+    expect(screen.getByText("Enquiries from the site")).toBeTruthy();
   });
 
   it("lists pages and shows the Pages tab when the sync found some", async () => {
