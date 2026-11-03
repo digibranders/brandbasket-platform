@@ -3,6 +3,8 @@ import { GeistSans } from "geist/font/sans";
 import type { Metadata } from "next";
 import { NuqsAdapter } from "nuqs/adapters/next/app";
 import type { ReactNode } from "react";
+import { GTM_ID } from "@/features/consent/consent";
+import { ConsentBanner } from "@/features/consent/components/consent-banner";
 import { ToastProvider } from "@/ui";
 import "@/styles/globals.css";
 
@@ -18,6 +20,8 @@ export default function RootLayout({ children }: { readonly children: ReactNode 
       <body>
         <NuqsAdapter>
           <ToastProvider>{children}</ToastProvider>
+          {/* Only with a Tag Manager container configured; without one no third-party tag loads and nothing is asked. */}
+          {GTM_ID === null ? null : <ConsentBanner />}
         </NuqsAdapter>
       </body>
     </html>
