@@ -41,6 +41,26 @@ export function getAppDb(): Database {
  *   scoped to that user's own rows.
  * - src/app/api/error-reports/route.ts, writing a sanitized browser error report and its hashed rate-limit counters (both
  *   tables are staff-only). No customer data is read; the session user, when there is one, is only the report's author.
+ *
+ * Ported from the old app with the same uses it made (apps/platform lib/server/db.ts). In each, the user and business come
+ * only from the session guard, never from the request:
+ * - src/features/entry/server/*: sign-up, email code, setup link and security event rows, written before a workspace exists.
+ * - src/features/checkout/server/* and src/features/restore/server.ts: billing reads and writes under the billing lock
+ *   (plan, state, referral code, subscription, payment, charge order, discount plans), the fake provider confirm, the
+ *   user's own account closure, payment receipt and team alert outbox writes. The billing tables are staff-only.
+ * - src/features/conversions/server.ts: payment and attribution reads and one conversion claim per payment.
+ * - src/features/calls/server/calls.ts: the kickoff booking link site setting and the business's call outcomes.
+ * - src/features/website/{actions,alerts,loader}.ts and domain/actions.ts: preview approval, revisions and the feedback
+ *   transaction (the round is counted under a row lock), preview versions, the support rate limit, recording a DNS check,
+ *   and team alert transports.
+ * - src/features/blog/server/unlock.ts: the blog allowance unlock the old app made on the staff connection.
+ * - src/features/settings/server/{account-exit,export-download}.ts: closing an account under the billing lock (owner only),
+ *   and the read-only data download of the user's own records and, for owners, their business's records.
+ * - src/features/team/loader.ts: listing the session business's members (owner only, read only); a member can read only
+ *   their own business_members row under RLS. src/features/team/actions.ts: accepting an invitation, the only insert into
+ *   business_members; the token is the guard, the user and email come from the session, rate limited per user.
+ * - src/features/affiliate/server/{dashboard,setup}.ts: the affiliate tables are staff-only. The dashboard reads the
+ *   session's own affiliate; setup is keyed by a single-use token and rate limited per network.
  */
 export function getStaffDb(): Database {
   holder.brandbasketCustomerStaffDb ??= createDatabase(serverEnv().DATABASE_URL_STAFF).db;

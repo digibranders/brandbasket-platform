@@ -57,7 +57,9 @@ import type { CollectionConfig } from "payload";
  */
 export const Media: CollectionConfig = {
   slug: "media",
-  upload: true,
+  // One folder for every app that writes or serves blog media (platform and customer). Unset keeps the old relative
+  // "media" folder, so local development is unchanged.
+  upload: { staticDir: process.env.PAYLOAD_MEDIA_DIR ?? "media" },
   access: { read: () => false, create: () => false, update: () => false, delete: () => false },
   fields: [
     { name: "businessId", type: "text", required: true, index: true },
