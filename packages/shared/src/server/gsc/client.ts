@@ -1,6 +1,7 @@
 import { z } from "zod";
 import type { Ga4Failure } from "../ga4/client";
 import type { TokenSource } from "../ga4/service-account";
+import { failureOfStatus } from "../google/http";
 
 /** The reason a Search Console question could not be answered, in words that are safe to store (the same classes as Analytics). */
 export type GscFailure = Ga4Failure;
@@ -13,14 +14,6 @@ export class GscError extends Error {
     super(message);
     this.name = "GscError";
   }
-}
-
-/** Only the status decides the class; Google's message can name the site, so it is never kept. */
-function failureOf(status: number): GscFailure {
-  if (status === 401 || status === 403) return "access_lost";
-  if (status === 400 || status === 404) return "bad_property";
-  if (status === 429) return "quota";
-  return "unavailable";
 }
 
 export interface SearchAnalyticsRequest {
@@ -58,7 +51,7 @@ export function createGscReader(token: TokenSource, fetchFn: typeof fetch = fetc
         if (error instanceof Error && error.name.startsWith("Google")) throw error;
         throw new GscError("unavailable", "Search Console could not be reached.");
       }
-      if (!response.ok) throw new GscError(failureOf(response.status), `Search Console answered HTTP ${response.status}.`);
+      if (!response.ok) throw new GscError(failureOfStatus(response.status), `Search Console answered HTTP ${response.status}.`);
       return rowsSchema.parse(await response.json());
     },
   };
