@@ -28,6 +28,9 @@ export function getAppDb(): Database {
  * - src/lib/guards.ts, reading the signed-in user's own affiliate record (requireAffiliate). The affiliate tables are
  *   staff-only by design and an affiliate has no business to scope a customer connection under. The user id comes only
  *   from the session, so an affiliate can only ever read their own record.
+ * - src/features/enquiries/conversation.ts, reading the OyeChats operator key of one chatbot (chatbot keys are staff-only).
+ *   The chat lead is first found through row-level security on the app connection, so another business's id is refused
+ *   before any key is read; the key stays on the server and is never returned.
  */
 export function getStaffDb(): Database {
   holder.brandbasketCustomerStaffDb ??= createDatabase(serverEnv().DATABASE_URL_STAFF).db;

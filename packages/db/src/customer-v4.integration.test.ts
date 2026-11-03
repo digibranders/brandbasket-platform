@@ -202,6 +202,12 @@ describe("enquiries row-level security", () => {
 
   it("lets an owner or an editor set status and note, and counts what is new", async () => {
     const id = await seedEnquiry(businessA);
+    // Taps and a form with no details have nobody to reply to, so they do not count as new.
+    await dbs.staff.db.insert(siteEvents).values([
+      { businessId: businessA, kind: "call", occurredAt: NOW },
+      { businessId: businessA, kind: "form", occurredAt: NOW },
+    ]);
+    await backfillEnquiries(dbs.staff.db, { businessId: businessA });
     expect(await as(OWNER_A, businessA, (tx) => countNewEnquiries(tx))).toBe(1);
 
     const owner = await as(OWNER_A, businessA, (tx) => updateEnquiry(tx, id, { status: "won", note: "  Booked  " }));

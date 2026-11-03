@@ -56,7 +56,14 @@ export async function countNewEnquiries(tx: ScopedTransaction): Promise<number> 
   const [row] = await tx
     .select({ value: count() })
     .from(enquiries)
-    .where(and(eq(enquiries.businessId, businessId), eq(enquiries.status, "new")));
+    .where(
+      and(
+        eq(enquiries.businessId, businessId),
+        eq(enquiries.status, "new"),
+        // Taps and Google calls carry no identity, so they never wait for a reply; nor does a form with no contact details.
+        sql`(${enquiries.kind} in ('chat', 'ad_lead') or (${enquiries.kind} = 'form' and coalesce(${enquiries.name}, ${enquiries.phone}, ${enquiries.email}) is not null))`,
+      ),
+    );
   return row?.value ?? 0;
 }
 
