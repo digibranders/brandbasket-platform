@@ -246,13 +246,20 @@ export function renewalBundledLines(rows: readonly BundledAddOn[], atPendingAmou
  */
 export async function recordBundledAddOnRemoval(
   db: Runner,
-  input: { readonly id: string; readonly businessId: string; readonly pendingBundledAddOnNetCents: number; readonly now: Date },
+  input: {
+    readonly id: string;
+    readonly businessId: string;
+    readonly pendingBundledAddOnNetCents: number;
+    readonly now: Date;
+    /** Why the customer is removing it, in their words (at most 500 characters), or null when they gave none. */
+    readonly endReason?: string | null;
+  },
 ): Promise<boolean> {
   if (!isUuid(input.id) || !isUuid(input.businessId)) return false;
   return db.transaction(async (tx) => {
     const rows = await tx
       .update(bundledAddOns)
-      .set({ endRequestedAt: input.now, updatedAt: input.now })
+      .set({ endRequestedAt: input.now, endReason: input.endReason ?? null, updatedAt: input.now })
       .where(
         and(
           eq(bundledAddOns.id, input.id),
@@ -553,7 +560,7 @@ export async function keepBundledAddOn(
   if (!isUuid(input.id) || !isUuid(input.businessId)) return false;
   const rows = await tx
     .update(bundledAddOns)
-    .set({ endRequestedAt: null, updatedAt: input.now })
+    .set({ endRequestedAt: null, endReason: null, updatedAt: input.now })
     .where(
       and(
         eq(bundledAddOns.id, input.id),

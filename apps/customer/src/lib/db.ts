@@ -53,6 +53,8 @@ export function getAppDb(): Database {
  * - src/features/website/{actions,alerts,loader}.ts and domain/actions.ts: preview approval, revisions and the feedback
  *   transaction (the round is counted under a row lock), preview versions, the support rate limit, recording a DNS check,
  *   and team alert transports.
+ * - src/features/billing/server/*: adding, keeping and removing a service through checkout's basket functions under the
+ *   billing lock, and the referral-code and reactivation reads, as the old /services page did (owner only).
  * - src/features/blog/server/unlock.ts: the blog allowance unlock the old app made on the staff connection.
  * - src/features/settings/server/{account-exit,export-download}.ts: closing an account under the billing lock (owner only),
  *   and the read-only data download of the user's own records and, for owners, their business's records.
