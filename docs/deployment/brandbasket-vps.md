@@ -151,6 +151,15 @@ and `curl -s -o /dev/null -w '%{http_code}\n' -H 'Host: app.brandbasket.in' http
 3. Leave `CUSTOMER_APP_ENABLED` at `1` from now on: with it unset, deploys stop updating the customer app, which keeps serving its last release.
 4. Watch Sentry, the Razorpay webhook log (`journalctl -u brandbasket-app | grep webhooks`) and the first real sign-ins for a day.
 
+**Go-live log, 2026-11-03.** Done on the VPS before the first customer deploy, so the next merge to `main` starts the app:
+
+- Ran `install.sh services --apply` from the release folder (installs `brandbasket-customer.service`, the sudoers entry and the failure alert handler). Did **not** run `install.sh autodeploy --apply`: that step also enables the autodeploy timer, which must stay off while GitHub Actions deploys. The two scripts it installs were copied by hand (`brandbasket-platform-release` to `/usr/local/bin`, `brandbasket-gha-deploy` to `/usr/local/sbin`, backups beside them as `*.bak-<time>`).
+- Made `/srv/brandbasket/shared/customer.env.production` (600, brandbasket) from the keys the template lists, copied from `platform.env.local` (same secrets, `BILLING_PROVIDER=razorpay`, `APP_ORIGIN=https://app.brandbasket.in`).
+- Made `/srv/brandbasket/media/payload` and set `PAYLOAD_MEDIA_DIR=/srv/brandbasket/media/payload` in both `platform.env.local` and the customer file, so blog images no longer live inside release folders. Before this the media folder held only the repository's test images.
+- `systemctl enable brandbasket-customer`; repository variable `CUSTOMER_APP_ENABLED=1`.
+- Memory before: 11.8 GB available of 16 GB; `brandbasket_platform` held 7 of 40 connections.
+- The deploy refuses a commit that platform already runs, so turning the customer app on needs a new commit on `main` (this note is one).
+
 **6. Roll back, one change.** In the `app.brandbasket.in` block put `proxy_pass http://brandbasket_app;` back in both places (the commented line
 beside each), `nginx -t && systemctl reload nginx`. Platform never stopped, and migrations are additive until the old app is retired
 (plan 61 phase 13), so data written by either app is readable by both. Leave `brandbasket-customer` running. To switch the customer app
