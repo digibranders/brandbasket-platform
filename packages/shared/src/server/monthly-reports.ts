@@ -17,6 +17,7 @@ import {
   type ReportService,
 } from "@brandbasket/db";
 import { monthlyReportEmail, type EmailMessage } from "@brandbasket/email";
+import { searchConsoleFigures, visitorFigures } from "../lib/reports/traffic";
 import { composeSearch, composeSocial, composeWebsite, type DoneLine, type ReportFacts } from "../lib/reports/compose";
 import { REPORT_CONTENT_VERSION, reportContentSchema, type ReportContent } from "../lib/reports/content";
 import { monthName, monthRange, parseMonthKey, type MonthKey } from "../lib/reports/period";
@@ -94,6 +95,8 @@ export function reportFactsOf(raw: RawReportFacts, business: Pick<ReportBusiness
       pagesImproved: delivered("page").length,
       listingsFixed: delivered("listing").length,
     },
+    traffic: visitorFigures(raw.traffic.current, raw.traffic.previous),
+    searchConsole: searchConsoleFigures(raw.traffic.current, raw.traffic.previous),
     done: { website: done("website", []), social: done("social", ["Published a post"]), search: done("search", ["Improved a page", "Fixed a listing"]) },
   };
 }

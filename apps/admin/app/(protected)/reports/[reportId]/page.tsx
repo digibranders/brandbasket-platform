@@ -104,6 +104,11 @@ export default async function ReportPage({
           <Section title="The figures">
             <FactList items={content.data.figures.map((figure) => ({ label: figure.label, value: figure.value }))} />
           </Section>
+          {(content.data.lists ?? []).map((list) => (
+            <Section key={list.title} title={list.title}>
+              <FactList items={list.rows.map((row) => ({ label: row.label, value: row.value }))} />
+            </Section>
+          ))}
           <Section title="What we did">
             {content.data.whatWeDid.length === 0 ? (
               <p className="text-sm text-ink-2">Nothing logged for this month.</p>

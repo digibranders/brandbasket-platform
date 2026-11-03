@@ -178,23 +178,30 @@ export async function renderReportPdf(input: ReportPdfInput): Promise<Uint8Array
   }
   sheet.y -= 14;
 
-  sheet.ensure(40);
-  line(sheet.page, "THE FIGURES", MARGIN, sheet.y, fonts.bold, 7.5, INK_SOFT);
-  sheet.y -= 10;
-  const valueRoom = 170;
-  for (const figure of input.content.figures) {
-    const labelLines = wrap(figure.label, fonts.regular, 10.5, CONTENT_WIDTH - valueRoom);
-    sheet.ensure(labelLines.length * 15 + 16);
-    sheet.rule();
-    sheet.y -= 18;
-    line(sheet.page, figure.value, right, sheet.y, fonts.bold, 10.5, INK, "right");
-    for (const piece of labelLines) {
-      line(sheet.page, piece, MARGIN, sheet.y, fonts.regular, 10.5, INK_SOFT);
-      sheet.y -= 15;
+  const drawRows = (heading: string, rows: readonly { readonly label: string; readonly value: string }[]): void => {
+    sheet.ensure(40);
+    line(sheet.page, heading.toUpperCase(), MARGIN, sheet.y, fonts.bold, 7.5, INK_SOFT);
+    sheet.y -= 10;
+    const valueRoom = 170;
+    for (const row of rows) {
+      const labelLines = wrap(row.label, fonts.regular, 10.5, CONTENT_WIDTH - valueRoom);
+      sheet.ensure(labelLines.length * 15 + 16);
+      sheet.rule();
+      sheet.y -= 18;
+      line(sheet.page, row.value, right, sheet.y, fonts.bold, 10.5, INK, "right");
+      for (const piece of labelLines) {
+        line(sheet.page, piece, MARGIN, sheet.y, fonts.regular, 10.5, INK_SOFT);
+        sheet.y -= 15;
+      }
+      sheet.y -= 2;
     }
-    sheet.y -= 2;
+    sheet.rule();
+  };
+  drawRows("The figures", input.content.figures);
+  for (const list of input.content.lists ?? []) {
+    sheet.y -= 34;
+    drawRows(list.title, list.rows);
   }
-  sheet.rule();
 
   if (input.content.whatWeDid.length > 0) {
     sheet.y -= 34;

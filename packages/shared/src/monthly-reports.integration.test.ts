@@ -12,10 +12,13 @@ import {
   findActivePlan,
   getReport,
   listSentReports,
+  metricBreakdowns,
+  metricDaily,
   monthlySnapshots,
   notificationPreferences,
   openCheckoutSubscription,
   reportDocuments,
+  reportSourceRuns,
   siteChecks,
   users,
   withTenantScope,
@@ -157,6 +160,28 @@ async function addOctober(): Promise<void> {
   ]);
   // The database only lets a deliverable reach published through its approval steps; the test needs the end state, not the walk.
   await markPublished(["Diwali offer", "Stretching tips", "Back pain treatment", "Google profile hours"]);
+  // What the Google collectors wrote: Analytics for the whole of September and October, Search Console for October only.
+  const run = (source: "ga4" | "gsc", windowStart: string, windowEnd: string) => ({ businessId, source, windowStart, windowEnd, ok: true });
+  await dbs.owner.db.insert(reportSourceRuns).values([run("ga4", "2026-09-01", "2026-10-31"), run("gsc", "2026-10-01", "2026-10-31")]);
+  const day = (metric: string, date: string, value: number) => ({ businessId, metric, day: date, value });
+  await dbs.owner.db.insert(metricDaily).values([
+    day("ga4.visitors", "2026-09-15", 800),
+    day("ga4.pageviews", "2026-09-15", 2000),
+    day("ga4.visitors", "2026-10-02", 600),
+    day("ga4.visitors", "2026-10-03", 603),
+    day("ga4.pageviews", "2026-10-02", 3410),
+    day("gsc.clicks", "2026-10-02", 250),
+    day("gsc.clicks", "2026-10-03", 162),
+    day("gsc.impressions", "2026-10-02", 6000),
+    day("gsc.impressions", "2026-10-03", 3800),
+    day("gsc.position", "2026-10-02", 8),
+    day("gsc.position", "2026-10-03", 9),
+  ]);
+  await dbs.owner.db.insert(metricBreakdowns).values([
+    { businessId, source: "ga4", month: "2026-10-01", dimension: "channel", rows: [{ key: "Organic Search", count: 700 }, { key: "Direct", count: 503 }] },
+    { businessId, source: "ga4", month: "2026-10-01", dimension: "page", rows: [{ key: "/", count: 1900 }] },
+    { businessId, source: "gsc", month: "2026-10-01", dimension: "query", rows: [{ key: "physio near me", count: 90 }] },
+  ]);
   await dbs.owner.db.insert(activityEvents).values({ businessId, service: "website", title: "Updated the opening hours", occurredAt: new Date("2026-10-20T07:00:00.000Z") });
 }
 
@@ -205,12 +230,13 @@ describe("composeMonthlyReports", () => {
     expect(website.figures).toEqual([
       { label: "Online in October", value: "95.24% of 21 checks" },
       { label: "Enquiries from your website in October", value: "7 (4 more than September)" },
-      { label: "Website forms in October", value: "4" },
-      { label: "Website call taps in October", value: "3" },
+      { label: "Visitors to your website in October", value: "1,203 (403 more than September)" },
+      { label: "Pages viewed in October", value: "3,410 (1,410 more than September)" },
       { label: "Speed on phones, 29 Oct 2026", value: "82 out of 100" },
       { label: "Secure connection valid until", value: "12 Jan 2027" },
     ]);
     expect(website.whatWeDid).toEqual(["20 Oct 2026: Updated the opening hours"]);
+    expect(website.lists?.map((list) => list.title)).toEqual(["Where your enquiries came from in October", "How visitors found your website in October", "Most viewed pages in October"]);
 
     const social = reportContentSchema.parse(rows.find((row) => row.service === "social")?.content);
     expect(social.headline).toBe("We published 2 posts for you in October. Your ads brought 18 enquiries.");
@@ -220,6 +246,13 @@ describe("composeMonthlyReports", () => {
 
     const search = reportContentSchema.parse(rows.find((row) => row.service === "search")?.content);
     expect(search.figures).toContainEqual({ label: "Keywords on page one of Google in October", value: "18 (3 more than September)" });
+    // Search Console ran for October only, so there is no comparison with September, and the position is weighted by the days' views.
+    expect(search.figures.slice(0, 3)).toEqual([
+      { label: "Clicks from Google search in October", value: "412" },
+      { label: "Times you appeared in Google search in October", value: "9,800" },
+      { label: "Average position in Google search in October", value: "8.4" },
+    ]);
+    expect(search.lists).toEqual([{ title: "Top searches that found you in October", rows: [{ label: "physio near me", value: "90 clicks" }] }]);
     expect(JSON.stringify(rows.map((row) => row.content))).not.toMatch(/[–—]/);
 
     const asCustomer = await withTenantScope(dbs.app.db, { userId: OWNER, businessId }, (tx) => listSentReports(tx, businessId));

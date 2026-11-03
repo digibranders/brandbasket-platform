@@ -50,6 +50,15 @@ describe("Reports list", () => {
 describe("Report", () => {
   const view = { key: "2026-10", title: "October 2026", sentAt: sent.sentAt as Date, services: [{ service: "website", content: CONTENT, hasPdf: false }] } as unknown as ReportMonthView;
 
+  it("shows a report's ranked lists as panels of their own", async () => {
+    const withLists = { ...CONTENT, lists: [{ title: "Top searches that found you in October", rows: [{ label: "physio near me", value: "90 clicks" }] }] };
+    vi.mocked(loadReportMonth).mockResolvedValue({ ...view, services: [{ service: "website", content: withLists, hasPdf: false }] } as unknown as ReportMonthView);
+    wrap(await ReportScreen({ customer, month: "2026-10" }));
+    expect(screen.getByText("Top searches that found you in October")).toBeTruthy();
+    expect(screen.getByText("physio near me")).toBeTruthy();
+    expect(screen.getByText("90 clicks")).toBeTruthy();
+  });
+
   it("shows the month in short, the service card and what we did, and no Download PDF without a PDF", async () => {
     vi.mocked(loadReportMonth).mockResolvedValue(view);
     wrap(await ReportScreen({ customer, month: "2026-10" }));

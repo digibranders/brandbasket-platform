@@ -70,6 +70,7 @@ describe("reading a stored document", () => {
     expect(readContent(report({ contentVersion: 2 }))).toBeNull();
     expect(readContent(report({ content: { ...CONTENT, headline: "" } }))).toBeNull();
     expect(readContent(report({ content: { ...CONTENT, figures: [] } }))).toBeNull();
+    expect(readContent(report({ content: { ...CONTENT, lists: [{ title: "Top searches", rows: [] }] } }))).toBeNull();
     expect(readContent(report({ content: {} }))).toBeNull();
   });
 
@@ -78,5 +79,13 @@ describe("reading a stored document", () => {
     expect(month === undefined ? null : highlightsOf(month)).toBe(CONTENT.headline);
     const [broken] = groupSentByMonth([report({ content: {} })]);
     expect(broken === undefined ? "x" : highlightsOf(broken)).toBeNull();
+  });
+});
+
+describe("readContent lists", () => {
+  it("keeps the ranked lists of a report that has them, and reads one that has none", () => {
+    const lists = [{ title: "Most viewed pages in October", rows: [{ label: "/", value: "1,900 views" }] }];
+    expect(readContent(report({ content: { ...CONTENT, lists } }))?.lists).toEqual(lists);
+    expect(readContent(report({ content: CONTENT }))?.lists).toBeUndefined();
   });
 });

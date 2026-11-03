@@ -1,7 +1,7 @@
-import { and, asc, eq, gte, inArray, isNotNull, lt, sql } from "drizzle-orm";
+import { and, asc, eq, gte, inArray, isNotNull, lt, lte, sql } from "drizzle-orm";
 import type { Database } from "../client";
 import type { ReportService } from "../report-states";
-import { activityEvents, adCampaignSnapshots, addOnSubscriptions, bundledAddOns, businesses, deliverables, enquiries, monthlySnapshots, siteChecks, type BillingCurrency, type EnquiryKind } from "../schema";
+import { activityEvents, adCampaignSnapshots, addOnSubscriptions, bundledAddOns, businesses, deliverables, enquiries, metricBreakdowns, metricDaily, monthlySnapshots, reportSourceRuns, siteChecks, type BillingCurrency, type EnquiryKind } from "../schema";
 import { listBundledAddOnsForBusiness } from "./bundled-add-ons";
 import { boughtSetupServicesFrom } from "./service-setup";
 import { isUuid } from "./tenant";
@@ -80,7 +80,19 @@ export interface RawKindCounts {
   readonly measured: readonly EnquiryKind[];
 }
 
+/** The stored visitor and search metrics of one business for one month: what the collectors wrote, untouched. */
+export interface RawMonthData {
+  /** The month's first and last day, `YYYY-MM-DD`. */
+  readonly start: string;
+  readonly end: string;
+  readonly daily: readonly { readonly metric: string; readonly day: string; readonly value: number }[];
+  readonly runs: readonly { readonly source: "own" | "gsc" | "ga4"; readonly windowStart: string; readonly windowEnd: string; readonly ok: boolean }[];
+  /** Ranked lists keyed `source.dimension`, e.g. `ga4.channel`. */
+  readonly lists: Readonly<Record<string, readonly Record<string, unknown>[]>>;
+}
+
 export interface RawReportFacts {
+  readonly traffic: { readonly current: RawMonthData; readonly previous: RawMonthData };
   readonly site: {
     readonly up: number;
     readonly down: number;
@@ -125,6 +137,20 @@ async function enquiryKindCounts(db: Database, businessId: string, start: Date, 
   return { current: side("current"), previous: side("previous") };
 }
 
+async function readMonthData(db: Database, businessId: string, month: string): Promise<RawMonthData> {
+  const start = month;
+  const end = indianDay(new Date(indianMonthBounds(month).end.getTime() - 1));
+  const [daily, runs, lists] = await Promise.all([
+    db.select({ metric: metricDaily.metric, day: metricDaily.day, value: metricDaily.value }).from(metricDaily).where(and(eq(metricDaily.businessId, businessId), gte(metricDaily.day, start), lte(metricDaily.day, end))),
+    db
+      .select({ source: reportSourceRuns.source, windowStart: reportSourceRuns.windowStart, windowEnd: reportSourceRuns.windowEnd, ok: reportSourceRuns.ok })
+      .from(reportSourceRuns)
+      .where(and(eq(reportSourceRuns.businessId, businessId), lte(reportSourceRuns.windowStart, end), gte(reportSourceRuns.windowEnd, start))),
+    db.select({ source: metricBreakdowns.source, dimension: metricBreakdowns.dimension, rows: metricBreakdowns.rows }).from(metricBreakdowns).where(and(eq(metricBreakdowns.businessId, businessId), eq(metricBreakdowns.month, month))),
+  ]);
+  return { start, end, daily, runs, lists: Object.fromEntries(lists.map((row) => [`${row.source}.${row.dimension}`, row.rows])) };
+}
+
 /** The raw records of one business for one month (`YYYY-MM-01`). Staff connection. */
 export async function readReportFacts(db: Database, businessId: string, month: string): Promise<RawReportFacts> {
   if (!isUuid(businessId)) throw new Error(`businessId must be a UUID, received "${businessId}"`);
@@ -133,7 +159,7 @@ export async function readReportFacts(db: Database, businessId: string, month: s
   const inMonth = and(eq(siteChecks.businessId, businessId), gte(siteChecks.checkedAt, start), lt(siteChecks.checkedAt, end));
   const monthDay = (bound: Date): string => indianDay(bound);
 
-  const [tallies, speed, certificate, kinds, snapshots, campaigns, work, events] = await Promise.all([
+  const [tallies, speed, certificate, kinds, snapshots, campaigns, work, events, traffic, previousTraffic] = await Promise.all([
     db
       .select({ status: siteChecks.status, total: sql<number>`count(*)::int` })
       .from(siteChecks)
@@ -163,10 +189,13 @@ export async function readReportFacts(db: Database, businessId: string, month: s
       .from(activityEvents)
       .where(and(eq(activityEvents.businessId, businessId), gte(activityEvents.occurredAt, start), lt(activityEvents.occurredAt, end)))
       .orderBy(asc(activityEvents.occurredAt)),
+    readMonthData(db, businessId, month),
+    readMonthData(db, businessId, previousMonth(month)),
   ]);
   const tally = (status: string): number => tallies.find((row) => row.status === status)?.total ?? 0;
   const [latestSpeed] = speed;
   return {
+    traffic: { current: traffic, previous: previousTraffic },
     site: {
       up: tally("up"),
       down: tally("down"),

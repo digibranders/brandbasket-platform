@@ -927,6 +927,7 @@ export {
   listReportServices,
   readReportFacts,
   type RawKindCounts,
+  type RawMonthData,
   type RawReportFacts,
   type ReportBusiness,
 } from "./queries/report-facts";

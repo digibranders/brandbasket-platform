@@ -35,6 +35,13 @@ describe("renderReportPdf", () => {
     expect(doc.getPageCount()).toBeGreaterThan(1);
   });
 
+  it("draws ranked lists after the figures, flowing onto further pages when they are long", async () => {
+    const rows = Array.from({ length: 10 }, (_, index) => ({ label: `physiotherapy for back pain in Pune, search ${index + 1}`, value: `${100 - index} clicks` }));
+    const lists = [1, 2, 3].map((n) => ({ title: `Top searches that found you, list ${n}`, rows }));
+    const doc = await PDFDocument.load(await renderReportPdf({ ...INPUT, content: { ...INPUT.content, lists } }));
+    expect(doc.getPageCount()).toBeGreaterThan(1);
+  });
+
   it("prints a character the font lacks as a question mark instead of failing", async () => {
     await expect(renderReportPdf({ ...INPUT, businessName: "श्री साई 🙂 Clinic" })).resolves.toBeInstanceOf(Uint8Array);
   });

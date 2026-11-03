@@ -8,6 +8,8 @@ const EMPTY: ReportFacts = {
   enquiries: { current: {}, previous: {} },
   social: { postsPublished: 0, postsPlanned: 0, reach: null, followers: null, profileVisits: null, ads: { spendCents: null, enquiries: null } },
   search: { keywordsPageOne: null, keywordsPageOnePrevious: null, pagesImproved: 0, listingsFixed: 0 },
+  traffic: null,
+  searchConsole: null,
   done: { website: [], social: [], search: [] },
 };
 const facts = (patch: Partial<ReportFacts>): ReportFacts => ({ ...EMPTY, ...patch });
@@ -37,13 +39,43 @@ describe("composeWebsite", () => {
     expect(content?.figures).toEqual([
       { label: "Online in October", value: "99.77% of 4,300 checks" },
       { label: "Enquiries from your website in October", value: "12 (6 more than September)" },
-      { label: "Website forms in October", value: "7" },
-      { label: "Website call taps in October", value: "4" },
-      { label: "WhatsApp taps in October", value: "1" },
       { label: "Speed on phones, 29 Oct 2026", value: "82 out of 100" },
       { label: "Secure connection valid until", value: "12 Jan 2027" },
     ]);
+    expect(content?.lists).toEqual([
+      {
+        title: "Where your enquiries came from in October",
+        rows: [
+          { label: "Website forms", value: "7 (58%)" },
+          { label: "Website call taps", value: "4 (33%)" },
+          { label: "WhatsApp taps", value: "1 (8%)" },
+        ],
+      },
+    ]);
     expect(content?.whatWeDid).toEqual(["3 Oct 2026: Updated the site's security software", "20 Oct 2026: Changed the opening hours"]);
+  });
+
+  it("adds the month's visitors, how they arrived and the pages they read when a source measured the month", () => {
+    const content = composeWebsite(
+      facts({
+        ...measured,
+        traffic: {
+          source: "ga4",
+          visitors: 1203,
+          pageviews: 3410,
+          previous: { visitors: 993, pageviews: 3000 },
+          channels: [{ key: "Organic Search", count: 700 }, { key: "Direct", count: 503 }],
+          pages: [{ key: "/", count: 1900 }, { key: "/contact", count: 0 }],
+        },
+      }),
+      "2026-10",
+    );
+    expect(content?.figures).toContainEqual({ label: "Visitors to your website in October", value: "1,203 (210 more than September)" });
+    expect(content?.figures).toContainEqual({ label: "Pages viewed in October", value: "3,410 (410 more than September)" });
+    expect(content?.lists?.map((list) => list.title)).toEqual(["Where your enquiries came from in October", "How visitors found your website in October", "Most viewed pages in October"]);
+    expect(content?.lists?.[1]?.rows).toEqual([{ label: "Organic Search", value: "700" }, { label: "Direct", value: "503" }]);
+    expect(content?.lists?.[2]?.rows).toEqual([{ label: "/", value: "1,900 views" }]);
+    expect(content?.figures.length).toBeLessThanOrEqual(8);
   });
 
   it("leaves a channel that was never measured out, instead of showing zero", () => {
@@ -105,6 +137,35 @@ describe("composeSearch", () => {
     expect(content?.headline).toBe("We improved 2 pages and 1 listing for you in October. You were on page one of Google for 18 keywords in October.");
     expect(content?.figures).toContainEqual({ label: "Keywords on page one of Google in October", value: "18 (3 more than September)" });
     expect(content?.figures).toContainEqual({ label: "Calls from your Google profile in October", value: "6" });
+  });
+});
+
+describe("search figures from Google", () => {
+  it("leads the Search report with clicks, appearances and average position, and lists the top searches", () => {
+    const content = composeSearch(
+      facts({
+        search: { keywordsPageOne: 18, keywordsPageOnePrevious: 15, pagesImproved: 2, listingsFixed: 0 },
+        searchConsole: {
+          clicks: 412,
+          impressions: 9800,
+          position: 8.43,
+          previous: { clicks: 380, impressions: 9900 },
+          queries: [{ key: "physio near me", count: 90 }],
+          pages: [{ key: "https://kulkarnipt.example/back-pain", count: 120 }],
+        },
+      }),
+      "2026-10",
+    );
+    expect(content?.headline.startsWith("People clicked through to your website from Google 412 times in October.")).toBe(true);
+    expect(content?.figures.slice(0, 3)).toEqual([
+      { label: "Clicks from Google search in October", value: "412 (32 more than September)" },
+      { label: "Times you appeared in Google search in October", value: "9,800 (100 fewer than September)" },
+      { label: "Average position in Google search in October", value: "8.4" },
+    ]);
+    expect(content?.lists).toEqual([
+      { title: "Top searches that found you in October", rows: [{ label: "physio near me", value: "90 clicks" }] },
+      { title: "Top pages from Google in October", rows: [{ label: "https://kulkarnipt.example/back-pain", value: "120 clicks" }] },
+    ]);
   });
 });
 
