@@ -25,7 +25,7 @@ import { requestRows } from "@/features/requests/rules";
 import { adsView, monthName } from "@/features/social/rules";
 import { pageOne, type PageOne } from "@/features/search/rules";
 import { loadChecklistSummary, type ChecklistSummary } from "@/features/checklist/loader";
-import { loadSiteHealth } from "@/features/website/loader";
+import { loadSiteHealth, loadVisits, type VisitsData } from "@/features/website/loader";
 import { homeHealthLine } from "@/features/website/rules/health";
 import { getAppDb } from "@/lib/db";
 import { APP_TIME_ZONE, formatDate } from "@/lib/format";
@@ -351,6 +351,8 @@ export interface HomePanels {
   readonly enquiries: Loaded<EnquirySeries> | null;
   /** Leads from ads and Google page one, for the last-30-days strip. */
   readonly figures: Loaded<StripFigures> | null;
+  /** Website visits for the strip, while CUSTOMER_VISITS_ENABLED is on. Its data is null until a day has been counted. */
+  readonly visits: Loaded<VisitsData | null> | null;
   readonly services: Loaded<readonly ServiceLine[]> | null;
   readonly activity: Loaded<readonly ActivityRow[]> | null;
   readonly coming: Loaded<ComingUp> | null;
@@ -364,22 +366,23 @@ const KICKOFF_KINDS: readonly string[] = ["kickoff_unbooked", "kickoff_booked", 
  * have one task and Plan & billing owns the rest (as the old unpaid Home did).
  */
 export async function loadHomePanels(customer: CustomerContext, view: HomeStateView, now: Date): Promise<HomePanels> {
-  const none: HomePanels = { booking: await loadBooking(customer), checklist: null, needs: null, enquiries: null, figures: null, services: null, activity: null, coming: null, included: null };
+  const none: HomePanels = { booking: await loadBooking(customer), checklist: null, needs: null, enquiries: null, figures: null, visits: null, services: null, activity: null, coming: null, included: null };
   if (view.layout === "task") {
     if (!KICKOFF_KINDS.includes(view.state.kind)) return none;
     return { ...none, checklist: view.state.kind === "kickoff_booked" ? await loadChecklist(customer) : null };
   }
   const checklist = await loadChecklist(customer);
   const overview = view.layout === "overview";
-  const [needs, enquiries, figures, services, activity, coming, included] = await Promise.all([
+  const [needs, enquiries, figures, visits, services, activity, coming, included] = await Promise.all([
     // A viewer can act on nothing in Needs you, so the panel is not read for them.
     customer.role === "viewer" ? Promise.resolve(null) : loadNeedsYou(customer, checklist, now),
     overview && customer.services.includes("website") ? loadEnquiries(customer, now) : Promise.resolve(null),
     overview && (customer.services.includes("social") || customer.services.includes("search")) ? loadFigures(customer, now) : Promise.resolve(null),
+    Promise.resolve(overview && customer.services.includes("website") ? loadVisits(customer.tenant, now) : null),
     overview ? loadServices(customer, view, now) : Promise.resolve(null),
     loadActivity(customer, view, now),
     view.layout === "review" ? Promise.resolve(null) : loadComingUp(customer, view, now),
     overview || view.state.kind === "launched" ? loadIncludedEdits(customer, now) : Promise.resolve(null),
   ]);
-  return { ...none, checklist, needs, enquiries, figures, services, activity, coming, included };
+  return { ...none, checklist, needs, enquiries, figures, visits, services, activity, coming, included };
 }

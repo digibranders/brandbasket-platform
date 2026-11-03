@@ -1,5 +1,6 @@
 import { eraseChatbotsOfBusiness } from "./chatbots";
 import { eraseEnquiriesOfBusiness } from "./enquiries";
+import { enquiries } from "../schema/enquiries";
 import { and, asc, eq, inArray, isNotNull, isNull, lte, ne, or, sql } from "drizzle-orm";
 import type { Database } from "../client";
 import { listBusinessProductPhotoIds } from "./directory-business-catalog";
@@ -428,4 +429,38 @@ export async function eraseClosedAccount(db: Database, input: { readonly closure
     await tx.update(accountClosures).set({ erasedAt: now }).where(eq(accountClosures.id, closureId));
     return { kind: "erased", closureId, userId, businessId, storageKeys, vimeoIds };
   });
+}
+
+/*
+ * Enquirers' details (gate G2). An enquiry that holds a form's or an ad lead's contents carries `retain_until`. These two
+ * erase the details and keep the row, so the customer's counts do not change. Both run on the staff connection.
+ */
+
+const ERASED_DETAILS = { name: null, phone: null, email: null, message: null } as const;
+
+/** Erases the details of every enquiry of one business that carries this email address or phone number, on the enquirer's request. Returns how many. */
+export async function eraseEnquirerDetails(
+  db: Database,
+  input: { readonly businessId: string; readonly email?: string; readonly phone?: string; readonly now: Date },
+): Promise<number> {
+  const email = input.email?.trim();
+  const phone = input.phone?.trim();
+  if (!email && !phone) throw new Error("Erasing an enquirer's details needs an email address or a phone number to find them by.");
+  const matches = [email ? sql`lower(${enquiries.email}) = lower(${email})` : undefined, phone ? eq(enquiries.phone, phone) : undefined];
+  const rows = await db
+    .update(enquiries)
+    .set({ ...ERASED_DETAILS, detailsErasedAt: input.now, updatedAt: input.now })
+    .where(and(eq(enquiries.businessId, input.businessId), isNull(enquiries.detailsErasedAt), or(...matches)))
+    .returning({ id: enquiries.id });
+  return rows.length;
+}
+
+/** The retention job's step: erases the details of every enquiry whose `retain_until` has passed. Returns how many. */
+export async function eraseExpiredEnquiryDetails(db: Database, now: Date): Promise<number> {
+  const rows = await db
+    .update(enquiries)
+    .set({ ...ERASED_DETAILS, detailsErasedAt: now, updatedAt: now })
+    .where(and(isNotNull(enquiries.retainUntil), lte(enquiries.retainUntil, now), isNull(enquiries.detailsErasedAt)))
+    .returning({ id: enquiries.id });
+  return rows.length;
 }

@@ -22,6 +22,9 @@ const db = vi.hoisted(() => ({
   findClientIntake: vi.fn(),
   listEnquiries: vi.fn(),
   findSiteHealthFacts: vi.fn(),
+  findAnalyticsConnection: vi.fn(),
+  listVisitDays: vi.fn(),
+  listVisitLists: vi.fn(),
 }));
 vi.mock("@brandbasket/db", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@brandbasket/db")>()),
@@ -65,6 +68,10 @@ function screenProps(websiteCore: WebsiteCore, overview: WebsiteScreenProps["ove
 
 beforeEach(() => {
   vi.clearAllMocks();
+  vi.unstubAllEnvs();
+  db.findAnalyticsConnection.mockResolvedValue(null);
+  db.listVisitDays.mockResolvedValue([]);
+  db.listVisitLists.mockResolvedValue([]);
   db.listProjectEvents.mockResolvedValue([]);
   db.findSetupCallBooking.mockResolvedValue(null);
   db.findPreviewImageInfo.mockResolvedValue(null);
@@ -159,5 +166,93 @@ describe("WebsiteScreen", () => {
     render(<WebsiteScreen {...screenProps(websiteCore, await loadWebsiteOverview(context, websiteCore, NOW), { ok: true, data: [page] })} />);
     expect(screen.getByRole("link", { name: "Pages" })).toBeTruthy();
     expect(screen.getByText("/tests")).toBeTruthy();
+  });
+});
+
+/** Thirty measured days ending yesterday (India) in a source's rows. */
+function visitDays(value: number, count = 30) {
+  return Array.from({ length: count }, (_, index) => {
+    const day = new Date(Date.UTC(2026, 10, 2 - index)).toISOString().slice(0, 10);
+    return { metric: "visits", day, value, fetchedAt: NOW };
+  }).reverse();
+}
+
+describe("website visits (gate G1)", () => {
+  it("reads nothing and draws nothing while the switch is off", async () => {
+    const websiteCore = core("live", true);
+    const overview = await loadWebsiteOverview(context, websiteCore, NOW);
+    expect(overview.visits).toBeNull();
+    expect(db.listVisitDays).not.toHaveBeenCalled();
+    render(<WebsiteScreen {...screenProps(websiteCore, overview, { ok: true, data: [] })} />);
+    expect(screen.queryByText("Visits by day")).toBeNull();
+  });
+
+  it("is not read before the site is live, even with the switch on", async () => {
+    vi.stubEnv("CUSTOMER_VISITS_ENABLED", "1");
+    expect((await loadWebsiteOverview(context, core("preview"), NOW)).visits).toBeNull();
+    expect(db.listVisitDays).not.toHaveBeenCalled();
+  });
+
+  it("has no data, and draws no panel, until a day has been counted", async () => {
+    vi.stubEnv("CUSTOMER_VISITS_ENABLED", "1");
+    const websiteCore = core("live", true);
+    const overview = await loadWebsiteOverview(context, websiteCore, NOW);
+    expect(overview.visits).toEqual({ ok: true, data: null });
+    render(<WebsiteScreen {...screenProps(websiteCore, overview, { ok: true, data: [] })} />);
+    expect(screen.queryByText("Visits")).toBeNull();
+    expect(screen.queryByText("Where visitors come from")).toBeNull();
+  });
+
+  it("draws our own counts with their dates: the total, the chart, the pages and where visitors came from", async () => {
+    vi.stubEnv("CUSTOMER_VISITS_ENABLED", "true");
+    db.listVisitDays.mockResolvedValue([...visitDays(10, 60).slice(0, 30), ...visitDays(12)]);
+    db.listVisitLists.mockImplementation(async (_tx: unknown, _source: string, month: string) =>
+      month === "2026-11-01"
+        ? [
+            { dimension: "page", rows: [{ key: "/book", count: 120 }, { key: "/", count: 80 }], fetchedAt: NOW },
+            { dimension: "channel", rows: [{ key: "search", count: 60 }, { key: "direct", count: 30 }], fetchedAt: NOW },
+          ]
+        : [],
+    );
+    const websiteCore = core("live", true);
+    render(<WebsiteScreen {...screenProps(websiteCore, await loadWebsiteOverview(context, websiteCore, NOW), { ok: true, data: [] })} />);
+    expect(db.listVisitDays).toHaveBeenCalledWith(expect.anything(), "own", "2026-09-04", "2026-11-02");
+    expect(screen.getByText("360")).toBeTruthy();
+    expect(screen.getByText("+20%")).toBeTruthy();
+    expect(screen.getByText("Visits by day")).toBeTruthy();
+    expect(screen.getByText("Most visited pages")).toBeTruthy();
+    expect(screen.getByText("/book")).toBeTruthy();
+    expect(screen.getByText("Where visitors come from")).toBeTruthy();
+    expect(screen.getByText("Search engines")).toBeTruthy();
+    expect(screen.getAllByText(/Updated/).length).toBeGreaterThan(0);
+    expect(screen.queryByText(/From Google Analytics/)).toBeNull();
+  });
+
+  it("uses Google Analytics once it is connected and has counted, and says so", async () => {
+    vi.stubEnv("CUSTOMER_VISITS_ENABLED", "1");
+    db.findAnalyticsConnection.mockResolvedValue({ status: "connected" });
+    db.listVisitDays.mockImplementation(async (_tx: unknown, source: string) => (source === "ga4" ? visitDays(7) : visitDays(99)));
+    const websiteCore = core("live", true);
+    render(<WebsiteScreen {...screenProps(websiteCore, await loadWebsiteOverview(context, websiteCore, NOW), { ok: true, data: [] })} />);
+    expect(db.listVisitDays).not.toHaveBeenCalledWith(expect.anything(), "own", expect.anything(), expect.anything());
+    expect(screen.getByText("210")).toBeTruthy();
+    expect(screen.getAllByText(/From Google Analytics/).length).toBeGreaterThan(0);
+  });
+
+  it("falls back to our own counts when Google Analytics is not connected or has counted nothing", async () => {
+    vi.stubEnv("CUSTOMER_VISITS_ENABLED", "1");
+    db.findAnalyticsConnection.mockResolvedValue({ status: "access_lost" });
+    db.listVisitDays.mockResolvedValue(visitDays(4));
+    const overview = await loadWebsiteOverview(context, core("live", true), NOW);
+    expect(overview.visits?.ok && overview.visits.data?.summary).toMatchObject({ source: "own", total: 120 });
+  });
+
+  it("names its own failure and keeps the rest of the page", async () => {
+    vi.stubEnv("CUSTOMER_VISITS_ENABLED", "1");
+    db.listVisitDays.mockRejectedValue(new Error("connection lost"));
+    const websiteCore = core("live", true);
+    render(<WebsiteScreen {...screenProps(websiteCore, await loadWebsiteOverview(context, websiteCore, NOW), { ok: true, data: [] })} />);
+    expect(screen.getByText(/We could not load your visits/)).toBeTruthy();
+    expect(screen.getByText("Enquiries from the site")).toBeTruthy();
   });
 });

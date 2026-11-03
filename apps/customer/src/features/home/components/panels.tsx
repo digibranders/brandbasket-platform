@@ -3,6 +3,8 @@ import { LineChart, MetricStrip, Panel, PanelData, StatusBadge, Stepper, Timelin
 import type { ChecklistSummary } from "@/features/checklist/loader";
 import { AD_LEADS_NOTE } from "@/features/social/rules";
 import { changeAgainst } from "@/features/enquiries/rules";
+import { visitsMetric } from "@/features/website/components/visits-panels";
+import type { VisitsData } from "@/features/website/loader";
 import type { Loaded } from "@/lib/loaded";
 import { formatDate, formatDateTime, formatNumber, formatOutOf, formatRelative, formatTime } from "@/lib/format";
 import { Badge, Icon, LinkButton, Meter, SERVICE_NAMES, ServiceTag, type IconName } from "@/ui";
@@ -62,10 +64,18 @@ export function NeedsYouPanel({ items, primaryFirst, lead = [] }: { readonly ite
 /**
  * The last 30 days strip: the figures with a customer read path. Enquiries from the enquiries list; Leads from ads and Google
  * page one from the month's numbers staff enter. Each is left out when it is not known, and a change is left out when there is
- * nothing to compare. Website visits have no source and are not drawn.
+ * nothing to compare. Website visits come from the roll-ups or Google Analytics and are drawn only once a day has been counted.
  */
-export function LastThirtyDays({ series, figures }: { readonly series: Loaded<EnquirySeries> | null; readonly figures: Loaded<StripFigures> | null }) {
-  const metrics: Metric[] = [];
+export function LastThirtyDays({
+  series,
+  figures,
+  visits,
+}: {
+  readonly series: Loaded<EnquirySeries> | null;
+  readonly figures: Loaded<StripFigures> | null;
+  readonly visits: Loaded<VisitsData | null> | null;
+}) {
+  const metrics: Metric[] = [...visitsMetric(visits)];
   if (series?.ok === true) {
     const change = changeAgainst(series.data.currentTotal, series.data.previousTotal);
     metrics.push({ label: "Enquiries", value: formatNumber(series.data.currentTotal), ...(change === null ? {} : { change: { value: change } }) });
@@ -78,7 +88,7 @@ export function LastThirtyDays({ series, figures }: { readonly series: Loaded<En
       metrics.push({ label: "Google page one", value: formatNumber(pageOne.count), ...(diff === null ? {} : { change: { value: diff } }), period: `Tracked searches, ${month}`, asOf: pageOne.checkedAt });
     }
   }
-  const failed = [series, figures].filter((panel) => panel !== null && !panel.ok);
+  const failed = [series, figures, visits].filter((panel) => panel !== null && !panel.ok);
   if (metrics.length === 0 && failed.length === 0) return null;
   return (
     <section className="flex flex-col gap-2">
@@ -88,6 +98,11 @@ export function LastThirtyDays({ series, figures }: { readonly series: Loaded<En
       <MetricStrip label="Last 30 days" metrics={metrics} />
       {series !== null && !series.ok ? (
         <PanelData data={series} what="your enquiries">
+          {() => null}
+        </PanelData>
+      ) : null}
+      {visits !== null && !visits.ok ? (
+        <PanelData data={visits} what="your visits">
           {() => null}
         </PanelData>
       ) : null}

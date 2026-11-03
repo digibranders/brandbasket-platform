@@ -934,6 +934,21 @@ export {
   type NewSiteHit,
   type RollupCandidate,
 } from "./queries/site-hits";
+export {
+  findAnalyticsConnection,
+  latestGa4Day,
+  listGa4Properties,
+  listVisitDays,
+  listVisitLists,
+  VISIT_DIMENSIONS,
+  VISIT_METRICS,
+  type Ga4Property,
+  type VisitDay,
+  type VisitDimension,
+  type VisitList,
+  type VisitMetric,
+  type VisitSource,
+} from "./queries/site-visits";
 export { listAdFunnelData, type AdFunnelData } from "./queries/ad-funnel";
 export { claimConversionEvent, listRetryableConversionPayments, markConversionEvent, MAX_CONVERSION_ATTEMPTS } from "./queries/conversion-events";
 export { getSignupAttribution, recordSignupAttribution, type NewSignupAttribution } from "./queries/signup-attribution";
@@ -1334,6 +1349,8 @@ export {
 } from "./queries/directory-business-profiles";
 export {
   eraseClosedAccount,
+  eraseEnquirerDetails,
+  eraseExpiredEnquiryDetails,
   erasedBusinessSlug,
   erasedUserEmail,
   findErasureBlock,
@@ -1449,6 +1466,7 @@ export {
 } from "./queries/consent-records";
 export {
   countExpiredRetention,
+  RETENTION_PERIODS,
   purgeExpiredRetention,
   type RetentionCounts,
 } from "./queries/retention";
@@ -1494,6 +1512,7 @@ export {
   countNewEnquiries,
   EnquiryNoteTooLongError,
   eraseEnquiriesOfBusiness,
+  recordEnquiryContents,
   findEnquiry,
   listEnquiries,
   updateEnquiry,
@@ -1501,6 +1520,7 @@ export {
   upsertEnquiryFromSiteEvent,
   type EnquiryBackfillResult,
   type EnquiryChange,
+  type EnquiryContentsInput,
   type EnquiryFilter,
 } from "./queries/enquiries";
 export {

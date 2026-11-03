@@ -14,10 +14,10 @@ vi.mock("@/components/client-listing", () => ({ ClientListing: () => "[listing]"
 vi.mock("@/components/client-listing-tags", () => ({ ClientListingTags: () => "[listing tags]" }));
 vi.mock("../parts", async () => {
   const actual = await vi.importActual<typeof import("../parts")>("../parts");
-  return { ...actual, WebsiteUrlBlock: () => "[website url]", HostingBlock: () => "[hosting]", SiteApiTokenBlock: () => "[token]", TrackingBlock: () => "[tracking]" };
+  return { ...actual, WebsiteUrlBlock: () => "[website url]", HostingBlock: () => "[hosting]", SiteApiTokenBlock: () => "[token]", TrackingBlock: () => "[tracking]", AnalyticsBlock: () => "[analytics]" };
 });
 vi.mock("../actions", () => ({}));
-vi.mock("../tracking-actions", () => ({ createSiteKeyAction: vi.fn() }));
+vi.mock("../tracking-actions", () => ({ createSiteKeyAction: vi.fn(), saveAnalyticsPropertyAction: vi.fn() }));
 vi.mock("@brandbasket/db", async () => {
   const actual = await vi.importActual<typeof import("@brandbasket/db")>("@brandbasket/db");
   return {
@@ -32,6 +32,7 @@ vi.mock("@brandbasket/db", async () => {
     lastSiteHitAt: vi.fn().mockResolvedValue(null),
     listEnabledModules: vi.fn().mockResolvedValue([]),
     listHostedSites: vi.fn().mockResolvedValue([]),
+    listReportSources: vi.fn().mockResolvedValue([]),
     listUpcomingDirectoryPromotions: vi.fn().mockResolvedValue([]),
     readDirectoryStatuses: vi.fn().mockResolvedValue(new Map()),
   };
@@ -48,13 +49,13 @@ describe("Site details", () => {
     const html = renderToStaticMarkup(await SiteDetails({ client: CLIENT, query: {} }));
     for (const title of ["Their website", "Features", "Business details", "Opening hours", "What they offer"]) expect(html).toContain(title);
     expect(html).not.toContain(">Listing<");
-    for (const marker of ["[website url]", "[hosting]", "[token]", "[tracking]", "[features]"]) expect(html).toContain(marker);
+    for (const marker of ["[website url]", "[hosting]", "[token]", "[tracking]", "[analytics]", "[features]"]) expect(html).toContain(marker);
   });
 
   it("leaves the hosting, token and tracking out when the website was not bought", async () => {
     vi.mocked(isWebsiteBought).mockResolvedValue(false);
     const html = renderToStaticMarkup(await SiteDetails({ client: CLIENT, query: {} }));
     expect(html).toContain("[website url]");
-    for (const marker of ["[hosting]", "[token]", "[tracking]"]) expect(html).not.toContain(marker);
+    for (const marker of ["[hosting]", "[token]", "[tracking]", "[analytics]"]) expect(html).not.toContain(marker);
   });
 });
