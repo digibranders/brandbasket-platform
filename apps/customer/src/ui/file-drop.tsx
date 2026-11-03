@@ -1,7 +1,6 @@
 "use client";
 
 import { useId, useRef, useState, type DragEvent, type ReactNode } from "react";
-import { Button } from "./button";
 import { cx } from "./cx";
 import { Icon } from "./icon";
 
@@ -34,6 +33,7 @@ export interface FileDropProps {
 /** Drag files in or choose them, with per-file progress and per-file errors (plan 60, FileDrop). */
 export function FileDrop({ chooseLabel, description, accept, multiple = false, disabled = false, onFiles, files = [], className }: FileDropProps) {
   const input = useRef<HTMLInputElement>(null);
+  const labelId = useId();
   const descriptionId = useId();
   const [over, setOver] = useState(false);
 
@@ -54,35 +54,47 @@ export function FileDrop({ chooseLabel, description, accept, multiple = false, d
 
   return (
     <div className={cx("flex flex-col gap-2", className)}>
-      <div
+      {/* One compact row: the whole box opens the picker, and files can be dropped on it. */}
+      <button
+        type="button"
+        disabled={disabled}
+        aria-labelledby={labelId}
+        aria-describedby={descriptionId}
+        onClick={() => input.current?.click()}
         onDragOver={onDragOver}
         onDragLeave={() => setOver(false)}
         onDrop={onDrop}
         className={cx(
-          "flex flex-col items-center gap-1.5 rounded-panel border-[1.5px] border-dashed border-border-control bg-surface-subtle p-5 text-center",
-          over && "border-ring bg-accent-wash",
+          "group flex w-full items-center gap-3 rounded-control border border-dashed border-border-button bg-surface px-3 py-2.5 text-left transition-colors duration-100",
+          "hover:border-border-button-hover hover:bg-surface-subtle focus-visible:border-ring focus-visible:shadow-focus focus-visible:outline-none",
+          "disabled:cursor-not-allowed disabled:bg-surface-disabled",
+          over && "border-ring bg-accent-wash hover:border-ring hover:bg-accent-wash",
         )}
       >
-        <Icon name="UploadSimple" className="text-ink-3" />
-        <Button size="sm" disabled={disabled} aria-describedby={descriptionId} onClick={() => input.current?.click()}>
-          {chooseLabel}
-        </Button>
-        <p id={descriptionId} className="type-meta">
-          {description}
-        </p>
-        <input
-          ref={input}
-          type="file"
-          hidden
-          accept={accept}
-          multiple={multiple}
-          disabled={disabled}
-          onChange={(event) => {
-            take(event.currentTarget.files);
-            event.currentTarget.value = "";
-          }}
-        />
-      </div>
+        <span className="grid size-9 shrink-0 place-items-center rounded-[8px] bg-accent-wash text-accent-text group-disabled:bg-neutral-wash group-disabled:text-ink-disabled">
+          <Icon name="UploadSimple" />
+        </span>
+        <span className="flex min-w-0 flex-col gap-0.5">
+          <span id={labelId} className="type-button text-accent-text group-disabled:text-ink-disabled">
+            {chooseLabel}
+          </span>
+          <span id={descriptionId} className="type-meta">
+            {description}
+          </span>
+        </span>
+      </button>
+      <input
+        ref={input}
+        type="file"
+        hidden
+        accept={accept}
+        multiple={multiple}
+        disabled={disabled}
+        onChange={(event) => {
+          take(event.currentTarget.files);
+          event.currentTarget.value = "";
+        }}
+      />
       {files.length === 0 ? null : (
         <ul className="flex flex-col divide-y divide-border-subtle rounded-control border border-border">
           {files.map((file) => (

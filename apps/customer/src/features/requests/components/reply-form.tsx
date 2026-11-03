@@ -1,10 +1,11 @@
 "use client";
 
-import { useState, useTransition, type FormEvent } from "react";
+import { useRef, useState, useTransition, type FormEvent } from "react";
 import type { ActionFailure } from "@/lib/action-result";
 import { Banner, Button, Field, Textarea, useToast } from "@/ui";
 import { replyAction } from "../actions";
-import { Screenshots } from "./screenshots";
+import { handleImagePaste } from "../paste";
+import { Screenshots, type ScreenshotsHandle } from "./screenshots";
 
 export interface ReplyFormProps {
   readonly ticketId: string;
@@ -18,6 +19,7 @@ export function ReplyForm({ ticketId, sendLabel }: ReplyFormProps) {
   const [pending, start] = useTransition();
   const [failure, setFailure] = useState<ActionFailure | null>(null);
   const [ids, setIds] = useState<readonly string[]>([]);
+  const screenshots = useRef<ScreenshotsHandle>(null);
   const [uploading, setUploading] = useState(false);
   const [submissionKey, setSubmissionKey] = useState(() => crypto.randomUUID());
 
@@ -38,7 +40,7 @@ export function ReplyForm({ ticketId, sendLabel }: ReplyFormProps) {
   };
 
   return (
-    <form key={submissionKey} onSubmit={onSubmit} className="flex flex-col gap-3">
+    <form key={submissionKey} onSubmit={onSubmit} onPaste={(event) => handleImagePaste(event, (files) => screenshots.current?.addFiles(files), "screenshot")} className="flex flex-col gap-3">
       <input type="hidden" name="ticketId" value={ticketId} />
       <input type="hidden" name="submissionKey" value={submissionKey} />
       {ids.map((id) => (
@@ -48,7 +50,7 @@ export function ReplyForm({ ticketId, sendLabel }: ReplyFormProps) {
       <Field label="Reply" name="body" error={failure?.fieldErrors?.body}>
         <Textarea name="body" required placeholder="Write a reply" />
       </Field>
-      <Screenshots onIds={setIds} onBusy={setUploading} disabled={pending} resetKey={submissionKey} />
+      <Screenshots ref={screenshots} onIds={setIds} onBusy={setUploading} disabled={pending} resetKey={submissionKey} />
       <div className="flex justify-end">
         <Button type="submit" pending={pending} disabled={uploading}>
           {sendLabel}
