@@ -8,7 +8,7 @@ export {
   type EmailMessage,
   type EmailOutboxCopy,
 } from "./message";
-export { emailBrandName, emailSenderDefaults, emailTeamInboxDefault, type EmailAddress } from "./brand";
+export { emailBrandName, emailLogoUrl, emailSenderDefaults, emailTeamInboxDefault, type EmailAddress } from "./brand";
 export { createOutboxTransport, OUTBOX_TRANSPORT_NAME, type EmailTransport, type OutboxOptions } from "./outbox";
 export { affiliateLinkEmail, type AffiliateLinkInput } from "./templates/affiliate-link";
 export { businessInviteEmail, type BusinessInviteInput } from "./templates/business-invite";
