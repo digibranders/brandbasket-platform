@@ -754,12 +754,12 @@ async function seedReports(context: Context, businessId: string, host: string): 
     const social = entry.values.social;
     await upsertMonthlySnapshot(db, {
       businessId, service: "social", month: entry.month, staffId: context.staffId, now,
-      figures: { adSpendCents: social.spend ?? null, adBudgetCents: social.budget ?? null, adEnquiries: social.enquiries ?? null, postsPublished: social.published ?? null, postsPlanned: social.planned ?? null, keywordsPageOne: null, keywordsPageOnePrev: null },
+      figures: { adSpendCents: social.spend ?? null, adBudgetCents: social.budget ?? null, adEnquiries: social.enquiries ?? null, postsPublished: social.published ?? null, postsPlanned: social.planned ?? null, keywordsPageOne: null, keywordsPageOnePrev: null, reach: null, followers: null, profileVisits: null },
     });
     const search = entry.values.search;
     await upsertMonthlySnapshot(db, {
       businessId, service: "search", month: entry.month, staffId: context.staffId, now,
-      figures: { adSpendCents: null, adBudgetCents: null, adEnquiries: null, postsPublished: null, postsPlanned: null, keywordsPageOne: search.pageOne ?? null, keywordsPageOnePrev: search.previous ?? null },
+      figures: { adSpendCents: null, adBudgetCents: null, adEnquiries: null, postsPublished: null, postsPlanned: null, keywordsPageOne: search.pageOne ?? null, keywordsPageOnePrev: search.previous ?? null, reach: null, followers: null, profileVisits: null },
     });
   }
 
