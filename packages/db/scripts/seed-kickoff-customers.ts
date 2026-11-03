@@ -22,7 +22,7 @@ import { businessMembers, users } from "../src/schema";
  */
 
 /** The shared dev database and the throwaway preview copy. Never a database with any other name. */
-const SEEDABLE_DATABASES: readonly string[] = ["brandbasket_platform", "brandbasket_platform_preview"];
+const SEEDABLE_DATABASES: readonly string[] = ["brandbasket_platform", "brandbasket_platform_preview", "brandbasket_platform_v4"];
 const LOCAL_HOSTS: ReadonlySet<string> = new Set(["localhost", "127.0.0.1", "[::1]"]);
 const HOUR_MS = 3_600_000;
 const MINUTE_MS = 60_000;
