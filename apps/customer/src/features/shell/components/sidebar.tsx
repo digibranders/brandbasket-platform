@@ -26,7 +26,7 @@ export function Sidebar({ model, pathname, businessName, serviceCount, person, o
   return (
     <aside className="sticky top-0 hidden h-dvh w-sidebar shrink-0 flex-col gap-0.5 overflow-y-auto border-r border-border bg-sidebar px-2 py-2.5 md:flex">
       <Link href={SHELL_PATHS.home} className="mb-1 flex w-fit px-2 pt-1.5 pb-2.5">
-        <Image src="/brand/brandbasket-lockup-ink.svg" alt="Brandbasket, home" width={126} height={22} unoptimized />
+        <Image src="/brand/brandbasket-logo-horizontal-light.svg" alt="Brandbasket, home" width={130} height={22} unoptimized />
       </Link>
       <div className="flex items-center gap-2.5 px-2 py-1.5">
         <Avatar name={businessName} kind="business" />
