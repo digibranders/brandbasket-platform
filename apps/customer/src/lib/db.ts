@@ -31,6 +31,10 @@ export function getAppDb(): Database {
  * - src/features/enquiries/conversation.ts, reading the OyeChats operator key of one chatbot (chatbot keys are staff-only).
  *   The chat lead is first found through row-level security on the app connection, so another business's id is refused
  *   before any key is read; the key stays on the server and is never returned.
+ * - src/features/requests/server.ts, three system writes the app role cannot make: request rate-limit rows (keyed by the
+ *   session user), opening the charge for an accepted quote (the business comes from the session tenant and the database
+ *   function checks the request belongs to it), and queueing the staff alert email in the outbox (a reference and link
+ *   only, never the request text).
  */
 export function getStaffDb(): Database {
   holder.brandbasketCustomerStaffDb ??= createDatabase(serverEnv().DATABASE_URL_STAFF).db;
