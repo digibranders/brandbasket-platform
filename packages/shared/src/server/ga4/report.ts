@@ -26,14 +26,16 @@ export interface Ga4ReportRequest {
   readonly metrics: readonly { readonly name: string }[];
   readonly orderBys?: readonly { readonly metric: { readonly metricName: string }; readonly desc: true }[];
   readonly limit: number;
+  /** Asks Google to report how much of the property's daily and hourly budget is left, so a rising problem is seen early. */
+  readonly returnPropertyQuota: true;
 }
 
 export function dailyRequest(range: DateRange): Ga4ReportRequest {
-  return { dateRanges: [range], dimensions: [{ name: "date" }], metrics: GA4_DAILY_METRICS.map((metric) => ({ name: metric.ga4 })), limit: 400 };
+  return { dateRanges: [range], dimensions: [{ name: "date" }], metrics: GA4_DAILY_METRICS.map((metric) => ({ name: metric.ga4 })), limit: 400, returnPropertyQuota: true };
 }
 
 export function channelRequest(range: DateRange): Ga4ReportRequest {
-  return { dateRanges: [range], dimensions: [{ name: "sessionDefaultChannelGroup" }], metrics: [{ name: "sessions" }], limit: 50 };
+  return { dateRanges: [range], dimensions: [{ name: "sessionDefaultChannelGroup" }], metrics: [{ name: "sessions" }], limit: 50, returnPropertyQuota: true };
 }
 
 export function pageRequest(range: DateRange): Ga4ReportRequest {
@@ -43,6 +45,7 @@ export function pageRequest(range: DateRange): Ga4ReportRequest {
     metrics: [{ name: "screenPageViews" }],
     orderBys: [{ metric: { metricName: "screenPageViews" }, desc: true }],
     limit: 10,
+    returnPropertyQuota: true,
   };
 }
 
@@ -50,6 +53,7 @@ const reportSchema = z.object({
   rows: z
     .array(z.object({ dimensionValues: z.array(z.object({ value: z.string() })), metricValues: z.array(z.object({ value: z.string() })) }))
     .default([]),
+  propertyQuota: z.object({ tokensPerDay: z.object({ remaining: z.number() }).optional() }).optional(),
 });
 export type Ga4Report = z.output<typeof reportSchema>;
 

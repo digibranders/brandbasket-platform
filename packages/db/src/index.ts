@@ -815,6 +815,14 @@ export {
   type NewAddOnSubscription,
   type RecordedAddOnPayment,
 } from "./queries/add-ons";
+export {
+  findGoogleConnection,
+  listGoogleConnections,
+  markGoogleConnectionLost,
+  markGoogleConnectionOk,
+  saveGoogleConnection,
+} from "./queries/google-connections";
+export { GOOGLE_CONNECTION_PURPOSES, GOOGLE_CONNECTION_STATUSES, type GoogleConnectionPurpose, type GoogleConnectionRow, type GoogleConnectionStatus } from "./schema/google-connections";
 export { clearSiteSetting, findIncludedRevisionRounds, findSiteSetting, findSiteSettingWithEditor, saveSiteSetting } from "./queries/site-settings";
 export {
   DEFAULT_REVISION_ROUNDS,
@@ -951,7 +959,9 @@ export {
 export {
   findAnalyticsConnection,
   latestGa4Day,
+  latestGscDay,
   listGa4Properties,
+  listGscSites,
   listVisitDays,
   listVisitLists,
   VISIT_DIMENSIONS,
