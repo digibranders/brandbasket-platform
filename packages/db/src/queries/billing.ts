@@ -3,6 +3,7 @@ import type { Database } from "../client";
 import type { ScopedTransaction } from "../scope";
 import { bundledNetCents, findLiveBundledAddOns, insertBundledAddOns, removeBundledAddOnsOf, type NewBundledAddOn } from "./bundled-add-ons";
 import { markLeadPaidForBusiness } from "./leads";
+import { isUnappliedReason } from "../unapplied-reasons";
 import { isUuid } from "./tenant";
 import {
   addOnPayments,
@@ -288,10 +289,7 @@ export function paymentMethodValues(method: PaymentMethodDetails | null | undefi
   };
 }
 
-/** True for an attention reason whose payment bought nothing. */
-export function isUnappliedReason(reason: PaymentAttentionReason | null): boolean {
-  return reason !== null && (UNAPPLIED_PAYMENT_REASONS as readonly PaymentAttentionReason[]).includes(reason);
-}
+export { isUnappliedReason };
 
 /** A payment that was applied: it has no attention reason, or its reason came after it applied. */
 export function paymentWasApplied(): SQL {

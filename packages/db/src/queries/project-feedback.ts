@@ -1,13 +1,15 @@
 import { and, desc, eq, sql } from "drizzle-orm";
 import type { Database } from "../client";
+import type { ScopedTransaction } from "../scope";
 import { projectFeedbackTickets, supportMessages, supportTickets, type SupportStatus } from "../schema";
 
 /**
  * Records that a support ticket is the feedback a customer sent on a project's preview. Written through the staff connection
- * when the feedback is sent. A retry with the same ticket finds the row already there and leaves it as it was.
+ * when the feedback is sent, or a transaction on it so the link commits with the ticket and the round. A retry with the
+ * same ticket finds the row already there and leaves it as it was.
  */
 export async function linkFeedbackTicket(
-  db: Database,
+  db: Database | ScopedTransaction,
   input: { readonly ticketId: string; readonly projectId: string; readonly businessId: string; readonly round: number },
 ): Promise<void> {
   await db

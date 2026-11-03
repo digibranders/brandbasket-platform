@@ -1,6 +1,7 @@
 import "server-only";
 import { findClientDetail, recordPreviewVersion, recordProjectPreviewSent, savePreviewImage, type Database } from "@brandbasket/db";
 import { previewReadyEmail } from "@brandbasket/email";
+import { emailPreferenceAllows } from "@brandbasket/shared/server/email-preference";
 import { customerEmailTransport } from "./email";
 import { captureScreenshot } from "./preview-screenshot";
 import { addWorkingActivity } from "./website-moves";
@@ -43,12 +44,20 @@ export async function takePreviewPicture(db: Database, input: { readonly project
   }
 }
 
-/** Emails the preview link. Never throws: the preview is already saved, so a failed send is reported as an outcome. */
+/**
+ * Emails the preview link, unless the owner turned "needs your approval" emails off for this business, in which case it
+ * answers "no-email" and staff tell them another way. Never throws: the preview is already saved, so a failed send is
+ * reported as an outcome.
+ */
 async function emailPreview(
   db: Database,
-  input: { readonly businessId: string; readonly to: string; readonly businessName: string; readonly previewUrl: string },
-): Promise<"emailed" | "email-failed"> {
+  input: { readonly businessId: string; readonly ownerUserId: string; readonly to: string; readonly businessName: string; readonly previewUrl: string },
+): Promise<OwnerNotification> {
   try {
+    const allowed = await emailPreferenceAllows(db, input.ownerUserId, input.businessId, "needs_approval", (error) =>
+      console.error("[preview-email] could not read the email preference, sending anyway", { businessId: input.businessId, error }),
+    );
+    if (!allowed) return "no-email";
     await customerEmailTransport(db).send(previewReadyEmail({ to: input.to, businessName: input.businessName, previewUrl: input.previewUrl }));
     return "emailed";
   } catch (error) {
@@ -83,7 +92,7 @@ export async function sendProjectPreview(db: Database, input: SendProjectPreview
   await addWorkingActivity(db, { businessId: input.businessId, staffId: input.staffId, title: "Your website preview is ready to check", now });
 
   if (client.owner.email === null) return "no-email";
-  return emailPreview(db, { businessId: input.businessId, to: client.owner.email, businessName: client.businessName, previewUrl: input.previewUrl });
+  return emailPreview(db, { businessId: input.businessId, ownerUserId: client.owner.userId, to: client.owner.email, businessName: client.businessName, previewUrl: input.previewUrl });
 }
 
 /**
@@ -96,5 +105,5 @@ export async function resendPreviewEmail(db: Database, input: { readonly busines
   const project = client.project;
   if (project === null || project.status !== "preview" || project.previewUrl === null) return "not-allowed";
   if (client.owner.email === null) return "no-email";
-  return emailPreview(db, { businessId: input.businessId, to: client.owner.email, businessName: client.businessName, previewUrl: project.previewUrl });
+  return emailPreview(db, { businessId: input.businessId, ownerUserId: client.owner.userId, to: client.owner.email, businessName: client.businessName, previewUrl: project.previewUrl });
 }

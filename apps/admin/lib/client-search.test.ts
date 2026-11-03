@@ -5,7 +5,7 @@ vi.mock("server-only", () => ({}));
 
 const client = {
   businessName: "Sunrise Bakery",
-  owner: { name: "Priya Nair", email: "priya@sunrise.example", phone: "+919876543210" },
+  owner: { userId: "user-priya", name: "Priya Nair", email: "priya@sunrise.example", phone: "+919876543210" },
 } as const;
 
 describe("matchesClientSearch", () => {

@@ -1,0 +1,294 @@
+import { NextStep, PageHeader, Panel, PanelError } from "@/components";
+import { BookCallDialog } from "@/features/calls/components/book-call-dialog";
+import { KickoffPanel } from "@/features/calls/components/kickoff-panel";
+import { BOOK_PROBLEM_TEXT, VIEWER_MESSAGE } from "@/features/calls/rules";
+import { PurchasePush } from "@/features/conversions/components/purchase-push";
+import type { PurchaseEvent } from "@/features/conversions/purchase-event";
+import type { LoadFailure } from "@/lib/loaded";
+import { formatDate, formatDateTime } from "@/lib/format";
+import { Button, LinkButton } from "@/ui";
+import type { HomePanels, HomeStateView } from "../loader";
+import { firstName, greetingFor, homeLede, kickoffSteps, websiteCopy, websiteMilestones, type NeedsYouItem, type WebsiteState } from "../rules";
+import {
+  ActivityPanel,
+  ChecklistPanel,
+  ComingUpPanel,
+  EnquiriesChart,
+  HaveReadyPanel,
+  IncludedEditsPanel,
+  LastThirtyDays,
+  NeedsYouPanel,
+  NextStepsPanel,
+  RoundsPanel,
+  ServicesPanel,
+  WebsiteStatusPanel,
+} from "./panels";
+
+const NEW_REQUEST = "/requests?new=1";
+
+type Services = readonly ("website" | "social" | "search")[];
+
+export interface HomeScreenProps {
+  readonly person: { readonly name: string; readonly isPhoneAccount: boolean; readonly role: "owner" | "editor" | "viewer" };
+  readonly services: Services;
+  readonly view: HomeStateView;
+  readonly panels: HomePanels;
+  readonly now: Date;
+  /** The first payment to report to Tag Manager, only on the welcome visit (`?welcome=1`). */
+  readonly purchase: PurchaseEvent | null;
+}
+
+/** The read that decides Home's state failed: say so, never guess a state. */
+export function HomeStateError({ failure, name, now }: { readonly failure: LoadFailure; readonly name: string; readonly now: Date }) {
+  return (
+    <>
+      <PageHeader title={`${greetingFor(now)}, ${firstName(name)}`} />
+      <Panel>
+        <PanelError failure={failure} what="your home page" />
+      </Panel>
+    </>
+  );
+}
+
+/** Book a call in a header, once calls are open and this member can book. */
+function BookCallAction({ view, panels }: { readonly view: HomeStateView; readonly panels: HomePanels }) {
+  if (!view.callsOpen || !panels.booking.ok || !panels.booking.data.canBook) return null;
+  return (
+    <BookCallDialog
+      options={panels.booking.data.options}
+      bookingUrl={panels.booking.data.bookingUrl}
+      trigger={
+        <Button icon="CalendarBlank">
+          Book a call
+        </Button>
+      }
+    />
+  );
+}
+
+/** Payment required, payment under review, lapsed: one task each, and nothing else to read. */
+function PaymentTask({ view, person, services, now }: Pick<HomeScreenProps, "view" | "person" | "services" | "now">) {
+  const header = <PageHeader title={`${greetingFor(now)}, ${firstName(person.name)}`} description={homeLede(view.state.kind === "lapsed" ? services : [], now)} />;
+  switch (view.state.kind) {
+    case "payment_processing":
+      return (
+        <>
+          {header}
+          <NextStep title="Payment under review" icon="Info">
+            We have your payment and are checking it. Your plan starts as soon as it clears.
+          </NextStep>
+        </>
+      );
+    case "lapsed":
+      return (
+        <>
+          {header}
+          <NextStep
+            actions={
+              <LinkButton href="/billing" variant="primary">
+                Reactivate
+              </LinkButton>
+            }
+          >
+            Your plan has ended. Reactivate it to restart your services.
+          </NextStep>
+        </>
+      );
+    default:
+      return (
+        <>
+          {header}
+          <NextStep
+            actions={
+              <LinkButton href="/checkout" variant="primary">
+                Pay
+              </LinkButton>
+            }
+          >
+            Your plan starts once your first payment goes through.
+          </NextStep>
+        </>
+      );
+  }
+}
+
+/** The kickoff states: book it, the booked call with the checklist, or a call nobody has confirmed (mock: homeWelcome). */
+function KickoffTask({ view, panels, person, services, now, purchase }: HomeScreenProps) {
+  const { state } = view;
+  const canBook = person.role !== "viewer" && !person.isPhoneAccount;
+  const cannotBookLine = canBook ? null : person.role === "viewer" ? VIEWER_MESSAGE : BOOK_PROBLEM_TEXT.no_email;
+  const bookingUrl = panels.booking.ok ? panels.booking.data.bookingUrl : null;
+  const booked = state.kind === "kickoff_booked" ? { startsAtIso: state.startsAt?.toISOString() ?? null, endsAtIso: state.endsAt?.toISOString() ?? null } : null;
+  const missedLine =
+    state.kind === "kickoff_unbooked" && state.missedAt !== null
+      ? `We missed each other on ${formatDateTime(state.missedAt, now)}. Pick a new time.`
+      : state.kind === "kickoff_unconfirmed"
+        ? websiteCopy(state, now).text
+        : null;
+  const firstOpen = panels.checklist?.ok === true ? (panels.checklist.data.items.find((item) => !item.done) ?? null) : null;
+  const callStart = state.kind === "kickoff_booked" ? state.startsAt : null;
+  return (
+    <>
+      <PurchasePush event={purchase} />
+      <PageHeader
+        title={state.kind === "kickoff_unconfirmed" ? websiteCopy(state, now).title : `Welcome, ${firstName(person.name)}. Your plan is active.`}
+        description={homeLede(services, now)}
+        {...(state.kind === "kickoff_booked" && firstOpen !== null
+          ? {
+              actions: (
+                <LinkButton href={firstOpen.href} variant="primary">
+                  {firstOpen.label}
+                </LinkButton>
+              ),
+            }
+          : {})}
+      />
+      <div className="grid gap-4 lg:grid-cols-3">
+        <div className="flex min-w-0 flex-col gap-4 lg:col-span-2">
+          <KickoffPanel services={services} bookingUrl={bookingUrl} canBook={canBook} cannotBookLine={cannotBookLine} booked={booked} missedLine={missedLine} />
+          {state.kind === "kickoff_booked" && panels.checklist !== null ? <ChecklistPanel checklist={panels.checklist} /> : state.kind === "kickoff_unbooked" ? <HaveReadyPanel services={services} /> : null}
+        </div>
+        <div className="flex min-w-0 flex-col gap-4">
+          <NextStepsPanel steps={kickoffSteps({ hasWebsite: services.includes("website"), callStart, held: false, now })} />
+        </div>
+      </div>
+    </>
+  );
+}
+
+/** Starting, preparing, building, on hold, approved, and the week after launch: the website's path and what we did. */
+function ProgressScreen({ view, panels, person, services, now }: HomeScreenProps) {
+  const state = view.state as WebsiteState;
+  const copy = websiteCopy(state, now);
+  const kickoffAt = view.kickoff?.endsAt ?? null;
+  const milestones = state.kind === "launched" ? null : websiteMilestones(state, { kickoffAt, firstPreviewDueAt: view.project?.slaDueAt ?? null, launchPlannedOn: view.project?.launchPlannedOn ?? null, now });
+  const firstNeed = panels.needs?.ok === true ? (panels.needs.data[0] ?? null) : null;
+  // On hold, the primary action is whatever unblocks it: the first thing waiting on the customer, when there is one.
+  const primary =
+    state.kind === "launched" ? (
+      <LinkButton href={`https://${state.hostname}`} target="_blank" rel="noopener noreferrer" variant="primary" icon="ArrowUpRight">
+        Visit site
+      </LinkButton>
+    ) : undefined;
+  return (
+    <>
+      <PageHeader
+        title={`${greetingFor(now)}, ${firstName(person.name)}`}
+        description={homeLede(services, now)}
+        actions={
+          <>
+            <BookCallAction view={view} panels={panels} />
+            {primary}
+          </>
+        }
+      />
+      <div className="grid gap-4 lg:grid-cols-3">
+        <div className="flex min-w-0 flex-col gap-4 lg:col-span-2">
+          <WebsiteStatusPanel title={copy.title} text={copy.text} milestones={milestones} />
+          {panels.needs === null ? null : <NeedsYouPanel items={panels.needs} primaryFirst={state.kind === "on_hold" && firstNeed !== null} />}
+          {panels.activity === null ? null : <ActivityPanel rows={panels.activity} now={now} />}
+        </div>
+        <div className="flex min-w-0 flex-col gap-4">
+          {view.kickoff?.summary == null ? null : (
+            <Panel title="From your kickoff">
+              <p className="type-body text-ink">{view.kickoff.summary}</p>
+              <p className="mt-2 type-meta">Written by your team after the call.</p>
+            </Panel>
+          )}
+          {panels.coming === null ? null : <ComingUpPanel coming={panels.coming} now={now} />}
+          {panels.included === null ? null : <IncludedEditsPanel included={panels.included} now={now} />}
+        </div>
+      </div>
+    </>
+  );
+}
+
+/** The preview is ready, or changes are being made (mock: homePreview). */
+function ReviewScreen({ view, panels, now }: HomeScreenProps) {
+  const state = view.state as WebsiteState;
+  const copy = websiteCopy(state, now);
+  const kickoffAt = view.kickoff?.endsAt ?? null;
+  const lead: readonly NeedsYouItem[] =
+    state.kind === "preview_ready" ? [{ key: "preview", label: "Check your website preview", hint: "Approve it or ask for changes", service: "website", href: "/website", action: "Review" }] : [];
+  return (
+    <>
+      <PageHeader
+        title={copy.title}
+        {...(kickoffAt === null ? {} : { description: `We built it after your kickoff call on ${formatDate(kickoffAt, now)}.` })}
+        actions={
+          <>
+            <BookCallAction view={view} panels={panels} />
+            <LinkButton href="/website" variant="primary" icon="Eye">
+              Open preview
+            </LinkButton>
+          </>
+        }
+      />
+      <div className="grid gap-4 lg:grid-cols-3">
+        <div className="flex min-w-0 flex-col gap-4 lg:col-span-2">
+          {panels.needs === null ? null : <NeedsYouPanel items={panels.needs} primaryFirst={false} lead={lead} />}
+          <WebsiteStatusPanel title="Progress" text={copy.text} milestones={websiteMilestones(state, { kickoffAt, firstPreviewDueAt: null, launchPlannedOn: view.project?.launchPlannedOn ?? null, now })} />
+          {panels.activity === null ? null : <ActivityPanel rows={panels.activity} now={now} />}
+        </div>
+        <div className="flex min-w-0 flex-col gap-4">
+          <RoundsPanel project={view.project} />
+        </div>
+      </div>
+    </>
+  );
+}
+
+/** A month in: what needs the customer, the last 30 days, the services, and what we did (mock: Home, live). */
+function OverviewScreen({ view, panels, person, now }: HomeScreenProps) {
+  const needs = panels.needs;
+  const count = needs?.ok === true ? needs.data.length : null;
+  const description = count === null ? undefined : count === 0 ? "Everything is running. Nothing needs you right now." : `Everything is running. ${count === 1 ? "1 thing needs" : `${String(count)} things need`} you.`;
+  return (
+    <>
+      <PageHeader
+        title={`${greetingFor(now)}, ${firstName(person.name)}`}
+        {...(description === undefined ? {} : { description })}
+        actions={
+          <>
+            <BookCallAction view={view} panels={panels} />
+            {person.role === "viewer" ? null : (
+              <LinkButton href={NEW_REQUEST} variant={count !== null && count > 0 ? "secondary" : "primary"} icon="Plus">
+                New request
+              </LinkButton>
+            )}
+          </>
+        }
+      />
+      <div className="flex flex-col gap-4">
+        {needs === null ? null : <NeedsYouPanel items={needs} primaryFirst={count !== null && count > 0} />}
+        {panels.enquiries === null ? null : <LastThirtyDays series={panels.enquiries} />}
+        {panels.services === null ? null : <ServicesPanel lines={panels.services} />}
+        <div className="grid gap-4 lg:grid-cols-3">
+          <div className="flex min-w-0 flex-col gap-4 lg:col-span-2">
+            {panels.enquiries === null ? null : <EnquiriesChart series={panels.enquiries} />}
+            {panels.activity === null ? null : <ActivityPanel rows={panels.activity} now={now} />}
+          </div>
+          <div className="flex min-w-0 flex-col gap-4">
+            {panels.coming === null ? null : <ComingUpPanel coming={panels.coming} now={now} />}
+            {panels.included === null ? null : <IncludedEditsPanel included={panels.included} now={now} />}
+          </div>
+        </div>
+      </div>
+    </>
+  );
+}
+
+/** Home: one of four templates, chosen by the state (plan 61, section 4). Exactly one primary action per state. */
+export function HomeScreen(props: HomeScreenProps) {
+  const { view } = props;
+  switch (view.layout) {
+    case "task":
+      return view.state.kind === "payment_required" || view.state.kind === "payment_processing" || view.state.kind === "lapsed" ? <PaymentTask {...props} /> : <KickoffTask {...props} />;
+    case "progress":
+      return <ProgressScreen {...props} />;
+    case "review":
+      return <ReviewScreen {...props} />;
+    case "overview":
+      return <OverviewScreen {...props} />;
+  }
+}

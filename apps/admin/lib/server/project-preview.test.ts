@@ -1,4 +1,4 @@
-import { findClientDetail, recordPreviewVersion, recordProjectPreviewSent, savePreviewImage, type Database } from "@brandbasket/db";
+import { findClientDetail, recordPreviewVersion, recordProjectPreviewSent, savePreviewImage, shouldEmail, type Database } from "@brandbasket/db";
 import { previewReadyEmail } from "@brandbasket/email";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { customerEmailTransport } from "./email";
@@ -12,6 +12,7 @@ vi.mock("@brandbasket/db", () => ({
   recordPreviewVersion: vi.fn(),
   recordProjectPreviewSent: vi.fn(),
   savePreviewImage: vi.fn(),
+  shouldEmail: vi.fn(),
 }));
 vi.mock("./preview-screenshot", () => ({ captureScreenshot: vi.fn() }));
 vi.mock("./website-moves", () => ({ addWorkingActivity: vi.fn() }));
@@ -36,7 +37,7 @@ function clientWithOwner(overrides: { readonly businessName?: string; readonly o
   return {
     businessId: "business-1",
     businessName: overrides.businessName ?? "Riverside Plumbing",
-    owner: { name: "Riley Owner", email: overrides.ownerEmail === undefined ? "riley@example.com" : overrides.ownerEmail, phone: null },
+    owner: { userId: "user-riley", name: "Riley Owner", email: overrides.ownerEmail === undefined ? "riley@example.com" : overrides.ownerEmail, phone: null },
   } as Awaited<ReturnType<typeof findClientDetail>>;
 }
 
@@ -49,6 +50,7 @@ beforeEach(() => {
   mockedActivity.mockResolvedValue(undefined);
   vi.spyOn(console, "error").mockImplementation(() => undefined);
   mockedFindClient.mockResolvedValue(clientWithOwner());
+  vi.mocked(shouldEmail).mockResolvedValue(true);
   mockedCreateTransport.mockReturnValue({ send });
   mockedPreviewReadyEmail.mockReturnValue({
     to: "riley@example.com",
@@ -89,6 +91,25 @@ describe("sendProjectPreview", () => {
     expect(mockedRecordSent).toHaveBeenCalledTimes(1);
     expect(mockedPreviewReadyEmail).not.toHaveBeenCalled();
     expect(send).not.toHaveBeenCalled();
+  });
+
+  it("checks the owner's needs-approval preference for this business, and sends nothing when it is off", async () => {
+    await sendProjectPreview(db, INPUT, NOW);
+    expect(shouldEmail).toHaveBeenCalledWith(db, "user-riley", "business-1", "needs_approval");
+
+    send.mockClear();
+    vi.mocked(shouldEmail).mockResolvedValue(false);
+    mockedFindClient.mockResolvedValue(clientWithOwner());
+    await expect(sendProjectPreview(db, INPUT, NOW)).resolves.toBe("no-email");
+    expect(mockedRecordSent).toHaveBeenCalledTimes(2);
+    expect(send).not.toHaveBeenCalled();
+  });
+
+  it("sends the email anyway, and logs it, when the preference cannot be read", async () => {
+    vi.mocked(shouldEmail).mockRejectedValue(new Error("db down"));
+    await expect(sendProjectPreview(db, INPUT, NOW)).resolves.toBe("emailed");
+    expect(send).toHaveBeenCalledTimes(1);
+    expect(console.error).toHaveBeenCalledWith("[preview-email] could not read the email preference, sending anyway", expect.anything());
   });
 
   it("does not email the owner when recording the preview fails", async () => {

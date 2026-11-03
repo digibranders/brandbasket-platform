@@ -3,6 +3,7 @@ import {
   businessMembers,
   businesses,
   findActivePlan,
+  notificationPreferences,
   openCheckoutSubscription,
   recordFailedPayment,
   recordUnappliedPayment,
@@ -225,6 +226,37 @@ describe("sendPaymentFailed", () => {
     const record = { businessId, provider: "razorpay", providerPaymentId: "pay_failed_1", kind: "renewal", amountCents: 299_900, currency: "INR", failureReason: "Declined", failedAt: PAID_AT } as const;
     const outcomes = [await recordFailedPayment(dbs.staff.db, record), await recordFailedPayment(dbs.staff.db, record)];
     expect(outcomes).toEqual(["recorded", "already-recorded"]);
+  });
+
+  it("sends nothing when the owner turned billing emails off, and still sends the receipt", async () => {
+    await dbs.owner.db.insert(notificationPreferences).values({ userId: "user-rao-dental", businessId, topic: "billing", email: false });
+    const { payment } = await payFirst(await openSubscription(services), services);
+
+    await sendPaymentFailed(dbs.staff.db, deps(), { businessId, ...FAILED }, PAID_AT);
+    expect(sent).toHaveLength(0);
+
+    await sendPaymentReceipt(dbs.staff.db, deps(), payment.id);
+    expect(sent).toHaveLength(1);
+    expect(sent[0]).toMatchObject({ template: "payment-received" });
+  });
+
+  it("sends the email anyway when the preference cannot be read", async () => {
+    await payFirst(await openSubscription(services), services);
+    await execSql(dbs.owner, "alter table notification_preferences rename to notification_preferences_away");
+    try {
+      await sendPaymentFailed(dbs.staff.db, deps(), { businessId, ...FAILED }, PAID_AT);
+    } finally {
+      await execSql(dbs.owner, "alter table notification_preferences_away rename to notification_preferences");
+    }
+    expect(sent).toHaveLength(1);
+    expect(console.error).toHaveBeenCalledWith("[payment-email] Could not read the email preference, sending anyway.", expect.anything());
+  });
+
+  it("still sends when the owner turned off a different topic", async () => {
+    await dbs.owner.db.insert(notificationPreferences).values({ userId: "user-rao-dental", businessId, topic: "product_news", email: false });
+    await payFirst(await openSubscription(services), services);
+    await sendPaymentFailed(dbs.staff.db, deps(), { businessId, ...FAILED }, PAID_AT);
+    expect(sent).toHaveLength(1);
   });
 
   it("sends nothing to an owner with no address, and never throws", async () => {

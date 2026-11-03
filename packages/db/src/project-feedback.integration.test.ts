@@ -1,9 +1,11 @@
 import { eq } from "drizzle-orm";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { findLatestProjectEventAt } from "./queries/project-website";
+import { requestProjectRevisions } from "./queries/projects";
+import { createSupportTicketWithOutcome } from "./queries/support";
 import { findFeedbackLinkForTicket, linkFeedbackTicket, listFeedbackForProject } from "./queries/project-feedback";
 import { businesses, businessMembers, projectEvents, projectFeedbackTickets, projects, supportMessages, supportTickets, users } from "./schema";
-import { withUserScope } from "./scope";
+import { withCustomerRole, withUserScope } from "./scope";
 import { openTestDatabases, resetTestDatabase, type TestDatabases } from "./testing";
 
 const OWNER = "pf-owner";
@@ -154,5 +156,48 @@ describe("findLatestProjectEventAt", () => {
 
     expect(await findLatestProjectEventAt(dbs.staff.db, { projectId, status: "revisions" })).toEqual(later);
     expect(await findLatestProjectEventAt(dbs.staff.db, { projectId, status: "approved" })).toBeNull();
+  });
+});
+
+/**
+ * The customer app's preview feedback (apps/customer features/website/actions.ts): the round, the ticket written as the
+ * customer, and the link commit together in one staff transaction, so a send that loses the race leaves no ticket behind.
+ */
+describe("preview feedback in one transaction", () => {
+  async function send(key: string, body: string): Promise<string> {
+    return dbs.staff.db.transaction(async (tx) => {
+      const moved = await requestProjectRevisions(tx, { businessId, now: new Date() });
+      const { ticket } = await withCustomerRole(tx, { userId: OWNER, businessId }, (customerTx) =>
+        createSupportTicketWithOutcome(customerTx, { userId: OWNER, businessId, category: "website_change", subject: `Preview feedback, round ${moved.revisionRoundsGranted}`, description: body, submissionKey: key }),
+      );
+      await linkFeedbackTicket(tx, { ticketId: ticket.id, projectId: moved.id, businessId, round: moved.revisionRoundsGranted });
+      return ticket.id;
+    });
+  }
+
+  beforeEach(async () => {
+    await dbs.staff.db.update(projects).set({ revisionRoundsIncluded: 2, revisionRoundsGranted: 0 }).where(eq(projects.id, projectId));
+  });
+
+  it("saves the ticket as the customer and links it to the round", async () => {
+    const ticketId = await send("preview_feedback_one", "Make the logo bigger on every page.");
+    const [ticket] = await dbs.staff.db.select().from(supportTickets).where(eq(supportTickets.id, ticketId));
+    expect(ticket).toMatchObject({ requesterUserId: OWNER, businessId, category: "website_change" });
+    expect(await findFeedbackLinkForTicket(dbs.staff.db, ticketId)).toEqual({ projectId, businessId, round: 1 });
+    const [project] = await dbs.staff.db.select({ status: projects.status, granted: projects.revisionRoundsGranted }).from(projects).where(eq(projects.id, projectId));
+    expect(project).toEqual({ status: "revisions", granted: 1 });
+  });
+
+  it("leaves no ticket for the loser of two racing sends", async () => {
+    const results = await Promise.allSettled([send("preview_feedback_race_a", "Change the photo on the home page."), send("preview_feedback_race_b", "Change the phone number on the contact page.")]);
+    expect(results.filter((result) => result.status === "fulfilled")).toHaveLength(1);
+    expect(await dbs.staff.db.select({ id: supportTickets.id }).from(supportTickets).where(eq(supportTickets.businessId, businessId))).toHaveLength(1);
+    expect(await dbs.staff.db.select().from(projectFeedbackTickets).where(eq(projectFeedbackTickets.businessId, businessId))).toHaveLength(1);
+  });
+
+  it("rolls the round back when the ticket is refused", async () => {
+    await expect(send("bad key!", "Make the logo bigger on every page.")).rejects.toThrow("Invalid submission key.");
+    const [project] = await dbs.staff.db.select({ status: projects.status, granted: projects.revisionRoundsGranted }).from(projects).where(eq(projects.id, projectId));
+    expect(project).toEqual({ status: "preview", granted: 0 });
   });
 });

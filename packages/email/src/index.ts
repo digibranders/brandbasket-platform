@@ -11,6 +11,7 @@ export {
 export { emailBrandName, emailSenderDefaults, emailTeamInboxDefault, type EmailAddress } from "./brand";
 export { createOutboxTransport, OUTBOX_TRANSPORT_NAME, type EmailTransport, type OutboxOptions } from "./outbox";
 export { affiliateLinkEmail, type AffiliateLinkInput } from "./templates/affiliate-link";
+export { businessInviteEmail, type BusinessInviteInput } from "./templates/business-invite";
 export { bookingCodeEmail, type BookingCodeInput } from "./templates/booking-code";
 export { changeRequestUpdateEmail, type ChangeRequestUpdate, type ChangeRequestUpdateInput } from "./templates/change-request-update";
 export { leadReceivedEmail, type LeadReceivedInput } from "./templates/lead-received";

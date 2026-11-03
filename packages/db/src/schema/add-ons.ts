@@ -53,6 +53,8 @@ export const addOnSubscriptions = pgTable(
     /** A scheduled end: cancel or pause at currentPeriodEnd. Set together with endRequestedAt. */
     endKind: text("end_kind"),
     endRequestedAt: timestamp("end_requested_at", { withTimezone: true }),
+    /** Why the customer asked to remove it. Null when they gave none, and before v4. */
+    endReason: text("end_reason"),
     endRequestedByStaffId: text("end_requested_by_staff_id").references(() => users.id),
     endedAt: timestamp("ended_at", { withTimezone: true }),
     /** The row this one continues (Resume, Pay now, Keep it), at the same price. */
@@ -88,6 +90,7 @@ export const addOnSubscriptions = pgTable(
       "add_on_subscriptions_end_check",
       sql`(${table.endKind} is null) = (${table.endRequestedAt} is null) and (${table.endKind} is null or ${table.endKind} in ('cancel', 'pause'))`,
     ),
+    check("add_on_subscriptions_end_reason_check", sql`${table.endReason} is null or char_length(${table.endReason}) <= 500`),
   ],
 );
 
@@ -152,6 +155,8 @@ export const bundledAddOns = pgTable(
     activatedAt: timestamp("activated_at", { withTimezone: true }),
     /** The customer asked to remove it: it stays billed, and active, until the next billing date, then it is `removed`. */
     endRequestedAt: timestamp("end_requested_at", { withTimezone: true }),
+    /** Why the customer asked to remove it. Null when they gave none, and before v4. */
+    endReason: text("end_reason"),
     removedAt: timestamp("removed_at", { withTimezone: true }),
     /** The charge for the rest of the paid month, for an add-on added to a running plan; null for one taken at sign-up. */
     chargeId: uuid("charge_id").references(() => charges.id),
@@ -176,6 +181,7 @@ export const bundledAddOns = pgTable(
       .where(sql`${table.status} in ('pending', 'active')`),
     uniqueIndex("bundled_add_ons_charge_idx").on(table.chargeId).where(sql`${table.chargeId} is not null`),
     index("bundled_add_ons_business_idx").on(table.businessId, table.createdAt),
+    check("bundled_add_ons_end_reason_check", sql`${table.endReason} is null or char_length(${table.endReason}) <= 500`),
     check("bundled_add_ons_add_on_check", sql`${table.addOn} in ('managed-website', 'digital-growth', 'local-seo-aeo')`),
     check(
       "bundled_add_ons_amounts_check",

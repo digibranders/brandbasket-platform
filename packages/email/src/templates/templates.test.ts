@@ -16,6 +16,7 @@ import { previewReadyEmail } from "./preview-ready";
 import { previewRevisionsRequestedEmail } from "./preview-revisions-requested";
 import { setupLinkEmail } from "./setup-link";
 import { affiliateLinkEmail } from "./affiliate-link";
+import { businessInviteEmail } from "./business-invite";
 import { staffInviteEmail } from "./staff-invite";
 import { signupCodeEmail } from "./signup-code";
 import { supportReplyAlertEmail } from "./support-reply-alert";
@@ -147,6 +148,38 @@ describe("affiliateLinkEmail", () => {
     expect(email.bodyText).toContain("https://app.brandbasket.in/affiliate/setup/token-123");
     expect(email.bodyHtml).toContain('href="https://app.brandbasket.in/affiliate/setup/token-123"');
     expect(JSON.stringify(email.outboxCopy)).not.toContain("token-123");
+  });
+});
+
+describe("businessInviteEmail", () => {
+  const email = businessInviteEmail({
+    to: "front.desk@example.com",
+    inviterName: "Anand Verma",
+    businessName: "Apex Diagnostics",
+    roleLabel: "Viewer",
+    acceptUrl: "https://app.brandbasket.in/invite/token-123",
+    expiresInDays: 7,
+  });
+
+  it("names the business, the person who invited and the role", () => {
+    expect(email.template).toBe("business-invite");
+    expect(email.to).toBe("front.desk@example.com");
+    expect(email.subject).toBe("Join Apex Diagnostics on Brandbasket");
+    expect(email.bodyText).toContain("Anand Verma invited you");
+    expect(email.bodyText).toContain("as Viewer");
+    expect(email.bodyText).toContain("7 days");
+  });
+
+  it("includes the link in both bodies but not in the outbox copy", () => {
+    expect(email.bodyText).toContain("https://app.brandbasket.in/invite/token-123");
+    expect(email.bodyHtml).toContain('href="https://app.brandbasket.in/invite/token-123"');
+    expect(JSON.stringify(email.outboxCopy)).not.toContain("token-123");
+  });
+
+  it("escapes the business name in the html and refuses a link that is not http or https", () => {
+    const tricky = businessInviteEmail({ to: "a@example.com", inviterName: "A", businessName: "<b>Bold</b>", roleLabel: "Editor", acceptUrl: "https://app.brandbasket.in/invite/t", expiresInDays: 7 });
+    expect(tricky.bodyHtml).not.toContain("<b>Bold</b>");
+    expect(() => businessInviteEmail({ to: "a@example.com", inviterName: "A", businessName: "B", roleLabel: "Editor", acceptUrl: "javascript:alert(1)", expiresInDays: 7 })).toThrow("acceptUrl must use http or https");
   });
 });
 

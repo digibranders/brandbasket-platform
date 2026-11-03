@@ -23,6 +23,7 @@ import { nextPaymentDate } from "../lib/billing/period";
 import { paymentsContinue } from "../lib/billing/payments-continue";
 import { receiptDownloadHref } from "../lib/billing/receipt-download";
 import { renewalChargeCents } from "../lib/billing/terms";
+import { emailPreferenceAllows } from "./email-preference";
 import { paymentServiceNames, serviceTitle } from "./payment-alerts";
 
 /** Where the customer pays: Plan and billing on the dashboard. */
@@ -134,13 +135,20 @@ async function failedPaymentItems(db: Database, input: FailedPaymentEmail): Prom
 /**
  * Emails the customer that a payment of theirs did not go through, with where their plan stands and a link to pay. Call it once, when
  * the failed payment was recorded for the first time: recordFailedPayment is keyed on the provider's payment id, so a retried delivery
- * records nothing and the caller sends nothing. Best-effort: it never throws.
+ * records nothing and the caller sends nothing. Skipped when the owner turned billing emails off for this business (the receipt,
+ * a tax document, is not). Best-effort: it never throws.
  */
 export async function sendPaymentFailed(db: Database, deps: PaymentEmailDeps, input: FailedPaymentEmail, now: Date = new Date()): Promise<void> {
   try {
     const details = await findBusinessAlertDetails(db, input.businessId);
     const to = details === null ? null : recipientOf(details.owner);
     if (details === null || to === null) return;
+    const allowed =
+      details.owner.userId === null ||
+      (await emailPreferenceAllows(db, details.owner.userId, input.businessId, "billing", (error) =>
+        console.error("[payment-email] Could not read the email preference, sending anyway.", { businessId: input.businessId, error: error instanceof Error ? error.name : "error" }),
+      ));
+    if (!allowed) return;
     const [items, plan] = await Promise.all([
       failedPaymentItems(db, input),
       input.chargeDescription === null ? planAfterFailure(db, input.businessId, now) : Promise.resolve(null),

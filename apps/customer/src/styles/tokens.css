@@ -1,0 +1,116 @@
+/*
+ * Basket UI tokens (plan 60, sections 3, 5, 6 and 8). Light theme only. Values match the approved mock's style.css.
+ * This is the only file that may hold colour values; everything else uses these through the utilities in globals.css.
+ * tokens.contrast.test.ts measures the required pairs on every test run.
+ */
+:root {
+  /* Surfaces */
+  --canvas: #F6F7F9;
+  --sidebar: #F1F3F6;
+  --surface: #FFFFFF;
+  --surface-subtle: #F6F7F9;
+  --surface-hover: #EFF1F4;
+  --surface-selected: #EAF1FE;
+  --surface-disabled: #F0F2F5;
+
+  /* Text */
+  --ink: #111418;
+  --ink-2: #3F4650;
+  --ink-3: #5B6370;
+  --ink-muted: #8B93A0;
+  --ink-disabled: #B4BAC4;
+  --on-primary: #FFFFFF;
+
+  /* Lines */
+  --border: #E3E6EB;
+  --border-subtle: #ECEEF2;
+  --border-button: #D6DAE1;
+  --border-button-hover: #C6CBD4;
+  --border-control: #8B93A0;
+
+  /* Accent: cobalt, the one accent hue */
+  --primary: #1E65E3;
+  --primary-hover: #1A56C4;
+  --accent-text: #175AD0;
+  --accent-wash: #EAF1FE;
+  --accent-border: #B5CCF6;
+  --ring: #1E65E3;
+
+  /* Meaning */
+  --pos-text: #17703F;
+  --pos-wash: #E6F4EC;
+  --pos-border: #B9DFC8;
+  --neg-text: #B42318;
+  --neg-wash: #FDECEA;
+  --neg-border: #F4C3BE;
+  --warn-text: #8A5300;
+  --warn-wash: #FDF1DC;
+  --warn-border: #F0D299;
+  --info-text: #2456A6;
+  --info-wash: #E9F0FB;
+  --info-border: #BBD0F0;
+  --neutral-text: #434B57;
+  --neutral-wash: #EEF0F3;
+
+  /* Service marks and charts. Series 1 is always the customer's own business. */
+  --svc-site: #B87F3D;
+  --svc-social: #1F7A74;
+  --svc-search: #3558A0;
+  --c1: #1E65E3;
+  --c-ref: #8B93A0;
+  --grid: #ECEEF2;
+
+  /* Overlays */
+  --scrim: rgb(17 20 24 / 0.36);
+  --toast: #111418;
+
+  /* Shape */
+  --r-panel: 12px;
+  --r-overlay: 14px;
+  --r-control: 8px;
+  --r-chip: 7px;
+  --r-badge: 6px;
+  --r-mark: 2px;
+
+  /* Depth: overlays only, plus the two named button details */
+  --sh-button: 0 1px 1px rgb(16 24 40 / 0.04);
+  --sh-primary: inset 0 1px 0 rgb(255 255 255 / 0.18), 0 1px 2px rgb(30 101 227 / 0.28);
+  --sh-control: 0 1px 1px rgb(16 24 40 / 0.03);
+  --sh-focus: 0 0 0 3px rgb(30 101 227 / 0.18);
+  --sh-pop: 0 1px 2px rgb(17 20 24 / 0.06), 0 6px 16px rgb(17 20 24 / 0.1);
+  --sh-dialog: 0 2px 4px rgb(17 20 24 / 0.06), 0 16px 40px rgb(17 20 24 / 0.16);
+  --sh-inspector: 0 0 0 1px var(--border), 0 12px 40px rgb(17 20 24 / 0.14);
+
+  /* Sizes: phone first (below 861px), desktop below */
+  --size-control: 44px;
+  --size-control-sm: 36px;
+  --size-control-lg: 48px;
+  --size-icon-button: 40px;
+  --size-chip: 36px;
+  --size-row: 52px;
+  --size-table-header: 36px;
+  --size-panel-header: 44px;
+  --size-topbar: 52px;
+  --size-sidebar: 232px;
+  --size-inspector: 440px;
+  --size-dialog: 560px;
+  --size-page: 1200px;
+  --size-save-bar: 56px;
+  --size-tab: 48px;
+  --page-gutter: 16px;
+
+  /* Motion */
+  --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+@media (min-width: 861px) {
+  :root {
+    --size-control: 36px;
+    --size-control-sm: 30px;
+    --size-control-lg: 40px;
+    --size-icon-button: 30px;
+    --size-chip: 28px;
+    --size-row: 44px;
+    --page-gutter: 28px;
+  }
+}

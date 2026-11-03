@@ -280,6 +280,12 @@ describe("eraseClosedAccount", () => {
       );
       await dbs.owner.db.execute(sql.raw(`insert into signup_attribution (business_id, utm_source, consent_measurement, consent_advertising) values ('${id}', 'meta', true, false)`));
       await dbs.owner.db.execute(sql.raw(`insert into website_hosting (id, business_id, vercel_project_id) values (gen_random_uuid(), '${id}', 'prj_${id.replaceAll("-", "")}')`));
+      await dbs.owner.db.execute(sql.raw(`insert into enquiries (id, business_id, kind, name, received_at, source_ref) values (gen_random_uuid(), '${id}', 'chat', 'Ravi', now(), 'chatbot_lead:${id}')`));
+      await dbs.owner.db.execute(sql.raw(`insert into website_pages (business_id, url, last_seen_at) values ('${id}', 'https://example.com/', now())`));
+      await dbs.owner.db.execute(sql.raw(`insert into connected_accounts (id, business_id, platform, handle) values (gen_random_uuid(), '${id}', 'instagram', '@example')`));
+      await dbs.owner.db.execute(
+        sql.raw(`insert into business_invites (id, business_id, email, role, token_hash, invited_by, expires_at) values (gen_random_uuid(), '${id}', 'friend@example.com', 'viewer', md5('${id}'), '${USER_ID}', now() + interval '7 days')`),
+      );
       await dbs.owner.db.execute(
         sql.raw(
           `insert into deliverables (id, business_id, service, kind, title, due_on, image_key, image_mime, image_bytes, image_width, image_height, image_sha256)
@@ -297,7 +303,7 @@ describe("eraseClosedAccount", () => {
       expect(outcome.storageKeys).toContain(`deliverables/${postIds[businessId]}/display`);
       expect(outcome.storageKeys).not.toContain(`deliverables/${postIds[controlId]}/display`);
     }
-    for (const table of ["service_setup", "client_intakes", "activity_events", "business_activity", "monthly_snapshots", "monthly_reports", "site_events", "team_calls", "metric_daily", "metric_breakdowns", "report_documents", "report_source_runs", "report_sources", "site_keys", "site_hits", "signup_attribution", "website_hosting"]) {
+    for (const table of ["service_setup", "client_intakes", "activity_events", "business_activity", "monthly_snapshots", "monthly_reports", "site_events", "team_calls", "metric_daily", "metric_breakdowns", "report_documents", "report_source_runs", "report_sources", "site_keys", "site_hits", "signup_attribution", "website_hosting", "enquiries", "website_pages", "connected_accounts", "business_invites"]) {
       expect(await count(table, `business_id = '${businessId}'`), `${table} of the closed business`).toBe(0);
       expect(await count(table, `business_id = '${controlId}'`), `${table} of the other business`).toBe(1);
     }
@@ -510,6 +516,7 @@ describe("what the erase knows about", () => {
     "directory_deals", "directory_listings", "directory_pictures", "directory_videos", "domains", "leads", "media_assets", "metric_breakdowns", "metric_daily", "monthly_reports", "monthly_snapshots", "onboarding_progress",
     "patients", "practitioner_hours", "practitioner_leave", "practitioners", "project_briefs", "project_events", "project_feedback_tickets", "project_preview_images", "projects", "report_documents", "report_source_runs", "report_sources", "service_setup", "services",
     "setup_call_bookings", "setup_invites", "signup_attribution", "site_events", "site_hits", "site_keys", "support_tickets", "team_calls", "website_hosting",
+    "business_invites", "connected_accounts", "enquiries", "notification_preferences", "notification_reads", "website_pages",
   ];
 
   it("sorts every table that points at a business into erased or kept, so a new one cannot be forgotten", async () => {
