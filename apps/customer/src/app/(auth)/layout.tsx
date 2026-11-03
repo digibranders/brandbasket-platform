@@ -4,8 +4,8 @@ import { AuthArt } from "@/features/entry/components/auth-art";
 import frame from "@/features/entry/components/auth-art.module.css";
 
 /**
- * The entry frame for sign in, sign up and reset: the bB logo and the form on the left, the Pin drop panel on the right
- * (a short band above the form on phones). Owner's pick, docs/design/auth-v4-concepts.html, concept A.
+ * The entry frame for sign in, sign up and reset: the Pin drop panel on the left, the bB logo and the form on the right
+ * (the panel is a short band above the form on phones). Owner's pick, docs/design/auth-v4-concepts.html, concept A.
  */
 export default function AuthLayout({ children }: { readonly children: ReactNode }) {
   return (

@@ -7,7 +7,7 @@
 }
 @media (min-width: 900px) {
   .frame {
-    grid-template-columns: minmax(380px, 1fr) 1.18fr;
+    grid-template-columns: 1.18fr minmax(380px, 1fr);
   }
 }
 
@@ -26,7 +26,6 @@
   .art {
     position: sticky;
     top: 12px;
-    order: 0;
     align-self: start;
     height: calc(100dvh - 24px);
     margin: 12px;

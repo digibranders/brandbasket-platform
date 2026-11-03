@@ -49,7 +49,9 @@ export function BusinessForm({ values, phone, countries, hours, readOnlyReason }
       <SectionLabel>How customers reach you</SectionLabel>
       <FormField name="phone" label="Phone number" nativeLabel={false}>
         <div className="flex gap-2">
-          <Select aria-label="Country code" name={PHONE_COUNTRY_FIELD} options={countries} defaultValue={phone.country} className="w-40" />
+          <div className="w-40 shrink-0">
+            <Select aria-label="Country code" name={PHONE_COUNTRY_FIELD} options={countries} defaultValue={phone.country} />
+          </div>
           <Input name="phone" type="tel" inputMode="tel" autoComplete="tel-national" defaultValue={phone.number} />
         </div>
       </FormField>
