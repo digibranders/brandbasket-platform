@@ -51,7 +51,7 @@ describe("AffiliateDashboard", () => {
     expect(within(table).getByText("ASHA10")).toBeTruthy();
     expect(within(table).getByText("Live")).toBeTruthy();
     expect(within(table).getByText("Members get 10% off a month for 3 months")).toBeTruthy();
-    expect(within(table).getByRole("button", { name: "Copy code" })).toBeTruthy();
+    expect(within(table).getByRole("button", { name: "Copy code ASHA10" })).toBeTruthy();
   });
 
   it("shows the figures, the cash-out rows and the member count with who is paying", () => {
@@ -94,6 +94,21 @@ describe("AffiliateDashboard", () => {
     const payouts = screen.getByRole("table", { name: "Payouts" });
     expect(within(payouts).getByText("₹7,200")).toBeTruthy();
     expect(within(payouts).getByText(/of ₹8,000, ₹800 withheld: TDS/)).toBeTruthy();
+  });
+
+  it("dates every earning, on phones too, beside the code it came through", () => {
+    render(<AffiliateDashboard {...props()} />);
+    const earnings = screen.getByRole("table", { name: "Earnings" });
+    expect(within(earnings).getByText("Month 2 of 12")).toBeTruthy();
+    expect(within(earnings).getByText("Sat 10 Oct, ASHA10")).toBeTruthy();
+    expect(within(earnings).queryByRole("columnheader", { name: "Date" })).toBeNull();
+  });
+
+  it("writes counts with Indian grouping and says what the refund count counts", () => {
+    render(<AffiliateDashboard {...props({ monthly: ok([{ ...MONTH, payingMembers: 1500, refunded: 2 }]) })} />);
+    const months = screen.getByRole("table", { name: "By month" });
+    expect(within(months).getByText("1,500")).toBeTruthy();
+    expect(within(months).getByRole("columnheader", { name: "Refunded payments" })).toBeTruthy();
   });
 
   it("says the lists are the latest rows when they are full", () => {

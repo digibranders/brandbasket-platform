@@ -1,7 +1,7 @@
 "use client";
 
 import { Dialog as BaseDialog } from "@base-ui/react/dialog";
-import type { ReactElement, ReactNode } from "react";
+import type { ReactElement, ReactNode, RefObject } from "react";
 import { cx } from "./cx";
 import { IconButton } from "./icon-button";
 
@@ -18,16 +18,21 @@ export interface DialogProps {
   readonly footer?: ReactNode;
   /** The close button's accessible name. */
   readonly closeLabel?: string;
+  /** The element that takes focus on open. Defaults to the first one that can (the close button). */
+  readonly initialFocus?: RefObject<HTMLElement | null>;
 }
 
 /** One decision or a short form, 560px wide. Focus is trapped, Escape closes and focus returns to the trigger. */
-export function Dialog({ trigger, open, onOpenChange, title, description, children, footer, closeLabel = "Close" }: DialogProps) {
+export function Dialog({ trigger, open, onOpenChange, title, description, children, footer, closeLabel = "Close", initialFocus }: DialogProps) {
   return (
     <BaseDialog.Root open={open} onOpenChange={(next) => onOpenChange?.(next)}>
       {trigger === undefined ? null : <BaseDialog.Trigger render={trigger} />}
       <BaseDialog.Portal>
         <BaseDialog.Backdrop className="motion-fade fixed inset-0 z-40 bg-scrim" />
-        <BaseDialog.Popup className="motion-dialog fixed top-1/2 left-1/2 z-50 flex max-h-[calc(100dvh-48px)] w-[min(560px,calc(100vw-32px))] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-overlay bg-surface shadow-dialog outline-none">
+        <BaseDialog.Popup
+          {...(initialFocus === undefined ? {} : { initialFocus })}
+          className="motion-dialog fixed top-1/2 left-1/2 z-50 flex max-h-[calc(100dvh-48px)] w-[min(560px,calc(100vw-32px))] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-overlay bg-surface shadow-dialog outline-none"
+        >
           <div className="flex items-start gap-3 border-b border-border-subtle px-5 py-4">
             <div className="min-w-0 flex-1">
               <BaseDialog.Title className="type-section">{title}</BaseDialog.Title>

@@ -156,4 +156,14 @@ describe("BusinessDetails", () => {
     expect(screen.getByText("Enter a valid email address.")).toBeTruthy();
     expect((screen.getByLabelText("Email") as HTMLInputElement).value).toBe("hello@apexdiagnostics.inx");
   });
+
+  it("keeps the form and what was typed when the save never gets an answer", async () => {
+    vi.mocked(saveContactAction).mockRejectedValueOnce(new TypeError("Failed to fetch"));
+    const user = userEvent.setup();
+    renderDetails(<BusinessDetails customer={customer("owner")} contact={ok(CONTACT)} siteFacts={null} />);
+    await user.type(screen.getByLabelText("Business name"), "!");
+    await user.click(screen.getByRole("button", { name: "Save changes" }));
+    expect(await screen.findByText("We could not save that. Try again.")).toBeTruthy();
+    expect((screen.getByLabelText("Business name") as HTMLInputElement).value).toBe("Apex Diagnostics!");
+  });
 });

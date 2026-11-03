@@ -1,10 +1,12 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test } from "@playwright/test";
 import { storageStatePath } from "./accounts";
 import {
   businessIdOf,
+  answerStart,
   choose,
   closeDb,
   ensureBookingLink,
+  fillSignUp,
   removeBookingLink,
   deliverableStatus,
   newestChangeSince,
@@ -28,34 +30,6 @@ test.afterAll(async () => {
   await closeDb();
 });
 
-/** Answer every /start question with its first choice until the page moves on. */
-async function answerStart(page: Page): Promise<void> {
-  for (let step = 0; step < 15 && new URL(page.url()).pathname === "/start"; step += 1) {
-    const main = page.locator("main");
-    if ((await main.getByRole("radio").count()) > 0 && (await main.getByRole("radio", { checked: true }).count()) === 0) {
-      await main.getByRole("radio").first().click();
-    } else if ((await main.getByRole("checkbox").count()) > 0 && (await main.getByRole("checkbox", { checked: true }).count()) === 0) {
-      await main.getByRole("checkbox").first().click();
-    }
-    const before = page.url();
-    await main.getByRole("button", { name: /^Continue/ }).last().click();
-    await page.waitForURL((url) => url.href !== before, { timeout: 30_000 });
-    await settle(page);
-  }
-}
-
-async function fillSignUp(page: Page, email: string): Promise<void> {
-  await page.goto("/signup");
-  await page.getByLabel("Business name").fill("E2E Sample Bakery");
-  await page.getByLabel("Your name").fill("E2E Owner");
-  await page.getByLabel("Email", { exact: true }).fill(email);
-  await choose(page, "State", "Maharashtra");
-  await page.getByRole("textbox", { name: "Mobile number" }).fill(`9${Math.floor(100_000_000 + Math.random() * 899_999_999)}`);
-  await page.getByLabel("Choose a password").fill(`E2e-${unique()}-Pw!42`);
-  await page.getByRole("checkbox", { name: /I agree/ }).click();
-  await page.getByRole("button", { name: /^(Email me a code|Continue)$/ }).click();
-}
-
 test.describe("sign-up journey", () => {
   test.describe.configure({ mode: "serial" });
   let addedBookingLink = false;
@@ -66,11 +40,9 @@ test.describe("sign-up journey", () => {
     if (addedBookingLink) await removeBookingLink();
   });
 
-  test("sign up through the real form (E2E-01)", async ({ page }) => {
-    // E2E-01: the country-code select submits under the phone field's name, so every sign-up is refused.
-    test.fail();
+  test("sign up through the real form (E2E-01, fixed)", async ({ page }) => {
     await fillSignUp(page, `e2e+${unique()}@example.test`);
-    await expect(page.getByLabel("Code")).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByLabel("Code", { exact: true })).toBeVisible({ timeout: 30_000 });
   });
 
   test("sign up to paid, book kickoff, add and cancel a service", async ({ page }) => {

@@ -81,7 +81,9 @@ export function PostEditor({ post, websiteUrl, categories, authors, canWrite, sa
   const [pending, startTransition] = useTransition();
   const bodyVersion = useRef(0);
   const bodyRef = useRef(bodyJson);
-  const now = useNow();
+  // The server's last write is never in the future: without this floor, a post published a moment ago reads "Scheduled"
+  // until the next tick of the clock.
+  const now = Math.max(useNow(), post.updatedAt);
 
   // After a save (or a new cover) the page refreshes with what the server stored. Take it in unless the customer has typed
   // since: then their edits stay and only the saved baseline moves.
