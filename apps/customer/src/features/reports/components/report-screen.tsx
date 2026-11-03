@@ -54,6 +54,20 @@ function Report({ view }: { readonly view: ReportMonthView }) {
           ),
         )}
       </div>
+      {readable.flatMap(({ service, content }) =>
+        (content.lists ?? []).map((list) => (
+          <Panel key={`${service.service}-${list.title}`} title={list.title}>
+            <dl className="m-0 flex flex-col gap-2 type-body">
+              {list.rows.map((row, index) => (
+                <div key={`${index}-${row.label}`} className="flex justify-between gap-4">
+                  <dt className="min-w-0 break-words text-ink-3">{row.label}</dt>
+                  <dd className="m-0 shrink-0 text-right font-medium">{row.value}</dd>
+                </div>
+              ))}
+            </dl>
+          </Panel>
+        )),
+      )}
       {done.length === 0 ? null : (
         <Panel title="What we did">
           <ul className="m-0 flex list-none flex-col gap-2 p-0 type-body">

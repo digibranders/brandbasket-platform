@@ -46,7 +46,7 @@ are made invisible to them (`InaccessiblePaths`, below). The user has no login s
 | Shared library | `/usr/local/lib/brandbasket/{heavy-lock.sh,github-lib.sh,ci-steps.sh,ci-checks.py,ci-hosts,ci-resolv.conf}` |
 | nginx | `/etc/nginx/sites-available/brandbasket` (+ `snippets/brandbasket-proxy.conf`); certificate lineage `brandbasket` |
 | Backups | `brandbasket-backup.timer` 02:15 UTC, `brandbasket-restore-test.timer` Sunday 05:00 UTC; `/var/backups/brandbasket`; off-site `/etc/brandbasket/offsite.sh` |
-| Upkeep | `brandbasket-maintenance.timer` 03:30 UTC; `brandbasket-erase.timer` 03:50 UTC, installed and **not enabled**; `brandbasket-site-health.timer` every 10 minutes, installed and **not enabled** (see "Site health"). All run as `brandbasket`, sandboxed |
+| Upkeep | `brandbasket-maintenance.timer` 03:30 UTC; `brandbasket-erase.timer` 03:50 UTC, installed and **not enabled**; `brandbasket-site-health.timer` every 10 minutes, installed and **not enabled** (see "Site health"); `brandbasket-monthly-reports.timer` on the 1st, installed and **not enabled** (see "Monthly reports"). All run as `brandbasket`, sandboxed |
 | Alerts | `/usr/local/sbin/brandbasket-notify-failure` and `brandbasket-notify-failure@.service` (Brandbasket's own, see "Monitoring") |
 | Sudo | `/etc/sudoers.d/brandbasket`, user `brandbasket` only: `brandbasket-migrate` (no arguments), restart and stop of the two app units, `brandbasket-ci-sandbox`. Nothing else, and `deploy` has no Brandbasket rule |
 
@@ -321,6 +321,14 @@ and fails the run, so the unit's failure alert reaches the team.
 4. `systemctl enable --now brandbasket-site-health.timer`.
 
 To stop it: `systemctl disable --now brandbasket-site-health.timer`. The rows stay; the customer panel then shows the last check.
+
+## Monthly reports
+
+`brandbasket-monthly-reports.timer` starts `brandbasket-monthly-reports.service` at 21:30 UTC on the 1st of each month (03:00 on the 2nd in
+India). It runs `pnpm reports:run` in the current platform release, which writes last month's customer reports as drafts. It sends
+nothing: staff review and send each report in the console (Clients, Reports). `install.sh backups --apply` installs the unit and timer
+but never enables them. Read `pnpm reports:run -- --dry-run` first, then `systemctl enable --now brandbasket-monthly-reports.timer`.
+Details: `docs/monthly-reports.md`.
 
 ## Seeing a deploy on GitHub
 

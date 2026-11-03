@@ -53,6 +53,7 @@ export const CONSOLE_RAIL: readonly ConsoleRailGroup[] = [
     pages: [
       { href: "/clients", label: "List" },
       { href: "/projects", label: "Board" },
+      { href: "/reports", label: "Reports" },
     ],
   },
   {

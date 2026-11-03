@@ -903,12 +903,14 @@ export {
   getReport,
   listDailyMetrics,
   listReportSources,
+  listReportsForReview,
   listReportsInState,
   listSentReports,
   listSourceRuns,
   moveReport,
   recordSourceRun,
   ReportMoveError,
+  setReportPdfKey,
   setReportSourceStatus,
   upsertBreakdown,
   upsertDailyMetrics,
@@ -916,7 +918,19 @@ export {
   type BreakdownInput,
   type ComposeInput,
   type DailyMetricInput,
+  type ReportForReview,
 } from "./queries/reports";
+export {
+  indianDay,
+  indianMonthBounds,
+  listReportBusinesses,
+  listReportServices,
+  readReportFacts,
+  type RawKindCounts,
+  type RawMonthData,
+  type RawReportFacts,
+  type ReportBusiness,
+} from "./queries/report-facts";
 export { HIT_CHANNELS, HIT_DEVICES, HIT_KINDS, type HitChannel, type HitDevice, type HitKind } from "./site-hit-lists";
 export {
   deleteSaltsBefore,

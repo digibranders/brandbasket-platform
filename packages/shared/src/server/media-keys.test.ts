@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { deliverablePictureKey, InvalidMediaKeyError, isPictureCopyWidth, keysOfPicture, mediaStorageKey, pictureCopyKey, staffAdPictureKey, validateMediaKey } from "./media-keys";
+import { deliverablePictureKey, InvalidMediaKeyError, isPictureCopyWidth, keysOfPicture, mediaStorageKey, pictureCopyKey, reportPdfStorageKey, staffAdPictureKey, validateMediaKey } from "./media-keys";
 
 const BUSINESS = "0192f3c4-1111-7000-8000-000000000001";
 const MEDIA = "0192f3c4-2222-7000-8000-000000000002";
@@ -51,5 +51,18 @@ describe("picture copies", () => {
     expect(keysOfPicture(key)).toEqual([key, `deliverables/${MEDIA}/w320`, `deliverables/${MEDIA}/w640`]);
     expect(() => deliverablePictureKey("../etc/passwd")).toThrow(InvalidMediaKeyError);
     expect(() => deliverablePictureKey(MEDIA.toUpperCase())).toThrow(InvalidMediaKeyError);
+  });
+});
+
+describe("reportPdfStorageKey", () => {
+  it("is a valid storage key built from the report id alone", () => {
+    const key = reportPdfStorageKey(MEDIA);
+    expect(key).toBe(`reports/${MEDIA}/pdf`);
+    expect(() => validateMediaKey(key)).not.toThrow();
+  });
+
+  it("refuses anything but a lowercase UUID", () => {
+    expect(() => reportPdfStorageKey("../x")).toThrow(InvalidMediaKeyError);
+    expect(() => reportPdfStorageKey(MEDIA.toUpperCase())).toThrow(InvalidMediaKeyError);
   });
 });
