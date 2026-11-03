@@ -80,10 +80,6 @@
   --sh-pop: 0 1px 2px rgb(17 20 24 / 0.06), 0 6px 16px rgb(17 20 24 / 0.1);
   --sh-dialog: 0 2px 4px rgb(17 20 24 / 0.06), 0 16px 40px rgb(17 20 24 / 0.16);
   --sh-inspector: 0 0 0 1px var(--border), 0 12px 40px rgb(17 20 24 / 0.14);
-  /* The active sidebar item, lifted off the sidebar as a small white chip. */
-  --sh-chip: inset 0 1px 0 rgb(255 255 255 / 0.9), 0 1px 2px rgb(17 20 24 / 0.06), 0 4px 12px -4px rgb(17 20 24 / 0.1);
-  /* The page sheet that sits on the sidebar's grey on desktop. */
-  --sh-sheet: 0 0 0 1px rgb(17 20 24 / 0.05), 0 2px 6px rgb(17 20 24 / 0.04), 0 24px 48px -24px rgb(17 20 24 / 0.18);
 
   /* Sizes: phone first (below 861px), desktop below */
   --size-control: 44px;

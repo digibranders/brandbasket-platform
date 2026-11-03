@@ -7,7 +7,7 @@ export interface AvatarProps {
   /** The person's or business's name: it names the avatar and gives the initials. */
   readonly name: string;
   readonly src?: string;
-  /** A business is square with a primary fill; a person is round; a chip is a round white token that sits on grey. */
+  /** A business is square with a primary fill; a person is round; a chip is a round soft-blue token. */
   readonly kind?: "person" | "business" | "chip";
   readonly size?: "sm" | "md";
   readonly className?: string;
@@ -34,7 +34,7 @@ export function Avatar({ name, src, kind = "person", size = "md", className }: A
         kind === "business"
           ? "rounded-chip bg-primary text-on-primary"
           : kind === "chip"
-            ? "rounded-full bg-surface text-accent-text shadow-chip"
+            ? "rounded-full bg-surface-selected text-accent-text"
             : "rounded-full border border-border bg-neutral-wash text-ink-2",
         className,
       )}
