@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import type { Metadata } from "next";
+import { GoogleAnalytics, GoogleSiteVerification } from "@/components/google-tags";
 import { Maintenance } from "@/components/maintenance";
 import { brandbasketGet } from "@/lib/brandbasket";
 import { maintenanceDetails } from "@/lib/maintenance-page";
@@ -22,7 +23,13 @@ export default async function RootLayout({ children }: { readonly children: Reac
   const info = await brandbasketGet<SiteInfo>("/api/site/info");
   return (
     <html lang="en">
-      <body>{info.kind === "offline" ? <Maintenance {...maintenanceDetails()} /> : children}</body>
+      <head>
+        <GoogleSiteVerification />
+      </head>
+      <body>
+        {info.kind === "offline" ? <Maintenance {...maintenanceDetails()} /> : children}
+        <GoogleAnalytics />
+      </body>
     </html>
   );
 }
