@@ -1,6 +1,8 @@
 import "server-only";
 import { listSentReports, withTenantScope } from "@brandbasket/db";
 import type { ReportService } from "@brandbasket/db";
+import { reportPdfStorageKey } from "@brandbasket/shared/server/media-keys";
+import { getMediaStorage } from "@brandbasket/shared/server/media-storage";
 import type { MonthKey } from "@brandbasket/shared/lib/reports/period";
 import { getAppDb } from "@/lib/db";
 import type { CustomerContext } from "@/lib/guards";
@@ -46,6 +48,8 @@ export async function loadReportPdf(customer: Reader, key: MonthKey, service: Re
   const month = (await loadReportMonths(customer)).find((candidate) => candidate.key === key);
   const report = month?.reports.find((candidate) => candidate.service === service);
   if (report === undefined || report.pdfKey === null) return null;
-  // No report PDF is ever written (no generator) and no storage reader accepts a `reports/<id>.pdf` key. Fail loudly if one appears.
-  throw new Error(`Report ${report.id} has a stored PDF but no reader for report PDFs exists`);
+  const stored = await getMediaStorage().get(reportPdfStorageKey(report.id));
+  // The report was sent with a PDF, so a missing file is our fault, not a 404 for the customer: fail so it reaches Sentry.
+  if (stored === null) throw new Error(`Report ${report.id} says it has a PDF but the file is not in storage`);
+  return stored.bytes;
 }

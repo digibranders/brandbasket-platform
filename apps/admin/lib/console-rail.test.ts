@@ -63,10 +63,10 @@ describe("tabs under a page header", () => {
     }
   });
 
-  it("switches Clients between List and Board for every role", () => {
+  it("switches Clients between List, Board and Reports for every role", () => {
     for (const role of ROLES) {
-      expect(stripLabels(role, "/clients")).toEqual(["List", "Board"]);
-      expect(stripLabels(role, "/projects")).toEqual(["List", "Board"]);
+      expect(stripLabels(role, "/clients")).toEqual(["List", "Board", "Reports"]);
+      expect(stripLabels(role, "/projects")).toEqual(["List", "Board", "Reports"]);
     }
   });
 
