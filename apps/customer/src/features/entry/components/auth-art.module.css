@@ -1,4 +1,8 @@
-/* The entry frame's Pin drop panel (owner's pick, docs/design/auth-v4-concepts.html, concept A). Colours are tokens. */
+/*
+ * The entry frame's art panel, ported from the old app (entry-panel.module.css): ink ground, a faint 45 degree cross
+ * weave, one soft glow, and the launch-path lines taking turns. Colours are tokens; the service rattan stands in for
+ * the old amber. The resting line colour keeps 4.5:1 on the ground (white at 55% is about 6:1).
+ */
 .frame {
   display: grid;
   min-height: 100dvh;
@@ -12,258 +16,98 @@
 }
 
 .art {
-  position: relative;
-  order: -1;
-  height: 220px;
-  margin: 8px;
-  overflow: hidden;
-  isolation: isolate;
-  border-radius: 18px;
-  background: var(--accent-wash);
+  display: none;
 }
 @media (min-width: 900px) {
-  /* Stays one screen tall beside a long form (sign up), so the pin and headline never drift down the page. */
+  /* Stays one screen tall beside a long form (sign up), so the lines never drift down the page. */
   .art {
     position: sticky;
     top: 12px;
+    order: -1;
     align-self: start;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
     height: calc(100dvh - 24px);
     margin: 12px;
+    padding: 40px 44px;
+    overflow: hidden;
+    isolation: isolate;
     border-radius: 22px;
+    color: var(--surface);
+    background:
+      radial-gradient(ellipse 30% 50% at 50% 100%, color-mix(in srgb, var(--svc-site) 22%, transparent), transparent 70%),
+      repeating-linear-gradient(45deg, color-mix(in srgb, var(--svc-site) 6%, transparent) 0 1.5px, transparent 1.5px 9px),
+      repeating-linear-gradient(-45deg, color-mix(in srgb, var(--svc-site) 6%, transparent) 0 1.5px, transparent 1.5px 9px),
+      var(--ink);
   }
 }
 
-.map {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-}
-.block {
-  fill: var(--surface-selected);
-}
-.park {
-  fill: var(--pos-wash);
-}
-.water {
-  fill: var(--info-wash);
-}
-.road {
-  stroke: var(--surface);
-  fill: none;
-  stroke-linecap: round;
-}
-
-/* The marker: a classic map pin drawn in CSS, so no logo is reused as a map icon. */
-.pin {
-  position: absolute;
-  left: 50%;
-  top: 42%;
-  width: 56px;
-  height: 56px;
-  margin: -66px 0 0 -28px;
-  animation: drop 1.1s cubic-bezier(0.34, 1.56, 0.64, 1) both 0.35s;
-}
-.pin::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  border-radius: 50% 50% 50% 0;
-  background: var(--primary);
-  transform: rotate(-45deg);
-  box-shadow: 0 10px 18px rgb(30 101 227 / 0.28);
-}
-.pin::after {
-  content: "";
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  width: 20px;
-  height: 20px;
-  margin: -10px 0 0 -10px;
-  border-radius: 50%;
-  background: var(--surface);
-}
-.shadow {
-  position: absolute;
-  left: 50%;
-  top: 42%;
-  width: 40px;
-  height: 10px;
-  margin: 0 0 0 -20px;
-  border-radius: 50%;
-  background: rgb(30 60 120 / 0.2);
-  animation: shadow 1.1s cubic-bezier(0.34, 1.56, 0.64, 1) both 0.35s;
-}
-.ring {
-  position: absolute;
-  left: 50%;
-  top: 42%;
-  width: 260px;
-  height: 260px;
-  margin: -130px 0 0 -130px;
-  border: 1.5px solid var(--accent-border);
-  border-radius: 50%;
-  opacity: 0;
-  animation: ring 3.6s var(--ease-out) infinite 1.2s;
-}
-.ring:nth-of-type(2) {
-  animation-delay: 2.4s;
-}
-.ring:nth-of-type(3) {
-  animation-delay: 3.6s;
-}
-
-.chip {
-  position: absolute;
-  display: none;
-  align-items: center;
-  gap: 10px;
-  padding: 10px 14px 10px 10px;
-  border-radius: 12px;
-  background: var(--surface);
-  box-shadow: var(--sh-pop);
-  color: var(--ink);
-  font-size: 14px;
-  font-weight: 500;
-  opacity: 0;
-  animation:
-    pop 0.7s cubic-bezier(0.34, 1.56, 0.64, 1) forwards,
-    float 6s ease-in-out infinite;
-}
-@media (min-width: 900px) {
-  .chip {
-    display: flex;
-  }
-}
-.chipIcon {
+.steps {
   display: grid;
-  width: 30px;
-  height: 30px;
-  place-items: center;
-  border-radius: 8px;
-  color: var(--on-primary);
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
 }
-.site {
-  left: 14%;
-  top: 20%;
-  animation-delay: 1.4s, 2.1s;
+.line {
+  color: color-mix(in srgb, var(--surface) 55%, transparent);
+  font-size: clamp(30px, min(3.9vw, 7vh), 60px);
+  font-weight: 500;
+  line-height: 1.04;
+  letter-spacing: -0.05em;
 }
-.site .chipIcon {
-  background: var(--svc-site);
+.line:last-child {
+  --on: var(--svc-site);
+  color: var(--svc-site);
 }
-.social {
-  right: 12%;
-  top: 27%;
-  animation-delay: 1.7s, 2.6s;
-}
-.social .chipIcon {
-  background: var(--svc-social);
-}
-.search {
-  left: 20%;
-  top: 54%;
-  animation-delay: 2s, 3.1s;
-}
-.search .chipIcon {
-  background: var(--svc-search);
+.promise {
+  max-width: 34ch;
+  margin: clamp(16px, 3.5vh, 28px) 0 0;
+  color: color-mix(in srgb, var(--surface) 70%, transparent);
+  font-size: 18px;
+  line-height: 1.55;
 }
 
-.headline {
-  position: absolute;
-  left: 20px;
-  right: 20px;
-  bottom: 18px;
-  max-width: 14ch;
-  color: var(--ink);
-  font-size: 22px;
-  font-weight: 600;
-  line-height: 1.08;
-  letter-spacing: -0.03em;
-}
-@media (min-width: 900px) {
-  .headline {
-    left: 44px;
-    right: 44px;
-    bottom: 40px;
-    font-size: clamp(30px, 3.2vw, 46px);
+/*
+ * Each line takes a two second turn: it lights up and slides 10px right, then fades back; the last lands in rattan.
+ * Six lines make a 12 second loop. Without motion nothing moves and only the last line is highlighted.
+ */
+@media (prefers-reduced-motion: no-preference) {
+  /* `backwards` holds the first keyframe through the delay, so the last line is not rattan before its turn. */
+  .line {
+    animation: line-turn 12s var(--ease-out) infinite backwards;
   }
-}
-.word {
-  display: inline-block;
-  opacity: 0;
-  transform: translateY(14px);
-  animation: word 0.7s var(--ease-out) forwards;
-  animation-delay: calc(2.3s + var(--i) * 0.06s);
-}
-
-@keyframes drop {
-  0% {
-    transform: translateY(-70vh) scale(0.9);
+  .line:nth-child(2) {
+    animation-delay: 2s;
   }
-  70% {
-    transform: translateY(0) scale(1.06, 0.94);
+  .line:nth-child(3) {
+    animation-delay: 4s;
   }
-  100% {
-    transform: none;
+  .line:nth-child(4) {
+    animation-delay: 6s;
   }
-}
-@keyframes shadow {
-  0% {
-    opacity: 0;
-    transform: scale(0.2);
+  .line:nth-child(5) {
+    animation-delay: 8s;
   }
-  70% {
-    transform: scale(1.15);
-  }
-  100% {
-    opacity: 1;
-    transform: none;
-  }
-}
-@keyframes ring {
-  0% {
-    opacity: 0.9;
-    transform: scale(0.15);
-  }
-  100% {
-    opacity: 0;
-    transform: scale(1.25);
-  }
-}
-@keyframes pop {
-  from {
-    opacity: 0;
-    transform: translateY(12px) scale(0.9);
-  }
-  to {
-    opacity: 1;
-    transform: none;
-  }
-}
-@keyframes float {
-  50% {
-    translate: 0 -6px;
-  }
-}
-@keyframes word {
-  to {
-    opacity: 1;
-    transform: none;
+  .line:nth-child(6) {
+    animation-delay: 10s;
   }
 }
 
-/* Everything lands in place at once for people who turn motion off. */
-@media (prefers-reduced-motion: reduce) {
-  .pin,
-  .shadow,
-  .chip,
-  .word {
-    animation: none;
-    opacity: 1;
+@keyframes line-turn {
+  0% {
+    color: color-mix(in srgb, var(--surface) 55%, transparent);
     transform: none;
   }
-  .ring {
-    display: none;
+  4%,
+  15% {
+    color: var(--on, var(--surface));
+    transform: translateX(10px);
+  }
+  20%,
+  100% {
+    color: color-mix(in srgb, var(--surface) 55%, transparent);
+    transform: none;
   }
 }
