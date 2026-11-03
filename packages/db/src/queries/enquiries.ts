@@ -105,6 +105,42 @@ export interface EnquiryBackfillResult {
   readonly taps: number;
 }
 
+/** Either connection kind: only `execute` is needed, so a transaction works as well as the pool. */
+type SqlRunner = Pick<Database, "execute">;
+
+/**
+ * The one mapping from a chat lead to an enquiry. `filter` narrows which leads (all, one business, one lead); a lead
+ * whose name, phone or email has changed since (OyeChats sends the details in later events) is refreshed, and the
+ * customer's status and note never are.
+ */
+async function copyChatLeads(db: SqlRunner, filter: SQL): Promise<number> {
+  const result = await db.execute(sql`
+    INSERT INTO enquiries (id, business_id, kind, source, name, phone, email, received_at, source_ref)
+    SELECT gen_random_uuid(), l.business_id, 'chat', left(b.name, 120), left(l.name, 200), left(l.phone, 40), left(l.email, 320),
+           l.captured_at, 'chatbot_lead:' || l.id
+      FROM chatbot_leads l JOIN chatbots b ON b.id = l.chatbot_id
+     WHERE ${filter}
+    ON CONFLICT (business_id, kind, source_ref) DO UPDATE
+       SET name = excluded.name, phone = excluded.phone, email = excluded.email, updated_at = now()
+     WHERE (enquiries.name, enquiries.phone, enquiries.email) IS DISTINCT FROM (excluded.name, excluded.phone, excluded.email)
+  `);
+  return result.rowCount ?? 0;
+}
+
+/** The one mapping from a call, WhatsApp or form tap to an enquiry. Taps carry no identity. Never changes an existing row. */
+async function copyTaps(db: SqlRunner, filter: SQL): Promise<number> {
+  const result = await db.execute(sql`
+    INSERT INTO enquiries (id, business_id, kind, source, received_at, source_ref)
+    SELECT gen_random_uuid(), e.business_id,
+           CASE e.kind WHEN 'call' THEN 'call_tap' WHEN 'whatsapp' THEN 'whatsapp_tap' ELSE 'form' END,
+           'Website', e.occurred_at, 'site_event:' || e.id
+      FROM site_events e
+     WHERE ${filter}
+    ON CONFLICT (business_id, kind, source_ref) DO NOTHING
+  `);
+  return result.rowCount ?? 0;
+}
+
 /**
  * Copies chatbot leads and site taps into `enquiries`, on the staff connection. Safe to run any number of times:
  * `source_ref` names the row each came from, so a second run adds nothing. A chat lead whose name, phone or email has
@@ -116,28 +152,23 @@ export async function backfillEnquiries(db: Database, options: { readonly busine
   if (businessId !== undefined && !isUuid(businessId)) throw new Error(`businessId must be a UUID, received "${businessId}"`);
   const leadFilter = businessId === undefined ? sql`true` : sql`l.business_id = ${businessId}::uuid`;
   const eventFilter = businessId === undefined ? sql`true` : sql`e.business_id = ${businessId}::uuid`;
-  return db.transaction(async (tx) => {
-    const chat = await tx.execute(sql`
-      INSERT INTO enquiries (id, business_id, kind, source, name, phone, email, received_at, source_ref)
-      SELECT gen_random_uuid(), l.business_id, 'chat', left(b.name, 120), left(l.name, 200), left(l.phone, 40), left(l.email, 320),
-             l.captured_at, 'chatbot_lead:' || l.id
-        FROM chatbot_leads l JOIN chatbots b ON b.id = l.chatbot_id
-       WHERE ${leadFilter}
-      ON CONFLICT (business_id, kind, source_ref) DO UPDATE
-         SET name = excluded.name, phone = excluded.phone, email = excluded.email, updated_at = now()
-       WHERE (enquiries.name, enquiries.phone, enquiries.email) IS DISTINCT FROM (excluded.name, excluded.phone, excluded.email)
-    `);
-    const taps = await tx.execute(sql`
-      INSERT INTO enquiries (id, business_id, kind, source, received_at, source_ref)
-      SELECT gen_random_uuid(), e.business_id,
-             CASE e.kind WHEN 'call' THEN 'call_tap' WHEN 'whatsapp' THEN 'whatsapp_tap' ELSE 'form' END,
-             'Website', e.occurred_at, 'site_event:' || e.id
-        FROM site_events e
-       WHERE ${eventFilter}
-      ON CONFLICT (business_id, kind, source_ref) DO NOTHING
-    `);
-    return { chat: chat.rowCount ?? 0, taps: taps.rowCount ?? 0 };
-  });
+  return db.transaction(async (tx) => ({ chat: await copyChatLeads(tx, leadFilter), taps: await copyTaps(tx, eventFilter) }));
+}
+
+/**
+ * Live write for one chat lead, called right after `recordChatbotLead`: adds the enquiry, or refreshes its name, phone
+ * and email when a later delivery filled them in. Same mapping and same key as the backfill, so the two never disagree.
+ * Staff connection only. Returns whether a row was added or refreshed.
+ */
+export async function upsertEnquiryFromChatLead(db: SqlRunner, leadId: string): Promise<boolean> {
+  if (!isUuid(leadId)) throw new Error(`leadId must be a UUID, received "${leadId}"`);
+  return (await copyChatLeads(db, sql`l.id = ${leadId}::uuid`)) > 0;
+}
+
+/** Live write for one site tap, called right after `recordSiteEvent`. Same mapping and key as the backfill. Staff connection only. */
+export async function upsertEnquiryFromSiteEvent(db: SqlRunner, eventId: string): Promise<boolean> {
+  if (!isUuid(eventId)) throw new Error(`eventId must be a UUID, received "${eventId}"`);
+  return (await copyTaps(db, sql`e.id = ${eventId}::uuid`)) > 0;
 }
 
 /** Account erasure: the enquirers' details go with the business. */

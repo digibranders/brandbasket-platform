@@ -448,6 +448,8 @@ describe("what staff read", () => {
     const phone = await createSupportTicket(dbs.app.db, { userId: PHONE_ACCOUNT, businessId: otherBusinessId, category: "general", subject: "A question", description: "Can you call me back?", submissionKey: key() });
     expect(await findRequestRecipient(dbs.staff.db, mine.ticket.id)).toEqual({
       ticketId: mine.ticket.id,
+      userId: OWNER,
+      businessId,
       subject: "Add an Implants page",
       name: "Priya Shah",
       email: `${OWNER}@example.com`,

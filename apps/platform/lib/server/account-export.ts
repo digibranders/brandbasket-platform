@@ -6,6 +6,7 @@ import {
   listSupportTickets,
   readExportedAccount,
   readExportedBusiness,
+  readExportedNotificationPreferences,
   type Database,
 } from "@brandbasket/db";
 import { DATA_RECIPIENTS } from "@brandbasket/shared/lib/privacy/recipients";
@@ -42,7 +43,7 @@ async function listSupportTicketIds(db: Database, userId: string): Promise<reado
 /** What a download leaves out, and why, so the file does not read as everything there is. */
 export const ACCOUNT_EXPORT_NOT_INCLUDED = [
   "Password and sign-in tokens: these are secrets, not information about you.",
-  "The people your business deals with (enquiries, leads, patients, bookings, reviews of your business). They are other people's details, which your business holds for itself and can see in your dashboard.",
+  "The details of other people your business deals with, apart from your enquiries list (leads, patients, bookings, reviews of your business). They are other people's details, which your business holds for itself and can see in your dashboard.",
   "Pictures, videos and files you uploaded: download them from the pages where you added them.",
   "Tax invoices are listed here with the details printed on them. The PDFs are on the Billing page.",
 ] as const;
@@ -62,10 +63,11 @@ export interface AccountExportDatabases {
 
 export async function buildAccountExport(dbs: AccountExportDatabases, input: AccountExportInput) {
   const { userId, businessId, now } = input;
-  const [account, sessions, businessRecords, consents, ticketIds] = await Promise.all([
+  const [account, sessions, businessRecords, emailChoices, consents, ticketIds] = await Promise.all([
     readExportedAccount(dbs.staff, userId),
     listExportedSessions(dbs.staff, userId),
     readExportedBusiness(dbs.staff, businessId),
+    readExportedNotificationPreferences(dbs.staff, userId),
     listConsents(dbs.staff, { type: "user", ref: userId }),
     listSupportTicketIds(dbs.app, userId),
   ]);
@@ -89,6 +91,7 @@ export async function buildAccountExport(dbs: AccountExportDatabases, input: Acc
           },
     signIns: sessions,
     business: businessRecords,
+    emailChoices: emailChoices.map((choice) => ({ businessId: choice.businessId, topic: choice.topic, email: choice.email, changedAt: choice.updatedAt })),
     supportRequests: supportRequests.map((detail) => ({
       reference: detail.ticket.displayRef,
       category: detail.ticket.category,

@@ -312,7 +312,9 @@ export async function listMonthlyReportsForStaff(db: Database, businessId: strin
     .limit(limit);
 }
 
-/** Records one call tap, WhatsApp tap or form. A kind and a time, nothing about the visitor. */
-export async function recordSiteEvent(db: Database, input: { readonly businessId: string; readonly kind: SiteEventKind; readonly at: Date }): Promise<void> {
-  await db.insert(siteEvents).values({ businessId: input.businessId, kind: input.kind, occurredAt: input.at });
+/** Records one call tap, WhatsApp tap or form, and returns its id. A kind and a time, nothing about the visitor. */
+export async function recordSiteEvent(db: Database, input: { readonly businessId: string; readonly kind: SiteEventKind; readonly at: Date }): Promise<string> {
+  const [row] = await db.insert(siteEvents).values({ businessId: input.businessId, kind: input.kind, occurredAt: input.at }).returning({ id: siteEvents.id });
+  if (row === undefined) throw new Error("The site event was not stored.");
+  return row.id;
 }

@@ -38,6 +38,8 @@ import { isUuid } from "./tenant";
  */
 
 export interface ClientOwner {
+  /** The owner's user id, for checking their email preferences. */
+  readonly userId: string;
   readonly name: string;
   /**
    * Where the owner can be written to, or null for an account opened with a mobile number: a Premium member who
@@ -127,7 +129,7 @@ const PROJECT_COLUMNS = {
 async function ownersByBusiness(db: Database, businessIds: readonly string[]): Promise<Map<string, ClientOwner>> {
   if (businessIds.length === 0) return new Map();
   const rows = await db
-    .select({ businessId: businessMembers.businessId, name: users.name, email: users.email, phone: users.phoneNumber })
+    .select({ businessId: businessMembers.businessId, userId: users.id, name: users.name, email: users.email, phone: users.phoneNumber })
     .from(businessMembers)
     .innerJoin(users, eq(users.id, businessMembers.userId))
     .where(and(inArray(businessMembers.businessId, [...businessIds]), eq(businessMembers.role, "owner")))
@@ -136,7 +138,7 @@ async function ownersByBusiness(db: Database, businessIds: readonly string[]): P
   const owners = new Map<string, ClientOwner>();
   for (const row of rows) {
     if (owners.has(row.businessId)) continue;
-    owners.set(row.businessId, { name: row.name, email: isPhoneAccountEmail(row.email) ? null : row.email, phone: row.phone });
+    owners.set(row.businessId, { userId: row.userId, name: row.name, email: isPhoneAccountEmail(row.email) ? null : row.email, phone: row.phone });
   }
   return owners;
 }

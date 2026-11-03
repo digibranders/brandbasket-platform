@@ -6,6 +6,7 @@ import {
   listSupportTickets,
   readExportedAccount,
   readExportedBusiness,
+  readExportedNotificationPreferences,
   type Database,
 } from "@brandbasket/db";
 import { DATA_RECIPIENTS } from "@brandbasket/shared/lib/privacy/recipients";
@@ -19,6 +20,7 @@ vi.mock("@brandbasket/db", () => ({
   listSupportTickets: vi.fn(),
   readExportedAccount: vi.fn(),
   readExportedBusiness: vi.fn(),
+  readExportedNotificationPreferences: vi.fn(),
 }));
 
 const NOW = new Date("2026-11-01T06:00:00.000Z");
@@ -41,7 +43,8 @@ function account(overrides: Record<string, unknown> = {}) {
 function arrange(accountRow: ReturnType<typeof account> | null = account()): void {
   vi.mocked(readExportedAccount).mockResolvedValue(accountRow as never);
   vi.mocked(listExportedSessions).mockResolvedValue([{ startedAt: NOW, expiresAt: NOW, ipAddress: "203.0.113.9", userAgent: "Safari" }]);
-  vi.mocked(readExportedBusiness).mockResolvedValue({ business: { id: INPUT.businessId, name: "Asha Dental" }, profile: null, billingProfile: null, subscription: null, payments: [], taxInvoices: [], directoryProfile: null } as never);
+  vi.mocked(readExportedBusiness).mockResolvedValue({ business: { id: INPUT.businessId, name: "Asha Dental" }, profile: null, billingProfile: null, subscription: null, payments: [], taxInvoices: [], directoryProfile: null, enquiries: [{ kind: "chat", name: "Ravi", phone: "+919820011223", status: "contacted", note: "Called back" }], connectedAccounts: [{ platform: "instagram", handle: "@asha", status: "connected" }], websitePages: [{ url: "https://asha.example/about", title: "About" }] } as never);
+  vi.mocked(readExportedNotificationPreferences).mockResolvedValue([{ businessId: INPUT.businessId, topic: "billing", email: false, updatedAt: NOW }]);
   vi.mocked(listConsents).mockResolvedValue([{ id: "c1", purpose: "account_terms", event: "given", noticeVersion: "2026-10-13", language: "en", channel: "web", ipHash: "secrethash", createdAt: NOW }]);
   vi.mocked(listSupportTickets).mockResolvedValue({ items: [{ id: "t1" }], nextCursor: null } as never);
   vi.mocked(getSupportTicket).mockResolvedValue({
@@ -66,6 +69,20 @@ describe("buildAccountExport", () => {
     expect(file.consents).toEqual([{ purpose: "account_terms", event: "given", noticeVersion: "2026-10-13", channel: "web", recordedAt: NOW }]);
     expect(file.sharedWith).toBe(DATA_RECIPIENTS);
     expect(file.notIncluded).toBe(ACCOUNT_EXPORT_NOT_INCLUDED);
+  });
+
+  it("includes the business's enquiries, connected accounts and website pages, and the user's own email choices", async () => {
+    arrange();
+    const file = await buildAccountExport(dbs, INPUT);
+    expect(file.business.enquiries).toEqual([{ kind: "chat", name: "Ravi", phone: "+919820011223", status: "contacted", note: "Called back" }]);
+    expect(file.business.connectedAccounts).toEqual([{ platform: "instagram", handle: "@asha", status: "connected" }]);
+    expect(file.business.websitePages).toEqual([{ url: "https://asha.example/about", title: "About" }]);
+    expect(file.emailChoices).toEqual([{ businessId: INPUT.businessId, topic: "billing", email: false, changedAt: NOW }]);
+    expect(readExportedNotificationPreferences).toHaveBeenCalledWith(dbs.staff, "user-asha");
+  });
+
+  it("no longer lists the enquiries as left out", () => {
+    expect(ACCOUNT_EXPORT_NOT_INCLUDED.join(" ")).toContain("apart from your enquiries list");
   });
 
   it("leaves out the placeholder address of a number account, and the hashed address inside a consent record", async () => {

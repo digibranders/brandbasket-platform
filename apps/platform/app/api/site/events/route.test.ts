@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { consumeRateLimit, recordSiteEvent } from "@brandbasket/db";
+import { consumeRateLimit, recordSiteEvent, upsertEnquiryFromSiteEvent } from "@brandbasket/db";
 import { getStaffDb } from "@/lib/server/db";
 import { findTenantBySiteToken, siteHasAccess } from "@/lib/server/site-api";
 import { SITE_EVENT_BODY_LIMIT } from "@/lib/site-events";
@@ -8,13 +8,14 @@ import { OPTIONS, POST } from "./route";
 vi.mock("server-only", () => ({}));
 vi.mock("@/lib/server/db", () => ({ getStaffDb: vi.fn() }));
 vi.mock("@/lib/server/site-api", () => ({ findTenantBySiteToken: vi.fn(), siteHasAccess: vi.fn() }));
-vi.mock("@brandbasket/db", () => ({ consumeRateLimit: vi.fn(), recordSiteEvent: vi.fn() }));
+vi.mock("@brandbasket/db", () => ({ consumeRateLimit: vi.fn(), recordSiteEvent: vi.fn(), upsertEnquiryFromSiteEvent: vi.fn() }));
 
 const mockedGetStaffDb = vi.mocked(getStaffDb);
 const mockedFindTenant = vi.mocked(findTenantBySiteToken);
 const mockedSiteHasAccess = vi.mocked(siteHasAccess);
 const mockedConsume = vi.mocked(consumeRateLimit);
 const mockedRecord = vi.mocked(recordSiteEvent);
+const mockedEnquiry = vi.mocked(upsertEnquiryFromSiteEvent);
 
 const TOKEN = "t".repeat(40);
 const DB = {} as never;
@@ -35,7 +36,8 @@ beforeEach(() => {
   mockedFindTenant.mockResolvedValue({ businessId: "biz-1", name: "Smile Dental" });
   mockedSiteHasAccess.mockResolvedValue(true);
   mockedConsume.mockResolvedValue({ allowed: true, remaining: 119, retryAfterSeconds: 0 });
-  mockedRecord.mockResolvedValue(undefined);
+  mockedRecord.mockResolvedValue("event-1");
+  mockedEnquiry.mockResolvedValue(true);
 });
 
 describe("POST /api/site/events", () => {
@@ -108,6 +110,31 @@ describe("POST /api/site/events", () => {
     expectCorsAndNoStore(response);
     expect(mockedRecord).toHaveBeenCalledTimes(1);
     expect(mockedRecord).toHaveBeenCalledWith(DB, { businessId: "biz-1", kind: "whatsapp", at: expect.any(Date) });
+  });
+
+  it("writes the tap's enquiry right after storing it, once per tap", async () => {
+    await POST(post('{"kind":"call"}'));
+    expect(mockedEnquiry).toHaveBeenCalledTimes(1);
+    expect(mockedEnquiry).toHaveBeenCalledWith(DB, "event-1");
+  });
+
+  it("still answers 204 when the enquiry write fails, logging no token", async () => {
+    const log = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    mockedEnquiry.mockRejectedValue(new Error(`insert failed, params: ${TOKEN}`));
+    const response = await POST(post('{"kind":"form"}'));
+    expect(response.status).toBe(204);
+    expect(mockedRecord).toHaveBeenCalledTimes(1);
+    expect(log).toHaveBeenCalled();
+    expect(JSON.stringify(log.mock.calls)).not.toContain(TOKEN);
+    log.mockRestore();
+  });
+
+  it("writes no enquiry when the event itself could not be stored", async () => {
+    const log = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    mockedRecord.mockRejectedValue(new Error("down"));
+    expect((await POST(post('{"kind":"call"}'))).status).toBe(500);
+    expect(mockedEnquiry).not.toHaveBeenCalled();
+    log.mockRestore();
   });
 
   it("answers 500 without the token in the body or the logs when the database fails", async () => {

@@ -110,6 +110,7 @@ describe("listClients", () => {
 
     const clients = await listClients(dbs.staff.db);
     expect(clients.find((client) => client.businessId === member.id)?.owner).toEqual({
+      userId: "phone-owner",
       name: "Meera Shah",
       email: null,
       phone: "+919820011223",

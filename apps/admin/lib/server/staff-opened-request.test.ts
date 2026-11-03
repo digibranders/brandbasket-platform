@@ -1,8 +1,16 @@
 import { describe, expect, it, vi } from "vitest";
 vi.mock("server-only", () => ({}));
-import { SupportQueryError } from "@brandbasket/db";
+vi.mock("./email", () => ({ customerEmailTransport: vi.fn() }));
+vi.mock("./env", () => ({ serverEnv: () => ({ APP_ORIGIN: "https://app.brandbasket.in" }) }));
+vi.mock("@brandbasket/db", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@brandbasket/db")>()),
+  findClientDetail: vi.fn(),
+  shouldEmail: vi.fn(),
+}));
+import { findClientDetail, shouldEmail, SupportQueryError } from "@brandbasket/db";
+import { customerEmailTransport } from "./email";
 import type { GrantedStaff } from "./staff-access";
-import { createOpenRequestAction, type OpenRequestDependencies } from "./staff-opened-request";
+import { createOpenRequestAction, emailRequestOwner, type OpenRequestDependencies } from "./staff-opened-request";
 
 const BUSINESS = "0192f3c4-2222-7000-8000-000000000001";
 const TICKET = "0192f3c4-2222-7000-8000-000000000002";
@@ -79,5 +87,52 @@ describe("opening a request for a client", () => {
     expect(failed.kind).toBe("error");
     expect(failed.reference).toBe("issue-1");
     expect(deps.reportUnexpected).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("emailRequestOwner", () => {
+  const DB = { kind: "staff-db" } as never;
+  const INPUT = { businessId: BUSINESS, ticketId: TICKET, subject: "Change the Sunday hours" };
+  const send = vi.fn();
+
+  function ownerOf(email: string | null) {
+    vi.mocked(findClientDetail).mockResolvedValue({
+      businessName: "Riverside Plumbing",
+      owner: { userId: "user-riley", name: "Riley", email, phone: null },
+    } as Awaited<ReturnType<typeof findClientDetail>>);
+  }
+
+  it("emails the owner when their request-reply preference is on, checking it for this business", async () => {
+    send.mockReset().mockResolvedValue(undefined);
+    vi.mocked(customerEmailTransport).mockReturnValue({ send });
+    vi.mocked(shouldEmail).mockResolvedValue(true);
+    ownerOf("riley@example.com");
+
+    expect(await emailRequestOwner(DB, INPUT)).toBe("emailed");
+    expect(shouldEmail).toHaveBeenCalledWith(DB, "user-riley", BUSINESS, "request_reply");
+    expect(send).toHaveBeenCalledTimes(1);
+  });
+
+  it("sends the email anyway, and logs it, when the preference cannot be read", async () => {
+    const log = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    send.mockReset().mockResolvedValue(undefined);
+    vi.mocked(customerEmailTransport).mockReturnValue({ send });
+    vi.mocked(shouldEmail).mockRejectedValue(new Error("db down"));
+    ownerOf("riley@example.com");
+
+    expect(await emailRequestOwner(DB, INPUT)).toBe("emailed");
+    expect(send).toHaveBeenCalledTimes(1);
+    expect(log).toHaveBeenCalledWith("[support] could not read the email preference, sending anyway", expect.anything());
+    log.mockRestore();
+  });
+
+  it("sends nothing and answers no-email when the owner turned those emails off", async () => {
+    send.mockReset();
+    vi.mocked(customerEmailTransport).mockReturnValue({ send });
+    vi.mocked(shouldEmail).mockResolvedValue(false);
+    ownerOf("riley@example.com");
+
+    expect(await emailRequestOwner(DB, INPUT)).toBe("no-email");
+    expect(send).not.toHaveBeenCalled();
   });
 });

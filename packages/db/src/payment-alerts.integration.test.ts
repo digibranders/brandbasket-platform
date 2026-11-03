@@ -29,7 +29,7 @@ describe("findBusinessAlertDetails", () => {
   it("gives the owner's name, email and the number on their account", async () => {
     const businessId = await addCustomer("+919820011111");
     const found = await findBusinessAlertDetails(dbs.staff.db, businessId);
-    expect(found?.owner).toEqual({ name: "Asha Rao", email: "asha@example.com", phone: "+919820011111" });
+    expect(found?.owner).toEqual({ userId: "user-asha", name: "Asha Rao", email: "asha@example.com", phone: "+919820011111" });
   });
 
   it("falls back to the number they gave on their enquiry when the account has none", async () => {

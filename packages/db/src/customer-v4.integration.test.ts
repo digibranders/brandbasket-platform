@@ -1,10 +1,18 @@
 import { eq, sql } from "drizzle-orm";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { acceptBusinessInvite, BusinessInviteOpenError, createBusinessInvite, listBusinessInvites, revokeBusinessInvite } from "./queries/business-invites";
-import { renameChatbot } from "./queries/chatbots";
+import { recordChatbotLead, renameChatbot } from "./queries/chatbots";
 import { listConnectedAccounts, saveConnectedAccount } from "./queries/connected-accounts";
-import { approveDeliverables, insertDeliverable } from "./queries/deliverables";
-import { backfillEnquiries, countNewEnquiries, findEnquiry, listEnquiries, updateEnquiry } from "./queries/enquiries";
+import { approveDeliverables, insertDeliverable, recordSiteEvent } from "./queries/deliverables";
+import {
+  backfillEnquiries,
+  countNewEnquiries,
+  findEnquiry,
+  listEnquiries,
+  updateEnquiry,
+  upsertEnquiryFromChatLead,
+  upsertEnquiryFromSiteEvent,
+} from "./queries/enquiries";
 import {
   getNotificationsSeenAt,
   listNotificationPreferences,
@@ -133,6 +141,48 @@ describe("enquiries backfill", () => {
 
     const [after] = await dbs.staff.db.select().from(enquiries);
     expect(after).toMatchObject({ name: "Ravi K", status: "contacted", note: "Called back" });
+  });
+});
+
+describe("live enquiry writes", () => {
+  it("a new chat lead creates one enquiry, a repeat adds none, and later details refresh it", async () => {
+    const [bot] = await dbs.staff.db.insert(chatbots).values({ businessId: businessA, name: "Website assistant", oyechatsBotId: 4101 }).returning({ id: chatbots.id });
+    const lead = { chatbotId: bot?.id ?? "", businessId: businessA, sessionId: "live-1", name: "Meera", email: null, phone: null, company: null, capturedAt: NOW };
+
+    const leadId = await recordChatbotLead(dbs.staff.db, lead);
+    expect(await upsertEnquiryFromChatLead(dbs.staff.db, leadId)).toBe(true);
+    expect(await dbs.staff.db.select().from(enquiries)).toHaveLength(1);
+
+    expect(await recordChatbotLead(dbs.staff.db, lead)).toBe(leadId);
+    expect(await upsertEnquiryFromChatLead(dbs.staff.db, leadId)).toBe(false);
+    expect(await dbs.staff.db.select().from(enquiries)).toHaveLength(1);
+
+    const [row] = await dbs.staff.db.select({ id: enquiries.id }).from(enquiries);
+    await as(OWNER_A, businessA, (tx) => updateEnquiry(tx, row?.id ?? "", { status: "contacted" }));
+    await recordChatbotLead(dbs.staff.db, { ...lead, phone: "+919820011223" });
+    expect(await upsertEnquiryFromChatLead(dbs.staff.db, leadId)).toBe(true);
+    const [after] = await dbs.staff.db.select().from(enquiries);
+    expect(after).toMatchObject({ kind: "chat", source: "Website assistant", name: "Meera", phone: "+919820011223", status: "contacted", sourceRef: `chatbot_lead:${leadId}` });
+    expect(await backfillEnquiries(dbs.staff.db)).toEqual({ chat: 0, taps: 0 });
+  });
+
+  it("a new tap creates one enquiry, a repeat of the same tap adds none, and a second tap adds another", async () => {
+    const first = await recordSiteEvent(dbs.staff.db, { businessId: businessA, kind: "whatsapp", at: NOW });
+    expect(await upsertEnquiryFromSiteEvent(dbs.staff.db, first)).toBe(true);
+    expect(await upsertEnquiryFromSiteEvent(dbs.staff.db, first)).toBe(false);
+    expect(await dbs.staff.db.select().from(enquiries)).toHaveLength(1);
+
+    const second = await recordSiteEvent(dbs.staff.db, { businessId: businessA, kind: "whatsapp", at: NOW });
+    expect(await upsertEnquiryFromSiteEvent(dbs.staff.db, second)).toBe(true);
+    const rows = await dbs.staff.db.select().from(enquiries);
+    expect(rows).toHaveLength(2);
+    expect(rows[0]).toMatchObject({ kind: "whatsapp_tap", source: "Website", name: null });
+    expect(await backfillEnquiries(dbs.staff.db)).toEqual({ chat: 0, taps: 0 });
+  });
+
+  it("refuses an id that is not a UUID", async () => {
+    await expect(upsertEnquiryFromSiteEvent(dbs.staff.db, "nope")).rejects.toThrow("eventId must be a UUID");
+    await expect(upsertEnquiryFromChatLead(dbs.staff.db, "nope")).rejects.toThrow("leadId must be a UUID");
   });
 });
 
