@@ -1,6 +1,7 @@
 import { appendSupportReplyWithOutcome, ChangeRequestError, createSupportTicketWithOutcome, findTicketIdOfChangeRequest, markSupportTicketRead, moveChangeAsCustomer, SupportQueryError, withTenantScope } from "@brandbasket/db";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { acceptQuoteAction, approveChangeAction, declineQuoteAction, markReadAction, reopenRequestAction, replyAction, sendRequestAction } from "./actions";
+import { startCustomerChargePayment } from "@/features/checkout/server/charges";
 import { openQuoteCharge, sendReplyAlert, sendTicketAlert, supportRateLimit } from "./server";
 
 vi.mock("server-only", () => ({}));
@@ -9,6 +10,7 @@ vi.mock("next/navigation", () => ({ unstable_rethrow: vi.fn() }));
 vi.mock("@/lib/db", () => ({ getAppDb: vi.fn(() => ({ kind: "app-db" })) }));
 vi.mock("@/lib/report", () => ({ reportError: vi.fn() }));
 vi.mock("@/lib/guards", () => ({ requireBilling: vi.fn(), requireCustomer: vi.fn() }));
+vi.mock("@/features/checkout/server/charges", () => ({ startCustomerChargePayment: vi.fn() }));
 vi.mock("./server", () => ({ openQuoteCharge: vi.fn(), sendReplyAlert: vi.fn(), sendTicketAlert: vi.fn(), supportRateLimit: vi.fn() }));
 vi.mock("@brandbasket/db", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@brandbasket/db")>()),
@@ -185,10 +187,30 @@ describe("acceptQuoteAction", () => {
   it("opens the charge for a request of the session's business and returns where to pay it", async () => {
     vi.mocked(findTicketIdOfChangeRequest).mockResolvedValue(TICKET);
     vi.mocked(openQuoteCharge).mockResolvedValue({ chargeId: "charge-9" });
+    vi.mocked(startCustomerChargePayment).mockResolvedValue({ kind: "razorpay", orderId: "order_1", charge: {} as never });
     expect(await acceptQuoteAction(form({ requestId: REQUEST }))).toEqual({ ok: true, data: { href: "/checkout/charges/charge-9" } });
+    // The Razorpay pay page only reads the stored order, so the order must be opened here, once, for this charge.
+    expect(startCustomerChargePayment).toHaveBeenCalledOnce();
+    expect(startCustomerChargePayment).toHaveBeenCalledWith(expect.objectContaining({ businessId: "business-1" }), "charge-9");
     expect(requireBilling).toHaveBeenCalledOnce();
     expect(findTicketIdOfChangeRequest).toHaveBeenCalledWith({ kind: "tx" }, "business-1", REQUEST);
     expect(openQuoteCharge).toHaveBeenCalledWith(expect.objectContaining({ businessId: "business-1" }), REQUEST, expect.any(Date));
+  });
+
+  it("goes to the fake provider's test page when it opened the payment itself", async () => {
+    vi.mocked(findTicketIdOfChangeRequest).mockResolvedValue(TICKET);
+    vi.mocked(openQuoteCharge).mockResolvedValue({ chargeId: "charge-9" });
+    vi.mocked(startCustomerChargePayment).mockResolvedValue({ kind: "redirect", url: "/billing/charges/confirm?token=t" });
+    expect(await acceptQuoteAction(form({ requestId: REQUEST }))).toEqual({ ok: true, data: { href: "/billing/charges/confirm?token=t" } });
+  });
+
+  it("says the request has changed when the charge is already paid or gone", async () => {
+    vi.mocked(findTicketIdOfChangeRequest).mockResolvedValue(TICKET);
+    vi.mocked(openQuoteCharge).mockResolvedValue({ chargeId: "charge-9" });
+    for (const kind of ["not-open", "not-found"] as const) {
+      vi.mocked(startCustomerChargePayment).mockResolvedValueOnce({ kind });
+      expect(await acceptQuoteAction(form({ requestId: REQUEST }))).toEqual({ ok: false, message: "This request has changed since you opened it. Have a look at where it is now." });
+    }
   });
 
   it("opens nothing for a request the business does not have, a bad id or a viewer", async () => {
@@ -198,6 +220,7 @@ describe("acceptQuoteAction", () => {
     vi.mocked(requireBilling).mockResolvedValue(customer("viewer"));
     expect(await acceptQuoteAction(form({ requestId: REQUEST }))).toMatchObject({ ok: false });
     expect(openQuoteCharge).not.toHaveBeenCalled();
+    expect(startCustomerChargePayment).not.toHaveBeenCalled();
   });
 
   it("says the request has changed when the quote is no longer there, and that it failed on any other fault", async () => {
