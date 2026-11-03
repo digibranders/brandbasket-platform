@@ -96,6 +96,7 @@
   --spacing-panel-header: var(--size-panel-header);
   --spacing-topbar: var(--size-topbar);
   --spacing-sidebar: var(--size-sidebar);
+  --spacing-rail: var(--size-rail);
   --spacing-inspector: var(--size-inspector);
   --spacing-save-bar: var(--size-save-bar);
   --spacing-tab: var(--size-tab);
