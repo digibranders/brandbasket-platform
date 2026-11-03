@@ -26,6 +26,16 @@ assertProductionEnvironment();
 const servedOverHttps =
   process.env.VERCEL === "1" || (process.env.APP_ORIGIN?.trim().startsWith("https://") ?? false);
 
+/** Where social-auto is, when this build is set up for it; a half or badly set up value is reported by the page itself. */
+const socialAutoOrigin = ((): string | null => {
+  try {
+    const url = process.env.SOCIAL_AUTO_URL?.trim();
+    return url ? new URL(url).origin : null;
+  } catch {
+    return null;
+  }
+})();
+
 /**
  * The customer app (app.) and staff admin (admin.), with their API routes, including /api/leads for the website's
  * enquiries. The marketing website is its own repository.
@@ -50,6 +60,8 @@ const nextConfig: NextConfig = {
           errorReportingOrigin: sentryIngestOrigin(process.env.NEXT_PUBLIC_SENTRY_DSN),
           // The dashboard's Tag Manager container (Google Analytics, Clarity), only when a container id is set for this build.
           tagManager: GTM_ID !== null,
+          // The Social media page shows the pictures of posts, which social-auto serves.
+          ...(socialAutoOrigin === null ? {} : { pictureOrigin: socialAutoOrigin }),
         }),
       },
       // The site tracking script (public/t/v1.js): customers' pages load it from here, so it may be cached for an hour and
