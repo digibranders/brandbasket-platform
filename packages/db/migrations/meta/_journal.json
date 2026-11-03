@@ -1478,6 +1478,27 @@
       "when": 1793595839423,
       "tag": "0213_staff_second_factor",
       "breakpoints": true
+    },
+    {
+      "idx": 211,
+      "version": "7",
+      "when": 1793680234129,
+      "tag": "0214_business_member_viewer",
+      "breakpoints": true
+    },
+    {
+      "idx": 212,
+      "version": "7",
+      "when": 1793680312378,
+      "tag": "0215_customer_v4_tables",
+      "breakpoints": true
+    },
+    {
+      "idx": 213,
+      "version": "7",
+      "when": 1793680322274,
+      "tag": "0216_customer_v4_grants",
+      "breakpoints": true
     }
   ]
 }

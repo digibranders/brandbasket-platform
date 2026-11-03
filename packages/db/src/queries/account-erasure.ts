@@ -1,4 +1,5 @@
 import { eraseChatbotsOfBusiness } from "./chatbots";
+import { eraseEnquiriesOfBusiness } from "./enquiries";
 import { and, asc, eq, inArray, isNotNull, isNull, lte, ne, or, sql } from "drizzle-orm";
 import type { Database } from "../client";
 import { listBusinessProductPhotoIds } from "./directory-business-catalog";
@@ -6,6 +7,11 @@ import { waiveChangeChargesForErasure } from "./change-request-payment";
 import { eraseSupportDataForUser } from "./support";
 import type { ScopedTransaction } from "../scope";
 import {
+  businessInvites,
+  connectedAccounts,
+  notificationPreferences,
+  notificationReads,
+  websitePages,
   accountClosures,
   accountOtps,
   accounts,
@@ -355,6 +361,14 @@ export async function eraseClosedAccount(db: Database, input: { readonly closure
     await tx.delete(mediaAssets).where(eq(mediaAssets.businessId, businessId));
     // The chatbots OyeChats runs for the business, their webhook secrets and the visitors' details they collected.
     await eraseChatbotsOfBusiness(tx, businessId);
+    // Customer app v4: everyone who got in touch with the business, its pages and accounts, the invites the owner sent,
+    // and each person's notification settings for it (other members block erasure, so only the leaving user has any).
+    await eraseEnquiriesOfBusiness(tx, businessId);
+    await tx.delete(websitePages).where(eq(websitePages.businessId, businessId));
+    await tx.delete(connectedAccounts).where(eq(connectedAccounts.businessId, businessId));
+    await tx.delete(businessInvites).where(eq(businessInvites.businessId, businessId));
+    await tx.delete(notificationPreferences).where(or(eq(notificationPreferences.businessId, businessId), eq(notificationPreferences.userId, userId)));
+    await tx.delete(notificationReads).where(or(eq(notificationReads.businessId, businessId), eq(notificationReads.userId, userId)));
 
     // The directory listing: what the owner wrote and uploaded goes; the place itself is public and stays, unclaimed.
     await tx.delete(directoryBusinessCategories).where(eq(directoryBusinessCategories.businessId, businessId));

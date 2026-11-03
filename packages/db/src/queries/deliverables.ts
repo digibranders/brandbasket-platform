@@ -1,7 +1,8 @@
 import { and, asc, desc, eq, gte, isNull, lt, lte, ne, or, sql } from "drizzle-orm";
 import type { Database } from "../client";
 import { serviceOfKind, type DeliverableKind, type DeliverableStatus } from "../deliverable-states";
-import { deliverables, monthlyReports, siteEvents, type Deliverable, type MonthlyReport, type SiteEventKind } from "../schema/deliverables";
+import type { PostChannel } from "../schema/connected-accounts";
+import { deliverables, monthlyReports, siteEvents, type Deliverable, type MonthlyReport, type PostFormat, type SiteEventKind } from "../schema/deliverables";
 import type { SetupService } from "../schema/client-activity";
 import type { ScopedTransaction } from "../scope";
 
@@ -135,6 +136,9 @@ export interface NewDeliverable {
   readonly kind: DeliverableKind;
   readonly title: string;
   readonly caption: string | null;
+  /** A post's format and network; omitted means none. The database refuses either on a page or listing. */
+  readonly format?: PostFormat | null;
+  readonly channel?: PostChannel | null;
   readonly dueOn: string | null;
   readonly status?: "planned" | "awaiting_approval";
   readonly staffId: string;
@@ -161,6 +165,8 @@ export async function insertDeliverable(db: Database, input: NewDeliverable & { 
       kind: input.kind,
       title: input.title,
       caption: input.caption,
+      format: input.format ?? null,
+      channel: input.channel ?? null,
       dueOn: input.dueOn,
       status: input.status ?? "planned",
       createdByStaffId: input.staffId,
@@ -187,6 +193,9 @@ export async function updateDeliverableFields(
     readonly caption: string | null;
     readonly dueOn: string | null;
     readonly linkUrl: string | null;
+    /** Undefined leaves it as it is; null clears it. */
+    readonly format?: PostFormat | null | undefined;
+    readonly channel?: PostChannel | null | undefined;
     readonly picture?: StoredPicture | null | undefined;
     readonly now: Date;
   },
@@ -206,6 +215,8 @@ export async function updateDeliverableFields(
           caption: input.caption,
           dueOn: input.dueOn,
           linkUrl: input.linkUrl,
+          ...(input.format === undefined ? {} : { format: input.format }),
+          ...(input.channel === undefined ? {} : { channel: input.channel }),
           updatedAt: input.now,
           ...(input.picture === undefined ? {} : pictureColumns(input.picture)),
         })

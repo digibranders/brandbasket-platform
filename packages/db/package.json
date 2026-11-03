@@ -34,7 +34,8 @@
     "directory:import-places": "tsx scripts/import-directory-places.ts",
     "directory:import-pincodes": "tsx scripts/import-india-pincodes.ts",
     "directory:backfill-places": "tsx scripts/backfill-directory-places.ts",
-    "directory:import-listings": "tsx scripts/import-directory-listings.ts"
+    "directory:import-listings": "tsx scripts/import-directory-listings.ts",
+    "enquiries:backfill": "tsx scripts/backfill-enquiries.ts"
   },
   "dependencies": {
     "dotenv": "17.4.2",

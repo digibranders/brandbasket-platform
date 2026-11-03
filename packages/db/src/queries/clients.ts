@@ -26,6 +26,7 @@ import {
   type PlanTier,
   type ProjectStatus,
   type SubscriptionStatus,
+  type BusinessMemberRole,
 } from "../schema";
 import { isPhoneAccountEmail } from "../phone-account";
 import { PLAN_EXCLUDED_PAYMENT_KINDS, planTierForSignupChoice, subscriptionWaitingToStart } from "./billing";
@@ -464,7 +465,7 @@ export interface StaffBusinessMember {
   /** Null for an account opened with a mobile number: its stored address is a placeholder nobody reads. */
   readonly email: string | null;
   readonly phone: string | null;
-  readonly role: "owner" | "editor";
+  readonly role: BusinessMemberRole;
   readonly joinedAt: Date;
 }
 
