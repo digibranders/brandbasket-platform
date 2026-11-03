@@ -5,7 +5,7 @@ const here = dirname(fileURLToPath(import.meta.url));
 const r = (f) => readFileSync(join(here, f), "utf8");
 const icons = JSON.parse(r("icons.json"));
 const sprite = `<svg width="0" height="0" style="position:absolute" aria-hidden="true">${Object.entries(icons).map(([n, d]) => `<symbol id="i-${n}" viewBox="0 0 256 256">${d}</symbol>`).join("")}</svg>`;
-const logo = readFileSync(join(here, "../../../brand/logo/svg/brandbasket-lockup-horizontal-ink.svg"), "utf8").replace(/<svg([^>]*?)\swidth="[^"]*"/, "<svg$1").replace(/\sheight="[^"]*"/, "").replace(/<title>.*?<\/title>/, "");
+const logo = readFileSync(join(here, "../../../../apps/customer/public/brand/brandbasket-logo-horizontal-light.svg"), "utf8").replace(/<svg([^>]*?)\swidth="[^"]*"/, "<svg$1").replace(/\sheight="[^"]*"/, "").replace(/<title>.*?<\/title>/, "");
 const fonts = `<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400&display=swap">`;
 const js = ["core.js", "screens-a.js", "screens-b.js", "screens-c.js", "overlays.js"].map(r).join("\n");
 const boot = `const h = location.hash.replace("#", ""); if (SCREENS[h]) S.screen = h; render();`;
