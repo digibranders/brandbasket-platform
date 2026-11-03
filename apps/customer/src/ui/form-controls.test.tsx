@@ -43,6 +43,42 @@ describe("Field with Input", () => {
   });
 });
 
+describe("Field focus after a failed submit", () => {
+  const form = (errors: { readonly city?: string; readonly pin?: string }) => (
+    <form>
+      <Field label="Name" name="name">
+        <Input defaultValue="Asha" />
+      </Field>
+      <Field label="City" name="city" error={errors.city}>
+        <Input defaultValue="" />
+      </Field>
+      <Field label="Pincode" name="pin" error={errors.pin}>
+        <Input defaultValue="" />
+      </Field>
+      <button type="submit">Save</button>
+    </form>
+  );
+
+  it("moves focus to the first field with an error when errors come back", () => {
+    const { rerender } = render(form({}));
+    screen.getByRole("button", { name: "Save" }).focus();
+    rerender(form({ city: "Enter your city.", pin: "Enter a 6 digit pincode." }));
+    expect(document.activeElement).toBe(screen.getByRole("textbox", { name: "City" }));
+  });
+
+  it("does not move focus for an error shown on first render", () => {
+    render(form({ pin: "Enter a 6 digit pincode." }));
+    expect(document.activeElement).toBe(document.body);
+  });
+
+  it("leaves focus alone when it already sits on a field with an error", () => {
+    const { rerender } = render(form({ pin: "Enter a 6 digit pincode." }));
+    screen.getByRole("textbox", { name: "Pincode" }).focus();
+    rerender(form({ city: "Enter your city.", pin: "Enter a 6 digit pincode." }));
+    expect(document.activeElement).toBe(screen.getByRole("textbox", { name: "Pincode" }));
+  });
+});
+
 describe("Textarea", () => {
   it("is a labelled multi-line box", async () => {
     render(

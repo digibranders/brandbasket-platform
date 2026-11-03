@@ -1,4 +1,4 @@
-import { existsSync, readdirSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
@@ -130,5 +130,48 @@ function findRouteFile(urlPath: string): string | null {
 describe("old customer paths still have a route in apps/customer", () => {
   it.each(OLD_PATHS)("%s has a page.tsx or route.ts", (urlPath) => {
     expect(findRouteFile(urlPath), `no page.tsx or route.ts answers ${urlPath}`).not.toBeNull();
+  });
+});
+
+// Old paths whose page only sends the visitor on. PARITY Part 2: every such redirect is permanent (308), so a bookmark or
+// an emailed link is updated, never a temporary 307.
+const MOVED_PATHS = [
+  "/details",
+  "/oyechats",
+  "/website/enquiries",
+  "/website/enquiries/leads",
+  "/website/enquiries/name",
+  "/content",
+  "/content/blog",
+  "/content/blog/new",
+  "/content/blog/[postId]",
+  "/content/blog/settings",
+  "/content/authors",
+  "/content/authors/new",
+  "/content/authors/[authorId]",
+  "/content/categories",
+  "/content/categories/new",
+  "/content/categories/[categoryId]",
+  "/todo",
+  "/monitoring",
+  "/project",
+  "/domain",
+  "/requests/new",
+  "/requests/calls",
+  "/support",
+  "/support/[ticketId]",
+  "/personalize",
+  "/plan",
+  "/onboarding/review",
+  "/services",
+] as const;
+
+describe("old paths that moved redirect permanently", () => {
+  it.each(MOVED_PATHS)("%s uses permanentRedirect, never redirect", (urlPath) => {
+    const file = findRouteFile(urlPath);
+    expect(file, `no route file for ${urlPath}`).not.toBeNull();
+    const source = readFileSync(file ?? "", "utf8");
+    expect(source).toMatch(/permanentRedirect\(/);
+    expect(source).not.toMatch(/(^|[^A-Za-z])redirect\(/m);
   });
 });

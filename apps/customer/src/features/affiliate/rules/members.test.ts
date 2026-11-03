@@ -1,9 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
-import { countMembers, TooManyMembersError } from "./members";
+import { countMembers, membersOf, TooManyMembersError } from "./members";
 
 /** A list that holds `size` members, the first `paying` of them active, answering like packages/db: at most `limit`. */
 function list(size: number, paying: number) {
-  return vi.fn(async (limit: number) => Array.from({ length: Math.min(limit, size) }, (_, index) => ({ status: index < paying ? "active" : "cancelled" })));
+  return vi.fn(async (limit: number) => Array.from({ length: Math.min(limit, size) }, (_, index) => ({ businessId: `b${String(index)}`, status: index < paying ? "active" : "cancelled" })));
 }
 
 describe("countMembers", () => {
@@ -29,5 +29,17 @@ describe("countMembers", () => {
 
   it("fails loudly past the ceiling rather than showing a wrong total", async () => {
     await expect(countMembers(list(100, 1), 10, 40)).rejects.toBeInstanceOf(TooManyMembersError);
+  });
+});
+
+describe("membersOf", () => {
+  it("counts a business once when its code was carried onto a new plan, by its latest plan", () => {
+    const rows = [
+      { businessId: "b1", status: "active" },
+      { businessId: "b2", status: "cancelled" },
+      { businessId: "b1", status: "cancelled" },
+      { businessId: "b2", status: "active" },
+    ];
+    expect(membersOf(rows)).toEqual({ total: 2, paying: 1 });
   });
 });

@@ -142,7 +142,7 @@ export async function BillingScreen({ customer, params }: { readonly customer: C
     <>
       <BillingHeader current={BILLING_TABS[0].href} description={headerLine} />
       <div className="flex flex-col gap-4">
-        {overview.notices.ok ? <Notices notices={overview.notices.data} /> : null}
+        {overview.notices.ok ? <Notices notices={overview.notices.data} /> : <PanelError failure={overview.notices.error} what="the result of your payment" />}
         <StatePanel state={overview.state} overview={overview} />
         {services === null ? null : services.ok ? (
           <div className="grid items-start gap-4 lg:grid-cols-2">

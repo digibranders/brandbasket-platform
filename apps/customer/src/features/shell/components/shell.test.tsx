@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { NuqsTestingAdapter } from "nuqs/adapters/testing";
 import type { ReactNode } from "react";
@@ -97,6 +97,15 @@ describe("AppShell", () => {
     expect(screen.getAllByRole("option").map((option) => option.textContent)).toEqual(["Website: Pages"]);
     await userEvent.keyboard("{Enter}");
     expect(navigation.push).toHaveBeenCalledWith("/website/pages");
+  });
+
+  it("opens search ready to type, with focus in the search box", async () => {
+    shell();
+    act(() => {
+      fireEvent.keyDown(window, { key: "k", metaKey: true });
+    });
+    const box = await screen.findByRole("combobox", { name: "Search pages" });
+    await waitFor(() => expect(document.activeElement).toBe(box));
   });
 
   it("says when nothing matches", async () => {

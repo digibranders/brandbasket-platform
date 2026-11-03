@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition, type FormEvent, type ReactNode } from "react";
+import { useEffect, useState, useTransition, type FormEvent, type ReactNode } from "react";
 import { PageHeader, Panel, SaveBar } from "@/components";
 import type { ActionResult } from "@/lib/action-result";
 import { formatDate, formatNumber } from "@/lib/format";
@@ -45,6 +45,13 @@ function useSaveForm<T>(initial: T, save: (fields: T) => Promise<ActionResult>) 
   const [result, setResult] = useState<ActionResult | null>(null);
   const [pending, startTransition] = useTransition();
   const dirty = JSON.stringify(fields) !== JSON.stringify(baseline);
+  // Leaving with unsaved changes asks first, as the old author and category editors did.
+  useEffect(() => {
+    if (!dirty) return;
+    const onBeforeUnload = (event: BeforeUnloadEvent) => event.preventDefault();
+    window.addEventListener("beforeunload", onBeforeUnload);
+    return () => window.removeEventListener("beforeunload", onBeforeUnload);
+  }, [dirty]);
   const submit = (event: FormEvent) => {
     event.preventDefault();
     const sent = fields;
