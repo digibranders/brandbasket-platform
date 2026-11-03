@@ -1,4 +1,4 @@
-import { countIncludedEdits, findSiteHealthFacts, listActivityEvents, listRequestNeeds, listWaitingOnYou } from "@brandbasket/db";
+import { countIncludedEdits, findSiteHealthFacts, listActivityEvents, listDeliverablesForBusiness, listMonthlySnapshots, listRequestItems, listRequestNeeds, listWaitingOnYou } from "@brandbasket/db";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { loadChecklistSummary } from "@/features/checklist/loader";
 import { callsOpenFor, readBookingUrl, readKickoffFacts, readMissedKickoffAt, readTeamCalls } from "@/features/calls/server/calls";
@@ -24,6 +24,7 @@ vi.mock("@brandbasket/db", async (importOriginal) => ({
   listDeliverablesForBusiness: vi.fn(async () => []),
   listEnquiries: vi.fn(async () => []),
   listMonthlySnapshots: vi.fn(async () => []),
+  listRequestItems: vi.fn(async () => []),
   listRequestNeeds: vi.fn(),
   listWaitingOnYou: vi.fn(),
   listWaitingPosts: vi.fn(async () => []),
@@ -32,14 +33,15 @@ vi.mock("@brandbasket/db", async (importOriginal) => ({
 
 const NOW = new Date("2026-11-20T06:30:00.000Z");
 
-function customer(overrides: { status?: "paid" | "unpaid" | "lapsed"; services?: readonly string[]; hasWebsite?: boolean } = {}) {
+function customer(overrides: { status?: "paid" | "unpaid" | "lapsed"; services?: readonly string[]; hasWebsite?: boolean; role?: string; renewalFailingUntil?: Date | null } = {}) {
   return {
     user: { id: "u1", name: "Anand Verma", email: "anand@example.test" },
     tenant: {},
     businessId: "b1",
-    role: "owner",
+    role: overrides.role ?? "owner",
+    currency: "INR",
     services: overrides.services ?? ["website", "social"],
-    billing: { status: overrides.status ?? "paid", paymentUnderReview: false, hasAccess: (overrides.status ?? "paid") === "paid", hasWebsite: overrides.hasWebsite ?? true, subscription: null, plan: null },
+    billing: { status: overrides.status ?? "paid", paymentUnderReview: false, hasAccess: (overrides.status ?? "paid") === "paid", hasWebsite: overrides.hasWebsite ?? true, subscription: null, plan: null, renewalFailingUntil: overrides.renewalFailingUntil ?? null },
   } as never;
 }
 
@@ -57,6 +59,9 @@ beforeEach(() => {
   vi.mocked(listWaitingOnYou).mockResolvedValue([]);
   vi.mocked(listActivityEvents).mockResolvedValue([]);
   vi.mocked(countIncludedEdits).mockResolvedValue(1);
+  vi.mocked(listRequestItems).mockResolvedValue([]);
+  vi.mocked(listDeliverablesForBusiness).mockResolvedValue([]);
+  vi.mocked(listMonthlySnapshots).mockResolvedValue([]);
 });
 
 describe("loadHomeState", () => {
@@ -122,9 +127,46 @@ describe("the panels", () => {
     expect(loaded.ok).toBe(false);
   });
 
+  it("puts a failing renewal first in Needs you, with the day the website could go offline", async () => {
+    const loaded = await loadNeedsYou(customer({ renewalFailingUntil: new Date("2026-11-27T00:00:00Z") }), { ok: true, data: { items: [], done: 0, total: 0 } }, NOW);
+    expect(loaded.ok && loaded.data[0]).toMatchObject({ key: "billing", action: "Change payment method", hint: "We will try again. Your website stays online until Fri 27 Nov." });
+  });
+
+  it("does not read Needs you for a viewer, who can act on none of it", async () => {
+    const panels = await loadHomePanels(customer({ role: "viewer" }), view("ongoing"), NOW);
+    expect(panels.needs).toBeNull();
+    expect(listRequestNeeds).not.toHaveBeenCalled();
+    expect(panels.activity?.ok).toBe(true);
+  });
+
+  it("lists published posts, finished search work and requests that are done in What we did", async () => {
+    vi.mocked(listDeliverablesForBusiness).mockImplementation(async (_tx, _business, input) =>
+      input.service === "social"
+        ? ([{ id: "p1", kind: "post", title: "Diwali offer", status: "published", publishedAt: new Date("2026-11-18T05:00:00Z") }] as never)
+        : ([{ id: "s1", kind: "page", title: "Contact page", status: "published", publishedAt: new Date("2026-11-17T05:00:00Z") }] as never),
+    );
+    vi.mocked(listRequestItems).mockResolvedValue([
+      { ticketId: "t1", subject: "Change hours", ticketStatus: "resolved", category: "website_change", lastActivityAt: new Date("2026-11-16T05:00:00Z"), unread: false, change: null },
+    ] as never);
+    const panels = await loadHomePanels(customer({ services: ["website", "social", "search"] }), view("ongoing"), NOW);
+    expect(panels.activity?.ok && panels.activity.data.map((row) => row.label)).toEqual(["Published a post: Diwali offer", "Improved a page: Contact page", "Finished your request: Change hours"]);
+  });
+
+  it("gives the strip Leads from ads and Google page one only when they were measured", async () => {
+    vi.mocked(listMonthlySnapshots).mockResolvedValue([
+      { service: "social", adEnquiries: 5, adSpendCents: null, adBudgetCents: null, updatedAt: NOW },
+      { service: "search", keywordsPageOne: 10, keywordsPageOnePrev: 8, updatedAt: NOW },
+    ] as never);
+    const panels = await loadHomePanels(customer({ services: ["website", "social", "search"] }), view("ongoing"), NOW);
+    expect(panels.figures).toEqual({ ok: true, data: { month: "November", adLeads: { count: 5, updatedAt: NOW }, pageOne: expect.objectContaining({ count: 10, diff: 2 }) } });
+    vi.mocked(listMonthlySnapshots).mockResolvedValue([{ service: "social", adEnquiries: null, adSpendCents: null, adBudgetCents: null, updatedAt: NOW }] as never);
+    const none = await loadHomePanels(customer({ services: ["website", "social", "search"] }), view("ongoing"), NOW);
+    expect(none.figures).toEqual({ ok: true, data: { month: "November", adLeads: null, pageOne: null } });
+  });
+
   it("reads nothing but the booking page for a payment task", async () => {
     const panels = await loadHomePanels(customer({ status: "unpaid" }), view("payment_required"), NOW);
-    expect(panels).toMatchObject({ checklist: null, needs: null, enquiries: null, services: null, activity: null, coming: null, included: null });
+    expect(panels).toMatchObject({ checklist: null, needs: null, enquiries: null, figures: null, services: null, activity: null, coming: null, included: null });
     expect(listRequestNeeds).not.toHaveBeenCalled();
   });
 

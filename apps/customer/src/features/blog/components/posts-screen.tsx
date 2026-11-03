@@ -64,13 +64,11 @@ export function PostsScreen({ posts, usage, canWrite, hasPages, now }: PostsScre
         {(rows) => (
           <Table>
               <TableHead>
-                <TableRow>
-                  <TableHeader>Title</TableHeader>
-                  <TableHeader>Status</TableHeader>
-                  <TableHeader hideOnPhone>Published</TableHeader>
-                  <TableHeader hideOnPhone>Category</TableHeader>
-                  <TableHeader hideOnPhone>Last edited</TableHeader>
-                </TableRow>
+                <TableHeader>Title</TableHeader>
+                <TableHeader>Status</TableHeader>
+                <TableHeader hideOnPhone>Published</TableHeader>
+                <TableHeader hideOnPhone>Category</TableHeader>
+                <TableHeader hideOnPhone>Last edited</TableHeader>
               </TableHead>
               <TableBody>
                 {rows.map((post) => (

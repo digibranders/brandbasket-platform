@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { cleanup, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { loadSetupAsks } from "@/features/setup/loader";
 import { loadReportLink } from "@/features/social/loader";
@@ -74,6 +74,15 @@ describe("Local SEO + AEO", () => {
     expect(screen.getByText("We could not load the work we finished.")).toBeTruthy();
     expect(screen.queryByText("No count yet")).toBeNull();
     expect(screen.queryByText("Nothing is finished yet this month.")).toBeNull();
+  });
+
+  it("shows a viewer no setup card, whose only buttons are Add", async () => {
+    vi.mocked(loadSetupAsks).mockResolvedValue([{ key: "areas", label: "Areas you serve", hint: "Where", href: "/checklist?item=areas" }]);
+    render(await SearchScreen({ customer: customer("viewer"), now: NOW }));
+    expect(screen.queryByRole("link", { name: "Add" })).toBeNull();
+    cleanup();
+    render(await SearchScreen({ customer: customer("owner"), now: NOW }));
+    expect(screen.getByRole("link", { name: "Add" }).getAttribute("href")).toBe("/checklist?item=areas");
   });
 
   it("gives a viewer no Ask for a change, and shows the report link when staff added one", async () => {

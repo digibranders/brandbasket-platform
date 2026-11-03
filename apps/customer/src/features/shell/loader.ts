@@ -5,6 +5,7 @@ import {
   getNotificationsSeenAt,
   listActivityEvents,
   listRequestNeeds,
+  listSentReports,
   listUnreadReplies,
   listWaitingOnYou,
   withTenantScope,
@@ -40,6 +41,8 @@ export interface ShellView {
   readonly enquiries: Loaded<number>;
   /** Requests waiting on the customer, one per conversation. */
   readonly requests: Loaded<number>;
+  /** Whether a report has been sent. Read on its own: when it fails, the Reports link stays. */
+  readonly reports: Loaded<boolean>;
   readonly banner: BillingBannerState;
   readonly notifications: Loaded<BellView>;
 }
@@ -53,7 +56,7 @@ export const loadShell = cache(async (customer: CustomerContext): Promise<ShellV
   const db = getAppDb();
   const scoped = <T>(work: (tx: ScopedTransaction) => Promise<T>): Promise<T> => withTenantScope(db, tenant, work);
 
-  const [kickoff, enquiries, requests, notifications] = await Promise.all([
+  const [kickoff, enquiries, requests, reports, notifications] = await Promise.all([
     load("shell.kickoff", () =>
       scoped(async (tx): Promise<KickoffBooking | null> => {
         const booking = await findSetupCallBooking(tx, businessId);
@@ -64,6 +67,8 @@ export const loadShell = cache(async (customer: CustomerContext): Promise<ShellV
     load("shell.requests", () =>
       scoped(async (tx) => requestsWaiting(await listRequestNeeds(tx, user.id, businessId), await listWaitingOnYou(tx, user.id, businessId))),
     ),
+    // shortcut: reads every sent report to learn if there is one; add a limit-1 query in the db package when a business holds hundreds.
+    load("shell.reports", () => scoped(async (tx) => (await listSentReports(tx, businessId)).length > 0)),
     load("shell.notifications", () =>
       scoped(async (tx) =>
         bellView({
@@ -88,6 +93,7 @@ export const loadShell = cache(async (customer: CustomerContext): Promise<ShellV
     kickoffOver: kickoffOverOrAssumed(kickoff, new Date()),
     enquiries,
     requests,
+    reports,
     banner: billingBannerState(customer.billing),
     notifications,
   };

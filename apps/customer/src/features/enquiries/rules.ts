@@ -217,7 +217,7 @@ export interface Summary {
   readonly oldestWaiting: Date | null;
   /** Enquiries in the last 30 days, counted taps and Google calls included. */
   readonly received: number;
-  /** Against the 30 days before; null when the rows read do not reach back that far. */
+  /** Against the 30 days before; null when the rows read do not reach back that far, or the 30 days before had none. */
   readonly receivedChange: number | null;
   readonly won: number;
   readonly bestSource: { readonly group: SourceGroup; readonly count: number } | null;
@@ -228,6 +228,14 @@ export interface Summary {
 }
 
 const sum = (rows: readonly EnquiryRow[]): number => rows.reduce((total, row) => total + row.count, 0);
+
+/**
+ * The change against the period before, or null when there is nothing to compare: an earlier period with no data is not a
+ * baseline ("63 +63"), and a bare 0 change says nothing (plan 60, section 12).
+ */
+export function changeAgainst(current: number, previous: number): number | null {
+  return previous > 0 && current !== previous ? current - previous : null;
+}
 
 /**
  * The figures above the list. `rows` are every row read (newest first); `complete` says the read reached back as far as it
@@ -249,7 +257,7 @@ export function summarise(rows: readonly EnquiryRow[], now: Date, complete: bool
     waiting: waiting.length,
     oldestWaiting: oldest,
     received: sum(recent),
-    receivedChange: complete ? sum(recent) - sum(previous) : null,
+    receivedChange: complete ? changeAgainst(sum(recent), sum(previous)) : null,
     won: recent.filter((row) => row.status === "won").length,
     bestSource: best === undefined ? null : { group: best[0], count: best[1] },
     googleCalls: byGroup.get("google") ?? 0,
@@ -425,7 +433,7 @@ export const CONVERSATION_NOTICES = {
 export type ConversationNoticeKey = keyof typeof CONVERSATION_NOTICES;
 
 /** Who a message is from, in the words the view uses. */
-export const MESSAGE_AUTHOR_LABELS = { visitor: "Visitor", assistant: "OyeChats", team: "Team" } as const;
+export const MESSAGE_AUTHOR_LABELS = { visitor: "Visitor", assistant: "Website chat", team: "Team" } as const;
 
 export const CHATBOT_NAME_MAX = 80;
 

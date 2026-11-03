@@ -16,8 +16,8 @@ import {
   PRESS_RELEASE_RETURN_VALUE,
   UPGRADE_RETURN_VALUE,
 } from "@/features/checkout/rules/charge-notices";
-import { getBillingProvider, razorpayKeyId } from "@/features/checkout/server/billing";
-import { loadTicketIdOfChangeCharge } from "@/features/checkout/server/charges";
+import { getBillingProvider, isFakeBillingProvider, razorpayKeyId } from "@/features/checkout/server/billing";
+import { loadTicketIdOfChangeCharge, startCustomerChargePayment } from "@/features/checkout/server/charges";
 import { getAppDb } from "@/lib/db";
 import { serverEnv } from "@/lib/env";
 import { formatMoney } from "@/lib/format";
@@ -38,12 +38,15 @@ const RETURN_MARK: Readonly<Partial<Record<string, string>>> = {
  * Opens Razorpay's window on the order the Pay button opened for one of the customer's charges (ported from apps/platform
  * app/app-host/billing/charges/[chargeId]/pay/page.tsx; the old address redirects here). It only reads: the order id comes from
  * the customer's own charge row, read through row-level security, never from the address. Reloading reopens the same order.
+ * With the fake provider (local and staging) no money moves, so the page opens the fake payment itself and goes to its test
+ * page, as Pay on Plan & billing does; a quote's Pay links here.
  */
 export default async function ChargePayPage({ params }: { readonly params: Promise<{ readonly id: string }> }) {
   // The provider comes from the environment of the running server, so this page is never built ahead of time.
   await connection();
-  if (getBillingProvider().name !== "razorpay") notFound();
   const { id } = await params;
+  if (isFakeBillingProvider()) await openFakePayment(id);
+  if (getBillingProvider().name !== "razorpay") notFound();
   if (!z.uuid().safeParse(id).success) notFound();
   const { tenant, user } = await requireCustomer();
   const charge = await withTenantScope(getAppDb(), tenant, (tx) => findChargeForBusiness(tx, tenant.businessId, id));
@@ -70,4 +73,26 @@ export default async function ChargePayPage({ params }: { readonly params: Promi
       dismissHref={chargeReturnHref(charge.kind, "failed", ticketId)}
     />
   );
+}
+
+/** Opens the fake provider's payment for one of the customer's charges and goes to its test page. Never returns. */
+async function openFakePayment(id: string): Promise<never> {
+  if (!z.uuid().safeParse(id).success) notFound();
+  const customer = await requireCustomer();
+  // A viewer pays nothing (the test page refuses them too).
+  if (customer.role === "viewer") notFound();
+  const started = await startCustomerChargePayment(customer, id);
+  switch (started.kind) {
+    case "redirect":
+      redirect(started.url);
+    case "not-open":
+      redirect(chargeNoticeHref("not-open"));
+    case "not-found":
+    case "razorpay":
+      notFound();
+    default: {
+      const unhandled: never = started;
+      throw new Error(`Unhandled charge payment start: ${JSON.stringify(unhandled)}`);
+    }
+  }
 }

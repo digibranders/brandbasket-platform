@@ -26,6 +26,17 @@ describe("ApprovalsPanel", () => {
     await waitFor(() => expect(approvePostsAction).toHaveBeenCalledWith(["b"]));
   });
 
+  it("has one primary button: Approve all, with each row's Approve secondary", () => {
+    show([card("a"), card("b")]);
+    const primary = screen.getAllByRole("button").filter((button) => button.className.includes("bg-primary"));
+    expect(primary.map((button) => button.textContent)).toEqual(["Approve all 2"]);
+  });
+
+  it("makes Approve primary when it is the only post", () => {
+    show([card("a")]);
+    expect(screen.getByRole("button", { name: "Approve" }).className).toContain("bg-primary");
+  });
+
   it("approves every shown post with Approve all", async () => {
     vi.mocked(approvePostsAction).mockResolvedValue({ ok: true, data: { outcome: "approved", approved: 2 } });
     show([card("a"), card("b")]);

@@ -42,6 +42,13 @@ describe("navModel", () => {
     expect(navModel(LIVE).foot.map((entry) => entry.label)).toEqual(["Plan & billing", "Settings", "Help & calls"]);
   });
 
+  it("shows Reports only after a report has been sent, and keeps it when that could not be read", () => {
+    const business = (input: NavInput) => shape(input)[2]?.[1];
+    expect(business({ ...LIVE, reports: false })).toEqual(["Business profile"]);
+    expect(business({ ...LIVE, reports: true })).toEqual(["Reports", "Business profile"]);
+    expect(business(LIVE)).toEqual(["Reports", "Business profile"]);
+  });
+
   it("is reduced to Home, Requests, Business profile and the foot before the kickoff call", () => {
     const before = { ...LIVE, kickoffOver: false };
     expect(shape(before)).toEqual([
@@ -188,9 +195,14 @@ describe("billing banner", () => {
     expect(billingBannerState({ status: "unpaid", renewalFailingUntil: null, paymentUnderReview: false })).toBeNull();
   });
 
-  it("is left off Home, which places its own", () => {
-    expect(showsBillingBanner("/")).toBe(false);
-    expect(showsBillingBanner("/requests")).toBe(true);
+  it("is left off Home for a lapsed plan or a payment under review, which Home places its own task for", () => {
+    expect(showsBillingBanner("/", { kind: "lapsed" })).toBe(false);
+    expect(showsBillingBanner("/", { kind: "under-review" })).toBe(false);
+    expect(showsBillingBanner("/requests", { kind: "lapsed" })).toBe(true);
+  });
+
+  it("stays on Home while a renewal is failing", () => {
+    expect(showsBillingBanner("/", { kind: "renewal-failing", until: new Date("2026-11-10T00:00:00Z") })).toBe(true);
   });
 });
 

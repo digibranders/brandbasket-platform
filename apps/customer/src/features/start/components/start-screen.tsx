@@ -21,10 +21,7 @@ export function StartScreen({ view }: { readonly view: StartView }) {
         {view.step.kind === "question" ? (
           <>
             <div className="flex flex-col gap-2">
-              <div className="flex items-center justify-between gap-3">
-                <p className="type-meta">
-                  Question {formatOutOf(view.step.question.number, view.step.question.total)}
-                </p>
+              <div className="flex items-center justify-end gap-3">
                 <ContinueButton services={basket} variant="ghost" size="sm">
                   Skip for now
                 </ContinueButton>

@@ -152,6 +152,21 @@ describe("Social & Ads Overview", () => {
     expect(screen.getByText("We could not load what we need from you.")).toBeTruthy();
   });
 
+  it("shows a viewer no setup card, whose only buttons are Add", async () => {
+    vi.mocked(loadPosts).mockResolvedValue({ month: "November", posts: [] });
+    vi.mocked(loadSetupAsks).mockResolvedValue([{ key: "accounts", label: "Instagram and Facebook pages", hint: "Links", href: "/checklist?item=accounts" }]);
+    wrap(await SocialOverview({ customer: customer({ role: "viewer" }), now: NOW }));
+    expect(screen.queryByText("We need one thing from you")).toBeNull();
+    expect(screen.queryByRole("link", { name: "Add" })).toBeNull();
+  });
+
+  it("says the ad leads are reported by us, as they are not the enquiries in the list", async () => {
+    vi.mocked(loadPosts).mockResolvedValue({ month: "November", posts: [] });
+    vi.mocked(loadAds).mockResolvedValue({ ads: adsView({ snapshot: FIGURES, adCreditCents: 0, currency: "INR" }), month: "November" });
+    wrap(await SocialOverview({ customer: customer(), now: NOW }));
+    expect(screen.getByText(/From your ads this month \(reported by us\)/)).toBeTruthy();
+  });
+
   it("links the monthly report only when staff added an https one", async () => {
     vi.mocked(loadPosts).mockResolvedValue({ month: "November", posts: [] });
     vi.mocked(loadReportLink).mockResolvedValue("https://example.com/report");

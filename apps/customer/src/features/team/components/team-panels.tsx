@@ -63,7 +63,7 @@ function InvitesPanel({ invites, now }: { readonly invites: Loaded<readonly Pend
         <Table aria-label="Invitations waiting for a reply">
           <TableHead>
             <TableHeader>Email</TableHeader>
-            <TableHeader>Role</TableHeader>
+            <TableHeader hideOnPhone>Role</TableHeader>
             <TableHeader>Status</TableHeader>
             <TableHeader align="end">
               <span className="sr-only">Actions</span>
@@ -72,8 +72,8 @@ function InvitesPanel({ invites, now }: { readonly invites: Loaded<readonly Pend
           <TableBody>
             {rows.map((invite) => (
               <TableRow key={invite.id}>
-                <TableCell className="type-sub">{invite.email}</TableCell>
-                <TableCell>{roleLabel(invite.role)}</TableCell>
+                <TableCell className="type-sub break-all">{invite.email}</TableCell>
+                <TableCell hideOnPhone>{roleLabel(invite.role)}</TableCell>
                 <TableCell>
                   {invite.status === "open" ? <Badge tone="info">{`Expires ${formatDate(invite.expiresAt, now)}`}</Badge> : <Badge tone="warn">Expired</Badge>}
                 </TableCell>

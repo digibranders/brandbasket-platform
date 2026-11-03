@@ -2,7 +2,7 @@ import { firstMissing, onboardingChecklist, type ChecklistItem } from "@brandbas
 import type { OnboardingStepKey } from "@brandbasket/shared/lib/onboarding/steps";
 import type { Service } from "@/lib/guard-rules";
 import { checklistInputFrom, type OnboardingSnapshot } from "./rules-snapshot";
-import { doneSetupKeys, type SetupKey } from "./setup-rules";
+import { doneSetupKeys, type KnownFacts, type SetupKey } from "./setup-rules";
 
 /** The things we ask for, in the order the page lists them. "offers" is not asked: it comes up on the kickoff call. */
 export const CHECKLIST_KEYS = ["business", "brand", "services", "domain", "accounts", "budget", "areas"] as const;
@@ -51,6 +51,8 @@ export function itemsFor(services: readonly Service[]): readonly ItemDefinition[
 export interface SavedAnswers {
   readonly social: Readonly<Record<string, unknown>> | undefined;
   readonly search: Readonly<Record<string, unknown>> | undefined;
+  /** What the business already has elsewhere (connected accounts, the month's ad budget): those items are done. */
+  readonly known?: KnownFacts;
 }
 
 export interface ChecklistRow {

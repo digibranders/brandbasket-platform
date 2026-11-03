@@ -253,8 +253,10 @@
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
+  /* Links are underlined so running text tells them from words by more than colour (WCAG 1.4.1). Buttons, tabs and nav items opt out with no-underline. */
   a {
     color: var(--accent-text);
+    text-decoration-line: underline;
     text-underline-offset: 3px;
   }
   :focus-visible {

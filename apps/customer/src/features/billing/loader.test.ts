@@ -43,16 +43,17 @@ function customerWith(role: "owner" | "editor", billing: Record<string, unknown>
 const line = (addOn: string, list: number, discount: number) =>
   ({ addOn, status: "active", endRequestedAt: null, listAmountCents: list, offerDiscountAmountCents: discount, pendingOfferDiscountAmountCents: null, taxRateBasisPoints: 1_800, activatedAt: new Date("2026-08-27T06:00:00Z"), billedFrom: new Date("2026-08-27T06:00:00Z") }) as unknown as BundledAddOn;
 const LINES = [line("managed-website", 299_900, 29_990), line("digital-growth", 999_900, 99_910)];
-const price = (charged: number) => ({ currency: "INR", listCents: charged, discountCents: 0, offerCents: 0, netCents: charged, taxRateBasisPoints: 1_800, chargedCents: charged }) as const;
+const price = (charged: number, list: number = charged) =>
+  ({ currency: "INR", listCents: list, discountCents: list - charged, offerCents: list - charged, netCents: charged, taxRateBasisPoints: 1_800, chargedCents: charged }) as const;
 
 const PAGE: AddOnsPage = {
   currency: "INR",
   lines: LINES,
   keptStartsOn: null,
   addOns: [
-    { kind: "included", addOn: "managed-website", price: price(269_910), endsOn: null, nextBillingOn: NEXT, joinsOn: null, keepable: false, drop: dropPreview({ staying: LINES, dropping: "managed-website", forfeited: false, currency: "INR" }) },
-    { kind: "included", addOn: "digital-growth", price: price(899_990), endsOn: null, nextBillingOn: NEXT, joinsOn: null, keepable: false, drop: dropPreview({ staying: LINES, dropping: "digital-growth", forfeited: false, currency: "INR" }) },
-    { kind: "available", addOn: "local-seo-aeo", price: price(1_999_920), offer: { kind: "quote", chargeCents: 1_599_936, daysLeft: 24, nextRenewalCents: 3_039_800, renewsOn: NEXT } },
+    { kind: "included", addOn: "managed-website", price: price(269_910, 299_900), endsOn: null, nextBillingOn: NEXT, joinsOn: null, keepable: false, drop: dropPreview({ staying: LINES, dropping: "managed-website", forfeited: false, currency: "INR" }) },
+    { kind: "included", addOn: "digital-growth", price: price(899_990, 999_900), endsOn: null, nextBillingOn: NEXT, joinsOn: null, keepable: false, drop: dropPreview({ staying: LINES, dropping: "digital-growth", forfeited: false, currency: "INR" }) },
+    { kind: "available", addOn: "local-seo-aeo", price: price(1_999_920, 2_499_900), offer: { kind: "quote", chargeCents: 1_599_936, daysLeft: 24, nextRenewalCents: 3_039_800, renewsOn: NEXT } },
   ],
 };
 
@@ -72,6 +73,8 @@ describe("loadBillingOverview", () => {
       ["Social & Ads", "Active", "cancel"],
       ["Local SEO + AEO", "Not added", "add"],
     ]);
+    // Each service at its list price: the package discount shows once, in the bill.
+    expect(rows.map((row) => row.price)).toEqual(["₹2,999", "₹9,999", "₹24,999"]);
     expect(rows[2]?.action).toEqual({ kind: "add", quote: "₹15,999.36 today for the 24 days left this month, then ₹30,398 a month from Fri 27 Nov, GST included." });
     expect(cancel?.options.find((option) => option.addOn === "digital-growth")?.copy.monthly).toBe("From Fri 27 Nov you pay ₹2,999 a month, GST included.");
     expect(bill?.total).toBe("₹11,699");

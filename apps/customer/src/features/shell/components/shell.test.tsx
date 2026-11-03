@@ -25,6 +25,7 @@ const VIEW: ShellView = {
   kickoffOver: true,
   enquiries: { ok: true, data: 4 },
   requests: { ok: false, error: { at: new Date("2026-11-03T05:00:00Z") } },
+  reports: { ok: true, data: true },
   banner: { kind: "lapsed" },
   notifications: {
     ok: true,

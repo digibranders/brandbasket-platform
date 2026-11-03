@@ -7,6 +7,7 @@ import { load, type Loaded } from "@/lib/loaded";
 import { Badge, Icon, LinkButton, Meter, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/ui";
 import { loadAccounts, loadAds, loadCampaigns, loadPosts, loadReach, loadReportLink, loadWaitingPostCount, type AdsData, type PostsView } from "../loader";
 import {
+  AD_LEADS_NOTE,
   ASK_FOR_CHANGE_HREF,
   campaignsUpdatedAt,
   monthCounts,
@@ -40,7 +41,7 @@ function metrics(posts: Loaded<PostsView>, ads: Loaded<AdsData>, now: Date): Met
   if (ads.ok && view !== null) {
     const source = { period: ads.data.month, ...(view.updatedAt === null ? {} : { asOf: view.updatedAt }) };
     if (view.spent !== null) out.push({ label: "Ad spend", value: view.spent, ...(view.budget === null ? {} : { unit: `of ${view.budget}` }), ...source });
-    if (view.leads !== null) out.push({ label: "Leads from ads", value: formatNumber(view.leads), ...source });
+    if (view.leads !== null) out.push({ label: "Leads from ads", value: formatNumber(view.leads), ...source, period: AD_LEADS_NOTE });
     if (view.costPerLead !== null) out.push({ label: "Cost per lead", value: view.costPerLead, ...source });
   }
   return out;
@@ -72,7 +73,7 @@ export async function SocialOverview({ customer, now = new Date() }: ScreenProps
     <>
       <SocialHeader customer={customer} current={SOCIAL_PATH} waiting={waitingIn(posts)} description={line ?? DEFAULT_DESCRIPTION} reportHref={report.ok ? report.data : null} />
       <Stack>
-        {asks.ok ? <SetupCard asks={asks.data} /> : <Panel title="What we need from you"><PanelError failure={asks.error} what="what we need from you" /></Panel>}
+        {customer.role === "viewer" ? null : asks.ok ? <SetupCard asks={asks.data} /> : <Panel title="What we need from you"><PanelError failure={asks.error} what="what we need from you" /></Panel>}
         <ApprovalsSection customer={customer} posts={posts} layout="rows" now={now} />
         {strip.length === 0 ? null : <MetricStrip label="This month" metrics={strip} />}
         {reachStrip.length === 0 ? null : <MetricStrip label="Social reach" metrics={reachStrip} />}

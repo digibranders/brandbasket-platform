@@ -24,7 +24,7 @@ export function loadRequestRows(customer: CustomerContext): Promise<Loaded<reado
   return load("requests.list", async () => requestRows(await withTenantScope(getAppDb(), tenant, (tx) => listRequestItems(tx, user.id, businessId))));
 }
 
-/** "This month: 1 of 2 included edits used.", or null when the plan has none. Its own read: a failure leaves the sentence out and is reported. */
+/** "Small edits included this month: 1 of 2 used.", or null when the plan has none. Its own read: a failure leaves the sentence out and is reported. */
 export function loadIncludedLine(customer: CustomerContext): Promise<Loaded<string | null>> {
   const { tenant, businessId, billing } = customer;
   return load("requests.included", async () => {

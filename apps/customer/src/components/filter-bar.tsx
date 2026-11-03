@@ -28,8 +28,8 @@ export function FilterBar({ label, options, defaultValue, param = "filter", sear
     parseAsString.withDefault("").withOptions({ shallow, clearOnDefault: true, limitUrlUpdates: debounce(300) }),
   );
   return (
-    <div className="flex flex-col gap-3 md:flex-row md:items-center">
-      <Chips aria-label={label} options={options} value={value} onValueChange={(next) => void setValue(next)} className="md:flex-1" />
+    <div className="flex min-w-0 max-w-full flex-col gap-3 md:flex-row md:items-center">
+      <Chips aria-label={label} options={options} value={value} onValueChange={(next) => void setValue(next)} className="min-w-0 md:flex-1" />
       {search === undefined ? null : (
         <div className="relative md:w-64">
           <Icon name="MagnifyingGlass" size="sm" className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-ink-3" />

@@ -59,6 +59,8 @@ export function ApprovalsPanel({ cards, headline, canApprove, canAsk, layout }: 
     });
   }
 
+  // One primary per state: Approve all takes it while it is shown, so each row's Approve steps down to secondary.
+  const showsApproveAll = canApprove && cards.length > 1;
   const approveButton = (card: ApprovalCard, variant: "primary" | "secondary" = "primary") =>
     canApprove ? (
       <Button size="sm" variant={variant} icon="Check" pending={pending && target === card.id} disabled={pending} onClick={() => approve([card.id], card.id)}>
@@ -72,7 +74,7 @@ export function ApprovalsPanel({ cards, headline, canApprove, canAsk, layout }: 
       meta={headline}
       flush={layout === "rows"}
       action={
-        canApprove && cards.length > 1 ? (
+        showsApproveAll ? (
           <Button size="sm" variant="primary" pending={pending && target === "all"} disabled={pending} onClick={() => approve(allIds, "all")}>
             {approveAllLabel(allIds.length)}
           </Button>
@@ -99,7 +101,7 @@ export function ApprovalsPanel({ cards, headline, canApprove, canAsk, layout }: 
               <Button size="sm" onClick={() => setOpenId(card.id)}>
                 Review
               </Button>
-              {approveButton(card)}
+              {approveButton(card, showsApproveAll ? "secondary" : "primary")}
             </li>
           ))}
         </ul>
@@ -117,7 +119,7 @@ export function ApprovalsPanel({ cards, headline, canApprove, canAsk, layout }: 
                 <Button size="sm" onClick={() => setOpenId(card.id)}>
                   Review
                 </Button>
-                {approveButton(card)}
+                {approveButton(card, showsApproveAll ? "secondary" : "primary")}
               </div>
             </li>
           ))}

@@ -27,7 +27,7 @@ const EMPTY_FILTERED: Readonly<Record<StatusFilter, { readonly title: string; re
 export interface RequestsScreenProps {
   readonly customer: CustomerContext;
   readonly rows: Loaded<readonly RequestRow[]>;
-  /** "This month: 1 of 2 included edits used.", when it could be read and the plan has them. */
+  /** "Small edits included this month: 1 of 2 used.", when it could be read and the plan has them. */
   readonly includedLine: string | null;
   readonly status: StatusFilter;
   readonly service: ServiceFilter;

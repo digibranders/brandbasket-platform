@@ -4,7 +4,7 @@ import { workingDayOf } from "@brandbasket/shared/lib/working-days";
 import { formatDate } from "@/lib/format";
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { Banner, Badge, ServiceTag } from "@/ui";
+import { Banner, ServiceTag } from "@/ui";
 import type { ChangeData, ThreadData } from "../loader";
 import {
   ASKED_STEP,
@@ -12,7 +12,7 @@ import {
   includedEditLine,
   KIND_LABELS,
   NEW_REQUEST_PATH,
-  lookedAfterLine,
+  LOOKED_AFTER_BY,
   nextStep,
   requestRows,
   stepperRows,
@@ -62,11 +62,11 @@ export function RequestDetail({ customer, ticketId, thread, change, notice, now 
   if (ticket !== null && row !== undefined) {
     details.push(
       ["Service", row.service === null ? row.kindLabel : <ServiceTag service={row.service} />],
-      ["Status", row.status === "closed" ? <Badge>Closed</Badge> : <StatusBadge kind="request" status={row.status} />],
-      ["Looked after by", lookedAfterLine(ticket.assigneeStaffId !== null)],
+      ["Status", <StatusBadge key="status" kind="request" status={row.status} />],
+      ["Looked after by", LOOKED_AFTER_BY],
     );
     if (loadedChange !== null && loadedChange.change.page !== null) details.push(["Page", loadedChange.change.page]);
-    if (loadedChange !== null) details.push(["Included edits", includedEditLine(loadedChange.change.coverage)]);
+    if (loadedChange !== null) details.push(["Small edits included this month", includedEditLine(loadedChange.change.coverage)]);
   }
 
   return (

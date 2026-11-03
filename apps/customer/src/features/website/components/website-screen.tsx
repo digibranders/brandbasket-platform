@@ -175,10 +175,8 @@ export function WebsiteScreen({ context, core, overview, pages, notice, feedback
             >
               <Table>
                 <TableHead>
-                  <TableRow>
-                    <TableHeader>Address</TableHeader>
-                    <TableHeader>Last seen</TableHeader>
-                  </TableRow>
+                  <TableHeader>Address</TableHeader>
+                  <TableHeader>Last seen</TableHeader>
                 </TableHead>
                 <TableBody>
                   {pages.data.slice(0, TOP_PAGES).map((page) => (

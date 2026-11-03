@@ -1,4 +1,4 @@
-import { randomBytes } from "node:crypto";
+import { createHash, randomBytes } from "node:crypto";
 import { and, eq } from "drizzle-orm";
 import { createAuth, createVerifiedEmailAccountWithGrant } from "@brandbasket/auth";
 import { createDatabase, type Database } from "../src/client";
@@ -156,7 +156,8 @@ async function seedCustomer(
     businessId,
     planId: plan.id,
     provider: "fake",
-    providerSubscriptionId: `seed_${slug}`,
+    // An id the fake provider accepts; seed-v4-states.ts renames older seed_<slug> ids to the same value.
+    providerSubscriptionId: `fake_sub_${createHash("sha1").update(`seed_${slug}`).digest("hex").slice(0, 24)}`,
     replacing: null,
     now,
     bundledAddOns: [WEBSITE_LINE],

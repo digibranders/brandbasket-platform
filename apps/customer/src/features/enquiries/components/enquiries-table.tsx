@@ -9,7 +9,7 @@ import { ConversationView } from "./conversation-view";
 import { EnquiryForm } from "./enquiry-form";
 
 const ICON_LINK =
-  "inline-flex size-icon-button items-center justify-center rounded-control text-ink-3 transition-colors duration-100 hover:bg-surface-hover hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring";
+  "inline-flex size-icon-button items-center justify-center rounded-control text-ink-3 no-underline transition-colors duration-100 hover:bg-surface-hover hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring";
 
 function RowActions({ row }: { readonly row: EnquiryRow }) {
   const tel = telHref(row.phone);

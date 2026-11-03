@@ -47,14 +47,15 @@ export function BusinessForm({ values, phone, countries, hours, readOnlyReason }
       </FormField>
 
       <SectionLabel>How customers reach you</SectionLabel>
-      <FormField name="phone" label="Phone number" nativeLabel={false}>
-        <div className="flex gap-2">
-          <div className="w-40 shrink-0">
-            <Select aria-label="Country code" name={PHONE_COUNTRY_FIELD} options={countries} defaultValue={phone.country} />
-          </div>
+      {/* Two Fields, not one: a Field names every control inside it after its own name, which posted the code as "phone". */}
+      <div className="flex gap-2">
+        <FormField name={PHONE_COUNTRY_FIELD} label="Country code" nativeLabel={false} className="w-40 shrink-0">
+          <Select name={PHONE_COUNTRY_FIELD} options={countries} defaultValue={phone.country} />
+        </FormField>
+        <FormField name="phone" label="Phone number" className="flex-1">
           <Input name="phone" type="tel" inputMode="tel" autoComplete="tel-national" defaultValue={phone.number} />
-        </div>
-      </FormField>
+        </FormField>
+      </div>
       <FormField name="email" label="Email">
         <Input name="email" type="email" defaultValue={values.email} autoComplete="email" />
       </FormField>

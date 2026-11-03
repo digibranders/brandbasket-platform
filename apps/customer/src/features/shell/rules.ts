@@ -68,6 +68,8 @@ export interface NavInput {
   readonly enquiries?: number;
   /** Requests waiting on the customer; undefined when not known. */
   readonly requests?: number;
+  /** A report has been sent (plan 60, section 9: Reports shows after the first report month). Undefined when not known: the link stays. */
+  readonly reports?: boolean;
 }
 
 const SERVICE_LINKS: Readonly<Record<Service, Omit<NavLink, "bought" | "children">>> = {
@@ -102,7 +104,8 @@ const FOOT: readonly NavLink[] = [
 /**
  * The sidebar (plan 60, section 9, and the mock): Home, Enquiries, Requests; then Services; then Business; the foot always.
  * Before the kickoff call: Home, Requests, Business profile and the foot. Every service shows after kickoff: one not on the
- * plan is marked `bought: false` and still links to its page. A count that could not be read hides only the number.
+ * plan is marked `bought: false` and still links to its page. A count that could not be read hides only the number. Reports
+ * waits for the first sent report; when that could not be read it shows, so a failed read never hides the link.
  */
 export function navModel(input: NavInput): NavModel {
   const requests = withCount(REQUESTS, input.requests);
@@ -117,7 +120,7 @@ export function navModel(input: NavInput): NavModel {
     sections: [
       { label: null, links: [HOME, withCount(ENQUIRIES, input.enquiries), requests] },
       { label: "Services", links: services },
-      { label: "Business", links: [REPORTS, BUSINESS] },
+      { label: "Business", links: input.reports === false ? [BUSINESS] : [REPORTS, BUSINESS] },
     ],
     foot: FOOT,
   };
@@ -242,9 +245,13 @@ export function billingBannerState(billing: Pick<CustomerBilling, "status" | "re
   return null;
 }
 
-/** Home places its own billing task, so the banner is left off "/" exactly (apps/platform hidden-on-paths). */
-export function showsBillingBanner(pathname: string): boolean {
-  return pathname !== SHELL_PATHS.home;
+/**
+ * Home places its own task for a lapsed plan or a payment under review, so the banner is left off "/" exactly for those
+ * (apps/platform hidden-on-paths). A failing renewal has no state of its own on Home, only a Needs you line, so the banner
+ * stays there too.
+ */
+export function showsBillingBanner(pathname: string, state: NonNullable<BillingBannerState>): boolean {
+  return pathname !== SHELL_PATHS.home || state.kind === "renewal-failing";
 }
 
 /** What the bell is built from, read for the signed-in person and business. */

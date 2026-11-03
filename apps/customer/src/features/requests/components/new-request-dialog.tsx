@@ -30,7 +30,7 @@ export interface NewRequestDialogProps {
   /** What the box starts with when the dialog was opened from a post. */
   readonly defaultBody: string;
   readonly fromPreview: boolean;
-  /** "This month: 1 of 2 included edits used.", or null. */
+  /** "Small edits included this month: 1 of 2 used.", or null. */
   readonly includedLine: string | null;
 }
 

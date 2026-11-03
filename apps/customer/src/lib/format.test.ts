@@ -38,6 +38,15 @@ describe("dates and times, India time", () => {
     expect(formatDate(new Date("2025-11-03T05:30:00.000Z"), NOW)).toBe("Mon 3 Nov 2025");
   });
 
+  it("writes every month as three letters, September included", () => {
+    const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    months.forEach((month, index) => {
+      const date = new Date(Date.UTC(2026, index, 15, 6));
+      expect(formatDate(date, date)).toMatch(new RegExp(`^[A-Z][a-z]{2} 15 ${month}$`));
+    });
+    expect(formatDate(new Date("2026-09-24T06:00:00.000Z"), NOW)).toBe("Thu 24 Sep");
+  });
+
   it("uses the India day, not the server's", () => {
     // 20:00 UTC on 2 Nov is 01:30 on 3 Nov in India.
     expect(formatDate(new Date("2026-11-02T20:00:00.000Z"), NOW)).toBe("Tue 3 Nov");

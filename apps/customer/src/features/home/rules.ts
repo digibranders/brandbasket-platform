@@ -3,7 +3,8 @@ import { dayKey } from "@brandbasket/shared/lib/call-slots";
 import { CUSTOMER_STAGE_HEADLINE } from "@brandbasket/shared/lib/project-customer-line";
 import { andList, promiseDates } from "@/features/calls/rules";
 import { needsYouFrom, waitingOnYouFrom, type NeedsYouRow } from "@/features/requests/rules";
-import { APP_TIME_ZONE, formatDate, formatDateTime, formatTime } from "@/lib/format";
+import { ROUNDS_USED_UP, roundsUsedUp } from "@/features/website/rules/progress";
+import { APP_TIME_ZONE, formatDate, formatDateTime, formatQuantity, formatTime } from "@/lib/format";
 import type { Service } from "@/lib/guard-rules";
 import { SERVICE_NAMES } from "@/ui/service-tag";
 
@@ -220,13 +221,33 @@ export interface NeedsYouInput {
   readonly waiting: readonly WaitingOnYou[];
   /** Open checklist items. Only the blocking Social and Search ones are asked here; website items are not. */
   readonly checklist: readonly { readonly key: string; readonly label: string; readonly service: Service; readonly done: boolean; readonly href: string }[];
+  /** Set while the last renewal payment is failing: the day the website goes offline if payments keep failing, as words. */
+  readonly renewalFailing?: { readonly until: string } | null;
 }
 
+/** Where a failing renewal sends the customer. */
+export const PAYMENT_METHOD_PATH = "/billing/payment";
+
 /**
- * Everything waiting on the customer, most pressing first: posts to approve, then quotes to accept or pay and changes to
- * check, then conversations waiting for a reply, then the setup questions the Social and Search work cannot start without.
+ * Everything waiting on the customer, most pressing first: a payment that is failing, then posts to approve, quotes to accept
+ * or pay and changes to check, then conversations waiting for a reply, then the setup questions the Social and Search work
+ * cannot start without.
  */
 export function needsYou(input: NeedsYouInput): readonly NeedsYouItem[] {
+  const failing = input.renewalFailing ?? null;
+  const billing: NeedsYouItem[] =
+    failing === null
+      ? []
+      : [
+          {
+            key: "billing",
+            label: "We could not take your last payment",
+            hint: `We will try again. Your website stays online until ${failing.until}.`,
+            service: null,
+            href: PAYMENT_METHOD_PATH,
+            action: "Change payment method",
+          },
+        ];
   const posts: NeedsYouItem[] =
     input.posts.count > 0 && input.posts.by !== null
       ? [{ key: "posts", label: input.posts.count === 1 ? "Approve 1 post" : `Approve ${String(input.posts.count)} posts`, hint: `By ${input.posts.by}`, service: "social", href: "/social/content", action: "Review" }]
@@ -236,7 +257,18 @@ export function needsYou(input: NeedsYouInput): readonly NeedsYouItem[] {
   const setup = input.checklist
     .filter((item) => !item.done && BLOCKING_CHECKLIST_KEYS.includes(item.key))
     .map((item): NeedsYouItem => ({ key: `setup-${item.key}`, label: item.label, hint: "We need this to start", service: item.service, href: item.href, action: "Add" }));
-  return [...posts, ...requests, ...replies, ...setup];
+  return [...billing, ...posts, ...requests, ...replies, ...setup];
+}
+
+/**
+ * The line under the overview's greeting. "Everything is running" is said only while no payment is failing; a failing renewal
+ * is the first thing that needs the customer.
+ */
+export function overviewLede(items: readonly Pick<NeedsYouItem, "key">[]): string {
+  const count = items.length;
+  if (count === 0) return "Everything is running. Nothing needs you right now.";
+  const needs = count === 1 ? "1 thing needs you." : `${String(count)} things need you.`;
+  return items.some((item) => item.key === "billing") ? needs : `Everything is running. ${needs}`;
 }
 
 // ---- What we did ----
@@ -249,20 +281,40 @@ export interface ActivityRow {
   readonly service: Service | null;
 }
 
-/** Staff updates plus the two dated facts already stored (preview sent, went live), newest first. */
+/** Staff updates, work finished (posts, search work, requests) and the two dated facts already stored (preview sent, went live), newest first. */
 export function activityRows(input: {
   readonly events: readonly { readonly id: string; readonly occurredAt: Date; readonly title: string; readonly service: Service | null }[];
   readonly previewSentAt: Date | null;
   readonly launchedAt: Date | null;
   readonly hostname: string | null;
+  /** Work already stored elsewhere: published posts, finished search work, requests marked done. */
+  readonly finished?: readonly ActivityRow[];
   readonly limit: number;
 }): ActivityRow[] {
   const rows: ActivityRow[] = input.events.map((event) => ({ key: event.id, at: event.occurredAt, label: event.title, service: event.service }));
+  rows.push(...(input.finished ?? []));
   if (input.previewSentAt !== null) rows.push({ key: "preview", at: input.previewSentAt, label: "Your website preview was sent to you", service: "website" });
   if (input.launchedAt !== null) {
     rows.push({ key: "launched", at: input.launchedAt, label: input.hostname === null ? "Your website went live" : `Your website went live on ${input.hostname}`, service: "website" });
   }
   return rows.sort((a, b) => b.at.getTime() - a.at.getTime() || b.key.localeCompare(a.key)).slice(0, input.limit);
+}
+
+/** A published post or a finished page or listing, as a What we did line. `publishedAt` is stored on every published row. */
+export function finishedDeliverableRows(
+  rows: readonly { readonly id: string; readonly kind: "post" | "page" | "listing"; readonly title: string; readonly status: string; readonly publishedAt: Date | null }[],
+): ActivityRow[] {
+  const WORDS = { post: "Published a post", page: "Improved a page", listing: "Fixed a listing" } as const;
+  return rows.flatMap((row): ActivityRow[] =>
+    row.status === "published" && row.publishedAt !== null
+      ? [{ key: `deliverable-${row.id}`, at: row.publishedAt, label: `${WORDS[row.kind]}: ${row.title}`, service: row.kind === "post" ? "social" : "search" }]
+      : [],
+  );
+}
+
+/** Requests that reached Done, as What we did lines, at the time of their last activity. */
+export function finishedRequestRows(rows: readonly { readonly ticketId: string; readonly title: string; readonly word: string; readonly service: Service | null; readonly lastActivityAt: Date }[]): ActivityRow[] {
+  return rows.filter((row) => row.word === "Done").map((row) => ({ key: `request-${row.ticketId}`, at: row.lastActivityAt, label: `Finished your request: ${row.title}`, service: row.service }));
 }
 
 // ---- Enquiries by day ----
@@ -368,6 +420,14 @@ export function websiteCopy(state: WebsiteState, now: Date): StatusCopy {
     case "launched":
       return { title: "Your website is live", text: `It is at ${state.hostname}. We keep it running, and your plan covers the updates.` };
   }
+}
+
+/**
+ * What the Changes included panel says above its meter. It states how many rounds the plan includes, so it always agrees with
+ * "1 of 2 used" below it; once every round is used it says what happens to further changes.
+ */
+export function roundsIncludedLine(included: number, granted: number): string {
+  return roundsUsedUp(included, granted) ? ROUNDS_USED_UP : `${formatQuantity(included, "round")} of changes ${included === 1 ? "is" : "are"} included.`;
 }
 
 /** The line under Home's greeting: today, and the services that are active. Ported from apps/platform's Home page. */

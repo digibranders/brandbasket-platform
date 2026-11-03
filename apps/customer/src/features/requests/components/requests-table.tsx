@@ -3,12 +3,12 @@
 import type { ReactNode } from "react";
 import { DataTable, StatusBadge, type DataTableColumn, type InspectorContent } from "@/components";
 import { formatQuantity, formatRelative } from "@/lib/format";
-import { Badge, LinkButton, ServiceTag } from "@/ui";
+import { LinkButton, ServiceTag } from "@/ui";
 import { requestPath, type RequestRow } from "../rules";
 import { DetailsList } from "./details-list";
 
 export function RowStatus({ row }: { readonly row: RequestRow }) {
-  return row.status === "closed" ? <Badge>Closed</Badge> : <StatusBadge kind="request" status={row.status} />;
+  return <StatusBadge kind="request" status={row.status} />;
 }
 
 const COLUMNS: readonly DataTableColumn<RequestRow>[] = [

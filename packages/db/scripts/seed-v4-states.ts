@@ -1,7 +1,7 @@
 import { createHash, randomBytes } from "node:crypto";
 import { appendFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { and, count, eq, ne } from "drizzle-orm";
+import { and, count, eq, like, ne } from "drizzle-orm";
 import { createAuth, createVerifiedEmailAccountWithGrant } from "@brandbasket/auth";
 import { addMonthsUtc } from "../../billing/src/term";
 import { adCreditCentsAtCheckout, packageLines } from "../../shared/src/lib/billing/packages";
@@ -24,6 +24,7 @@ import { createUnlistedAccountBusiness } from "../src/queries/directory-ads";
 import { insertBusiness } from "../src/queries/onboarding";
 import { savePrimaryDomain } from "../src/queries/onboarding-data";
 import { upsertMonthlySnapshot } from "../src/queries/monthly-snapshots";
+import { findSiteSetting, saveSiteSetting } from "../src/queries/site-settings";
 import { listPreviewVersions, recordPreviewVersion } from "../src/queries/project-preview-versions";
 import { approveProjectPreview, insertOnboardingProject, markProjectLive, recordProjectPreviewSent, requestProjectRevisions } from "../src/queries/projects";
 import { setProjectBuilding } from "../src/queries/project-website";
@@ -44,6 +45,7 @@ import {
   projects,
   siteEvents,
   staffMembers,
+  subscriptions,
   taxInvoices,
   users,
   type PostChannel,
@@ -73,6 +75,14 @@ const DAY_MS = 24 * HOUR_MS;
 const IST_OFFSET_MS = 330 * MINUTE_MS;
 const CURRENCY = "INR" as const;
 const FAKE = "fake" as const;
+
+/** The booking link the local kickoff and call screens need (site setting setup_call_url). Not Cal.com or Calendly, so the app uses its local stand-in scheduler. */
+const LOCAL_BOOKING_LINK = "https://book.example.test/kickoff";
+
+/** An id the fake provider accepts (fake_sub_ and 24 lower-case hex digits), the same every run for the same seed key. */
+function fakeSubscriptionId(seedKey: string): string {
+  return `fake_sub_${createHash("sha1").update(seedKey).digest("hex").slice(0, 24)}`;
+}
 const LOGINS_HEADING = "# Customer app v4 state seeds (pnpm --filter @brandbasket/db db:seed:v4), local only, database brandbasket_platform_v4";
 
 type Stage = "preview" | "live" | "lapsed" | "failing" | "unpaid";
@@ -334,7 +344,9 @@ async function seedBilling(context: Context, spec: Spec, businessId: string, slu
     phone: null,
   });
 
-  const providerSubscriptionId = `seed_v4_${slug}`;
+  // Payment ids keep the seed key; the subscription id is one the fake provider accepts, so a seeded plan can be changed or cancelled.
+  const seedKey = `seed_v4_${slug}`;
+  const providerSubscriptionId = fakeSubscriptionId(seedKey);
   let subscription = await findLatestSubscriptionForBusiness(db, businessId);
   if (subscription === null) {
     subscription = await openCheckoutSubscription(db, {
@@ -351,7 +363,7 @@ async function seedBilling(context: Context, spec: Spec, businessId: string, slu
   if (spec.stage === "unpaid") return;
 
   await db.transaction((tx) =>
-    activateFirstPayment(tx, { businessId, subscriptionId: subscription.id, plan, provider: FAKE, providerPaymentId: `${providerSubscriptionId}_initial`, paidAt: firstPaidAt, method: spec.method }),
+    activateFirstPayment(tx, { businessId, subscriptionId: subscription.id, plan, provider: FAKE, providerPaymentId: `${seedKey}_initial`, paidAt: firstPaidAt, method: spec.method }),
   );
   const commitmentEndsAt = addMonthsUtc(firstPaidAt, plan.initialTermMonths);
   let periodStart = commitmentEndsAt;
@@ -364,7 +376,7 @@ async function seedBilling(context: Context, spec: Spec, businessId: string, slu
         subscriptionId: subscription.id,
         commitmentEndsAt,
         provider: FAKE,
-        providerPaymentId: `${providerSubscriptionId}_renewal_${month}`,
+        providerPaymentId: `${seedKey}_renewal_${month}`,
         amountCents: bundledNetCents(lines),
         currency: CURRENCY,
         paidAt: renewalPaidAt,
@@ -381,7 +393,7 @@ async function seedBilling(context: Context, spec: Spec, businessId: string, slu
     await recordFailedPayment(db, {
       businessId,
       provider: FAKE,
-      providerPaymentId: `${providerSubscriptionId}_renewal_failed`,
+      providerPaymentId: `${seedKey}_renewal_failed`,
       kind: "renewal",
       amountCents: bundledNetCents(lines),
       currency: CURRENCY,
@@ -702,12 +714,12 @@ async function seedReports(context: Context, businessId: string, host: string): 
     {
       service: "social",
       content: {
-        headline: "11 posts went out and your ads brought 41 enquiries for Rs 17,387.",
+        headline: "11 posts went out and your ads brought 41 enquiries for ₹17,387.",
         figures: [
           { label: "Posts published", value: "11" },
-          { label: "Ad spend", value: "Rs 17,387" },
+          { label: "Ad spend", value: "₹17,387" },
           { label: "Enquiries from ads", value: "41" },
-          { label: "Cost per enquiry", value: "Rs 424" },
+          { label: "Cost per enquiry", value: "₹424" },
           { label: "People reached", value: "28,640" },
           { label: "New followers", value: "57" },
         ],
@@ -787,7 +799,7 @@ async function seedCalls(context: Context, businessId: string): Promise<void> {
   const pastCall = await recordTeamCall(db, { businessId, reason: "social", note: "Which festival offers should we promote?", ...past, providerUri: "seed-v4:kulkarni-physio:past" });
   if (pastCall.created) {
     await markTeamCallHeld(db, { id: pastCall.id, businessId, staffId, now: new Date(past.endsAt.getTime() + 5 * MINUTE_MS) });
-    await saveTeamCallSummary(db, { id: pastCall.id, businessId, staffId, summary: "Agreed a Diwali week plan: two reels, one offer post, ad budget up by Rs 3,000. Anjali sends clinic photos by Friday.", now: new Date(past.endsAt.getTime() + 30 * MINUTE_MS) });
+    await saveTeamCallSummary(db, { id: pastCall.id, businessId, staffId, summary: "Agreed a Diwali week plan: two reels, one offer post, ad budget up by ₹3,000. Anjali sends clinic photos by Friday.", now: new Date(past.endsAt.getTime() + 30 * MINUTE_MS) });
   }
   const next = atIst(shiftDate(today, 3), 11, 30);
   await recordTeamCall(db, { businessId, reason: "search", note: "Review the new Kothrud and Karve Road phrases.", startsAt: next, endsAt: new Date(next.getTime() + 30 * MINUTE_MS), providerUri: "seed-v4:kulkarni-physio:upcoming" });
@@ -906,6 +918,25 @@ async function seedBusiness(context: Context, spec: Spec, index: number): Promis
   return { email, businessId };
 }
 
+/**
+ * Databases seeded before the fake provider's id check hold subscriptions named seed_<something>, which it refuses. Each is
+ * renamed to the id its old name maps to, here and in seed-kickoff-customers.ts. Safe to repeat: a renamed id no longer matches.
+ */
+async function repairSeedSubscriptionIds(db: Database): Promise<number> {
+  const old = await db
+    .select({ id: subscriptions.id, providerSubscriptionId: subscriptions.providerSubscriptionId })
+    .from(subscriptions)
+    .where(and(eq(subscriptions.provider, FAKE), like(subscriptions.providerSubscriptionId, "seed\\_%")));
+  for (const row of old) await db.update(subscriptions).set({ providerSubscriptionId: fakeSubscriptionId(row.providerSubscriptionId) }).where(eq(subscriptions.id, row.id));
+  return old.length;
+}
+
+/** The kickoff and call screens say "We could not load the times" without a booking link. Sets the local one only when none is set. */
+async function ensureBookingLink(context: Context): Promise<void> {
+  if ((await findSiteSetting(context.db, "setup_call_url")) !== null) return;
+  await saveSiteSetting(context.db, { key: "setup_call_url", value: LOCAL_BOOKING_LINK, staffUserId: context.staffId, now: context.now });
+}
+
 loadLocalEnv();
 const staffUrl = requireEnv("DATABASE_URL_STAFF");
 assertLocalDevDatabase(staffUrl);
@@ -925,11 +956,14 @@ try {
     headingWritten: false,
   };
   await ensureStaff(context);
+  await ensureBookingLink(context);
   const seeded: { readonly name: string; readonly stage: Stage; readonly email: string; readonly businessId: string }[] = [];
   for (const [index, spec] of SPECS.entries()) {
     const result = await seedBusiness(context, spec, index);
     seeded.push({ name: spec.name, stage: spec.stage, ...result });
   }
+  const repaired = await repairSeedSubscriptionIds(handle.db);
+  if (repaired > 0) console.log(`Renamed ${repaired} seeded subscription id${repaired === 1 ? "" : "s"} to ones the fake provider accepts.`);
   console.log("\nSeeded businesses (passwords are in local-test-logins.txt):");
   for (const entry of seeded) console.log(`  ${entry.stage.padEnd(8)} ${entry.name.padEnd(28)} ${entry.email}  ${entry.businessId}`);
 } finally {

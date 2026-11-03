@@ -186,21 +186,20 @@ export function SignUpForm({ siteKey, services, basket, confirmsCodes, countries
           <Select name="stateCode" required options={STATE_OPTIONS} placeholder="Choose your state" value={stateCode} onValueChange={(next) => setStateCode(next ?? "")} />
         </Field>
       ) : null}
-      <Field label="Mobile number" nativeLabel={false}>
-        {/* The code sits left of the number; the wrapper sets its width because the Select fills whatever holds it. */}
-        <div className="flex gap-2">
-          <div className="w-36 shrink-0">
-            <Select
-              name={PHONE_COUNTRY_FIELD}
-              aria-label="Country code"
-              options={phoneCountries.map((option) => ({ value: option.code, label: option.label }))}
-              value={phoneCountry}
-              onValueChange={(next) => setPhoneCountry(next ?? defaultPhoneCountry)}
-            />
-          </div>
-          <Input name="phone" type="tel" inputMode="tel" autoComplete="tel-national" aria-label="Mobile number" required value={phone} onChange={(event) => setPhone(event.target.value)} className="min-w-0 flex-1" />
-        </div>
-      </Field>
+      {/* Two Fields, not one: a Field names every control inside it after its own name, which posted the code as "phone". */}
+      <div className="flex gap-2">
+        <Field label="Country code" nativeLabel={false} className="w-36 shrink-0">
+          <Select
+            name={PHONE_COUNTRY_FIELD}
+            options={phoneCountries.map((option) => ({ value: option.code, label: option.label }))}
+            value={phoneCountry}
+            onValueChange={(next) => setPhoneCountry(next ?? defaultPhoneCountry)}
+          />
+        </Field>
+        <Field label="Mobile number" name="phone" className="flex-1">
+          <Input name="phone" type="tel" inputMode="tel" autoComplete="tel-national" required value={phone} onChange={(event) => setPhone(event.target.value)} />
+        </Field>
+      </div>
       <Field label="Choose a password" name="password" hint={PASSWORD_RULE}>
         <PasswordInput name="password" required autoComplete="new-password" minLength={PASSWORD_MIN_LENGTH} maxLength={128} value={password} onChange={(event) => setPassword(event.target.value)} />
       </Field>

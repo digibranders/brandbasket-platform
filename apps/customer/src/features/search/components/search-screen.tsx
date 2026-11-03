@@ -44,7 +44,7 @@ export async function SearchScreen({ customer, now = new Date() }: { readonly cu
       />
       <div className="flex flex-col gap-4">
         <Banner>{AEO_EXPLAINED}</Banner>
-        {asks.ok ? <SetupCard asks={asks.data} /> : <Panel title="What we need from you"><PanelError failure={asks.error} what="what we need from you" /></Panel>}
+        {customer.role === "viewer" ? null : asks.ok ? <SetupCard asks={asks.data} /> : <Panel title="What we need from you"><PanelError failure={asks.error} what="what we need from you" /></Panel>}
         {!numbers.ok ? (
           <Panel title="Searches on Google's first page">
             <PanelError failure={numbers.error} what="your monthly numbers" />
@@ -60,7 +60,7 @@ export async function SearchScreen({ customer, now = new Date() }: { readonly cu
               {
                 label: "Searches on Google's first page",
                 value: String(numbers.data.pageOne.count),
-                ...(numbers.data.pageOne.diff === null ? {} : { change: { value: numbers.data.pageOne.diff } }),
+                ...(numbers.data.pageOne.diff === null || numbers.data.pageOne.diff === 0 ? {} : { change: { value: numbers.data.pageOne.diff } }),
                 period: numbers.data.pageOne.change === null ? numbers.data.month : `${numbers.data.month}. ${numbers.data.pageOne.change}`,
                 asOf: numbers.data.pageOne.checkedAt,
               },

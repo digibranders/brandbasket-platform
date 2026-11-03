@@ -44,14 +44,12 @@ export function PagesScreen({ core, pages, now }: { readonly core: WebsiteCore; 
         {(rows) => (
           <Table>
             <TableHead>
-              <TableRow>
-                <TableHeader>Page</TableHeader>
-                <TableHeader hideOnPhone>Address</TableHeader>
-                <TableHeader>Last seen</TableHeader>
-                <TableHeader align="end">
-                  <span className="sr-only">Actions</span>
-                </TableHeader>
-              </TableRow>
+              <TableHeader>Page</TableHeader>
+              <TableHeader hideOnPhone>Address</TableHeader>
+              <TableHeader>Last seen</TableHeader>
+              <TableHeader align="end">
+                <span className="sr-only">Actions</span>
+              </TableHeader>
             </TableHead>
             <TableBody>
               {rows.map((page) => {

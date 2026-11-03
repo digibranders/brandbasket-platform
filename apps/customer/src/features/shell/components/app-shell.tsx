@@ -27,8 +27,9 @@ export function AppShell({ view, children }: { readonly view: ShellView; readonl
         kickoffOver: view.kickoffOver,
         enquiries: countOf(view.enquiries),
         requests: countOf(view.requests),
+        ...(view.reports.ok ? { reports: view.reports.data } : {}),
       }),
-    [view.business.services, view.kickoffOver, view.enquiries, view.requests],
+    [view.business.services, view.kickoffOver, view.enquiries, view.requests, view.reports],
   );
 
   useEffect(() => {

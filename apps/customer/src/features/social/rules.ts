@@ -247,6 +247,12 @@ export const WEEKDAY_NAMES = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] a
 
 // ---- Ads ----
 
+/**
+ * What sits under the ad leads count. It is the figure we report each month from the ad accounts, not a list of enquiries, so it
+ * can differ from the ad enquiries in the Enquiries list.
+ */
+export const AD_LEADS_NOTE = "From your ads this month (reported by us)";
+
 /** The ads figures for the month, each null when it is not known. */
 export interface AdsView {
   readonly spentCents: number | null;
