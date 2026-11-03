@@ -4,6 +4,7 @@ import {
   findLatestProject,
   findPreviewImageInfo,
   findAnalyticsConnection,
+  findSearchConnection,
   findSetupCallBooking,
   findSiteHealthFacts,
   getPrimaryDomain,
@@ -11,6 +12,7 @@ import {
   listEnquiries,
   listPreviewVersions,
   listProjectEvents,
+  listSearchDays,
   listVisitDays,
   listVisitLists,
   listWebsitePages,
@@ -22,8 +24,12 @@ import {
 import type { TenantContext } from "@brandbasket/shared/lib/access";
 import { isCustomerVisitsEnabled } from "@brandbasket/shared/lib/launch-flags";
 import { isTemporarySubdomain } from "@brandbasket/shared/lib/onboarding/domain-form";
+import { addDays } from "@brandbasket/shared/lib/calendar/local-date";
+import { dayKey } from "@brandbasket/shared/lib/call-slots";
 import { cache } from "react";
+import { SEARCH_LOOKBACK_DAYS, searchSummary } from "@/features/search/rules/search-presence";
 import { getAppDb, getStaffDb } from "@/lib/db";
+import { APP_TIME_ZONE } from "@/lib/format";
 import type { CustomerContext } from "@/lib/guards";
 import { load, type Loaded } from "@/lib/loaded";
 import { uptimeSince } from "./rules/health";
@@ -83,6 +89,8 @@ export interface WebsiteOverview {
   readonly health: Loaded<SiteHealthFacts> | null;
   /** Visits, once live and while CUSTOMER_VISITS_ENABLED is on. Its data is null until a day has been counted. */
   readonly visits: Loaded<VisitsData | null> | null;
+  /** True while a connected Google site (Analytics or Search Console) has no measured day yet. Read only when visits has no data. */
+  readonly visitsWaiting: Loaded<boolean> | null;
 }
 
 // shortcut: counts from the newest 200 website enquiries (listEnquiries' page limit), so a business above 200 in 30 days reads 200; upgrade when packages/db has a count by period.
@@ -91,7 +99,7 @@ const ENQUIRY_SCAN_LIMIT = 200;
 export async function loadWebsiteOverview(context: CustomerContext, core: WebsiteCore, now: Date): Promise<WebsiteOverview> {
   const { tenant } = context;
   const { project } = core;
-  if (project === null) return { history: null, kickoffFirst: null, preview: null, enquiries: null, health: null, visits: null };
+  if (project === null) return { history: null, kickoffFirst: null, preview: null, enquiries: null, health: null, visits: null, visitsWaiting: null };
   const db = getAppDb();
   const [history, kickoffFirst, preview, enquiries, health, visits] = await Promise.all([
     load("website.history", () =>
@@ -126,7 +134,8 @@ export async function loadWebsiteOverview(context: CustomerContext, core: Websit
     core.live === null ? null : loadSiteHealth(tenant, now),
     core.live === null ? null : loadVisits(tenant, now),
   ]);
-  return { history, kickoffFirst, preview, enquiries, health, visits };
+  const visitsWaiting = visits !== null && visits.ok && visits.data === null ? await loadVisitsWaiting(tenant, now) : null;
+  return { history, kickoffFirst, preview, enquiries, health, visits, visitsWaiting };
 }
 
 /** What the Website screen draws for visits: the 30 days' total, and the month's pages and channels when they were pulled. */
@@ -156,6 +165,21 @@ export function loadVisits(tenant: TenantContext, now: Date): Promise<Loaded<Vis
         visitLists(months.current, await listVisitLists(tx, summary.source, months.current)) ??
         visitLists(months.previous, await listVisitLists(tx, summary.source, months.previous));
       return { summary, lists };
+    }),
+  );
+}
+
+/**
+ * Whether a connected Google site is still waiting for its first measured day, so the strip can say numbers are coming instead of
+ * going quiet. Asked only once visits found no day in its window. A failed read is reported and the strip stays as it was.
+ */
+export function loadVisitsWaiting(tenant: TenantContext, now: Date): Promise<Loaded<boolean>> {
+  return load("website.visits-waiting", () =>
+    withTenantScope(getAppDb(), tenant, async (tx) => {
+      if ((await findAnalyticsConnection(tx))?.status === "connected") return true;
+      if ((await findSearchConnection(tx))?.status !== "connected") return false;
+      const today = dayKey(now.toISOString(), APP_TIME_ZONE);
+      return searchSummary(await listSearchDays(tx, addDays(today, -SEARCH_LOOKBACK_DAYS), today)) === null;
     }),
   );
 }

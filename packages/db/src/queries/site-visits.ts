@@ -76,6 +76,77 @@ export async function listVisitLists(tx: ScopedTransaction, source: VisitSource,
   return rows.map((row) => ({ dimension: row.dimension as VisitDimension, rows: row.rows, fetchedAt: row.fetchedAt }));
 }
 
+/** The daily Search Console numbers, named `gsc.clicks`, `gsc.impressions` and `gsc.position`. */
+export const SEARCH_METRICS = ["clicks", "impressions", "position"] as const;
+export type SearchMetric = (typeof SEARCH_METRICS)[number];
+
+/** The monthly Search Console lists: the searches people used and the pages they landed on. */
+export const SEARCH_DIMENSIONS = ["query", "page"] as const;
+export type SearchDimension = (typeof SEARCH_DIMENSIONS)[number];
+
+export interface SearchDay {
+  readonly metric: SearchMetric;
+  /** `YYYY-MM-DD`. */
+  readonly day: string;
+  readonly value: number;
+  readonly fetchedAt: Date;
+}
+
+export interface SearchList {
+  readonly dimension: SearchDimension;
+  readonly rows: readonly Record<string, unknown>[];
+  readonly fetchedAt: Date;
+}
+
+/** The business's Search Console numbers, `from` to `to` both included (`YYYY-MM-DD`), oldest first. A day with no position has no row for it. */
+export async function listSearchDays(tx: ScopedTransaction, from: string, to: string): Promise<SearchDay[]> {
+  const businessId = await currentBusinessId(tx);
+  const rows = await tx
+    .select({ metric: metricDaily.metric, day: metricDaily.day, value: metricDaily.value, fetchedAt: metricDaily.fetchedAt })
+    .from(metricDaily)
+    .where(
+      and(
+        eq(metricDaily.businessId, businessId),
+        inArray(
+          metricDaily.metric,
+          SEARCH_METRICS.map((metric) => `gsc.${metric}`),
+        ),
+        gte(metricDaily.day, from),
+        lte(metricDaily.day, to),
+      ),
+    )
+    .orderBy(asc(metricDaily.day), asc(metricDaily.metric));
+  return rows.map((row) => ({ metric: row.metric.slice(4) as SearchMetric, day: row.day, value: row.value, fetchedAt: row.fetchedAt }));
+}
+
+/** The Search Console lists of one month (`YYYY-MM-01`). A list that was never pulled is absent, not empty. */
+export async function listSearchLists(tx: ScopedTransaction, month: string): Promise<SearchList[]> {
+  const businessId = await currentBusinessId(tx);
+  const rows = await tx
+    .select({ dimension: metricBreakdowns.dimension, rows: metricBreakdowns.rows, fetchedAt: metricBreakdowns.fetchedAt })
+    .from(metricBreakdowns)
+    .where(
+      and(
+        eq(metricBreakdowns.businessId, businessId),
+        eq(metricBreakdowns.source, "gsc"),
+        eq(metricBreakdowns.month, month),
+        inArray(metricBreakdowns.dimension, [...SEARCH_DIMENSIONS]),
+      ),
+    );
+  return rows.map((row) => ({ dimension: row.dimension as SearchDimension, rows: row.rows, fetchedAt: row.fetchedAt }));
+}
+
+/** The business's Search Console connection, or null when none was set up. */
+export async function findSearchConnection(tx: ScopedTransaction): Promise<ReportSourceRow | null> {
+  const businessId = await currentBusinessId(tx);
+  const [row] = await tx
+    .select()
+    .from(reportSources)
+    .where(and(eq(reportSources.businessId, businessId), eq(reportSources.source, "gsc")))
+    .limit(1);
+  return row ?? null;
+}
+
 /** The business's Google Analytics connection, or null when staff never set a property. */
 export async function findAnalyticsConnection(tx: ScopedTransaction): Promise<ReportSourceRow | null> {
   const businessId = await currentBusinessId(tx);

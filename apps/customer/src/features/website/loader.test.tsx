@@ -23,6 +23,8 @@ const db = vi.hoisted(() => ({
   listEnquiries: vi.fn(),
   findSiteHealthFacts: vi.fn(),
   findAnalyticsConnection: vi.fn(),
+  findSearchConnection: vi.fn(),
+  listSearchDays: vi.fn(),
   listVisitDays: vi.fn(),
   listVisitLists: vi.fn(),
 }));
@@ -70,6 +72,8 @@ beforeEach(() => {
   vi.clearAllMocks();
   vi.unstubAllEnvs();
   db.findAnalyticsConnection.mockResolvedValue(null);
+  db.findSearchConnection.mockResolvedValue(null);
+  db.listSearchDays.mockResolvedValue([]);
   db.listVisitDays.mockResolvedValue([]);
   db.listVisitLists.mockResolvedValue([]);
   db.listProjectEvents.mockResolvedValue([]);
@@ -245,6 +249,59 @@ describe("website visits (gate G1)", () => {
     db.listVisitDays.mockResolvedValue(visitDays(4));
     const overview = await loadWebsiteOverview(context, core("live", true), NOW);
     expect(overview.visits?.ok && overview.visits.data?.summary).toMatchObject({ source: "own", total: 120 });
+  });
+
+  it("says numbers start within 2 to 3 days while a connected Google site has no measured day, and never a 0", async () => {
+    vi.stubEnv("CUSTOMER_VISITS_ENABLED", "1");
+    db.findAnalyticsConnection.mockResolvedValue({ status: "connected" });
+    const websiteCore = core("live", true);
+    const overview = await loadWebsiteOverview(context, websiteCore, NOW);
+    expect(overview.visits).toEqual({ ok: true, data: null });
+    expect(overview.visitsWaiting).toEqual({ ok: true, data: true });
+    render(<WebsiteScreen {...screenProps(websiteCore, overview, { ok: true, data: [] })} />);
+    expect(screen.getByText("Visits")).toBeTruthy();
+    expect(screen.getByText("Numbers start within 2 to 3 days")).toBeTruthy();
+    expect(screen.getByText("Not yet")).toBeTruthy();
+  });
+
+  it("says it for a connected Search Console site with no measured clicks day, and not once one is measured", async () => {
+    vi.stubEnv("CUSTOMER_VISITS_ENABLED", "1");
+    db.findSearchConnection.mockResolvedValue({ status: "connected" });
+    expect((await loadWebsiteOverview(context, core("live", true), NOW)).visitsWaiting).toEqual({ ok: true, data: true });
+    db.listSearchDays.mockResolvedValue([{ metric: "clicks", day: "2026-10-30", value: 3, fetchedAt: NOW }]);
+    expect((await loadWebsiteOverview(context, core("live", true), NOW)).visitsWaiting).toEqual({ ok: true, data: false });
+  });
+
+  it("says nothing without a connected Google site, and asks nothing once visits have days", async () => {
+    vi.stubEnv("CUSTOMER_VISITS_ENABLED", "1");
+    db.findSearchConnection.mockResolvedValue({ status: "access_lost" });
+    db.findAnalyticsConnection.mockResolvedValue({ status: "pending" });
+    const websiteCore = core("live", true);
+    const none = await loadWebsiteOverview(context, websiteCore, NOW);
+    expect(none.visitsWaiting).toEqual({ ok: true, data: false });
+    render(<WebsiteScreen {...screenProps(websiteCore, none, { ok: true, data: [] })} />);
+    expect(screen.queryByText(/Numbers start within/)).toBeNull();
+    db.listVisitDays.mockResolvedValue(visitDays(4));
+    db.findSearchConnection.mockClear();
+    expect((await loadWebsiteOverview(context, websiteCore, NOW)).visitsWaiting).toBeNull();
+    expect(db.findSearchConnection).not.toHaveBeenCalled();
+  });
+
+  it("reads no connection and says nothing about waiting while the visits switch is off", async () => {
+    db.findAnalyticsConnection.mockResolvedValue({ status: "connected" });
+    const overview = await loadWebsiteOverview(context, core("live", true), NOW);
+    expect(overview.visitsWaiting).toBeNull();
+    expect(db.findSearchConnection).not.toHaveBeenCalled();
+  });
+
+  it("leaves the strip as it was, and reports, when the waiting check cannot be read", async () => {
+    vi.stubEnv("CUSTOMER_VISITS_ENABLED", "1");
+    db.findSearchConnection.mockRejectedValue(new Error("connection lost"));
+    const websiteCore = core("live", true);
+    const overview = await loadWebsiteOverview(context, websiteCore, NOW);
+    expect(overview.visitsWaiting?.ok).toBe(false);
+    render(<WebsiteScreen {...screenProps(websiteCore, overview, { ok: true, data: [] })} />);
+    expect(screen.queryByText(/Numbers start within/)).toBeNull();
   });
 
   it("names its own failure and keeps the rest of the page", async () => {

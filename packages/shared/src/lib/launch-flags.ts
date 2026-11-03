@@ -4,6 +4,7 @@
  *
  * - CUSTOMER_VISITS_ENABLED: the customer app shows website visits (gate G1: counsel's answer and the approved privacy wording
  *   on first-party analytics, docs/site-analytics.md).
+ * - CUSTOMER_SEARCH_ENABLED: the customer app shows how people find them on Google (plan 62, step 5: the approved customer words).
  * - ENQUIRY_FORM_CONTENTS_ENABLED: enquirers' details from website forms and ad leads may be stored (gate G2: the privacy review).
  */
 
@@ -17,6 +18,10 @@ export function flagIsOn(value: string | undefined): boolean {
 
 export function isCustomerVisitsEnabled(env: FlagEnv = process.env): boolean {
   return flagIsOn(env.CUSTOMER_VISITS_ENABLED);
+}
+
+export function isCustomerSearchEnabled(env: FlagEnv = process.env): boolean {
+  return flagIsOn(env.CUSTOMER_SEARCH_ENABLED);
 }
 
 export function isEnquiryFormContentsEnabled(env: FlagEnv = process.env): boolean {

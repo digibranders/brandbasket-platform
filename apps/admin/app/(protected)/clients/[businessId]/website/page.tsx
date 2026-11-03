@@ -40,7 +40,7 @@ import { CustomerLink, DNS_STATUS_TEXT, Facts, MoveDomainPanel, ResendLaunchEmai
 import { SiteDetails } from "./site-details";
 
 /** The query keys whose notices the Site details fold prints. */
-const SITE_DETAIL_NOTICES = ["website", "hosting", "features", "listing", "tags"] as const;
+const SITE_DETAIL_NOTICES = ["website", "hosting", "features", "listing", "tags", "google"] as const;
 
 export const metadata: Metadata = { title: "Client website" };
 
@@ -316,7 +316,7 @@ export default async function ClientWebsitePage({
       <KickoffCallSection businessId={client.businessId} />
 
       <Fold title="Site details" open={siteDetailsOpen}>
-        <SiteDetails client={client} query={sp} />
+        <SiteDetails client={client} query={sp} staffRole={granted.staff.role} />
       </Fold>
     </>
   );

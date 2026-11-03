@@ -4,12 +4,12 @@ import { loadSetupAsks } from "@/features/setup/loader";
 import { loadReportLink } from "@/features/social/loader";
 import type { CustomerContext } from "@/lib/guards";
 import { SearchScreen } from "./components/search-screen";
-import { loadSearchNumbers, loadSearchWork } from "./loader";
+import { loadSearchNumbers, loadSearchPresence, loadSearchWork } from "./loader";
 import { pageOne } from "./rules";
 
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn() }), unstable_rethrow: vi.fn() }));
 vi.mock("@sentry/nextjs", () => ({ captureException: vi.fn(() => "event-1") }));
-vi.mock("./loader", () => ({ loadSearchNumbers: vi.fn(), loadSearchWork: vi.fn() }));
+vi.mock("./loader", () => ({ loadSearchNumbers: vi.fn(), loadSearchPresence: vi.fn(), loadSearchWork: vi.fn() }));
 vi.mock("@/features/social/loader", () => ({ loadReportLink: vi.fn() }));
 vi.mock("@/features/setup/loader", () => ({ loadSetupAsks: vi.fn(), loadNotBought: vi.fn() }));
 
@@ -22,6 +22,7 @@ beforeEach(() => {
   vi.mocked(loadSetupAsks).mockResolvedValue([]);
   vi.mocked(loadReportLink).mockResolvedValue(null);
   vi.mocked(loadSearchWork).mockResolvedValue({ items: [], month: "November" });
+  vi.mocked(loadSearchPresence).mockReturnValue(null);
   vi.mocked(loadSearchNumbers).mockResolvedValue({ pageOne: null, month: "November" });
 });
 
@@ -90,5 +91,59 @@ describe("Local SEO + AEO", () => {
     render(await SearchScreen({ customer: customer("viewer"), now: NOW }));
     expect(screen.queryByRole("link", { name: "Ask for a change" })).toBeNull();
     expect(screen.getByRole("link", { name: "Monthly report" }).getAttribute("href")).toBe("https://example.com/r");
+  });
+});
+
+describe("Local SEO + AEO: how people find you on Google", () => {
+  const presence = { ok: true as const, data: { kind: "waiting" as const } };
+  const dashes = new RegExp(`[${String.fromCharCode(0x2013, 0x2014)}]`);
+
+  it("draws no panel when the switch is off or there is no connection", async () => {
+    vi.mocked(loadSearchPresence).mockReturnValue(null);
+    render(await SearchScreen({ customer: customer(), now: NOW }));
+    expect(screen.queryByText("How people find you on Google")).toBeNull();
+    cleanup();
+    vi.mocked(loadSearchPresence).mockReturnValue(Promise.resolve({ ok: true, data: null }));
+    render(await SearchScreen({ customer: customer(), now: NOW }));
+    expect(screen.queryByText("How people find you on Google")).toBeNull();
+  });
+
+  it("says numbers start within 2 to 3 days while nothing is measured", async () => {
+    vi.mocked(loadSearchPresence).mockReturnValue(Promise.resolve(presence));
+    const { container } = render(await SearchScreen({ customer: customer(), now: NOW }));
+    expect(screen.getByRole("heading", { name: "How people find you on Google" })).toBeTruthy();
+    expect(screen.getByText(/Numbers start within 2 to 3 days\. Google is still getting your website ready/)).toBeTruthy();
+    expect(container.textContent).not.toMatch(dashes);
+  });
+
+  it("draws the measured panel above the monthly strip", async () => {
+    vi.mocked(loadSearchNumbers).mockResolvedValue({ pageOne: pageOne({ keywordsPageOne: 9, keywordsPageOnePrev: 6, updatedAt: CHECKED }), month: "November" });
+    vi.mocked(loadSearchPresence).mockReturnValue(
+      Promise.resolve({
+        ok: true,
+        data: {
+          kind: "measured",
+          summary: { from: "2026-10-03", to: "2026-10-30", clicks: 214, impressions: 5830, averagePosition: 8.4, change: 18, days: [{ day: "2026-10-29", value: 3 }, { day: "2026-10-30", value: 5 }] },
+          lists: { month: "2026-11-01", queries: [{ label: "sweet shop near me", value: 48 }], pages: [{ label: "Home", value: 96 }] },
+        },
+      }),
+    );
+    const { container } = render(await SearchScreen({ customer: customer(), now: NOW }));
+    const panel = screen.getByRole("heading", { name: "How people find you on Google" });
+    const strip = screen.getByText("Searches on Google's first page");
+    expect(panel.compareDocumentPosition(strip) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(screen.getByText("214")).toBeTruthy();
+    expect(screen.getByText("sweet shop near me")).toBeTruthy();
+    expect(container.textContent).not.toMatch(dashes);
+  });
+
+  it("a failed read shows its own error and Try again, and the rest of the page stands", async () => {
+    vi.mocked(loadSearchPresence).mockReturnValue(Promise.resolve({ ok: false, error: { at: NOW } }));
+    render(await SearchScreen({ customer: customer(), now: NOW }));
+    expect(screen.getByText("We could not load how people find you on Google.")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Try again" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Local SEO + AEO", level: 1 })).toBeTruthy();
+    expect(screen.getByText("No count yet")).toBeTruthy();
+    expect(screen.getAllByRole("alert")).toHaveLength(1);
   });
 });

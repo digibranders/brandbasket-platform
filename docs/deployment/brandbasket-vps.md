@@ -344,6 +344,7 @@ alert; the Settings page then shows "Google no longer accepts this sign-in". Pre
 The customer's Website screen and Home show Analytics numbers instead of our own counts when the property is connected and has counted a
 day, and say "From Google Analytics". They show nothing at all until `CUSTOMER_VISITS_ENABLED` is on in the customer app's environment
 (gate G1 in plan 61: counsel's answer on first-party analytics and the approved privacy wording).
+The Local SEO + AEO screen's "How people find you on Google" panel and Home's "Google clicks" figure stay hidden until `CUSTOMER_SEARCH_ENABLED` is on in the same environment (plan 62, step 5: the owner's yes on the new customer words).
 
 `install.sh backups --apply` installs the unit and timer but never enables them.
 

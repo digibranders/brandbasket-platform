@@ -181,3 +181,26 @@ describe("groupTodayQueue", () => {
     expect(groupTodayQueue([], NOW, END_OF_TODAY)).toEqual([]);
   });
 });
+
+describe("Google items", () => {
+  const google = (key: string, dueAt: Date | null, action = "Open client"): TodayItem => ({ key, kind: "google", href: "/x", title: key, detail: "", action, dueAt });
+  const INPUT: TodayInput = { attention: [], newTickets: [], unpaidSignups: [], newErrors: [], failedDeliveries: null, kickoffsNeedingOutcome: null, endOfToday: END_OF_TODAY };
+
+  it("joins the queue, so the count follows, and sorts with the rest by due time", () => {
+    const early = google("google:a", new Date(NOW.getTime() - 3_600_000));
+    const late = google("google:b", new Date(NOW.getTime() - 7_200_000));
+    expect(todayQueue({ ...INPUT, google: [early, late] }).map((item) => item.key)).toEqual(["google:b", "google:a"]);
+    expect(todayQueue(INPUT)).toEqual([]);
+  });
+
+  it("sits in its own Google section after the others, whatever its clock", () => {
+    const overdue = google("google:a", new Date(NOW.getTime() - 3_600_000));
+    const other: TodayItem = { key: "request:1", kind: "request", href: "/support/1", title: "r", detail: "", dueAt: new Date(NOW.getTime() - 60_000) };
+    const groups = groupTodayQueue([overdue, other], NOW, END_OF_TODAY);
+    expect(groups.map((group) => [group.heading, group.items.map((item) => item.key)])).toEqual([["Overdue", ["request:1"]], ["Google", ["google:a"]]]);
+  });
+
+  it("leaves no Google section when there are no Google rows", () => {
+    expect(groupTodayQueue([], NOW, END_OF_TODAY)).toEqual([]);
+  });
+});

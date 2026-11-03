@@ -62,6 +62,8 @@ const serverEnvSchema = z.object({
   GOOGLE_OAUTH_REDIRECT_URI: z.url({ protocol: /^https?$/, error: "GOOGLE_OAUTH_REDIRECT_URI must be an absolute http:// or https:// URL" }).optional(),
   /** The one Google account the console accepts a sign-in from. */
   GOOGLE_ACCOUNT_EMAIL: z.email({ error: "GOOGLE_ACCOUNT_EMAIL must be an email address" }).optional(),
+  /** The same switch the platform's go live job reads: whether the Analytics tag goes on client sites. The Google card only reports it. */
+  GOOGLE_ANALYTICS_TAG_ENABLED: z.string().optional(),
 });
 
 export type ServerEnv = z.infer<typeof serverEnvSchema>;

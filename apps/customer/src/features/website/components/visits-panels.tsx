@@ -1,3 +1,4 @@
+import { SEARCH_PRESENCE_COPY } from "@/features/search/rules/search-presence";
 import { BarList, LineChart, Panel, PanelError, type Metric } from "@/components";
 import { formatNumber } from "@/lib/format";
 import type { Loaded } from "@/lib/loaded";
@@ -19,6 +20,12 @@ export function visitsMetric(visits: Loaded<VisitsData | null> | null): Metric[]
       ...(summary.change === null ? {} : { change: { value: summary.change, unit: "percent" as const } }),
     },
   ];
+}
+
+/** Where the Visits figure would be while a connected Google site has no measured day yet: one line, never a 0. */
+export function visitsWaitingMetric(waiting: Loaded<boolean> | null): Metric[] {
+  if (waiting === null || !waiting.ok || !waiting.data) return [];
+  return [{ label: SEARCH_PRESENCE_COPY.websiteLabel, value: SEARCH_PRESENCE_COPY.websiteValue, period: SEARCH_PRESENCE_COPY.websiteLine }];
 }
 
 /**

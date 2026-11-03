@@ -1,5 +1,5 @@
 import "server-only";
-import { listGoogleConnections, type GoogleConnectionPurpose, type GoogleConnectionRow } from "@brandbasket/db";
+import { countGoogleSources, listGoogleConnections, type GoogleConnectionPurpose, type GoogleConnectionRow } from "@brandbasket/db";
 import { getStaffDb } from "./db";
 import { serverEnv } from "./env";
 
@@ -31,4 +31,9 @@ export async function loadGoogleStates(): Promise<readonly GoogleConnectionState
     const row = rows.find((candidate) => candidate.slot === 1 && candidate.purpose === purpose);
     return { purpose, connection: row === undefined ? null : { accountEmail: row.accountEmail, status: row.status, lastOkAt: row.lastOkAt, lastError: row.lastError, updatedAt: row.updatedAt } };
   });
+}
+
+/** How many Search Console sites and Analytics properties the Brandbasket account (slot 1) holds, from our own rows. */
+export async function loadGoogleCounts(): Promise<{ readonly gsc: number; readonly ga4: number }> {
+  return countGoogleSources(getStaffDb(), 1);
 }

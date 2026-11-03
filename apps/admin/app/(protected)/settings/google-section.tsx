@@ -3,6 +3,7 @@ import { LocalDateTime } from "@brandbasket/shared/ui/panel/local-date-time";
 import { buttonPrimary, buttonSecondary } from "@/components/console/buttons";
 import { hintClasses } from "@/components/console/field-styles";
 import { Section } from "@/components/console/section";
+import { analyticsCountLine, isNearSearchConsoleLimit, searchConsoleCountLine, searchConsoleFillPercent, searchConsoleLimitText, SEARCH_CONSOLE_SITE_LIMIT } from "@/lib/google-limits";
 import type { GoogleConnectionState } from "@/lib/server/google-admin";
 
 const ROWS = {
@@ -16,8 +17,20 @@ function statusLine(state: GoogleConnectionState): string {
   return connection.status === "access_lost" ? "Google no longer accepts this sign-in. Connect again." : `Connected as ${connection.accountEmail}`;
 }
 
-/** The Brandbasket Google account's two sign-ins. Only status is shown, never a token. */
-export function GoogleAccountSection({ states, accountEmail }: { readonly states: readonly GoogleConnectionState[]; readonly accountEmail: string | null }): ReactElement {
+/**
+ * The Brandbasket Google account's two sign-ins and how full the account is. Only status and counts are shown, never a token.
+ * The reading sign-in's "Last used" time is the nightly pull's last use of the account, so there is no separate last pull line.
+ */
+export function GoogleAccountSection({
+  states,
+  counts,
+  accountEmail,
+}: {
+  readonly states: readonly GoogleConnectionState[];
+  readonly counts: { readonly gsc: number; readonly ga4: number };
+  readonly accountEmail: string | null;
+}): ReactElement {
+  const near = isNearSearchConsoleLimit(counts.gsc);
   return (
     <Section id="google" title="Google account" aside="Admins only">
       <div className="grid max-w-2xl gap-8">
@@ -26,6 +39,32 @@ export function GoogleAccountSection({ states, accountEmail }: { readonly states
           {accountEmail === null ? "The sign-in is not set up on this server yet." : <>Sign in as <b className="font-medium text-ink">{accountEmail}</b>; any other account is refused.</>} Each sign-in is
           kept encrypted and is never shown.
         </p>
+        {near ? <p className="border-l-2 border-rattan py-1 pl-4 text-sm leading-relaxed text-ink">{searchConsoleLimitText(counts.gsc)}</p> : null}
+        <div>
+          {near ? (
+            <div
+              role="meter"
+              aria-label="Search Console sites held by this account"
+              aria-valuemin={0}
+              aria-valuemax={SEARCH_CONSOLE_SITE_LIMIT}
+              aria-valuenow={Math.min(counts.gsc, SEARCH_CONSOLE_SITE_LIMIT)}
+              className="mb-3 h-1.5 overflow-hidden rounded-full bg-sunken"
+            >
+              <div className="h-full rounded-full bg-rattan" style={{ width: `${searchConsoleFillPercent(counts.gsc)}%` }} />
+            </div>
+          ) : null}
+          <dl className="divide-y divide-line">
+            <div className="flex items-baseline justify-between gap-4 py-2.5">
+              <dt className="text-sm">Search Console sites</dt>
+              <dd className="font-figure text-sm tabular-nums">{searchConsoleCountLine(counts.gsc)}</dd>
+            </div>
+            <div className="flex items-baseline justify-between gap-4 py-2.5">
+              <dt className="text-sm">Analytics properties</dt>
+              <dd className="font-figure text-sm tabular-nums">{analyticsCountLine(counts.ga4)}</dd>
+            </div>
+          </dl>
+          <p className={hintClasses}>Counted from our own records. A detached client no longer counts.</p>
+        </div>
         {states.map((state) => (
           <form key={state.purpose} method="post" action="/api/google/connect" className="grid gap-3 border-t border-line pt-6 first:border-t-0 first:pt-0">
             <input type="hidden" name="purpose" value={state.purpose} />

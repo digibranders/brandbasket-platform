@@ -5,7 +5,7 @@ import { recordEnquiryContents } from "./queries/enquiries";
 import { countExpiredRetention, purgeExpiredRetention } from "./queries/retention";
 import { insertBusiness } from "./queries/onboarding";
 import { upsertBreakdown, upsertDailyMetrics, upsertReportSource } from "./queries/reports";
-import { findAnalyticsConnection, latestGa4Day, listGa4Properties, listVisitDays, listVisitLists } from "./queries/site-visits";
+import { findAnalyticsConnection, findSearchConnection, latestGa4Day, listGa4Properties, listSearchDays, listSearchLists, listVisitDays, listVisitLists } from "./queries/site-visits";
 import { businessMembers, enquiries, metricBreakdowns, metricDaily, users } from "./schema";
 import { withTenantScope } from "./scope";
 import { openTestDatabases, resetTestDatabase, type TestDatabases } from "./testing";
@@ -104,6 +104,38 @@ describe("the Google Analytics connection", () => {
     expect(await latestGa4Day(staff(), businessId)).toBeNull();
     await upsertDailyMetrics(staff(), businessId, [{ metric: "ga4.visits", day: "2026-11-01", value: 1 }, { metric: "ga4.visits", day: "2026-11-02", value: 1 }, { metric: "own.visits", day: "2026-11-03", value: 1 }], NOW);
     expect(await latestGa4Day(staff(), businessId)).toBe("2026-11-02");
+  });
+});
+
+describe("the customer's read of Search Console numbers (plan 62)", () => {
+  beforeEach(async () => {
+    for (const [id, clicks] of [[businessId, 7], [otherBusinessId, 90]] as const) {
+      await upsertDailyMetrics(staff(), id, [
+        { metric: "gsc.clicks", day: "2026-11-01", value: clicks },
+        { metric: "gsc.impressions", day: "2026-11-01", value: clicks * 20 },
+        { metric: "gsc.position", day: "2026-11-01", value: 8.4 },
+        { metric: "gsc.clicks", day: "2026-11-02", value: 0 },
+        { metric: "own.visits", day: "2026-11-01", value: 5 },
+      ], NOW);
+      await upsertBreakdown(staff(), { businessId: id, source: "gsc", month: MONTH, dimension: "query", rows: [{ key: "sweet shop near me", count: clicks }], now: NOW });
+      await upsertBreakdown(staff(), { businessId: id, source: "gsc", month: MONTH, dimension: "device", rows: [{ key: "mobile", count: 1 }], now: NOW });
+    }
+    await upsertReportSource(staff(), { businessId, source: "gsc", externalId: "sc-domain:kulkarni.example", now: NOW });
+  });
+
+  it("returns the business's own gsc numbers only, a measured zero included, never another source's", async () => {
+    const days = await asOwner((tx) => listSearchDays(tx, "2026-11-01", "2026-11-30"));
+    expect(days.map((row) => [row.metric, row.day, row.value])).toEqual([["clicks", "2026-11-01", 7], ["impressions", "2026-11-01", 140], ["position", "2026-11-01", 8.4], ["clicks", "2026-11-02", 0]]);
+  });
+
+  it("returns only the query and page lists, for the business", async () => {
+    const lists = await asOwner((tx) => listSearchLists(tx, MONTH));
+    expect(lists.map((list) => [list.dimension, list.rows])).toEqual([["query", [{ key: "sweet shop near me", count: 7 }]]]);
+  });
+
+  it("reads the business's Search Console connection, and null for a business without one", async () => {
+    expect(await asOwner((tx) => findSearchConnection(tx))).toMatchObject({ externalId: "sc-domain:kulkarni.example" });
+    expect(await withTenantScope(dbs.app.db, { userId: OTHER_OWNER, businessId: otherBusinessId }, (tx) => findSearchConnection(tx))).toBeNull();
   });
 });
 

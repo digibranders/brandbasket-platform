@@ -4,7 +4,7 @@ import type { AttentionItem } from "./pipeline";
 import { clock, longDay, shortDate } from "./team-time";
 
 /** Every kind of work Today shows: the pipeline's attention kinds, plus requests, sign-ups, errors, failed deliveries and kickoff calls. */
-export type TodayKind = AttentionItem["kind"] | "request" | "signup" | "error" | "delivery" | "kickoff";
+export type TodayKind = AttentionItem["kind"] | "request" | "signup" | "error" | "delivery" | "kickoff" | "google";
 
 export interface TodayItem {
   /** Unique across the queue. */
@@ -15,6 +15,8 @@ export interface TodayItem {
   readonly detail: string;
   /** When it should be dealt with by; null when nothing sets a clock. */
   readonly dueAt: Date | null;
+  /** The button's words when the kind's usual one does not fit (the Google rows each say what the button does). */
+  readonly action?: string;
 }
 
 export interface KickoffNeedingOutcome {
@@ -36,6 +38,8 @@ export interface TodayInput {
   readonly failedDeliveries: number | null;
   /** Kickoff calls that are over and not marked held (or as missed); null when they could not be read. One item each. */
   readonly kickoffsNeedingOutcome: readonly KickoffNeedingOutcome[] | null;
+  /** Google problems: sites that cannot be verified, silent sources, a lost sign-in (lib/google-today.ts). Already built and shown in their own section. */
+  readonly google?: readonly TodayItem[];
   /** The end of the team's day: a preview due after it is not today's work. */
   readonly endOfToday: Date;
 }
@@ -149,13 +153,14 @@ export function todayQueue(input: TodayInput): readonly TodayItem[] {
       dueAt: call.endsAt,
     }),
   );
-  return [...attention, ...requests, ...signups, ...errors, ...deliveries, ...kickoffs].sort(byDue);
+  return [...attention, ...requests, ...signups, ...errors, ...deliveries, ...kickoffs, ...(input.google ?? [])].sort(byDue);
 }
 
 export const GROUP_HEADINGS = {
   overdue: "Overdue",
   dueToday: "Due today",
   waiting: "Waiting for someone",
+  google: "Google",
 } as const;
 
 export interface TodayGroup {
@@ -165,15 +170,18 @@ export interface TodayGroup {
 
 /**
  * Splits a queue from todayQueue into Overdue (due before now), Due today (due from now until the end of the team's day)
- * and Waiting for someone (everything else, including items with no due time). Each group keeps the queue's order and
- * empty groups are left out.
+ * and Waiting for someone (everything else, including items with no due time), then Google (its three kinds, whatever
+ * their clocks). Each group keeps the queue's order and empty groups are left out.
  */
 export function groupTodayQueue(queue: readonly TodayItem[], now: Date, endOfToday: Date): readonly TodayGroup[] {
   const overdue: TodayItem[] = [];
   const dueToday: TodayItem[] = [];
   const waiting: TodayItem[] = [];
+  const google: TodayItem[] = [];
   for (const item of queue) {
-    if (item.dueAt !== null && item.dueAt.getTime() < now.getTime()) overdue.push(item);
+    // Google problems sit together in their own section, whatever their clocks say.
+    if (item.kind === "google") google.push(item);
+    else if (item.dueAt !== null && item.dueAt.getTime() < now.getTime()) overdue.push(item);
     else if (item.dueAt !== null && item.dueAt.getTime() < endOfToday.getTime()) dueToday.push(item);
     else waiting.push(item);
   }
@@ -181,6 +189,7 @@ export function groupTodayQueue(queue: readonly TodayItem[], now: Date, endOfTod
     { heading: GROUP_HEADINGS.overdue, items: overdue },
     { heading: GROUP_HEADINGS.dueToday, items: dueToday },
     { heading: GROUP_HEADINGS.waiting, items: waiting },
+    { heading: GROUP_HEADINGS.google, items: google },
   ];
   return groups.filter((group) => group.items.length > 0);
 }

@@ -42,12 +42,14 @@ export interface ProvisionDeps {
   readonly now: Date;
 }
 
-export type SkipReason = "free-address" | "hosting-paused";
+export type SkipReason = "free-address" | "hosting-paused" | "detached";
 
 /** Why this business gets no Google property, or null when it should. */
 export function skipReason(candidate: ProvisionCandidate, config: ProvisionConfig): SkipReason | null {
   if (config.freeBaseDomain !== null && candidate.hostname.endsWith(`.${config.freeBaseDomain.toLowerCase()}`)) return "free-address";
-  return candidate.hostingPaused ? "hosting-paused" : null;
+  if (candidate.hostingPaused) return "hosting-paused";
+  // Staff detached the business in the console: its rows are kept, and nothing is made or changed until they provision it again.
+  return candidate.ga4?.status === "removed" || candidate.gsc?.status === "removed" ? "detached" : null;
 }
 
 const siteUrlOf = (candidate: ProvisionCandidate): string => `https://${candidate.hostname}/`;

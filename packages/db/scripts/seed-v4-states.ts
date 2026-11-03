@@ -41,6 +41,7 @@ import { findSiteSetting, saveSiteSetting } from "../src/queries/site-settings";
 import { listPreviewVersions, recordPreviewVersion } from "../src/queries/project-preview-versions";
 import { approveProjectPreview, insertOnboardingProject, markProjectLive, recordProjectPreviewSent, requestProjectRevisions } from "../src/queries/projects";
 import { setProjectBuilding } from "../src/queries/project-website";
+import { saveProvisionedSource } from "../src/queries/google-provisioning";
 import { composeReport, moveReport, recordSourceRun, setReportSourceStatus, upsertBreakdown, upsertDailyMetrics, upsertReportSource } from "../src/queries/reports";
 import { findSetupCallBooking, markSetupCallHeld, recordSetupCallBooking, saveSetupCallSummary } from "../src/queries/setup-calls";
 import { recordFailedPayment } from "../src/queries/staff-payments";
@@ -755,6 +756,62 @@ async function seedVisits(context: Context, businessId: string, paths: readonly 
   }
 }
 
+/** The searches people used before landing on a business's site, as the sample's Search Console would list them. */
+const SEARCH_QUERIES: readonly (readonly [string, number])[] = [
+  ["physiotherapy in kothrud", 30],
+  ["physiotherapist near me", 22],
+  ["knee pain treatment pune", 16],
+  ["kulkarni physio", 14],
+  ["back pain physiotherapy karve road", 10],
+  ["sports injury clinic pune", 8],
+];
+
+/**
+ * Sixty days of Search Console numbers (what the nightly pull writes as `gsc.*`), ending three days back because Google
+ * finishes a day about three days late, and the two months' top searches and pages. A day with impressions but no click is a
+ * measured zero; position exists on days with impressions. Sample numbers, local databases only. Re-running replaces the same
+ * days with the same numbers.
+ */
+async function seedSearch(context: Context, businessId: string, paths: readonly string[]): Promise<void> {
+  const { db, today, now } = context;
+  const random = randomStream(`search:${businessId}`);
+  const lastDay = shiftDate(today, -3);
+  const days: { readonly day: string; readonly clicks: number; readonly impressions: number; readonly position: number }[] = [];
+  for (let back = 59; back >= 0; back -= 1) {
+    const day = shiftDate(lastDay, -back);
+    const weekend = [0, 6].includes(new Date(`${day}T12:00:00Z`).getUTCDay());
+    const impressions = Math.round((weekend ? 120 : 210) * (0.7 + random() * 0.6));
+    const clicks = Math.round(impressions * (0.02 + random() * 0.04));
+    days.push({ day, clicks, impressions, position: Math.round((7 + random() * 4) * 10) / 10 });
+  }
+  await upsertDailyMetrics(
+    db,
+    businessId,
+    days.flatMap((entry) => [
+      { metric: "gsc.clicks", day: entry.day, value: entry.clicks },
+      { metric: "gsc.impressions", day: entry.day, value: entry.impressions },
+      { metric: "gsc.position", day: entry.day, value: entry.position },
+    ]),
+    now,
+  );
+  await recordSourceRun(db, { businessId, source: "gsc", windowStart: days[0]?.day ?? lastDay, windowEnd: lastDay, error: null, now });
+  const months = [monthStartOf(shiftDate(monthStartOf(today), -1)), monthStartOf(today)];
+  for (const month of months) {
+    const inMonth = days.filter((entry) => entry.day.startsWith(month.slice(0, 7)));
+    const clicks = inMonth.reduce((sum, entry) => sum + entry.clicks, 0);
+    if (inMonth.length === 0) continue;
+    await upsertBreakdown(db, { businessId, source: "gsc", month, dimension: "query", rows: SEARCH_QUERIES.map(([key, share]) => ({ key, count: Math.max(1, Math.round((clicks * share) / 100)) })), now });
+    await upsertBreakdown(db, {
+      businessId,
+      source: "gsc",
+      month,
+      dimension: "page",
+      rows: paths.slice(0, 5).map((path, index) => ({ key: path, count: Math.max(1, Math.round((clicks * (VISIT_PAGE_SHARES[index] ?? 5)) / 100)) })).sort((a, b) => b.count - a.count),
+      now,
+    });
+  }
+}
+
 async function seedReports(context: Context, businessId: string, host: string): Promise<void> {
   const { db, today, now } = context;
   const thisMonth = monthStartOf(today);
@@ -850,6 +907,10 @@ async function seedReports(context: Context, businessId: string, host: string): 
   await setReportSourceStatus(db, { businessId, source: "gsc", status: "connected", error: null, now });
   await upsertReportSource(db, { businessId, source: "ga4", externalId: "418307256", now });
   await setReportSourceStatus(db, { businessId, source: "ga4", status: "connected", error: null, now });
+  // What the go live job leaves behind for a site that is fully set up (plan 62), so the console's Google card reads true.
+  const verifiedAt = new Date(now.getTime() - 20 * DAY_MS);
+  await saveProvisionedSource(db, { businessId, source: "gsc", externalId: `sc-domain:${host}`, status: "connected", verifiedAt, provisionedAt: verifiedAt, secondOwnerOk: true, detail: null, now });
+  await saveProvisionedSource(db, { businessId, source: "ga4", externalId: "418307256", status: "connected", measurementId: "G-KULK4PHYS1", provisionedAt: verifiedAt, detail: null, now });
 }
 
 async function seedConnectedAccounts(context: Context, businessId: string, handle: string, name: string, withProblem: boolean): Promise<void> {
@@ -964,7 +1025,10 @@ async function seedBusiness(context: Context, spec: Spec, index: number): Promis
     const siteHost = must(host, `${spec.name} has no host.`);
     const pages = spec.stage === "live" ? ["/", "/about", "/services", "/services/back-pain-physiotherapy", "/services/sports-injury-recovery", "/services/knee-and-joint-care", "/contact"] : ["/", "/about", "/services", "/contact"];
     await seedWebsitePages(context, businessId, siteHost, pages);
-    if (spec.stage === "live") await seedVisits(context, businessId, pages);
+    if (spec.stage === "live") {
+      await seedVisits(context, businessId, pages);
+      await seedSearch(context, businessId, pages);
+    }
   }
   if (spec.stage === "live") {
     const siteHost = must(host, `${spec.name} has no host.`);
