@@ -16,12 +16,30 @@ download it as a PDF, and the owner gets an email. Plan: `docs/plans/53` to `55`
 - Months are Indian calendar months (a check at 01:30 on 1 November in India belongs to November).
 - Prices and ad spend use the business's currency. Dollar customers never see tax wording.
 
+## Visitors and Google search
+
+The report reads these from the stored metrics, whoever collects them: `ga4.*` (Google Analytics) and `own.*` (our site script) for the
+Website report, `gsc.*` (Search Console) for the Local SEO + AEO report. Daily numbers are in `metric_daily`, ranked lists in
+`metric_breakdowns` (`channel` and `page` for `ga4` and `own`, `query` and `page` for `gsc`, rows `{ key, count }`), and the days each
+source was pulled in `report_source_runs`.
+
+- A source is reported only when successful runs cover at least 90 percent of the month's days, so a source connected on the 20th does
+  not report a "month" of 11 days. Inside a covered month a day with no row is zero.
+- Google Analytics is used for visitors when it measured the whole month, otherwise our own script when it did, otherwise the figure
+  is left out. The month before is compared only when the same source measured it completely.
+- Search Console's average position is weighted by each day's views (it cannot be summed or averaged across days).
+- Lists (where enquiries came from, how visitors found the site, most viewed pages, top searches, top pages from Google) are stored in
+  the report's optional `lists`. A reader that does not know `lists` ignores it.
+- Nothing here connects to Google. How the customer's Google data is collected (service account or OAuth) belongs to the collectors;
+  a collector only has to write the metrics above.
+
 ## Parts
 
 | Part | Where |
 |---|---|
 | Report content, version 1 (`headline`, `figures`, `whatWeDid`) | `packages/shared/src/lib/reports/content.ts` |
 | The sentences (pure, tested) | `packages/shared/src/lib/reports/compose.ts` |
+| Visitor and search figures (pure) | `packages/shared/src/lib/reports/traffic.ts` |
 | Raw records for one business and month | `packages/db/src/queries/report-facts.ts` |
 | Composing drafts, sending a report | `packages/shared/src/server/monthly-reports.ts` |
 | The PDF (pdf-lib, Hanken Grotesk, rupee sign as a vector) | `packages/shared/src/server/report-pdf.ts` |
