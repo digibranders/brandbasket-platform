@@ -84,6 +84,8 @@
   --shadow-pop: var(--sh-pop);
   --shadow-dialog: var(--sh-dialog);
   --shadow-inspector: var(--sh-inspector);
+  --shadow-chip: var(--sh-chip);
+  --shadow-sheet: var(--sh-sheet);
 
   /* Named sizes for height, width and size (h-control, size-icon-button, w-sidebar). They change at the phone breakpoint. */
   --spacing-control: var(--size-control);

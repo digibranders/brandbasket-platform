@@ -71,8 +71,8 @@ export interface NavInput {
 }
 
 const SERVICE_LINKS: Readonly<Record<Service, Omit<NavLink, "bought" | "children">>> = {
-  website: { href: SHELL_PATHS.website, label: "Website", icon: "Globe", service: "website" },
-  social: { href: SHELL_PATHS.social, label: "Social & Ads", icon: "Megaphone", service: "social" },
+  website: { href: SHELL_PATHS.website, label: "Website", icon: "Browser", service: "website" },
+  social: { href: SHELL_PATHS.social, label: "Social & Ads", icon: "MegaphoneSimple", service: "social" },
   // The SEO service is never called "Search", which is what the search box is.
   search: { href: SHELL_PATHS.search, label: "Local SEO + AEO", icon: "MapPinArea", service: "search" },
 };
@@ -89,14 +89,14 @@ const SERVICES_IN_ORDER: readonly Service[] = ["website", "social", "search"];
 const withCount = (link: NavLink, count: number | undefined): NavLink => (count !== undefined && count > 0 ? { ...link, count } : link);
 
 const HOME: NavLink = { href: SHELL_PATHS.home, label: "Home", icon: "House" };
-const ENQUIRIES: NavLink = { href: SHELL_PATHS.enquiries, label: "Enquiries", icon: "Tray" };
-const REQUESTS: NavLink = { href: SHELL_PATHS.requests, label: "Requests", icon: "ChatsCircle" };
-const REPORTS: NavLink = { href: SHELL_PATHS.reports, label: "Reports", icon: "ChartLineUp" };
+const ENQUIRIES: NavLink = { href: SHELL_PATHS.enquiries, label: "Enquiries", icon: "TrayArrowDown" };
+const REQUESTS: NavLink = { href: SHELL_PATHS.requests, label: "Requests", icon: "ChatTeardropText" };
+const REPORTS: NavLink = { href: SHELL_PATHS.reports, label: "Reports", icon: "PresentationChart" };
 const BUSINESS: NavLink = { href: SHELL_PATHS.business, label: "Business profile", icon: "Storefront" };
 const FOOT: readonly NavLink[] = [
-  { href: SHELL_PATHS.billing, label: "Plan & billing", icon: "CreditCard", children: [{ href: SHELL_PATHS.invoices, label: "Invoices" }] },
+  { href: SHELL_PATHS.billing, label: "Plan & billing", icon: "Wallet", children: [{ href: SHELL_PATHS.invoices, label: "Invoices" }] },
   { href: SHELL_PATHS.settings, label: "Settings", icon: "GearSix" },
-  { href: SHELL_PATHS.help, label: "Help & calls", icon: "Question" },
+  { href: SHELL_PATHS.help, label: "Help & calls", icon: "Headset" },
 ];
 
 /**
@@ -164,7 +164,7 @@ export function phoneTabs(model: NavModel, kickoffOver: boolean): readonly Phone
     ? [
         ...tab(SHELL_PATHS.home),
         ...tab(SHELL_PATHS.enquiries),
-        { kind: "menu", id: "services", label: "Services", icon: "Globe", links: services },
+        { kind: "menu", id: "services", label: "Services", icon: "Browser", links: services },
         ...tab(SHELL_PATHS.requests),
       ]
     : [...tab(SHELL_PATHS.home), ...tab(SHELL_PATHS.requests), ...tab(SHELL_PATHS.business, "Business"), ...tab(SHELL_PATHS.billing, "Billing")];

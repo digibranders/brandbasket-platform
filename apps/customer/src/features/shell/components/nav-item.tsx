@@ -13,7 +13,7 @@ export function countWords(link: NavLink): string {
 export function CountPill({ link, className }: { readonly link: NavLink; readonly className?: string }) {
   if (link.count === undefined) return null;
   return (
-    <span className={cx("min-w-5 rounded-full bg-accent-wash px-1.5 text-center type-label text-accent-text", className)}>
+    <span className={cx("min-w-5 rounded-full bg-primary px-1.5 text-center type-label text-on-primary", className)}>
       <span aria-hidden>{link.count}</span>
       <span className="sr-only">
         , {link.count} {countWords(link)}
@@ -22,7 +22,11 @@ export function CountPill({ link, className }: { readonly link: NavLink; readonl
   );
 }
 
-/** One sidebar link (plan 60, section 9): icon, label, then its count or its service mark. */
+/**
+ * One sidebar link (plan 60, section 9; owner's pick, docs/design/sidebar-v4-premium.html option 2): a light icon that
+ * fills in cobalt on the current page, which lifts off the sidebar as a white chip; then its count, its service mark, or
+ * for a service not on the plan an "Add" that shows on hover (the link opens that service's Not bought page).
+ */
 export function NavItem({ link, current }: { readonly link: NavLink; readonly current: boolean }) {
   const notBought = link.bought === false;
   return (
@@ -30,16 +34,24 @@ export function NavItem({ link, current }: { readonly link: NavLink; readonly cu
       href={link.href}
       aria-current={current ? "page" : undefined}
       className={cx(
-        "flex h-8 items-center gap-2.5 rounded-control px-2.5 type-table no-underline transition-colors duration-100 hover:bg-surface-hover",
-        current ? "bg-surface-selected font-medium text-ink hover:bg-surface-selected" : notBought ? "text-ink-3" : "text-ink-2",
+        "group flex h-8 shrink-0 items-center gap-2.5 rounded-control px-2.5 type-table no-underline transition duration-200 ease-out",
+        current ? "bg-surface font-medium text-ink shadow-chip" : notBought ? "text-ink-3 hover:bg-surface/60" : "text-ink-2 hover:bg-surface/60 hover:text-ink",
       )}
     >
-      <Icon name={link.icon} className={current ? "text-accent-text" : notBought ? "text-ink-muted" : undefined} />
+      <Icon name={link.icon} filled={current} className={current ? "text-primary" : notBought ? "text-ink-muted" : "text-ink-3"} />
       <span className="min-w-0 flex-1 truncate">
         {link.label}
         {notBought ? <span className="sr-only">, not on your plan</span> : null}
       </span>
-      {link.count === undefined ? link.service === undefined ? null : <ServiceMark service={link.service} bought={!notBought} /> : <CountPill link={link} />}
+      {link.count !== undefined ? (
+        <CountPill link={link} />
+      ) : notBought ? (
+        <span aria-hidden className="type-label text-accent-text opacity-0 transition-opacity duration-200 group-hover:opacity-100 group-focus-visible:opacity-100">
+          Add
+        </span>
+      ) : link.service === undefined ? null : (
+        <ServiceMark service={link.service} bought />
+      )}
     </Link>
   );
 }

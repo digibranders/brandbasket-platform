@@ -51,17 +51,18 @@ export function AppShell({ view, children }: { readonly view: ShellView; readonl
       >
         Skip to content
       </a>
-      <div className="flex min-h-dvh">
+      <div className="flex min-h-dvh bg-sidebar md:h-dvh md:overflow-hidden">
         <Sidebar
           model={model}
           pathname={pathname}
           businessName={view.business.name}
-          serviceCount={view.business.services.length}
+          services={view.business.services}
           person={view.person}
           onSearch={openSearch}
           onSignOutError={setSignOutError}
         />
-        <div className="flex min-w-0 flex-1 flex-col">
+        {/* Desktop: the page is a raised sheet that scrolls on its own, on the sidebar's grey (sidebar option 2). */}
+        <div className="flex min-w-0 flex-1 flex-col bg-canvas md:my-2 md:mr-2 md:overflow-y-auto md:rounded-overlay md:shadow-sheet">
           <TopBar
             model={model}
             pathname={pathname}

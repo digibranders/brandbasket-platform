@@ -25,7 +25,7 @@ export function TabBar({ tabs, pathname }: { readonly tabs: readonly PhoneTab[];
           const current = linkIsCurrent(tab.link, pathname);
           return (
             <Link key={tab.link.href} href={tab.link.href} aria-current={current ? "page" : undefined} className={cx(TAB, current ? "font-semibold text-accent-text" : "text-ink-3")}>
-              <Icon name={tab.link.icon} />
+              <Icon name={tab.link.icon} filled={current} />
               {tab.label}
               {tab.link.count === undefined ? null : (
                 <span className="absolute top-0.5 left-1/2 ml-1.5 min-w-4 rounded-full bg-warn-text px-1 text-center type-label text-on-primary">

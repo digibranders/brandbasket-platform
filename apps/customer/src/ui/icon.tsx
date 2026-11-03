@@ -65,6 +65,13 @@ import {
   WarningCircleIcon,
   WhatsappLogoIcon,
   XIcon,
+  WalletIcon,
+  TrayArrowDownIcon,
+  PresentationChartIcon,
+  MegaphoneSimpleIcon,
+  HeadsetIcon,
+  ChatTeardropTextIcon,
+  BrowserIcon,
   ArrowClockwiseIcon,
   ArrowCounterClockwiseIcon,
   ListBulletsIcon,
@@ -145,6 +152,13 @@ const ICONS = {
   WarningCircle: WarningCircleIcon,
   WhatsappLogo: WhatsappLogoIcon,
   X: XIcon,
+  Wallet: WalletIcon,
+  TrayArrowDown: TrayArrowDownIcon,
+  PresentationChart: PresentationChartIcon,
+  MegaphoneSimple: MegaphoneSimpleIcon,
+  Headset: HeadsetIcon,
+  ChatTeardropText: ChatTeardropTextIcon,
+  Browser: BrowserIcon,
   TextHTwo: TextHTwoIcon,
   TextHThree: TextHThreeIcon,
   ArrowClockwise: ArrowClockwiseIcon,
@@ -170,12 +184,14 @@ export interface IconProps {
   readonly size?: IconSize;
   /** Names the icon for screen readers. Leave it out when the icon sits beside words that already say it. */
   readonly label?: string;
+  /** The filled weight, for the current item in a menu (the rest stay light). */
+  readonly filled?: boolean;
   readonly className?: string;
 }
 
-/** A Phosphor icon in the light weight. Hidden from screen readers unless it has a label. Works in server components. */
-export function Icon({ name, size = "md", label, className }: IconProps) {
+/** A Phosphor icon in the light weight (filled when asked). Hidden from screen readers unless it has a label. Works in server components. */
+export function Icon({ name, size = "md", label, filled = false, className }: IconProps) {
   const Glyph = ICONS[name];
   const naming = label === undefined ? { "aria-hidden": true } : { role: "img", "aria-label": label };
-  return <Glyph weight="light" size={SIZES[size]} className={cx("shrink-0", className)} {...naming} />;
+  return <Glyph weight={filled ? "fill" : "light"} size={SIZES[size]} className={cx("shrink-0", className)} {...naming} />;
 }

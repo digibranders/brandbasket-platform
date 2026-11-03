@@ -1,7 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { formatQuantity } from "@/lib/format";
-import { Avatar, Icon, Kbd } from "@/ui";
+import { Avatar, Icon, Kbd, SERVICE_NAMES } from "@/ui";
 import { linkIsCurrent, SHELL_PATHS, type NavModel } from "../rules";
 import { AccountMenu } from "./account-menu";
 import { NavItem } from "./nav-item";
@@ -12,33 +12,36 @@ export interface SidebarProps {
   readonly model: NavModel;
   readonly pathname: string;
   readonly businessName: string;
-  readonly serviceCount: number;
+  readonly services: readonly (keyof typeof SERVICE_NAMES)[];
   readonly person: { readonly name: string; readonly contact: string; readonly role: keyof typeof ROLE_WORDS };
   readonly onSearch: () => void;
   readonly onSignOutError: (message: string) => void;
 }
 
 /**
- * The desktop sidebar (plan 60, section 9): logo, the business, search, the sections, then Plan & billing, Settings, Help
- * & calls and the person's menu at the foot. Hidden below 861px, where the tab bar takes over.
+ * The desktop sidebar (plan 60, section 9; owner's pick, docs/design/sidebar-v4-premium.html option 2): no box of its own,
+ * it is the grey the page sheet sits on. Logo, the business, search, the sections, then Plan & billing, Settings, Help &
+ * calls and the person's menu at the foot. Hidden below 861px, where the tab bar takes over.
  */
-export function Sidebar({ model, pathname, businessName, serviceCount, person, onSearch, onSignOutError }: SidebarProps) {
+export function Sidebar({ model, pathname, businessName, services, person, onSearch, onSignOutError }: SidebarProps) {
   return (
-    <aside className="sticky top-0 hidden h-dvh w-sidebar shrink-0 flex-col gap-0.5 overflow-y-auto border-r border-border bg-sidebar px-2 py-2.5 md:flex">
+    <aside className="sticky top-0 hidden h-dvh w-sidebar shrink-0 flex-col gap-0.5 overflow-y-auto bg-sidebar px-2.5 py-3 md:flex">
       <Link href={SHELL_PATHS.home} className="mb-1 flex w-fit shrink-0 px-2 pt-1.5 pb-2.5">
         <Image src="/brand/brandbasket-logo-horizontal-light.svg" alt="Brandbasket, home" width={130} height={22} unoptimized />
       </Link>
-      <div className="flex shrink-0 items-center gap-2.5 px-2 py-1.5">
-        <Avatar name={businessName} kind="business" />
+      <div className="flex shrink-0 items-center gap-2.5 px-2 pt-2 pb-3">
+        <Avatar name={businessName} kind="chip" />
         <div className="min-w-0">
           <p className="truncate type-sub text-ink">{businessName}</p>
-          {serviceCount === 0 ? null : <p className="type-label font-normal text-ink-3">{formatQuantity(serviceCount, "service")}</p>}
+          {services.length === 0 ? null : (
+            <p className="truncate type-label font-normal text-ink-3">{services.length === 1 ? SERVICE_NAMES[services[0] ?? "website"] : formatQuantity(services.length, "service")}</p>
+          )}
         </div>
       </div>
       <button
         type="button"
         onClick={onSearch}
-        className="mb-1 flex h-8 w-full shrink-0 items-center gap-2 rounded-control border border-border bg-surface px-2.5 text-left type-meta shadow-control hover:border-border-button-hover"
+        className="mb-2 flex h-8 w-full shrink-0 items-center gap-2 rounded-control border border-border-subtle bg-surface/70 px-2.5 text-left type-meta transition-colors duration-200 hover:bg-surface"
       >
         <Icon name="MagnifyingGlass" size="sm" />
         <span className="flex-1">Search</span>
@@ -54,7 +57,7 @@ export function Sidebar({ model, pathname, businessName, serviceCount, person, o
             ))}
           </div>
         ))}
-        <div className="mt-auto flex flex-col gap-0.5 border-t border-border pt-2">
+        <div className="mt-auto flex flex-col gap-0.5 pt-4">
           {model.foot.map((link) => (
             <NavItem key={link.href} link={link} current={linkIsCurrent(link, pathname)} />
           ))}
@@ -65,7 +68,7 @@ export function Sidebar({ model, pathname, businessName, serviceCount, person, o
         contact={person.contact}
         onSignOutError={onSignOutError}
         trigger={
-          <button type="button" className="flex w-full shrink-0 items-center gap-2.5 rounded-control p-2 text-left hover:bg-surface-hover">
+          <button type="button" className="flex w-full shrink-0 items-center gap-2.5 rounded-control p-2 text-left transition-colors duration-200 hover:bg-surface/60">
             <Avatar name={person.name} />
             <span className="min-w-0 flex-1">
               <span className="block truncate type-sub text-ink">{person.name}</span>
@@ -78,3 +81,4 @@ export function Sidebar({ model, pathname, businessName, serviceCount, person, o
     </aside>
   );
 }
+
