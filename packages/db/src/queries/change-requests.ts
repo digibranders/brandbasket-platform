@@ -376,6 +376,10 @@ export async function getChangeRequestForStaff(db: Runner, requestId: string): P
 /** Who to write to about a ticket. */
 export interface RequestRecipient {
   readonly ticketId: string;
+  /** The person who asked, for checking their email preferences. */
+  readonly userId: string;
+  /** The business the ticket is about; null for a ticket that belongs to none. */
+  readonly businessId: string | null;
   readonly subject: string;
   readonly name: string;
   /** Null for an account that signs in with a phone number: it has no address to write to. */
@@ -389,6 +393,8 @@ export async function findRequestRecipient(db: Database, ticketId: string): Prom
   const [row] = await db
     .select({
       subject: supportTickets.subject,
+      userId: users.id,
+      businessId: supportTickets.businessId,
       name: users.name,
       email: users.email,
       businessName: businesses.name,
@@ -403,6 +409,8 @@ export async function findRequestRecipient(db: Database, ticketId: string): Prom
   if (row === undefined) return null;
   return {
     ticketId,
+    userId: row.userId,
+    businessId: row.businessId,
     subject: row.subject,
     name: row.name,
     email: isPhoneAccountEmail(row.email) ? null : row.email,

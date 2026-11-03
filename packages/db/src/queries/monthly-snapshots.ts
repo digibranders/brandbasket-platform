@@ -1,4 +1,4 @@
-import { and, eq } from "drizzle-orm";
+import { and, desc, eq, isNotNull, or } from "drizzle-orm";
 import type { Database } from "../client";
 import type { ScopedTransaction } from "../scope";
 import { monthlySnapshots, type MonthlySnapshot, type SetupService } from "../schema";
@@ -14,6 +14,9 @@ export interface SnapshotFigures {
   readonly postsPlanned: number | null;
   readonly keywordsPageOne: number | null;
   readonly keywordsPageOnePrev: number | null;
+  readonly reach: number | null;
+  readonly followers: number | null;
+  readonly profileVisits: number | null;
 }
 
 /** Saves one month's figures for a service, replacing that month's row. `month` is `YYYY-MM-01`. Staff connection. */
@@ -36,4 +39,24 @@ export async function listMonthlySnapshots(db: Runner, businessId: string, month
     .select()
     .from(monthlySnapshots)
     .where(and(eq(monthlySnapshots.businessId, businessId), eq(monthlySnapshots.month, month)));
+}
+
+/**
+ * The newest month in which staff entered any social reach figure (reach, followers or profile visits), or null when none
+ * was. Read as the customer inside withTenantScope, or with the staff connection; the business is named explicitly.
+ */
+export async function latestSocialReach(db: Runner, businessId: string): Promise<MonthlySnapshot | null> {
+  const [row] = await db
+    .select()
+    .from(monthlySnapshots)
+    .where(
+      and(
+        eq(monthlySnapshots.businessId, businessId),
+        eq(monthlySnapshots.service, "social"),
+        or(isNotNull(monthlySnapshots.reach), isNotNull(monthlySnapshots.followers), isNotNull(monthlySnapshots.profileVisits)),
+      ),
+    )
+    .orderBy(desc(monthlySnapshots.month))
+    .limit(1);
+  return row ?? null;
 }

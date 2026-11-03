@@ -1,5 +1,5 @@
 import "server-only";
-import { applyChatbotQualification, findChatbotWebhookTarget, recordChatbotLead } from "@brandbasket/db";
+import { applyChatbotQualification, findChatbotWebhookTarget, recordChatbotLead, upsertEnquiryFromChatLead } from "@brandbasket/db";
 import { errorLogInfo } from "@brandbasket/shared/server/error-log-info";
 import { parseOyeChatsEvent, readOyeChatsBotId, verifyOyeChatsSignature } from "@brandbasket/shared/server/oyechats-webhook";
 import { getStaffDb } from "./db";
@@ -13,6 +13,18 @@ function alertChatbotLead(businessId: string): void {
     void alertTeams("enquiries", chatbotLeadTeamsCard({ clientUrl: new URL(`/clients/${businessId}`, serverEnv().ADMIN_ORIGIN).toString() }));
   } catch (error) {
     console.error("A chatbot lead was saved but Teams could not be told about it.", errorLogInfo(error));
+  }
+}
+
+/**
+ * Adds the lead to the customer's enquiries list. The lead is already saved and the nightly backfill heals a miss, so a
+ * failure here is logged and never fails the delivery (OyeChats would retry it for hours).
+ */
+async function mirrorLeadToEnquiries(staffDb: ReturnType<typeof getStaffDb>, leadId: string): Promise<void> {
+  try {
+    await upsertEnquiryFromChatLead(staffDb, leadId);
+  } catch (error) {
+    console.error("A chatbot lead was saved but its enquiry could not be written.", errorLogInfo(error));
   }
 }
 
@@ -45,7 +57,7 @@ export async function handleOyeChatsWebhook(rawBody: string, signature: string |
   const event = parseOyeChatsEvent(rawBody);
   switch (event.kind) {
     case "lead":
-      await recordChatbotLead(staffDb, {
+      const leadId = await recordChatbotLead(staffDb, {
         chatbotId: target.chatbotId,
         businessId: target.businessId,
         sessionId: event.sessionId,
@@ -55,6 +67,7 @@ export async function handleOyeChatsWebhook(rawBody: string, signature: string |
         company: event.company,
         capturedAt: event.occurredAt,
       });
+      await mirrorLeadToEnquiries(staffDb, leadId);
       alertChatbotLead(target.businessId);
       return { kind: "recorded", businessId: target.businessId };
     case "qualification": {

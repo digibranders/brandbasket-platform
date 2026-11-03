@@ -18,11 +18,11 @@
 #   nginx-http  port 80 only, for the certificate challenge
 #   tls         certbot certificate "brandbasket" for app. and console.brandbasket.in (needs --email)
 #   nginx-https the full site for both names
-#   services    the two app units, Brandbasket's own failure alert handler, brandbasket-migrate and the sudoers rule
+#   services    the app units (the customer app's is installed, not enabled), Brandbasket's own failure alert handler, brandbasket-migrate and the sudoers rule
 #   autodeploy  the release and autodeploy scripts, the shared lock library and the minute timer (first deploy of main); it
 #               refuses to enable the timer unless GitHub accepts the deploy key (git ls-remote as brandbasket)
 #   ci          user bbci, the 8 GB sandbox disk, the sandbox, its ufw loopback rule, and the CI timer (ci/install-ci.sh)
-#   backups     backup, restore test, maintenance, erase, hosting-sync and site rollup units; the timers are enabled once a backup has succeeded
+#   backups     backup, restore test, maintenance, erase, hosting-sync, site rollup and site health units; the timers are enabled once a backup has succeeded
 #
 # What it will not do: touch a file whose resolved path is not under a Brandbasket prefix (install-lib.sh guard); change, restart
 # or reload anything of Firstfold's, except `nginx reload` after `nginx -t` passes, the marker-delimited block in ufw's
@@ -73,7 +73,7 @@ verify_units() {
   for f in "$@"; do cp "$f" "$tmp/$(basename "$f")"; done
   out="$(cd "$tmp" && systemd-analyze verify ./* 2>&1 || true)"
   rm -rf "${tmp:?}"
-  out="$(grep -v -E 'current-(platform|admin)|is not executable|No such file or directory' <<<"$out" || true)"
+  out="$(grep -v -E 'current-(platform|admin|customer)|is not executable|No such file or directory' <<<"$out" || true)"
   [[ -z "$out" ]] || { printf '%s\n' "$out" >&2; die "systemd-analyze verify found problems in the units above; nothing was installed"; }
   say "  systemd-analyze verify: ok ($(printf '%s ' "${@##*/}"))"
 }
@@ -305,23 +305,26 @@ step_services() {
   need_root
   need_user
   say "== checking the units before installing anything"
-  verify_units "$HERE/systemd/brandbasket-app.service" "$HERE/systemd/brandbasket-admin.service" "$HERE/systemd/brandbasket-notify-failure@.service"
+  verify_units "$HERE/systemd/brandbasket-app.service" "$HERE/systemd/brandbasket-admin.service" "$HERE/systemd/brandbasket-customer.service" "$HERE/systemd/brandbasket-notify-failure@.service"
   say "== units (run as brandbasket, sandboxed; Firstfold's folders are invisible to them)"
   put 0644 "$HERE/systemd/brandbasket-app.service" "$UNIT_DIR/brandbasket-app.service"
   put 0644 "$HERE/systemd/brandbasket-admin.service" "$UNIT_DIR/brandbasket-admin.service"
+  # Installed, not enabled: the customer app v4 has no release until the owner sets CUSTOMER_APP_ENABLED (see the runbook).
+  put 0644 "$HERE/systemd/brandbasket-customer.service" "$UNIT_DIR/brandbasket-customer.service"
   say "== failure alerts: Brandbasket's own handler (not Firstfold's); logs only while BREVO_API_KEY is blank"
   put 0700 "$HERE/brandbasket-notify-failure" /usr/local/sbin/brandbasket-notify-failure
   put 0644 "$HERE/systemd/brandbasket-notify-failure@.service" "$UNIT_DIR/brandbasket-notify-failure@.service"
-  install_failure_alerts brandbasket-app brandbasket-admin
+  install_failure_alerts brandbasket-app brandbasket-admin brandbasket-customer
   say "== migration wrapper (reads the database owner's password from a root-only file; takes no arguments)"
   put 0755 "$REPO/scripts/server/brandbasket-migrate" /usr/local/sbin/brandbasket-migrate
-  say "== sudo: brandbasket may run the wrapper, restart/stop the two units, and the CI sandbox, nothing else"
+  say "== sudo: brandbasket may run the wrapper, restart/stop the three units, and the CI sandbox, nothing else"
   visudo -cf "$HERE/sudoers-brandbasket" >/dev/null || die "the sudoers file does not parse"
   say "  visudo -cf: ok"
   put_checked 0440 "$HERE/sudoers-brandbasket" /etc/sudoers.d/brandbasket visudo -c
   act "systemctl daemon-reload" systemctl daemon-reload
   enable_units brandbasket-app brandbasket-admin
-  say "  ports 3201 and 3203 stay closed: ufw admits only 22, and 80/443 from Cloudflare"
+  say "  brandbasket-customer is installed and NOT enabled: enable it when turning the customer app on (runbook, \"Customer app v4\")"
+  say "  ports 3201, 3202 and 3203 stay closed: ufw admits only 22, and 80/443 from Cloudflare"
 }
 
 # install_failure_alerts <service name>...: OnFailure drop-ins that use Brandbasket's own alert handler.
@@ -409,7 +412,8 @@ step_backups() {
     "$HERE/systemd/brandbasket-erase.service" "$HERE/systemd/brandbasket-erase.timer" \
     "$HERE/systemd/brandbasket-site-hosting.service" "$HERE/systemd/brandbasket-site-hosting.timer" \
     "$HERE/systemd/brandbasket-site-rollup.service" "$HERE/systemd/brandbasket-site-rollup.timer" \
-    "$HERE/systemd/brandbasket-kickoff-builds.service" "$HERE/systemd/brandbasket-kickoff-builds.timer"
+    "$HERE/systemd/brandbasket-kickoff-builds.service" "$HERE/systemd/brandbasket-kickoff-builds.timer" \
+    "$HERE/systemd/brandbasket-site-health.service" "$HERE/systemd/brandbasket-site-health.timer"
   say "== programs"
   dir 0700 root:root /etc/brandbasket
   dir 0700 root:root /var/backups/brandbasket
@@ -422,11 +426,11 @@ step_backups() {
   put 0755 "$REPO/scripts/server/run-site-rollup-job.sh" /usr/local/sbin/brandbasket-site-rollup-job
   put 0755 "$REPO/scripts/server/run-kickoff-builds-job.sh" /usr/local/sbin/brandbasket-kickoff-builds-job
   say "== units"
-  for f in brandbasket-backup brandbasket-restore-test brandbasket-maintenance brandbasket-erase brandbasket-site-hosting brandbasket-site-rollup brandbasket-kickoff-builds; do
+  for f in brandbasket-backup brandbasket-restore-test brandbasket-maintenance brandbasket-erase brandbasket-site-hosting brandbasket-site-rollup brandbasket-kickoff-builds brandbasket-site-health; do
     put 0644 "$HERE/systemd/$f.service" "$UNIT_DIR/$f.service"
     put 0644 "$HERE/systemd/$f.timer" "$UNIT_DIR/$f.timer"
   done
-  install_failure_alerts brandbasket-backup brandbasket-restore-test brandbasket-maintenance brandbasket-site-hosting brandbasket-site-rollup brandbasket-kickoff-builds
+  install_failure_alerts brandbasket-backup brandbasket-restore-test brandbasket-maintenance brandbasket-site-hosting brandbasket-site-rollup brandbasket-kickoff-builds brandbasket-site-health
   act "systemctl daemon-reload" systemctl daemon-reload
   say "== timers"
   if [[ -f /var/lib/brandbasket/last-backup-ok && -f /var/lib/brandbasket/last-offsite-ok ]]; then
@@ -440,6 +444,7 @@ step_backups() {
   else say "  maintenance, site rollup and kickoff builds timers: not enabled until the first deploy has created $SRV/current-platform"; fi
   say "  brandbasket-erase.timer: installed, NOT enabled. It deletes customer data; the owner decides: systemctl enable --now brandbasket-erase.timer"
   say "  brandbasket-site-hosting.timer: installed, NOT enabled. It pauses lapsed websites; set VERCEL_API_TOKEN, read a --dry-run, then: systemctl enable --now brandbasket-site-hosting.timer"
+  say "  brandbasket-site-health.timer: installed, NOT enabled. Migrate first (site_checks), run 'systemctl start brandbasket-site-health.service' once and read its journal, then: systemctl enable --now brandbasket-site-health.timer"
 }
 
 # --- main -----------------------------------------------------------------------------------------------------------------

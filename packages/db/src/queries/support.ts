@@ -87,8 +87,11 @@ function changePage(page: string | null | undefined): string | null {
 export async function createSupportTicket(db: Database, input: CreateSupportTicketInput): Promise<SupportTicket> {
   return (await createSupportTicketWithOutcome(db, input)).ticket;
 }
-/** `created` is false when the submission key was already used by the same request, so callers act on a new ticket only once. */
-export async function createSupportTicketWithOutcome(db: Database, input: CreateSupportTicketInput): Promise<{ readonly ticket: SupportTicket; readonly created: boolean }> {
+/**
+ * `created` is false when the submission key was already used by the same request, so callers act on a new ticket only once.
+ * `db` may be a transaction the caller opened (as the customer: withCustomerRole), so the ticket commits with the caller's writes.
+ */
+export async function createSupportTicketWithOutcome(db: SupportRunner, input: CreateSupportTicketInput): Promise<{ readonly ticket: SupportTicket; readonly created: boolean }> {
   assertSupportSubmissionKey(input.submissionKey);
   if (!supportCategory.enumValues.includes(input.category)) throw new SupportQueryError("invalid_input", "Invalid support category.");
   const subject = supportText(input.subject, "Subject", 3, 120), description = supportText(input.description, "Description", 10, 5000);
@@ -99,7 +102,7 @@ export async function createSupportTicketWithOutcome(db: Database, input: Create
   if (changeRequest !== null && (!isChangeKind(changeRequest.kind) || businessId === null)) throw new SupportQueryError("invalid_input", "A change request needs a kind and a business.");
   // The change details join the hash only when present, so a plain ticket's hash is what it always was.
   const submissionHash = supportSubmissionHash({ category: input.category, subject, description, details, attachmentIds, businessId, ...(changeRequest === null ? {} : { changeRequest }) });
-  return withUserScope(db, input.userId, async (tx) => {
+  return supportUserScope(db, input.userId, async (tx) => {
     await lockSupportSubmission(tx, input.userId, input.submissionKey);
     const [existing] = await tx.select().from(supportTickets).where(and(eq(supportTickets.requesterUserId, input.userId), eq(supportTickets.submissionKey, input.submissionKey))).limit(1);
     if (existing) {

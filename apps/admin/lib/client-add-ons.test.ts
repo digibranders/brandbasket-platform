@@ -29,6 +29,7 @@ function row(overrides: Partial<AddOnSubscriptionForStaff> & Pick<AddOnSubscript
     haltedAt: null,
     endKind: null,
     endRequestedAt: null,
+    endReason: null,
     endRequestedByStaffId: null,
     endedAt: null,
     continuesId: null,

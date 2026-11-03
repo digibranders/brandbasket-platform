@@ -584,9 +584,12 @@ export type BundledRemoval =
  * lock before anything is recorded: when another change has landed since the provider was told (a second removal, a paid
  * add), nothing is written, the provider is put on the amount the database holds, staff are flagged and the result is
  * `failed`, so trying again prices the basket as it now stands. Everything comes from the database, under the business's
- * lock; the caller names only the service.
+ * lock; the caller names only the service, and the customer's reason for leaving, which is kept on the line (end_reason).
  */
-export async function removeBundledAddOn(deps: BasketDeps, input: { readonly businessId: string; readonly addOn: MonthlyAddOnId; readonly now: Date }): Promise<BundledRemoval> {
+export async function removeBundledAddOn(
+  deps: BasketDeps,
+  input: { readonly businessId: string; readonly addOn: MonthlyAddOnId; readonly now: Date; readonly reason?: string | null },
+): Promise<BundledRemoval> {
   const { businessId, addOn, now } = input;
   const basket = await liveBasket(deps, businessId, (row) => row.addOn === addOn && row.endRequestedAt === null);
   if (basket === null) return { kind: "not-in-plan" };
@@ -616,7 +619,7 @@ export async function removeBundledAddOn(deps: BasketDeps, input: { readonly bus
       if (current.kept.length === 0 || current.remainingNetCents !== sent.remainingNetCents || !(await discountStillSent(tx, subscription.id, current.remainingNetCents, sentDiscountCents))) {
         throw new BasketChangedError(subscription.id, sent.remainingNetCents, packageMove(fresh, await isPackageOfferForfeited(tx, businessId)).netCents);
       }
-      const removed = await recordBundledAddOnRemoval(tx, { id: row.id, businessId, pendingBundledAddOnNetCents: current.remainingNetCents, now });
+      const removed = await recordBundledAddOnRemoval(tx, { id: row.id, businessId, pendingBundledAddOnNetCents: current.remainingNetCents, now, ...(input.reason == null ? {} : { endReason: input.reason }) });
       if (removed) {
         await endPackageOffer(tx, { businessId, subscriptionId: subscription.id, lines: current.toList, now });
         await setNextDiscount(tx, { subscriptionId: subscription.id, discountCents: sentDiscountCents, now });

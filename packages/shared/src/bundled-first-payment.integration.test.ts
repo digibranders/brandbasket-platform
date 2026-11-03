@@ -14,6 +14,7 @@ import {
   listAddOnsToContact,
   listBundledAddOnsForBusiness,
   markBundledAddOnContacted,
+  keepBundledAddOn,
   recordBundledAddOnRemoval,
   openCheckoutSubscription,
   type NewBundledAddOn,
@@ -269,6 +270,20 @@ describe("a first payment with services", () => {
       expect(after).toMatchObject({ bundledAddOnNetCents: 3_149_900, pendingBundledAddOnNetCents: 2_499_900 });
       const row = (await findBundledAddOnsForSubscription(dbs.staff.db, subscription.id)).find((candidate) => candidate.id === growth.id);
       expect(row).toMatchObject({ status: "active", endRequestedAt: NEXT_MONTH });
+    });
+
+    it("keeps the customer's reason on the line, and a keep clears it", async () => {
+      const { subscription, growth } = await paidWithTwo();
+      const reason = "We are moving our ads in-house.";
+      expect(
+        await recordBundledAddOnRemoval(dbs.staff.db, { id: growth.id, businessId, pendingBundledAddOnNetCents: 2_499_900, now: NEXT_MONTH, endReason: reason }),
+      ).toBe(true);
+      const ending = (await findBundledAddOnsForSubscription(dbs.staff.db, subscription.id)).find((candidate) => candidate.id === growth.id);
+      expect(ending).toMatchObject({ endRequestedAt: NEXT_MONTH, endReason: reason });
+
+      expect(await dbs.staff.db.transaction((tx) => keepBundledAddOn(tx, { id: growth.id, businessId, now: NEXT_MONTH }))).toBe(true);
+      const kept = (await findBundledAddOnsForSubscription(dbs.staff.db, subscription.id)).find((candidate) => candidate.id === growth.id);
+      expect(kept).toMatchObject({ endRequestedAt: null, endReason: null });
     });
 
     it("ignores a second request for the same add-on", async () => {

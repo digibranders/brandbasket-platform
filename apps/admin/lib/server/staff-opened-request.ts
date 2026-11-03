@@ -1,6 +1,7 @@
 import "server-only";
 import { findClientDetail, SupportQueryError, type CreateSupportTicketByStaffInput, type Database } from "@brandbasket/db";
 import { supportRequestOpenedEmail } from "@brandbasket/email";
+import { emailPreferenceAllows } from "@brandbasket/shared/server/email-preference";
 import { errorLogInfo } from "@brandbasket/shared/server/error-log-info";
 import { OPENED_REQUEST_MESSAGES, staffOpenRequestSchema, type OpenedRequestOutcome, type StaffSupportActionState } from "../support-admin-state";
 import type { StaffActionEntry } from "./activity";
@@ -64,11 +65,18 @@ export function createOpenRequestAction(deps: OpenRequestDependencies): (form: F
   };
 }
 
-/** Emails the business owner a link to the request staff opened. An owner who signs in with a mobile number has no address. */
+/**
+ * Emails the business owner a link to the request staff opened. An owner who signs in with a mobile number has no address, and an
+ * owner who turned "replies to my requests" emails off for this business is not written to: both answer "no-email".
+ */
 export async function emailRequestOwner(db: Database, input: { readonly businessId: string; readonly ticketId: string; readonly subject: string }): Promise<OwnerEmailOutcome> {
   const client = await findClientDetail(db, input.businessId);
   if (client === null || client.owner === null || client.owner.email === null) return "no-email";
   try {
+    const allowed = await emailPreferenceAllows(db, client.owner.userId, input.businessId, "request_reply", (error) =>
+      console.error("[support] could not read the email preference, sending anyway", errorLogInfo(error)),
+    );
+    if (!allowed) return "no-email";
     await customerEmailTransport(db).send(
       supportRequestOpenedEmail({
         to: client.owner.email,

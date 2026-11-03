@@ -92,6 +92,10 @@ export const monthlySnapshots = pgTable(
     postsPlanned: integer("posts_planned"),
     keywordsPageOne: integer("keywords_page_one"),
     keywordsPageOnePrev: integer("keywords_page_one_prev"),
+    /** Social reach for the month, staff entered until the Meta API (plan 61, gate G5) exists. Null means not measured. */
+    reach: integer("reach"),
+    followers: integer("followers"),
+    profileVisits: integer("profile_visits"),
     updatedByStaffId: text("updated_by_staff_id").references(() => users.id),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
@@ -106,6 +110,59 @@ export const monthlySnapshots = pgTable(
         and coalesce(${table.postsPublished}, 0) >= 0 and coalesce(${table.postsPlanned}, 0) >= 0
         and coalesce(${table.keywordsPageOne}, 0) >= 0 and coalesce(${table.keywordsPageOnePrev}, 0) >= 0`,
     ),
+    check(
+      "monthly_snapshots_reach_check",
+      sql`coalesce(${table.reach}, 0) >= 0 and coalesce(${table.followers}, 0) >= 0 and coalesce(${table.profileVisits}, 0) >= 0`,
+    ),
   ],
 );
 export type MonthlySnapshot = typeof monthlySnapshots.$inferSelect;
+
+/** Where an ad campaign ran. */
+export const AD_PLATFORMS = ["meta", "google"] as const;
+export type AdPlatform = (typeof AD_PLATFORMS)[number];
+
+/**
+ * One ad campaign's month, entered by staff until the Meta and Google APIs are approved (plan 61, gate G5). The customer's
+ * Ads page lists them. Money is in paise; `month` is the first day of the month. Spend is always known; the rest is null
+ * when it was not measured, and the customer's page leaves that figure out.
+ */
+export const adCampaignSnapshots = pgTable(
+  "ad_campaign_snapshots",
+  {
+    id: uuid("id")
+      .primaryKey()
+      .$defaultFn(() => uuidv7()),
+    businessId: uuid("business_id")
+      .notNull()
+      .references(() => businesses.id),
+    month: date("month", { mode: "string" }).notNull(),
+    name: text("name").notNull(),
+    platform: text("platform").$type<AdPlatform>().notNull(),
+    /** What the campaign is for, in staff's words: "Leads", "Calls", "Awareness". */
+    objective: text("objective").notNull(),
+    spendCents: integer("spend_cents").notNull(),
+    budgetCents: integer("budget_cents"),
+    impressions: integer("impressions"),
+    clicks: integer("clicks"),
+    leads: integer("leads"),
+    enteredByStaffId: text("entered_by_staff_id")
+      .notNull()
+      .references(() => users.id),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (table) => [
+    uniqueIndex("ad_campaign_snapshots_business_month_name_idx").on(table.businessId, table.month, table.name),
+    check("ad_campaign_snapshots_month_check", sql`extract(day from ${table.month}) = 1`),
+    check("ad_campaign_snapshots_name_check", sql`char_length(btrim(${table.name})) between 1 and 120`),
+    check("ad_campaign_snapshots_platform_check", sql`${table.platform} in ('meta', 'google')`),
+    check("ad_campaign_snapshots_objective_check", sql`char_length(btrim(${table.objective})) between 1 and 120`),
+    check(
+      "ad_campaign_snapshots_figures_check",
+      sql`${table.spendCents} >= 0 and coalesce(${table.budgetCents}, 0) >= 0 and coalesce(${table.impressions}, 0) >= 0
+        and coalesce(${table.clicks}, 0) >= 0 and coalesce(${table.leads}, 0) >= 0`,
+    ),
+  ],
+);
+export type AdCampaignSnapshot = typeof adCampaignSnapshots.$inferSelect;

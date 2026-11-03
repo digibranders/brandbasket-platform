@@ -74,14 +74,7 @@ export const paymentAttentionReason = pgEnum("payment_attention_reason", [
 ]);
 export type PaymentAttentionReason = (typeof paymentAttentionReason.enumValues)[number];
 
-/** Attention reasons whose payment bought nothing. Such a payment never counts as the business having paid. */
-export const UNAPPLIED_PAYMENT_REASONS = [
-  "checkout_replaced",
-  "already_paid",
-  "amount_mismatch",
-  "upgrade_not_applied",
-  "add_on_not_applied",
-] as const satisfies readonly PaymentAttentionReason[];
+export { UNAPPLIED_PAYMENT_REASONS } from "../unapplied-reasons";
 
 /**
  * The plan row a business subscribes under. Brandbasket has one, `managed`: the subscription's terms (currency, GST rate,
@@ -221,6 +214,8 @@ export const subscriptions = pgTable(
     paidThroughAt: timestamp("paid_through_at", { withTimezone: true }),
     currentPeriodEnd: timestamp("current_period_end", { withTimezone: true }),
     cancelRequestedAt: timestamp("cancel_requested_at", { withTimezone: true }),
+    /** Why the customer asked to cancel, in their words or a chosen reason. Null when they gave none, and before v4. */
+    cancelReason: text("cancel_reason"),
     cancelledAt: timestamp("cancelled_at", { withTimezone: true }),
     lastSyncedAt: timestamp("last_synced_at", { withTimezone: true }),
     /** Keep my plan: the subscription this one carries on from, which was cancelled at the provider at the client's request. */
@@ -241,6 +236,7 @@ export const subscriptions = pgTable(
     uniqueIndex("subscriptions_one_successor_idx")
       .on(table.continuesId)
       .where(sql`${table.status} <> 'cancelled'`),
+    check("subscriptions_cancel_reason_check", sql`${table.cancelReason} is null or char_length(${table.cancelReason}) <= 500`),
     check("subscriptions_keep_check", sql`(${table.continuesId} is null) = (${table.startAt} is null)`),
     index("subscriptions_business_id_idx").on(table.businessId),
     // A discount that is neither a referral code's nor a stay offer's, or an offer that is more than the whole

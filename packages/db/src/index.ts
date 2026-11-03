@@ -157,7 +157,7 @@ export {
   saveProviderDiscountPlan,
   type DiscountPlanKey,
 } from "./queries/discount-plans";
-export { listMembershipsForUser, type BusinessMembership } from "./queries/memberships";
+export { listMembershipsForUser, removeBusinessMember, type BusinessMembership } from "./queries/memberships";
 export {
   addStaffMember,
   countActiveAdmins,
@@ -852,7 +852,15 @@ export {
 } from "./queries/kickoff-build";
 export { completeClientIntake, findClientIntake, saveClientIntakeAnswers, type ClientIntakeAnswers } from "./queries/client-intakes";
 export { addActivityEvent, listActivityEvents, removeActivityEvent } from "./queries/activity-events";
-export { listMonthlySnapshots, upsertMonthlySnapshot, type SnapshotFigures } from "./queries/monthly-snapshots";
+export { latestSocialReach, listMonthlySnapshots, upsertMonthlySnapshot, type SnapshotFigures } from "./queries/monthly-snapshots";
+export {
+  addAdCampaign,
+  listAdCampaigns,
+  removeAdCampaign,
+  updateAdCampaign,
+  type AdCampaignFigures,
+  type AdCampaignSaveResult,
+} from "./queries/ad-campaigns";
 export {
   approveDeliverables,
   countSiteEvents,
@@ -1478,5 +1486,69 @@ export {
   type StoredPrivacyRequest,
 } from "./queries/privacy-requests";
 export { clearNominee, findNominee, saveNominee, type Nominee } from "./queries/user-privacy-settings";
-export { listExportedSessions, readExportedAccount, readExportedBusiness, type ExportedSession } from "./queries/account-export";
+export { listExportedSessions, readExportedAccount, readExportedBusiness, readExportedNotificationPreferences, type ExportedSession } from "./queries/account-export";
 export { findBusinessAlertDetails, findPaymentAlertBase, type AlertPerson, type PaymentAlertBase } from "./queries/payment-alerts";
+// Customer app v4 (plan 61 section 6).
+export {
+  backfillEnquiries,
+  countNewEnquiries,
+  EnquiryNoteTooLongError,
+  eraseEnquiriesOfBusiness,
+  findEnquiry,
+  listEnquiries,
+  updateEnquiry,
+  upsertEnquiryFromChatLead,
+  upsertEnquiryFromSiteEvent,
+  type EnquiryBackfillResult,
+  type EnquiryChange,
+  type EnquiryFilter,
+} from "./queries/enquiries";
+export {
+  fetchSitemapText,
+  listWebsitePages,
+  SitemapTooLargeError,
+  syncWebsitePages,
+  type FetchedText,
+  type FetchText,
+  type WebsitePagesSyncResult,
+} from "./queries/website-pages";
+export { parseSitemap, type ParsedSitemap } from "./sitemap";
+export {
+  findSiteCheckState,
+  findSiteHealthFacts,
+  insertSiteCheck,
+  listLiveWebsites,
+  PHONE_SPEED_FAILED,
+  type SiteHealthWebsite,
+  type SiteCheckState,
+  type SiteHealthFacts,
+} from "./queries/site-checks";
+export {
+  listConnectedAccounts,
+  listConnectedAccountsForStaff,
+  removeConnectedAccount,
+  saveConnectedAccount,
+  type ConnectedAccountInput,
+} from "./queries/connected-accounts";
+export {
+  effectivePreferences,
+  emailByDefault,
+  getNotificationsSeenAt,
+  listNotificationPreferences,
+  markNotificationsSeen,
+  resolveEmailPreference,
+  setNotificationPreference,
+  shouldEmail,
+} from "./queries/notifications";
+export {
+  acceptBusinessInvite,
+  BUSINESS_INVITE_DAYS,
+  BusinessInviteOpenError,
+  createBusinessInvite,
+  listBusinessInvites,
+  revokeBusinessInvite,
+  type AcceptBusinessInviteResult,
+  type BusinessInviteRefusal,
+  type BusinessInviteView,
+  type InvitableRole,
+} from "./queries/business-invites";
