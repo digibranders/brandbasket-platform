@@ -2,6 +2,7 @@ import { findChargeForBusiness, withTenantScope } from "@brandbasket/db";
 import { chargeLabel } from "@brandbasket/shared/lib/billing/charges";
 import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
+import { connection } from "next/server";
 import { z } from "zod";
 import { RazorpayCheckout } from "@/features/checkout/components/razorpay-checkout";
 import {
@@ -39,6 +40,8 @@ const RETURN_MARK: Readonly<Partial<Record<string, string>>> = {
  * the customer's own charge row, read through row-level security, never from the address. Reloading reopens the same order.
  */
 export default async function ChargePayPage({ params }: { readonly params: Promise<{ readonly id: string }> }) {
+  // The provider comes from the environment of the running server, so this page is never built ahead of time.
+  await connection();
   if (getBillingProvider().name !== "razorpay") notFound();
   const { id } = await params;
   if (!z.uuid().safeParse(id).success) notFound();

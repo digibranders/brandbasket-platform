@@ -19,7 +19,8 @@
     "./opened-districts": "./src/opened-districts.ts",
     "./place-id": "./src/place-id.ts",
     "./revision-rounds": "./src/revision-rounds.ts",
-    "./testing": "./src/testing/index.ts"
+    "./testing": "./src/testing/index.ts",
+    "./unapplied-reasons": "./src/unapplied-reasons.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",

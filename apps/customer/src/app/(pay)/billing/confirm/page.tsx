@@ -2,6 +2,7 @@ import { chargedAmountCents } from "@brandbasket/billing";
 import { describeDiscountedPlanTerms } from "@brandbasket/shared/lib/billing/terms";
 import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
+import { connection } from "next/server";
 import { LinkButton } from "@/ui";
 import { TestCheckout, TestCheckoutRefused } from "@/features/checkout/components/test-checkout";
 import { afterPaymentHref, hrefAfter } from "@/features/checkout/rules/confirm-href";
@@ -25,6 +26,8 @@ export const metadata: Metadata = {
  * which Next.js encrypts. Every check is repeated in the action, which can be called directly.
  */
 export default async function TestCheckoutPage({ searchParams }: { readonly searchParams: Promise<Record<string, string | string[] | undefined>> }) {
+  // The provider comes from the environment of the running server, so this page is never built ahead of time.
+  await connection();
   if (!isFakeBillingProvider()) notFound();
   const customer = await requireCustomer();
   const { tenant, billing } = customer;

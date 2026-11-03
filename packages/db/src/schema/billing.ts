@@ -74,14 +74,7 @@ export const paymentAttentionReason = pgEnum("payment_attention_reason", [
 ]);
 export type PaymentAttentionReason = (typeof paymentAttentionReason.enumValues)[number];
 
-/** Attention reasons whose payment bought nothing. Such a payment never counts as the business having paid. */
-export const UNAPPLIED_PAYMENT_REASONS = [
-  "checkout_replaced",
-  "already_paid",
-  "amount_mismatch",
-  "upgrade_not_applied",
-  "add_on_not_applied",
-] as const satisfies readonly PaymentAttentionReason[];
+export { UNAPPLIED_PAYMENT_REASONS } from "../unapplied-reasons";
 
 /**
  * The plan row a business subscribes under. Brandbasket has one, `managed`: the subscription's terms (currency, GST rate,

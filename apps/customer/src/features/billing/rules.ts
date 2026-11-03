@@ -1,5 +1,6 @@
 import { chargedAmountCents, gstInsideCents } from "@brandbasket/billing/tax";
-import { isUnappliedReason, type BundledAddOn, type Charge, type CurrentPaymentMethod, type Plan, type Receipt, type Subscription } from "@brandbasket/db";
+import type { BundledAddOn, Charge, CurrentPaymentMethod, Plan, Receipt, Subscription } from "@brandbasket/db";
+import { isUnappliedReason } from "@brandbasket/db/unapplied-reasons";
 import { MONTHLY_ADD_ON_IDS, type MonthlyAddOnId } from "@brandbasket/shared/lib/billing/add-ons";
 import { bundledLinePrice, nextBundledNetCents, nextDiscountCents } from "@brandbasket/shared/lib/billing/bundle";
 import { chargeLabel } from "@brandbasket/shared/lib/billing/charges";

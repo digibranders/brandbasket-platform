@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { Banner, Button, Dialog, DialogClose, Field, Input, PhoneInput, useToast } from "@/ui";
 import { clearNomineeAction, saveNomineeAction } from "../actions";
-import { NOMINEE_NAME_MAX_LENGTH, NOMINEE_PHONE_MAX_LENGTH } from "../rules/nominee";
+import { NOMINEE_NAME_MAX_LENGTH, NOMINEE_PHONE_MAX_LENGTH } from "../rules/nominee-limits";
 import { useActionForm } from "./use-action-form";
 
 export interface NomineeDialogProps {

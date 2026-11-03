@@ -1,5 +1,6 @@
 import { gstInsideCents } from "@brandbasket/billing/tax";
-import { isUnappliedReason, type PaymentInvoiceBasis, type Receipt } from "@brandbasket/db";
+import type { PaymentInvoiceBasis, Receipt } from "@brandbasket/db";
+import { isUnappliedReason } from "@brandbasket/db/unapplied-reasons";
 import { addOnById, isMonthlyAddOnId } from "@brandbasket/shared/lib/billing/add-ons";
 import { packageBasisPointsFor, packageOfferNote } from "@brandbasket/shared/lib/billing/packages";
 import { planLabel, receiptDescription, receiptNumber } from "@brandbasket/shared/lib/billing/receipt-title";

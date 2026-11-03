@@ -2,6 +2,7 @@ import { findChargeForBusiness, withTenantScope } from "@brandbasket/db";
 import { chargeLabel } from "@brandbasket/shared/lib/billing/charges";
 import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
+import { connection } from "next/server";
 import { LinkButton } from "@/ui";
 import { TestCheckout, TestCheckoutRefused } from "@/features/checkout/components/test-checkout";
 import { chargeReturnHref, type ChargeNotice } from "@/features/checkout/rules/charge-notices";
@@ -32,6 +33,8 @@ const NOTICE_AFTER: Readonly<Record<ChargeConfirmation, ChargeNotice>> = {
  * is verified before anything is shown and the token is never rendered; every check is repeated in the Pay action.
  */
 export default async function ChargeTestCheckoutPage({ searchParams }: { readonly searchParams: Promise<Record<string, string | string[] | undefined>> }) {
+  // The provider comes from the environment of the running server, so this page is never built ahead of time.
+  await connection();
   if (!isFakeBillingProvider()) notFound();
   const { tenant } = await requireCustomer();
   const { token } = await searchParams;

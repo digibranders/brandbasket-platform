@@ -6,8 +6,9 @@ import { cleanLine } from "@brandbasket/shared/lib/validation/text";
  * The server checks the number; nothing is ever sent to it.
  */
 
-export const NOMINEE_NAME_MAX_LENGTH = 120;
-export const NOMINEE_PHONE_MAX_LENGTH = 40;
+import { NOMINEE_NAME_MAX_LENGTH } from "./nominee-limits";
+
+export { NOMINEE_NAME_MAX_LENGTH, NOMINEE_PHONE_MAX_LENGTH } from "./nominee-limits";
 
 /** Numbers typed without a country code are Indian: Brandbasket's people are. A number with +CC keeps its own country. */
 const DEFAULT_PHONE_COUNTRY = "IN";

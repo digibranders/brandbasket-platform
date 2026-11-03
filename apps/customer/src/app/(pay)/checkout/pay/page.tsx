@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
+import { connection } from "next/server";
 import { RazorpayCheckout } from "@/features/checkout/components/razorpay-checkout";
 import { payCallbackDestination, RETURN_PARAM, RETURN_TO_BILLING } from "@/features/checkout/rules/pay-callback";
 import { MEMBERSHIP_CALLBACK_PARAM, MEMBERSHIP_PATH } from "@/features/checkout/rules/membership";
@@ -16,6 +17,8 @@ export const metadata: Metadata = { title: "Redirecting to payment" };
  * where the payment started: the checkout, or Plan & billing for a reactivation. Razorpay only; a 404 otherwise.
  */
 export default async function RazorpayPayPage() {
+  // The provider comes from the environment of the running server, so this page is never built ahead of time.
+  await connection();
   if (getBillingProvider().name !== "razorpay") notFound();
   const customer = await requireCustomer();
   const { billing, user } = customer;
