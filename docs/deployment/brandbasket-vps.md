@@ -322,6 +322,53 @@ and fails the run, so the unit's failure alert reaches the team.
 
 To stop it: `systemctl disable --now brandbasket-site-health.timer`. The rows stay; the customer panel then shows the last check.
 
+## Google Analytics
+
+`brandbasket-ga4-sync.timer` starts `brandbasket-ga4-sync.service` every night at 22:30 UTC (04:00 in India). It runs
+`pnpm ga4:sync` in the current platform release. For every business whose Google Analytics property staff set in the console (the
+client's Website tab, Site details, Google Analytics) it reads, through the Analytics Data API, the daily visits, visitors, page
+views, engaged seconds and key events, and the month's channels and most viewed pages. They are stored as `ga4.*` numbers in
+`metric_daily` and as `ga4` lists in `metric_breakdowns`, with one `report_source_runs` row per attempt. The first pull reaches back
+60 days; later pulls repeat the last 3 days, because Google revises recent days. A property that answers "no access" or "no such
+property" is marked `access_lost` (the console shows it) and tried again each night. One failing business never stops the others.
+
+The customer's Website screen and Home show these numbers instead of our own counts when the property is connected and has counted a
+day, and say "From Google Analytics". They show nothing at all until `CUSTOMER_VISITS_ENABLED` is on in the customer app's environment
+(gate G1 in plan 61: counsel's answer on first-party analytics and the approved privacy wording).
+
+`install.sh backups --apply` installs the unit and timer but never enables them.
+
+### What the owner creates in Google Cloud, once
+
+1. In the Google Cloud console, choose or create a project (for example "Brandbasket Analytics").
+2. APIs and services, Library: enable **Google Analytics Data API**.
+3. IAM and admin, Service accounts, Create service account. Name it for example `brandbasket-ga4-reader`. It needs no project role.
+   Copy its email address (it ends in `.iam.gserviceaccount.com`).
+4. On that service account, Keys, Add key, Create new key, **JSON**. Keep the downloaded file private. If the organisation blocks key
+   creation (policy `iam.disableServiceAccountKeyCreation`), the owner has to allow it for this project first.
+5. Put the file on the server, readable by the app user only, and name it in the dashboard's environment:
+   ```bash
+   install -o brandbasket -g brandbasket -m 0600 ga4-service-account.json /srv/brandbasket/shared/ga4-service-account.json
+   ```
+   then add `GA4_SERVICE_ACCOUNT_JSON=/srv/brandbasket/shared/ga4-service-account.json` to `/srv/brandbasket/shared/platform.env.local`,
+   and `GA4_SERVICE_ACCOUNT_EMAIL=<the email from step 3>` to the console's env file so staff see which address to ask for. Never paste
+   the key into chat, an issue or the repository.
+6. Run it once and read the result: `systemctl start brandbasket-ga4-sync.service && journalctl -u brandbasket-ga4-sync -n 20`.
+   A good run prints a line starting `Google Analytics:`. Then `systemctl enable --now brandbasket-ga4-sync.timer`.
+
+### What each customer does
+
+1. In their Google Analytics: Admin, Property access management, the plus button, Add users. Paste the service account's email, choose
+   the role **Viewer** (nothing higher), untick "Notify new users by email", Add.
+2. Send us the **Property ID** (Admin, Property details; digits only, not the `G-` measurement ID).
+3. For key events (calls, WhatsApp taps, form sends) to be counted, they must be marked as key events in Analytics (Admin, Events).
+   Analytics cannot pre-create them.
+
+Staff then enter the Property ID in the console. The status line reads "Waiting for the first nightly pull", then "Connected" after the
+next run, or "No access" with what to ask the customer.
+
+To stop it: `systemctl disable --now brandbasket-ga4-sync.timer`. The numbers stay; the screens show the last pull.
+
 ## Monthly reports
 
 `brandbasket-monthly-reports.timer` starts `brandbasket-monthly-reports.service` at 21:30 UTC on the 1st of each month (03:00 on the 2nd in

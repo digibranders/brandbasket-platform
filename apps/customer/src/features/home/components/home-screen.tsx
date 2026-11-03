@@ -262,7 +262,7 @@ function OverviewScreen({ view, panels, person, now }: HomeScreenProps) {
       />
       <div className="flex flex-col gap-4">
         {needs === null ? null : <NeedsYouPanel items={needs} primaryFirst={count !== null && count > 0} />}
-        {panels.enquiries === null && panels.figures === null ? null : <LastThirtyDays series={panels.enquiries} figures={panels.figures} />}
+        {panels.enquiries === null && panels.figures === null && panels.visits === null ? null : <LastThirtyDays series={panels.enquiries} figures={panels.figures} visits={panels.visits} />}
         {panels.services === null ? null : <ServicesPanel lines={panels.services} />}
         <div className="grid gap-4 lg:grid-cols-3">
           <div className="flex min-w-0 flex-col gap-4 lg:col-span-2">

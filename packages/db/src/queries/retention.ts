@@ -1,4 +1,4 @@
-import { and, count, eq, inArray, isNull, lt, notExists, notInArray, sql, type SQL } from "drizzle-orm";
+import { and, count, eq, inArray, isNotNull, isNull, lt, lte, notExists, notInArray, sql, type SQL } from "drizzle-orm";
 import type { Database } from "../client";
 import {
   accountExitFeedback,
@@ -17,7 +17,9 @@ import {
   staffAccessLog,
   verifications,
 } from "../schema";
+import { enquiries as customerEnquiries } from "../schema/enquiries";
 import { purgeExpiredAccountOtps } from "./account-otps";
+import { eraseExpiredEnquiryDetails } from "./account-erasure";
 
 /*
  * The scheduled purge (DPDP Act s.8(7): erase personal data once its purpose is served). Two kinds of rule:
@@ -66,6 +68,8 @@ export interface RetentionCounts {
   readonly accountOtps: number;
   readonly leads: number;
   readonly enquiries: number;
+  /** Customer enquiries whose stored form or ad lead details are past `retain_until` (the rows stay as counts). */
+  readonly enquiryDetails: number;
   readonly visitors: number;
   readonly exitFeedback: number;
   readonly privacyRequests: number;
@@ -137,6 +141,10 @@ export async function countExpiredRetention(db: Database, now: Date): Promise<Re
     // Account codes are purged an hour after they run out (account-otps.ts), so the count uses the same line.
     db.select({ total: count() }).from(accountOtps).where(lt(accountOtps.expiresAt, new Date(now.getTime() - 60 * 60 * 1000))),
   ]);
+  const [enquiryDetailRows] = await db
+    .select({ total: count() })
+    .from(customerEnquiries)
+    .where(and(isNotNull(customerEnquiries.retainUntil), lte(customerEnquiries.retainUntil, now), isNull(customerEnquiries.detailsErasedAt)));
   const [leadRows, enquiryRows, visitorRows, feedbackRows, requestRows, breachRows, logRows, consentRows] = await Promise.all([
     db.select({ total: count() }).from(leads).where(when.leads),
     db.select({ total: count() }).from(directoryEnquiries).where(when.enquiries),
@@ -155,6 +163,7 @@ export async function countExpiredRetention(db: Database, now: Date): Promise<Re
     accountOtps: total(otpRows),
     leads: total(leadRows),
     enquiries: total(enquiryRows),
+    enquiryDetails: enquiryDetailRows?.total ?? 0,
     visitors: total(visitorRows),
     exitFeedback: total(feedbackRows),
     privacyRequests: total(requestRows),
@@ -182,6 +191,7 @@ export async function purgeExpiredRetention(db: Database, now: Date): Promise<Re
     return tx.delete(leads).where(when.leads).returning({ id: leads.id });
   });
   const removedEnquiries = await db.delete(directoryEnquiries).where(when.enquiries).returning({ id: directoryEnquiries.id });
+  const erasedEnquiryDetails = await eraseExpiredEnquiryDetails(db, now);
   const removedVisitors = await db.delete(directoryVisitors).where(when.visitors).returning({ id: directoryVisitors.id });
   const removedFeedback = await db.delete(accountExitFeedback).where(when.exitFeedback).returning({ id: accountExitFeedback.id });
   const removedRequests = await db.delete(privacyRequests).where(when.privacyRequests).returning({ id: privacyRequests.id });
@@ -203,6 +213,7 @@ export async function purgeExpiredRetention(db: Database, now: Date): Promise<Re
     accountOtps: removedAccountOtps,
     leads: removedLeads.length,
     enquiries: removedEnquiries.length,
+    enquiryDetails: erasedEnquiryDetails,
     visitors: removedVisitors.length,
     exitFeedback: removedFeedback.length,
     privacyRequests: removedRequests.length,

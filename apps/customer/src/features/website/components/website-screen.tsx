@@ -13,6 +13,7 @@ import { roundsLine, roundsUsedUp } from "../rules/progress";
 import { websiteProgress } from "../rules/screen";
 import { PreviewDecision } from "./preview-decision";
 import { SiteHealthPanel } from "./site-health-panel";
+import { VisitsPanels, visitsMetric } from "./visits-panels";
 import { AddressPanelView, Columns, ExternalButton, LiveHeader, NextStepsPanel, NoticeBanner, WebsiteTabs } from "./website-parts";
 
 export interface WebsiteScreenProps {
@@ -37,7 +38,7 @@ const askForChange = (
 /**
  * Website Overview, by `projects.status` (plan 61, section 4): a timeline with dates while building, the preview with Approve
  * and Ask for changes when one is waiting, and once live the status, website enquiries, site health and the pages. Visits and
- * sources have no customer data source yet (gate G1), so those panels are not rendered.
+ * sources come from the first-party roll-ups or Google Analytics, and are drawn only while CUSTOMER_VISITS_ENABLED is on (gate G1).
  */
 export function WebsiteScreen({ context, core, overview, pages, notice, feedbackKey, now }: WebsiteScreenProps) {
   const { project, domain, live } = core;
@@ -150,6 +151,7 @@ export function WebsiteScreen({ context, core, overview, pages, notice, feedback
             label="Your website"
             metrics={[
               { label: "Status", value: "Live" },
+              ...visitsMetric(overview.visits),
               ...(overview.enquiries !== null && overview.enquiries.ok
                 ? [{ label: "Enquiries from the site", value: formatNumber(overview.enquiries.data), period: `Last ${ENQUIRY_WINDOW_DAYS} days` }]
                 : []),
@@ -160,6 +162,7 @@ export function WebsiteScreen({ context, core, overview, pages, notice, feedback
               <PanelError failure={overview.enquiries.error} what="your enquiries" />
             </Panel>
           ) : null}
+          <VisitsPanels visits={overview.visits} now={now} />
           {overview.health === null ? null : <SiteHealthPanel facts={overview.health} now={now} />}
           {pages !== null && !pages.ok ? (
             <Panel title="Pages">

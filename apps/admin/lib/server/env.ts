@@ -49,6 +49,12 @@ const serverEnvSchema = z.object({
   }),
   /** The domain free addresses are made on (<name>.<this>). Optional: unset, no free address is offered. */
   CLIENT_SITE_BASE_DOMAIN: optionalClientSiteBaseDomain,
+  /** The email of the Google service account customers add as a Viewer on their Analytics property. Shown to staff only; the key is the platform's, not this app's. */
+  GA4_SERVICE_ACCOUNT_EMAIL: z
+    .string()
+    .trim()
+    .refine((value) => value === "" || z.email().safeParse(value).success, { error: "GA4_SERVICE_ACCOUNT_EMAIL must be an email address" })
+    .optional(),
 });
 
 export type ServerEnv = z.infer<typeof serverEnvSchema>;

@@ -36,6 +36,7 @@ const overviewPanels = (over: Partial<HomePanels> = {}): HomePanels => ({
   activity: ok(ACTIVITY),
   coming: ok(COMING),
   included: ok(INCLUDED),
+  visits: null,
   ...over,
 });
 

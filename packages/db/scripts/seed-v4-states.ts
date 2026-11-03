@@ -41,7 +41,7 @@ import { findSiteSetting, saveSiteSetting } from "../src/queries/site-settings";
 import { listPreviewVersions, recordPreviewVersion } from "../src/queries/project-preview-versions";
 import { approveProjectPreview, insertOnboardingProject, markProjectLive, recordProjectPreviewSent, requestProjectRevisions } from "../src/queries/projects";
 import { setProjectBuilding } from "../src/queries/project-website";
-import { composeReport, moveReport, setReportSourceStatus, upsertReportSource } from "../src/queries/reports";
+import { composeReport, moveReport, recordSourceRun, setReportSourceStatus, upsertBreakdown, upsertDailyMetrics, upsertReportSource } from "../src/queries/reports";
 import { findSetupCallBooking, markSetupCallHeld, recordSetupCallBooking, saveSetupCallSummary } from "../src/queries/setup-calls";
 import { recordFailedPayment } from "../src/queries/staff-payments";
 import { createReferralCode, listReferralCodes, type NewReferralCode, type ReferralCode } from "../src/queries/referrals";
@@ -77,6 +77,7 @@ import {
  *   3 lapsed            Reddy Driving School        plan ended, site offline, history still readable
  *   4 renewal failing   Chatterjee Photo Studio     last renewal failed, still inside the paid period
  *   5 unpaid sign-up    Iyer Filter Coffee House    a sign-up that chose Managed Website and has not paid
+ * The live one also gets 60 days of first-party visit numbers (seedVisits), for the Website screen's Visits panels.
  * Plus an affiliate (Rohan Mehta, /affiliate) with three codes, four members in different states, earnings over six
  * months, one payout with tax kept back and one refunded month; and a second affiliate with an open setup link.
  * Every write goes through the same query helpers the apps use. Written directly, because no helper exists: staff_members
@@ -87,7 +88,7 @@ import {
  * Run with `pnpm --filter @brandbasket/db db:seed:v4` (the script sets the react-server condition the shared billing code needs).
  */
 
-const SEEDABLE_DATABASES: readonly string[] = ["brandbasket_platform_v4", "brandbasket_platform_preview"];
+const SEEDABLE_DATABASES: readonly string[] = ["brandbasket_platform_v4", "brandbasket_platform_v4b", "brandbasket_platform_preview"];
 const LOCAL_HOSTS: ReadonlySet<string> = new Set(["localhost", "127.0.0.1", "[::1]"]);
 const MINUTE_MS = 60_000;
 const HOUR_MS = 3_600_000;
@@ -705,6 +706,55 @@ async function seedRequests(context: Context, businessId: string, userId: string
 /* Reports, snapshots, accounts, calls, team                                                                          */
 /* ---------------------------------------------------------------------------------------------------------------- */
 
+/** Where a day's visits came from and which pages they looked at, as shares that add up to 100. */
+const VISIT_CHANNELS: readonly (readonly [string, number])[] = [["search", 48], ["direct", 22], ["social", 14], ["referral", 8], ["paid", 5], ["email", 3]];
+const VISIT_PAGE_SHARES: readonly number[] = [32, 9, 18, 15, 10, 6, 10];
+
+/**
+ * Sixty days of first-party visit numbers up to yesterday (what the nightly roll-up writes as `own.*`) and the two months'
+ * channel and page lists, so the customer's Website screen and Home strip can be seen. Sample numbers, local databases only.
+ * Weekdays are busier than weekends. Re-running replaces the same days with the same numbers.
+ */
+async function seedVisits(context: Context, businessId: string, paths: readonly string[]): Promise<void> {
+  const { db, today, now } = context;
+  const random = randomStream(`visits:${businessId}`);
+  const yesterday = shiftDate(today, -1);
+  const days: { readonly day: string; readonly visits: number; readonly visitors: number; readonly pageviews: number }[] = [];
+  for (let back = 59; back >= 0; back -= 1) {
+    const day = shiftDate(yesterday, -back);
+    const weekend = [0, 6].includes(new Date(`${day}T12:00:00Z`).getUTCDay());
+    const visits = Math.round((weekend ? 52 : 84) * (0.75 + random() * 0.5));
+    days.push({ day, visits, visitors: Math.round(visits * 0.82), pageviews: Math.round(visits * (1.9 + random() * 0.5)) });
+  }
+  await upsertDailyMetrics(
+    db,
+    businessId,
+    days.flatMap((entry) => [
+      { metric: "own.visits", day: entry.day, value: entry.visits },
+      { metric: "own.visitors", day: entry.day, value: entry.visitors },
+      { metric: "own.pageviews", day: entry.day, value: entry.pageviews },
+    ]),
+    now,
+  );
+  await recordSourceRun(db, { businessId, source: "own", windowStart: days[0]?.day ?? yesterday, windowEnd: yesterday, error: null, now });
+  const months = [monthStartOf(shiftDate(monthStartOf(today), -1)), monthStartOf(today)];
+  for (const month of months) {
+    const inMonth = days.filter((entry) => entry.day.startsWith(month.slice(0, 7)));
+    const visits = inMonth.reduce((sum, entry) => sum + entry.visits, 0);
+    const views = inMonth.reduce((sum, entry) => sum + entry.pageviews, 0);
+    if (inMonth.length === 0) continue;
+    await upsertBreakdown(db, { businessId, source: "own", month, dimension: "channel", rows: VISIT_CHANNELS.map(([key, share]) => ({ key, count: Math.round((visits * share) / 100) })), now });
+    await upsertBreakdown(db, {
+      businessId,
+      source: "own",
+      month,
+      dimension: "page",
+      rows: paths.map((path, index) => ({ key: path, count: Math.round((views * (VISIT_PAGE_SHARES[index] ?? 5)) / 100) })).sort((a, b) => b.count - a.count),
+      now,
+    });
+  }
+}
+
 async function seedReports(context: Context, businessId: string, host: string): Promise<void> {
   const { db, today, now } = context;
   const thisMonth = monthStartOf(today);
@@ -914,6 +964,7 @@ async function seedBusiness(context: Context, spec: Spec, index: number): Promis
     const siteHost = must(host, `${spec.name} has no host.`);
     const pages = spec.stage === "live" ? ["/", "/about", "/services", "/services/back-pain-physiotherapy", "/services/sports-injury-recovery", "/services/knee-and-joint-care", "/contact"] : ["/", "/about", "/services", "/contact"];
     await seedWebsitePages(context, businessId, siteHost, pages);
+    if (spec.stage === "live") await seedVisits(context, businessId, pages);
   }
   if (spec.stage === "live") {
     const siteHost = must(host, `${spec.name} has no host.`);

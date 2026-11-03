@@ -40,12 +40,22 @@ export const enquiries = pgTable(
     note: text("note"),
     receivedAt: timestamp("received_at", { withTimezone: true }).notNull(),
     sourceRef: text("source_ref").notNull(),
+    /**
+     * When the enquirer's details must be erased (gate G2). Set when a form or ad lead stores contents; null for rows
+     * that hold no details of this kind (taps, and chat leads, which OyeChats keeps under its own retention).
+     */
+    retainUntil: timestamp("retain_until", { withTimezone: true }),
+    /** When the details were erased, by the retention job or on the enquirer's request. The row stays as a count. */
+    detailsErasedAt: timestamp("details_erased_at", { withTimezone: true }),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
   (table) => [
     uniqueIndex("enquiries_business_kind_source_ref_idx").on(table.businessId, table.kind, table.sourceRef),
     index("enquiries_business_received_idx").on(table.businessId, table.receivedAt),
+    index("enquiries_retain_until_idx")
+      .on(table.retainUntil)
+      .where(sql`${table.retainUntil} is not null and ${table.detailsErasedAt} is null`),
     check("enquiries_kind_check", sql`${table.kind} in ('chat', 'form', 'call_tap', 'whatsapp_tap', 'google_call', 'ad_lead')`),
     check("enquiries_status_check", sql`${table.status} in ('new', 'contacted', 'won', 'lost')`),
     check("enquiries_source_check", sql`${table.source} is null or char_length(${table.source}) <= 120`),
@@ -54,6 +64,11 @@ export const enquiries = pgTable(
     check("enquiries_email_check", sql`${table.email} is null or char_length(${table.email}) <= 320`),
     check("enquiries_message_check", sql`${table.message} is null or char_length(${table.message}) <= 5000`),
     check("enquiries_note_check", sql`${table.note} is null or char_length(${table.note}) <= ${sql.raw(String(ENQUIRY_NOTE_MAX))}`),
+    check("enquiries_retain_until_check", sql`${table.retainUntil} is null or ${table.retainUntil} > ${table.receivedAt}`),
+    check(
+      "enquiries_erased_check",
+      sql`${table.detailsErasedAt} is null or (${table.name} is null and ${table.phone} is null and ${table.email} is null and ${table.message} is null)`,
+    ),
     check("enquiries_source_ref_check", sql`char_length(${table.sourceRef}) between 1 and 200`),
   ],
 );

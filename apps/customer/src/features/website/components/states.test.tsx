@@ -30,7 +30,7 @@ const PAGE: WebsitePage = { businessId: "b", url: "https://kulkarni.example/menu
 const HEALTH: SiteHealthFacts = { latest: { status: "up", checkedAt: NOW }, firstCheckedAt: new Date("2026-10-01T00:00:00Z"), up: 90, down: 0, certificate: null, phoneSpeed: null };
 const HISTORY = ok({ events: [], callStartsAt: null });
 
-const liveOverview = (over: Partial<WebsiteOverview> = {}): WebsiteOverview => ({ history: HISTORY, kickoffFirst: null, preview: null, enquiries: ok(4), health: ok(HEALTH), ...over });
+const liveOverview = (over: Partial<WebsiteOverview> = {}): WebsiteOverview => ({ history: HISTORY, kickoffFirst: null, preview: null, enquiries: ok(4), health: ok(HEALTH), visits: null, ...over });
 const showWebsite = (core: WebsiteCore, overview: WebsiteOverview, pages: Loaded<readonly WebsitePage[]> | null) =>
   render(<WebsiteScreen context={owner} core={core} overview={overview} pages={pages} notice={null} feedbackKey="k" now={NOW} />);
 
