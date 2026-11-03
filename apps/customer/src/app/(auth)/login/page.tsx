@@ -1,7 +1,7 @@
 import { turnstileSiteKey } from "@brandbasket/shared/server/turnstile-request";
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
-import { signUpHrefFromLogin, type SearchParams } from "@/features/entry/rules/account-entry";
+import { inviteReturn, signUpHrefFromLogin, type SearchParams } from "@/features/entry/rules/account-entry";
 import { loginNotice } from "@/features/entry/rules/login-notice";
 import { EntryScreen } from "@/features/entry/components/entry-screen";
 import { NoBusiness } from "@/features/entry/components/no-business";
@@ -23,7 +23,7 @@ export default async function LoginPage({ searchParams }: { readonly searchParam
   if (signedIn?.kind === "no-business") return <NoBusiness label={signedIn.label} />;
   return (
     <EntryScreen title="Sign in" lede="Use the email or mobile number you signed up with.">
-      <SignInForm siteKey={turnstileSiteKey()} notice={loginNotice(params.notice)} />
+      <SignInForm siteKey={turnstileSiteKey()} notice={loginNotice(params.notice)} next={inviteReturn(params.next)} />
     </EntryScreen>
   );
 }

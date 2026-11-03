@@ -8,7 +8,7 @@ import { redirect } from "next/navigation";
 import { EntryScreen } from "@/features/entry/components/entry-screen";
 import { NoBusiness } from "@/features/entry/components/no-business";
 import { SignUpForm } from "@/features/entry/components/sign-up-form";
-import { readEntryRequest, type SearchParams } from "@/features/entry/rules/account-entry";
+import { inviteReturn, readEntryRequest, type SearchParams } from "@/features/entry/rules/account-entry";
 import { BRAND } from "@/features/entry/rules/brand";
 import { openStart, START_PARAM } from "@/features/entry/rules/start-token";
 import { emailCodeBypassed, leadsApiToken } from "@/features/entry/server/env";
@@ -50,6 +50,7 @@ export default async function SignUpPage({ searchParams }: { readonly searchPara
         phoneCountries={phoneCountryOptions().map((option) => ({ code: option.code, label: `${option.name} ${option.dialCode}`, dialCode: option.dialCode }))}
         defaultPhoneCountry={visitorPhoneCountry(await headers())}
         prefill={prefill}
+        next={inviteReturn(params.next)}
         startToken={prefill?.attr === undefined || typeof startToken !== "string" ? null : startToken}
       />
     </EntryScreen>

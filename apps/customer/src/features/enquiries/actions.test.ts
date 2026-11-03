@@ -20,9 +20,9 @@ const owner = { tenant, businessId: "business-1", role: "owner" } as never;
 const viewer = { tenant, businessId: "business-1", role: "viewer" } as never;
 const tx = { name: "tx" } as never;
 
-function form(entries: Record<string, string>): FormData {
+function form(entries: Record<string, string | undefined>): FormData {
   const data = new FormData();
-  for (const [key, value] of Object.entries(entries)) data.append(key, value);
+  for (const [key, value] of Object.entries(entries)) if (value !== undefined) data.append(key, value);
   return data;
 }
 

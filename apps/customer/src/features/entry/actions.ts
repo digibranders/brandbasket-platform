@@ -10,7 +10,7 @@ import { actionFail, type ActionFailure, type ActionResult, type ActionSuccess }
 import { getAuth } from "@/lib/auth";
 import { startHref } from "@/features/start/rules";
 import { parseResetPasswordForm } from "./rules/account-recovery-form";
-import { SIGN_IN_PATH } from "./rules/account-entry";
+import { inviteReturn, NEXT_FIELD, SIGN_IN_PATH } from "./rules/account-entry";
 import { otpLimitMessage, type OtpRetry } from "./rules/auth-retry";
 import { offersChoice } from "./rules/brand";
 import { parseJoinForm, type JoinCodeStep } from "./rules/join-form";
@@ -37,7 +37,8 @@ export async function signInAction(_previous: ActionResult | null, formData: For
   if (!human.ok) return actionFail(human.message);
   const outcome = await signInWithPassword(formData);
   // An affiliate with no business has no customer workspace: they land on their own page.
-  if (outcome.status === "signed-in") redirect(await landingForSignedInUser(outcome.userId));
+  // An invitation the person came from sign-in for comes first; any other `next` is ignored.
+  if (outcome.status === "signed-in") redirect(inviteReturn(formData.get(NEXT_FIELD)) ?? (await landingForSignedInUser(outcome.userId)));
   if (outcome.status === "error") return actionFail(outcome.message);
   return actionFail("Check your details and try again.");
 }
@@ -89,7 +90,7 @@ export async function signUpAction(previous: SignUpResult | null, formData: Form
   if (outcome.kind === "wrong-code") return fail(outcome.message, current);
   if (outcome.kind === "refused") return fail(outcome.message, null);
   // The basket rides along so checkout opens on those services; only catalogue ids survive.
-  redirect(startHref(readBundleSelection(String(formData.get("services") ?? "").split(","))));
+  redirect(inviteReturn(formData.get(NEXT_FIELD)) ?? startHref(readBundleSelection(String(formData.get("services") ?? "").split(","))));
 }
 
 /** What the forgot-password form says once it is sent, whether or not there is an account. */

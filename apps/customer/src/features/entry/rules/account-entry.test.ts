@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { readEntryRequest, signUpHrefForJoin, signUpHrefFromLogin } from "./account-entry";
+import { inviteReturn, readEntryRequest, signUpHrefForJoin, signUpHrefFromLogin, withInviteReturn } from "./account-entry";
 
 describe("readEntryRequest", () => {
   it("opens Sign in by default, and Create account with the plan the link names", () => {
@@ -79,5 +79,21 @@ describe("signUpHrefForJoin", () => {
 
   it("keeps every parameter", () => {
     expect(signUpHrefForJoin({ plan: "managed", utm_source: "website" })).toBe("/signup?plan=managed&utm_source=website");
+  });
+});
+
+describe("inviteReturn", () => {
+  const invite = `/invite/${"A".repeat(43)}`;
+
+  it("accepts an invite accept page and nothing else", () => {
+    expect(inviteReturn(invite)).toBe(invite);
+    for (const next of ["//evil.com", "https://evil.com", "/invite/../x", "/invite/short", "/billing", "", undefined, null, ["/invite/x"]]) {
+      expect(inviteReturn(next), String(next)).toBeNull();
+    }
+  });
+
+  it("is kept on the link between sign-in and sign-up, and left off when there is none", () => {
+    expect(withInviteReturn("/signup", invite)).toBe(`/signup?next=${encodeURIComponent(invite)}`);
+    expect(withInviteReturn("/signup", null)).toBe("/signup");
   });
 });

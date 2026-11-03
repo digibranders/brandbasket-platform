@@ -7,7 +7,8 @@ vi.mock("@/lib/db", () => ({ getAppDb: () => ({ name: "app-db" }) }));
 vi.mock("@brandbasket/db", () => ({ listEnquiries: vi.fn(), withTenantScope: vi.fn() }));
 
 const NOW = new Date("2026-11-03T06:30:00Z");
-const customer = { tenant: { businessId: "b1" } } as never;
+const tenant = { businessId: "b1" };
+const customer = { tenant } as never;
 const tx = { name: "tx" } as never;
 const day = 86_400_000;
 
@@ -24,7 +25,7 @@ describe("loadEnquiries", () => {
   it("keeps the last 30 days and anyone older who is still waiting, and reads waiting people separately", async () => {
     vi.mocked(listEnquiries).mockImplementation(async (_tx, filter) =>
       filter.status !== undefined
-        ? [record("waiting-old", 70, { status: "new" })]
+        ? ([record("waiting-old", 70, { status: "new" })] as never)
         : ([record("recent", 2), record("older", 45), record("ancient", 100)] as never),
     );
     const view = await loadEnquiries(customer, NOW);
@@ -32,7 +33,7 @@ describe("loadEnquiries", () => {
     expect(view.summary.waiting).toBe(1);
     expect(view.truncated).toBe(false);
     expect(listEnquiries).toHaveBeenCalledWith(tx, { status: ["new"], kind: ["chat", "form", "ad_lead"], limit: 200 });
-    expect(withTenantScope).toHaveBeenCalledWith({ name: "app-db" }, customer.tenant, expect.any(Function));
+    expect(withTenantScope).toHaveBeenCalledWith({ name: "app-db" }, tenant, expect.any(Function));
   });
 
   it("does not list the same enquiry twice when it is both recent and waiting", async () => {

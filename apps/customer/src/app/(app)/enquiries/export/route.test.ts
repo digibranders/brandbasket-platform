@@ -26,7 +26,7 @@ describe("GET /enquiries/export", () => {
     vi.mocked(loadEnquiriesForExport).mockResolvedValue([
       { id: "1", kind: "chat", source: null, name: "Priya Nair", phone: "98190 55012", email: null, message: null, status: "new", note: null, receivedAt: new Date("2026-11-03T04:00:00Z"), sourceRef: "chatbot_lead:1" },
       { id: "2", kind: "whatsapp_tap", source: "Website", name: null, phone: null, email: null, message: null, status: "new", note: null, receivedAt: new Date("2026-11-02T04:00:00Z"), sourceRef: "site_event:2" },
-    ]);
+    ] as never);
     const response = await GET();
     expect(loadEnquiriesForExport).toHaveBeenCalledWith(customer);
     expect(response.status).toBe(200);

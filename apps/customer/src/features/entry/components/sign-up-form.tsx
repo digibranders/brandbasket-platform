@@ -11,7 +11,7 @@ import Link from "next/link";
 import { useActionState, useState } from "react";
 import { Banner, Button, Checkbox, Field, Input, PhoneInput, Select, type SelectOption } from "@/ui";
 import { signUpAction, type SignUpResult } from "../actions";
-import { SIGN_IN_PATH } from "../rules/account-entry";
+import { NEXT_FIELD, SIGN_IN_PATH, withInviteReturn } from "../rules/account-entry";
 import { LEGAL_LINKS } from "../rules/brand";
 import { AGREE_FIELD, AGREE_VALUE, JOIN_BUSINESS_NAME_MAX_LENGTH, JOIN_NAME_MAX_LENGTH, START_FIELD } from "../rules/join-form";
 import type { StartPrefill } from "../rules/start-token";
@@ -42,6 +42,8 @@ export interface SignUpFormProps {
   readonly prefill: StartPrefill | null;
   /** The sealed token that named an ad, sent back so the account keeps which ad it came from; null when it named none. */
   readonly startToken: string | null;
+  /** The invite page to return to after signing up (already checked by the page), or null. */
+  readonly next?: string | null;
 }
 
 const STATE_OPTIONS: readonly SelectOption[] = [...INDIA_STATES]
@@ -54,7 +56,7 @@ const STATE_OPTIONS: readonly SelectOption[] = [...INDIA_STATES]
  * "Change email" returns to the details, and "Send a new code" sends them again without a code. Ported from apps/platform
  * components/panel/join-form.tsx; Brandbasket sells one plan, so the old plan question is never shown.
  */
-export function SignUpForm({ siteKey, services, basket, confirmsCodes, countries, phoneCountries, defaultPhoneCountry, prefill, startToken }: SignUpFormProps) {
+export function SignUpForm({ siteKey, services, basket, confirmsCodes, countries, phoneCountries, defaultPhoneCountry, prefill, startToken, next = null }: SignUpFormProps) {
   const cooldown = useOtpRetryCooldown();
   const run = async (previous: SignUpResult | null, formData: FormData): Promise<SignUpResult> => {
     const result = await signUpAction(previous, formData);
@@ -90,6 +92,7 @@ export function SignUpForm({ siteKey, services, basket, confirmsCodes, countries
       <input type="hidden" name="choice" value="managed" />
       {services.length === 0 ? null : <input type="hidden" name="services" value={services.join(",")} />}
       {startToken === null ? null : <input type="hidden" name={START_FIELD} value={startToken} />}
+      {next === null ? null : <input type="hidden" name={NEXT_FIELD} value={next} />}
     </>
   );
   const errorBanner = error === null ? null : <Banner tone="neg">{error}</Banner>;
@@ -227,7 +230,7 @@ export function SignUpForm({ siteKey, services, basket, confirmsCodes, countries
       </Button>
       <p className="text-center type-meta">You pay on the next page.</p>
       <p className="text-center type-meta">
-        Already have an account? <Link href={SIGN_IN_PATH}>Sign in</Link>
+        Already have an account? <Link href={withInviteReturn(SIGN_IN_PATH, next)}>Sign in</Link>
       </p>
     </form>
   );
