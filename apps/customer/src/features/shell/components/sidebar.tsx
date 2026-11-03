@@ -1,7 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { formatQuantity } from "@/lib/format";
-import { Avatar, Icon, Kbd, SERVICE_NAMES } from "@/ui";
+import { Avatar, Icon, SERVICE_NAMES } from "@/ui";
 import { linkIsCurrent, SHELL_PATHS, type NavModel } from "../rules";
 import { AccountMenu } from "./account-menu";
 import { NavItem } from "./nav-item";
@@ -14,16 +14,15 @@ export interface SidebarProps {
   readonly businessName: string;
   readonly services: readonly (keyof typeof SERVICE_NAMES)[];
   readonly person: { readonly name: string; readonly contact: string; readonly role: keyof typeof ROLE_WORDS };
-  readonly onSearch: () => void;
   readonly onSignOutError: (message: string) => void;
 }
 
 /**
  * The desktop sidebar (plan 60, section 9; owner's pick, docs/design/sidebar-v4-premium.html option 2): no box of its own,
- * it is the grey the page sheet sits on. Logo, the business, search, the sections, then Plan & billing, Settings, Help &
+ * it is the grey the page sheet sits on. Logo, the business, the sections (search lives in the top bar), then Plan & billing, Settings, Help &
  * calls and the person's menu at the foot. Hidden below 861px, where the tab bar takes over.
  */
-export function Sidebar({ model, pathname, businessName, services, person, onSearch, onSignOutError }: SidebarProps) {
+export function Sidebar({ model, pathname, businessName, services, person, onSignOutError }: SidebarProps) {
   return (
     <aside className="sticky top-0 hidden h-dvh w-sidebar shrink-0 flex-col gap-0.5 overflow-y-auto bg-sidebar px-2.5 py-3 md:flex">
       <Link href={SHELL_PATHS.home} className="mb-1 flex w-fit shrink-0 px-2 pt-1.5 pb-2.5">
@@ -38,16 +37,7 @@ export function Sidebar({ model, pathname, businessName, services, person, onSea
           )}
         </div>
       </div>
-      <button
-        type="button"
-        onClick={onSearch}
-        className="mb-2 flex h-8 w-full shrink-0 items-center gap-2 rounded-control border border-border-subtle bg-surface/70 px-2.5 text-left type-meta transition-colors duration-200 hover:bg-surface"
-      >
-        <Icon name="MagnifyingGlass" size="sm" />
-        <span className="flex-1">Search</span>
-        <Kbd>⌘K</Kbd>
-      </button>
-      {/* The column scrolls on a short screen; nothing in it shrinks, so the search box keeps its height. */}
+      {/* The column scrolls on a short screen; nothing in it shrinks. */}
       <nav aria-label="Main" className="flex flex-1 shrink-0 flex-col">
         {model.sections.map((section) => (
           <div key={section.label ?? "top"} className="flex flex-col gap-0.5">

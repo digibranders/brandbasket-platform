@@ -58,7 +58,6 @@ export function AppShell({ view, children }: { readonly view: ShellView; readonl
           businessName={view.business.name}
           services={view.business.services}
           person={view.person}
-          onSearch={openSearch}
           onSignOutError={setSignOutError}
         />
         {/* Desktop: the page is a raised sheet that scrolls on its own, on the sidebar's grey (sidebar option 2). */}
