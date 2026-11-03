@@ -1,7 +1,7 @@
 "use client";
 
-import { Lock, Plus, Warning } from "@phosphor-icons/react/dist/ssr";
-import { useState, type ReactElement } from "react";
+import { Lock, Warning } from "@phosphor-icons/react/dist/ssr";
+import type { ReactElement } from "react";
 import { cn } from "@brandbasket/shared/lib/cn";
 import { SOFT_BUTTON } from "@/components/v2/classes";
 import { connectChannelAction } from "@/app/app-host/(protected)/social/actions";
@@ -26,11 +26,12 @@ interface ChannelsSidebarProps {
 }
 
 /** A button that sends the customer to a network's own Allow page. The business comes from the session on the server. */
-function ConnectButton({ platform, label, className }: { readonly platform: ChannelPlatform; readonly label: string; readonly className?: string }): ReactElement {
+function ConnectButton({ platform, label, className, logo = false }: { readonly platform: ChannelPlatform; readonly label: string; readonly className?: string; readonly logo?: boolean }): ReactElement {
   return (
     <form action={connectChannelAction}>
       <input type="hidden" name="channel" value={platform} />
-      <button type="submit" className={cn(SOFT_BUTTON, "w-full", className)}>
+      <button type="submit" className={cn(SOFT_BUTTON, "w-full", logo && "justify-start gap-2.5 px-3", className)}>
+        {logo ? <ChannelLogo platform={platform} small /> : null}
         {label}
       </button>
     </form>
@@ -43,7 +44,6 @@ function ConnectButton({ platform, label, className }: { readonly platform: Chan
  */
 export function ChannelsSidebar({ rows, businessName, bookedLine }: ChannelsSidebarProps): ReactElement {
   const { shown, toggle } = useChannelFilter();
-  const [adding, setAdding] = useState(false);
   const missing = CHANNEL_PLATFORMS.filter((platform) => !rows.some((row) => row.platform === platform));
   return (
     <aside
@@ -87,31 +87,21 @@ export function ChannelsSidebar({ rows, businessName, bookedLine }: ChannelsSide
             </li>
           );
         })}
-        {missing.map((platform) => (
-          <li key={platform} className="grid gap-2 rounded-lg px-1.5 py-2">
-            <div className="grid grid-cols-[2.25rem_minmax(0,1fr)] items-center gap-3">
-              <ChannelLogo platform={platform} dim />
-              <span className="min-w-0">
-                <span className="block text-[0.84375rem] font-semibold text-ink">{PLATFORM_NAMES[platform]}</span>
-                <span className="block text-xs text-ink-2">{PLATFORM_HINTS[platform]}</span>
-              </span>
-            </div>
-            <ConnectButton platform={platform} label={`Connect ${PLATFORM_NAMES[platform]}`} />
-          </li>
-        ))}
       </ul>
 
-      <button type="button" aria-expanded={adding} onClick={() => setAdding((open) => !open)} className={cn(SOFT_BUTTON, "mt-3 h-9 w-full text-[0.84375rem]")}>
-        <Plus size={14} aria-hidden="true" />
-        Add channel
-      </button>
-      {adding ? (
-        <div className="mt-2 grid gap-2 rounded-xl bg-sunken p-3">
-          {CHANNEL_PLATFORMS.map((platform) => (
-            <ConnectButton key={platform} platform={platform} label={`Connect ${PLATFORM_NAMES[platform]}`} className="bg-surface" />
+      {missing.length === 0 ? null : (
+        <section aria-labelledby="add-channel-title" className="mt-4 grid gap-2">
+          <h3 id="add-channel-title" className="px-1 text-xs font-semibold text-ink-2">
+            {rows.length === 0 ? "Connect your accounts" : "Add a channel"}
+          </h3>
+          {missing.map((platform) => (
+            <div key={platform} className="grid gap-1">
+              <ConnectButton platform={platform} label={`Connect ${PLATFORM_NAMES[platform]}`} logo />
+              <span className="px-1 text-xs text-ink-3">{PLATFORM_HINTS[platform]}</span>
+            </div>
           ))}
-        </div>
-      ) : null}
+        </section>
+      )}
 
       <p className="mt-4 px-1 text-[0.84375rem] text-ink-2">{bookedLine}</p>
       <p className="mt-2 flex gap-1.5 px-1 text-xs leading-snug text-ink-3">
