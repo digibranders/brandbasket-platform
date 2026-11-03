@@ -1,6 +1,7 @@
 import "server-only";
-import { findLiveBundledAddOns, isPackageOfferForfeited, listServiceSetups, withTenantScope } from "@brandbasket/db";
+import { findLiveBundledAddOns, isPackageOfferForfeited, withTenantScope } from "@brandbasket/db";
 import { isMonthlyAddOnId } from "@brandbasket/shared/lib/billing/add-ons";
+import { readSavedAnswers } from "@/features/checklist/server/saved-answers";
 import { getAppDb } from "@/lib/db";
 import type { CustomerContext } from "@/lib/guards";
 import { notBoughtView, setupAsks, type NotBoughtView, type SetupAsk, type SetupService } from "./rules";
@@ -9,8 +10,8 @@ type Reader = Pick<CustomerContext, "tenant" | "businessId">;
 
 /** The questions still open for a service, from the answers saved so far. Throws when the answers cannot be read: the card then shows its error. */
 export async function loadSetupAsks(customer: Reader, service: SetupService): Promise<readonly SetupAsk[]> {
-  const setups = await withTenantScope(getAppDb(), customer.tenant, (tx) => listServiceSetups(tx, customer.businessId));
-  return setupAsks(service, { social: setups.find((row) => row.service === "social")?.answers, search: setups.find((row) => row.service === "search")?.answers });
+  const answers = await withTenantScope(getAppDb(), customer.tenant, (tx) => readSavedAnswers(tx, customer.businessId, new Date()));
+  return setupAsks(service, answers);
 }
 
 /** The Not bought screen's content, priced as part of the services the business already holds. */

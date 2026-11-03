@@ -103,11 +103,9 @@ export function HelpCallsScreen({ calls }: { readonly calls: Loaded<CallsView> }
           {(view) => (
             <Table>
               <TableHead>
-                <TableRow>
-                  <TableHeader>Date</TableHeader>
-                  <TableHeader>About</TableHeader>
-                  <TableHeader hideOnPhone>What we agreed</TableHeader>
-                </TableRow>
+                <TableHeader>Date</TableHeader>
+                <TableHeader>About</TableHeader>
+                <TableHeader hideOnPhone>What we agreed</TableHeader>
               </TableHead>
               <TableBody>
                 {view.past.map((row) => (

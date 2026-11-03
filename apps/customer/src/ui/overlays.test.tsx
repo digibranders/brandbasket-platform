@@ -125,4 +125,9 @@ describe("Toast", () => {
     await userEvent.click(screen.getByRole("button", { name: "Book" }));
     expect(await screen.findByText("Call booked. The video link is in your email.")).toBeTruthy();
   });
+
+  it("renders a form that toasts even where the provider is not found, instead of throwing", () => {
+    render(<Confirm />);
+    expect(screen.getByRole("button", { name: "Book" })).toBeTruthy();
+  });
 });

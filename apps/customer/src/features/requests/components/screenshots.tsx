@@ -1,9 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import Image from "next/image";
+import { useEffect, useImperativeHandle, useRef, useState, type Ref } from "react";
 import { z } from "zod";
-import { formatBytes } from "@/lib/format";
-import { FileDrop, IconButton } from "@/ui";
+import { FileDrop, Icon } from "@/ui";
 import { ATTACHMENT_HINT, ATTACHMENT_LIMIT, ATTACHMENT_TYPES, checkAttachments } from "../rules";
 
 /*
@@ -18,8 +18,14 @@ const uploadResult = z.object({ attachments: z.array(z.object({ id: z.uuid() }))
 interface Shot {
   readonly key: string;
   readonly name: string;
-  readonly size: number;
   readonly id: string;
+  /** A local preview of the file, released when the shot is removed or the picker goes away. */
+  readonly url: string;
+}
+
+/** Lets the form hand over screenshots pasted anywhere in it (features/requests/paste.ts). */
+export interface ScreenshotsHandle {
+  readonly addFiles: (files: readonly File[]) => void;
 }
 
 export interface ScreenshotsProps {
@@ -30,17 +36,24 @@ export interface ScreenshotsProps {
   readonly disabled?: boolean;
   /** Changes when the form was sent: the list starts again. */
   readonly resetKey?: string;
+  readonly ref?: Ref<ScreenshotsHandle>;
 }
 
-export function Screenshots({ onIds, onBusy, disabled = false, resetKey }: ScreenshotsProps) {
+export function Screenshots({ onIds, onBusy, disabled = false, resetKey, ref }: ScreenshotsProps) {
   const [shots, setShots] = useState<readonly Shot[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [seenReset, setSeenReset] = useState(resetKey);
+  const previews = useRef<readonly Shot[]>([]);
+  useEffect(() => {
+    previews.current = shots;
+  }, [shots]);
+  useEffect(() => () => previews.current.forEach((shot) => URL.revokeObjectURL(shot.url)), []);
 
   // A sent form leaves the staged ids behind (they are now attached); the picker starts empty for the next one.
   if (seenReset !== resetKey) {
     setSeenReset(resetKey);
+    shots.forEach((shot) => URL.revokeObjectURL(shot.url));
     setShots([]);
     setError(null);
   }
@@ -68,7 +81,7 @@ export function Screenshots({ onIds, onBusy, disabled = false, resetKey }: Scree
       const response = await fetch(UPLOAD_PATH, { method: "POST", body });
       const result = uploadResult.safeParse(await response.json());
       if (!response.ok || !result.success || result.data.attachments.length !== files.length) throw new Error("upload-failed");
-      settle([...shots, ...files.map((file, index) => ({ key: crypto.randomUUID(), name: file.name, size: file.size, id: result.data.attachments[index]?.id ?? "" }))]);
+      settle([...shots, ...files.map((file, index) => ({ key: crypto.randomUUID(), name: file.name, id: result.data.attachments[index]?.id ?? "", url: URL.createObjectURL(file) }))]);
     } catch {
       setError("Screenshots could not be uploaded. You can still send your text, or try the upload again.");
     } finally {
@@ -82,6 +95,7 @@ export function Screenshots({ onIds, onBusy, disabled = false, resetKey }: Scree
       const response = await fetch(`${UPLOAD_PATH}?attachmentId=${encodeURIComponent(shot.id)}`, { method: "DELETE" });
       if (!response.ok) throw new Error("remove-failed");
       settle(shots.filter((candidate) => candidate.key !== shot.key));
+      URL.revokeObjectURL(shot.url);
       setError(null);
     } catch {
       setError("This screenshot could not be removed. Try again.");
@@ -90,23 +104,32 @@ export function Screenshots({ onIds, onBusy, disabled = false, resetKey }: Scree
     }
   };
 
+  useImperativeHandle(ref, () => ({ addFiles: (files) => void add(files) }));
+
   return (
     <div className="flex flex-col gap-2">
       <FileDrop
         chooseLabel={shots.length === 0 ? "Add screenshots" : "Add more"}
-        description={ATTACHMENT_HINT}
+        description={`Drop or paste them here. ${ATTACHMENT_HINT}`}
         accept={ATTACHMENT_TYPES.join(",")}
         multiple
         disabled={disabled || busy || shots.length >= ATTACHMENT_LIMIT}
         onFiles={(files) => void add(files)}
       />
       {shots.length === 0 ? null : (
-        <ul aria-label="Screenshots to send" className="flex flex-col divide-y divide-border-subtle rounded-control border border-border">
+        <ul aria-label="Screenshots to send" className="flex flex-wrap gap-2">
           {shots.map((shot) => (
-            <li key={shot.key} className="flex items-center gap-2 px-3 py-1.5">
-              <span className="min-w-0 flex-1 truncate type-body">{shot.name}</span>
-              <span className="type-meta">{formatBytes(shot.size)}</span>
-              <IconButton icon="X" label={`Remove ${shot.name}`} disabled={disabled || busy} onClick={() => void remove(shot)} />
+            <li key={shot.key} className="relative">
+              <Image src={shot.url} alt={shot.name} title={shot.name} width={64} height={64} unoptimized className="size-16 rounded-control border border-border object-cover" />
+              <button
+                type="button"
+                aria-label={`Remove ${shot.name}`}
+                disabled={disabled || busy}
+                onClick={() => void remove(shot)}
+                className="absolute -top-1.5 -right-1.5 grid size-6 place-items-center rounded-full border border-border bg-surface text-ink-3 shadow-pop transition-colors hover:text-ink focus-visible:shadow-focus focus-visible:outline-none disabled:cursor-not-allowed disabled:text-ink-disabled"
+              >
+                <Icon name="X" size="sm" />
+              </button>
             </li>
           ))}
         </ul>

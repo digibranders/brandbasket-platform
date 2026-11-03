@@ -35,15 +35,13 @@ export function AuthorsScreen({ rows, canWrite, hasPages, now }: ListProps<BlogA
         {(authors) => (
           <Table>
             <TableHead>
-              <TableRow>
-                <TableHeader>Name</TableHeader>
-                <TableHeader hideOnPhone>Role</TableHeader>
-                <TableHeader align="end">Published</TableHeader>
-                <TableHeader hideOnPhone align="end">
-                  Drafts
-                </TableHeader>
-                <TableHeader hideOnPhone>Last published</TableHeader>
-              </TableRow>
+              <TableHeader>Name</TableHeader>
+              <TableHeader hideOnPhone>Role</TableHeader>
+              <TableHeader align="end">Published</TableHeader>
+              <TableHeader hideOnPhone align="end">
+                Drafts
+              </TableHeader>
+              <TableHeader hideOnPhone>Last published</TableHeader>
             </TableHead>
             <TableBody>
               {authors.map((author) => (
@@ -88,14 +86,12 @@ export function CategoriesScreen({ rows, canWrite, hasPages }: ListProps<BlogCat
         {(categories) => (
           <Table>
             <TableHead>
-              <TableRow>
-                <TableHeader>Name</TableHeader>
-                <TableHeader hideOnPhone>Address</TableHeader>
-                <TableHeader align="end">Published</TableHeader>
-                <TableHeader hideOnPhone align="end">
-                  Drafts
-                </TableHeader>
-              </TableRow>
+              <TableHeader>Name</TableHeader>
+              <TableHeader hideOnPhone>Address</TableHeader>
+              <TableHeader align="end">Published</TableHeader>
+              <TableHeader hideOnPhone align="end">
+                Drafts
+              </TableHeader>
             </TableHead>
             <TableBody>
               {categories.map((category) => (

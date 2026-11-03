@@ -12,7 +12,7 @@ export function PasswordInput(props: PasswordInputProps) {
     <div className="relative">
       <Input {...props} type={revealed ? "text" : "password"} className="pr-10" />
       <IconButton
-        icon="Eye"
+        icon={revealed ? "EyeSlash" : "Eye"}
         label={revealed ? "Hide password" : "Show password"}
         aria-pressed={revealed}
         tooltip={false}

@@ -5,6 +5,7 @@ import {
   listDeliverablesForBusiness,
   listEnquiries,
   listMonthlySnapshots,
+  listRequestItems,
   listRequestNeeds,
   listWaitingOnYou,
   listWaitingPosts,
@@ -20,7 +21,12 @@ import { includedEditsAllowed, monthBoundsIst } from "@brandbasket/shared/lib/ch
 import { canBookCalls } from "@/features/calls/loader";
 import { callRows, reasonOptions, type CallRow, type ReasonOption } from "@/features/calls/rules";
 import { callsOpenFor, readBookingUrl, readKickoffFacts, readMissedKickoffAt, readTeamCalls, type LiveWebsite } from "@/features/calls/server/calls";
+import { requestRows } from "@/features/requests/rules";
+import { adsView, monthName } from "@/features/social/rules";
+import { pageOne, type PageOne } from "@/features/search/rules";
 import { loadChecklistSummary, type ChecklistSummary } from "@/features/checklist/loader";
+import { loadSiteHealth } from "@/features/website/loader";
+import { homeHealthLine } from "@/features/website/rules/health";
 import { getAppDb } from "@/lib/db";
 import { APP_TIME_ZONE, formatDate } from "@/lib/format";
 import type { CustomerContext } from "@/lib/guards";
@@ -30,6 +36,8 @@ import {
   deriveClientHomeState,
   enquirySeries,
   enquiryWindowStart,
+  finishedDeliverableRows,
+  finishedRequestRows,
   homeLayoutOf,
   needsYou,
   stillAhead,
@@ -128,7 +136,7 @@ async function readWaitingPosts(customer: CustomerContext, tx: ScopedTransaction
 }
 
 /** Needs you: posts to approve, quotes and changes, replies, and the blocking setup questions. */
-export function loadNeedsYou(customer: CustomerContext, checklist: Loaded<ChecklistSummary>): Promise<Loaded<readonly NeedsYouItem[]>> {
+export function loadNeedsYou(customer: CustomerContext, checklist: Loaded<ChecklistSummary>, now: Date = new Date()): Promise<Loaded<readonly NeedsYouItem[]>> {
   return load("home.needs", async () => {
     // A failed checklist read must not hide its questions silently: the panel fails with it.
     if (!checklist.ok) throw new Error("The setup checklist could not be read for Needs you.");
@@ -139,12 +147,21 @@ export function loadNeedsYou(customer: CustomerContext, checklist: Loaded<Checkl
       waiting: await listWaitingOnYou(tx, user.id, businessId),
     }));
     const by = read.posts.by;
-    return needsYou({ ...read, posts: { count: read.posts.count, by: by === null ? null : formatDay(by, new Date()) }, checklist: checklist.data.items });
+    const failingUntil = customer.billing.renewalFailingUntil;
+    return needsYou({
+      ...read,
+      posts: { count: read.posts.count, by: by === null ? null : formatDay(by, now) },
+      checklist: checklist.data.items,
+      renewalFailing: failingUntil === null ? null : { until: formatDate(failingUntil, now) },
+    });
   });
 }
 
 /** "Tue 1 Dec" for an India day (`YYYY-MM-DD`). */
 const formatDay = (day: string, now: Date): string => formatDate(new Date(`${day}T12:00:00+05:30`), now);
+
+/** How far back What we did looks for finished work. */
+const ENQUIRY_LOOKBACK_DAYS = 30;
 
 /** How many enquiries a page of the list holds (the query's ceiling). */
 const ENQUIRY_PAGE = 200;
@@ -192,12 +209,19 @@ export function loadServices(customer: CustomerContext, view: HomeStateView, now
       snapshots: await listMonthlySnapshots(tx, customer.businessId, monthKey(now)),
       posts: await readWaitingPosts(customer, tx),
     }));
+    // Its own load, so a failed read leaves the rest of the line (and the panel) as it was; the failure is reported.
+    const health = view.live !== null && customer.services.includes("website") ? await loadSiteHealth(customer.tenant, now) : null;
+    const healthLine = health !== null && health.ok ? homeHealthLine(health.data, now) : null;
     const social = snapshots.find((row) => row.service === "social");
     const search = snapshots.find((row) => row.service === "search");
     return customer.services.map((service): ServiceLine => {
       switch (service) {
         case "website":
-          return { service, line: view.live === null ? null : `Live at ${view.live.hostname}.`, needsYou: view.state.kind === "preview_ready" };
+          return {
+            service,
+            line: view.live === null ? null : [`Live at ${view.live.hostname}.`, healthLine].filter((part) => part !== null).join(" "),
+            needsYou: view.state.kind === "preview_ready",
+          };
         case "social": {
           const published = social?.postsPublished ?? null;
           const waiting = posts.count === 0 ? null : posts.count === 1 ? "1 post is waiting for your approval." : `${String(posts.count)} posts are waiting for your approval.`;
@@ -213,15 +237,50 @@ export function loadServices(customer: CustomerContext, view: HomeStateView, now
   });
 }
 
-/** What we did: staff updates, the preview going out and the launch, newest first. */
-export function loadActivity(customer: CustomerContext, view: HomeStateView): Promise<Loaded<readonly ActivityRow[]>> {
+/** The last-30-days strip's figures that come from the month's numbers staff enter: each null when it was not measured. */
+export interface StripFigures {
+  readonly month: string;
+  readonly adLeads: { readonly count: number; readonly updatedAt: Date | null } | null;
+  readonly pageOne: PageOne | null;
+}
+
+/** Leads from ads (Social) and searches on Google page one (Local SEO + AEO), from `monthly_snapshots`. Website visits have no source and are not here. */
+export function loadFigures(customer: CustomerContext, now: Date): Promise<Loaded<StripFigures>> {
+  return load("home.figures", async () => {
+    const snapshots = await scoped(customer, (tx) => listMonthlySnapshots(tx, customer.businessId, monthKey(now)));
+    const ads = customer.services.includes("social") ? adsView({ snapshot: snapshots.find((row) => row.service === "social") ?? null, adCreditCents: 0, currency: customer.currency }) : null;
+    const search = customer.services.includes("search") ? (snapshots.find((row) => row.service === "search") ?? null) : null;
+    return {
+      month: monthName(now),
+      adLeads: ads === null || ads.leads === null ? null : { count: ads.leads, updatedAt: ads.updatedAt },
+      pageOne: pageOne(search),
+    };
+  });
+}
+
+/** What we did: staff updates, published posts, finished search work and requests done, the preview going out and the launch, newest first. */
+export function loadActivity(customer: CustomerContext, view: HomeStateView, now: Date): Promise<Loaded<readonly ActivityRow[]>> {
   return load("home.activity", async () => {
-    const events = await scoped(customer, (tx) => listActivityEvents(tx, customer.businessId, 8));
+    const today = dayKey(now.toISOString(), APP_TIME_ZONE);
+    const from = dayKey(new Date(now.getTime() - ENQUIRY_LOOKBACK_DAYS * 86_400_000).toISOString(), APP_TIME_ZONE);
+    const read = await scoped(customer, async (tx) => ({
+      events: await listActivityEvents(tx, customer.businessId, 8),
+      // Only the services on the plan have work; each read is limited to the last 30 days by its date.
+      deliverables: (
+        await Promise.all(
+          (["social", "search"] as const)
+            .filter((service) => customer.services.includes(service))
+            .map((service) => listDeliverablesForBusiness(tx, customer.businessId, { service, from, to: today })),
+        )
+      ).flat(),
+      requests: await listRequestItems(tx, customer.user.id, customer.businessId, 30),
+    }));
     return activityRows({
-      events: events.map((event) => ({ id: event.id, occurredAt: event.occurredAt, title: event.title, service: event.service })),
+      events: read.events.map((event) => ({ id: event.id, occurredAt: event.occurredAt, title: event.title, service: event.service })),
       previewSentAt: view.project?.previewSentAt ?? null,
       launchedAt: view.live?.launchedAt ?? null,
       hostname: view.live?.hostname ?? null,
+      finished: [...finishedDeliverableRows(read.deliverables), ...finishedRequestRows(requestRows(read.requests))],
       limit: 6,
     });
   });
@@ -254,7 +313,8 @@ export function loadComingUp(customer: CustomerContext, view: HomeStateView, now
     const rows = callRows({ calls, kickoff: view.kickoff, now });
     const { billing } = customer;
     const subscription = billing.subscription;
-    const date = !billing.hasAccess || subscription === null || !paymentsContinue(subscription) ? null : nextPaymentDate(subscription, now);
+    // While a renewal is failing the retry is the provider's, not a date we promise: Needs you carries the payment instead.
+    const date = !billing.hasAccess || billing.renewalFailingUntil !== null || subscription === null || !paymentsContinue(subscription) ? null : nextPaymentDate(subscription, now);
     const amount = subscription === null || billing.plan === null ? null : renewalCharge(billing.plan, nextDiscountCents(subscription), nextBundledNetCents(subscription));
     return {
       call: rows.upcoming[0] ?? null,
@@ -289,6 +349,8 @@ export interface HomePanels {
   readonly checklist: Loaded<ChecklistSummary> | null;
   readonly needs: Loaded<readonly NeedsYouItem[]> | null;
   readonly enquiries: Loaded<EnquirySeries> | null;
+  /** Leads from ads and Google page one, for the last-30-days strip. */
+  readonly figures: Loaded<StripFigures> | null;
   readonly services: Loaded<readonly ServiceLine[]> | null;
   readonly activity: Loaded<readonly ActivityRow[]> | null;
   readonly coming: Loaded<ComingUp> | null;
@@ -302,20 +364,22 @@ const KICKOFF_KINDS: readonly string[] = ["kickoff_unbooked", "kickoff_booked", 
  * have one task and Plan & billing owns the rest (as the old unpaid Home did).
  */
 export async function loadHomePanels(customer: CustomerContext, view: HomeStateView, now: Date): Promise<HomePanels> {
-  const none: HomePanels = { booking: await loadBooking(customer), checklist: null, needs: null, enquiries: null, services: null, activity: null, coming: null, included: null };
+  const none: HomePanels = { booking: await loadBooking(customer), checklist: null, needs: null, enquiries: null, figures: null, services: null, activity: null, coming: null, included: null };
   if (view.layout === "task") {
     if (!KICKOFF_KINDS.includes(view.state.kind)) return none;
     return { ...none, checklist: view.state.kind === "kickoff_booked" ? await loadChecklist(customer) : null };
   }
   const checklist = await loadChecklist(customer);
   const overview = view.layout === "overview";
-  const [needs, enquiries, services, activity, coming, included] = await Promise.all([
-    loadNeedsYou(customer, checklist),
+  const [needs, enquiries, figures, services, activity, coming, included] = await Promise.all([
+    // A viewer can act on nothing in Needs you, so the panel is not read for them.
+    customer.role === "viewer" ? Promise.resolve(null) : loadNeedsYou(customer, checklist, now),
     overview && customer.services.includes("website") ? loadEnquiries(customer, now) : Promise.resolve(null),
+    overview && (customer.services.includes("social") || customer.services.includes("search")) ? loadFigures(customer, now) : Promise.resolve(null),
     overview ? loadServices(customer, view, now) : Promise.resolve(null),
-    loadActivity(customer, view),
+    loadActivity(customer, view, now),
     view.layout === "review" ? Promise.resolve(null) : loadComingUp(customer, view, now),
     overview || view.state.kind === "launched" ? loadIncludedEdits(customer, now) : Promise.resolve(null),
   ]);
-  return { ...none, checklist, needs, enquiries, services, activity, coming, included };
+  return { ...none, checklist, needs, enquiries, figures, services, activity, coming, included };
 }

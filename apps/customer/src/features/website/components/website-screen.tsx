@@ -12,6 +12,7 @@ import { ASK_FOR_CHANGE_HREF, WEBSITE_PAGES_PATH, WEBSITE_PATH } from "../rules/
 import { roundsLine, roundsUsedUp } from "../rules/progress";
 import { websiteProgress } from "../rules/screen";
 import { PreviewDecision } from "./preview-decision";
+import { SiteHealthPanel } from "./site-health-panel";
 import { AddressPanelView, Columns, ExternalButton, LiveHeader, NextStepsPanel, NoticeBanner, WebsiteTabs } from "./website-parts";
 
 export interface WebsiteScreenProps {
@@ -35,8 +36,8 @@ const askForChange = (
 
 /**
  * Website Overview, by `projects.status` (plan 61, section 4): a timeline with dates while building, the preview with Approve
- * and Ask for changes when one is waiting, and once live the status, website enquiries and the pages. Visits, sources, uptime
- * and site health have no customer data source yet (gates G1, Phase 12), so those panels are not rendered.
+ * and Ask for changes when one is waiting, and once live the status, website enquiries, site health and the pages. Visits and
+ * sources have no customer data source yet (gate G1), so those panels are not rendered.
  */
 export function WebsiteScreen({ context, core, overview, pages, notice, feedbackKey, now }: WebsiteScreenProps) {
   const { project, domain, live } = core;
@@ -159,6 +160,7 @@ export function WebsiteScreen({ context, core, overview, pages, notice, feedback
               <PanelError failure={overview.enquiries.error} what="your enquiries" />
             </Panel>
           ) : null}
+          {overview.health === null ? null : <SiteHealthPanel facts={overview.health} now={now} />}
           {pages !== null && !pages.ok ? (
             <Panel title="Pages">
               <PanelError failure={pages.error} what="your pages" />
@@ -173,10 +175,8 @@ export function WebsiteScreen({ context, core, overview, pages, notice, feedback
             >
               <Table>
                 <TableHead>
-                  <TableRow>
-                    <TableHeader>Address</TableHeader>
-                    <TableHeader>Last seen</TableHeader>
-                  </TableRow>
+                  <TableHeader>Address</TableHeader>
+                  <TableHeader>Last seen</TableHeader>
                 </TableHead>
                 <TableBody>
                   {pages.data.slice(0, TOP_PAGES).map((page) => (

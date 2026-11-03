@@ -170,13 +170,22 @@ type Answers = Readonly<Record<string, unknown>> | undefined;
 
 const filled = (answers: Answers, name: string): boolean => typeof answers?.[name] === "string" && (answers[name] as string).trim() !== "";
 
-/** Which items are done, read from the saved answers of each service. */
-export function doneSetupKeys(saved: { readonly social: Answers; readonly search: Answers }): SetupKey[] {
+/** What the business already has outside its saved answers: accounts staff connected, and an ad budget on this month's figures. */
+export interface KnownFacts {
+  readonly accounts: boolean;
+  readonly budget: boolean;
+}
+
+/**
+ * Which items are done: answered in the service's saved answers, or already known from the connected accounts and the
+ * month's ad figures. We never ask for what the business already has.
+ */
+export function doneSetupKeys(saved: { readonly social: Answers; readonly search: Answers; readonly known?: KnownFacts }): SetupKey[] {
   const done: SetupKey[] = [];
-  if (filled(saved.social, "instagramUrl") || filled(saved.social, "facebookUrl")) done.push("accounts");
+  if (saved.known?.accounts === true || filled(saved.social, "instagramUrl") || filled(saved.social, "facebookUrl")) done.push("accounts");
   if (filled(saved.social, "offers")) done.push("offers");
   const budget = saved.social?.["adBudgetRupees"];
-  if (typeof budget === "number" && budget > 0 && filled(saved.social, "adArea")) done.push("budget");
+  if (saved.known?.budget === true || (typeof budget === "number" && budget > 0 && filled(saved.social, "adArea"))) done.push("budget");
   if (filled(saved.search, "areas")) done.push("areas");
   return done;
 }

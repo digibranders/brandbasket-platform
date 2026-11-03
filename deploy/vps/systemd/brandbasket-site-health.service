@@ -1,0 +1,55 @@
+# The site health job (plan 61, Phase 12): `pnpm site-health:run` fetches every live customer website over https, reads its
+# certificate's end date, and at most once a day per site asks Google PageSpeed Insights for its phone speed. One site_checks
+# row per site per run; a site that goes from up to down for two checks in a row emails the team mailbox once
+# (SUPPORT_ALERT_EMAIL). Installed by deploy/vps/install.sh backups but NOT enabled: enabling it is the owner's call
+# (docs/deployment/brandbasket-vps.md, "Site health"). It reads the dashboard's environment through the release's
+# apps/platform/.env.local link, as the maintenance job does, so it needs a deployed release. It writes only to the database.
+# pnpm needs a writable home for its own cache, so HOME is the unit's cache directory. By hand:
+#   systemctl start brandbasket-site-health.service && journalctl -u brandbasket-site-health -n 20
+# (a good run prints a line starting "Site health:").
+[Unit]
+Description=Brandbasket site health checks (uptime, certificate, phone speed)
+After=network-online.target postgresql.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=brandbasket
+Group=brandbasket
+WorkingDirectory=/srv/brandbasket/current-platform
+CacheDirectory=brandbasket-site-health
+Environment=HOME=/var/cache/brandbasket-site-health
+Environment=PATH=/usr/local/bin:/usr/bin:/bin
+Environment=NODE_ENV=production
+Environment=COREPACK_ENABLE_DOWNLOAD_PROMPT=0
+ExecStart=/usr/bin/env pnpm site-health:run
+Nice=10
+IOWeight=20
+TimeoutStartSec=9min
+MemoryMax=400M
+LimitNOFILE=65535
+SyslogIdentifier=brandbasket-site-health
+# Sandbox (Firstfold's app hardening): read-only system, no writable paths, no privileges, no unneeded syscalls. Firstfold's
+# folders, its env files, keys and backups do not exist for this unit (InaccessiblePaths; the "-" ignores a path that is not
+# there).
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectKernelLogs=true
+ProtectControlGroups=true
+ProtectClock=true
+ProtectHostname=true
+RestrictNamespaces=true
+RestrictRealtime=true
+RestrictSUIDSGID=true
+LockPersonality=true
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+SystemCallArchitectures=native
+SystemCallFilter=@system-service
+CapabilityBoundingSet=
+UMask=0077
+InaccessiblePaths=-/srv/firstfold -/srv/firstfold-website -/srv/firstfold-media -/srv/firstfold-ci -/etc/firstfold -/var/backups -/var/lib/firstfold -/var/lib/firstfold-ci

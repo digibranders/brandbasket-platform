@@ -224,4 +224,22 @@ describe("FileDrop", () => {
     expect(screen.getByRole("progressbar", { name: "front.jpg" }).getAttribute("aria-valuenow")).toBe("40");
     expect(screen.getByText("Only JPG or PNG.")).toBeTruthy();
   });
+
+  it("names the button by its visible words and keeps a link in the description outside it", async () => {
+    const { container } = render(
+      <FileDrop
+        chooseLabel="Add photos"
+        description={
+          <>
+            JPEG or PNG. For other files, <a href="https://example.test/send">send them to the team</a>.
+          </>
+        }
+        onFiles={vi.fn()}
+      />,
+    );
+    const button = screen.getByRole("button", { name: "Add photos" });
+    expect(button.querySelector("a")).toBeNull();
+    expect(screen.getByRole("link", { name: "send them to the team" })).toBeTruthy();
+    await expectNoAxeViolations(container);
+  });
 });

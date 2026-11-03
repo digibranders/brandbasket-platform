@@ -1,7 +1,7 @@
 "use client";
 
 import { Select as BaseSelect } from "@base-ui/react/select";
-import { CONTROL, OPTION, POPUP } from "./control-styles";
+import { CONTROL, OPTION, POPUP, controlWidth } from "./control-styles";
 import { cx } from "./cx";
 import { Icon } from "./icon";
 
@@ -39,7 +39,7 @@ export function Select({ options, value, defaultValue, onValueChange, name, plac
     >
       <BaseSelect.Trigger
         aria-label={aria["aria-label"]}
-        className={cx(CONTROL, "flex h-control items-center justify-between gap-2 pr-2 pl-3 text-left", className)}
+        className={cx(CONTROL, controlWidth(className), "flex h-control items-center justify-between gap-2 pr-2 pl-3 text-left", className)}
       >
         <BaseSelect.Value placeholder={placeholder} className="truncate data-placeholder:text-ink-muted" />
         <BaseSelect.Icon className="text-ink-3">

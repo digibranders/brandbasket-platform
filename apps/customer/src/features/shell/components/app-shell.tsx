@@ -27,8 +27,9 @@ export function AppShell({ view, children }: { readonly view: ShellView; readonl
         kickoffOver: view.kickoffOver,
         enquiries: countOf(view.enquiries),
         requests: countOf(view.requests),
+        ...(view.reports.ok ? { reports: view.reports.data } : {}),
       }),
-    [view.business.services, view.kickoffOver, view.enquiries, view.requests],
+    [view.business.services, view.kickoffOver, view.enquiries, view.requests, view.reports],
   );
 
   useEffect(() => {
@@ -56,9 +57,8 @@ export function AppShell({ view, children }: { readonly view: ShellView; readonl
           model={model}
           pathname={pathname}
           businessName={view.business.name}
-          serviceCount={view.business.services.length}
+          services={view.business.services}
           person={view.person}
-          onSearch={openSearch}
           onSignOutError={setSignOutError}
         />
         <div className="flex min-w-0 flex-1 flex-col">

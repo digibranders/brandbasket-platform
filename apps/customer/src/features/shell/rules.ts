@@ -68,11 +68,13 @@ export interface NavInput {
   readonly enquiries?: number;
   /** Requests waiting on the customer; undefined when not known. */
   readonly requests?: number;
+  /** A report has been sent (plan 60, section 9: Reports shows after the first report month). Undefined when not known: the link stays. */
+  readonly reports?: boolean;
 }
 
 const SERVICE_LINKS: Readonly<Record<Service, Omit<NavLink, "bought" | "children">>> = {
-  website: { href: SHELL_PATHS.website, label: "Website", icon: "Globe", service: "website" },
-  social: { href: SHELL_PATHS.social, label: "Social & Ads", icon: "Megaphone", service: "social" },
+  website: { href: SHELL_PATHS.website, label: "Website", icon: "Browser", service: "website" },
+  social: { href: SHELL_PATHS.social, label: "Social & Ads", icon: "MegaphoneSimple", service: "social" },
   // The SEO service is never called "Search", which is what the search box is.
   search: { href: SHELL_PATHS.search, label: "Local SEO + AEO", icon: "MapPinArea", service: "search" },
 };
@@ -89,20 +91,21 @@ const SERVICES_IN_ORDER: readonly Service[] = ["website", "social", "search"];
 const withCount = (link: NavLink, count: number | undefined): NavLink => (count !== undefined && count > 0 ? { ...link, count } : link);
 
 const HOME: NavLink = { href: SHELL_PATHS.home, label: "Home", icon: "House" };
-const ENQUIRIES: NavLink = { href: SHELL_PATHS.enquiries, label: "Enquiries", icon: "Tray" };
-const REQUESTS: NavLink = { href: SHELL_PATHS.requests, label: "Requests", icon: "ChatsCircle" };
-const REPORTS: NavLink = { href: SHELL_PATHS.reports, label: "Reports", icon: "ChartLineUp" };
+const ENQUIRIES: NavLink = { href: SHELL_PATHS.enquiries, label: "Enquiries", icon: "TrayArrowDown" };
+const REQUESTS: NavLink = { href: SHELL_PATHS.requests, label: "Requests", icon: "ChatTeardropText" };
+const REPORTS: NavLink = { href: SHELL_PATHS.reports, label: "Reports", icon: "PresentationChart" };
 const BUSINESS: NavLink = { href: SHELL_PATHS.business, label: "Business profile", icon: "Storefront" };
 const FOOT: readonly NavLink[] = [
-  { href: SHELL_PATHS.billing, label: "Plan & billing", icon: "CreditCard", children: [{ href: SHELL_PATHS.invoices, label: "Invoices" }] },
+  { href: SHELL_PATHS.billing, label: "Plan & billing", icon: "Wallet", children: [{ href: SHELL_PATHS.invoices, label: "Invoices" }] },
   { href: SHELL_PATHS.settings, label: "Settings", icon: "GearSix" },
-  { href: SHELL_PATHS.help, label: "Help & calls", icon: "Question" },
+  { href: SHELL_PATHS.help, label: "Help & calls", icon: "Headset" },
 ];
 
 /**
  * The sidebar (plan 60, section 9, and the mock): Home, Enquiries, Requests; then Services; then Business; the foot always.
  * Before the kickoff call: Home, Requests, Business profile and the foot. Every service shows after kickoff: one not on the
- * plan is marked `bought: false` and still links to its page. A count that could not be read hides only the number.
+ * plan is marked `bought: false` and still links to its page. A count that could not be read hides only the number. Reports
+ * waits for the first sent report; when that could not be read it shows, so a failed read never hides the link.
  */
 export function navModel(input: NavInput): NavModel {
   const requests = withCount(REQUESTS, input.requests);
@@ -117,7 +120,7 @@ export function navModel(input: NavInput): NavModel {
     sections: [
       { label: null, links: [HOME, withCount(ENQUIRIES, input.enquiries), requests] },
       { label: "Services", links: services },
-      { label: "Business", links: [REPORTS, BUSINESS] },
+      { label: "Business", links: input.reports === false ? [BUSINESS] : [REPORTS, BUSINESS] },
     ],
     foot: FOOT,
   };
@@ -164,7 +167,7 @@ export function phoneTabs(model: NavModel, kickoffOver: boolean): readonly Phone
     ? [
         ...tab(SHELL_PATHS.home),
         ...tab(SHELL_PATHS.enquiries),
-        { kind: "menu", id: "services", label: "Services", icon: "Globe", links: services },
+        { kind: "menu", id: "services", label: "Services", icon: "Browser", links: services },
         ...tab(SHELL_PATHS.requests),
       ]
     : [...tab(SHELL_PATHS.home), ...tab(SHELL_PATHS.requests), ...tab(SHELL_PATHS.business, "Business"), ...tab(SHELL_PATHS.billing, "Billing")];
@@ -242,9 +245,13 @@ export function billingBannerState(billing: Pick<CustomerBilling, "status" | "re
   return null;
 }
 
-/** Home places its own billing task, so the banner is left off "/" exactly (apps/platform hidden-on-paths). */
-export function showsBillingBanner(pathname: string): boolean {
-  return pathname !== SHELL_PATHS.home;
+/**
+ * Home places its own task for a lapsed plan or a payment under review, so the banner is left off "/" exactly for those
+ * (apps/platform hidden-on-paths). A failing renewal has no state of its own on Home, only a Needs you line, so the banner
+ * stays there too.
+ */
+export function showsBillingBanner(pathname: string, state: NonNullable<BillingBannerState>): boolean {
+  return pathname !== SHELL_PATHS.home || state.kind === "renewal-failing";
 }
 
 /** What the bell is built from, read for the signed-in person and business. */

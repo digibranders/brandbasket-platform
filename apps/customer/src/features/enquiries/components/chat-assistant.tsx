@@ -40,7 +40,7 @@ export function ChatAssistant({ data, canEdit }: { readonly data: Loaded<ChatAss
         }}
       >
         {(view) => (
-          <ul aria-label="Your OyeChats assistants" className="m-0 list-none p-0">
+          <ul aria-label="Your website chat assistants" className="m-0 list-none p-0">
             {view.bots.map((bot) => {
               const status = chatbotStatusLine(bot.status);
               const site = websiteLabel(bot.websiteUrl);

@@ -63,15 +63,16 @@ export interface BrandView {
 }
 
 /**
- * Contact details: what is saved, else what the owner gave at sign-up. A saved number shows in its own country's layout; with
+ * Contact details: what is saved, else (for the owner only) what the owner gave at sign-up. A saved number shows in its own country's layout; with
  * none saved, the visitor's country is the best guess for the dial code.
  */
 export function loadContact(customer: CustomerContext): Promise<Loaded<ContactView>> {
   return load("business.contact", async () => {
     const { profile, ownerContact } = await withTenantScope(getAppDb(), customer.tenant, async (tx) => {
       const profile = await getBusinessProfile(tx);
-      // Nothing saved yet: offer what the owner gave at sign-up.
-      return { profile, ownerContact: profile === null ? await getOwnerContact(tx, customer.user.id) : null };
+      // Nothing saved yet: offer what the owner gave at sign-up, only to the owner. For anyone else the signed-in person's
+      // own address would show as the business's, and saving the form would make it so.
+      return { profile, ownerContact: profile === null && customer.role === "owner" ? await getOwnerContact(tx, customer.user.id) : null };
     });
     const saved = savedPhoneStart(profile?.phone ?? ownerContact?.phone ?? null);
     const phoneCountry = saved.country ?? visitorPhoneCountry(await headers());

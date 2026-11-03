@@ -12,7 +12,11 @@ import {
   kickoffIsOver,
   kickoffSteps,
   LAUNCH_GREETING_DAYS,
+  finishedDeliverableRows,
+  finishedRequestRows,
   needsYou,
+  overviewLede,
+  roundsIncludedLine,
   stillAhead,
   websiteCopy,
   websiteMilestones,
@@ -300,6 +304,76 @@ describe("needsYou", () => {
     const rows = needsYou({ posts: { count: 0, by: null }, needs: [need({ acceptedAt: NOW })], waiting: [], checklist: [] });
     expect(rows).toHaveLength(1);
     expect(rows[0]?.action).toBe("Pay");
+  });
+});
+
+describe("a failing renewal", () => {
+  const failing = { until: "Sat 7 Nov" };
+
+  it("is the first thing that needs the customer, with the way to fix it", () => {
+    const rows = needsYou({ posts: { count: 2, by: "Tue 1 Dec" }, needs: [], waiting: [], checklist: [], renewalFailing: failing });
+    expect(rows.map((row) => row.key)).toEqual(["billing", "posts"]);
+    expect(rows[0]).toMatchObject({ action: "Change payment method", href: "/billing/payment", hint: "We will try again. Your website stays online until Sat 7 Nov." });
+  });
+
+  it("adds nothing while payments are fine", () => {
+    expect(needsYou({ posts: { count: 0, by: null }, needs: [], waiting: [], checklist: [], renewalFailing: null })).toEqual([]);
+  });
+
+  it("does not let the line under the greeting say everything is running", () => {
+    expect(overviewLede([])).toBe("Everything is running. Nothing needs you right now.");
+    expect(overviewLede([{ key: "posts" }, { key: "request-1" }])).toBe("Everything is running. 2 things need you.");
+    expect(overviewLede([{ key: "posts" }])).toBe("Everything is running. 1 thing needs you.");
+    expect(overviewLede([{ key: "billing" }])).toBe("1 thing needs you.");
+    expect(overviewLede([{ key: "billing" }, { key: "posts" }])).toBe("2 things need you.");
+  });
+});
+
+describe("roundsIncludedLine", () => {
+  it("states what the plan includes, so it agrees with the count of rounds used", () => {
+    expect(roundsIncludedLine(2, 1)).toBe("2 rounds of changes are included.");
+    expect(roundsIncludedLine(1, 0)).toBe("1 round of changes is included.");
+  });
+
+  it("says what happens next once every round is used", () => {
+    expect(roundsIncludedLine(2, 2)).toBe("Further changes are quoted first.");
+  });
+});
+
+describe("what we did from finished work", () => {
+  const row = (kind: "post" | "page" | "listing", status: string, publishedAt: Date | null) => ({ id: kind, kind, title: `The ${kind}`, status, publishedAt });
+
+  it("lists published posts, improved pages and fixed listings, and leaves out anything not published", () => {
+    const rows = finishedDeliverableRows([
+      row("post", "published", at("2026-10-29T10:00:00Z")),
+      row("page", "published", at("2026-10-28T10:00:00Z")),
+      row("listing", "published", at("2026-10-27T10:00:00Z")),
+      { ...row("post", "planned", null), id: "later" },
+    ]);
+    expect(rows).toEqual([
+      { key: "deliverable-post", at: at("2026-10-29T10:00:00Z"), label: "Published a post: The post", service: "social" },
+      { key: "deliverable-page", at: at("2026-10-28T10:00:00Z"), label: "Improved a page: The page", service: "search" },
+      { key: "deliverable-listing", at: at("2026-10-27T10:00:00Z"), label: "Fixed a listing: The listing", service: "search" },
+    ]);
+  });
+
+  it("lists only the requests that are done", () => {
+    const request = (ticketId: string, word: string) => ({ ticketId, title: `Request ${ticketId}`, word, service: "website" as const, lastActivityAt: at("2026-10-26T10:00:00Z") });
+    expect(finishedRequestRows([request("a", "Done"), request("b", "In progress")])).toEqual([
+      { key: "request-a", at: at("2026-10-26T10:00:00Z"), label: "Finished your request: Request a", service: "website" },
+    ]);
+  });
+
+  it("merges them with staff updates, newest first", () => {
+    const rows = activityRows({
+      events: [{ id: "e1", occurredAt: at("2026-10-20T10:00:00Z"), title: "Fixed the phone number", service: "search" }],
+      previewSentAt: null,
+      launchedAt: at("2026-10-01T10:00:00Z"),
+      hostname: null,
+      finished: finishedDeliverableRows([row("post", "published", at("2026-10-29T10:00:00Z"))]),
+      limit: 6,
+    });
+    expect(rows.map((entry) => entry.key)).toEqual(["deliverable-post", "e1", "launched"]);
   });
 });
 

@@ -22,6 +22,7 @@ import {
   saveEnquirySchema,
   statusCounts,
   summarise,
+  changeAgainst,
   telHref,
   toRow,
   waitingLine,
@@ -181,6 +182,15 @@ describe("summarise", () => {
     expect(summary.googleCalls).toBe(2);
   });
 
+  it("gives no change when the 30 days before had no data, or the count did not move", () => {
+    const recentOnly = rows.filter((row) => row.receivedAt.getTime() >= NOW.getTime() - 30 * 86_400_000);
+    expect(summarise(recentOnly, NOW, true).receivedChange).toBeNull();
+    expect(changeAgainst(0, 0)).toBeNull();
+    expect(changeAgainst(5, 5)).toBeNull();
+    expect(changeAgainst(7, 5)).toBe(2);
+    expect(changeAgainst(3, 5)).toBe(-2);
+  });
+
   it("gives no change when the read did not reach back far enough", () => {
     expect(summarise(rows, NOW, false).receivedChange).toBeNull();
   });
@@ -329,7 +339,7 @@ describe("chatbot words (ported)", () => {
   it("keeps the conversation notices and author labels", () => {
     expect(CONVERSATION_NOTICES["not-found"]).toBe("This conversation is no longer available.");
     expect(CONVERSATION_NOTICES.limited).toBe("You have opened a lot of conversations in a short time. Wait a minute and try again.");
-    expect(MESSAGE_AUTHOR_LABELS).toEqual({ visitor: "Visitor", assistant: "OyeChats", team: "Team" });
+    expect(MESSAGE_AUTHOR_LABELS).toEqual({ visitor: "Visitor", assistant: "Website chat", team: "Team" });
     expect(JSON.stringify([CONVERSATION_NOTICES, MESSAGE_AUTHOR_LABELS])).not.toMatch(/[\u2013\u2014!]/);
   });
 

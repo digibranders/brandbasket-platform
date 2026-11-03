@@ -12,14 +12,17 @@ const BLANK: SnapshotFigures = {
   postsPlanned: null,
   keywordsPageOne: null,
   keywordsPageOnePrev: null,
+  reach: null,
+  followers: null,
+  profileVisits: null,
 };
 
 // The database columns are 32 bit: 10,000,000 rupees is 1,000,000,000 paise, under 2,147,483,647.
-const RUPEES_MAX = 10_000_000;
-const COUNT_MAX = 1_000_000;
+export const RUPEES_MAX = 10_000_000;
+export const COUNT_MAX = 1_000_000;
 
 /** A whole number from what staff typed, null when blank, undefined when it is not one. Allows a leading rupee sign and commas between digits only. */
-function whole(raw: string | undefined): number | null | undefined {
+export function whole(raw: string | undefined): number | null | undefined {
   const text = (raw ?? "").trim();
   if (text === "") return null;
   const match = /^(?:₹\s*)?(\d+(?:,\d+)*)$/.exec(text);
@@ -37,7 +40,7 @@ export function parseNumbersForm(input: Readonly<Record<string, string>>, now: D
   if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(month)) return { success: false, field: "month", message: "Choose a month." };
   if (month > TODAY_INDIA.format(now).slice(0, 7)) return { success: false, field: "month", message: "Choose this month or an earlier one." };
 
-  const names = service === "social" ? (["adSpendRupees", "adBudgetRupees", "adEnquiries", "postsPublished", "postsPlanned"] as const) : (["keywordsPageOne", "keywordsPageOnePrev"] as const);
+  const names = service === "social" ? (["adSpendRupees", "adBudgetRupees", "adEnquiries", "postsPublished", "postsPlanned", "reach", "followers", "profileVisits"] as const) : (["keywordsPageOne", "keywordsPageOnePrev"] as const);
   const read: Record<string, number | null> = {};
   for (const name of names) {
     const value = whole(input[name]);
@@ -51,7 +54,7 @@ export function parseNumbersForm(input: Readonly<Record<string, string>>, now: D
   const paise = (rupees: number | null | undefined): number | null => (rupees === null || rupees === undefined ? null : rupees * 100);
   const figures: SnapshotFigures =
     service === "social"
-      ? { ...BLANK, adSpendCents: paise(read["adSpendRupees"]), adBudgetCents: paise(read["adBudgetRupees"]), adEnquiries: read["adEnquiries"] ?? null, postsPublished: read["postsPublished"] ?? null, postsPlanned: read["postsPlanned"] ?? null }
+      ? { ...BLANK, adSpendCents: paise(read["adSpendRupees"]), adBudgetCents: paise(read["adBudgetRupees"]), adEnquiries: read["adEnquiries"] ?? null, postsPublished: read["postsPublished"] ?? null, postsPlanned: read["postsPlanned"] ?? null, reach: read["reach"] ?? null, followers: read["followers"] ?? null, profileVisits: read["profileVisits"] ?? null }
       : { ...BLANK, keywordsPageOne: read["keywordsPageOne"] ?? null, keywordsPageOnePrev: read["keywordsPageOnePrev"] ?? null };
   return { success: true, data: { service, month: `${month}-01`, figures } };
 }

@@ -26,7 +26,7 @@ export function BusinessDetails({ customer, contact, siteFacts }: BusinessDetail
     <SaveBarHost>
       <div className="flex flex-col gap-4 pb-save-bar">
         {contact.ok ? (
-          <Panel flush className="overflow-hidden">
+          <Panel flush className="overflow-clip">
             <div className="-mb-px">
               <ContactSection
                 contact={contact.data}
@@ -42,7 +42,7 @@ export function BusinessDetails({ customer, contact, siteFacts }: BusinessDetail
           </Panel>
         )}
         {siteFacts === null ? null : siteFacts.ok ? (
-          <Panel flush className="overflow-hidden">
+          <Panel flush className="overflow-clip">
             <div className="-mb-px">
               <HoursSection hours={siteFacts.data.hours} readOnly={readOnly} />
               <HolidaysSection closures={siteFacts.data.closures} today={siteFacts.data.today} readOnly={readOnly} />

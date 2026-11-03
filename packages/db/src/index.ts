@@ -852,7 +852,15 @@ export {
 } from "./queries/kickoff-build";
 export { completeClientIntake, findClientIntake, saveClientIntakeAnswers, type ClientIntakeAnswers } from "./queries/client-intakes";
 export { addActivityEvent, listActivityEvents, removeActivityEvent } from "./queries/activity-events";
-export { listMonthlySnapshots, upsertMonthlySnapshot, type SnapshotFigures } from "./queries/monthly-snapshots";
+export { latestSocialReach, listMonthlySnapshots, upsertMonthlySnapshot, type SnapshotFigures } from "./queries/monthly-snapshots";
+export {
+  addAdCampaign,
+  listAdCampaigns,
+  removeAdCampaign,
+  updateAdCampaign,
+  type AdCampaignFigures,
+  type AdCampaignSaveResult,
+} from "./queries/ad-campaigns";
 export {
   approveDeliverables,
   countSiteEvents,
@@ -1505,6 +1513,16 @@ export {
   type WebsitePagesSyncResult,
 } from "./queries/website-pages";
 export { parseSitemap, type ParsedSitemap } from "./sitemap";
+export {
+  findSiteCheckState,
+  findSiteHealthFacts,
+  insertSiteCheck,
+  listLiveWebsites,
+  PHONE_SPEED_FAILED,
+  type SiteHealthWebsite,
+  type SiteCheckState,
+  type SiteHealthFacts,
+} from "./queries/site-checks";
 export {
   listConnectedAccounts,
   listConnectedAccountsForStaff,

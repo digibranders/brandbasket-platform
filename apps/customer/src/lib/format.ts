@@ -27,10 +27,16 @@ function dayKey(date: Date): string {
   return DAY_KEY.format(date);
 }
 
+/** `Tue 3 Nov`: the locale's short month is "Sept" for September, so the month is cut to three letters. */
+function dayLabel(date: Date): string {
+  const part = (type: Intl.DateTimeFormatPartTypes): string => DAY.formatToParts(date).find((p) => p.type === type)?.value ?? "";
+  return `${part("weekday")} ${part("day")} ${part("month").slice(0, 3)}`;
+}
+
 /** `Tue 3 Nov`, with the year only when it is not this year (in India). */
 export function formatDate(date: Date, now: Date = new Date()): string {
   const year = dayKey(date).slice(0, 4);
-  return year === dayKey(now).slice(0, 4) ? DAY.format(date) : `${DAY.format(date)} ${year}`;
+  return year === dayKey(now).slice(0, 4) ? dayLabel(date) : `${dayLabel(date)} ${year}`;
 }
 
 /** `11:00`, India time, 24-hour. */

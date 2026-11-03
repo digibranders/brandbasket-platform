@@ -10,6 +10,7 @@ import {
   filterRows,
   includedEditLine,
   includedHeaderLine,
+  LOOKED_AFTER_BY,
   intentOptions,
   intentRule,
   kindsPresent,
@@ -492,12 +493,13 @@ describe("nextStep", () => {
 
 describe("details lines", () => {
   it("says how a request is covered, who looks after it and how many included edits are used", () => {
-    expect(includedEditLine("paid")).toBe("Not an included edit");
-    expect(includedEditLine("included")).toBe("One of your included edits");
+    expect(includedEditLine("paid")).toBe("Not one of your small edits");
+    expect(includedEditLine("included")).toBe("One of your small edits");
     expect(includedEditLine("free")).toBe("No charge");
     expect(includedEditLine("undecided")).toBe("We will tell you");
-    expect(includedHeaderLine(1, 2)).toBe("This month: 1 of 2 included edits used.");
+    expect(includedHeaderLine(1, 2)).toBe("Small edits included this month: 1 of 2 used.");
     expect(includedHeaderLine(0, 0)).toBeNull();
+    expect(LOOKED_AFTER_BY).toBe("Brandbasket team");
   });
 
   it("knows when the team waits on the customer, but never for a request that is over", () => {
@@ -567,6 +569,12 @@ describe("requestRows", () => {
     expect(word("in_progress")).toBe("Waiting for you");
     expect(word("shipped")).toBe("Done");
     expect(word("declined")).toBe("Closed");
+  });
+
+  it("draws a withdrawn or declined request with the Done badge, not a word of its own", () => {
+    const status = (state: ChangeView["state"]) => requestRows([item({ change: change({ state }) })])[0]?.status;
+    expect(status("withdrawn")).toBe("done");
+    expect(status("declined")).toBe("done");
   });
 
   it("names a plain conversation by what it was filed under, and files Billing and Website by their service", () => {

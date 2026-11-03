@@ -1,6 +1,14 @@
+/**
+ * A control fills its row unless the caller gives it a width (w-40, w-32, ...). Class order cannot do this: a caller's
+ * w-40 and our w-full are the same weight, and w-full won, so every narrow control stretched across the row.
+ */
+export function controlWidth(className: string | undefined): string {
+  return className !== undefined && /(^|\s)(max-)?w-/.test(className) ? "" : "w-full";
+}
+
 /** The resting, focus, error and disabled look shared by text inputs, textareas, selects and comboboxes (plan 60, section 10). */
 export const CONTROL =
-  "w-full rounded-control border border-border-control bg-surface text-ink type-body shadow-control transition-[border-color,box-shadow] duration-100 placeholder:text-ink-muted focus:border-ring focus:shadow-focus focus:outline-none focus-visible:outline-none aria-invalid:border-neg-text data-invalid:border-neg-text data-disabled:cursor-not-allowed data-disabled:bg-surface-disabled data-disabled:text-ink-disabled disabled:cursor-not-allowed disabled:bg-surface-disabled disabled:text-ink-disabled";
+  "rounded-control border border-border-control bg-surface text-ink type-body shadow-control transition-[border-color,box-shadow] duration-100 placeholder:text-ink-muted focus:border-ring focus:shadow-focus focus:outline-none focus-visible:outline-none aria-invalid:border-neg-text data-invalid:border-neg-text data-disabled:cursor-not-allowed data-disabled:bg-surface-disabled data-disabled:text-ink-disabled disabled:cursor-not-allowed disabled:bg-surface-disabled disabled:text-ink-disabled";
 
 /** Menus, select and combobox lists. */
 export const POPUP = "motion-menu z-50 rounded-panel border border-border bg-surface p-1 shadow-pop outline-none";

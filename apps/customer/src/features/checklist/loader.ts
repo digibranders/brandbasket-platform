@@ -1,10 +1,11 @@
 import "server-only";
-import { listServiceSetups, withTenantScope } from "@brandbasket/db";
+import { withTenantScope } from "@brandbasket/db";
 import { getAppDb } from "@/lib/db";
 import type { Service } from "@/lib/guard-rules";
 import type { CustomerContext } from "@/lib/guards";
 import { checklistRows, type ChecklistRow, type SavedAnswers } from "./rules-items";
 import type { OnboardingSnapshot } from "./rules-snapshot";
+import { readSavedAnswers } from "./server/saved-answers";
 import { readOnboardingSnapshot } from "./server/snapshot";
 
 export interface ChecklistItemView {
@@ -31,18 +32,16 @@ export interface ChecklistState {
   readonly answers: SavedAnswers;
 }
 
+const EMPTY_ANSWERS: SavedAnswers = { social: undefined, search: undefined };
+
 /** The checklist's state for a customer. Throws on a failed read: the caller wraps it in load(), so a failure is never shown as all open or all done. */
 export async function readChecklistState(customer: CustomerContext): Promise<ChecklistState> {
   const { services } = customer;
   const wantsSetup = services.includes("social") || services.includes("search");
-  const { snapshot, setups } = await withTenantScope(getAppDb(), customer.tenant, async (tx) => ({
+  const { snapshot, answers } = await withTenantScope(getAppDb(), customer.tenant, async (tx) => ({
     snapshot: services.includes("website") ? await readOnboardingSnapshot(tx) : null,
-    setups: wantsSetup ? await listServiceSetups(tx, customer.businessId) : [],
+    answers: wantsSetup ? await readSavedAnswers(tx, customer.businessId, new Date()) : EMPTY_ANSWERS,
   }));
-  const answers: SavedAnswers = {
-    social: setups.find((row) => row.service === "social")?.answers,
-    search: setups.find((row) => row.service === "search")?.answers,
-  };
   return { services, rows: checklistRows(services, snapshot, answers), snapshot, answers };
 }
 

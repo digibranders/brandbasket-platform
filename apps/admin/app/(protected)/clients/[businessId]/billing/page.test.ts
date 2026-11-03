@@ -5,6 +5,8 @@ import { loadClientAddOns } from "@/lib/server/add-ons-admin";
 import { isWebsiteBought } from "@/lib/server/bought-services";
 import { loadClientChatbots } from "@/lib/server/chatbots-admin";
 import { openClientTab } from "@/lib/server/client-page";
+import { AccountsSection } from "@/components/console/accounts-section";
+import { CampaignsSection } from "@/components/console/campaigns-section";
 import ClientPlanAndBillingPage from "./page";
 import { BillingSection } from "./billing-section";
 
@@ -19,6 +21,8 @@ vi.mock("@/components/client-add-ons", () => ({ ClientAddOns: () => "[add-ons]" 
 vi.mock("@/components/client-chatbots", () => ({ ClientChatbots: () => "[chatbots]" }));
 vi.mock("@/components/console/work-section", () => ({ WorkSection: () => "[work]" }));
 vi.mock("@/components/console/numbers-section", () => ({ NumbersSection: () => "[numbers]" }));
+vi.mock("@/components/console/campaigns-section", () => ({ CampaignsSection: vi.fn(() => "[campaigns]") }));
+vi.mock("@/components/console/accounts-section", () => ({ AccountsSection: vi.fn(() => "[accounts]") }));
 vi.mock("@/components/console/updates-section", () => ({ UpdatesSection: () => "[updates]" }));
 vi.mock("./billing-section", () => ({ BillingSection: vi.fn(() => "[billing section]") }));
 
@@ -51,10 +55,18 @@ describe("the Plan and billing tab", () => {
       const html = await render(role);
       expect(html, role).toContain("[work]");
       expect(html, role).toContain("[numbers]");
+      expect(html, role).toContain("[campaigns]");
+      expect(html, role).toContain("[accounts]");
       expect(html, role).toContain("[updates]");
       expect(html, role).toContain("[add-ons]");
       expect(html, role).toContain("[chatbots]");
     }
+  });
+
+  it("passes the campaign and account notices from the query, and ignores a value that names no notice", async () => {
+    await render("support", { search: { campaigns: "duplicate", accounts: "<script>" } });
+    expect(CampaignsSection).toHaveBeenLastCalledWith({ businessId: BUSINESS, notice: "duplicate" }, undefined);
+    expect(AccountsSection).toHaveBeenLastCalledWith({ businessId: BUSINESS, notice: null }, undefined);
   });
 
   it("leaves the chatbots out when the website was not bought", async () => {

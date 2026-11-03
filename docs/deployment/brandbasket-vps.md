@@ -46,7 +46,7 @@ are made invisible to them (`InaccessiblePaths`, below). The user has no login s
 | Shared library | `/usr/local/lib/brandbasket/{heavy-lock.sh,github-lib.sh,ci-steps.sh,ci-checks.py,ci-hosts,ci-resolv.conf}` |
 | nginx | `/etc/nginx/sites-available/brandbasket` (+ `snippets/brandbasket-proxy.conf`); certificate lineage `brandbasket` |
 | Backups | `brandbasket-backup.timer` 02:15 UTC, `brandbasket-restore-test.timer` Sunday 05:00 UTC; `/var/backups/brandbasket`; off-site `/etc/brandbasket/offsite.sh` |
-| Upkeep | `brandbasket-maintenance.timer` 03:30 UTC; `brandbasket-erase.timer` 03:50 UTC, installed and **not enabled**. Both run as `brandbasket`, sandboxed |
+| Upkeep | `brandbasket-maintenance.timer` 03:30 UTC; `brandbasket-erase.timer` 03:50 UTC, installed and **not enabled**; `brandbasket-site-health.timer` every 10 minutes, installed and **not enabled** (see "Site health"). All run as `brandbasket`, sandboxed |
 | Alerts | `/usr/local/sbin/brandbasket-notify-failure` and `brandbasket-notify-failure@.service` (Brandbasket's own, see "Monitoring") |
 | Sudo | `/etc/sudoers.d/brandbasket`, user `brandbasket` only: `brandbasket-migrate` (no arguments), restart and stop of the two app units, `brandbasket-ci-sandbox`. Nothing else, and `deploy` has no Brandbasket rule |
 
@@ -291,6 +291,28 @@ come through Cloudflare; steps in `cloudflare-access.md`).
 Migrations are never undone by a rollback: each must keep working with the code before it. The services migration (0184) is
 forward-only, see the droplet page section 13.
 
+## Site health
+
+`brandbasket-site-health.timer` starts `brandbasket-site-health.service` every 10 minutes. It runs `pnpm site-health:run` in the
+current platform release: every live customer website (latest project live, with a primary domain; a site the hosting sync paused
+is skipped) is fetched over https with a 10 second limit and its certificate's end date is read. Once a day per site it also asks
+Google PageSpeed Insights for the phone speed score. Each run adds one `site_checks` row per site; the customer app shows them on
+the Website page and on Home. When a site goes from up to down for two checks in a row, one email goes to `SUPPORT_ALERT_EMAIL`
+(through the outbox, like other staff alerts), once per outage. A check that fails on our side is stored with status `error`
+and fails the run, so the unit's failure alert reaches the team.
+
+`install.sh backups --apply` installs the unit and timer but never enables them. To turn it on:
+
+1. Deploy a release that has migration 0217 (`site_checks`); the deploy migrates.
+2. Set `PAGESPEED_API_KEY` in `/srv/brandbasket/shared/platform.env.local` (a Google Cloud API key with the PageSpeed Insights
+   API enabled). It is optional in code, but Google's anonymous quota is shared and was used up when this was tested on
+   3 Nov 2026, so without a key the phone speed row stays empty. Uptime and the certificate need no key.
+3. Run it once and read the result: `systemctl start brandbasket-site-health.service && journalctl -u brandbasket-site-health -n 20`.
+   A good run prints a line starting `Site health:`.
+4. `systemctl enable --now brandbasket-site-health.timer`.
+
+To stop it: `systemctl disable --now brandbasket-site-health.timer`. The rows stay; the customer panel then shows the last check.
+
 ## Seeing a deploy on GitHub
 
 Same as Firstfold's (its README, "Seeing a deploy on GitHub"). The autodeploy and CI call Firstfold's installed
@@ -481,6 +503,7 @@ timing of a build next to Firstfold's apps.
 - Cloudflare Access in front of the console: not needed for staging (nginx refuses non-Cloudflare requests); the console's own sign-in
   has no second factor (`docs/STAFF-ACCESS.md`), so set it up before real staff use it. Steps in `docs/deployment/cloudflare-access.md`.
 - Starting `brandbasket-erase.timer`: it deletes customer data 30 days after a closure. Not enabled by anything here.
+- Starting `brandbasket-site-health.timer` (see "Site health"). Not enabled by anything here.
 - Alert recipients: Brandbasket's handler mails `BRANDBASKET_TEAM_EMAIL` from `platform.env.local`, default `support@brandbasket.in`.
   Set it there if the team address differs, and fill `BREVO_API_KEY` (alerts only log until then).
 - The Hostinger snapshot before the first change, and adding the repository to the GitHub App installation, as in the install table.

@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { parseNumbersForm } from "@/lib/numbers-form";
 
 const NOW = new Date("2026-11-15T10:00:00Z");
-const SOCIAL = { service: "social", month: "2026-11", adSpendRupees: "6,240", adBudgetRupees: "10000", adEnquiries: "21", postsPublished: "12", postsPlanned: "14", keywordsPageOne: "", keywordsPageOnePrev: "" };
+const SOCIAL = { service: "social", month: "2026-11", adSpendRupees: "6,240", adBudgetRupees: "10000", adEnquiries: "21", postsPublished: "12", postsPlanned: "14", reach: "", followers: "", profileVisits: "", keywordsPageOne: "", keywordsPageOnePrev: "" };
 
 describe("parseNumbersForm", () => {
   it("reads the ads figures, turns rupees into paise and ignores the search fields", () => {
@@ -11,9 +11,20 @@ describe("parseNumbersForm", () => {
       data: {
         service: "social",
         month: "2026-11-01",
-        figures: { adSpendCents: 624000, adBudgetCents: 1000000, adEnquiries: 21, postsPublished: 12, postsPlanned: 14, keywordsPageOne: null, keywordsPageOnePrev: null },
+        figures: { adSpendCents: 624000, adBudgetCents: 1000000, adEnquiries: 21, postsPublished: 12, postsPlanned: 14, keywordsPageOne: null, keywordsPageOnePrev: null, reach: null, followers: null, profileVisits: null },
       },
     });
+  });
+
+  it("reads the social reach figures with the ads figures, and a month with only reach is enough", () => {
+    expect(parseNumbersForm({ ...SOCIAL, reach: "52,300", followers: "1,204", profileVisits: "310" }, NOW)).toMatchObject({
+      success: true,
+      data: { figures: { reach: 52300, followers: 1204, profileVisits: 310, adSpendCents: 624000 } },
+    });
+    const onlyReach = { ...SOCIAL, adSpendRupees: "", adBudgetRupees: "", adEnquiries: "", postsPublished: "", postsPlanned: "", reach: "900" };
+    expect(parseNumbersForm(onlyReach, NOW)).toMatchObject({ success: true, data: { figures: { reach: 900, adSpendCents: null } } });
+    expect(parseNumbersForm({ ...SOCIAL, followers: "many" }, NOW)).toMatchObject({ success: false, field: "followers" });
+    expect(parseNumbersForm({ ...SOCIAL, reach: "1000001" }, NOW)).toMatchObject({ success: false, field: "reach", message: "Enter 1,000,000 or less." });
   });
 
   it("reads the search figures and ignores the ads fields", () => {
@@ -22,13 +33,13 @@ describe("parseNumbersForm", () => {
       data: {
         service: "search",
         month: "2026-11-01",
-        figures: { adSpendCents: null, adBudgetCents: null, adEnquiries: null, postsPublished: null, postsPlanned: null, keywordsPageOne: 9, keywordsPageOnePrev: 6 },
+        figures: { adSpendCents: null, adBudgetCents: null, adEnquiries: null, postsPublished: null, postsPlanned: null, keywordsPageOne: 9, keywordsPageOnePrev: 6, reach: null, followers: null, profileVisits: null },
       },
     });
   });
 
   it("needs at least one figure", () => {
-    expect(parseNumbersForm({ ...SOCIAL, adSpendRupees: "", adBudgetRupees: "", adEnquiries: "", postsPublished: "", postsPlanned: "" }, NOW)).toEqual({
+    expect(parseNumbersForm({ ...SOCIAL, adSpendRupees: "", adBudgetRupees: "", adEnquiries: "", postsPublished: "", postsPlanned: "", reach: "", followers: "", profileVisits: "" }, NOW)).toEqual({
       success: false,
       field: "adSpendRupees",
       message: "Enter at least one number.",

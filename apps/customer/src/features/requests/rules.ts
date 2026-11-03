@@ -483,24 +483,22 @@ export const ASKED_STEP = { title: "Waiting for you", text: "We have asked you s
 export function includedEditLine(coverage: ChangeView["coverage"] | null): string {
   switch (coverage) {
     case "included":
-      return "One of your included edits";
+      return "One of your small edits";
     case "free":
       return "No charge";
     case "paid":
-      return "Not an included edit";
+      return "Not one of your small edits";
     default:
       return "We will tell you";
   }
 }
 
-/** "Brandbasket team" when someone is on it; the customer cannot read staff names. */
-export function lookedAfterLine(assigned: boolean): string {
-  return assigned ? "Brandbasket team" : "We will assign someone soon";
-}
+/** Always "Brandbasket team": the customer cannot read staff names, so an assignee changes nothing they could see. */
+export const LOOKED_AFTER_BY = "Brandbasket team";
 
-/** "This month: 1 of 2 included edits used." Null when the plan has no included edits, so the line is left out. */
+/** "Small edits included this month: 1 of 2 used." Null when the plan has no included edits, so the line is left out. */
 export function includedHeaderLine(used: number, allowed: number): string | null {
-  return allowed === 0 ? null : `This month: ${used} of ${allowed} included edits used.`;
+  return allowed === 0 ? null : `Small edits included this month: ${used} of ${allowed} used.`;
 }
 
 /** The words for each way a move can be refused, as the database says them. Anything else is "failed". */
@@ -562,8 +560,8 @@ const PLAIN_LABELS: Readonly<Record<RequestListItem["category"], string>> = {
 export type PillTone = "waiting" | "progress" | "done" | "closed";
 export type RequestWord = TicketStatusWord | typeof CLOSED_LABEL;
 
-/** The status key the badge draws, or "closed" for a request that ended without the change (no status word of its own). */
-export type RowStatus = StatusOf<"request"> | "closed";
+/** The status key the badge draws. A request that ended without the change (declined, or not now) has no word in the glossary: it is filed with Done. */
+export type RowStatus = StatusOf<"request">;
 
 const STATUS_OF_WORD: Readonly<Record<RequestWord, RowStatus>> = {
   Sent: "sent",
@@ -572,7 +570,7 @@ const STATUS_OF_WORD: Readonly<Record<RequestWord, RowStatus>> = {
   "Ready to check": "ready_to_check",
   Done: "done",
   [WAITING_FOR_YOU]: "waiting_for_you",
-  [CLOSED_LABEL]: "closed",
+  [CLOSED_LABEL]: "done",
 };
 
 export interface RequestRow {

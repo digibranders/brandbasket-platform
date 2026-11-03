@@ -1,5 +1,5 @@
 import type { BusinessProfile } from "@brandbasket/db";
-import { listServiceSetups, withTenantScope } from "@brandbasket/db";
+import { listConnectedAccounts, listMonthlySnapshots, listServiceSetups, withTenantScope } from "@brandbasket/db";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { CustomerContext } from "@/lib/guards";
 import type { OnboardingSnapshot } from "./rules-snapshot";
@@ -7,7 +7,7 @@ import { readOnboardingSnapshot } from "./server/snapshot";
 
 vi.mock("@sentry/nextjs", () => ({ captureException: vi.fn(() => "event-1") }));
 vi.mock("@/lib/db", () => ({ getAppDb: vi.fn(() => ({ name: "app-db" })) }));
-vi.mock("@brandbasket/db", () => ({ listServiceSetups: vi.fn(), withTenantScope: vi.fn() }));
+vi.mock("@brandbasket/db", () => ({ listConnectedAccounts: vi.fn(), listMonthlySnapshots: vi.fn(), listServiceSetups: vi.fn(), withTenantScope: vi.fn() }));
 vi.mock("./server/snapshot", () => ({ readOnboardingSnapshot: vi.fn() }));
 
 const { loadChecklistSummary } = await import("./loader");
@@ -37,6 +37,8 @@ beforeEach(() => {
   vi.mocked(withTenantScope).mockImplementation(async (_db, _scope, work) => work(tx as never));
   vi.mocked(readOnboardingSnapshot).mockResolvedValue(OPEN_SNAPSHOT);
   vi.mocked(listServiceSetups).mockResolvedValue([]);
+  vi.mocked(listConnectedAccounts).mockResolvedValue([]);
+  vi.mocked(listMonthlySnapshots).mockResolvedValue([]);
 });
 
 describe("loadChecklistSummary", () => {
@@ -54,6 +56,23 @@ describe("loadChecklistSummary", () => {
     await loadChecklistSummary(customer(["search"]));
     expect(listServiceSetups).toHaveBeenCalledWith(tx, "b1");
     expect(readOnboardingSnapshot).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not ask for accounts or a budget the business already has", async () => {
+    vi.mocked(listConnectedAccounts).mockResolvedValue([{ platform: "instagram", status: "connected" }] as never);
+    vi.mocked(listMonthlySnapshots).mockResolvedValue([{ service: "social", adBudgetCents: 2_000_000 }] as never);
+    const summary = await loadChecklistSummary(customer(["social"]));
+    expect(summary.items.map((item) => [item.key, item.done])).toEqual([
+      ["accounts", true],
+      ["budget", true],
+    ]);
+  });
+
+  it("still asks when the connected account is not connected and there is no budget figure", async () => {
+    vi.mocked(listConnectedAccounts).mockResolvedValue([{ platform: "facebook", status: "not_connected" }] as never);
+    vi.mocked(listMonthlySnapshots).mockResolvedValue([{ service: "social", adBudgetCents: null }] as never);
+    const summary = await loadChecklistSummary(customer(["social"]));
+    expect(summary.items.map((item) => item.done)).toEqual([false, false]);
   });
 
   it("throws on a failed read, so the caller's panel shows its error and never an all-open list", async () => {

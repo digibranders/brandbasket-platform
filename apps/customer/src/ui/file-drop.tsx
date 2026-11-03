@@ -1,7 +1,6 @@
 "use client";
 
 import { useId, useRef, useState, type DragEvent, type ReactNode } from "react";
-import { Button } from "./button";
 import { cx } from "./cx";
 import { Icon } from "./icon";
 
@@ -54,35 +53,51 @@ export function FileDrop({ chooseLabel, description, accept, multiple = false, d
 
   return (
     <div className={cx("flex flex-col gap-2", className)}>
+      {/* One compact row. The button holds only its own words, so its name is what it shows; its ::after stretches over the box so the whole box opens the picker. The description sits beside it, never inside it, so it can carry a link. */}
       <div
+        data-disabled={disabled || undefined}
         onDragOver={onDragOver}
         onDragLeave={() => setOver(false)}
         onDrop={onDrop}
         className={cx(
-          "flex flex-col items-center gap-1.5 rounded-panel border-[1.5px] border-dashed border-border-control bg-surface-subtle p-5 text-center",
-          over && "border-ring bg-accent-wash",
+          "group relative flex w-full items-center gap-3 rounded-control border border-dashed border-border-button bg-surface px-3 py-2.5 text-left transition-colors duration-100",
+          "hover:border-border-button-hover hover:bg-surface-subtle has-[:focus-visible]:border-ring has-[:focus-visible]:shadow-focus",
+          "data-disabled:bg-surface-disabled",
+          over && "border-ring bg-accent-wash hover:border-ring hover:bg-accent-wash",
         )}
       >
-        <Icon name="UploadSimple" className="text-ink-3" />
-        <Button size="sm" disabled={disabled} aria-describedby={descriptionId} onClick={() => input.current?.click()}>
-          {chooseLabel}
-        </Button>
-        <p id={descriptionId} className="type-meta">
-          {description}
-        </p>
-        <input
-          ref={input}
-          type="file"
-          hidden
-          accept={accept}
-          multiple={multiple}
-          disabled={disabled}
-          onChange={(event) => {
-            take(event.currentTarget.files);
-            event.currentTarget.value = "";
-          }}
-        />
+        <span className="grid size-9 shrink-0 place-items-center rounded-[8px] bg-accent-wash text-accent-text group-data-disabled:bg-neutral-wash group-data-disabled:text-ink-disabled">
+          <Icon name="UploadSimple" />
+        </span>
+        <span className="flex min-w-0 flex-col gap-0.5">
+          <button
+            type="button"
+            disabled={disabled}
+            aria-describedby={descriptionId}
+            onClick={() => input.current?.click()}
+            className="w-fit text-left type-button text-accent-text outline-none after:absolute after:inset-0 after:content-[''] disabled:cursor-not-allowed disabled:text-ink-disabled"
+          >
+            {chooseLabel}
+          </button>
+          <span id={descriptionId} className="pointer-events-none relative type-meta [&_a]:pointer-events-auto">
+            {description}
+          </span>
+        </span>
       </div>
+      <input
+        ref={input}
+        type="file"
+        hidden
+        aria-hidden
+        tabIndex={-1}
+        accept={accept}
+        multiple={multiple}
+        disabled={disabled}
+        onChange={(event) => {
+          take(event.currentTarget.files);
+          event.currentTarget.value = "";
+        }}
+      />
       {files.length === 0 ? null : (
         <ul className="flex flex-col divide-y divide-border-subtle rounded-control border border-border">
           {files.map((file) => (

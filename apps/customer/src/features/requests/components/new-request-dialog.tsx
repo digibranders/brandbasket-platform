@@ -1,12 +1,13 @@
 "use client";
 
 import { parseAsString, useQueryStates } from "nuqs";
-import { useState, useTransition, type FormEvent } from "react";
+import { useRef, useState, useTransition, type FormEvent } from "react";
 import type { ActionFailure } from "@/lib/action-result";
 import { Banner, Button, Chips, DialogClose, Dialog, Field, Input, Textarea, useToast } from "@/ui";
 import { sendRequestAction } from "../actions";
 import { PAGE_FIELD_LIMIT, type IntentOption, type RequestIntent } from "../rules";
-import { Screenshots } from "./screenshots";
+import { handleImagePaste } from "../paste";
+import { Screenshots, type ScreenshotsHandle } from "./screenshots";
 
 const FORM_ID = "new-request-form";
 
@@ -29,7 +30,7 @@ export interface NewRequestDialogProps {
   /** What the box starts with when the dialog was opened from a post. */
   readonly defaultBody: string;
   readonly fromPreview: boolean;
-  /** "This month: 1 of 2 included edits used.", or null. */
+  /** "Small edits included this month: 1 of 2 used.", or null. */
   readonly includedLine: string | null;
 }
 
@@ -46,6 +47,7 @@ export function NewRequestDialog({ options, defaultIntent, defaultPage, defaultB
   const first = options[0]?.value ?? "";
   const [intent, setIntent] = useState<RequestIntent | "">(defaultIntent ?? first);
   const [ids, setIds] = useState<readonly string[]>([]);
+  const screenshots = useRef<ScreenshotsHandle>(null);
   const [uploading, setUploading] = useState(false);
   const [submissionKey, setSubmissionKey] = useState(() => crypto.randomUUID());
 
@@ -91,7 +93,7 @@ export function NewRequestDialog({ options, defaultIntent, defaultPage, defaultB
         </>
       }
     >
-      <form key={submissionKey} id={FORM_ID} onSubmit={onSubmit} className="flex flex-col gap-4">
+      <form key={submissionKey} id={FORM_ID} onSubmit={onSubmit} onPaste={(event) => handleImagePaste(event, (files) => screenshots.current?.addFiles(files), "screenshot")} className="flex flex-col gap-4">
         <input type="hidden" name="submissionKey" value={submissionKey} />
         <input type="hidden" name="intent" value={intent} />
         {ids.map((id) => (
@@ -109,7 +111,7 @@ export function NewRequestDialog({ options, defaultIntent, defaultPage, defaultB
         <Field label="What should we do?" name="body" error={fieldErrors.body}>
           <Textarea name="body" defaultValue={defaultBody} required placeholder="Say it the way you would tell a person." />
         </Field>
-        <Screenshots onIds={setIds} onBusy={setUploading} disabled={pending} resetKey={submissionKey} />
+        <Screenshots ref={screenshots} onIds={setIds} onBusy={setUploading} disabled={pending} resetKey={submissionKey} />
         {showsPage && includedLine !== null ? <p className="type-meta">{includedLine} If your request is bigger, we send a price first.</p> : null}
       </form>
     </Dialog>

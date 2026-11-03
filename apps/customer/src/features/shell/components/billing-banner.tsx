@@ -6,12 +6,12 @@ import { Banner, LinkButton } from "@/ui";
 import { SHELL_PATHS, showsBillingBanner, type BillingBannerState } from "../rules";
 
 /**
- * The billing banner on every signed-in page but Home (plan 60, section 13; apps/platform billing-banner.tsx). It cannot be
+ * The billing banner on every signed-in page (plan 60, section 13; apps/platform billing-banner.tsx); on Home only while a renewal is failing, since Home carries its own task for the other states. It cannot be
  * dismissed: it goes when billing is sorted. Read access stays meanwhile.
  */
 export function BillingBanner({ state }: { readonly state: BillingBannerState }) {
   const pathname = usePathname();
-  if (state === null || !showsBillingBanner(pathname)) return null;
+  if (state === null || !showsBillingBanner(pathname, state)) return null;
   switch (state.kind) {
     case "lapsed":
       return (

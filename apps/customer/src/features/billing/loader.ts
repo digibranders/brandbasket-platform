@@ -66,7 +66,7 @@ export interface ServiceRowView {
   readonly service: ServiceKey;
   readonly name: string;
   readonly status: AddOnStatus;
-  /** What it costs a month: its price in the plan, or the package price it would have once added. */
+  /** What it lists at a month. The package discount is not taken off here: This month's bill shows it once. */
   readonly price: string;
   readonly line: string;
   readonly action: ServiceAction;
@@ -145,7 +145,7 @@ function availableAction(offer: AddOnOffer, entry: AddOnPageEntry, canAdd: boole
 }
 
 function serviceRow(entry: AddOnPageEntry, canManage: boolean, canAdd: boolean, activatedAt: Date | null, now: Date): ServiceRowView {
-  const base = { addOn: entry.addOn, service: SERVICE_KEY_OF[entry.addOn], name: serviceName(entry.addOn), status: addOnStatus(entry), price: formatMoney(entry.price.chargedCents, entry.price.currency) };
+  const base = { addOn: entry.addOn, service: SERVICE_KEY_OF[entry.addOn], name: serviceName(entry.addOn), status: addOnStatus(entry), price: formatMoney(entry.price.listCents, entry.price.currency) };
   if (entry.kind === "available") {
     return { ...base, line: addOnById(entry.addOn).line, action: canManage ? availableAction(entry.offer, entry, canAdd, now) : { kind: "none" } };
   }

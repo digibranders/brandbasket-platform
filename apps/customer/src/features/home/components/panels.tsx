@@ -1,12 +1,13 @@
 import type { ReactNode } from "react";
-import { LineChart, MetricStrip, Panel, PanelData, StatusBadge, Stepper, TimelineSteps } from "@/components";
+import { LineChart, MetricStrip, Panel, PanelData, StatusBadge, Stepper, TimelineSteps, type Metric } from "@/components";
 import type { ChecklistSummary } from "@/features/checklist/loader";
-import { roundsLine } from "@/features/website/rules/progress";
+import { AD_LEADS_NOTE } from "@/features/social/rules";
+import { changeAgainst } from "@/features/enquiries/rules";
 import type { Loaded } from "@/lib/loaded";
 import { formatDate, formatDateTime, formatNumber, formatOutOf, formatRelative, formatTime } from "@/lib/format";
 import { Badge, Icon, LinkButton, Meter, SERVICE_NAMES, ServiceTag, type IconName } from "@/ui";
-import type { ComingUp, HomeStateView, IncludedEdits, ServiceLine } from "../loader";
-import type { ActivityRow, EnquirySeries, Milestone, NeedsYouItem, NextStepRow } from "../rules";
+import type { ComingUp, HomeStateView, IncludedEdits, ServiceLine, StripFigures } from "../loader";
+import { roundsIncludedLine, type ActivityRow, type EnquirySeries, type Milestone, type NeedsYouItem, type NextStepRow } from "../rules";
 
 /*
  * Home's panels, each drawn from its own Loaded<T> (mock: screens-a.js, Home). A failed panel shows its own error and the
@@ -17,6 +18,7 @@ const ROW = "flex items-center gap-3 border-b border-border-subtle px-4 py-3 las
 
 function iconOf(item: NeedsYouItem): IconName {
   if (item.key === "posts") return "ThumbsUp";
+  if (item.key === "billing") return "CreditCard";
   if (item.key.startsWith("setup-")) return "UploadSimple";
   if (item.action === "Pay") return "CreditCard";
   if (item.action === "Reply") return "ChatText";
@@ -57,29 +59,43 @@ export function NeedsYouPanel({ items, primaryFirst, lead = [] }: { readonly ite
   );
 }
 
-/** The last 30 days strip: enquiries only, the one figure with a customer read path today. */
-export function LastThirtyDays({ series }: { readonly series: Loaded<EnquirySeries> }) {
+/**
+ * The last 30 days strip: the figures with a customer read path. Enquiries from the enquiries list; Leads from ads and Google
+ * page one from the month's numbers staff enter. Each is left out when it is not known, and a change is left out when there is
+ * nothing to compare. Website visits have no source and are not drawn.
+ */
+export function LastThirtyDays({ series, figures }: { readonly series: Loaded<EnquirySeries> | null; readonly figures: Loaded<StripFigures> | null }) {
+  const metrics: Metric[] = [];
+  if (series?.ok === true) {
+    const change = changeAgainst(series.data.currentTotal, series.data.previousTotal);
+    metrics.push({ label: "Enquiries", value: formatNumber(series.data.currentTotal), ...(change === null ? {} : { change: { value: change } }) });
+  }
+  if (figures?.ok === true) {
+    const { adLeads, pageOne, month } = figures.data;
+    if (adLeads !== null) metrics.push({ label: "Leads from ads", value: formatNumber(adLeads.count), period: AD_LEADS_NOTE, ...(adLeads.updatedAt === null ? {} : { asOf: adLeads.updatedAt }) });
+    if (pageOne !== null) {
+      const diff = pageOne.diff === 0 ? null : pageOne.diff;
+      metrics.push({ label: "Google page one", value: formatNumber(pageOne.count), ...(diff === null ? {} : { change: { value: diff } }), period: `Tracked searches, ${month}`, asOf: pageOne.checkedAt });
+    }
+  }
+  const failed = [series, figures].filter((panel) => panel !== null && !panel.ok);
+  if (metrics.length === 0 && failed.length === 0) return null;
   return (
     <section className="flex flex-col gap-2">
       <h2 className="type-sub text-ink">
         Last 30 days <span className="type-meta">vs the 30 days before</span>
       </h2>
-      {series.ok ? (
-        <MetricStrip
-          label="Last 30 days"
-          metrics={[
-            {
-              label: "Enquiries",
-              value: formatNumber(series.data.currentTotal),
-              change: { value: series.data.currentTotal - series.data.previousTotal },
-            },
-          ]}
-        />
-      ) : (
+      <MetricStrip label="Last 30 days" metrics={metrics} />
+      {series !== null && !series.ok ? (
         <PanelData data={series} what="your enquiries">
           {() => null}
         </PanelData>
-      )}
+      ) : null}
+      {figures !== null && !figures.ok ? (
+        <PanelData data={figures} what="your ad and search figures">
+          {() => null}
+        </PanelData>
+      ) : null}
     </section>
   );
 }
@@ -192,7 +208,7 @@ export function ComingUpPanel({ coming, now }: { readonly coming: Loaded<ComingU
 export function IncludedEditsPanel({ included, now }: { readonly included: Loaded<IncludedEdits | null>; readonly now: Date }) {
   if (included.ok && included.data === null) return null;
   return (
-    <PanelData title="Included edits" data={included} what="your included edits">
+    <PanelData title="Small edits included this month" data={included} what="your small edits">
       {(data) =>
         data === null ? null : (
           <div className="flex flex-col gap-2.5">
@@ -211,7 +227,7 @@ export function RoundsPanel({ project }: { readonly project: HomeStateView["proj
   const { revisionRoundsIncluded: included, revisionRoundsGranted: granted } = project;
   return (
     <Panel title="Changes included">
-      <Meter label={roundsLine(included, granted)} value={Math.min(granted, included)} max={Math.max(included, 1)} valueText={`${formatOutOf(Math.min(granted, included), included)} used`} />
+      <Meter label={roundsIncludedLine(included, granted)} value={Math.min(granted, included)} max={Math.max(included, 1)} valueText={`${formatOutOf(Math.min(granted, included), included)} used`} />
     </Panel>
   );
 }
@@ -268,7 +284,7 @@ export function HaveReadyPanel({ services }: { readonly services: readonly ("web
 }
 
 /** Once the call is booked: the setup checklist, saved item by item on /checklist. */
-export function ChecklistPanel({ checklist }: { readonly checklist: Loaded<ChecklistSummary> }) {
+export function ChecklistPanel({ checklist, canWrite }: { readonly checklist: Loaded<ChecklistSummary>; readonly canWrite: boolean }) {
   return (
     <PanelData title="Get ready for your call" data={checklist} what="your checklist" isEmpty={(data) => data.total === 0} empty={{ icon: "CheckCircle", title: "Nothing to get ready", description: "Bring your questions to the call." }}>
       {(data) => (
@@ -285,11 +301,11 @@ export function ChecklistPanel({ checklist }: { readonly checklist: Loaded<Check
                 </div>
                 {item.done ? (
                   <Badge tone="pos">Done</Badge>
-                ) : (
+                ) : canWrite ? (
                   <LinkButton href={item.href} size="sm">
                     Add
                   </LinkButton>
-                )}
+                ) : null}
               </li>
             ))}
           </ul>

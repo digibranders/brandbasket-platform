@@ -35,6 +35,7 @@
     "env:check": "pnpm --filter @brandbasket/db exec tsx ../../scripts/server/check-env.ts",
     "staff:create": "pnpm --filter @brandbasket/auth staff:create",
     "retention:run": "pnpm --filter @brandbasket/db exec tsx ../../apps/platform/scripts/retention-run.ts",
-    "support:attachments:maintain": "pnpm --filter @brandbasket/db exec tsx --conditions=react-server ../../apps/platform/scripts/maintain-support-attachments.ts"
+    "support:attachments:maintain": "pnpm --filter @brandbasket/db exec tsx --conditions=react-server ../../apps/platform/scripts/maintain-support-attachments.ts",
+    "site-health:run": "pnpm --filter @brandbasket/db exec tsx --conditions=react-server ../../apps/platform/scripts/site-health-run.ts"
   }
 }

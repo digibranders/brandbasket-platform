@@ -1,7 +1,11 @@
 import { AccountAlreadyExistsError } from "@brandbasket/auth";
 import { checkHuman } from "@brandbasket/shared/server/turnstile-request";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { redirect } from "next/navigation";
+import { createElement } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { SignUpForm } from "./components/sign-up-form";
 import { completeSetupAction, requestPasswordResetAction, resetPasswordAction, signInAction, signUpAction, type SignUpResult } from "./actions";
 import { requestPasswordReset, resetPassword } from "./server/account-recovery";
 import { landingForSignedInUser } from "./server/entry-access";
@@ -161,6 +165,53 @@ describe("signUpAction", () => {
   it.each(OTHER_NEXT)("ignores the return address %j and goes to the questions", async (next) => {
     vi.mocked(createListingAccount).mockResolvedValue({ kind: "created" });
     await expect(signUpAction(ON_CODE, form({ ...SIGN_UP, otpId: OTP.otpId, code: "123456", next }))).rejects.toThrow("redirect:/start?services=managed-website,local-seo-aeo");
+  });
+});
+
+describe("the sign-up form through signUpAction", () => {
+  it("posts the country code under its own name, so the real form is not refused", async () => {
+    vi.mocked(requestJoinCode).mockResolvedValue({ kind: "code", otp: OTP });
+    const { container } = render(
+      createElement(SignUpForm, {
+        siteKey: null,
+        services: ["managed-website"],
+        basket: { name: "Managed Website", prices: { INR: "₹2,999/month", USD: "$65/month" } },
+        confirmsCodes: true,
+        countries: [{ value: "IN", label: "India" }],
+        phoneCountries: [
+          { code: "IN", label: "India +91", dialCode: "+91" },
+          { code: "AE", label: "United Arab Emirates +971", dialCode: "+971" },
+        ],
+        defaultPhoneCountry: "IN",
+        prefill: null,
+        startToken: null,
+      }),
+    );
+    const field = (name: string): HTMLInputElement => {
+      const input = container.querySelector<HTMLInputElement>(`input[name="${name}"]`);
+      if (input === null) throw new Error(`No input named ${name}`);
+      return input;
+    };
+    fireEvent.change(field("businessName"), { target: { value: SIGN_UP.businessName } });
+    fireEvent.change(field("name"), { target: { value: SIGN_UP.name } });
+    fireEvent.change(field("email"), { target: { value: SIGN_UP.email } });
+    fireEvent.change(field("password"), { target: { value: SIGN_UP.password } });
+    fireEvent.change(field("phone"), { target: { value: SIGN_UP.phone } });
+    // The state Select takes a value the way a browser autofills it: through its hidden input.
+    fireEvent.change(field("stateCode"), { target: { value: "mh" } });
+    await waitFor(() => expect(field("stateCode").value).toBe("mh"));
+    await userEvent.click(screen.getByRole("checkbox"));
+
+    const posted = new FormData(container.querySelector("form") ?? undefined);
+    expect(posted.getAll("phone")).toEqual([SIGN_UP.phone]);
+    expect(posted.get("phoneCountry")).toBe("IN");
+    expect(posted.get("agree")).toBe("yes");
+
+    await act(async () => {
+      fireEvent.submit(container.querySelector("form") as HTMLFormElement);
+    });
+    await waitFor(() => expect(requestJoinCode).toHaveBeenCalledTimes(1));
+    expect(requestJoinCode).toHaveBeenCalledWith(expect.objectContaining({ email: SIGN_UP.email, code: null }));
   });
 });
 

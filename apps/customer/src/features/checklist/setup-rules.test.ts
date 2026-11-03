@@ -107,6 +107,11 @@ describe("doneSetupKeys", () => {
     ).toEqual(["accounts", "budget", "areas"]);
   });
 
+  it("counts accounts and a budget the business already has, without a saved answer", () => {
+    expect(doneSetupKeys({ social: undefined, search: undefined, known: { accounts: true, budget: true } })).toEqual(["accounts", "budget"]);
+    expect(doneSetupKeys({ social: undefined, search: undefined, known: { accounts: false, budget: false } })).toEqual([]);
+  });
+
   it("does not count a budget without an area, or a blank offer", () => {
     expect(doneSetupKeys({ social: { adBudgetRupees: 8000, adArea: "", offers: "  " }, search: undefined })).toEqual([]);
   });

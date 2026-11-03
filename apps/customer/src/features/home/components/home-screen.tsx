@@ -8,7 +8,7 @@ import type { LoadFailure } from "@/lib/loaded";
 import { formatDate, formatDateTime } from "@/lib/format";
 import { Button, LinkButton } from "@/ui";
 import type { HomePanels, HomeStateView } from "../loader";
-import { firstName, greetingFor, homeLede, kickoffSteps, websiteCopy, websiteMilestones, type NeedsYouItem, type WebsiteState } from "../rules";
+import { firstName, greetingFor, homeLede, kickoffSteps, overviewLede, websiteCopy, websiteMilestones, type NeedsYouItem, type WebsiteState } from "../rules";
 import {
   ActivityPanel,
   ChecklistPanel,
@@ -67,8 +67,9 @@ function BookCallAction({ view, panels }: { readonly view: HomeStateView; readon
 }
 
 /** Payment required, payment under review, lapsed: one task each, and nothing else to read. */
-function PaymentTask({ view, person, services, now }: Pick<HomeScreenProps, "view" | "person" | "services" | "now">) {
-  const header = <PageHeader title={`${greetingFor(now)}, ${firstName(person.name)}`} description={homeLede(view.state.kind === "lapsed" ? services : [], now)} />;
+function PaymentTask({ view, person, now }: Pick<HomeScreenProps, "view" | "person" | "now">) {
+  // No service is active in any of these states, so the line under the greeting names none.
+  const header = <PageHeader title={`${greetingFor(now)}, ${firstName(person.name)}`} description={homeLede([], now)} />;
   switch (view.state.kind) {
     case "payment_processing":
       return (
@@ -133,7 +134,7 @@ function KickoffTask({ view, panels, person, services, now, purchase }: HomeScre
       <PageHeader
         title={state.kind === "kickoff_unconfirmed" ? websiteCopy(state, now).title : `Welcome, ${firstName(person.name)}. Your plan is active.`}
         description={homeLede(services, now)}
-        {...(state.kind === "kickoff_booked" && firstOpen !== null
+        {...(state.kind === "kickoff_booked" && firstOpen !== null && person.role !== "viewer"
           ? {
               actions: (
                 <LinkButton href={firstOpen.href} variant="primary">
@@ -146,7 +147,7 @@ function KickoffTask({ view, panels, person, services, now, purchase }: HomeScre
       <div className="grid gap-4 lg:grid-cols-3">
         <div className="flex min-w-0 flex-col gap-4 lg:col-span-2">
           <KickoffPanel services={services} bookingUrl={bookingUrl} canBook={canBook} cannotBookLine={cannotBookLine} booked={booked} missedLine={missedLine} />
-          {state.kind === "kickoff_booked" && panels.checklist !== null ? <ChecklistPanel checklist={panels.checklist} /> : state.kind === "kickoff_unbooked" ? <HaveReadyPanel services={services} /> : null}
+          {state.kind === "kickoff_booked" && panels.checklist !== null ? <ChecklistPanel checklist={panels.checklist} canWrite={person.role !== "viewer"} /> : state.kind === "kickoff_unbooked" ? <HaveReadyPanel services={services} /> : null}
         </div>
         <div className="flex min-w-0 flex-col gap-4">
           <NextStepsPanel steps={kickoffSteps({ hasWebsite: services.includes("website"), callStart, held: false, now })} />
@@ -242,7 +243,7 @@ function ReviewScreen({ view, panels, now }: HomeScreenProps) {
 function OverviewScreen({ view, panels, person, now }: HomeScreenProps) {
   const needs = panels.needs;
   const count = needs?.ok === true ? needs.data.length : null;
-  const description = count === null ? undefined : count === 0 ? "Everything is running. Nothing needs you right now." : `Everything is running. ${count === 1 ? "1 thing needs" : `${String(count)} things need`} you.`;
+  const description = needs?.ok === true ? overviewLede(needs.data) : undefined;
   return (
     <>
       <PageHeader
@@ -261,7 +262,7 @@ function OverviewScreen({ view, panels, person, now }: HomeScreenProps) {
       />
       <div className="flex flex-col gap-4">
         {needs === null ? null : <NeedsYouPanel items={needs} primaryFirst={count !== null && count > 0} />}
-        {panels.enquiries === null ? null : <LastThirtyDays series={panels.enquiries} />}
+        {panels.enquiries === null && panels.figures === null ? null : <LastThirtyDays series={panels.enquiries} figures={panels.figures} />}
         {panels.services === null ? null : <ServicesPanel lines={panels.services} />}
         <div className="grid gap-4 lg:grid-cols-3">
           <div className="flex min-w-0 flex-col gap-4 lg:col-span-2">

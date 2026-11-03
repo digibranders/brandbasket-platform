@@ -19,7 +19,7 @@ export interface CheckoutPlanCopy {
 export const CHECKOUT_PLAN_COPY: Readonly<Record<MonthlyAddOnId, CheckoutPlanCopy>> = {
   "managed-website": {
     blurb: (monthly) => `Website free to build, ${monthly} a month to keep it running`,
-    gets: ["A website of up to 10 pages, mobile-friendly", "Enquiry forms and click-to-call", "A local SEO foundation", "The OyeChats professional chatbot"],
+    gets: ["A website of up to 10 pages, mobile-friendly", "Enquiry forms and click-to-call", "A local SEO foundation", "Website chat"],
   },
   "digital-growth": {
     blurb: () => "Instagram, Facebook, Google profile and Meta ads",

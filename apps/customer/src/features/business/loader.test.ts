@@ -17,7 +17,7 @@ vi.mock("@brandbasket/db", () => ({
   listMediaAssets: vi.fn(),
 }));
 
-const customer = { user: { id: "user-1" }, tenant: { userId: "user-1", businessId: "b-1", businessName: "Apex", role: "owner" }, businessId: "b-1", businessName: "Apex Diagnostics" } as never;
+const customer = { user: { id: "user-1" }, tenant: { userId: "user-1", businessId: "b-1", businessName: "Apex", role: "owner" }, businessId: "b-1", businessName: "Apex Diagnostics", role: "owner" } as never;
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -37,6 +37,13 @@ describe("loadContact", () => {
     vi.mocked(getBusinessProfile).mockResolvedValue(null);
     vi.mocked(getOwnerContact).mockResolvedValue({ email: "owner@apex.in", phone: "+919820155012" });
     expect(await loadContact(customer)).toMatchObject({ ok: true, data: { displayName: "Apex Diagnostics", email: "owner@apex.in", phone: "98201 55012" } });
+  });
+
+  it.each(["editor", "viewer"])("never offers the signed-in %s's own email or phone as the business's", async (role) => {
+    vi.mocked(getBusinessProfile).mockResolvedValue(null);
+    const loaded = await loadContact({ ...(customer as object), role } as never);
+    expect(loaded).toMatchObject({ ok: true, data: { email: "", phone: "" } });
+    expect(getOwnerContact).not.toHaveBeenCalled();
   });
 
   it("guesses India when there is no number and no visitor country", async () => {

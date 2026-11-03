@@ -29,6 +29,9 @@ const SNAPSHOT = {
   postsPlanned: null,
   keywordsPageOne: null,
   keywordsPageOnePrev: null,
+  reach: 52_300,
+  followers: null,
+  profileVisits: null,
 };
 
 beforeEach(() => {
@@ -56,6 +59,9 @@ describe("NumbersSection", () => {
     expect(html).toContain('name="adEnquiries"');
     expect(html).toContain('name="postsPublished"');
     expect(html).toContain('name="postsPlanned"');
+    expect(html).toContain('name="reach"');
+    expect(html).toContain('name="followers"');
+    expect(html).toContain('name="profileVisits"');
     expect(html).not.toContain('name="keywordsPageOne"');
     expect(html).toContain('<input type="hidden" name="service" value="social"/>');
     expect(html).toContain(`name="businessId" value="${BUSINESS}"`);
@@ -103,6 +109,7 @@ describe("NumbersSection", () => {
     expect(html).toContain("₹12,500");
     expect(html).toContain("₹15,000");
     expect(html).toContain(">9<");
+    expect(html).toContain(">52300<");
     expect(html).toContain("September 2026");
   });
 
