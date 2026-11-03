@@ -1,4 +1,16 @@
-import { countIncludedEdits, findSiteHealthFacts, listActivityEvents, listDeliverablesForBusiness, listMonthlySnapshots, listRequestItems, listRequestNeeds, listWaitingOnYou } from "@brandbasket/db";
+import {
+  countIncludedEdits,
+  findSearchConnection,
+  findSiteHealthFacts,
+  listActivityEvents,
+  listDeliverablesForBusiness,
+  listMonthlySnapshots,
+  listRequestItems,
+  listRequestNeeds,
+  listSearchDays,
+  listSearchLists,
+  listWaitingOnYou,
+} from "@brandbasket/db";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { loadChecklistSummary } from "@/features/checklist/loader";
 import { callsOpenFor, readBookingUrl, readKickoffFacts, readMissedKickoffAt, readTeamCalls } from "@/features/calls/server/calls";
@@ -19,6 +31,7 @@ vi.mock("@/features/calls/server/calls", () => ({
 vi.mock("@brandbasket/db", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@brandbasket/db")>()),
   countIncludedEdits: vi.fn(),
+  findSearchConnection: vi.fn(async () => null),
   findSiteHealthFacts: vi.fn(),
   listActivityEvents: vi.fn(),
   listDeliverablesForBusiness: vi.fn(async () => []),
@@ -26,6 +39,8 @@ vi.mock("@brandbasket/db", async (importOriginal) => ({
   listMonthlySnapshots: vi.fn(async () => []),
   listRequestItems: vi.fn(async () => []),
   listRequestNeeds: vi.fn(),
+  listSearchDays: vi.fn(async () => []),
+  listSearchLists: vi.fn(async () => []),
   listWaitingOnYou: vi.fn(),
   listWaitingPosts: vi.fn(async () => []),
   withTenantScope: vi.fn(async (_db: unknown, _tenant: unknown, work: (tx: unknown) => unknown) => work({ kind: "tx" })),
@@ -50,6 +65,7 @@ const HELD = { startsAt: new Date("2026-11-10T05:30:00Z"), endsAt: new Date("202
 
 beforeEach(() => {
   vi.clearAllMocks();
+  vi.unstubAllEnvs();
   vi.mocked(readKickoffFacts).mockResolvedValue({ booking: null, project: null, live: null });
   vi.mocked(readMissedKickoffAt).mockResolvedValue(null);
   vi.mocked(readBookingUrl).mockResolvedValue("https://cal.com/a/b");
@@ -164,9 +180,22 @@ describe("the panels", () => {
     expect(none.figures).toEqual({ ok: true, data: { month: "November", adLeads: null, pageOne: null } });
   });
 
+  it("reads how people find them on Google only for the search plan and only while the switch is on", async () => {
+    vi.mocked(findSearchConnection).mockResolvedValue({ status: "connected" } as never);
+    vi.mocked(listSearchDays).mockResolvedValue([{ metric: "clicks", day: "2026-11-16", value: 9, fetchedAt: NOW }]);
+    const withSearch = customer({ services: ["website", "search"] });
+    expect((await loadHomePanels(withSearch, view("ongoing"), NOW)).search).toBeNull();
+    vi.stubEnv("CUSTOMER_SEARCH_ENABLED", "true");
+    expect((await loadHomePanels(customer({ services: ["website", "social"] }), view("ongoing"), NOW)).search).toBeNull();
+    expect(findSearchConnection).not.toHaveBeenCalled();
+    const panels = await loadHomePanels(withSearch, view("ongoing"), NOW);
+    expect(panels.search?.ok && panels.search.data).toMatchObject({ kind: "measured", summary: { clicks: 9, to: "2026-11-16" } });
+    expect(listSearchLists).toHaveBeenCalled();
+  });
+
   it("reads nothing but the booking page for a payment task", async () => {
     const panels = await loadHomePanels(customer({ status: "unpaid" }), view("payment_required"), NOW);
-    expect(panels).toMatchObject({ checklist: null, needs: null, enquiries: null, figures: null, visits: null, services: null, activity: null, coming: null, included: null });
+    expect(panels).toMatchObject({ checklist: null, needs: null, enquiries: null, figures: null, visits: null, search: null, services: null, activity: null, coming: null, included: null });
     expect(listRequestNeeds).not.toHaveBeenCalled();
   });
 

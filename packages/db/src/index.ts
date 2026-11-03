@@ -815,6 +815,28 @@ export {
   type NewAddOnSubscription,
   type RecordedAddOnPayment,
 } from "./queries/add-ons";
+export {
+  countGoogleSources,
+  detachGoogle,
+  listGoogleAttention,
+  listProvisionCandidates,
+  provisionGoogleAgain,
+  retryGoogleVerification,
+  saveProvisionedSource,
+  type GoogleAttentionCutoffs,
+  type GoogleAttentionRow,
+  type ProvisionCandidate,
+  type ProvisionedSourceInput,
+  type ProvisionSource,
+} from "./queries/google-provisioning";
+export {
+  findGoogleConnection,
+  listGoogleConnections,
+  markGoogleConnectionLost,
+  markGoogleConnectionOk,
+  saveGoogleConnection,
+} from "./queries/google-connections";
+export { GOOGLE_CONNECTION_PURPOSES, GOOGLE_CONNECTION_STATUSES, type GoogleConnectionPurpose, type GoogleConnectionRow, type GoogleConnectionStatus } from "./schema/google-connections";
 export { clearSiteSetting, findIncludedRevisionRounds, findSiteSetting, findSiteSettingWithEditor, saveSiteSetting } from "./queries/site-settings";
 export {
   DEFAULT_REVISION_ROUNDS,
@@ -950,13 +972,24 @@ export {
 } from "./queries/site-hits";
 export {
   findAnalyticsConnection,
+  findSearchConnection,
   latestGa4Day,
+  latestGscDay,
   listGa4Properties,
+  listGscSites,
+  listSearchDays,
+  listSearchLists,
   listVisitDays,
   listVisitLists,
+  SEARCH_DIMENSIONS,
+  SEARCH_METRICS,
   VISIT_DIMENSIONS,
   VISIT_METRICS,
   type Ga4Property,
+  type SearchDay,
+  type SearchDimension,
+  type SearchList,
+  type SearchMetric,
   type VisitDay,
   type VisitDimension,
   type VisitList,

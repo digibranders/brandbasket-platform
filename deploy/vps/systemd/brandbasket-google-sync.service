@@ -1,15 +1,15 @@
-# The Google Analytics pull (plan 61, gate G1): `pnpm ga4:sync` reads the daily visits, key events, channels and pages of every
-# business whose Google Analytics property staff set in the console (client, Website tab), through a Google service account the
-# customer added as a Viewer, and stores them as ga4 numbers in metric_daily and metric_breakdowns. Installed by
-# deploy/vps/install.sh but NOT enabled: enabling it is the owner's call, after the Google Cloud steps in
-# docs/deployment/brandbasket-vps.md ("Google Analytics"). It reads the dashboard's environment through the release's
-# apps/platform/.env.local link, as the site health job does, so it needs a deployed release, and GA4_SERVICE_ACCOUNT_JSON in
-# that environment (the path of the key file, which only the brandbasket user may read). It writes only to the database.
+# The Google pull (plans 61 and 62): `pnpm google:sync` reads, through the Brandbasket Google account connected in the console
+# (Settings, Google account), the daily visits, key events, channels and pages from Google Analytics and the daily clicks,
+# impressions, position, top searches and pages from Search Console, for every business with a property or site on record, and
+# stores them as ga4 and gsc numbers in metric_daily and metric_breakdowns. Installed by deploy/vps/install.sh but NOT enabled:
+# enabling it is the owner's call, after the Google steps in docs/deployment/brandbasket-vps.md ("Google"). It reads the
+# dashboard's environment through the release's apps/platform/.env.local link, as the site health job does, so it needs a
+# deployed release, and GOOGLE_OAUTH_CLIENT_ID and GOOGLE_OAUTH_CLIENT_SECRET in that environment. It writes only to the database.
 # By hand:
-#   systemctl start brandbasket-ga4-sync.service && journalctl -u brandbasket-ga4-sync -n 20
-# (a good run prints a line starting "Google Analytics:").
+#   systemctl start brandbasket-google-sync.service && journalctl -u brandbasket-google-sync -n 20
+# (a good run prints lines starting "Google Analytics:" and "Search Console:").
 [Unit]
-Description=Brandbasket Google Analytics pull (visits, channels, pages)
+Description=Brandbasket Google pull (Analytics and Search Console)
 After=network-online.target postgresql.service
 Wants=network-online.target
 
@@ -18,18 +18,18 @@ Type=oneshot
 User=brandbasket
 Group=brandbasket
 WorkingDirectory=/srv/brandbasket/current-platform
-CacheDirectory=brandbasket-ga4-sync
-Environment=HOME=/var/cache/brandbasket-ga4-sync
+CacheDirectory=brandbasket-google-sync
+Environment=HOME=/var/cache/brandbasket-google-sync
 Environment=PATH=/usr/local/bin:/usr/bin:/bin
 Environment=NODE_ENV=production
 Environment=COREPACK_ENABLE_DOWNLOAD_PROMPT=0
-ExecStart=/usr/bin/env pnpm ga4:sync
+ExecStart=/usr/bin/env pnpm google:sync
 Nice=10
 IOWeight=20
 TimeoutStartSec=15min
 MemoryMax=400M
 LimitNOFILE=65535
-SyslogIdentifier=brandbasket-ga4-sync
+SyslogIdentifier=brandbasket-google-sync
 # Sandbox (Firstfold's app hardening): read-only system, no writable paths, no privileges, no unneeded syscalls. Firstfold's
 # folders, its env files, keys and backups do not exist for this unit (InaccessiblePaths; the "-" ignores a path that is not
 # there).

@@ -322,52 +322,90 @@ and fails the run, so the unit's failure alert reaches the team.
 
 To stop it: `systemctl disable --now brandbasket-site-health.timer`. The rows stay; the customer panel then shows the last check.
 
-## Google Analytics
+## Google
 
-`brandbasket-ga4-sync.timer` starts `brandbasket-ga4-sync.service` every night at 22:30 UTC (04:00 in India). It runs
-`pnpm ga4:sync` in the current platform release. For every business whose Google Analytics property staff set in the console (the
-client's Website tab, Site details, Google Analytics) it reads, through the Analytics Data API, the daily visits, visitors, page
-views, engaged seconds and key events, and the month's channels and most viewed pages. They are stored as `ga4.*` numbers in
-`metric_daily` and as `ga4` lists in `metric_breakdowns`, with one `report_source_runs` row per attempt. The first pull reaches back
-60 days; later pulls repeat the last 3 days, because Google revises recent days. A property that answers "no access" or "no such
+One Brandbasket Google account (`official.brandbasket@gmail.com`) holds every client's Search Console site and Analytics property
+(plan 62). `brandbasket-google-sync.timer` starts `brandbasket-google-sync.service` every night at 22:30 UTC (04:00 in India). It runs
+`pnpm google:sync` in the current platform release. Through the account connected in the console (Settings, Google account, the
+Reading sign-in) it pulls, for every business with a property or site on record:
+
+- **Google Analytics:** daily visits, visitors, page views, engaged seconds and key events, and the month's channels and most viewed
+  pages, stored as `ga4.*` numbers in `metric_daily` and `ga4` lists in `metric_breakdowns`.
+- **Search Console:** daily clicks, impressions and average position, and the month's top searches and pages, stored as `gsc.*`
+  numbers and `gsc` lists. Search Console finishes a day about three days late, so the newest three days are "not measured", never zero.
+
+Each attempt writes one `report_source_runs` row. The first pull reaches back 60 days; later pulls repeat the last 3 days (Analytics)
+or 7 days (Search Console), because Google revises recent days. At most 3 businesses run at once, each after a random wait, and a
+"slow down" or "unavailable" answer is retried twice with growing waits. A property or site that answers "no access" or "no such
 property" is marked `access_lost` (the console shows it) and tried again each night. One failing business never stops the others.
+If Google refuses the Brandbasket account itself, the run stops, prints what to do and exits 1, which triggers the unit's failure
+alert; the Settings page then shows "Google no longer accepts this sign-in". Preview what it would pull with `pnpm google:sync -- --dry-run`.
 
-The customer's Website screen and Home show these numbers instead of our own counts when the property is connected and has counted a
+The customer's Website screen and Home show Analytics numbers instead of our own counts when the property is connected and has counted a
 day, and say "From Google Analytics". They show nothing at all until `CUSTOMER_VISITS_ENABLED` is on in the customer app's environment
 (gate G1 in plan 61: counsel's answer on first-party analytics and the approved privacy wording).
+The Local SEO + AEO screen's "How people find you on Google" panel and Home's "Google clicks" figure stay hidden until `CUSTOMER_SEARCH_ENABLED` is on in the same environment (plan 62, step 5: the owner's yes on the new customer words).
 
 `install.sh backups --apply` installs the unit and timer but never enables them.
 
-### What the owner creates in Google Cloud, once
+### What the owner sets up in Google, once
 
-1. In the Google Cloud console, choose or create a project (for example "Brandbasket Analytics").
-2. APIs and services, Library: enable **Google Analytics Data API**.
-3. IAM and admin, Service accounts, Create service account. Name it for example `brandbasket-ga4-reader`. It needs no project role.
-   Copy its email address (it ends in `.iam.gserviceaccount.com`).
-4. On that service account, Keys, Add key, Create new key, **JSON**. Keep the downloaded file private. If the organisation blocks key
-   creation (policy `iam.disableServiceAccountKeyCreation`), the owner has to allow it for this project first.
-5. Put the file on the server, readable by the app user only, and name it in the dashboard's environment:
-   ```bash
-   install -o brandbasket -g brandbasket -m 0600 ga4-service-account.json /srv/brandbasket/shared/ga4-service-account.json
-   ```
-   then add `GA4_SERVICE_ACCOUNT_JSON=/srv/brandbasket/shared/ga4-service-account.json` to `/srv/brandbasket/shared/platform.env.local`,
-   and `GA4_SERVICE_ACCOUNT_EMAIL=<the email from step 3>` to the console's env file so staff see which address to ask for. Never paste
-   the key into chat, an issue or the repository.
-6. Run it once and read the result: `systemctl start brandbasket-ga4-sync.service && journalctl -u brandbasket-ga4-sync -n 20`.
-   A good run prints a line starting `Google Analytics:`. Then `systemctl enable --now brandbasket-ga4-sync.timer`.
+1. In Google Cloud (project "Brandbasket"), enable four APIs: Google Search Console API, Google Analytics Data API, Google Analytics
+   Admin API and Site Verification API. Done on 2026-11-03.
+2. Google Auth Platform, Clients: a Web application client named "Brandbasket Platform", with the authorised redirect URIs
+   `https://console.brandbasket.in/api/google/callback` and `http://localhost:3199/api/google/callback`. Done on 2026-11-03.
+   (Google refuses `.localhost` hosts, so for a local sign-in open the console at `localhost:3199`.)
+3. Google Auth Platform, Branding: the app name, support email and developer contact. Then Audience, Publish app. In Testing mode
+   Google ends refresh tokens after 7 days, so leave it published. Google shows an "unverified app" warning once; the owner clicks
+   through, because only the one Brandbasket account signs in.
+4. Sign in to Analytics as `official.brandbasket@gmail.com` and create the Analytics account "Brandbasket clients". Turn on two step
+   sign in with a hardware key and keep the recovery phone and email in the password manager.
+5. Create a second account used only for this and add it as an owner of the Analytics account (plan 62, decision 8).
+6. On the server, add to `/srv/brandbasket/shared/platform.env.local` and to the console's env file:
+   `GOOGLE_OAUTH_CLIENT_ID`, `GOOGLE_OAUTH_CLIENT_SECRET`; and to the console's env file also `GOOGLE_OAUTH_REDIRECT_URI`
+   (the https callback above) and `GOOGLE_ACCOUNT_EMAIL=official.brandbasket@gmail.com`. Restart the apps. Never paste the secret
+   into chat, an issue or the repository.
+7. In the console, Settings, Google account: press Connect on Reading (and on Setting up sites when go live work starts) while signed
+   in to Google as the Brandbasket account, and accept every permission.
+8. Run it once and read the result: `systemctl start brandbasket-google-sync.service && journalctl -u brandbasket-google-sync -n 20`.
+   A good run prints lines starting `Google Analytics:` and `Search Console:`. Then `systemctl enable --now brandbasket-google-sync.timer`.
 
-### What each customer does
+### Go live: `brandbasket-google-provision`
 
-1. In their Google Analytics: Admin, Property access management, the plus button, Add users. Paste the service account's email, choose
-   the role **Viewer** (nothing higher), untick "Notify new users by email", Add.
-2. Send us the **Property ID** (Admin, Property details; digits only, not the `G-` measurement ID).
-3. For key events (calls, WhatsApp taps, form sends) to be counted, they must be marked as key events in Analytics (Admin, Events).
-   Analytics cannot pre-create them.
+`brandbasket-google-provision.timer` runs `pnpm google:provision` every 15 minutes. For every business whose latest project is live and
+whose primary domain is its own (a free address, a name ending in `.` plus `CLIENT_SITE_BASE_DOMAIN`, never gets a property, and neither
+does a site taken offline for a lapsed plan) it does these steps, each stored before the next, so a second run changes nothing:
 
-Staff then enter the Property ID in the console. The status line reads "Waiting for the first nightly pull", then "Connected" after the
-next run, or "No access" with what to ask the customer.
+1. Analytics: makes the client's property in the "Brandbasket clients" account (named after the business and the first part of its id,
+   Asia/Kolkata, INR), its web stream (the `G-` id is kept in `report_sources.measurement_id`) and the key events `form_send`, `call_tap`
+   and `whatsapp_tap`. The source row stays `awaiting_setup` ("Tag off") and is not pulled.
+2. Search Console: asks Google for the meta tag token, sets `NEXT_PUBLIC_GSC_VERIFICATION` on the client's Vercel project and builds the
+   newest production deployment again, once (not again for 30 minutes).
+3. When the live page shows the token, asks Google to verify, adds the site to Search Console and lets the nightly pull read it.
+4. Lists `GOOGLE_SECOND_OWNER_EMAIL` as a second owner and reads the owners back. With none set, this step is skipped and noted.
+5. When `GOOGLE_ANALYTICS_TAG_ENABLED=1` (only after counsel's answer on cookies, plan 62 decision 4): sets `NEXT_PUBLIC_GA4_ID`, builds
+   again once, and the Analytics source starts being pulled.
 
-To stop it: `systemctl disable --now brandbasket-ga4-sync.timer`. The numbers stay; the screens show the last pull.
+It needs the Setting up sites sign-in connected in the console, `VERCEL_API_TOKEN`, `GOOGLE_ACCOUNT_EMAIL`, `GOOGLE_OAUTH_CLIENT_ID` and
+`GOOGLE_OAUTH_CLIENT_SECRET` in the platform's env file. Optional: `GOOGLE_SECOND_OWNER_EMAIL`, `GOOGLE_ANALYTICS_ACCOUNT_NAME`.
+It paces itself (three businesses at once, 12 seconds between each lane's businesses) to stay far under Google's write limits, so about
+15 businesses a minute. A refused account stops the run and exits 1. Read what it would do first with
+`pnpm google:provision -- --dry-run`, try one business with `pnpm google:provision -- --only <businessId>`, then
+`systemctl start brandbasket-google-provision.service && journalctl -u brandbasket-google-provision -n 20` (a good run prints a line
+starting `Google go live:`) and only then `systemctl enable --now brandbasket-google-provision.timer`. A site whose domain changes is
+verified again from the start; the old numbers stay. Until the site template serves the verification tag (plan 62 step 4), the job
+sets the variable and waits, and the site stays `awaiting_setup`.
+
+### A customer's own Analytics property (optional)
+
+By default a customer's site gets a new property in our account (plan 62). A customer who wants us to read their existing property
+instead adds a Google service account as a Viewer: in `GA4_SERVICE_ACCOUNT_JSON` put the path of that service account's key file
+(readable by the `brandbasket` user only, mode 0600), and in the console's env file `GA4_SERVICE_ACCOUNT_EMAIL` so staff see which address
+to ask for. The customer then adds that address as Viewer (Admin, Property access management) and sends the numeric Property ID (not
+the `G-` measurement ID), which staff enter on the client's Website tab. The job uses this key only for Analytics, and only when the
+account is not connected.
+
+To stop it: `systemctl disable --now brandbasket-google-sync.timer`. The numbers stay; the screens show the last pull.
 
 ## Monthly reports
 

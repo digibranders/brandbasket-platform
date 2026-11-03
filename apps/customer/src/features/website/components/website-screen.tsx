@@ -13,7 +13,7 @@ import { roundsLine, roundsUsedUp } from "../rules/progress";
 import { websiteProgress } from "../rules/screen";
 import { PreviewDecision } from "./preview-decision";
 import { SiteHealthPanel } from "./site-health-panel";
-import { VisitsPanels, visitsMetric } from "./visits-panels";
+import { VisitsPanels, visitsMetric, visitsWaitingMetric } from "./visits-panels";
 import { AddressPanelView, Columns, ExternalButton, LiveHeader, NextStepsPanel, NoticeBanner, WebsiteTabs } from "./website-parts";
 
 export interface WebsiteScreenProps {
@@ -152,6 +152,7 @@ export function WebsiteScreen({ context, core, overview, pages, notice, feedback
             metrics={[
               { label: "Status", value: "Live" },
               ...visitsMetric(overview.visits),
+              ...visitsWaitingMetric(overview.visitsWaiting),
               ...(overview.enquiries !== null && overview.enquiries.ok
                 ? [{ label: "Enquiries from the site", value: formatNumber(overview.enquiries.data), period: `Last ${ENQUIRY_WINDOW_DAYS} days` }]
                 : []),

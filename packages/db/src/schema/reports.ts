@@ -25,15 +25,30 @@ export const reportSources = pgTable(
     status: text("status").$type<SourceStatus>().notNull().default("pending"),
     lastOkAt: timestamp("last_ok_at", { withTimezone: true }),
     lastError: text("last_error"),
+    /** Which Brandbasket Google account (slot) holds this property or site (plan 62). */
+    googleSlot: integer("google_slot").notNull().default(1),
+    /** The Analytics web stream's `G-` id, set when the property was made for the site. */
+    measurementId: text("measurement_id"),
+    /** When Google accepted that we own the site (Search Console). */
+    verifiedAt: timestamp("verified_at", { withTimezone: true }),
+    /** When the go live work last made a change for this source, such as setting the site's tag and asking for a redeploy. */
+    provisionedAt: timestamp("provisioned_at", { withTimezone: true }),
+    /** The second human owner is listed on the Search Console site. */
+    secondOwnerOk: boolean("second_owner_ok").notNull().default(false),
+    /** What is stuck or off, in a few words, for staff. Never customer text. */
+    detail: text("detail"),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
   (table) => [
     uniqueIndex("report_sources_business_source_idx").on(table.businessId, table.source),
     check("report_sources_source_check", sql`${table.source} in ('gsc', 'ga4')`),
-    check("report_sources_status_check", sql`${table.status} in ('pending', 'connected', 'access_lost')`),
+    check("report_sources_status_check", sql`${table.status} in ('pending', 'awaiting_setup', 'connected', 'access_lost', 'removed')`),
     check("report_sources_external_id_check", sql`char_length(btrim(${table.externalId})) between 1 and 200`),
     check("report_sources_error_check", sql`${table.lastError} is null or char_length(${table.lastError}) <= 300`),
+    check("report_sources_detail_check", sql`${table.detail} is null or char_length(${table.detail}) <= 300`),
+    check("report_sources_slot_check", sql`${table.googleSlot} >= 1`),
+    check("report_sources_measurement_id_check", sql`${table.measurementId} is null or ${table.measurementId} ~ '^G-[A-Z0-9]{4,20}$'`),
   ],
 );
 export type ReportSourceRow = typeof reportSources.$inferSelect;

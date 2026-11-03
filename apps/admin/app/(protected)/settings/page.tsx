@@ -18,7 +18,9 @@ import { getStaffDb } from "@/lib/server/db";
 import { readSettingsNotice, SETTINGS_NOTICES } from "@/lib/settings-notices";
 import { loadRevisionRoundsSetting, loadSetupCallSetting } from "@/lib/server/settings-admin";
 import { requireStaffAccess } from "@/lib/server/staff-access";
+import { googleOAuthConfig, loadGoogleCounts, loadGoogleStates } from "@/lib/server/google-admin";
 import { loadTeamsStates } from "@/lib/server/teams-admin";
+import { GoogleAccountSection } from "./google-section";
 import { removeTeamsWebhookAction, saveRevisionRoundsAction, saveSetupCallUrlAction, saveTeamsWebhookAction, testTeamsWebhookAction } from "./actions";
 
 export const metadata: Metadata = { title: "Settings" };
@@ -32,12 +34,14 @@ export default async function SettingsPage({
   const { staff } = await requireStaffAccess();
   const canSetAlerts = staffCan(staff.role, "integrations");
   const canSetBuildRules = staffCan(staff.role, "buildRules");
-  const [setting, params, teams, rounds, latestWebsiteLead] = await Promise.all([
+  const [setting, params, teams, rounds, latestWebsiteLead, googleStates, googleCounts] = await Promise.all([
     loadSetupCallSetting(),
     searchParams,
     canSetAlerts ? loadTeamsStates() : null,
     canSetBuildRules ? loadRevisionRoundsSetting() : null,
     findLatestWebsiteLeadAt(getStaffDb()),
+    canSetAlerts ? loadGoogleStates() : null,
+    canSetAlerts ? loadGoogleCounts() : null,
   ]);
   const notice = readSettingsNotice(params.saved);
 
@@ -143,6 +147,8 @@ export default async function SettingsPage({
           </p>
         )}
       </Section>
+
+      {googleStates === null || googleCounts === null ? null : <GoogleAccountSection states={googleStates} counts={googleCounts} accountEmail={googleOAuthConfig()?.accountEmail ?? null} />}
 
       {teams === null ? null : (
         <Section id="teams" title="Teams alerts" aside="Admins only">

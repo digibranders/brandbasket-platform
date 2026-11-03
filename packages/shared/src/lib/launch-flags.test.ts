@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { flagIsOn, isCustomerVisitsEnabled, isEnquiryFormContentsEnabled } from "./launch-flags";
+import { flagIsOn, isCustomerSearchEnabled, isCustomerVisitsEnabled, isEnquiryFormContentsEnabled } from "./launch-flags";
 
 describe("launch flags", () => {
   it("are off when unset, empty or anything but a clear yes", () => {
@@ -13,6 +13,8 @@ describe("launch flags", () => {
   it("each reads its own variable", () => {
     expect(isCustomerVisitsEnabled({ CUSTOMER_VISITS_ENABLED: "1" })).toBe(true);
     expect(isCustomerVisitsEnabled({ ENQUIRY_FORM_CONTENTS_ENABLED: "1" })).toBe(false);
+    expect(isCustomerSearchEnabled({ CUSTOMER_SEARCH_ENABLED: "1" })).toBe(true);
+    expect(isCustomerSearchEnabled({ CUSTOMER_VISITS_ENABLED: "1" })).toBe(false);
     expect(isEnquiryFormContentsEnabled({ ENQUIRY_FORM_CONTENTS_ENABLED: "true" })).toBe(true);
     expect(isEnquiryFormContentsEnabled({})).toBe(false);
   });

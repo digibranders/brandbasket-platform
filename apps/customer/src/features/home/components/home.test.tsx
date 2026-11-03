@@ -50,6 +50,22 @@ describe("LastThirtyDays", () => {
     expect(screen.getByText(/We could not load your visits/)).toBeTruthy();
   });
 
+  it("shows Google clicks with its dates and change only once measured, and leaves the strip as it was otherwise", () => {
+    const measured = { ok: true as const, data: { kind: "measured" as const, summary: { from: "2026-10-03", to: "2026-10-30", clicks: 214, impressions: null, averagePosition: null, change: 18, days: [] }, lists: null } };
+    const { unmount } = render(<LastThirtyDays series={series(63, 40)} figures={figures()} visits={null} search={measured} />);
+    expect(screen.getByText("Google clicks")).toBeTruthy();
+    expect(screen.getByText("214")).toBeTruthy();
+    expect(screen.getByText("+18")).toBeTruthy();
+    expect(screen.getByText("3 Oct to 30 Oct")).toBeTruthy();
+    unmount();
+    for (const search of [null, { ok: true as const, data: null }, { ok: true as const, data: { kind: "waiting" as const } }, { ok: false as const, error: { at: NOW } }]) {
+      const { container, unmount: done } = render(<LastThirtyDays series={series(63, 40)} figures={figures()} visits={null} search={search} />);
+      expect(screen.queryByText("Google clicks")).toBeNull();
+      expect(container.textContent).not.toMatch(/We could not load/);
+      done();
+    }
+  });
+
   it("leaves out what is not known and any change with nothing to compare", () => {
     render(<LastThirtyDays series={series(63, 0)} figures={figures()} visits={null} />);
     expect(screen.getByText("Enquiries")).toBeTruthy();
@@ -87,6 +103,7 @@ describe("HomeScreen", () => {
     enquiries: null,
     figures: null,
     visits: null,
+    search: null,
     services: null,
     activity: null,
     coming: null,

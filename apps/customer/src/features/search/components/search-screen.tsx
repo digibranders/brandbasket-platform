@@ -8,8 +8,9 @@ import type { CustomerContext } from "@/lib/guards";
 import { load } from "@/lib/loaded";
 import { Banner, Icon, LinkButton } from "@/ui";
 import { buttonClasses } from "@/ui/button-styles";
-import { loadSearchNumbers, loadSearchWork } from "../loader";
+import { loadSearchNumbers, loadSearchPresence, loadSearchWork } from "../loader";
 import { AEO_EXPLAINED, ASK_FOR_CHANGE_HREF, SEARCH_DESCRIPTION } from "../rules";
+import { SearchPresencePanel } from "./search-presence";
 
 /**
  * Local SEO + AEO Overview, from the monthly numbers and the finished work only (plan 61, section 4). Every number carries
@@ -17,11 +18,12 @@ import { AEO_EXPLAINED, ASK_FOR_CHANGE_HREF, SEARCH_DESCRIPTION } from "../rules
  * source yet, so they are neither drawn nor linked.
  */
 export async function SearchScreen({ customer, now = new Date() }: { readonly customer: CustomerContext; readonly now?: Date }) {
-  const [numbers, work, report, asks] = await Promise.all([
+  const [numbers, work, report, asks, presence] = await Promise.all([
     load("search.numbers", () => loadSearchNumbers(customer, now)),
     load("search.work", () => loadSearchWork(customer, now)),
     load("search.report", () => loadReportLink(customer, "search")),
     load("search.setup", () => loadSetupAsks(customer, "search")),
+    Promise.resolve(loadSearchPresence(customer.tenant, now)),
   ]);
   const checked = numbers.ok && numbers.data.pageOne !== null ? numbers.data.pageOne.checkedAt : null;
   const reportHref = report.ok ? report.data : null;
@@ -45,6 +47,7 @@ export async function SearchScreen({ customer, now = new Date() }: { readonly cu
       <div className="flex flex-col gap-4">
         <Banner>{AEO_EXPLAINED}</Banner>
         {customer.role === "viewer" ? null : asks.ok ? <SetupCard asks={asks.data} /> : <Panel title="What we need from you"><PanelError failure={asks.error} what="what we need from you" /></Panel>}
+        <SearchPresencePanel search={presence} />
         {!numbers.ok ? (
           <Panel title="Searches on Google's first page">
             <PanelError failure={numbers.error} what="your monthly numbers" />

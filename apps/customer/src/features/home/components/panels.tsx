@@ -3,6 +3,8 @@ import { LineChart, MetricStrip, Panel, PanelData, StatusBadge, Stepper, Timelin
 import type { ChecklistSummary } from "@/features/checklist/loader";
 import { AD_LEADS_NOTE } from "@/features/social/rules";
 import { changeAgainst } from "@/features/enquiries/rules";
+import { googleClicksMetric } from "@/features/search/components/search-presence";
+import type { SearchPresence } from "@/features/search/rules/search-presence";
 import { visitsMetric } from "@/features/website/components/visits-panels";
 import type { VisitsData } from "@/features/website/loader";
 import type { Loaded } from "@/lib/loaded";
@@ -70,12 +72,15 @@ export function LastThirtyDays({
   series,
   figures,
   visits,
+  search = null,
 }: {
   readonly series: Loaded<EnquirySeries> | null;
   readonly figures: Loaded<StripFigures> | null;
   readonly visits: Loaded<VisitsData | null> | null;
+  /** Drawn as Google clicks once measured; waiting, failed and unconnected leave the strip as it was. */
+  readonly search?: Loaded<SearchPresence | null> | null;
 }) {
-  const metrics: Metric[] = [...visitsMetric(visits)];
+  const metrics: Metric[] = [...visitsMetric(visits), ...googleClicksMetric(search)];
   if (series?.ok === true) {
     const change = changeAgainst(series.data.currentTotal, series.data.previousTotal);
     metrics.push({ label: "Enquiries", value: formatNumber(series.data.currentTotal), ...(change === null ? {} : { change: { value: change } }) });
