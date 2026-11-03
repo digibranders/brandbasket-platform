@@ -9,7 +9,7 @@ import { PHONE_COUNTRY_FIELD } from "@brandbasket/shared/lib/phone/fields";
 import { currencyForCountry } from "@brandbasket/shared/lib/pricing";
 import Link from "next/link";
 import { useActionState, useState } from "react";
-import { Banner, Button, Checkbox, Field, Input, PhoneInput, Select, type SelectOption } from "@/ui";
+import { Banner, Button, Checkbox, Field, Input, Select, type SelectOption } from "@/ui";
 import { signUpAction, type SignUpResult } from "../actions";
 import { NEXT_FIELD, SIGN_IN_PATH, withInviteReturn } from "../rules/account-entry";
 import { LEGAL_LINKS } from "../rules/brand";
@@ -84,7 +84,6 @@ export function SignUpForm({ siteKey, services, basket, confirmsCodes, countries
   const otp = state === null || state === left ? null : state.ok ? state.data.otp : state.otp;
   const error = state !== null && !state.ok && state !== left && !pending ? state.message : null;
   const code = otp !== null && codeEntry.otpId === otp.otpId ? codeEntry.value : "";
-  const dialCode = phoneCountries.find((option) => option.code === phoneCountry)?.dialCode ?? "";
   const price = basket.prices[currencyForCountry(country)];
 
   const carried = (
@@ -188,16 +187,18 @@ export function SignUpForm({ siteKey, services, basket, confirmsCodes, countries
         </Field>
       ) : null}
       <Field label="Mobile number" nativeLabel={false}>
+        {/* The code sits left of the number; the wrapper sets its width because the Select fills whatever holds it. */}
         <div className="flex gap-2">
-          <Select
-            name={PHONE_COUNTRY_FIELD}
-            aria-label="Country code"
-            options={phoneCountries.map((option) => ({ value: option.code, label: option.label }))}
-            value={phoneCountry}
-            onValueChange={(next) => setPhoneCountry(next ?? defaultPhoneCountry)}
-            className="w-32 shrink-0"
-          />
-          <PhoneInput name="phone" aria-label="Mobile number" required countryCode={dialCode} value={phone} onChange={(event) => setPhone(event.target.value)} className="flex-1" />
+          <div className="w-36 shrink-0">
+            <Select
+              name={PHONE_COUNTRY_FIELD}
+              aria-label="Country code"
+              options={phoneCountries.map((option) => ({ value: option.code, label: option.label }))}
+              value={phoneCountry}
+              onValueChange={(next) => setPhoneCountry(next ?? defaultPhoneCountry)}
+            />
+          </div>
+          <Input name="phone" type="tel" inputMode="tel" autoComplete="tel-national" aria-label="Mobile number" required value={phone} onChange={(event) => setPhone(event.target.value)} className="min-w-0 flex-1" />
         </div>
       </Field>
       <Field label="Choose a password" name="password" hint={PASSWORD_RULE}>
