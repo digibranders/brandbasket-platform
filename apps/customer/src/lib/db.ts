@@ -35,6 +35,12 @@ export function getAppDb(): Database {
  *   session user), opening the charge for an accepted quote (the business comes from the session tenant and the database
  *   function checks the request belongs to it), and queueing the staff alert email in the outbox (a reference and link
  *   only, never the request text).
+ * - src/app/api/support-uploads/route.ts, the support screenshot upload and its delete: the per-user advisory lock, the
+ *   check that the signed-in user's account is not closing (account_closures is staff-only), confirming a staged row after
+ *   its file is stored, and marking a removed file purged. The user id comes only from the session guard, and each call is
+ *   scoped to that user's own rows.
+ * - src/app/api/error-reports/route.ts, writing a sanitized browser error report and its hashed rate-limit counters (both
+ *   tables are staff-only). No customer data is read; the session user, when there is one, is only the report's author.
  */
 export function getStaffDb(): Database {
   holder.brandbasketCustomerStaffDb ??= createDatabase(serverEnv().DATABASE_URL_STAFF).db;
