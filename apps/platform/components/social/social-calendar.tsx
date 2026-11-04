@@ -124,7 +124,7 @@ function Slot({ entry, large, fallback, onOpen, dnd }: { readonly entry: Entry; 
     </>
   );
   const box = cn("relative z-10 flex min-w-0 items-center gap-2 rounded-lg border border-line px-1.5 py-1.5 text-left", GROUND[status.state], large && "gap-3 p-2.5");
-  const label = `${canChange(post) ? "Change" : "Open"} the post on ${dayLabel(post.day, { weekday: "long", day: "numeric", month: "long" })} at ${time12(post.time)}`;
+  const label = `${canChange(post) ? "Edit" : "Open"} the post on ${dayLabel(post.day, { weekday: "long", day: "numeric", month: "long" })} at ${time12(post.time)}`;
   const movable = dnd !== undefined && canChange(post);
   return onOpen !== undefined ? (
     <div
@@ -172,7 +172,7 @@ function PostRow({ entry, onOpen }: { readonly entry: Entry; readonly onOpen?: (
         </div>
         {onOpen !== undefined ? (
           <button type="button" onClick={() => onOpen(post)} className="text-xs font-semibold text-ink-2 underline">
-            {canChange(post) ? "Change" : "View"}
+            {canChange(post) ? "Edit" : "View"}
             <span className="sr-only"> the post on {dayLabel(post.day, { weekday: "long", day: "numeric", month: "long" })}</span>
           </button>
         ) : null}

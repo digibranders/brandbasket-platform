@@ -208,7 +208,7 @@ export function NewPostDialog({ day, onDayChange, time: startTime, today, channe
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0">
             <h3 id="new-post-title" className="font-display text-[1.0625rem] font-semibold text-ink">
-              {post === undefined ? "New post" : "Change post"}
+              {post === undefined ? "New post" : "Edit post"}
             </h3>
             <p className="mt-1 text-[0.84375rem] text-ink-2">
               {dayLabel(day, { weekday: "long", day: "numeric", month: "long" })}{isTime(time) ? ` at ${time12(time)}` : ""}
