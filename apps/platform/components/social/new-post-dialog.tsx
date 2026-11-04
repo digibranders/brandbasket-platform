@@ -1,6 +1,6 @@
 "use client";
 
-import { Warning } from "@phosphor-icons/react/dist/ssr";
+import { Check, Warning, X } from "@phosphor-icons/react/dist/ssr";
 import { useEffect, useRef, useState, useTransition, type ChangeEvent, type FormEvent, type ReactElement } from "react";
 import { cn } from "@brandbasket/shared/lib/cn";
 import { createPostAction, deletePostAction, sendPostNowAction, updatePostAction } from "@/app/app-host/(protected)/social/actions";
@@ -151,7 +151,7 @@ export function NewPostDialog({ day, onDayChange, time: startTime, today, channe
   // What is on screen differs from the post as saved; Post now sends the saved one, so the person saves first.
   const dirty =
     post !== undefined &&
-    (caption !== post.caption || day !== post.day || picked !== null || selected.size !== channelIdsOf(post).length || channelIdsOf(post).some((id) => !selected.has(id)));
+    (caption !== post.caption || day !== post.day || time !== post.time || picked !== null || selected.size !== channelIdsOf(post).length || channelIdsOf(post).some((id) => !selected.has(id)));
   const platformsNow = post === undefined ? [] : [...new Set(channels.filter((channel) => selected.has(channel.id)).map((channel) => PLATFORM_NAMES[channel.platform]))];
 
   const postNow = (): void => {
@@ -190,6 +190,9 @@ export function NewPostDialog({ day, onDayChange, time: startTime, today, channe
     });
   };
 
+  const selectedChannels = channels.filter((channel) => selected.has(channel.id));
+  const previewPicture = picked?.url ?? post?.imageUrl;
+
   return (
     // A click on the dimmed background lands on the dialog itself; Escape is the dialog's own cancel, so the keyboard needs nothing here.
     <dialog
@@ -202,80 +205,123 @@ export function NewPostDialog({ day, onDayChange, time: startTime, today, channe
       onClick={(event) => {
         if (event.target === event.currentTarget && !pending) onClose();
       }}
-      className="m-auto max-h-[calc(100dvh-2rem)] w-[min(calc(100%-2rem),40rem)] overflow-y-auto rounded-2xl border-0 bg-surface p-0 text-ink shadow-[0_24px_60px_-20px_rgb(21_22_26/0.5)] backdrop:bg-[rgb(17_20_24/0.5)]"
+      className="m-auto max-h-[calc(100dvh-2rem)] w-[min(calc(100%-2rem),52rem)] overflow-y-auto rounded-2xl border-0 bg-surface p-0 text-ink shadow-[0_24px_60px_-20px_rgb(21_22_26/0.5)] backdrop:bg-[rgb(17_20_24/0.5)]"
     >
-      <div className="grid gap-4 p-5 sm:p-6">
-        <div className="flex flex-wrap items-start justify-between gap-3">
+      <form onSubmit={submit} noValidate className="grid gap-5 p-5 sm:p-6">
+        <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <h3 id="new-post-title" className="font-display text-[1.0625rem] font-semibold text-ink">
               {post === undefined ? "New post" : "Edit post"}
             </h3>
             <p className="mt-1 text-[0.84375rem] text-ink-2">
-              {dayLabel(day, { weekday: "long", day: "numeric", month: "long" })}{isTime(time) ? ` at ${time12(time)}` : ""}
+              {dayLabel(day, { weekday: "long", day: "numeric", month: "long" })}
+              {isTime(time) ? ` at ${time12(time)}` : ""}
             </p>
           </div>
-          <button type="button" onClick={onClose} disabled={pending} className={SOFT_BUTTON}>
-            Cancel
+          <button type="button" aria-label="Close" onClick={onClose} disabled={pending} className="grid size-9 shrink-0 place-items-center rounded-lg text-ink-2 hover:bg-sunken">
+            <X size={18} aria-hidden="true" />
           </button>
         </div>
 
-        <form onSubmit={submit} className="grid gap-4" noValidate>
-          <div className="flex flex-wrap gap-4">
-            <div className="grid gap-1.5">
-              <label htmlFor="new-post-day" className="text-sm font-semibold text-ink">
-                Day
-              </label>
-              <input
-                id="new-post-day"
-                type="date"
-                value={day}
-                min={post !== undefined && post.day < earliestDay(today) ? post.day : earliestDay(today)}
-                max={latestDay(today)}
-                onChange={(event) => event.target.value !== "" && onDayChange(event.target.value)}
-                className={cn(FIELD, "h-11 w-44")}
-              />
+        <div className="grid gap-6 md:grid-cols-[minmax(0,1.25fr)_minmax(0,1fr)]">
+          <div className="grid content-start gap-5">
+            <div>
+              <div className="flex flex-wrap gap-3">
+                <div className="grid gap-1.5">
+                  <label htmlFor="new-post-day" className="text-xs font-semibold text-ink-2">
+                    Day
+                  </label>
+                  <input
+                    id="new-post-day"
+                    type="date"
+                    value={day}
+                    min={post !== undefined && post.day < earliestDay(today) ? post.day : earliestDay(today)}
+                    max={latestDay(today)}
+                    onChange={(event) => event.target.value !== "" && onDayChange(event.target.value)}
+                    className={cn(FIELD, "h-10 w-40")}
+                  />
+                </div>
+                <div className="grid gap-1.5">
+                  <label htmlFor="new-post-time" className="text-xs font-semibold text-ink-2">
+                    Time
+                  </label>
+                  <input id="new-post-time" type="time" value={time} onChange={(event) => setTime(event.target.value)} className={cn(FIELD, "h-10 w-32")} />
+                </div>
+              </div>
+              <p className="mt-1.5 text-xs text-ink-3">India time. It goes out within a few minutes of the time you choose.</p>
             </div>
+
+            <fieldset>
+              <legend className="mb-2 text-xs font-semibold text-ink-2">Post to</legend>
+              <div className="flex flex-wrap gap-2.5">
+                {channels.map((channel) => {
+                  const on = selected.has(channel.id);
+                  return (
+                    <label key={channel.id} title={`${channel.account}, ${PLATFORM_NAMES[channel.platform]}`} className="relative cursor-pointer">
+                      <input type="checkbox" checked={on} onChange={() => toggle(channel.id)} className="peer sr-only" />
+                      <span className={cn("block rounded-xl ring-2 ring-offset-2 ring-transparent transition peer-focus-visible:ring-ink", !on && "opacity-40")}>
+                        <ChannelLogo platform={channel.platform} />
+                      </span>
+                      {on ? (
+                        <span aria-hidden="true" className="absolute -right-1 -top-1 grid size-4 place-items-center rounded-full bg-ink text-white">
+                          <Check size={10} weight="bold" />
+                        </span>
+                      ) : null}
+                      <span className="sr-only">
+                        {channel.account}, {PLATFORM_NAMES[channel.platform]}
+                      </span>
+                    </label>
+                  );
+                })}
+              </div>
+              <p className="mt-2 text-xs text-ink-3">
+                {selected.size === channels.length ? "All accounts" : `${selected.size} of ${channels.length} accounts`}
+                {selectedChannels.length > 0 && selectedChannels.length < 4 ? `: ${selectedChannels.map((channel) => channel.account).join(", ")}` : ""}
+              </p>
+              {channels.some((channel) => channel.platform === "google" && selected.has(channel.id)) ? (
+                <p className="mt-1 text-xs text-ink-3">Google Business leaves out hashtags and shortens text over 1,500 characters.</p>
+              ) : null}
+            </fieldset>
+
             <div className="grid gap-1.5">
-              <label htmlFor="new-post-time" className="text-sm font-semibold text-ink">
-                Time
+              <label htmlFor="new-post-caption" className="text-xs font-semibold text-ink-2">
+                Caption
               </label>
-              <input id="new-post-time" type="time" value={time} onChange={(event) => setTime(event.target.value)} className={cn(FIELD, "h-11 w-32")} />
+              <textarea ref={captionField} id="new-post-caption" value={caption} onChange={(event) => setCaption(event.target.value)} rows={6} className={cn(FIELD, "py-2.5 leading-relaxed")} placeholder="What should the post say?" />
+              <p className={cn("text-xs", caption.length > MAX_CAPTION_LENGTH ? "font-semibold text-error" : "text-ink-3")}>
+                {caption.length} of {MAX_CAPTION_LENGTH}
+              </p>
             </div>
           </div>
-          <p className="-mt-2 text-xs text-ink-2">India time. It goes out within a few minutes of the time you choose.</p>
 
-          <fieldset className="grid gap-2">
-            <legend className="mb-1 text-sm font-semibold text-ink">Post to</legend>
-            <div className="flex flex-wrap gap-2">
-              {channels.map((channel) => (
-                <label key={channel.id} className={cn("flex min-h-11 cursor-pointer items-center gap-2 rounded-lg border px-3 text-[0.84375rem] text-ink", selected.has(channel.id) ? "border-ink bg-surface" : "border-ink-2/40 bg-surface opacity-70")}>
-                  <input type="checkbox" checked={selected.has(channel.id)} onChange={() => toggle(channel.id)} className="size-4 accent-ink" />
-                  <ChannelLogo platform={channel.platform} small />
-                  <span className="min-w-0 break-words">
-                    {channel.account}
-                    <span className="sr-only">, {PLATFORM_NAMES[channel.platform]}</span>
-                  </span>
-                </label>
-              ))}
-            </div>
-            {channels.some((channel) => channel.platform === "google" && selected.has(channel.id)) ? (
-              <p className="text-xs text-ink-2">Google Business leaves out hashtags and shortens text over 1,500 characters.</p>
-            ) : null}
-          </fieldset>
-
-          <div className="grid gap-1.5">
-            <label htmlFor="new-post-picture" className="text-sm font-semibold text-ink">
-              {post === undefined ? "Picture" : "Picture (optional)"}
-            </label>
-            <div className="flex flex-wrap items-center gap-3">
-              <input id="new-post-picture" type="file" accept="image/jpeg" onChange={(event) => void choose(event)} className="max-w-full text-[0.84375rem] text-ink-2 file:mr-3 file:h-11 file:cursor-pointer file:rounded-lg file:border-0 file:bg-sunken file:px-4 file:text-[0.9375rem] file:font-semibold file:text-ink" />
-              {picked === null && post?.imageUrl === undefined ? null : (
-                // A local preview of the chosen file (or the post's present picture), which Next's image optimiser cannot reach.
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={picked?.url ?? post?.imageUrl} alt={picked === null ? "The present picture" : "The chosen picture"} className="size-16 rounded-lg object-cover" />
+          <div className="grid content-start gap-3">
+            <p className="text-xs font-semibold text-ink-2">Preview</p>
+            <div className="grid gap-3 rounded-xl border border-line p-3">
+              <div className="grid aspect-square place-items-center overflow-hidden rounded-lg bg-sunken">
+                {previewPicture === undefined ? (
+                  <span className="px-4 text-center text-[0.84375rem] text-ink-3">Add a picture to see the post</span>
+                ) : (
+                  // A local preview of the chosen file (or the post's present picture), which Next's image optimiser cannot reach.
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={previewPicture} alt={picked === null ? "The present picture" : "The chosen picture"} className="size-full object-cover" />
+                )}
+              </div>
+              <p className="line-clamp-4 whitespace-pre-wrap break-words text-[0.84375rem] leading-snug text-ink">{caption.trim() === "" ? "Your words appear here." : caption}</p>
+              {selectedChannels.length === 0 ? null : (
+                <div className="flex flex-wrap gap-1.5" aria-hidden="true">
+                  {selectedChannels.map((channel) => (
+                    <ChannelLogo key={channel.id} platform={channel.platform} small />
+                  ))}
+                </div>
               )}
             </div>
-            <p className="text-xs text-ink-2">{post === undefined ? "A square JPG, between 320 and 4096 pixels, up to 4 MB." : "Choose a picture only to replace this one. A square JPG, between 320 and 4096 pixels, up to 4 MB."}</p>
+            <div className="flex flex-wrap items-center gap-3">
+              <input id="new-post-picture" type="file" accept="image/jpeg" onChange={(event) => void choose(event)} className="peer sr-only" />
+              <label htmlFor="new-post-picture" className={cn(SOFT_BUTTON, "h-9 cursor-pointer px-3 text-[0.84375rem] peer-focus-visible:ring-2 peer-focus-visible:ring-ink")}>
+                {previewPicture === undefined ? "Choose a picture" : "Replace picture"}
+              </label>
+              <span className="text-xs text-ink-3">A square JPG, 320 to 4096 pixels, up to 4 MB.</span>
+            </div>
             {picked?.problem == null ? null : (
               <p className="flex items-center gap-1.5 text-[0.84375rem] font-semibold text-error">
                 <Warning size={16} weight="fill" aria-hidden="true" />
@@ -283,64 +329,52 @@ export function NewPostDialog({ day, onDayChange, time: startTime, today, channe
               </p>
             )}
           </div>
+        </div>
 
-          <div className="grid gap-1.5">
-            <label htmlFor="new-post-caption" className="text-sm font-semibold text-ink">
-              Caption
-            </label>
-            <textarea ref={captionField} id="new-post-caption" value={caption} onChange={(event) => setCaption(event.target.value)} rows={5} className={cn(FIELD, "py-2.5 leading-relaxed")} placeholder="What should the post say?" />
-            <p className={cn("text-xs", caption.length > MAX_CAPTION_LENGTH ? "font-semibold text-error" : "text-ink-2")}>
-              {caption.length} of {MAX_CAPTION_LENGTH}
-            </p>
-          </div>
-
-          {posting && platformsNow.length > 0 && error === null ? (
-            <p className="text-[0.84375rem] text-ink-2">
-              This goes out right away to {listOf(platformsNow)} and cannot be taken back.
-            </p>
-          ) : null}
-          {error === null ? null : (
-            <p role="alert" className="text-[0.84375rem] font-semibold text-error">
-              {error}
-            </p>
-          )}
-          <div className="flex flex-wrap items-center gap-3">
-            <button type="submit" disabled={pending || sent} className={DARK_BUTTON}>
-              {pending ? "Saving" : post === undefined ? "Schedule post" : "Save changes"}
+        {posting && platformsNow.length > 0 && error === null ? (
+          <p className="text-[0.84375rem] text-ink-2">This goes out right away to {listOf(platformsNow)} and cannot be taken back.</p>
+        ) : null}
+        {error === null ? null : (
+          <p role="alert" className="text-[0.84375rem] font-semibold text-error">
+            {error}
+          </p>
+        )}
+        <div className="flex flex-wrap items-center gap-3 border-t border-line pt-4">
+          <button type="submit" disabled={pending || sent} className={DARK_BUTTON}>
+            {pending ? "Saving" : post === undefined ? "Schedule post" : "Save changes"}
+          </button>
+          {post === undefined || sent ? null : posting ? (
+            <>
+              <button type="button" onClick={postNow} disabled={pending} className={SOFT_BUTTON}>
+                Yes, post it now
+              </button>
+              <button type="button" onClick={() => setPosting(false)} disabled={pending} className={SOFT_BUTTON}>
+                Not yet
+              </button>
+            </>
+          ) : (
+            <button type="button" onClick={() => setPosting(true)} disabled={pending || dirty} className={SOFT_BUTTON}>
+              Post now
             </button>
-            {post === undefined || sent ? null : posting ? (
-              <>
-                <button type="button" onClick={postNow} disabled={pending} className={SOFT_BUTTON}>
-                  Yes, post it now
-                </button>
-                <button type="button" onClick={() => setPosting(false)} disabled={pending} className={SOFT_BUTTON}>
-                  Not yet
-                </button>
-              </>
-            ) : (
-              <button type="button" onClick={() => setPosting(true)} disabled={pending || dirty} className={SOFT_BUTTON}>
-                Post now
+          )}
+          {problem !== null && !pending ? <span className="text-xs text-ink-3">{problem}</span> : null}
+          {dirty && problem === null && !pending ? <span className="text-xs text-ink-3">Save your changes first to post now.</span> : null}
+          {post === undefined || sent ? null : removing ? (
+            <span className="ml-auto flex items-center gap-3">
+              <button type="button" onClick={remove} disabled={pending} className="text-[0.84375rem] font-semibold text-error underline">
+                Yes, remove it
               </button>
-            )}
-            {post === undefined || sent ? null : removing ? (
-              <>
-                <button type="button" onClick={remove} disabled={pending} className={SOFT_BUTTON}>
-                  Yes, remove it
-                </button>
-                <button type="button" onClick={() => setRemoving(false)} disabled={pending} className={SOFT_BUTTON}>
-                  Keep it
-                </button>
-              </>
-            ) : (
-              <button type="button" onClick={() => setRemoving(true)} disabled={pending} className={SOFT_BUTTON}>
-                Remove post
+              <button type="button" onClick={() => setRemoving(false)} disabled={pending} className="text-[0.84375rem] font-semibold text-ink-2 underline">
+                Keep it
               </button>
-            )}
-            {problem !== null && !pending ? <span className="text-xs text-ink-2">{problem}</span> : null}
-            {dirty && problem === null && !pending ? <span className="text-xs text-ink-2">Save your changes first to post now.</span> : null}
-          </div>
-        </form>
-      </div>
+            </span>
+          ) : (
+            <button type="button" onClick={() => setRemoving(true)} disabled={pending} className="ml-auto text-[0.84375rem] font-semibold text-error underline">
+              Remove post
+            </button>
+          )}
+        </div>
+      </form>
     </dialog>
   );
 }
