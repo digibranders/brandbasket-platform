@@ -32,6 +32,8 @@ const channelSchema = z.object({
   connectedAt: z.string(),
   /** Only LinkedIn and Instagram connections have an end date. */
   expiresAt: z.string().optional(),
+  /** Posts are being held back from this account (the team paused it, its workspace, or everything). */
+  paused: z.boolean().optional(),
 });
 
 const postSchema = z.object({
@@ -307,3 +309,6 @@ export const canChange = (post: CalendarPost): boolean => post.manual && (post.s
 
 /** The ids of the accounts a post goes to. */
 export const channelIdsOf = (post: CalendarPost): string[] => post.channels.flatMap((channel) => (channel.id === undefined ? [] : [channel.id]));
+
+/** Whether posting is paused for the whole business: there are accounts, and every one of them is held back. */
+export const allPaused = (channels: readonly AutoChannel[]): boolean => channels.length > 0 && channels.every((channel) => channel.paused === true);

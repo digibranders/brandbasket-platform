@@ -6,7 +6,7 @@ import { DARK_BUTTON, LIFT, SECTION_TITLE, SOFT_BUTTON } from "@/components/v2/c
 import { ServiceSetupCard } from "@/components/setup/service-setup-card";
 import { EmptyState, PageColumns, PageFrame } from "@/components/v2/page";
 import { ASK_FOR_A_CHANGE_PATH } from "@/lib/requests/links";
-import { bookedUntil, connectStatus, dayLabel, daysUntilEnd, endingSoon, endsInWords } from "@/lib/social/auto";
+import { allPaused, bookedUntil, connectStatus, dayLabel, daysUntilEnd, endingSoon, endsInWords } from "@/lib/social/auto";
 import type { NoticeLine } from "@/lib/requests/notices";
 import type { SocialConnect, SocialData } from "@/lib/server/social";
 import type { SetupAsk } from "@/lib/setup-asks";
@@ -35,6 +35,7 @@ function channelsColumn(connect: SocialConnect, now: Date): { rows: ChannelRow[]
     platform: channel.platform,
     account: channel.account,
     ending: endingSoon(channel, now) ? endsInWords(daysUntilEnd(channel, now) ?? 0) : null,
+    paused: channel.paused === true,
   }));
   const until = bookedUntil(connect.posts, connect.today);
   return { rows, bookedLine: until === null ? "No posts are booked yet." : `Posts booked until ${dayLabel(until, { day: "numeric", month: "short" })}.` };
@@ -80,6 +81,11 @@ export function SocialView({ data, notice, now, setup = [] }: SocialViewProps): 
             </p>
           ) : null}
           {status.action === null ? null : <ConnectStatusCard status={status} />}
+          {allPaused(connect.channels) ? (
+            <p role="status" className="rounded-xl bg-warn-wash px-4 py-3 text-[0.84375rem] font-semibold text-warn">
+              Your posts are paused. Nothing is being sent for now. Posts whose time comes while it is paused are skipped, and new ones go out again when we resume.
+            </p>
+          ) : null}
           <SocialCalendar
             posts={connect.posts}
             today={connect.today}

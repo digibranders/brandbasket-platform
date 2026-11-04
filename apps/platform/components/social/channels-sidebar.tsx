@@ -15,6 +15,8 @@ export interface ChannelRow {
   readonly account: string;
   /** "Ends in 5 days" when the connection ends soon (or has), else null. */
   readonly ending: string | null;
+  /** Posts are being held back from this account. */
+  readonly paused: boolean;
 }
 
 interface ChannelsSidebarProps {
@@ -77,6 +79,7 @@ export function ChannelsSidebar({ rows, bookedLine }: ChannelsSidebarProps): Rea
                     {row.account}
                     <span className="sr-only">, {PLATFORM_NAMES[row.platform]}</span>
                   </span>
+                  {row.paused ? <span className="mt-0.5 block text-xs font-semibold text-warn">Paused</span> : null}
                 </span>
               </button>
               {row.ending === null ? null : (

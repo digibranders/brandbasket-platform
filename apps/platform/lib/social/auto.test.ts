@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  allPaused,
   canChange,
   channelIdsOf,
   bookedUntil,
@@ -252,5 +253,19 @@ describe("posts that are skipped or paused", () => {
     const body = { posts: [{ id: "a", date: "2026-11-04T10:00:00+05:30", caption: "Hi", manual: false, state: "paused", channels: [{ platform: "instagram", account: "x", state: "skipped", permalink: null }] }] };
     expect(readPosts(body)[0]?.state).toBe("paused");
     expect(readPosts(body)[0]?.channels[0]?.state).toBe("skipped");
+  });
+});
+
+describe("when posting is paused for the business", () => {
+  it("is only when it has accounts and every one is held back", () => {
+    expect(allPaused([])).toBe(false);
+    expect(allPaused([channel({ paused: true })])).toBe(true);
+    expect(allPaused([channel({ paused: true }), channel({ id: "facebook:2", paused: false })])).toBe(false);
+    expect(allPaused([channel({ paused: true }), channel({ id: "facebook:2" })])).toBe(false);
+  });
+
+  it("reads the paused flag of a channel", () => {
+    const body = { workspace: { channels: [{ id: "facebook:2", platform: "facebook", account: "P", connectedAt: "t", paused: true }, { id: "instagram:1", platform: "instagram", account: "I", connectedAt: "t" }] } };
+    expect(readChannels(body).map((c) => c.paused)).toEqual([true, undefined]);
   });
 });

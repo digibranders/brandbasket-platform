@@ -117,6 +117,24 @@ describe("the Social media page with social-auto switched on", () => {
   });
 });
 
+describe("when the team has paused posting", () => {
+  const channels = connect().channels;
+
+  it("says Paused under a channel that is held back, and says nothing when none is", () => {
+    const some = view(connect({ channels: channels.map((channel, index) => (index === 0 ? { ...channel, paused: true } : channel)) }));
+    expect(count(some, ">Paused<")).toBe(1);
+    expect(some).not.toContain("Your posts are paused");
+    expect(view(connect())).not.toContain(">Paused<");
+  });
+
+  it("puts one plain notice at the top when every account is held back", () => {
+    const html = view(connect({ channels: channels.map((channel) => ({ ...channel, paused: true })) }));
+    expect(html).toContain("Your posts are paused. Nothing is being sent for now.");
+    expect(count(html, ">Paused<")).toBe(channels.length);
+    expect(view(connect({ channels: [], posts: [] }))).not.toContain("Your posts are paused");
+  });
+});
+
 describe("adding a post from the calendar", () => {
   const free = (html: string): string[] => [...html.matchAll(/aria-label="New post on ([^"]+)"/g)].map((match) => match[1]?.replace(/ at .*$/, "") as string);
   const slots = (html: string): string[] => [...html.matchAll(/aria-label="New post on ([^"]+)"/g)].map((match) => match[1] as string);
