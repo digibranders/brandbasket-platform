@@ -4,26 +4,25 @@ import { createContext, useCallback, useContext, useMemo, useState, type ReactEl
 import { CHANNEL_PLATFORMS, type ChannelPlatform } from "@/lib/social/auto";
 
 interface ChannelFilter {
-  /** The networks whose posts the calendar shows. */
+  /** The networks whose posts the calendar shows: all of them, or only the one that was tapped. */
   readonly shown: ReadonlySet<ChannelPlatform>;
-  /** Shows or hides one network's posts. The last one shown stays, so the calendar is never empty by accident. */
-  readonly toggle: (platform: ChannelPlatform) => void;
+  /** Whether the calendar is limited to some of the networks. */
+  readonly filtering: boolean;
+  /** Shows only this network's posts; tapping the one that is already alone shows every network again. */
+  readonly only: (platform: ChannelPlatform) => void;
+  readonly showAll: () => void;
 }
 
 const FilterContext = createContext<ChannelFilter | null>(null);
 
-/** Shares which channels are switched on between the channels column and the calendar. */
+/** Shares which network the calendar is limited to between the channels column and the calendar. */
 export function ChannelFilterProvider({ children }: { readonly children: ReactNode }): ReactElement {
   const [shown, setShown] = useState<ReadonlySet<ChannelPlatform>>(() => new Set(CHANNEL_PLATFORMS));
-  const toggle = useCallback((platform: ChannelPlatform): void => {
-    setShown((current) => {
-      const next = new Set(current);
-      if (!next.has(platform)) next.add(platform);
-      else if (next.size > 1) next.delete(platform);
-      return next;
-    });
+  const only = useCallback((platform: ChannelPlatform): void => {
+    setShown((current) => (current.size === 1 && current.has(platform) ? new Set(CHANNEL_PLATFORMS) : new Set([platform])));
   }, []);
-  const value = useMemo(() => ({ shown, toggle }), [shown, toggle]);
+  const showAll = useCallback((): void => setShown(new Set(CHANNEL_PLATFORMS)), []);
+  const value = useMemo(() => ({ shown, filtering: shown.size < CHANNEL_PLATFORMS.length, only, showAll }), [shown, only, showAll]);
   return <FilterContext value={value}>{children}</FilterContext>;
 }
 

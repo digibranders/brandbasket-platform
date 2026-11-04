@@ -43,7 +43,7 @@ function ConnectButton({ platform, label, className, logo = false }: { readonly 
  * network's posts on or off in the calendar; a network with no account yet has a Connect button.
  */
 export function ChannelsSidebar({ rows, businessName, bookedLine }: ChannelsSidebarProps): ReactElement {
-  const { shown, toggle } = useChannelFilter();
+  const { shown, filtering, only, showAll } = useChannelFilter();
   const missing = CHANNEL_PLATFORMS.filter((platform) => !rows.some((row) => row.platform === platform));
   return (
     <aside
@@ -56,19 +56,25 @@ export function ChannelsSidebar({ rows, businessName, bookedLine }: ChannelsSide
       </h2>
       <p className="mt-1 px-1 text-[0.84375rem] leading-snug text-ink-2">Tap a channel to see only its posts.</p>
 
+      {filtering ? (
+        <button type="button" onClick={showAll} className="mt-2 px-1 text-[0.84375rem] font-semibold text-ink-2 underline">
+          Show all channels
+        </button>
+      ) : null}
+
       <ul className="mt-3 grid gap-0.5">
         {rows.map((row) => {
-          const on = shown.has(row.platform);
+          const selected = filtering && shown.has(row.platform);
           return (
             <li key={row.id}>
               <button
                 type="button"
-                aria-pressed={on}
-                onClick={() => toggle(row.platform)}
-                className="grid w-full grid-cols-[2.25rem_minmax(0,1fr)] items-center gap-3 rounded-lg px-1.5 py-2 text-left transition-colors hover:bg-sunken"
+                aria-pressed={selected}
+                onClick={() => only(row.platform)}
+                className={cn("grid w-full grid-cols-[2.25rem_minmax(0,1fr)] items-center gap-3 rounded-lg px-1.5 py-2 text-left transition-colors hover:bg-sunken", selected && "bg-sunken")}
               >
-                <ChannelLogo platform={row.platform} dim={!on} />
-                <span className={cn("min-w-0", !on && "opacity-50")}>
+                <ChannelLogo platform={row.platform} />
+                <span className={cn("min-w-0", filtering && !selected && "opacity-60")}>
                   <span className="block break-words text-[0.84375rem] font-semibold leading-tight text-ink">{row.account}</span>
                   <span className="block text-xs text-ink-2">
                     {PLATFORM_NAMES[row.platform]} &middot; {businessName}

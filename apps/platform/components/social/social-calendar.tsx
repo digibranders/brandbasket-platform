@@ -1,7 +1,7 @@
 "use client";
 
-import { CaretLeft, CaretRight, CheckCircle, Clock, ClockCountdown, Plus, Warning } from "@phosphor-icons/react/dist/ssr";
-import { useEffect, useMemo, useRef, useState, useSyncExternalStore, useTransition, type DragEvent, type ReactElement } from "react";
+import { CaretLeft, CaretRight, CheckCircle, Clock, ClockCountdown, DotsSixVertical, Plus, Warning } from "@phosphor-icons/react/dist/ssr";
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore, useTransition, type KeyboardEvent as ReactKeyboardEvent, type ReactElement } from "react";
 import { addDays, localDateIn } from "@brandbasket/shared/lib/calendar/local-date";
 import { cn } from "@brandbasket/shared/lib/cn";
 import { LIFT } from "@/components/v2/classes";
@@ -14,6 +14,7 @@ import { useChannelFilter } from "./channel-filter";
 import { NewPostDialog } from "./new-post-dialog";
 import { useNewPostRequests } from "./new-post-request";
 import { PostDetailsDialog } from "./post-details-dialog";
+import { cellKey, usePostDrag, type PostDrag } from "./use-post-drag";
 
 type View = "day" | "week" | "month";
 type Entry = { readonly post: CalendarPost; readonly status: PostStatus };
@@ -62,37 +63,16 @@ function indiaNow(minute: number | null): IndiaNow | null {
 
 /** Moving a post by dragging it onto another day or hour. Only posts the customer made can be dragged, and only onto a moment still ahead. */
 interface Dnd {
-  readonly dragging: CalendarPost | null;
+  readonly drag: PostDrag;
   /** The post being moved, while social-auto answers. */
   readonly movingId: string | null;
-  /** The cell the post is over, to light it up. */
-  readonly over: string | null;
-  readonly start: (post: CalendarPost) => void;
-  readonly end: () => void;
-  readonly hover: (key: string | null) => void;
-  /** Whether the dragged post may land on this day and time. */
-  readonly allowed: (day: string, time: string) => boolean;
-  readonly drop: (day: string, time: string) => void;
 }
 
-/** What a cell needs to accept a dragged post: it lights up when the post can land there, and a drop moves the post. */
-function dropTarget(dnd: Dnd | undefined, key: string, day: string, time: string): { readonly props: object; readonly lit: boolean } {
-  if (dnd === undefined || dnd.dragging === null) return { props: {}, lit: false };
-  return {
-    lit: dnd.over === key && dnd.allowed(day, time),
-    props: {
-      onDragOver: (event: DragEvent): void => {
-        if (!dnd.allowed(day, time)) return;
-        event.preventDefault();
-        dnd.hover(key);
-      },
-      onDragLeave: (): void => dnd.hover(null),
-      onDrop: (event: DragEvent): void => {
-        event.preventDefault();
-        dnd.drop(day, time);
-      },
-    },
-  };
+/** What a cell says so a dragged post can land on it (see use-post-drag), and whether to light it up. */
+function dropCell(dnd: Dnd | undefined, day: string, hour?: number): { readonly attrs: Record<string, string>; readonly lit: boolean } {
+  const attrs: Record<string, string> = { "data-drop-day": day };
+  if (hour !== undefined) attrs["data-drop-hour"] = String(hour);
+  return { attrs, lit: dnd?.drag.over === cellKey(day, hour) };
 }
 
 const LIT = "bg-rattan-wash ring-2 ring-rattan-text";
@@ -112,18 +92,31 @@ function AddHere({ day, time, onAdd }: { readonly day: string; readonly time?: s
   );
 }
 
+/** Enter and Space open a post that is a draggable box rather than a button (a button cannot be dragged in every browser). */
+const openOnKey = (action: () => void) => (event: ReactKeyboardEvent): void => {
+  if (event.key !== "Enter" && event.key !== " ") return;
+  event.preventDefault();
+  action();
+};
+
+/** What a post box needs to be picked up: a press starts the drag (it begins only once the pointer moves), and the box says so with a grab cursor. */
+function dragProps(dnd: Dnd | undefined, post: CalendarPost): object {
+  if (dnd === undefined || !canChange(post)) return {};
+  return { onPointerDown: (event: React.PointerEvent) => dnd.drag.begin(event, post) };
+}
+
 /** A post inside an hourly cell: a small preview, like a draft in a calendar slot. */
 function Slot({ entry, large, fallback, onOpen, dnd }: { readonly entry: Entry; readonly large: boolean; readonly fallback: string; readonly onOpen?: ((post: CalendarPost) => void) | undefined; readonly dnd?: Dnd | undefined }): ReactElement {
   const { post, status } = entry;
   const body = (
     <>
-      <span aria-hidden="true" className="grid size-[1.625rem] shrink-0 place-items-center rounded-full bg-sunken text-xs font-semibold text-ink-2 @max-[58rem]/cal:hidden">
+      <span aria-hidden="true" className="grid size-[1.625rem] shrink-0 place-items-center rounded-full bg-sunken text-xs font-semibold text-ink-2 @max-[70rem]/cal:hidden">
         {initialOf(post, fallback)}
       </span>
-      <span className="grid min-w-0 flex-1">
-        <span className="flex items-center gap-1 whitespace-nowrap text-xs font-bold text-ink">
+      <span className="grid min-w-0 flex-1 overflow-hidden">
+        <span className="flex min-w-0 items-center gap-1 whitespace-nowrap text-xs font-bold text-ink">
           <StateMark state={status.state} />
-          {time12(post.time)}
+          <span className="min-w-0 truncate">{time12(post.time)}</span>
           <span className="sr-only">, {status.word}</span>
         </span>
         <span className={cn("line-clamp-2 break-words text-xs leading-snug text-ink-2", large && "text-[0.84375rem]")}>{post.caption}</span>
@@ -134,18 +127,21 @@ function Slot({ entry, large, fallback, onOpen, dnd }: { readonly entry: Entry; 
   const label = `${canChange(post) ? "Change" : "Open"} the post on ${dayLabel(post.day, { weekday: "long", day: "numeric", month: "long" })} at ${time12(post.time)}`;
   const movable = dnd !== undefined && canChange(post);
   return onOpen !== undefined ? (
-    <button
-      type="button"
-      title={`${status.word}: ${post.caption}`}
-      onClick={() => onOpen(post)}
+    <div
+      role="button"
+      tabIndex={0}
+      title={movable ? `${status.word}: ${post.caption}. Drag to move it.` : `${status.word}: ${post.caption}`}
+      onClick={() => {
+        if (!dnd?.drag.takeDragged()) onOpen(post);
+      }}
+      onKeyDown={openOnKey(() => onOpen(post))}
       aria-label={label}
-      draggable={movable}
-      onDragStart={movable ? (event) => { event.dataTransfer.effectAllowed = "move"; event.dataTransfer.setData("text/plain", post.id); dnd.start(post); } : undefined}
-      onDragEnd={movable ? dnd.end : undefined}
-      className={cn(box, "w-full cursor-pointer hover:border-ink-3", movable && "active:cursor-grabbing", (dnd?.dragging?.id === post.id || dnd?.movingId === post.id) && "opacity-40")}
+      {...dragProps(dnd, post)}
+      className={cn(box, "w-full cursor-pointer overflow-hidden hover:border-ink-3", movable && "cursor-grab select-none active:cursor-grabbing", (dnd?.drag.dragging?.id === post.id || dnd?.movingId === post.id) && "opacity-40")}
     >
+      {movable ? <DotsSixVertical size={14} weight="bold" aria-hidden="true" className="-mx-0.5 shrink-0 text-ink-3 @max-[70rem]/cal:hidden" /> : null}
       {body}
-    </button>
+    </div>
   ) : (
     <div title={`${status.word}: ${post.caption}`} className={box}>
       {body}
@@ -252,9 +248,9 @@ function TimeGrid({ days, entries, focus, on, today, now, fallback, onAdd, onOpe
               {days.map((day) => {
                 const past = now !== null && (day < now.day || (day === now.day && hour < now.hour));
                 const here = on(day).filter((entry) => Number(entry.post.time.slice(0, 2)) === hour);
-                const target = dropTarget(dnd, `${day}T${hour}`, day, `${String(hour).padStart(2, "0")}:${dnd?.dragging?.time.slice(3) ?? "00"}`);
+                const target = dropCell(dnd, day, hour);
                 return (
-                  <div key={day} role="gridcell" {...target.props} className={cn("relative flex min-h-[4.25rem] min-w-0 flex-col gap-1 rounded-lg border border-line bg-bg p-1", past && HATCH, target.lit && LIT)}>
+                  <div key={day} role="gridcell" {...target.attrs} className={cn("relative flex min-h-[4.25rem] min-w-0 flex-col gap-1 rounded-lg border border-line bg-bg p-1", past && HATCH, target.lit && LIT)}>
                     {onAdd !== undefined && here.length === 0 && !past && canAddOn(day, today) ? <AddHere day={day} time={`${String(hour).padStart(2, "0")}:00`} onAdd={onAdd} /> : null}
                     {here.map((entry) => (
                       <Slot key={entry.post.id} entry={entry} large={large} fallback={fallback} onOpen={onOpen} dnd={dnd} />
@@ -299,9 +295,9 @@ function Month({ cursor, today, on, openDay, onAdd, onOpen, dnd }: MonthProps): 
         const entries = on(day);
         const more = entries.length - MONTH_CHIPS_PER_DAY;
         // Dropped on a day, a post keeps its own time.
-        const target = dropTarget(dnd, day, day, dnd?.dragging?.time ?? DEFAULT_TIME);
+        const target = dropCell(dnd, day);
         return (
-          <div key={day} role="gridcell" {...target.props} className={cn("relative grid min-h-24 min-w-0 content-start gap-1 rounded-lg bg-bg px-1.5 py-2 sm:min-h-[7.75rem]", day.slice(0, 7) !== month && "opacity-45", target.lit && LIT)}>
+          <div key={day} role="gridcell" {...target.attrs} className={cn("relative grid min-h-24 min-w-0 content-start gap-1 rounded-lg bg-bg px-1.5 py-2 sm:min-h-[7.75rem]", day.slice(0, 7) !== month && "opacity-45", target.lit && LIT)}>
             {onAdd !== undefined && canAddOn(day, today) ? <AddHere day={day} onAdd={onAdd} /> : null}
             <span className={cn("pointer-events-none relative min-w-[1.625rem] justify-self-center rounded-md px-1.5 py-0.5 text-center text-[0.84375rem] font-semibold", day === today ? "bg-rattan-wash text-rattan-text" : cn("text-ink-3", day < today && "opacity-60"))}>
               {Number(day.slice(8))}
@@ -320,18 +316,20 @@ function Month({ cursor, today, on, openDay, onAdd, onOpen, dnd }: MonthProps): 
               const box = cn("relative flex min-w-0 items-center gap-1.5 rounded-md border border-line px-1.5 py-0.5 text-left text-xs", GROUND[status.state]);
               const movable = dnd !== undefined && canChange(post);
               return onOpen !== undefined ? (
-                <button
+                <div
                   key={post.id}
-                  type="button"
-                  title={`${status.word}: ${post.caption}`}
-                  onClick={() => onOpen(post)}
-                  draggable={movable}
-                  onDragStart={movable ? (event) => { event.dataTransfer.effectAllowed = "move"; event.dataTransfer.setData("text/plain", post.id); dnd.start(post); } : undefined}
-                  onDragEnd={movable ? dnd.end : undefined}
-                  className={cn(box, "z-10 cursor-pointer hover:border-ink-3", (dnd?.dragging?.id === post.id || dnd?.movingId === post.id) && "opacity-40")}
+                  role="button"
+                  tabIndex={0}
+                  title={movable ? `${status.word}: ${post.caption}. Drag to move it.` : `${status.word}: ${post.caption}`}
+                  onClick={() => {
+                    if (!dnd?.drag.takeDragged()) onOpen(post);
+                  }}
+                  onKeyDown={openOnKey(() => onOpen(post))}
+                  {...dragProps(dnd, post)}
+                  className={cn(box, "z-10 cursor-pointer hover:border-ink-3", movable && "cursor-grab select-none active:cursor-grabbing", (dnd?.drag.dragging?.id === post.id || dnd?.movingId === post.id) && "opacity-40")}
                 >
                   {chip}
-                </button>
+                </div>
               ) : (
                 <span key={post.id} title={`${status.word}: ${post.caption}`} className={cn(box, "pointer-events-none")}>
                   {chip}
@@ -376,9 +374,7 @@ export function SocialCalendar({ posts, today, lede, businessName, channels }: S
   const [adding, setAdding] = useState<{ readonly day: string; readonly time: string } | null>(null);
   // A post that cannot be changed, opened to read.
   const [reading, setReading] = useState<CalendarPost | null>(null);
-  // Drag and drop: the post being dragged, the cell it is over, and the post being moved while social-auto answers.
-  const [dragging, setDragging] = useState<CalendarPost | null>(null);
-  const [over, setOver] = useState<string | null>(null);
+  // The post being moved by a drag, while social-auto answers.
   const [movingId, setMovingId] = useState<string | null>(null);
   const [moveError, setMoveError] = useState<string | null>(null);
   const [, startMove] = useTransition();
@@ -418,46 +414,29 @@ export function SocialCalendar({ posts, today, lede, businessName, channels }: S
   const onAdd = canAdd ? (day: string, time: string = DEFAULT_TIME): void => setAdding({ day, time }) : undefined;
   // A post the customer made and that has not gone out opens to be changed; any other opens to be read.
   const onOpen = (post: CalendarPost): void => (canAdd && canChange(post) ? setChanging({ post, day: post.day }) : setReading(post));
-  const allowed = (day: string, time: string): boolean =>
-    dragging !== null && canAddOn(day, today) && !(day === dragging.day && time === dragging.time) && !momentHasPassed(day, time, new Date());
-  const dnd: Dnd | undefined = canAdd
-    ? {
-        dragging,
-        movingId,
-        over,
-        start: (post) => {
-          setMoveError(null);
-          setDragging(post);
-        },
-        end: () => {
-          setDragging(null);
-          setOver(null);
-        },
-        hover: setOver,
-        allowed,
-        drop: (day, time) => {
-          const post = dragging;
-          setDragging(null);
-          setOver(null);
-          if (post === null || !allowed(day, time)) return;
-          setMovingId(post.id);
-          startMove(async () => {
-            try {
-              const form = new FormData();
-              form.set("postId", post.id);
-              form.set("day", day);
-              form.set("time", time);
-              const result = await movePostAction(form);
-              if (result.status === "error") setMoveError(result.message);
-            } catch {
-              setMoveError("The post could not be moved. Check your connection and try again.");
-            } finally {
-              setMovingId(null);
-            }
-          });
-        },
-      }
-    : undefined;
+  // Dragging a post the customer made onto another day or hour: only onto a moment still ahead that is not where it already is.
+  const drag = usePostDrag({
+    allowed: (post, day, time) => canAddOn(day, today) && !(day === post.day && time === post.time) && !momentHasPassed(day, time, new Date()),
+    onDrop: (post, day, time) => {
+      setMoveError(null);
+      setMovingId(post.id);
+      startMove(async () => {
+        try {
+          const form = new FormData();
+          form.set("postId", post.id);
+          form.set("day", day);
+          form.set("time", time);
+          const result = await movePostAction(form);
+          if (result.status === "error") setMoveError(result.message);
+        } catch {
+          setMoveError("The post could not be moved. Check your connection and try again.");
+        } finally {
+          setMovingId(null);
+        }
+      });
+    },
+  });
+  const dnd: Dnd | undefined = canAdd ? { drag, movingId } : undefined;
   // New post: the first day in view that can take one, else tomorrow.
   const firstFreeDay = (): { readonly day: string; readonly time: string } => ({ day: freeDay(), time: DEFAULT_TIME });
   const freeDay = (): string => (view === "month" ? monthGrid(cursor) : days).find((day) => canAddOn(day, today)) ?? earliestDay(today);
@@ -509,7 +488,11 @@ export function SocialCalendar({ posts, today, lede, businessName, channels }: S
           </div>
         </div>
       </div>
-      <p className="-mt-1 text-[0.84375rem] text-ink-2">{lede}</p>
+      {drag.ghost}
+      <p className="-mt-1 text-[0.84375rem] text-ink-2">
+        {lede}
+        {canAdd ? " Drag a post you made to another day or hour to move it." : ""}
+      </p>
       {adding === null || !canAdd ? null : <NewPostDialog day={adding.day} onDayChange={(day) => setAdding({ day, time: adding.time })} time={adding.time} today={today} channels={channels} onClose={() => setAdding(null)} />}
       {reading === null ? null : <PostDetailsDialog key={reading.id} post={reading} onClose={() => setReading(null)} />}
       {moveError === null ? null : (
