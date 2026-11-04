@@ -1,6 +1,6 @@
 "use client";
 
-import { CaretLeft, CaretRight, CheckCircle, Clock, ClockCountdown, DotsSixVertical, Plus, Warning } from "@phosphor-icons/react/dist/ssr";
+import { CaretLeft, CaretRight, CheckCircle, Clock, ClockCountdown, DotsSixVertical, PauseCircle, Plus, Prohibit, Warning } from "@phosphor-icons/react/dist/ssr";
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore, useTransition, type KeyboardEvent as ReactKeyboardEvent, type ReactElement } from "react";
 import { addDays, localDateIn } from "@brandbasket/shared/lib/calendar/local-date";
 import { cn } from "@brandbasket/shared/lib/cn";
@@ -29,13 +29,15 @@ const GROUND: Readonly<Record<PostState, string>> = {
   scheduled: "bg-surface",
   due: "bg-surface",
   missed: "bg-error-wash",
+  skipped: "bg-surface border-dashed",
+  paused: "bg-surface border-dashed",
 };
-const MARK: Readonly<Record<PostState, string>> = { published: "text-ok", scheduled: "text-info", due: "text-warn", missed: "text-error" };
+const MARK: Readonly<Record<PostState, string>> = { published: "text-ok", scheduled: "text-info", due: "text-warn", missed: "text-error", skipped: "text-ink-3", paused: "text-warn" };
 const PILL: Readonly<Record<PostStatus["tone"], string>> = { ok: "bg-ok-wash text-ok", info: "bg-info-wash text-info", warn: "bg-warn-wash text-warn" };
 const HATCH = "bg-[repeating-linear-gradient(135deg,transparent_0_6px,var(--color-line)_6px_7px)]";
 
 function StateMark({ state }: { readonly state: PostState }): ReactElement {
-  const Mark = state === "published" ? CheckCircle : state === "missed" ? Warning : state === "due" ? ClockCountdown : Clock;
+  const Mark = state === "published" ? CheckCircle : state === "missed" ? Warning : state === "due" ? ClockCountdown : state === "skipped" ? Prohibit : state === "paused" ? PauseCircle : Clock;
   return <Mark size={14} weight="fill" aria-hidden="true" className={cn("shrink-0", MARK[state])} />;
 }
 

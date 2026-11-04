@@ -23,7 +23,7 @@ export const PLATFORM_HINTS: Readonly<Record<ChannelPlatform, string>> = {
 export const isChannelPlatform = (value: unknown): value is ChannelPlatform => CHANNEL_PLATFORMS.some((platform) => platform === value);
 
 const platformSchema = z.enum(CHANNEL_PLATFORMS);
-const postStateSchema = z.enum(["scheduled", "due", "published", "missed"]);
+const postStateSchema = z.enum(["scheduled", "due", "published", "missed", "skipped", "paused"]);
 
 const channelSchema = z.object({
   id: z.string().min(1),
@@ -232,7 +232,12 @@ export interface PostStatus {
  * its day, Going out when its day has come and it is on its way, otherwise Scheduled. Null when none of its channels is shown.
  */
 export function postStatus(post: CalendarPost, shown: ReadonlySet<ChannelPlatform>): PostStatus | null {
-  if (post.channels.length === 0) return post.state === "missed" ? { tone: "warn", word: "Not sent", state: "missed" } : { tone: "info", word: "Scheduled", state: "scheduled" };
+  if (post.channels.length === 0) {
+    if (post.state === "missed") return { tone: "warn", word: "Not sent", state: "missed" };
+    if (post.state === "skipped") return { tone: "info", word: "Skipped", state: "skipped" };
+    if (post.state === "paused") return { tone: "info", word: "Paused", state: "paused" };
+    return { tone: "info", word: "Scheduled", state: "scheduled" };
+  }
   const relevant = post.channels.filter((channel) => shown.has(channel.platform));
   if (relevant.length === 0) return null;
   const missed = relevant.filter((channel) => channel.state === "missed");
@@ -240,8 +245,12 @@ export function postStatus(post: CalendarPost, shown: ReadonlySet<ChannelPlatfor
     const names = [...new Set(missed.map((channel) => PLATFORM_NAMES[channel.platform]))];
     return { tone: "warn", word: missed.length === relevant.length ? "Not sent" : `Not sent to ${names.join(" and ")}`, state: "missed" };
   }
-  if (relevant.every((channel) => channel.state === "published")) return { tone: "ok", word: "Posted", state: "published" };
-  if (relevant.some((channel) => channel.state === "due")) return { tone: "info", word: "Going out", state: "due" };
+  // A channel the post was skipped on is not one it was meant for: Posted when every other channel has it.
+  const meant = relevant.filter((channel) => channel.state !== "skipped");
+  if (meant.length === 0) return { tone: "info", word: "Skipped", state: "skipped" };
+  if (meant.every((channel) => channel.state === "published")) return { tone: "ok", word: "Posted", state: "published" };
+  if (meant.some((channel) => channel.state === "due")) return { tone: "info", word: "Going out", state: "due" };
+  if (meant.some((channel) => channel.state === "paused")) return { tone: "info", word: "Paused", state: "paused" };
   return { tone: "info", word: "Scheduled", state: "scheduled" };
 }
 
@@ -293,8 +302,8 @@ export function postToShow<T extends { readonly post: Pick<CalendarPost, "day" |
   return (now === null ? undefined : ordered.find((entry) => `${entry.post.day}T${entry.post.time}` >= now)) ?? ordered[0] ?? null;
 }
 
-/** Whether the customer can still change or remove a post: one they made, that has not started going out, and whose accounts are known. */
-export const canChange = (post: CalendarPost): boolean => post.manual && post.state === "scheduled" && post.channels.every((channel) => channel.id !== undefined);
+/** Whether the customer can still change or remove a post: one they made, that has not started going out (a paused one can still be edited), and whose accounts are known. */
+export const canChange = (post: CalendarPost): boolean => post.manual && (post.state === "scheduled" || post.state === "paused") && post.channels.every((channel) => channel.id !== undefined);
 
 /** The ids of the accounts a post goes to. */
 export const channelIdsOf = (post: CalendarPost): string[] => post.channels.flatMap((channel) => (channel.id === undefined ? [] : [channel.id]));

@@ -47,4 +47,9 @@ describe("a post opened to read", () => {
     expect(text(post({ state: "due" }))).toContain("going out now");
     expect(text(post({ state: "missed" }))).toContain("could not be sent to every account");
   });
+
+  it("says plainly when a post was skipped or is paused, even one we wrote", () => {
+    expect(text(post({ manual: false, state: "skipped" }))).toContain("This post was skipped, so it will not be sent.");
+    expect(text(post({ state: "paused" }))).toContain("This post is paused, so it is not going out right now.");
+  });
 });

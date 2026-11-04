@@ -228,3 +228,29 @@ describe("which posts the customer can still change", () => {
     expect(canChange({ ...made, channels: [{ platform: "instagram", account: "acme_foods", state: "scheduled", permalink: null }] })).toBe(false);
   });
 });
+
+describe("posts that are skipped or paused", () => {
+  const on = (state: "scheduled" | "due" | "published" | "missed" | "skipped" | "paused", id = "instagram:1"): CalendarPost["channels"][number] => ({ id, platform: "instagram", account: "acme", state, permalink: null });
+  const withChannels = (...channels: CalendarPost["channels"]): CalendarPost => post({ manual: true, state: "scheduled", channels });
+
+  it("says Skipped, or Paused, in a word, and a skipped channel does not stop a post from being Posted", () => {
+    expect(postStatus(withChannels(on("skipped")), ALL)).toMatchObject({ word: "Skipped", state: "skipped" });
+    expect(postStatus(withChannels(on("paused")), ALL)).toMatchObject({ word: "Paused", state: "paused" });
+    expect(postStatus(withChannels(on("paused"), { ...on("scheduled"), platform: "facebook", id: "facebook:2" }), ALL)).toMatchObject({ word: "Paused" });
+    expect(postStatus(withChannels(on("published"), { ...on("skipped"), platform: "facebook", id: "facebook:2" }), ALL)).toMatchObject({ word: "Posted" });
+    expect(postStatus(withChannels(on("paused"), { ...on("due"), platform: "facebook", id: "facebook:2" }), ALL)).toMatchObject({ word: "Going out" });
+    expect(postStatus(post({ channels: [], state: "skipped" }), ALL)).toMatchObject({ word: "Skipped" });
+    expect(postStatus(post({ channels: [], state: "paused" }), ALL)).toMatchObject({ word: "Paused" });
+  });
+
+  it("can still be edited while paused, but not once skipped", () => {
+    expect(canChange({ ...withChannels(on("paused")), state: "paused" })).toBe(true);
+    expect(canChange({ ...withChannels(on("skipped")), state: "skipped" })).toBe(false);
+  });
+
+  it("is read from social-auto's answer", () => {
+    const body = { posts: [{ id: "a", date: "2026-11-04T10:00:00+05:30", caption: "Hi", manual: false, state: "paused", channels: [{ platform: "instagram", account: "x", state: "skipped", permalink: null }] }] };
+    expect(readPosts(body)[0]?.state).toBe("paused");
+    expect(readPosts(body)[0]?.channels[0]?.state).toBe("skipped");
+  });
+});

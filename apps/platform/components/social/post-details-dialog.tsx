@@ -14,6 +14,8 @@ interface PostDetailsDialogProps {
 
 /** What to say about whether the customer can change this post, in plain words. */
 function changeNote(post: CalendarPost): string {
+  if (post.state === "skipped") return "This post was skipped, so it will not be sent.";
+  if (post.state === "paused") return "This post is paused, so it is not going out right now. It goes out when the pause ends, unless its time comes first.";
   if (!post.manual) return "We wrote this post for you. To change it, ask us and we will.";
   if (post.state === "published") return "This post has gone out, so it can no longer be changed.";
   if (post.state === "missed") return "This post could not be sent to every account, so it can no longer be changed.";
