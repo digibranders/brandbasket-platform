@@ -19,8 +19,6 @@ export interface ChannelRow {
 
 interface ChannelsSidebarProps {
   readonly rows: readonly ChannelRow[];
-  /** The business's name, under each account: "Instagram · Om Sweets". */
-  readonly businessName: string;
   /** "Posts booked until 30 Nov.", or what to say when none are. */
   readonly bookedLine: string;
 }
@@ -42,14 +40,14 @@ function ConnectButton({ platform, label, className, logo = false }: { readonly 
  * The second sidebar of the Social media page: only the channels. Each connected account is a row that switches that
  * network's posts on or off in the calendar; a network with no account yet has a Connect button.
  */
-export function ChannelsSidebar({ rows, businessName, bookedLine }: ChannelsSidebarProps): ReactElement {
+export function ChannelsSidebar({ rows, bookedLine }: ChannelsSidebarProps): ReactElement {
   const { shown, filtering, only, showAll } = useChannelFilter();
   const missing = CHANNEL_PLATFORMS.filter((platform) => !rows.some((row) => row.platform === platform));
   return (
     <aside
       id="channels"
       aria-labelledby="channels-title"
-      className="border-t border-line bg-surface p-4 pb-28 md:px-8 lg:sticky lg:top-0 lg:h-dvh lg:w-[15.25rem] lg:shrink-0 lg:overflow-y-auto lg:border-t-0 lg:border-r lg:px-4 lg:py-8 lg:pb-8"
+      className="border-t border-line bg-surface p-4 pb-28 md:px-8 lg:sticky lg:top-0 lg:h-dvh lg:w-[13rem] lg:shrink-0 lg:overflow-y-auto lg:border-t-0 lg:border-r lg:px-4 lg:py-8 lg:pb-8"
     >
       <h2 id="channels-title" className="px-1 font-display text-[1.0625rem] font-semibold text-ink">
         Channels
@@ -71,13 +69,13 @@ export function ChannelsSidebar({ rows, businessName, bookedLine }: ChannelsSide
                 type="button"
                 aria-pressed={selected}
                 onClick={() => only(row.platform)}
-                className={cn("grid w-full grid-cols-[2.25rem_minmax(0,1fr)] items-center gap-3 rounded-lg px-1.5 py-2 text-left transition-colors hover:bg-sunken", selected && "bg-sunken")}
+                className={cn("grid w-full grid-cols-[2.25rem_minmax(0,1fr)] items-center gap-2.5 rounded-lg px-1.5 py-2 text-left transition-colors hover:bg-sunken", selected && "bg-sunken")}
               >
                 <ChannelLogo platform={row.platform} />
                 <span className={cn("min-w-0", filtering && !selected && "opacity-60")}>
-                  <span className="block break-words text-[0.84375rem] font-semibold leading-tight text-ink">{row.account}</span>
-                  <span className="block text-xs text-ink-2">
-                    {PLATFORM_NAMES[row.platform]} &middot; {businessName}
+                  <span className="block break-words text-[0.84375rem] font-semibold leading-tight text-ink">
+                    {row.account}
+                    <span className="sr-only">, {PLATFORM_NAMES[row.platform]}</span>
                   </span>
                 </span>
               </button>

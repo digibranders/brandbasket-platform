@@ -51,7 +51,9 @@ describe("the Social media page with social-auto switched on", () => {
     expect(html).toContain("Channels");
     expect(html).toContain("acme_foods");
     expect(html).toContain("Meera Nair");
-    expect(html).toContain("Instagram · Acme Foods");
+    // Each account is its logo and its name; the network is only for screen readers.
+    expect(html).not.toContain("Instagram · Acme Foods");
+    expect(html).toContain("acme_foods<span class=\"sr-only\">, Instagram</span>");
     expect(html).toContain("Facebook");
     expect(html).toContain("Ends in 5 days");
     expect(html).toContain("Connect Facebook");

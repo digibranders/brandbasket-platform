@@ -140,7 +140,7 @@ export function SocialView({ data, notice, now, setup = [] }: SocialViewProps): 
     <ChannelFilterProvider>
       {/* The channels column sits flush against the rail, so it steps out of the shell's padding and the page puts the same padding back. On a phone the posts come first and the channels follow. */}
       <div className="-mx-4 -mb-28 -mt-6 flex flex-col md:-mx-8 lg:-mb-16 lg:-mt-10 lg:flex-row xl:-mx-10">
-        <ChannelsSidebar rows={rows} businessName={connect.businessName} bookedLine={bookedLine} />
+        <ChannelsSidebar rows={rows} bookedLine={bookedLine} />
         <div className="order-first min-w-0 flex-1 px-4 pb-8 pt-6 md:px-8 lg:order-none lg:pb-16 lg:pt-10 xl:px-10">{frame}</div>
       </div>
     </ChannelFilterProvider>
