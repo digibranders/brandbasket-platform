@@ -1,17 +1,19 @@
 "use client";
 
 import { CaretLeft, CaretRight, CheckCircle, Clock, ClockCountdown, Plus, Warning } from "@phosphor-icons/react/dist/ssr";
-import { useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactElement } from "react";
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore, useTransition, type DragEvent, type ReactElement } from "react";
 import { addDays, localDateIn } from "@brandbasket/shared/lib/calendar/local-date";
 import { cn } from "@brandbasket/shared/lib/cn";
 import { LIFT } from "@/components/v2/classes";
 import { BRAND_TIME_ZONE } from "@/lib/call-dates";
 import { canChange, dayLabel, hourLabel, initialOf, monthGrid, nextPostDay, platformsOf, postStatus, postToShow, shiftMonth, time12, weekOf, type AutoChannel, type CalendarPost, type PostState, type PostStatus } from "@/lib/social/auto";
-import { canAddOn, earliestDay } from "@/lib/social/new-post";
+import { movePostAction } from "@/app/app-host/(protected)/social/actions";
+import { canAddOn, DEFAULT_TIME, earliestDay, momentHasPassed } from "@/lib/social/new-post";
 import { ChannelLogo } from "./channel-logo";
 import { useChannelFilter } from "./channel-filter";
 import { NewPostDialog } from "./new-post-dialog";
 import { useNewPostRequests } from "./new-post-request";
+import { PostDetailsDialog } from "./post-details-dialog";
 
 type View = "day" | "week" | "month";
 type Entry = { readonly post: CalendarPost; readonly status: PostStatus };
@@ -58,14 +60,51 @@ function indiaNow(minute: number | null): IndiaNow | null {
   return { day: localDateIn(BRAND_TIME_ZONE, at), hour, minute: min };
 }
 
-/** The free space of a day or an hour, which opens a new post for that day when it is clicked. Reached by mouse: the New post button does it for the keyboard. */
-function AddHere({ day, onAdd }: { readonly day: string; readonly onAdd: (day: string) => void }): ReactElement {
+/** Moving a post by dragging it onto another day or hour. Only posts the customer made can be dragged, and only onto a moment still ahead. */
+interface Dnd {
+  readonly dragging: CalendarPost | null;
+  /** The post being moved, while social-auto answers. */
+  readonly movingId: string | null;
+  /** The cell the post is over, to light it up. */
+  readonly over: string | null;
+  readonly start: (post: CalendarPost) => void;
+  readonly end: () => void;
+  readonly hover: (key: string | null) => void;
+  /** Whether the dragged post may land on this day and time. */
+  readonly allowed: (day: string, time: string) => boolean;
+  readonly drop: (day: string, time: string) => void;
+}
+
+/** What a cell needs to accept a dragged post: it lights up when the post can land there, and a drop moves the post. */
+function dropTarget(dnd: Dnd | undefined, key: string, day: string, time: string): { readonly props: object; readonly lit: boolean } {
+  if (dnd === undefined || dnd.dragging === null) return { props: {}, lit: false };
+  return {
+    lit: dnd.over === key && dnd.allowed(day, time),
+    props: {
+      onDragOver: (event: DragEvent): void => {
+        if (!dnd.allowed(day, time)) return;
+        event.preventDefault();
+        dnd.hover(key);
+      },
+      onDragLeave: (): void => dnd.hover(null),
+      onDrop: (event: DragEvent): void => {
+        event.preventDefault();
+        dnd.drop(day, time);
+      },
+    },
+  };
+}
+
+const LIT = "bg-rattan-wash ring-2 ring-rattan-text";
+
+/** The free space of a day or an hour, which opens a new post for that day (and hour) when it is clicked. Reached by mouse: the New post button does it for the keyboard. */
+function AddHere({ day, time, onAdd }: { readonly day: string; readonly time?: string; readonly onAdd: (day: string, time?: string) => void }): ReactElement {
   return (
     <button
       type="button"
       tabIndex={-1}
-      onClick={() => onAdd(day)}
-      aria-label={`New post on ${dayLabel(day, { weekday: "long", day: "numeric", month: "long" })}`}
+      onClick={() => onAdd(day, time)}
+      aria-label={`New post on ${dayLabel(day, { weekday: "long", day: "numeric", month: "long" })}${time === undefined ? "" : ` at ${time12(time)}`}`}
       className="group absolute inset-0 z-0 grid cursor-pointer place-items-center rounded-lg text-ink-3 transition-colors hover:bg-sunken"
     >
       <Plus size={16} aria-hidden="true" className="opacity-0 transition-opacity group-hover:opacity-100" />
@@ -74,7 +113,7 @@ function AddHere({ day, onAdd }: { readonly day: string; readonly onAdd: (day: s
 }
 
 /** A post inside an hourly cell: a small preview, like a draft in a calendar slot. */
-function Slot({ entry, large, fallback, onChange }: { readonly entry: Entry; readonly large: boolean; readonly fallback: string; readonly onChange?: ((post: CalendarPost) => void) | undefined }): ReactElement {
+function Slot({ entry, large, fallback, onOpen, dnd }: { readonly entry: Entry; readonly large: boolean; readonly fallback: string; readonly onOpen?: ((post: CalendarPost) => void) | undefined; readonly dnd?: Dnd | undefined }): ReactElement {
   const { post, status } = entry;
   const body = (
     <>
@@ -92,8 +131,19 @@ function Slot({ entry, large, fallback, onChange }: { readonly entry: Entry; rea
     </>
   );
   const box = cn("relative z-10 flex min-w-0 items-center gap-2 rounded-lg border border-line px-1.5 py-1.5 text-left", GROUND[status.state], large && "gap-3 p-2.5");
-  return onChange !== undefined && canChange(post) ? (
-    <button type="button" title={`${status.word}: ${post.caption}`} onClick={() => onChange(post)} aria-label={`Change the post on ${dayLabel(post.day, { weekday: "long", day: "numeric", month: "long" })} at ${time12(post.time)}`} className={cn(box, "w-full cursor-pointer hover:border-ink-3")}>
+  const label = `${canChange(post) ? "Change" : "Open"} the post on ${dayLabel(post.day, { weekday: "long", day: "numeric", month: "long" })} at ${time12(post.time)}`;
+  const movable = dnd !== undefined && canChange(post);
+  return onOpen !== undefined ? (
+    <button
+      type="button"
+      title={`${status.word}: ${post.caption}`}
+      onClick={() => onOpen(post)}
+      aria-label={label}
+      draggable={movable}
+      onDragStart={movable ? (event) => { event.dataTransfer.effectAllowed = "move"; event.dataTransfer.setData("text/plain", post.id); dnd.start(post); } : undefined}
+      onDragEnd={movable ? dnd.end : undefined}
+      className={cn(box, "w-full cursor-pointer hover:border-ink-3", movable && "active:cursor-grabbing", (dnd?.dragging?.id === post.id || dnd?.movingId === post.id) && "opacity-40")}
+    >
       {body}
     </button>
   ) : (
@@ -104,7 +154,7 @@ function Slot({ entry, large, fallback, onChange }: { readonly entry: Entry; rea
 }
 
 /** A post as a row: the day and time, its status, the words, and the networks it goes to. */
-function PostRow({ entry, onChange }: { readonly entry: Entry; readonly onChange?: ((post: CalendarPost) => void) | undefined }): ReactElement {
+function PostRow({ entry, onOpen }: { readonly entry: Entry; readonly onOpen?: ((post: CalendarPost) => void) | undefined }): ReactElement {
   const { post, status } = entry;
   return (
     <li className="grid gap-1.5 py-3.5">
@@ -124,9 +174,10 @@ function PostRow({ entry, onChange }: { readonly entry: Entry; readonly onChange
             <ChannelLogo key={platform} platform={platform} small />
           ))}
         </div>
-        {onChange !== undefined && canChange(post) ? (
-          <button type="button" onClick={() => onChange(post)} className="text-xs font-semibold text-ink-2 underline">
-            Change<span className="sr-only"> the post on {dayLabel(post.day, { weekday: "long", day: "numeric", month: "long" })}</span>
+        {onOpen !== undefined ? (
+          <button type="button" onClick={() => onOpen(post)} className="text-xs font-semibold text-ink-2 underline">
+            {canChange(post) ? "Change" : "View"}
+            <span className="sr-only"> the post on {dayLabel(post.day, { weekday: "long", day: "numeric", month: "long" })}</span>
           </button>
         ) : null}
       </div>
@@ -145,13 +196,14 @@ interface TimeGridProps {
   readonly now: IndiaNow | null;
   readonly fallback: string;
   /** Opens a new post for a day; left out when no account is connected. */
-  readonly onAdd?: ((day: string) => void) | undefined;
-  /** Opens a post the business made, to change or remove it. */
-  readonly onChange?: ((post: CalendarPost) => void) | undefined;
+  readonly onAdd?: ((day: string, time?: string) => void) | undefined;
+  /** Opens a post: to change or remove it when the business made it and it has not gone out, else to read it. */
+  readonly onOpen?: ((post: CalendarPost) => void) | undefined;
+  readonly dnd?: Dnd | undefined;
 }
 
 /** The hourly grid for one day or a whole week, with striped past hours and a line at the time now, as in the team's calendar. */
-function TimeGrid({ days, entries, focus, on, today, now, fallback, onAdd, onChange }: TimeGridProps): ReactElement {
+function TimeGrid({ days, entries, focus, on, today, now, fallback, onAdd, onOpen, dnd }: TimeGridProps): ReactElement {
   const large = days.length === 1;
   const columns = large ? "grid-cols-[3.5rem_minmax(0,1fr)]" : "grid-cols-[3.5rem_repeat(7,minmax(0,1fr))]";
   const body = useRef<HTMLDivElement>(null);
@@ -200,11 +252,12 @@ function TimeGrid({ days, entries, focus, on, today, now, fallback, onAdd, onCha
               {days.map((day) => {
                 const past = now !== null && (day < now.day || (day === now.day && hour < now.hour));
                 const here = on(day).filter((entry) => Number(entry.post.time.slice(0, 2)) === hour);
+                const target = dropTarget(dnd, `${day}T${hour}`, day, `${String(hour).padStart(2, "0")}:${dnd?.dragging?.time.slice(3) ?? "00"}`);
                 return (
-                  <div key={day} role="gridcell" className={cn("relative flex min-h-[4.25rem] min-w-0 flex-col gap-1 rounded-lg border border-line bg-bg p-1", past && HATCH)}>
-                    {onAdd !== undefined && here.length === 0 && canAddOn(day, today) ? <AddHere day={day} onAdd={onAdd} /> : null}
+                  <div key={day} role="gridcell" {...target.props} className={cn("relative flex min-h-[4.25rem] min-w-0 flex-col gap-1 rounded-lg border border-line bg-bg p-1", past && HATCH, target.lit && LIT)}>
+                    {onAdd !== undefined && here.length === 0 && !past && canAddOn(day, today) ? <AddHere day={day} time={`${String(hour).padStart(2, "0")}:00`} onAdd={onAdd} /> : null}
                     {here.map((entry) => (
-                      <Slot key={entry.post.id} entry={entry} large={large} fallback={fallback} onChange={onChange} />
+                      <Slot key={entry.post.id} entry={entry} large={large} fallback={fallback} onOpen={onOpen} dnd={dnd} />
                     ))}
                     {isNow && now !== null && day === now.day ? <span aria-hidden="true" className="absolute inset-x-0 z-10 h-0.5 bg-rattan-text" style={{ top: `${(now.minute / 60) * 100}%` }} /> : null}
                   </div>
@@ -224,13 +277,14 @@ interface MonthProps {
   readonly on: (day: string) => readonly Entry[];
   readonly openDay: (day: string) => void;
   /** Opens a new post for a day; left out when no account is connected. */
-  readonly onAdd?: ((day: string) => void) | undefined;
-  /** Opens a post the business made, to change or remove it. */
-  readonly onChange?: ((post: CalendarPost) => void) | undefined;
+  readonly onAdd?: ((day: string, time?: string) => void) | undefined;
+  /** Opens a post: to change or remove it when the business made it and it has not gone out, else to read it. */
+  readonly onOpen?: ((post: CalendarPost) => void) | undefined;
+  readonly dnd?: Dnd | undefined;
 }
 
 /** Month: a rounded cell per day with up to three small chips and a "+N more" that opens the day, as in the team's calendar. */
-function Month({ cursor, today, on, openDay, onAdd, onChange }: MonthProps): ReactElement {
+function Month({ cursor, today, on, openDay, onAdd, onOpen, dnd }: MonthProps): ReactElement {
   const month = cursor.slice(0, 7);
   const names = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
   return (
@@ -244,8 +298,10 @@ function Month({ cursor, today, on, openDay, onAdd, onChange }: MonthProps): Rea
       {monthGrid(cursor).map((day) => {
         const entries = on(day);
         const more = entries.length - MONTH_CHIPS_PER_DAY;
+        // Dropped on a day, a post keeps its own time.
+        const target = dropTarget(dnd, day, day, dnd?.dragging?.time ?? DEFAULT_TIME);
         return (
-          <div key={day} role="gridcell" className={cn("relative grid min-h-24 min-w-0 content-start gap-1 rounded-lg bg-bg px-1.5 py-2 sm:min-h-[7.75rem]", day.slice(0, 7) !== month && "opacity-45")}>
+          <div key={day} role="gridcell" {...target.props} className={cn("relative grid min-h-24 min-w-0 content-start gap-1 rounded-lg bg-bg px-1.5 py-2 sm:min-h-[7.75rem]", day.slice(0, 7) !== month && "opacity-45", target.lit && LIT)}>
             {onAdd !== undefined && canAddOn(day, today) ? <AddHere day={day} onAdd={onAdd} /> : null}
             <span className={cn("pointer-events-none relative min-w-[1.625rem] justify-self-center rounded-md px-1.5 py-0.5 text-center text-[0.84375rem] font-semibold", day === today ? "bg-rattan-wash text-rattan-text" : cn("text-ink-3", day < today && "opacity-60"))}>
               {Number(day.slice(8))}
@@ -262,8 +318,18 @@ function Month({ cursor, today, on, openDay, onAdd, onChange }: MonthProps): Rea
                 </>
               );
               const box = cn("relative flex min-w-0 items-center gap-1.5 rounded-md border border-line px-1.5 py-0.5 text-left text-xs", GROUND[status.state]);
-              return onChange !== undefined && canChange(post) ? (
-                <button key={post.id} type="button" title={`${status.word}: ${post.caption}`} onClick={() => onChange(post)} className={cn(box, "z-10 cursor-pointer hover:border-ink-3")}>
+              const movable = dnd !== undefined && canChange(post);
+              return onOpen !== undefined ? (
+                <button
+                  key={post.id}
+                  type="button"
+                  title={`${status.word}: ${post.caption}`}
+                  onClick={() => onOpen(post)}
+                  draggable={movable}
+                  onDragStart={movable ? (event) => { event.dataTransfer.effectAllowed = "move"; event.dataTransfer.setData("text/plain", post.id); dnd.start(post); } : undefined}
+                  onDragEnd={movable ? dnd.end : undefined}
+                  className={cn(box, "z-10 cursor-pointer hover:border-ink-3", (dnd?.dragging?.id === post.id || dnd?.movingId === post.id) && "opacity-40")}
+                >
                   {chip}
                 </button>
               ) : (
@@ -306,8 +372,16 @@ export function SocialCalendar({ posts, today, lede, businessName, channels }: S
   // It opens on the day of the next post, so a customer sees what is coming, not an empty week behind it.
   const [cursor, setCursor] = useState(() => nextPostDay(posts, today));
   const [focus, setFocus] = useState(0);
-  // The day a new post is being made for, or null when none is.
-  const [adding, setAdding] = useState<string | null>(null);
+  // The day and time a new post is being made for, or null when none is.
+  const [adding, setAdding] = useState<{ readonly day: string; readonly time: string } | null>(null);
+  // A post that cannot be changed, opened to read.
+  const [reading, setReading] = useState<CalendarPost | null>(null);
+  // Drag and drop: the post being dragged, the cell it is over, and the post being moved while social-auto answers.
+  const [dragging, setDragging] = useState<CalendarPost | null>(null);
+  const [over, setOver] = useState<string | null>(null);
+  const [movingId, setMovingId] = useState<string | null>(null);
+  const [moveError, setMoveError] = useState<string | null>(null);
+  const [, startMove] = useTransition();
   // The post being changed (with the day it is being moved to), or null when none is.
   const [changing, setChanging] = useState<{ readonly post: CalendarPost; readonly day: string } | null>(null);
   const minute = useSyncExternalStore(subscribeToMinutes, minuteNow, () => null);
@@ -341,10 +415,52 @@ export function SocialCalendar({ posts, today, lede, businessName, channels }: S
   };
 
   const canAdd = channels.length > 0;
-  const onAdd = canAdd ? setAdding : undefined;
-  const onChange = canAdd ? (post: CalendarPost): void => setChanging({ post, day: post.day }) : undefined;
+  const onAdd = canAdd ? (day: string, time: string = DEFAULT_TIME): void => setAdding({ day, time }) : undefined;
+  // A post the customer made and that has not gone out opens to be changed; any other opens to be read.
+  const onOpen = (post: CalendarPost): void => (canAdd && canChange(post) ? setChanging({ post, day: post.day }) : setReading(post));
+  const allowed = (day: string, time: string): boolean =>
+    dragging !== null && canAddOn(day, today) && !(day === dragging.day && time === dragging.time) && !momentHasPassed(day, time, new Date());
+  const dnd: Dnd | undefined = canAdd
+    ? {
+        dragging,
+        movingId,
+        over,
+        start: (post) => {
+          setMoveError(null);
+          setDragging(post);
+        },
+        end: () => {
+          setDragging(null);
+          setOver(null);
+        },
+        hover: setOver,
+        allowed,
+        drop: (day, time) => {
+          const post = dragging;
+          setDragging(null);
+          setOver(null);
+          if (post === null || !allowed(day, time)) return;
+          setMovingId(post.id);
+          startMove(async () => {
+            try {
+              const form = new FormData();
+              form.set("postId", post.id);
+              form.set("day", day);
+              form.set("time", time);
+              const result = await movePostAction(form);
+              if (result.status === "error") setMoveError(result.message);
+            } catch {
+              setMoveError("The post could not be moved. Check your connection and try again.");
+            } finally {
+              setMovingId(null);
+            }
+          });
+        },
+      }
+    : undefined;
   // New post: the first day in view that can take one, else tomorrow.
-  const firstFreeDay = (): string => (view === "month" ? monthGrid(cursor) : days).find((day) => canAddOn(day, today)) ?? earliestDay(today);
+  const firstFreeDay = (): { readonly day: string; readonly time: string } => ({ day: freeDay(), time: DEFAULT_TIME });
+  const freeDay = (): string => (view === "month" ? monthGrid(cursor) : days).find((day) => canAddOn(day, today)) ?? earliestDay(today);
   // New post, pressed in the page's top corner: opens the window here, once for each press. It reads the count while drawing, so the
   // window opens in the same pass instead of one after it.
   const { count: requests } = useNewPostRequests();
@@ -394,18 +510,24 @@ export function SocialCalendar({ posts, today, lede, businessName, channels }: S
         </div>
       </div>
       <p className="-mt-1 text-[0.84375rem] text-ink-2">{lede}</p>
-      {adding === null || !canAdd ? null : <NewPostDialog day={adding} onDayChange={setAdding} today={today} channels={channels} onClose={() => setAdding(null)} />}
+      {adding === null || !canAdd ? null : <NewPostDialog day={adding.day} onDayChange={(day) => setAdding({ day, time: adding.time })} time={adding.time} today={today} channels={channels} onClose={() => setAdding(null)} />}
+      {reading === null ? null : <PostDetailsDialog key={reading.id} post={reading} onClose={() => setReading(null)} />}
+      {moveError === null ? null : (
+        <p role="alert" className="text-[0.84375rem] font-semibold text-error">
+          {moveError}
+        </p>
+      )}
       {changing === null || !canAdd ? null : (
-        <NewPostDialog key={changing.post.id} day={changing.day} onDayChange={(day) => setChanging({ post: changing.post, day })} today={today} channels={channels} post={changing.post} onClose={() => setChanging(null)} />
+        <NewPostDialog key={changing.post.id} day={changing.day} onDayChange={(day) => setChanging({ post: changing.post, day })} time={changing.post.time} today={today} channels={channels} post={changing.post} onClose={() => setChanging(null)} />
       )}
 
       {view === "month" ? (
-        <Month cursor={cursor} today={today} on={on} openDay={openDay} onAdd={onAdd} onChange={onChange} />
+        <Month cursor={cursor} today={today} on={on} openDay={openDay} onAdd={onAdd} onOpen={onOpen} dnd={dnd} />
       ) : (
         <>
           {grid ? (
             <div className="hidden md:block">
-              <TimeGrid days={days} entries={entries} focus={focus} on={on} today={today} now={now} fallback={fallback} onAdd={onAdd} onChange={onChange} />
+              <TimeGrid days={days} entries={entries} focus={focus} on={on} today={today} now={now} fallback={fallback} onAdd={onAdd} onOpen={onOpen} dnd={dnd} />
             </div>
           ) : null}
           {listed.length === 0 ? (
@@ -413,7 +535,7 @@ export function SocialCalendar({ posts, today, lede, businessName, channels }: S
           ) : (
             <ul className={cn("divide-y divide-line", grid && "md:hidden")}>
               {listed.map((entry) => (
-                <PostRow key={entry.post.id} entry={entry} onChange={onChange} />
+                <PostRow key={entry.post.id} entry={entry} onOpen={onOpen} />
               ))}
             </ul>
           )}

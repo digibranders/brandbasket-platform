@@ -4,7 +4,8 @@ import { PLATFORM_NAMES, type ChannelPlatform } from "@/lib/social/auto";
 
 /**
  * The networks' logos, drawn the way the team's dashboard in social-auto draws them (dashboard/web/ui.ts): Facebook's blue circle
- * with its white "f", Instagram's gradient square with its white camera outline, LinkedIn's blue square with its white "in".
+ * with its white "f", Instagram's gradient square with its white camera outline, LinkedIn's blue square with its white "in", and Google's
+ * shop front.
  * Brand marks in each network's own colours, so they are the one place outside the palette: a logo is not ours to recolour.
  */
 
@@ -23,7 +24,43 @@ const INSTAGRAM_STOPS = [
   ["1", "#4f5bd5"],
 ] as const;
 
+/** Google Business: a shop front with a four-panel awning and a white G (100 by 87), as the dashboard draws it. */
+const GOOGLE_BODY = "M6.7 30h86.7v50.6a6.4 6.4 0 0 1-6.4 6.4H13.1a6.4 6.4 0 0 1-6.4-6.4z";
+const GOOGLE_PANELS = [
+  ["M0 32.2L6.5 5.5Q8 0 13.5 0H28.9L25 32.2z", "#7aabf7", "M0 32.2a12.5 12.5 0 0 0 25 0z", "#74a0e1"],
+  ["M28.9 0H50V32.2H25z", "#4355b2", "M25 32.2a12.5 12.5 0 0 0 25 0z", "#3e4fa7"],
+  ["M50 0H71.1L75 32.2H50z", "#7aabf7", "M50 32.2a12.5 12.5 0 0 0 25 0z", "#74a0e1"],
+  ["M71.1 0H86.5Q92 0 93.5 5.5L100 32.2H75z", "#4355b2", "M75 32.2a12.5 12.5 0 0 0 25 0z", "#3e4fa7"],
+] as const;
+
+function GoogleMark({ id }: { readonly id: string }): ReactElement {
+  return (
+    <>
+      <defs>
+        <linearGradient id={`${id}-body`} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#2d69ea" />
+          <stop offset="1" stopColor="#4684f1" />
+        </linearGradient>
+        <clipPath id={`${id}-clip`}>
+          <path d={GOOGLE_BODY} />
+        </clipPath>
+      </defs>
+      <path d={GOOGLE_BODY} fill={`url(#${id}-body)`} />
+      <path d="M6.7 43.5L50 87H6.7z" fill="#4d8bf3" clipPath={`url(#${id}-clip)`} />
+      {GOOGLE_PANELS.map(([panel, color, scallop, shade]) => (
+        <g key={panel}>
+          <path d={panel} fill={color} />
+          <path d={scallop} fill={shade} />
+        </g>
+      ))}
+      <path d="M81.54 61.11A10.1 10.1 0 1 0 83.9 67.6" fill="none" stroke="#fff" strokeWidth="5.1" />
+      <path d="M74.1 67.6H86.2" fill="none" stroke="#fff" strokeWidth="4.9" />
+    </>
+  );
+}
+
 function Mark({ platform, gradientId }: { readonly platform: ChannelPlatform; readonly gradientId: string }): ReactElement {
+  if (platform === "google") return <GoogleMark id={gradientId} />;
   if (platform === "facebook") {
     return (
       <>
@@ -61,10 +98,10 @@ function Mark({ platform, gradientId }: { readonly platform: ChannelPlatform; re
 
 /** A network's logo. `small` is the size beside a line of text; `dim` greys it out for a network that is off. */
 export function ChannelLogo({ platform, small = false, dim = false }: { readonly platform: ChannelPlatform; readonly small?: boolean; readonly dim?: boolean }): ReactElement {
-  // Each Instagram logo on the page needs its own gradient id, or they would all point at the first one's.
+  // Each Instagram and Google logo on the page needs its own gradient id, or they would all point at the first one's.
   const gradientId = `ig-${useId().replace(/:/g, "")}`;
   return (
-    <svg role="img" aria-label={PLATFORM_NAMES[platform]} viewBox="0 0 24 24" className={cn("shrink-0", small ? "size-5" : "size-9", dim && "opacity-45 grayscale")}>
+    <svg role="img" aria-label={PLATFORM_NAMES[platform]} viewBox={platform === "google" ? "0 0 100 87" : "0 0 24 24"} className={cn("shrink-0", small ? "size-5" : "size-9", dim && "opacity-45 grayscale")}>
       <Mark platform={platform} gradientId={gradientId} />
     </svg>
   );

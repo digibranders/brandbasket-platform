@@ -7,16 +7,17 @@ import { BRAND_TIME_ZONE } from "@/lib/call-dates";
  * Pure: no network and no server-only code, so the page's client parts and the tests can use it.
  */
 
-export const CHANNEL_PLATFORMS = ["instagram", "facebook", "linkedin"] as const;
+export const CHANNEL_PLATFORMS = ["instagram", "facebook", "linkedin", "google"] as const;
 export type ChannelPlatform = (typeof CHANNEL_PLATFORMS)[number];
 
-export const PLATFORM_NAMES: Readonly<Record<ChannelPlatform, string>> = { instagram: "Instagram", facebook: "Facebook", linkedin: "LinkedIn" };
+export const PLATFORM_NAMES: Readonly<Record<ChannelPlatform, string>> = { instagram: "Instagram", facebook: "Facebook", linkedin: "LinkedIn", google: "Google Business" };
 
 /** What the person is asked for before they connect: the kind of account each network wants. */
 export const PLATFORM_HINTS: Readonly<Record<ChannelPlatform, string>> = {
   instagram: "A Business or Creator account",
   facebook: "A Page you manage",
   linkedin: "Your own profile",
+  google: "The Google account that manages your listing",
 };
 
 export const isChannelPlatform = (value: unknown): value is ChannelPlatform => CHANNEL_PLATFORMS.some((platform) => platform === value);

@@ -116,14 +116,16 @@ describe("the Social media page with social-auto switched on", () => {
 });
 
 describe("adding a post from the calendar", () => {
-  const free = (html: string): string[] => [...html.matchAll(/aria-label="New post on ([^"]+)"/g)].map((match) => match[1] as string);
+  const free = (html: string): string[] => [...html.matchAll(/aria-label="New post on ([^"]+)"/g)].map((match) => match[1]?.replace(/ at .*$/, "") as string);
+  const slots = (html: string): string[] => [...html.matchAll(/aria-label="New post on ([^"]+)"/g)].map((match) => match[1] as string);
 
-  it("opens a free slot of a later day, never today's or a past one, and has a New post button for the keyboard", () => {
+  it("opens a free slot of a later day, and of today's hours, and has a New post button for the keyboard", () => {
     const html = view(connect());
     const days = new Set(free(html));
     expect(days.has("Tuesday 3 November")).toBe(true);
     expect(days.has("Sunday 8 November")).toBe(true);
-    expect(days.has("Monday 2 November")).toBe(false);
+    // Today's hours are offered too; the ones that have gone are hidden in the browser, which knows the time (the server draws none).
+    expect(slots(html)).toContain("Monday 2 November at 11:00 AM");
     expect(html).toContain("New post");
     expect(html).not.toContain("new-post-title");
   });

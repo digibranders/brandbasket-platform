@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 
 vi.mock("server-only", () => ({}));
 
-import { connectLink, createPost, deletePost, ensureWorkspace, loadChannels, loadPosts, SocialAutoError, sendPostNow, socialAutoSettings, updatePost, uploadPicture, type SocialAutoSettings } from "./social-auto";
+import { connectLink, createPost, deletePost, ensureWorkspace, loadChannels, loadPosts, SocialAutoError, movePost, sendPostNow, socialAutoSettings, updatePost, uploadPicture, type SocialAutoSettings } from "./social-auto";
 
 const SETTINGS: SocialAutoSettings = { baseUrl: "https://social.example", key: "key-1234567890abcdef", returnUrl: "https://app.example/social" };
 const json = (status: number, body: unknown): Response => new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } });
@@ -114,21 +114,21 @@ describe("the calls", () => {
   it("makes a post for a day to the chosen channels, and reads it back", async () => {
     const created = { id: "manual-1", date: "2026-11-04T10:00:00+05:30", caption: "Hi", manual: true, state: "scheduled", channels: [{ platform: "instagram", account: "acme", state: "scheduled", permalink: null }] };
     const { send, calls } = sender(json(201, { post: created }));
-    const post = await createPost(SETTINGS, "business-1", { day: "2026-11-04", caption: "Hi", pictureId: "a".repeat(32), channels: ["instagram:1"] }, send);
+    const post = await createPost(SETTINGS, "business-1", { day: "2026-11-04", time: "10:00", caption: "Hi", pictureId: "a".repeat(32), channels: ["instagram:1"] }, send);
     expect(post.id).toBe("manual-1");
     expect(calls[0]?.url).toBe("https://social.example/api/v1/posts");
-    expect(JSON.parse(String(calls[0]?.init.body))).toEqual({ externalId: "business-1", day: "2026-11-04", caption: "Hi", pictureId: "a".repeat(32), channels: ["instagram:1"] });
+    expect(JSON.parse(String(calls[0]?.init.body))).toEqual({ externalId: "business-1", day: "2026-11-04", time: "10:00", caption: "Hi", pictureId: "a".repeat(32), channels: ["instagram:1"] });
   });
 
   it("gives the customer social-auto's words for a 4xx, and nothing for a fault on its side", async () => {
-    const refused = await createPost(SETTINGS, "b", { day: "2026-11-01", caption: "Hi", pictureId: "a".repeat(32), channels: ["instagram:1"] }, sender(json(400, { error: "that day has already passed." })).send).catch((e: unknown) => e);
+    const refused = await createPost(SETTINGS, "b", { day: "2026-11-01", time: "10:00", caption: "Hi", pictureId: "a".repeat(32), channels: ["instagram:1"] }, sender(json(400, { error: "that day has already passed." })).send).catch((e: unknown) => e);
     expect((refused as SocialAutoError).detail).toBe("that day has already passed.");
-    const broken = await createPost(SETTINGS, "b", { day: "2026-11-04", caption: "Hi", pictureId: "a".repeat(32), channels: ["instagram:1"] }, sender(json(500, { error: "could not schedule the post" })).send).catch((e: unknown) => e);
+    const broken = await createPost(SETTINGS, "b", { day: "2026-11-04", time: "10:00", caption: "Hi", pictureId: "a".repeat(32), channels: ["instagram:1"] }, sender(json(500, { error: "could not schedule the post" })).send).catch((e: unknown) => e);
     expect((broken as SocialAutoError).detail).toBeNull();
   });
 
   it("refuses an answer that is not a post", async () => {
-    await expect(createPost(SETTINGS, "b", { day: "2026-11-04", caption: "Hi", pictureId: "a".repeat(32), channels: [] }, sender(json(201, { post: { id: 1 } })).send)).rejects.toThrow(/could not be read/);
+    await expect(createPost(SETTINGS, "b", { day: "2026-11-04", time: "10:00", caption: "Hi", pictureId: "a".repeat(32), channels: [] }, sender(json(201, { post: { id: 1 } })).send)).rejects.toThrow(/could not be read/);
   });
 });
 
@@ -137,20 +137,20 @@ describe("changing and removing a post", () => {
 
   it("sends the changes for the business's own post, and leaves the picture out when it is not replaced", async () => {
     const { send, calls } = sender(json(200, { post: changed }));
-    const post = await updatePost(SETTINGS, "business-1", "manual-0123456789ab", { day: "2026-11-06", caption: "New", channels: ["instagram:1"] }, send);
+    const post = await updatePost(SETTINGS, "business-1", "manual-0123456789ab", { day: "2026-11-06", time: "10:00", caption: "New", channels: ["instagram:1"] }, send);
     expect(post.caption).toBe("New");
     expect(calls[0]?.url).toBe("https://social.example/api/v1/posts?externalId=business-1&postId=manual-0123456789ab");
     expect(calls[0]?.init.method).toBe("PATCH");
-    expect(JSON.parse(String(calls[0]?.init.body))).toEqual({ day: "2026-11-06", caption: "New", channels: ["instagram:1"] });
+    expect(JSON.parse(String(calls[0]?.init.body))).toEqual({ day: "2026-11-06", time: "10:00", caption: "New", channels: ["instagram:1"] });
     const again = sender(json(200, { post: changed }));
-    await updatePost(SETTINGS, "business-1", "manual-0123456789ab", { day: "2026-11-06", caption: "New", pictureId: "b".repeat(32), channels: ["instagram:1"] }, again.send);
+    await updatePost(SETTINGS, "business-1", "manual-0123456789ab", { day: "2026-11-06", time: "10:00", caption: "New", pictureId: "b".repeat(32), channels: ["instagram:1"] }, again.send);
     expect(JSON.parse(String(again.calls[0]?.init.body))).toMatchObject({ pictureId: "b".repeat(32) });
   });
 
   it("gives social-auto's words when it refuses, such as a post that has already gone out", async () => {
-    const refused = await updatePost(SETTINGS, "b", "manual-0123456789ab", { day: "2026-11-06", caption: "x", channels: [] }, sender(json(409, { error: "this post is already due or sent, so it can no longer be changed" })).send).catch((e: unknown) => e);
+    const refused = await updatePost(SETTINGS, "b", "manual-0123456789ab", { day: "2026-11-06", time: "10:00", caption: "x", channels: [] }, sender(json(409, { error: "this post is already due or sent, so it can no longer be changed" })).send).catch((e: unknown) => e);
     expect((refused as SocialAutoError).detail).toBe("this post is already due or sent, so it can no longer be changed");
-    await expect(updatePost(SETTINGS, "b", "manual-0123456789ab", { day: "2026-11-06", caption: "x", channels: [] }, sender(json(200, { post: { id: 1 } })).send)).rejects.toThrow(/could not be read/);
+    await expect(updatePost(SETTINGS, "b", "manual-0123456789ab", { day: "2026-11-06", time: "10:00", caption: "x", channels: [] }, sender(json(200, { post: { id: 1 } })).send)).rejects.toThrow(/could not be read/);
   });
 
   it("removes a post with a DELETE for the business", async () => {
@@ -197,5 +197,21 @@ describe("when social-auto is served under a path", () => {
       "https://social.example/publisher/api/v1/posts?externalId=business-1&postId=manual-0123456789ab",
       "https://social.example/publisher/api/v1/send",
     ]);
+  });
+});
+
+describe("moving a post", () => {
+  it("sends only the new day and time", async () => {
+    const moved = { id: "manual-0123456789ab", date: "2026-11-12T11:15:00+05:30", caption: "Hi", manual: true, state: "scheduled", channels: [] };
+    const { send, calls } = sender(json(200, { post: moved }));
+    const post = await movePost(SETTINGS, "business-1", "manual-0123456789ab", { day: "2026-11-12", time: "11:15" }, send);
+    expect(post.date).toBe("2026-11-12T11:15:00+05:30");
+    expect(calls[0]?.init.method).toBe("PATCH");
+    expect(JSON.parse(String(calls[0]?.init.body))).toEqual({ day: "2026-11-12", time: "11:15" });
+  });
+
+  it("gives social-auto's words when it refuses", async () => {
+    const refused = await movePost(SETTINGS, "b", "manual-0123456789ab", { day: "2026-11-01", time: "10:00" }, sender(json(400, { error: "that time has already passed. Choose a later time." })).send).catch((e: unknown) => e);
+    expect((refused as SocialAutoError).detail).toBe("that time has already passed. Choose a later time.");
   });
 });

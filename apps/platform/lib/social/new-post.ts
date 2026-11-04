@@ -2,12 +2,12 @@ import { addDays } from "@brandbasket/shared/lib/calendar/local-date";
 
 /**
  * What a new post must be before it is sent to social-auto. The rules are social-auto's own (it checks them again): a caption
- * Instagram accepts, a square JPG, a day from tomorrow on, and only channels the business has connected. Pure, so the dialog
+ * Instagram accepts, a square JPG, a day and a time still ahead, and only channels the business has connected. Pure, so the dialog
  * (in the browser) and the action (on the server) read the same rules.
  */
 
-/** Every post goes out in the daily run at this time. */
-export const POST_TIME_LABEL = "10:00 AM";
+/** A post with no time of its own goes out at this time (India), as the daily run always did. */
+export const DEFAULT_TIME = "10:00";
 
 export const MAX_CAPTION_LENGTH = 2200;
 export const MAX_HASHTAGS = 30;
@@ -20,9 +20,15 @@ export const MAX_DAYS_AHEAD = 89;
 const HASHTAG = /(^|\s)#[\p{L}\p{N}_]+/gu;
 const DAY = /^\d{4}-\d{2}-\d{2}$/;
 const PICTURE_ID = /^[0-9a-f]{32}$/;
+const TIME = /^([01]\d|2[0-3]):[0-5]\d$/;
 
-/** The first day a post can be set for: the day's run is at 10:00, so today's has gone. */
-export const earliestDay = (today: string): string => addDays(today, 1);
+export const isTime = (value: unknown): value is string => typeof value === "string" && TIME.test(value);
+
+/** Whether this moment (a `YYYY-MM-DD` day and an `HH:MM` time in India) is not ahead of `now`. */
+export const momentHasPassed = (day: string, time: string, now: Date): boolean => Date.parse(`${day}T${time}:00+05:30`) <= now.getTime();
+
+/** The first day a post can be set for: today, as long as the time chosen is still ahead. */
+export const earliestDay = (today: string): string => today;
 export const latestDay = (today: string): string => addDays(today, MAX_DAYS_AHEAD);
 
 /** Whether a day on the calendar can take a new post. */
@@ -44,6 +50,7 @@ export const looksLikeJpeg = (bytes: Uint8Array): boolean => bytes.length > 3 &&
 
 export interface NewPostInput {
   readonly day: unknown;
+  readonly time: unknown;
   readonly caption: unknown;
   readonly pictureId: unknown;
   readonly channels: unknown;
@@ -54,6 +61,7 @@ export const isChangeablePostId = (value: unknown): value is string => typeof va
 
 export interface NewPost {
   readonly day: string;
+  readonly time: string;
   readonly caption: string;
   readonly pictureId: string;
   readonly channels: readonly string[];
@@ -62,6 +70,7 @@ export interface NewPost {
 /** A post's changes: the same, except that the picture can be left as it is. */
 export interface PostEdit {
   readonly day: string;
+  readonly time: string;
   readonly caption: string;
   readonly pictureId?: string;
   readonly channels: readonly string[];
@@ -95,39 +104,50 @@ function channelsOf(raw: unknown, connected: readonly string[]): Part<string[]> 
 /** The day, which must be one a post can be set for; `ownDay`, a post's present day, is also accepted as it is. */
 function dayOf(raw: unknown, today: string, ownDay?: string): Part<string> {
   if (typeof raw !== "string" || !DAY.test(raw)) return refused("Choose a day.");
-  if (raw !== ownDay && !canAddOn(raw, today)) return refused(`Choose a day from ${earliestDay(today)} to ${latestDay(today)}. Posts go out at ${POST_TIME_LABEL}.`);
+  if (raw !== ownDay && !canAddOn(raw, today)) return refused(`Choose a day from ${earliestDay(today)} to ${latestDay(today)}.`);
+  return { ok: true, value: raw };
+}
+
+/** The time, which must read like 14:30, and (unless it is the post's own) must still be ahead on that day. */
+function timeOf(raw: unknown, day: string, now: Date, own?: { readonly day: string; readonly time: string }): Part<string> {
+  if (!isTime(raw)) return refused("Choose a time, like 14:30.");
+  if (!(own?.day === day && own.time === raw) && momentHasPassed(day, raw, now)) return refused("That time has already passed. Choose a later time.");
   return { ok: true, value: raw };
 }
 
 const pictureIdOf = (raw: unknown): string | null => (typeof raw === "string" && PICTURE_ID.test(raw) ? raw : null);
 
 /** Checks a new post against the rules and the channels the business has connected. */
-export function checkNewPost(input: NewPostInput, today: string, connected: readonly string[]): NewPostCheck {
+export function checkNewPost(input: NewPostInput, today: string, connected: readonly string[], now: Date = new Date()): NewPostCheck {
   const day = dayOf(input.day, today);
   if (!day.ok) return day;
+  const time = timeOf(input.time, day.value, now);
+  if (!time.ok) return time;
   const caption = captionOf(input.caption);
   if (!caption.ok) return caption;
   const pictureId = pictureIdOf(input.pictureId);
   if (pictureId === null) return refused("Add a picture first.");
   const channels = channelsOf(input.channels, connected);
   if (!channels.ok) return channels;
-  return { ok: true, post: { day: day.value, caption: caption.value, pictureId, channels: channels.value } };
+  return { ok: true, post: { day: day.value, time: time.value, caption: caption.value, pictureId, channels: channels.value } };
 }
 
 /**
  * Checks the changes to a post. The rules are the new post's, except that a picture is optional (none keeps the old one) and that
- * the post's own day is always accepted as it is, even when it is today and the day's run is still ahead.
+ * the post's own day and time are always accepted as they are.
  */
-export function checkPostEdit(input: NewPostInput, today: string, connected: readonly string[], ownDay: string): PostEditCheck {
-  const day = dayOf(input.day, today, ownDay);
+export function checkPostEdit(input: NewPostInput, today: string, connected: readonly string[], own: { readonly day: string; readonly time: string }, now: Date = new Date()): PostEditCheck {
+  const day = dayOf(input.day, today, own.day);
   if (!day.ok) return day;
+  const time = timeOf(input.time, day.value, now, own);
+  if (!time.ok) return time;
   const caption = captionOf(input.caption);
   if (!caption.ok) return caption;
   const picture = input.pictureId === null || input.pictureId === "" ? null : pictureIdOf(input.pictureId);
   if (input.pictureId !== null && input.pictureId !== "" && picture === null) return refused("Add the picture again.");
   const channels = channelsOf(input.channels, connected);
   if (!channels.ok) return channels;
-  return { ok: true, edit: { day: day.value, caption: caption.value, channels: channels.value, ...(picture === null ? {} : { pictureId: picture }) } };
+  return { ok: true, edit: { day: day.value, time: time.value, caption: caption.value, channels: channels.value, ...(picture === null ? {} : { pictureId: picture }) } };
 }
 
 /** What the new-post form hands back to the dialog. */

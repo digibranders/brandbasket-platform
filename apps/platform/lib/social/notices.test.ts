@@ -22,6 +22,8 @@ describe("socialNoticeLine", () => {
 describe("connectNoticeLine", () => {
   it("says which network was connected, and the others as problems", () => {
     expect(connectNoticeLine("connected", "instagram")).toEqual({ ok: true, text: "Instagram is connected. Posts from now on will also go there." });
+    expect(connectNoticeLine("connected", "google")).toEqual({ ok: true, text: "Google Business is connected. Posts from now on will also go there." });
+    expect(connectNoticeLine("failed", "google")?.text).toBe("Google Business could not be connected. Try again, and press Allow on its page.");
     expect(connectNoticeLine("denied", "facebook")?.ok).toBe(false);
     expect(connectNoticeLine("failed", "linkedin")?.text).toContain("LinkedIn could not be connected");
   });

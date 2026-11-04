@@ -5,14 +5,16 @@ import { useEffect, useRef, useState, useTransition, type ChangeEvent, type Form
 import { cn } from "@brandbasket/shared/lib/cn";
 import { createPostAction, deletePostAction, sendPostNowAction, updatePostAction } from "@/app/app-host/(protected)/social/actions";
 import { DARK_BUTTON, SOFT_BUTTON } from "@/components/v2/classes";
-import { channelIdsOf, dayLabel, PLATFORM_NAMES, type AutoChannel, type CalendarPost } from "@/lib/social/auto";
-import { canAddOn, earliestDay, latestDay, MAX_CAPTION_LENGTH, pictureProblem, POST_TIME_LABEL } from "@/lib/social/new-post";
+import { channelIdsOf, dayLabel, time12, PLATFORM_NAMES, type AutoChannel, type CalendarPost } from "@/lib/social/auto";
+import { canAddOn, earliestDay, isTime, latestDay, MAX_CAPTION_LENGTH, momentHasPassed, pictureProblem } from "@/lib/social/new-post";
 import { ChannelLogo } from "./channel-logo";
 
 interface NewPostDialogProps {
   /** The day the post is for (`YYYY-MM-DD`); the person can change it here. */
   readonly day: string;
   readonly onDayChange: (day: string) => void;
+  /** The time to start with (`HH:MM`, India time); the person can change it here. A post being changed starts at its own. */
+  readonly time: string;
   /** Today in India, `YYYY-MM-DD`. */
   readonly today: string;
   /** The accounts that can be posted to. */
@@ -53,9 +55,10 @@ async function sizeOf(file: File): Promise<{ readonly width: number; readonly he
  * out, the same window changes it (a new picture is optional) or removes it. It is a native dialog, so focus stays inside it and
  * Escape closes it.
  */
-export function NewPostDialog({ day, onDayChange, today, channels, post, onClose }: NewPostDialogProps): ReactElement {
+export function NewPostDialog({ day, onDayChange, time: startTime, today, channels, post, onClose }: NewPostDialogProps): ReactElement {
   const [selected, setSelected] = useState<ReadonlySet<string>>(() => new Set(post === undefined ? channels.map((channel) => channel.id) : channelIdsOf(post)));
   const [caption, setCaption] = useState(post?.caption ?? "");
+  const [time, setTime] = useState(post?.time ?? startTime);
   const [removing, setRemoving] = useState(false);
   const [posting, setPosting] = useState(false);
   // Set once the post has gone out (even to some accounts only): the form behind it is out of date, so it can only be closed.
@@ -97,6 +100,8 @@ export function NewPostDialog({ day, onDayChange, today, channels, post, onClose
   };
 
   const problem = ((): string | null => {
+    if (!isTime(time)) return "Choose a time, like 14:30.";
+    if (!(post?.day === day && post.time === time) && momentHasPassed(day, time, new Date())) return "That time has already passed. Choose a later time.";
     if (day !== post?.day && !canAddOn(day, today)) return `Choose a day from ${dayLabel(earliestDay(today))} to ${dayLabel(latestDay(today))}.`;
     if (selected.size === 0) return "Choose at least one account.";
     if (picked === null && post === undefined) return "Add a picture.";
@@ -126,11 +131,13 @@ export function NewPostDialog({ day, onDayChange, today, channels, post, onClose
           form.set("pictureId", answer.pictureId);
         }
         form.set("day", day);
+        form.set("time", time);
         form.set("caption", caption);
         for (const id of selected) form.append("channel", id);
         if (post !== undefined) {
           form.set("postId", post.id);
           form.set("ownDay", post.day);
+          form.set("ownTime", post.time);
         }
         const result = await (post === undefined ? createPostAction(form) : updatePostAction(form));
         if (result.status === "error") setError(result.message);
@@ -204,7 +211,7 @@ export function NewPostDialog({ day, onDayChange, today, channels, post, onClose
               {post === undefined ? "New post" : "Change post"}
             </h3>
             <p className="mt-1 text-[0.84375rem] text-ink-2">
-              {dayLabel(day, { weekday: "long", day: "numeric", month: "long" })} at {POST_TIME_LABEL}
+              {dayLabel(day, { weekday: "long", day: "numeric", month: "long" })}{isTime(time) ? ` at ${time12(time)}` : ""}
             </p>
           </div>
           <button type="button" onClick={onClose} disabled={pending} className={SOFT_BUTTON}>
@@ -213,21 +220,29 @@ export function NewPostDialog({ day, onDayChange, today, channels, post, onClose
         </div>
 
         <form onSubmit={submit} className="grid gap-4" noValidate>
-          <div className="grid gap-1.5">
-            <label htmlFor="new-post-day" className="text-sm font-semibold text-ink">
-              Day
-            </label>
-            <input
-              id="new-post-day"
-              type="date"
-              value={day}
-              min={post !== undefined && post.day < earliestDay(today) ? post.day : earliestDay(today)}
-              max={latestDay(today)}
-              onChange={(event) => event.target.value !== "" && onDayChange(event.target.value)}
-              className={cn(FIELD, "h-11 sm:w-56")}
-            />
-            <p className="text-xs text-ink-2">From tomorrow on. Every post goes out at {POST_TIME_LABEL}.</p>
+          <div className="flex flex-wrap gap-4">
+            <div className="grid gap-1.5">
+              <label htmlFor="new-post-day" className="text-sm font-semibold text-ink">
+                Day
+              </label>
+              <input
+                id="new-post-day"
+                type="date"
+                value={day}
+                min={post !== undefined && post.day < earliestDay(today) ? post.day : earliestDay(today)}
+                max={latestDay(today)}
+                onChange={(event) => event.target.value !== "" && onDayChange(event.target.value)}
+                className={cn(FIELD, "h-11 w-44")}
+              />
+            </div>
+            <div className="grid gap-1.5">
+              <label htmlFor="new-post-time" className="text-sm font-semibold text-ink">
+                Time
+              </label>
+              <input id="new-post-time" type="time" value={time} onChange={(event) => setTime(event.target.value)} className={cn(FIELD, "h-11 w-32")} />
+            </div>
           </div>
+          <p className="-mt-2 text-xs text-ink-2">India time. It goes out within a few minutes of the time you choose.</p>
 
           <fieldset className="grid gap-2">
             <legend className="mb-1 text-sm font-semibold text-ink">Post to</legend>
@@ -243,6 +258,9 @@ export function NewPostDialog({ day, onDayChange, today, channels, post, onClose
                 </label>
               ))}
             </div>
+            {channels.some((channel) => channel.platform === "google" && selected.has(channel.id)) ? (
+              <p className="text-xs text-ink-2">Google Business leaves out hashtags and shortens text over 1,500 characters.</p>
+            ) : null}
           </fieldset>
 
           <div className="grid gap-1.5">

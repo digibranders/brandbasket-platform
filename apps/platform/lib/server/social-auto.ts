@@ -140,14 +140,16 @@ export async function uploadPicture(settings: SocialAutoSettings, picture: Uint8
 
 export interface NewPostRequest {
   readonly day: string;
+  /** `HH:MM`, India time. */
+  readonly time: string;
   readonly caption: string;
   readonly pictureId: string;
   readonly channels: readonly string[];
 }
 
-/** Sets a post for a day, to the chosen channels. It goes out in that day's run, at 10:00 in India. */
+/** Sets a post for a day and time (India), to the chosen channels. */
 export async function createPost(settings: SocialAutoSettings, businessId: string, post: NewPostRequest, send: typeof fetch = fetch): Promise<AutoPost> {
-  const answer = await call(settings, "/api/v1/posts", { method: "POST", body: { externalId: businessId, day: post.day, caption: post.caption, pictureId: post.pictureId, channels: post.channels } }, send);
+  const answer = await call(settings, "/api/v1/posts", { method: "POST", body: { externalId: businessId, day: post.day, time: post.time, caption: post.caption, pictureId: post.pictureId, channels: post.channels } }, send);
   if (answer.status !== 201) throw refusal(answer, "the post");
   const created = readPosts({ posts: [(answer.body as { post?: unknown } | null)?.post] })[0];
   if (created === undefined) throw new SocialAutoError("social-auto answered with a post that could not be read");
@@ -156,6 +158,7 @@ export async function createPost(settings: SocialAutoSettings, businessId: strin
 
 export interface PostChanges {
   readonly day: string;
+  readonly time: string;
   readonly caption: string;
   /** A new picture; left out keeps the one the post has. */
   readonly pictureId?: string;
@@ -165,7 +168,7 @@ export interface PostChanges {
 /** Changes a post the business made, while it has not gone out. */
 export async function updatePost(settings: SocialAutoSettings, businessId: string, postId: string, changes: PostChanges, send: typeof fetch = fetch): Promise<AutoPost> {
   const query = new URLSearchParams({ externalId: businessId, postId });
-  const body = { day: changes.day, caption: changes.caption, channels: changes.channels, ...(changes.pictureId === undefined ? {} : { pictureId: changes.pictureId }) };
+  const body = { day: changes.day, time: changes.time, caption: changes.caption, channels: changes.channels, ...(changes.pictureId === undefined ? {} : { pictureId: changes.pictureId }) };
   const answer = await call(settings, `/api/v1/posts?${query}`, { method: "PATCH", body }, send);
   if (answer.status !== 200) throw refusal(answer, "the change");
   const updated = readPosts({ posts: [(answer.body as { post?: unknown } | null)?.post] })[0];
@@ -196,4 +199,14 @@ export async function sendPostNow(settings: SocialAutoSettings, businessId: stri
   const body = answer.body as { failed?: unknown; problems?: unknown } | null;
   const problems = Array.isArray(body?.problems) ? body.problems.flatMap((item): string[] => { const parsed = problemSchema.safeParse(item); return parsed.success ? [parsed.data.account] : []; }) : [];
   return { failed: body?.failed === true, accounts: [...new Set(problems)] };
+}
+
+/** Moves a post the business made to another day and time, leaving everything else as it is. */
+export async function movePost(settings: SocialAutoSettings, businessId: string, postId: string, to: { readonly day: string; readonly time: string }, send: typeof fetch = fetch): Promise<AutoPost> {
+  const query = new URLSearchParams({ externalId: businessId, postId });
+  const answer = await call(settings, `/api/v1/posts?${query}`, { method: "PATCH", body: { day: to.day, time: to.time } }, send);
+  if (answer.status !== 200) throw refusal(answer, "the move");
+  const moved = readPosts({ posts: [(answer.body as { post?: unknown } | null)?.post] })[0];
+  if (moved === undefined) throw new SocialAutoError("social-auto answered with a post that could not be read");
+  return moved;
 }

@@ -7,9 +7,9 @@ import { notFound, redirect, unstable_rethrow } from "next/navigation";
 import { z } from "zod";
 import { requireBillingAccess } from "@/lib/server/billing";
 import { getAppDb } from "@/lib/server/db";
-import { connectLink, createPost, deletePost, ensureWorkspace, loadChannels, sendPostNow, SocialAutoError, socialAutoSettings, updatePost } from "@/lib/server/social-auto";
+import { connectLink, createPost, deletePost, ensureWorkspace, loadChannels, movePost, sendPostNow, SocialAutoError, socialAutoSettings, updatePost } from "@/lib/server/social-auto";
 import { CHANNEL_PLATFORMS } from "@/lib/social/auto";
-import { checkNewPost, checkPostEdit, isChangeablePostId, type NewPostState } from "@/lib/social/new-post";
+import { canAddOn, checkNewPost, checkPostEdit, isChangeablePostId, isTime, momentHasPassed, type NewPostState } from "@/lib/social/new-post";
 import { localDateIn } from "@brandbasket/shared/lib/calendar/local-date";
 import { BRAND_TIME_ZONE } from "@/lib/call-dates";
 
@@ -92,7 +92,7 @@ export async function createPostAction(formData: FormData): Promise<NewPostState
     if (settings === null) return unavailable;
     const connected = (await loadChannels(settings, tenant.businessId)).map((channel) => channel.id);
     const checked = checkNewPost(
-      { day: formData.get("day"), caption: formData.get("caption"), pictureId: formData.get("pictureId"), channels: formData.getAll("channel") },
+      { day: formData.get("day"), time: formData.get("time"), caption: formData.get("caption"), pictureId: formData.get("pictureId"), channels: formData.getAll("channel") },
       localDateIn(BRAND_TIME_ZONE, new Date()),
       connected,
     );
@@ -119,16 +119,17 @@ export async function updatePostAction(formData: FormData): Promise<NewPostState
   if (!bought.includes("social")) notFound();
   const postId = formData.get("postId");
   const ownDay = formData.get("ownDay");
-  if (!isChangeablePostId(postId) || typeof ownDay !== "string") return { status: "error", message: "That post could not be found. Reload the page." };
+  const ownTime = formData.get("ownTime");
+  if (!isChangeablePostId(postId) || typeof ownDay !== "string" || typeof ownTime !== "string") return { status: "error", message: "That post could not be found. Reload the page." };
   try {
     const settings = socialAutoSettings();
     if (settings === null) return { status: "error", message: "Posting is not available just now. Try again later." };
     const connected = (await loadChannels(settings, tenant.businessId)).map((channel) => channel.id);
     const checked = checkPostEdit(
-      { day: formData.get("day"), caption: formData.get("caption"), pictureId: formData.get("pictureId"), channels: formData.getAll("channel") },
+      { day: formData.get("day"), time: formData.get("time"), caption: formData.get("caption"), pictureId: formData.get("pictureId"), channels: formData.getAll("channel") },
       localDateIn(BRAND_TIME_ZONE, new Date()),
       connected,
-      ownDay,
+      { day: ownDay, time: ownTime },
     );
     if (!checked.ok) return { status: "error", message: checked.message };
     await updatePost(settings, tenant.businessId, postId, checked.edit);
@@ -187,5 +188,34 @@ export async function sendPostNowAction(formData: FormData): Promise<NewPostStat
   revalidatePath("/social");
   if (!result.failed) return { status: "saved" };
   const names = result.accounts.length === 0 ? "one of the accounts" : result.accounts.join(" and ");
-  return { status: "partial", message: `The post could not be sent to ${names}. We will try again at the next 10:00 run.` };
+  return { status: "partial", message: `The post could not be sent to ${names}. We will try again at the next run.` };
+}
+
+/**
+ * Drag and drop on the calendar: moves a post the business made to another day and time, leaving its words, picture and accounts as
+ * they are. The new moment must be ahead of now, which social-auto checks again. Answers a state the calendar shows.
+ */
+export async function movePostAction(formData: FormData): Promise<NewPostState> {
+  const { tenant } = await requireBillingAccess();
+  const bought = await withTenantScope(getAppDb(), tenant, (tx) => listBoughtSetupServices(tx, tenant.businessId));
+  if (!bought.includes("social")) notFound();
+  const postId = formData.get("postId");
+  const day = formData.get("day");
+  const time = formData.get("time");
+  if (!isChangeablePostId(postId)) return { status: "error", message: "That post could not be found. Reload the page." };
+  const today = localDateIn(BRAND_TIME_ZONE, new Date());
+  if (typeof day !== "string" || !canAddOn(day, today)) return { status: "error", message: "Choose a day from today to 89 days ahead." };
+  if (!isTime(time) || momentHasPassed(day, time, new Date())) return { status: "error", message: "That time has already passed. Choose a later time." };
+  try {
+    const settings = socialAutoSettings();
+    if (settings === null) return { status: "error", message: "Posting is not available just now. Try again later." };
+    await movePost(settings, tenant.businessId, postId, { day, time });
+  } catch (error) {
+    unstable_rethrow(error);
+    if (error instanceof SocialAutoError && error.detail !== null) return { status: "error", message: error.detail };
+    console.error("[social] could not move a post", errorLogInfo(error));
+    return { status: "error", message: "The post could not be moved. Try again." };
+  }
+  revalidatePath("/social");
+  return { status: "saved" };
 }

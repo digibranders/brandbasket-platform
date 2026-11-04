@@ -2,8 +2,8 @@ import { approveDeliverables, DeliverableError, listBoughtSetupServices, withTen
 import { revalidatePath } from "next/cache";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { requireBillingAccess } from "@/lib/server/billing";
-import { connectLink, createPost, deletePost, ensureWorkspace, loadChannels, sendPostNow, SocialAutoError, socialAutoSettings, updatePost } from "@/lib/server/social-auto";
-import { approvePostsAction, connectChannelAction, createPostAction, deletePostAction, sendPostNowAction, updatePostAction } from "./actions";
+import { connectLink, createPost, deletePost, ensureWorkspace, loadChannels, movePost, sendPostNow, SocialAutoError, socialAutoSettings, updatePost } from "@/lib/server/social-auto";
+import { approvePostsAction, connectChannelAction, createPostAction, deletePostAction, movePostAction, sendPostNowAction, updatePostAction } from "./actions";
 
 vi.mock("server-only", () => ({}));
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
@@ -19,7 +19,7 @@ vi.mock("next/navigation", () => ({
 vi.mock("@/lib/server/db", () => ({ getAppDb: vi.fn(() => ({ kind: "app-db" })) }));
 vi.mock("@/lib/server/billing", () => ({ requireBillingAccess: vi.fn() }));
 vi.mock("@brandbasket/db", async (importOriginal) => ({ ...(await importOriginal<typeof import("@brandbasket/db")>()), approveDeliverables: vi.fn(), listBoughtSetupServices: vi.fn(), withTenantScope: vi.fn() }));
-vi.mock("@/lib/server/social-auto", async (importOriginal) => ({ ...(await importOriginal<typeof import("@/lib/server/social-auto")>()), socialAutoSettings: vi.fn(), ensureWorkspace: vi.fn(), connectLink: vi.fn(), loadChannels: vi.fn(), createPost: vi.fn(), updatePost: vi.fn(), deletePost: vi.fn(), sendPostNow: vi.fn() }));
+vi.mock("@/lib/server/social-auto", async (importOriginal) => ({ ...(await importOriginal<typeof import("@/lib/server/social-auto")>()), socialAutoSettings: vi.fn(), ensureWorkspace: vi.fn(), connectLink: vi.fn(), loadChannels: vi.fn(), createPost: vi.fn(), updatePost: vi.fn(), deletePost: vi.fn(), sendPostNow: vi.fn(), movePost: vi.fn() }));
 
 const A = "0192f3c4-0000-7000-8000-00000000000a";
 const B = "0192f3c4-0000-7000-8000-00000000000b";
@@ -149,7 +149,7 @@ describe("createPostAction", () => {
   const farDay = (): string => new Date(Date.now() + 5 * 86_400_000).toISOString().slice(0, 10);
   const post = (extra: Record<string, string | string[]> = {}): FormData => {
     const data = new FormData();
-    const values: Record<string, string | string[]> = { day: farDay(), caption: "Fresh sourdough.", pictureId: PICTURE, channel: ["instagram:1"], ...extra };
+    const values: Record<string, string | string[]> = { day: farDay(), time: "14:30", caption: "Fresh sourdough.", pictureId: PICTURE, channel: ["instagram:1"], ...extra };
     for (const [name, value] of Object.entries(values)) for (const one of Array.isArray(value) ? value : [value]) data.append(name, one);
     return data;
   };
@@ -180,7 +180,8 @@ describe("createPostAction", () => {
     ["no words", { caption: "  " }, "Write what the post should say."],
     ["no picture", { pictureId: "nope" }, "Add a picture first."],
     ["no account", { channel: [] }, "Choose at least one account."],
-    ["a day that has gone", { day: "2020-01-01" }, "Posts go out at 10:00 AM."],
+    ["a day that has gone", { day: "2020-01-01" }, "Choose a day from"],
+    ["a time that is not a time", { time: "soon" }, "Choose a time, like 14:30."],
   ])("says what is wrong with %s and sends nothing", async (_name, change, message) => {
     const result = await createPostAction(post(change));
     expect(result).toEqual({ status: "error", message: expect.stringContaining(message) });
@@ -208,7 +209,7 @@ describe("updatePostAction and deletePostAction", () => {
   const farDay = (): string => new Date(Date.now() + 5 * 86_400_000).toISOString().slice(0, 10);
   const change = (extra: Record<string, string | string[]> = {}): FormData => {
     const data = new FormData();
-    const values: Record<string, string | string[]> = { postId: POST_ID, ownDay: farDay(), day: farDay(), caption: "New words.", channel: ["instagram:1"], ...extra };
+    const values: Record<string, string | string[]> = { postId: POST_ID, ownDay: farDay(), ownTime: "10:00", day: farDay(), time: "14:30", caption: "New words.", channel: ["instagram:1"], ...extra };
     for (const [name, value] of Object.entries(values)) for (const one of Array.isArray(value) ? value : [value]) data.append(name, one);
     return data;
   };
@@ -232,7 +233,7 @@ describe("updatePostAction and deletePostAction", () => {
 
   it("saves the changes for the session's business, with no new picture unless one was stored, and refreshes the page", async () => {
     expect(await updatePostAction(change({ businessId: "business-2" }))).toEqual({ status: "saved" });
-    expect(updatePost).toHaveBeenCalledWith(expect.anything(), "business-1", POST_ID, { day: farDay(), caption: "New words.", channels: ["instagram:1"] });
+    expect(updatePost).toHaveBeenCalledWith(expect.anything(), "business-1", POST_ID, { day: farDay(), time: "14:30", caption: "New words.", channels: ["instagram:1"] });
     await updatePostAction(change({ pictureId: "b".repeat(32) }));
     expect(updatePost).toHaveBeenLastCalledWith(expect.anything(), "business-1", POST_ID, expect.objectContaining({ pictureId: "b".repeat(32) }));
     expect(revalidatePath).toHaveBeenCalledWith("/social");
@@ -292,7 +293,7 @@ describe("sendPostNowAction", () => {
 
   it("says which accounts refused it, and that the next run tries again", async () => {
     vi.mocked(sendPostNow).mockResolvedValue({ failed: true, accounts: ["Test Member"] });
-    expect(await sendPostNowAction(only())).toEqual({ status: "partial", message: "The post could not be sent to Test Member. We will try again at the next 10:00 run." });
+    expect(await sendPostNowAction(only())).toEqual({ status: "partial", message: "The post could not be sent to Test Member. We will try again at the next run." });
   });
 
   it("passes on social-auto's words, and says only that it could not for any other fault", async () => {
@@ -300,5 +301,48 @@ describe("sendPostNowAction", () => {
     expect(await sendPostNowAction(only())).toEqual({ status: "error", message: "this post has already gone out" });
     vi.mocked(sendPostNow).mockRejectedValue(new Error("ECONNREFUSED"));
     expect(await sendPostNowAction(only())).toEqual({ status: "error", message: "The post could not be sent. Try again." });
+  });
+});
+
+describe("movePostAction", () => {
+  const POST_ID = "manual-0123456789ab";
+  const farDay = (): string => new Date(Date.now() + 5 * 86_400_000).toISOString().slice(0, 10);
+  const drop = (extra: Record<string, string> = {}): FormData => {
+    const data = new FormData();
+    for (const [name, value] of Object.entries({ postId: POST_ID, day: farDay(), time: "11:15", ...extra })) data.set(name, value);
+    return data;
+  };
+
+  it("is refused for a visitor who is signed out, and for a business that did not buy the service", async () => {
+    vi.mocked(requireBillingAccess).mockRejectedValue(new Error("redirect:/login"));
+    await expect(movePostAction(drop())).rejects.toThrow("redirect:/login");
+    vi.mocked(requireBillingAccess).mockResolvedValue({ user, tenant, billing: { hasAccess: true } } as never);
+    vi.mocked(listBoughtSetupServices).mockResolvedValue(["search"] as never);
+    await expect(movePostAction(drop())).rejects.toThrow("notFound");
+    expect(movePost).not.toHaveBeenCalled();
+  });
+
+  it("moves the session's business's post to the new day and time, and refreshes the page", async () => {
+    vi.mocked(movePost).mockResolvedValue({} as never);
+    expect(await movePostAction(drop())).toEqual({ status: "saved" });
+    expect(movePost).toHaveBeenCalledWith(expect.anything(), "business-1", POST_ID, { day: farDay(), time: "11:15" });
+    expect(revalidatePath).toHaveBeenCalledWith("/social");
+  });
+
+  it.each([
+    ["a post id that is not a customer's", { postId: "2026-11-04-abc" }, "could not be found"],
+    ["a day that has gone", { day: "2020-01-01" }, "Choose a day"],
+    ["a time that is not a time", { time: "soon" }, "already passed"],
+  ])("refuses %s and moves nothing", async (_name, change, message) => {
+    const result = await movePostAction(drop(change));
+    expect(result).toEqual({ status: "error", message: expect.stringContaining(message) });
+    expect(movePost).not.toHaveBeenCalled();
+  });
+
+  it("passes on social-auto's words, and says only that it could not for any other fault", async () => {
+    vi.mocked(movePost).mockRejectedValue(new SocialAutoError("refused", 409, "this post is already due or sent, so it can no longer be changed"));
+    expect(await movePostAction(drop())).toEqual({ status: "error", message: "this post is already due or sent, so it can no longer be changed" });
+    vi.mocked(movePost).mockRejectedValue(new Error("ECONNREFUSED"));
+    expect(await movePostAction(drop())).toEqual({ status: "error", message: "The post could not be moved. Try again." });
   });
 });

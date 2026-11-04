@@ -44,8 +44,9 @@ const post = (overrides: Partial<CalendarPost> = {}): CalendarPost => ({
 
 describe("reading what social-auto answers", () => {
   it("keeps the channels it knows and drops one it does not, instead of failing the list", () => {
-    const body = { workspace: { channels: [channel(), { id: "google:1", platform: "google", account: "x", connectedAt: "t" }, { id: "broken" }] } };
+    const body = { workspace: { channels: [channel(), { id: "tiktok:1", platform: "tiktok", account: "x", connectedAt: "t" }, { id: "broken" }] } };
     expect(readChannels(body).map((c) => c.id)).toEqual(["instagram:1"]);
+    expect(readChannels({ workspace: { channels: [{ id: "google:100", platform: "google", account: "Test Cafe", connectedAt: "t" }] } }).map((c) => c.platform)).toEqual(["google"]);
     expect(readChannels(null)).toEqual([]);
     expect(readChannels({ workspace: { channels: "nope" } })).toEqual([]);
   });
