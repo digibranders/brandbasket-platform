@@ -1,5 +1,5 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
-import { billingCurrency, type BillingCurrency } from "@brandbasket/db";
+import { billingCurrency, type BillingCurrency, type BillingInterval } from "@brandbasket/db";
 import {
   CheckoutVerificationError,
   type BillingProvider,
@@ -49,10 +49,10 @@ export interface RazorpaySdkClient {
   readonly payments: {
     fetch(paymentId: string): Promise<{ readonly id: string; readonly amount: number; readonly currency: string; readonly created_at: number }>;
   };
-  /** Monthly plans, one per price: a new price is always a new plan. */
+  /** Monthly or yearly plans, one per price: a new price is always a new plan. */
   readonly plans: {
     create(input: {
-      readonly period: "monthly";
+      readonly period: "monthly" | "yearly";
       readonly interval: number;
       readonly item: { readonly name: string; readonly amount: number; readonly currency: string };
       readonly notes: Readonly<Record<string, string>>;
@@ -102,6 +102,18 @@ export interface RazorpayProviderOptions {
  * cycles is 10 years, Razorpay's own default mandate length; a subscription that reaches it completes and is started again.
  */
 const EFFECTIVELY_UNBOUNDED_CYCLES = 120;
+
+/**
+ * The same 10 years for a yearly subscription. Razorpay refuses more than 100 yearly cycles (probed in test mode,
+ * 2026-11-11), and a mandate longer than 30 years fails on UPI as above.
+ */
+const EFFECTIVELY_UNBOUNDED_YEARLY_CYCLES = 10;
+
+/** Razorpay's name for each billing interval, and how many cycles a subscription on it asks for. */
+const RAZORPAY_PERIODS: Readonly<Record<BillingInterval, { readonly period: "monthly" | "yearly"; readonly cycles: number }>> = {
+  month: { period: "monthly", cycles: EFFECTIVELY_UNBOUNDED_CYCLES },
+  year: { period: "yearly", cycles: EFFECTIVELY_UNBOUNDED_YEARLY_CYCLES },
+};
 
 /** Razorpay statuses of a subscription that will never charge again, so a cancel of it has nothing left to do. */
 const STOPPED_SUBSCRIPTION_STATUSES: ReadonlySet<string> = new Set(["cancelled", "completed", "expired"]);
@@ -249,7 +261,7 @@ export function createRazorpayProvider(options: RazorpayProviderOptions): Razorp
       }
       const created = await client.subscriptions.create({
         plan_id: providerPlanId,
-        total_count: EFFECTIVELY_UNBOUNDED_CYCLES,
+        total_count: RAZORPAY_PERIODS[input.billingInterval ?? "month"].cycles,
         quantity: 1,
         // We send our own emails (packages/email); Razorpay's would duplicate them.
         customer_notify: false,
@@ -308,13 +320,13 @@ export function createRazorpayProvider(options: RazorpayProviderOptions): Razorp
     },
 
     /**
-     * A Razorpay Plan charging the new monthly price, GST already inside it, the same amount chargedAmountCents gives the
+     * A Razorpay Plan charging the new price every month or every year, GST already inside it, the same amount chargedAmountCents gives the
      * renewal check, so a renewal on it matches our plan row to the paisa.
      */
     async createPlan(input: CreatePlanInput): Promise<{ readonly providerPlanId: string | null }> {
       const amount = chargedAmountCents(input.netMonthlyCents, 0);
       const created = await client.plans.create({
-        period: "monthly",
+        period: RAZORPAY_PERIODS[input.billingInterval ?? "month"].period,
         interval: 1,
         item: { name: input.itemName ?? `Subscription plan (${input.currency})`, amount, currency: input.currency },
         notes: { brandbasketPlanCode: input.code },

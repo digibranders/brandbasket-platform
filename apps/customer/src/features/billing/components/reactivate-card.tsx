@@ -42,7 +42,7 @@ export function ReactivateCard({ view, canManage }: { readonly view: Reactivatio
           </div>
         )}
         <p className="type-meta">
-          {view.planName}: {view.monthlyAmount} a month.
+          {view.planName}: {view.monthlyAmount} {view.per}.
         </p>
         {failure === null ? null : <Banner tone="neg">{failure.message}</Banner>}
         {canManage ? (

@@ -1,5 +1,5 @@
 import "server-only";
-import { addMonthsUtc, chargedAmountCents } from "@brandbasket/billing";
+import { addMonthsUtc, chargedAmountCents, monthsPerCycle } from "@brandbasket/billing";
 import {
   activateBundledAddOns,
   bundledNetCents,
@@ -89,7 +89,10 @@ async function billedLines(tx: ScopedTransaction, subscriptionId: string): Promi
  * Issues the payment's tax invoice last, in a savepoint (D7), a line for each service as it was billed.
  */
 export async function activateFirstPayment(tx: ScopedTransaction, payment: FirstPayment): Promise<FirstPaymentActivation> {
-  const termEnd = addMonthsUtc(payment.paidAt, payment.plan.initialTermMonths);
+  // A yearly subscription's first payment buys its first year; a monthly one buys the plan's first term.
+  const opened = await findSubscriptionById(tx, payment.subscriptionId);
+  const yearly = opened?.billingInterval === "year";
+  const termEnd = addMonthsUtc(payment.paidAt, yearly ? monthsPerCycle("year") : payment.plan.initialTermMonths);
   // What was actually taken: the price (GST included) less the discount. chargedAmountCents throws for a discount that
   // would leave nothing, so a nonsense figure is never recorded as a payment.
   // The services taken at this checkout are lines of the subscription, billed in the same charge: their prices (the plan
@@ -137,7 +140,7 @@ export async function activateFirstPayment(tx: ScopedTransaction, payment: First
     discountAmountCents: payment.discountAmountCents ?? 0,
     // A stay offer is only ever added to a live subscription, never to its first payment.
     retentionDiscountCents: 0,
-    monthly: payment.plan.initialTermMonths === 1,
+    monthly: !yearly && payment.plan.initialTermMonths === 1,
     periodStart: payment.paidAt,
     periodEnd: termEnd,
   });

@@ -1,5 +1,5 @@
 import "server-only";
-import { findBillingState, isPackageOfferForfeited, type Plan } from "@brandbasket/db";
+import { findBillingState, isPackageOfferForfeited, type BillingInterval, type Plan } from "@brandbasket/db";
 import type { BillingDetailsView } from "../rules/billing-details-view";
 import type { MonthlyAddOnId } from "@brandbasket/shared/lib/billing/add-ons";
 import type { MembershipTier } from "../rules/membership";
@@ -50,6 +50,7 @@ export async function loadMembershipCheckout(
   tier: MembershipTier,
   requested: readonly MonthlyAddOnId[],
   now: Date,
+  interval: BillingInterval = "month",
 ): Promise<MembershipCheckoutView> {
   const { businessId } = customer.tenant;
   const staffDb = getStaffDb();
@@ -60,7 +61,7 @@ export async function loadMembershipCheckout(
   const reactivation = hasEverPaid ? await loadReactivationBasket(staffDb, businessId) : null;
   const services = reactivation?.services ?? requested;
   // A reactivation takes no code, so none is looked for against its basket.
-  const basis = plan === null || hasEverPaid ? null : codeBasisFor(services, plan.currency);
+  const basis = plan === null || hasEverPaid ? null : codeBasisFor(services, plan.currency, interval);
   const [discount, lapsedCode, forfeited, billingDetails] = await Promise.all([
     basis === null ? null : resolveAppliedDiscount(businessId, basis, now),
     basis === null ? null : findLapsedAppliedCode(businessId, basis, now),

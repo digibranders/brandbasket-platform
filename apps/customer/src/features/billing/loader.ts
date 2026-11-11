@@ -1,7 +1,8 @@
 import "server-only";
 import { findBillingProfile, withTenantScope } from "@brandbasket/db";
+import type { BillingInterval } from "@brandbasket/db";
 import type { MonthlyAddOnId } from "@brandbasket/shared/lib/billing/add-ons";
-import { addOnPrice, addOnById, PLAN_ADD_ON_IDS } from "@brandbasket/shared/lib/billing/add-ons";
+import { addOnPrice, addOnById, perCycle, PLAN_ADD_ON_IDS } from "@brandbasket/shared/lib/billing/add-ons";
 import { paymentReturnView, readPaymentReturn, type PaymentReturnView } from "@brandbasket/shared/lib/billing/payment-return";
 import { planLabel } from "@brandbasket/shared/lib/billing/receipt-title";
 import { renewalCharge } from "@brandbasket/shared/lib/billing/terms";
@@ -91,7 +92,10 @@ export interface ServicesPanelView {
 
 export interface ReactivationCardView {
   readonly planName: string;
+  /** What each payment takes once it restarts. */
   readonly monthlyAmount: string;
+  /** "a month", or "a year" for a yearly plan that lapsed. */
+  readonly per: string;
   /** The services the press posts when the customer chooses them, or null when the basket comes back as it was. */
   readonly chosen: readonly MonthlyAddOnId[] | null;
   /** The picker's rows for a customer who cancelled themselves: each service at its own price, and the link that ticks it. */
@@ -117,19 +121,23 @@ export interface BillingOverview {
   readonly reactivation: Loaded<ReactivationCardView | null> | null;
 }
 
-/** "₹3,730 today for the 14 days left this month, then ₹11,799 a month from Thu 19 Nov, GST included." */
-function quoteLine(offer: Extract<AddOnOffer, { kind: "quote" }>, entry: AddOnPageEntry, now: Date): string {
+/**
+ * "₹3,730 today for the 14 days left this month, then ₹11,799 a month from Thu 19 Nov, GST included." Paid yearly: "₹21,563
+ * today for the 243 days left in your year, then ₹64,778 a year from Thu 11 Nov 2027, GST included."
+ */
+function quoteLine(offer: Extract<AddOnOffer, { kind: "quote" }>, entry: AddOnPageEntry, interval: BillingInterval, now: Date): string {
   const days = offer.daysLeft === 1 ? "the 1 day left" : `the ${offer.daysLeft} days left`;
   const tax = entry.price.taxRateBasisPoints > 0 ? ", GST included" : "";
-  return `${formatMoney(offer.chargeCents, entry.price.currency)} today for ${days} this month, then ${formatMoney(offer.nextRenewalCents, entry.price.currency)} a month from ${formatDate(offer.renewsOn, now)}${tax}.`;
+  const period = interval === "year" ? "in your year" : "this month";
+  return `${formatMoney(offer.chargeCents, entry.price.currency)} today for ${days} ${period}, then ${formatMoney(offer.nextRenewalCents, entry.price.currency)} ${perCycle(interval)} from ${formatDate(offer.renewsOn, now)}${tax}.`;
 }
 
 const ASK_THE_TEAM = "Ask the team and we'll add it for you.";
 
-function availableAction(offer: AddOnOffer, entry: AddOnPageEntry, canAdd: boolean, now: Date): ServiceAction {
+function availableAction(offer: AddOnOffer, entry: AddOnPageEntry, canAdd: boolean, interval: BillingInterval, now: Date): ServiceAction {
   switch (offer.kind) {
     case "quote":
-      return canAdd ? { kind: "add", quote: quoteLine(offer, entry, now) } : { kind: "none" };
+      return canAdd ? { kind: "add", quote: quoteLine(offer, entry, interval, now) } : { kind: "none" };
     case "renewal-due":
       return offer.renewsOn === null ? { kind: "note", text: ASK_THE_TEAM, ask: true } : { kind: "note", text: `Your payment is due within the hour. Add it after ${formatDate(offer.renewsOn, now)}.`, ask: false };
     case "manual":
@@ -145,18 +153,19 @@ function availableAction(offer: AddOnOffer, entry: AddOnPageEntry, canAdd: boole
   }
 }
 
-function serviceRow(entry: AddOnPageEntry, canManage: boolean, canAdd: boolean, activatedAt: Date | null, now: Date): ServiceRowView {
+function serviceRow(entry: AddOnPageEntry, canManage: boolean, canAdd: boolean, activatedAt: Date | null, interval: BillingInterval, now: Date): ServiceRowView {
+  const payment = interval === "year" ? "yearly" : "monthly";
   const base = { addOn: entry.addOn, service: SERVICE_KEY_OF[entry.addOn], name: serviceName(entry.addOn), status: addOnStatus(entry), price: formatMoney(entry.price.listCents, entry.price.currency) };
   if (entry.kind === "available") {
-    return { ...base, line: addOnById(entry.addOn).line, action: canManage ? availableAction(entry.offer, entry, canAdd, now) : { kind: "none" } };
+    return { ...base, line: addOnById(entry.addOn).line, action: canManage ? availableAction(entry.offer, entry, canAdd, interval, now) : { kind: "none" } };
   }
   const line =
     entry.endsOn !== null
       ? `Stops on ${formatDate(entry.endsOn, now)}. You won't be charged for it after that.`
       : entry.joinsOn !== null
-        ? `Joins your monthly payment on ${formatDate(entry.joinsOn, now)}.`
+        ? `Joins your ${payment} payment on ${formatDate(entry.joinsOn, now)}.`
         : activatedAt === null
-          ? "Included in your monthly plan payment."
+          ? `Included in your ${payment} plan payment.`
           : `Since ${formatDate(activatedAt, now)}.`;
   const action: ServiceAction = !canManage
     ? { kind: "none" }
@@ -174,14 +183,15 @@ function serviceRow(entry: AddOnPageEntry, canManage: boolean, canAdd: boolean, 
 export async function loadServicesPanel(customer: CustomerContext, canAdd: boolean, now: Date): Promise<ServicesPanelView> {
   const page = await loadAddOnsPage(customer, now);
   const canManage = customer.role === "owner";
+  const interval = customer.billing.subscription?.billingInterval ?? "month";
   const rows = page.addOns.map((entry) => {
     const line = page.lines.find((row) => row.addOn === entry.addOn && row.status === "active");
-    return serviceRow(entry, canManage, canAdd, line?.activatedAt ?? null, now);
+    return serviceRow(entry, canManage, canAdd, line?.activatedAt ?? null, interval, now);
   });
   const nextBillingOn = customer.billing.subscription?.paidThroughAt ?? null;
   const options = page.addOns.flatMap((entry): CancelOption[] =>
     entry.kind === "included" && entry.endsOn === null && entry.drop !== null && nextBillingOn !== null
-      ? [{ addOn: entry.addOn, name: serviceName(entry.addOn), copy: dropCopy(entry.drop, formatDate(nextBillingOn, now)) }]
+      ? [{ addOn: entry.addOn, name: serviceName(entry.addOn), copy: dropCopy(entry.drop, formatDate(nextBillingOn, now), interval) }]
       : [],
   );
   const { subscription, plan } = customer.billing;
@@ -214,6 +224,7 @@ export async function loadReactivationCard(customer: CustomerContext, params: Pa
   return {
     planName: planLabel(plan.name),
     monthlyAmount,
+    per: perCycle(reactivation.billingInterval),
     chosen: reactivation.cancelled ? reactivation.services : null,
     picker,
   };

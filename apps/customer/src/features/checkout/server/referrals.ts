@@ -1,5 +1,5 @@
 import "server-only";
-import { discountCentsFor, isChargeableDiscount, normaliseReferralCode } from "@brandbasket/billing";
+import { discountCentsFor, firstYearDiscountCents, isChargeableDiscount, normaliseReferralCode } from "@brandbasket/billing";
 import {
   consumeRateLimit,
   findAffiliateById,
@@ -9,6 +9,7 @@ import {
   isPhoneAccountEmail,
   setBusinessReferralCode,
   type Affiliate,
+  type BillingInterval,
   type RateLimitRule,
   type ReferralCode,
   type ReferralDiscount,
@@ -77,15 +78,20 @@ function refused(message: string, field: string | null = REFERRAL_FIELD): Referr
  */
 export interface CodeBasis {
   readonly currency: MoneyCurrency;
+  /** The basket's net for one cycle: a month, or a year on a yearly checkout. */
   readonly netCents: number;
+  /** Absent is every month. A yearly basket takes the code off its first payment only (firstYearDiscountCents). */
+  readonly interval?: BillingInterval;
 }
 
 /**
  * The basis a code is priced against for a basket of services, or null for an empty basket. A code is only ever applied
  * before a business has paid, so the package offer is never forfeited here.
  */
-export function codeBasisFor(services: readonly MonthlyAddOnId[], currency: MoneyCurrency): CodeBasis | null {
-  return services.length === 0 ? null : { currency, netCents: basketNetCents(services, currency) };
+export function codeBasisFor(services: readonly MonthlyAddOnId[], currency: MoneyCurrency, interval: BillingInterval = "month"): CodeBasis | null {
+  if (services.length === 0) return null;
+  const netCents = basketNetCents(services, currency, interval);
+  return interval === "year" ? { currency, netCents, interval } : { currency, netCents };
 }
 
 /**
@@ -97,9 +103,11 @@ export function codeBasisFor(services: readonly MonthlyAddOnId[], currency: Mone
 export function discountFrom(code: ReferralCode, basis: CodeBasis): AppliedDiscount | null {
   if (code.currency !== basis.currency) return null;
   if (code.discount === null) return { codeId: code.id, code: code.code, amountCents: 0, months: code.discountMonths, stated: null };
-  const amountCents = discountCentsFor(code.discount, basis.netCents);
+  // A yearly checkout takes the code off its first payment, the one paid month its discount then runs for.
+  const yearly = basis.interval === "year";
+  const amountCents = yearly ? firstYearDiscountCents(code.discount, basis.netCents, code.discountMonths) : discountCentsFor(code.discount, basis.netCents);
   if (!isChargeableDiscount(basis.netCents, amountCents)) return null;
-  return { codeId: code.id, code: code.code, amountCents, months: code.discountMonths, stated: code.discount };
+  return { codeId: code.id, code: code.code, amountCents, months: yearly ? 1 : code.discountMonths, stated: code.discount };
 }
 
 /**

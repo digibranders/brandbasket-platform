@@ -32,7 +32,7 @@ function client(overrides: { readonly paidThroughAt?: Date | null; readonly firs
       subscription:
         overrides.paidThroughAt === undefined || overrides.paidThroughAt === null
           ? null
-          : { status: "active", provider: "razorpay", activatedAt: new Date("2026-10-01T00:00:00.000Z"), paidThroughAt: overrides.paidThroughAt, commitmentEndsAt: null },
+          : { status: "active", provider: "razorpay", billingInterval: "month", activatedAt: new Date("2026-10-01T00:00:00.000Z"), paidThroughAt: overrides.paidThroughAt, commitmentEndsAt: null },
       firstPayment:
         overrides.firstPaidAt === undefined || overrides.firstPaidAt === null
           ? null

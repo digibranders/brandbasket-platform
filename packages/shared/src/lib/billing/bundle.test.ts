@@ -96,9 +96,18 @@ describe("reactivationBasketOf", () => {
       forfeited: false,
       adCreditCents: 300_000,
       cancelled: false,
+      billingInterval: "month",
     });
     expect(reactivationNetCents(basket, "INR")).toBe(899_700);
     expect(reactivationNetCents(basket, "USD")).toBe(17_700);
+  });
+
+  it("restores a yearly plan that lapsed on a yearly basket, and a cancelled one monthly, as the reactivation card offers", () => {
+    const yearly = reactivationBasketOf({ subscription: { ...LAPSED, billingInterval: "year" }, lines: [line("managed-website")], forfeited: false });
+    expect(yearly.billingInterval).toBe("year");
+    expect(reactivationNetCents(yearly, "INR")).toBe(3_238_900);
+    const cancelled = reactivationBasketOf({ subscription: { ...LAPSED, billingInterval: "year", cancelRequestedAt: PAID }, lines: [line("managed-website")], forfeited: false });
+    expect(cancelled.billingInterval).toBe("month");
   });
 
   it("prices the set it restores at list, whatever the lapsed lines were last billed at", () => {
@@ -146,6 +155,7 @@ describe("reactivationBasketOf", () => {
       forfeited: false,
       adCreditCents: 300_000,
       cancelled: false,
+      billingInterval: "month",
     });
   });
 
@@ -170,6 +180,7 @@ describe("reactivationBasketOf", () => {
       forfeited: true,
       adCreditCents: 0,
       cancelled: true,
+      billingInterval: "month",
     });
     expect(reactivationNetCents(basket, "INR")).toBe(899_700);
   });
@@ -181,6 +192,7 @@ describe("reactivationBasketOf", () => {
       forfeited: false,
       adCreditCents: 300_000,
       cancelled: false,
+      billingInterval: "month",
     });
     expect(reactivationNetCents(basket, "INR")).toBe(899_700);
   });
@@ -191,12 +203,14 @@ describe("reactivationBasketOf", () => {
       forfeited: false,
       adCreditCents: 0,
       cancelled: false,
+      billingInterval: "month",
     });
     expect(reactivationBasketOf({ subscription: null, lines: [], forfeited: false })).toEqual({
       services: ["managed-website"],
       forfeited: false,
       adCreditCents: 0,
       cancelled: false,
+      billingInterval: "month",
     });
   });
 });

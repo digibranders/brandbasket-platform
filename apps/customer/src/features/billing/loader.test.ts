@@ -110,18 +110,18 @@ describe("loadBillingOverview", () => {
     expect(loadAddOnsPage).not.toHaveBeenCalled();
 
     vi.mocked(findReactivationPlan).mockResolvedValue(PLAN as never);
-    vi.mocked(findReactivation).mockResolvedValue({ cancelled: false, services: ["managed-website"], netCents: 299_900, discountCents: 0 });
+    vi.mocked(findReactivation).mockResolvedValue({ cancelled: false, services: ["managed-website"], netCents: 299_900, discountCents: 0, billingInterval: "month" });
     const lapsed = await loadBillingOverview(customerWith("owner", { status: "lapsed", hasAccess: false }), {}, NOW);
     expect(lapsed.services).toBeNull();
-    expect(lapsed.reactivation).toEqual({ ok: true, data: { planName: expect.any(String), monthlyAmount: "₹2,999", chosen: null, picker: null } });
+    expect(lapsed.reactivation).toEqual({ ok: true, data: { planName: expect.any(String), monthlyAmount: "₹2,999", per: "a month", chosen: null, picker: null } });
   });
 
   it("prices a reactivation less the kept code through the shared renewal figure, and refuses one that leaves nothing", async () => {
     const lapsedOwner = customerWith("owner", { status: "lapsed", hasAccess: false });
     vi.mocked(findReactivationPlan).mockResolvedValue(PLAN as never);
-    vi.mocked(findReactivation).mockResolvedValue({ cancelled: false, services: ["managed-website"], netCents: 299_900, discountCents: 30_000 });
+    vi.mocked(findReactivation).mockResolvedValue({ cancelled: false, services: ["managed-website"], netCents: 299_900, discountCents: 30_000, billingInterval: "month" });
     expect((await loadBillingOverview(lapsedOwner, {}, NOW)).reactivation).toMatchObject({ ok: true, data: { monthlyAmount: "₹2,699" } });
-    vi.mocked(findReactivation).mockResolvedValue({ cancelled: false, services: ["managed-website"], netCents: 299_900, discountCents: 299_900 });
+    vi.mocked(findReactivation).mockResolvedValue({ cancelled: false, services: ["managed-website"], netCents: 299_900, discountCents: 299_900, billingInterval: "month" });
     expect((await loadBillingOverview(lapsedOwner, {}, NOW)).reactivation).toMatchObject({ ok: false });
   });
 

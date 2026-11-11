@@ -1,6 +1,6 @@
 import "server-only";
 import { discountPlanCode, type BillingProvider } from "@brandbasket/billing";
-import { findProviderBundlePlan, findProviderDiscountPlan, saveProviderBundlePlan, saveProviderDiscountPlan, type Database, type Plan } from "@brandbasket/db";
+import { findProviderBundlePlan, findProviderDiscountPlan, saveProviderBundlePlan, saveProviderDiscountPlan, type BillingInterval, type Database, type Plan } from "@brandbasket/db";
 
 /**
  * A discounted provider plan charges one amount every cycle. A base plan whose first payment differs from its monthly
@@ -31,10 +31,13 @@ export async function ensureDiscountPlanFor(
   plan: Plan,
   discountAmountCents: number,
   bundledAddOnNetCents = 0,
+  interval: BillingInterval = "month",
 ): Promise<string | undefined> {
   if (discountAmountCents === 0 && bundledAddOnNetCents === 0) return undefined;
   if (plan.initialAmountCents !== plan.recurringAmountCents) throw new UnevenPlanDiscountError(plan.code);
-  if (bundledAddOnNetCents > 0) return ensureBundlePlanFor(staffDb, provider, plan, discountAmountCents, bundledAddOnNetCents);
+  if (bundledAddOnNetCents > 0) return ensureBundlePlanFor(staffDb, provider, plan, discountAmountCents, bundledAddOnNetCents, interval);
+  // A yearly subscription always bills its services as lines; a discount on the plan row alone is monthly by its nature.
+  if (interval !== "month") throw new Error(`A yearly subscription on plan ${plan.code} has no services to bill`);
   const key = { planId: plan.id, discountAmountCents, provider: provider.name };
   const existing = await findProviderDiscountPlan(staffDb, key);
   if (existing !== null) return existing;
@@ -50,9 +53,9 @@ export async function ensureDiscountPlanFor(
 }
 
 /**
- * The provider plan a subscription with add-ons runs on: one amount a month, the plan's net price plus the add-ons less
- * the discount, with the plan's tax on top. It is the same figure the webhook expects (the plan's price plus the
- * subscription's frozen add-ons, less its frozen discount, through chargedAmountCents), made once per amount.
+ * The provider plan a subscription with add-ons runs on: one amount every month or every year, the plan's net price plus the
+ * add-ons less the discount, with the plan's tax on top. It is the same figure the webhook expects (the plan's price plus the
+ * subscription's frozen add-ons, less its frozen discount, through chargedAmountCents), made once per amount and interval.
  */
 async function ensureBundlePlanFor(
   staffDb: Database,
@@ -60,17 +63,20 @@ async function ensureBundlePlanFor(
   plan: Plan,
   discountAmountCents: number,
   bundledAddOnNetCents: number,
+  interval: BillingInterval,
 ): Promise<string | undefined> {
   const netMonthlyCents = plan.recurringAmountCents + bundledAddOnNetCents - discountAmountCents;
-  const key = { planId: plan.id, netMonthlyCents, provider: provider.name };
+  const key = { planId: plan.id, netMonthlyCents, billingInterval: interval, provider: provider.name };
   const existing = await findProviderBundlePlan(staffDb, key);
   if (existing !== null) return existing;
 
   const created = await provider.createPlan({
     currency: plan.currency,
     netMonthlyCents,
+    billingInterval: interval,
     taxRateBasisPoints: plan.taxRateBasisPoints,
-    code: `${plan.code}-with-add-ons-${netMonthlyCents}`,
+    // The monthly code is unchanged, so a plan already made at the provider keeps its name.
+    code: `${plan.code}-with-add-ons-${netMonthlyCents}${interval === "year" ? "-year" : ""}`,
     itemName: `Brandbasket services (${plan.currency})`,
   });
   if (created.providerPlanId === null) return undefined;

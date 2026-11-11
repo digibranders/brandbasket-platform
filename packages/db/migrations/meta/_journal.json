@@ -1541,6 +1541,13 @@
       "when": 1794375485722,
       "tag": "0222_ai_plans",
       "breakpoints": true
+    },
+    {
+      "idx": 220,
+      "version": "7",
+      "when": 1794399685245,
+      "tag": "0223_annual_billing",
+      "breakpoints": true
     }
   ]
 }

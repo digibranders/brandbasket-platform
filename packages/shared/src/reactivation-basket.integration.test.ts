@@ -246,7 +246,7 @@ describe("a subscription the provider ended without the customer asking (a revok
     expect((await findSubscriptionById(dbs.staff.db, lapsed.id))?.adCreditCents).toBe(0);
 
     const basket = await loadReactivationBasket(dbs.staff.db, businessId);
-    expect(basket).toMatchObject({ forfeited: false, adCreditCents: 0, cancelled: false });
+    expect(basket).toMatchObject({ forfeited: false, adCreditCents: 0, cancelled: false, billingInterval: "month" });
     expect(reactivationNetCents(basket, "INR")).toBe(899_700);
 
     const reopened = await openReactivation();
@@ -382,7 +382,7 @@ describe("a lapsed subscription with an add that was in flight", () => {
     await addSeoToPaidMonth(lapsed, false);
 
     const basket = await loadReactivationBasket(dbs.staff.db, businessId);
-    expect(basket).toEqual({ services: ["managed-website", "social-media"], forfeited: false, adCreditCents: 0, cancelled: false });
+    expect(basket).toEqual({ services: ["managed-website", "social-media"], forfeited: false, adCreditCents: 0, cancelled: false, billingInterval: "month" });
 
     const reopened = await openReactivation();
     const payment = await pay(reopened);
@@ -439,6 +439,7 @@ describe("an unpaid reactivation that is dropped", () => {
       forfeited: false,
       adCreditCents: 0,
       cancelled: false,
+      billingInterval: "month",
     });
 
     const reopened = await openReactivation();
