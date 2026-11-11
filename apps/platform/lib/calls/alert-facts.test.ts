@@ -10,7 +10,7 @@ const BASE = {
   endsAt: END,
   previousStartsAt: null,
   previousEndsAt: null,
-  services: ["Website", "Social & Ads", "Search"],
+  services: ["Website", "Social media", "Search"],
   meetingUrl: "https://app.cal.com/video/abc",
   reason: null,
   note: null,
@@ -30,7 +30,7 @@ describe("callAlert", () => {
       { name: "When", value: "Wed, 28 Oct, 3:30 pm to 4:00 pm India time" },
       { name: "Moved from", value: null },
       { name: "About", value: null },
-      { name: "Services", value: "Website, Social & Ads and Search" },
+      { name: "Services", value: "Website, Social media and Search" },
       { name: "Meeting link", value: "https://app.cal.com/video/abc" },
     ]);
     expect(alert.text).toBeNull();
@@ -46,7 +46,7 @@ describe("callAlert", () => {
   it("gives a later call what it is about and the customer's note, and leaves out a link it does not have", () => {
     const alert = callAlert({ ...BASE, kind: "call", reason: "social", note: "  Ads for braces ", meetingUrl: null });
     expect(alert.event).toBe("call_booked");
-    expect(alert.facts.find((fact) => fact.name === "About")?.value).toBe("Social & Ads");
+    expect(alert.facts.find((fact) => fact.name === "About")?.value).toBe("Social media");
     expect(alert.facts.find((fact) => fact.name === "Meeting link")?.value).toBeNull();
     expect(alert.buttons).toEqual([]);
     expect(alert.text).toBe("Customer's note: Ads for braces");

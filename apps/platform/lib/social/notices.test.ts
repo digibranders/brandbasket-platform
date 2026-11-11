@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { socialNoticeLine } from "./notices";
+import { connectNoticeLine, socialNoticeLine } from "./notices";
 
 describe("socialNoticeLine", () => {
   it("thanks the customer when the posts were approved", () => {
@@ -16,5 +16,27 @@ describe("socialNoticeLine", () => {
     expect(socialNoticeLine("")).toBeNull();
     expect(socialNoticeLine(["approved"])).toBeNull();
     expect(socialNoticeLine(undefined)).toBeNull();
+  });
+});
+
+describe("connectNoticeLine", () => {
+  it("says which network was connected, and the others as problems", () => {
+    expect(connectNoticeLine("connected", "instagram")).toEqual({ ok: true, text: "Instagram is connected. Posts from now on will also go there." });
+    expect(connectNoticeLine("connected", "google")).toEqual({ ok: true, text: "Google Business is connected. Posts from now on will also go there." });
+    expect(connectNoticeLine("failed", "google")?.text).toBe("Google Business could not be connected. Try again, and press Allow on its page.");
+    expect(connectNoticeLine("denied", "facebook")?.ok).toBe(false);
+    expect(connectNoticeLine("failed", "linkedin")?.text).toContain("LinkedIn could not be connected");
+  });
+
+  it("does not name a network it does not know", () => {
+    expect(connectNoticeLine("connected", "myspace")?.text).toContain("That account is connected");
+    expect(connectNoticeLine("failed", undefined)?.text).toContain("That account could not be connected");
+  });
+
+  it("says when connecting is not available, and ignores anything else", () => {
+    expect(connectNoticeLine("unavailable", undefined)).toEqual({ ok: false, text: "Connecting accounts is not available just now. Try again later, or ask us for help." });
+    expect(connectNoticeLine("hacked", "instagram")).toBeNull();
+    expect(connectNoticeLine(["connected"], "instagram")).toBeNull();
+    expect(connectNoticeLine(undefined, "instagram")).toBeNull();
   });
 });

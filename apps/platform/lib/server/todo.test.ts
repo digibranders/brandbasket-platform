@@ -33,8 +33,8 @@ describe("loadTodo", () => {
 
     expect(listServiceSetups).toHaveBeenCalledWith(appTx, "business-1");
     expect(todo.items.find((item) => item.key === "accounts")?.done).toBe(true);
-    expect(todo.items.filter((item) => !item.done).map((item) => item.key)).toEqual(["offers", "budget"]);
-    expect(todo.open).toBe(2);
+    expect(todo.items.filter((item) => !item.done).map((item) => item.key)).toEqual(["website", "offers", "budget"]);
+    expect(todo.open).toBe(3);
     expect(todo.answers.social).toEqual({ instagramUrl: "https://instagram.com/cafe", facebookUrl: "", adminAccess: "yes" });
   });
 
@@ -46,11 +46,12 @@ describe("loadTodo", () => {
     const todo = await loadTodo(freshTenant());
 
     expect(todo.items.map((item) => [item.key, item.done])).toEqual([
+      ["website", false],
       ["accounts", false],
       ["offers", false],
       ["budget", false],
     ]);
-    expect(todo.open).toBe(3);
+    expect(todo.open).toBe(4);
     expect(log).toHaveBeenCalledTimes(1);
     expect(log.mock.calls[0]?.[0]).toBe("[todo] could not read the saved answers");
     log.mockRestore();

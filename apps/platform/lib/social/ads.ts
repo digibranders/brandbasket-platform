@@ -1,7 +1,7 @@
 import { formatMoney, type MoneyCurrency } from "@brandbasket/shared/lib/money";
 import type { SnapshotView } from "@/lib/overview";
 
-/** The ads panel on Social & Ads: each figure is null when it is not known. */
+/** The ads panel on Social media: each figure is null when it is not known. */
 export interface AdsPanel {
   readonly spent: string | null;
   readonly percent: number | null;

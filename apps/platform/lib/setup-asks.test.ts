@@ -7,10 +7,10 @@ const item = (setup: "accounts" | "offers" | "budget" | "areas", service: "socia
 const ANSWERS = { social: { accounts: "x" }, search: { areas: "Thane" } };
 
 describe("isBlockingSetup", () => {
-  it("asks for the accounts, the ad budget and the areas, and no longer for what to promote", () => {
-    expect(BLOCKING_SETUP_KEYS).toEqual(["accounts", "budget", "areas"]);
+  it("asks for the website, the accounts, the ad budget and the areas, and no longer for what to promote", () => {
+    expect(BLOCKING_SETUP_KEYS).toEqual(["website", "accounts", "areas"]);
     expect(isBlockingSetup("offers")).toBe(false);
-    expect(isBlockingSetup("budget")).toBe(true);
+    expect(isBlockingSetup("budget")).toBe(false);
   });
 });
 

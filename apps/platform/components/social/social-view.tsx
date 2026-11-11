@@ -2,17 +2,25 @@ import { FileText, Newspaper } from "@phosphor-icons/react/dist/ssr";
 import Link from "next/link";
 import type { ReactElement } from "react";
 import { cn } from "@brandbasket/shared/lib/cn";
-import { DARK_BUTTON, LIFT, SECTION_TITLE, SOFT_BUTTON } from "@/components/v2/classes";
+import { DARK_BUTTON, LIFT, SECTION_TITLE } from "@/components/v2/classes";
 import { ServiceSetupCard } from "@/components/setup/service-setup-card";
-import { EmptyState, PageColumns, PageFrame, PageSection } from "@/components/v2/page";
+import { EmptyState, PageColumns, PageFrame } from "@/components/v2/page";
 import { ASK_FOR_A_CHANGE_PATH } from "@/lib/requests/links";
+import { allPaused, bookedUntil, connectStatus, dayLabel, daysUntilEnd, endingSoon, endsInWords } from "@/lib/social/auto";
 import type { NoticeLine } from "@/lib/requests/notices";
-import type { SocialData } from "@/lib/server/social";
+import type { SocialConnect, SocialData } from "@/lib/server/social";
 import type { SetupAsk } from "@/lib/setup-asks";
-import type { AdsPanel } from "@/lib/social/ads";
 import { splitPosts, waitingHeadline } from "@/lib/social/week";
+import { AiStartCard } from "./ai-start-card";
+import { BrandSwitcher } from "./brand-switcher";
+import { SMALL_SOFT } from "./small-buttons";
 import { ApproveBar } from "./approve-bar";
+import { ChannelFilterProvider } from "./channel-filter";
+import { ChannelsSidebar, type ChannelRow } from "./channels-sidebar";
+import { ConnectStatusCard } from "./connect-status";
+import { NewPostButton, NewPostRequestProvider } from "./new-post-request";
 import { PostCard } from "./post-card";
+import { SocialCalendar } from "./social-calendar";
 import { WeekList } from "./week-list";
 
 interface SocialViewProps {
@@ -21,65 +29,97 @@ interface SocialViewProps {
   readonly now: Date;
   /** What we still need from the customer to start: shown as one card at the top. */
   readonly setup?: readonly SetupAsk[];
+  /** The website the customer gave in setup, offered when social-auto has not locked one yet. */
+  readonly savedWebsite?: string | null;
 }
 
-const FIGURE = "font-figure font-semibold tabular-nums text-ink";
-
-function AdsSection({ ads, month }: { readonly ads: AdsPanel; readonly month: string }): ReactElement {
-  return (
-    <PageSection id="ads" title={`Ads in ${month}`}>
-      <dl className="grid grid-cols-[minmax(0,1fr)_auto] items-baseline gap-x-4 gap-y-3 text-[0.84375rem]">
-        {ads.spent === null ? null : (
-          <>
-            <dt className="text-ink-2">Spent</dt>
-            <dd className={FIGURE}>{ads.spent}</dd>
-            {ads.percent === null ? null : (
-              <dd aria-hidden="true" className="col-span-2 h-1.5 overflow-hidden rounded-full bg-sunken">
-                <span className="block h-full rounded-full bg-ink" style={{ width: `${ads.percent}%` }} />
-              </dd>
-            )}
-          </>
-        )}
-        {ads.enquiries === null ? null : (
-          <>
-            <dt className="text-ink-2">Enquiries from ads</dt>
-            <dd className={FIGURE}>{ads.enquiries}</dd>
-          </>
-        )}
-        {ads.adMoney === null ? null : (
-          <>
-            <dt className="text-ink-2">Ad money added by us</dt>
-            <dd className={FIGURE}>{ads.adMoney}</dd>
-          </>
-        )}
-      </dl>
-    </PageSection>
-  );
+/** The channels column's rows and its line about how far ahead posts are booked. */
+function channelsColumn(connect: SocialConnect, now: Date): { rows: ChannelRow[]; bookedLine: string } {
+  const rows = connect.channels.map((channel): ChannelRow => ({
+    id: channel.id,
+    platform: channel.platform,
+    account: channel.account,
+    ending: endingSoon(channel, now) ? endsInWords(daysUntilEnd(channel, now) ?? 0) : null,
+    paused: channel.paused === true,
+  }));
+  const until = bookedUntil(connect.posts, connect.today);
+  return { rows, bookedLine: until === null ? "No posts are booked yet." : `Posts booked until ${dayLabel(until, { day: "numeric", month: "short" })}.` };
 }
 
-/** Social & Ads: the posts waiting for the customer's OK as they will look, then the ad money in plain numbers and this week's posts beside them. */
-export function SocialView({ data, notice, now, setup = [] }: SocialViewProps): ReactElement {
+/** Social media: the posts waiting for the customer's OK as they will look, then the ad money in plain numbers and this week's posts beside them. */
+export function SocialView({ data, notice, now, setup = [], savedWebsite = null }: SocialViewProps): ReactElement {
   const { waiting, thisWeek } = splitPosts(data.posts, now);
   const reportUrl = data.report !== null && data.report.startsWith("https://") ? data.report : null;
-  return (
+  const connect = data.connect;
+  const status = connect === null ? null : connectStatus(connect.channels, connect.posts, now);
+  // New post needs an account to post to.
+  const canPost = connect !== null && connect.channels.length > 0;
+  // Once posts have been written from the website, looking them over is a button beside New post, not a card.
+  const hasReview = connect !== null && connect.ai !== null && connect.ai.jobs.length > 0;
+  const brandView = data.brand?.view ?? null;
+  const hasBrands = brandView !== null && (brandView.allowed > 1 || brandView.brands.filter((brand) => !brand.archived).length > 1);
+  const frame = (
     <PageFrame
-      title="Social & Ads"
-      lede={data.monthLine ?? "Your posts and ads, and what they have brought in."}
+      title="Social media"
+      lede={data.monthLine ?? "Your posts, and what they have brought in."}
       action={
-        reportUrl === null ? undefined : (
-          <a href={reportUrl} target="_blank" rel="noopener noreferrer" className={SOFT_BUTTON}>
-            <FileText size={16} aria-hidden="true" />
-            Monthly report
-          </a>
+        reportUrl === null && !canPost && !hasReview && !hasBrands ? undefined : (
+          <div className="flex flex-wrap items-center gap-2">
+            {brandView === null || data.brand === undefined ? null : <BrandSwitcher view={brandView} current={data.brand.externalId} />}
+            {reportUrl === null ? null : (
+              <a href={reportUrl} target="_blank" rel="noopener noreferrer" className={SMALL_SOFT}>
+                <FileText size={14} aria-hidden="true" />
+                Monthly report
+              </a>
+            )}
+            {hasReview ? (
+              <Link href="/social/review" className={SMALL_SOFT}>
+                Look over your posts
+              </Link>
+            ) : null}
+            {canPost ? <NewPostButton /> : null}
+          </div>
         )
       }
     >
-      <ServiceSetupCard asks={setup} />
       {notice === null ? null : (
         <p role={notice.ok ? "status" : "alert"} className={cn("text-[0.8125rem] font-semibold", notice.ok ? "text-sage-deep" : "text-error")}>
           {notice.text}
         </p>
       )}
+      {connect === null ? <ServiceSetupCard asks={setup} /> : null}
+      {connect === null || status === null ? null : (
+        <>
+          {connect.unavailable ? (
+            <p role="alert" className="text-[0.8125rem] font-semibold text-error">
+              We could not reach the posting service just now, so some of this may be missing. Try again in a few minutes.
+            </p>
+          ) : null}
+          {connect.notices.map((notice) => (
+            <p key={`${notice.code}:${notice.platform ?? ""}`} role="status" className="rounded-xl bg-warn-wash px-4 py-3 text-[0.84375rem] font-semibold text-warn">
+              {notice.message}
+            </p>
+          ))}
+          {status.action === null ? null : <ConnectStatusCard status={status} />}
+          {allPaused(connect.channels) ? (
+            <p role="status" className="rounded-xl bg-warn-wash px-4 py-3 text-[0.84375rem] font-semibold text-warn">
+              Your posts are paused. Nothing is being sent for now. Posts whose time comes while it is paused are skipped, and new ones go out again when we resume.
+            </p>
+          ) : null}
+          {connect.ai === null ? null : <AiStartCard jobs={connect.ai.jobs} channels={connect.channels} website={connect.ai.website} savedWebsite={savedWebsite} unavailable={connect.ai.jobsUnavailable} expired={connect.ai.expired} />}
+          <SocialCalendar
+            posts={connect.posts}
+            today={connect.today}
+            businessName={connect.businessName}
+            channels={connect.channels}
+            lede={connect.posts.length === 0 ? "Your first posts appear here once your accounts are connected." : "Every post we write for you, and where it stands."}
+          />
+          {/* The questions about the ad budget come after the posts. The older "link your pages" one is asked only while no account is connected: once one is, the buttons did that job. */}
+          <ServiceSetupCard asks={connect.channels.length === 0 ? setup : setup.filter((ask) => ask.setup !== "accounts")} />
+        </>
+      )}
+      {/* With the calendar above showing the week, a page with no post waiting for the customer's OK has nothing more to add. */}
+      {connect !== null && waiting.length === 0 ? null : (
       <PageColumns
         main={
           waiting.length === 0 ? (
@@ -112,11 +152,25 @@ export function SocialView({ data, notice, now, setup = [] }: SocialViewProps): 
         }
         aside={
           <>
-            {data.ads === null ? null : <AdsSection ads={data.ads} month={data.month} />}
-            <WeekList posts={thisWeek} />
+            {null}
+            {connect === null ? <WeekList posts={thisWeek} /> : null}
           </>
         }
       />
+      )}
     </PageFrame>
+  );
+  if (connect === null || status === null) return frame;
+  const { rows, bookedLine } = channelsColumn(connect, now);
+  return (
+    <NewPostRequestProvider>
+    <ChannelFilterProvider>
+      {/* The channels column sits flush against the rail, so it steps out of the shell's padding and the page puts the same padding back. On a phone the posts come first and the channels follow. */}
+      <div className="-mx-4 -mb-28 -mt-6 flex flex-col md:-mx-8 lg:-mb-16 lg:-mt-10 lg:flex-row xl:-mx-10">
+        <ChannelsSidebar rows={rows} bookedLine={bookedLine} />
+        <div className="order-first min-w-0 flex-1 px-4 pb-8 pt-6 md:px-8 lg:order-none lg:pb-16 lg:pt-10 xl:px-10">{frame}</div>
+      </div>
+    </ChannelFilterProvider>
+    </NewPostRequestProvider>
   );
 }

@@ -22,7 +22,7 @@ export function listHref(filter: RequestFilter): string {
   return `${REQUESTS_PATH}?filter=${filter}`;
 }
 
-/** A new request, opened on Social & Ads and naming one post (the page reads the post itself; the address carries only its id). */
+/** A new request, opened on Social media and naming one post (the page reads the post itself; the address carries only its id). */
 export function requestChangeHref(post: { readonly id: string }): string {
   return `${ASK_FOR_A_CHANGE_PATH}?kind=social&about=${post.id}`;
 }

@@ -48,7 +48,7 @@ describe("words", () => {
     expect(andList([])).toBe("");
     expect(andList(["Website"])).toBe("Website");
     expect(andList(["Website", "Search"])).toBe("Website and Search");
-    expect(andList(["Website", "Social & Ads", "Search"])).toBe("Website, Social & Ads and Search");
+    expect(andList(["Website", "Social media", "Search"])).toBe("Website, Social media and Search");
   });
 
   it("says what the call plans", () => {

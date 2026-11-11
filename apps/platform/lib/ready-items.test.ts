@@ -5,7 +5,12 @@ import { SETUP_KEYS, SETUP_SERVICE } from "@/lib/service-setup";
 describe("readyItemsFor", () => {
   it("lists only the services bought, website first", () => {
     expect(readyItemsFor(["search", "website"]).map((item) => item.service)).toEqual(["website", "website", "website", "search"]);
-    expect(readyItemsFor(["social"]).map((item) => item.key)).toEqual(["accounts", "offers", "budget"]);
+    expect(readyItemsFor(["social"]).map((item) => item.key)).toEqual(["website", "accounts", "offers", "budget"]);
+  });
+
+  it("asks for the website address the posts are written from", () => {
+    const website = readyItemsFor(["social"]).find((item) => item.key === "website");
+    expect(website).toMatchObject({ label: "Your website address", setup: "website", step: null, service: "social" });
   });
 
   it("names the Instagram and Facebook item for the pages, never a login", () => {
@@ -43,6 +48,7 @@ describe("readyRows", () => {
   it("marks Social and Search items done from the saved answers", () => {
     const rows = readyRows(["social", "search"], [], ["offers", "areas"]);
     expect(rows.map((row) => [row.item.key, row.done])).toEqual([
+      ["website", false],
       ["accounts", false],
       ["budget", false],
       ["offers", true],

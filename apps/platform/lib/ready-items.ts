@@ -19,6 +19,7 @@ export const READY_ITEMS: readonly ReadyItem[] = [
   { key: "brand", service: "website", label: "Logo and photos", hint: "Your logo and 5 to 10 photos of your place, team and work", step: "brand", setup: null },
   { key: "services", service: "website", label: "Services and prices", hint: "What you want on the site", step: "content", setup: null },
   { key: "domain", service: "website", label: "Your web address", hint: "Your domain login if you own one, or a free address to start", step: "domain", setup: null },
+  { key: "website", service: "social", label: "Your website address", hint: "We write your posts from it", step: null, setup: "website" },
   { key: "accounts", service: "social", label: "Instagram and Facebook pages", hint: "Links to your pages, and whether you added us as an admin", step: null, setup: "accounts" },
   { key: "offers", service: "social", label: "Offers you want to promote", hint: "Anything for this month", step: null, setup: "offers" },
   { key: "budget", service: "social", label: "Monthly ad budget", hint: "And how far from you to show ads", step: null, setup: "budget" },

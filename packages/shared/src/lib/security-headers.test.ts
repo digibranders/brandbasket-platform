@@ -117,6 +117,21 @@ describe("contentSecurityPolicy", () => {
   });
 });
 
+describe("the picture origin", () => {
+  const base = { development: false, https: true, framedOrigins: [], razorpayCheckout: false } as const;
+
+  it("lets images load from social-auto's origin and nowhere new when none is given", () => {
+    expect(contentSecurityPolicy({ ...base, pictureOrigin: "https://social.example.com" })).toContain("img-src 'self' data: blob: https://i.ytimg.com https://i.vimeocdn.com https://social.example.com");
+    expect(contentSecurityPolicy(base)).not.toContain("social.example.com");
+  });
+
+  it("accepts a local http origin for a developer's machine, and refuses any other that is not a bare https origin", () => {
+    expect(contentSecurityPolicy({ ...base, pictureOrigin: "http://127.0.0.1:4020" })).toContain("http://127.0.0.1:4020");
+    expect(() => contentSecurityPolicy({ ...base, pictureOrigin: "http://social.example.com" })).toThrow(RangeError);
+    expect(() => contentSecurityPolicy({ ...base, pictureOrigin: "https://social.example.com/path; script-src *" })).toThrow(RangeError);
+  });
+});
+
 describe("framedSiteOrigins", () => {
   it("keeps the origin of every site that may be framed, once each, and skips the rest", () => {
     expect(

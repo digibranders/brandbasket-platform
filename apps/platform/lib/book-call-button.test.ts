@@ -14,7 +14,7 @@ import { BookCallButton } from "@/components/calls/book-call-button";
 const SLOTS = ["2026-12-02T04:30:00.000Z", "2026-12-02T08:30:00.000Z"];
 const OPTIONS = [
   { value: "website", label: "Website" },
-  { value: "social", label: "Social & Ads" },
+  { value: "social", label: "Social media" },
   { value: "billing", label: "Billing" },
   { value: "other", label: "Something else" },
 ] as const;

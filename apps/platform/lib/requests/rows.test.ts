@@ -83,7 +83,7 @@ describe("requestRows", () => {
   it("names each kind in the words of the form", () => {
     const sub = (kind: ChangeView["kind"]) => requestRows([item({ change: change({ kind }) })])[0]?.sub;
     expect([sub("social"), sub("search"), sub("billing"), sub("other")]).toEqual([
-      "Social & Ads · 27 Nov",
+      "Social media · 27 Nov",
       "Local SEO + AEO · 27 Nov",
       "Billing · 27 Nov",
       "Something else · 27 Nov",
