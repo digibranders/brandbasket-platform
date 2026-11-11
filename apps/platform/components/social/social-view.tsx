@@ -2,7 +2,7 @@ import { FileText, Newspaper } from "@phosphor-icons/react/dist/ssr";
 import Link from "next/link";
 import type { ReactElement } from "react";
 import { cn } from "@brandbasket/shared/lib/cn";
-import { DARK_BUTTON, LIFT, SECTION_TITLE, SOFT_BUTTON } from "@/components/v2/classes";
+import { DARK_BUTTON, LIFT, SECTION_TITLE } from "@/components/v2/classes";
 import { ServiceSetupCard } from "@/components/setup/service-setup-card";
 import { EmptyState, PageColumns, PageFrame } from "@/components/v2/page";
 import { ASK_FOR_A_CHANGE_PATH } from "@/lib/requests/links";
@@ -11,6 +11,9 @@ import type { NoticeLine } from "@/lib/requests/notices";
 import type { SocialConnect, SocialData } from "@/lib/server/social";
 import type { SetupAsk } from "@/lib/setup-asks";
 import { splitPosts, waitingHeadline } from "@/lib/social/week";
+import { AiStartCard } from "./ai-start-card";
+import { BrandSwitcher } from "./brand-switcher";
+import { SMALL_SOFT } from "./small-buttons";
 import { ApproveBar } from "./approve-bar";
 import { ChannelFilterProvider } from "./channel-filter";
 import { ChannelsSidebar, type ChannelRow } from "./channels-sidebar";
@@ -26,6 +29,8 @@ interface SocialViewProps {
   readonly now: Date;
   /** What we still need from the customer to start: shown as one card at the top. */
   readonly setup?: readonly SetupAsk[];
+  /** The website the customer gave in setup, offered when social-auto has not locked one yet. */
+  readonly savedWebsite?: string | null;
 }
 
 /** The channels column's rows and its line about how far ahead posts are booked. */
@@ -42,26 +47,36 @@ function channelsColumn(connect: SocialConnect, now: Date): { rows: ChannelRow[]
 }
 
 /** Social media: the posts waiting for the customer's OK as they will look, then the ad money in plain numbers and this week's posts beside them. */
-export function SocialView({ data, notice, now, setup = [] }: SocialViewProps): ReactElement {
+export function SocialView({ data, notice, now, setup = [], savedWebsite = null }: SocialViewProps): ReactElement {
   const { waiting, thisWeek } = splitPosts(data.posts, now);
   const reportUrl = data.report !== null && data.report.startsWith("https://") ? data.report : null;
   const connect = data.connect;
   const status = connect === null ? null : connectStatus(connect.channels, connect.posts, now);
   // New post needs an account to post to.
   const canPost = connect !== null && connect.channels.length > 0;
+  // Once posts have been written from the website, looking them over is a button beside New post, not a card.
+  const hasReview = connect !== null && connect.ai !== null && connect.ai.jobs.length > 0;
+  const brandView = data.brand?.view ?? null;
+  const hasBrands = brandView !== null && (brandView.allowed > 1 || brandView.brands.filter((brand) => !brand.archived).length > 1);
   const frame = (
     <PageFrame
       title="Social media"
       lede={data.monthLine ?? "Your posts, and what they have brought in."}
       action={
-        reportUrl === null && !canPost ? undefined : (
+        reportUrl === null && !canPost && !hasReview && !hasBrands ? undefined : (
           <div className="flex flex-wrap items-center gap-2">
+            {brandView === null || data.brand === undefined ? null : <BrandSwitcher view={brandView} current={data.brand.externalId} />}
             {reportUrl === null ? null : (
-              <a href={reportUrl} target="_blank" rel="noopener noreferrer" className={SOFT_BUTTON}>
-                <FileText size={16} aria-hidden="true" />
+              <a href={reportUrl} target="_blank" rel="noopener noreferrer" className={SMALL_SOFT}>
+                <FileText size={14} aria-hidden="true" />
                 Monthly report
               </a>
             )}
+            {hasReview ? (
+              <Link href="/social/review" className={SMALL_SOFT}>
+                Look over your posts
+              </Link>
+            ) : null}
             {canPost ? <NewPostButton /> : null}
           </div>
         )
@@ -80,12 +95,18 @@ export function SocialView({ data, notice, now, setup = [] }: SocialViewProps): 
               We could not reach the posting service just now, so some of this may be missing. Try again in a few minutes.
             </p>
           ) : null}
+          {connect.notices.map((notice) => (
+            <p key={`${notice.code}:${notice.platform ?? ""}`} role="status" className="rounded-xl bg-warn-wash px-4 py-3 text-[0.84375rem] font-semibold text-warn">
+              {notice.message}
+            </p>
+          ))}
           {status.action === null ? null : <ConnectStatusCard status={status} />}
           {allPaused(connect.channels) ? (
             <p role="status" className="rounded-xl bg-warn-wash px-4 py-3 text-[0.84375rem] font-semibold text-warn">
               Your posts are paused. Nothing is being sent for now. Posts whose time comes while it is paused are skipped, and new ones go out again when we resume.
             </p>
           ) : null}
+          {connect.ai === null ? null : <AiStartCard jobs={connect.ai.jobs} channels={connect.channels} website={connect.ai.website} savedWebsite={savedWebsite} unavailable={connect.ai.jobsUnavailable} expired={connect.ai.expired} />}
           <SocialCalendar
             posts={connect.posts}
             today={connect.today}
@@ -93,8 +114,8 @@ export function SocialView({ data, notice, now, setup = [] }: SocialViewProps): 
             channels={connect.channels}
             lede={connect.posts.length === 0 ? "Your first posts appear here once your accounts are connected." : "Every post we write for you, and where it stands."}
           />
-          {/* The questions about the ad budget (and the older "link your pages" one) come after the posts: the accounts are connected with the buttons now. */}
-          <ServiceSetupCard asks={setup} />
+          {/* The questions about the ad budget come after the posts. The older "link your pages" one is asked only while no account is connected: once one is, the buttons did that job. */}
+          <ServiceSetupCard asks={connect.channels.length === 0 ? setup : setup.filter((ask) => ask.setup !== "accounts")} />
         </>
       )}
       {/* With the calendar above showing the week, a page with no post waiting for the customer's OK has nothing more to add. */}

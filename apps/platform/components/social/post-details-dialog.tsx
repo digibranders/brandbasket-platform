@@ -1,11 +1,16 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef, type ReactElement } from "react";
-import { SOFT_BUTTON } from "@/components/v2/classes";
+import { useRouter } from "next/navigation";
+import { useEffect, useRef, useState, useTransition, type FormEvent, type ReactElement } from "react";
+import { changeWrittenPostTimeAction } from "@/app/app-host/(protected)/social/actions";
 import { ASK_FOR_A_CHANGE_PATH } from "@/lib/requests/links";
-import { dayLabel, PLATFORM_NAMES, postStatus, time12, type CalendarPost } from "@/lib/social/auto";
+import { CHANNEL_PLATFORMS, dayLabel, PLATFORM_NAMES, postStatus, time12, type CalendarPost } from "@/lib/social/auto";
+import { localDateIn } from "@brandbasket/shared/lib/calendar/local-date";
+import { BRAND_TIME_ZONE } from "@/lib/call-dates";
+import { canAddOn, earliestDay, isTime, latestDay, momentHasPassed } from "@/lib/social/new-post";
 import { ChannelLogo } from "./channel-logo";
+import { SMALL_DARK, SMALL_SOFT } from "./small-buttons";
 
 interface PostDetailsDialogProps {
   readonly post: CalendarPost;
@@ -15,11 +20,90 @@ interface PostDetailsDialogProps {
 /** What to say about whether the customer can change this post, in plain words. */
 function changeNote(post: CalendarPost): string {
   if (post.state === "skipped") return "This post was skipped, so it will not be sent.";
+  if (post.state === "held") return "This post is on hold because an account it goes to is not connected. Connect it again and it goes out if its time has not passed.";
   if (post.state === "paused") return "This post is paused, so it is not going out right now. It goes out when the pause ends, unless its time comes first.";
-  if (!post.manual) return "We wrote this post for you. To change it, ask us and we will.";
+  if (!post.manual) return canChangeTime(post) ? "We wrote this post for you. You can change when it goes out. To change the words or the picture, look over your posts." : "We wrote this post for you. To change it, ask us and we will.";
   if (post.state === "published") return "This post has gone out, so it can no longer be changed.";
   if (post.state === "missed") return "This post could not be sent to every account, so it can no longer be changed.";
   return "This post is going out now, so it can no longer be changed.";
+}
+
+const FIELD = "h-10 rounded-lg border border-ink-2/65 bg-surface px-3 text-[0.9375rem] text-ink";
+
+/** Only a post we wrote that is still waiting for its time can be moved; once it is paused, skipped, due or sent it cannot. */
+const canChangeTime = (post: CalendarPost): boolean => !post.manual && post.state === "scheduled" && !momentHasPassed(post.day, post.time, new Date());
+
+/** The day and time of a post we wrote, with a button to move it: the words and picture stay as the customer approved them. */
+function ChangeTime({ post }: { readonly post: CalendarPost }): ReactElement {
+  const router = useRouter();
+  const [open, setOpen] = useState(false);
+  const [day, setDay] = useState(post.day);
+  const [time, setTime] = useState(post.time);
+  const [error, setError] = useState<string | null>(null);
+  const [pending, startTransition] = useTransition();
+  const today = localDateIn(BRAND_TIME_ZONE, new Date());
+
+  const submit = (event: FormEvent): void => {
+    event.preventDefault();
+    if (pending) return;
+    if (!canAddOn(day, today)) return setError("Choose a day from today to 89 days ahead.");
+    if (!isTime(time) || momentHasPassed(day, time, new Date())) return setError("That time has already passed. Choose a later time.");
+    setError(null);
+    startTransition(async () => {
+      try {
+        const form = new FormData();
+        form.set("postId", post.id);
+        form.set("day", day);
+        form.set("time", time);
+        const result = await changeWrittenPostTimeAction(form);
+        if (result.status === "error") return setError(result.message);
+        router.refresh();
+        setOpen(false);
+      } catch {
+        setError("The time could not be changed. Check your connection and try again.");
+      }
+    });
+  };
+
+  if (!open) {
+    return (
+      <button type="button" onClick={() => setOpen(true)} className={SMALL_SOFT}>
+        Change time
+      </button>
+    );
+  }
+  return (
+    <form onSubmit={submit} noValidate className="grid gap-3 rounded-xl bg-sunken p-3">
+      <div className="flex flex-wrap gap-3">
+        <div className="grid gap-1">
+          <label htmlFor="written-post-day" className="text-xs font-semibold text-ink-2">
+            Day
+          </label>
+          <input id="written-post-day" type="date" value={day} min={earliestDay(today)} max={latestDay(today)} onChange={(event) => event.target.value !== "" && setDay(event.target.value)} className={FIELD} />
+        </div>
+        <div className="grid gap-1">
+          <label htmlFor="written-post-time" className="text-xs font-semibold text-ink-2">
+            Time
+          </label>
+          <input id="written-post-time" type="time" value={time} onChange={(event) => setTime(event.target.value)} className={FIELD} />
+        </div>
+      </div>
+      <p className="text-xs text-ink-3">India time. It goes out within a few minutes of the time you choose.</p>
+      {error === null ? null : (
+        <p role="alert" className="text-[0.84375rem] font-semibold text-error">
+          {error}
+        </p>
+      )}
+      <div className="flex flex-wrap gap-2">
+        <button type="submit" disabled={pending} className={SMALL_DARK}>
+          {pending ? "Saving" : "Save time"}
+        </button>
+        <button type="button" onClick={() => setOpen(false)} disabled={pending} className={SMALL_SOFT}>
+          Cancel
+        </button>
+      </div>
+    </form>
+  );
 }
 
 /** A link to the post on its network, only when it is a plain https address. */
@@ -59,7 +143,7 @@ export function PostDetailsDialog({ post, onClose }: PostDetailsDialogProps): Re
               {dayLabel(post.day, { weekday: "long", day: "numeric", month: "long" })} at {time12(post.time)}
             </p>
           </div>
-          <button type="button" onClick={onClose} className={SOFT_BUTTON}>
+          <button type="button" onClick={onClose} className={SMALL_SOFT}>
             Close
           </button>
         </div>
@@ -71,6 +155,18 @@ export function PostDetailsDialog({ post, onClose }: PostDetailsDialogProps): Re
         )}
 
         <p className="whitespace-pre-wrap break-words text-[0.9375rem] leading-relaxed text-ink">{post.caption}</p>
+        {CHANNEL_PLATFORMS.flatMap((platform) => {
+          const own = post.variants?.[platform];
+          return own === undefined ? [] : [
+            <div key={platform} className="grid gap-1">
+              <p className="flex items-center gap-2 text-xs font-semibold text-ink-2">
+                <ChannelLogo platform={platform} small />
+                {PLATFORM_NAMES[platform]} caption
+              </p>
+              <p className="whitespace-pre-wrap break-words text-[0.9375rem] leading-relaxed text-ink">{own}</p>
+            </div>,
+          ];
+        })}
 
         {post.channels.length === 0 ? null : (
           <ul className="grid gap-2" aria-label="Where this post goes">
@@ -97,8 +193,13 @@ export function PostDetailsDialog({ post, onClose }: PostDetailsDialogProps): Re
         )}
 
         <p className="text-[0.84375rem] text-ink-2">{changeNote(post)}</p>
-        {post.manual ? null : (
-          <Link href={`${ASK_FOR_A_CHANGE_PATH}?kind=social`} className={SOFT_BUTTON}>
+        {canChangeTime(post) ? <ChangeTime post={post} /> : null}
+        {post.manual ? null : canChangeTime(post) ? (
+          <Link href="/social/review" className={SMALL_SOFT}>
+            Change the words or picture
+          </Link>
+        ) : (
+          <Link href={`${ASK_FOR_A_CHANGE_PATH}?kind=social`} className={SMALL_SOFT}>
             Ask for a change
           </Link>
         )}

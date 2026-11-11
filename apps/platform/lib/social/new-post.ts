@@ -1,4 +1,5 @@
 import { addDays } from "@brandbasket/shared/lib/calendar/local-date";
+import { CHANNEL_PLATFORMS, type ChannelPlatform } from "./auto";
 
 /**
  * What a new post must be before it is sent to social-auto. The rules are social-auto's own (it checks them again): a caption
@@ -54,10 +55,15 @@ export interface NewPostInput {
   readonly caption: unknown;
   readonly pictureId: unknown;
   readonly channels: unknown;
+  /** Captions of their own for single networks, as `{ linkedin: "..." }`; left out means every network posts the caption. */
+  readonly variants?: unknown;
 }
 
 /** A post's id in social-auto: the ones a business makes, which are the ones it can change. */
 export const isChangeablePostId = (value: unknown): value is string => typeof value === "string" && /^manual-[0-9a-f]{12}$/.test(value);
+
+/** The id of a post we wrote and released for the business: letters, digits and dashes, such as `w01-d1`. social-auto decides whether it can be moved. */
+export const isWrittenPostId = (value: unknown): value is string => typeof value === "string" && /^[A-Za-z0-9][A-Za-z0-9_-]{0,79}$/.test(value);
 
 export interface NewPost {
   readonly day: string;
@@ -65,6 +71,8 @@ export interface NewPost {
   readonly caption: string;
   readonly pictureId: string;
   readonly channels: readonly string[];
+  /** Only the networks that have a caption of their own. */
+  readonly variants?: Readonly<Partial<Record<ChannelPlatform, string>>>;
 }
 
 /** A post's changes: the same, except that the picture can be left as it is. */
@@ -74,6 +82,8 @@ export interface PostEdit {
   readonly caption: string;
   readonly pictureId?: string;
   readonly channels: readonly string[];
+  /** For every network: its own caption, or null to go back to the main one. */
+  readonly variants: Readonly<Record<ChannelPlatform, string | null>>;
 }
 
 export type PostEditCheck = { readonly ok: true; readonly edit: PostEdit } | { readonly ok: false; readonly message: string };
@@ -91,6 +101,23 @@ function captionOf(raw: unknown): Part<string> {
   const hashtags = caption.match(HASHTAG)?.length ?? 0;
   if (hashtags > MAX_HASHTAGS) return refused(`The caption has ${hashtags} hashtags. Instagram allows ${MAX_HASHTAGS}.`);
   return { ok: true, value: caption };
+}
+
+/**
+ * The captions networks have of their own. A network whose text is empty or the same as the main caption has none of its own,
+ * so it follows the main caption. Each caption is held to the same rules as the main one.
+ */
+function variantsOf(raw: unknown, main: string): Part<Partial<Record<ChannelPlatform, string>>> {
+  const given = typeof raw === "object" && raw !== null && !Array.isArray(raw) ? (raw as Record<string, unknown>) : {};
+  const own: Partial<Record<ChannelPlatform, string>> = {};
+  for (const platform of CHANNEL_PLATFORMS) {
+    const text = given[platform];
+    if (typeof text !== "string" || text.trim() === "") continue;
+    const caption = captionOf(text);
+    if (!caption.ok) return caption;
+    if (caption.value !== main) own[platform] = caption.value;
+  }
+  return { ok: true, value: own };
 }
 
 function channelsOf(raw: unknown, connected: readonly string[]): Part<string[]> {
@@ -129,7 +156,9 @@ export function checkNewPost(input: NewPostInput, today: string, connected: read
   if (pictureId === null) return refused("Add a picture first.");
   const channels = channelsOf(input.channels, connected);
   if (!channels.ok) return channels;
-  return { ok: true, post: { day: day.value, time: time.value, caption: caption.value, pictureId, channels: channels.value } };
+  const variants = variantsOf(input.variants, caption.value);
+  if (!variants.ok) return variants;
+  return { ok: true, post: { day: day.value, time: time.value, caption: caption.value, pictureId, channels: channels.value, ...(Object.keys(variants.value).length === 0 ? {} : { variants: variants.value }) } };
 }
 
 /**
@@ -147,8 +176,24 @@ export function checkPostEdit(input: NewPostInput, today: string, connected: rea
   if (input.pictureId !== null && input.pictureId !== "" && picture === null) return refused("Add the picture again.");
   const channels = channelsOf(input.channels, connected);
   if (!channels.ok) return channels;
-  return { ok: true, edit: { day: day.value, time: time.value, caption: caption.value, channels: channels.value, ...(picture === null ? {} : { pictureId: picture }) } };
+  const written = variantsOf(input.variants, caption.value);
+  if (!written.ok) return written;
+  // Every network is named: one with a caption of its own gets it, the others are put back on the main caption.
+  const variants = Object.fromEntries(CHANNEL_PLATFORMS.map((platform) => [platform, written.value[platform] ?? null])) as Record<ChannelPlatform, string | null>;
+  return { ok: true, edit: { day: day.value, time: time.value, caption: caption.value, channels: channels.value, variants, ...(picture === null ? {} : { pictureId: picture }) } };
 }
+
+const POST_CODE_WORDS: Readonly<Record<string, string>> = {
+  TIME_PASSED: "That time has already passed. Choose a later time.",
+  DAY_PASSED: "That day has already passed. Choose a later day.",
+  POST_NOT_EDITABLE: "This post is already going out or has gone out, so it can no longer be changed.",
+  POST_NOT_FOUND: "That post could not be found. Reload the page.",
+  INVALID_DAY: "Choose a day from today to 89 days ahead.",
+  INVALID_TIME: "Write the time like 10:30.",
+};
+
+/** What to tell the customer when social-auto refuses a change to a post: our own sentence for a code we know, else the service's plain sentence, else null. */
+export const wordsForPostRefusal = (code: string | null, detail: string | null): string | null => (code !== null ? (POST_CODE_WORDS[code] ?? detail) : detail);
 
 /** What the new-post form hands back to the dialog. */
 export type NewPostState =

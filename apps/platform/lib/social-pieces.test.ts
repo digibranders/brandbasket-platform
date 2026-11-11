@@ -4,12 +4,14 @@ import { expect, it, vi } from "vitest";
 
 vi.mock("@/app/app-host/(protected)/social/actions", () => ({ approvePostsAction: vi.fn(), connectChannelAction: vi.fn() }));
 vi.mock("@/app/app-host/(protected)/setup-actions", () => ({ saveSetupItemAction: vi.fn() }));
+vi.mock("@/app/app-host/(protected)/social/brand-actions", () => ({ addBrandAction: vi.fn(), archiveBrandAction: vi.fn(), selectBrandAction: vi.fn() }));
 
 import { ApproveBar } from "@/components/social/approve-bar";
 import { PostCard } from "@/components/social/post-card";
 import { SocialView } from "@/components/social/social-view";
 import { WeekList } from "@/components/social/week-list";
 import { DARK_BUTTON, SOFT_BUTTON } from "@/components/v2/classes";
+import { SMALL_DARK } from "@/components/social/small-buttons";
 import type { SocialData } from "@/lib/server/social";
 import type { PostView } from "@/lib/social/week";
 
@@ -69,7 +71,7 @@ function bar(count: number): string {
 it("posts one hidden id per waiting post and has the one dark button", () => {
   const html = bar(4);
   expect(count(html, 'type="hidden" name="ids"')).toBe(4);
-  expect(count(html, DARK_BUTTON)).toBe(1);
+  expect(count(html, SMALL_DARK)).toBe(1);
   expect(html).toContain("Nothing goes out until you approve it.");
 });
 
@@ -114,7 +116,7 @@ it("with posts waiting, says how many and by when, shows each and has the one da
   expect(html).toContain("3 posts need your OK by Tue 1 Dec");
   for (const title of ["Year-end check-up", "Brushes", "Meet the team"]) expect(html).toContain(title);
   expect(html).toContain("December: 0 of 3 posts out.");
-  expect(count(html, DARK_BUTTON)).toBe(1);
+  expect(count(html, SMALL_DARK)).toBe(1);
   expect(html).toContain("Approve all 3");
   expect(html).not.toContain("No posts are waiting for you.");
 });

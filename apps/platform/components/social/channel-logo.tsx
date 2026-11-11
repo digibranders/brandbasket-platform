@@ -96,12 +96,12 @@ function Mark({ platform, gradientId }: { readonly platform: ChannelPlatform; re
   );
 }
 
-/** A network's logo. `small` is the size beside a line of text; `dim` greys it out for a network that is off. */
-export function ChannelLogo({ platform, small = false, dim = false }: { readonly platform: ChannelPlatform; readonly small?: boolean; readonly dim?: boolean }): ReactElement {
+/** A network's logo. `small` is the size beside a line of text, `medium` the size of a row in a list; `dim` greys it out for a network that is off. */
+export function ChannelLogo({ platform, small = false, medium = false, dim = false, className }: { readonly platform: ChannelPlatform; readonly small?: boolean; readonly medium?: boolean; readonly dim?: boolean; readonly className?: string }): ReactElement {
   // Each Instagram and Google logo on the page needs its own gradient id, or they would all point at the first one's.
   const gradientId = `ig-${useId().replace(/:/g, "")}`;
   return (
-    <svg role="img" aria-label={PLATFORM_NAMES[platform]} viewBox={platform === "google" ? "0 0 100 87" : "0 0 24 24"} className={cn("shrink-0", small ? "size-5" : "size-9", dim && "opacity-45 grayscale")}>
+    <svg role="img" aria-label={PLATFORM_NAMES[platform]} viewBox={platform === "google" ? "0 0 100 87" : "0 0 24 24"} className={cn("shrink-0", small ? "size-5" : medium ? "size-7" : "size-9", dim && "opacity-45 grayscale", className)}>
       <Mark platform={platform} gradientId={gradientId} />
     </svg>
   );

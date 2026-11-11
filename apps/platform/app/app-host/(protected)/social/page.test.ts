@@ -11,7 +11,7 @@ vi.mock("next/navigation", () => ({
 }));
 vi.mock("@/lib/server/customer-access", () => ({ requireCustomerAccess: vi.fn() }));
 vi.mock("@/lib/server/social", () => ({ loadSocial: vi.fn() }));
-vi.mock("@/lib/server/todo", () => ({ loadTodo: vi.fn(async () => ({ services: [], items: [], open: 0, answers: { social: undefined, search: undefined } })) }));
+vi.mock("@/lib/server/todo", () => ({ loadTodo: vi.fn(async () => ({ services: [], items: [], open: 0, answers: { social: { websiteUrl: "https://omsweets.in" }, search: undefined } })) }));
 vi.mock("@/components/social/social-view", () => ({ SocialView: () => null }));
 
 const tenant = { userId: "user-1", businessId: "business-1" };
@@ -55,5 +55,14 @@ describe("the Social media page", () => {
 
     const plain = await SocialPage({ searchParams: Promise.resolve({ notice: "whatever" }) });
     expect(plain.props).toMatchObject({ notice: null });
+  });
+
+  it("offers the website from setup for the business's own brand only, since another brand has a website of its own", async () => {
+    vi.mocked(requireCustomerAccess).mockResolvedValue({ tenant, billing: { hasAccess: true } } as never);
+    const own = { ...data, brand: { externalId: "business-1", name: "Om Sweets", view: null } };
+    vi.mocked(loadSocial).mockResolvedValue(own);
+    expect((await SocialPage({ searchParams: none })).props).toMatchObject({ savedWebsite: "https://omsweets.in" });
+    vi.mocked(loadSocial).mockResolvedValue({ ...data, brand: { externalId: "business-1:cafe0001", name: "Om Snacks", view: null } });
+    expect((await SocialPage({ searchParams: none })).props).toMatchObject({ savedWebsite: null });
   });
 });

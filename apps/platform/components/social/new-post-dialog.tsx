@@ -4,10 +4,10 @@ import { Check, Warning, X } from "@phosphor-icons/react/dist/ssr";
 import { useEffect, useRef, useState, useTransition, type ChangeEvent, type FormEvent, type ReactElement } from "react";
 import { cn } from "@brandbasket/shared/lib/cn";
 import { createPostAction, deletePostAction, sendPostNowAction, updatePostAction } from "@/app/app-host/(protected)/social/actions";
-import { DARK_BUTTON, SOFT_BUTTON } from "@/components/v2/classes";
-import { channelIdsOf, dayLabel, time12, PLATFORM_NAMES, type AutoChannel, type CalendarPost } from "@/lib/social/auto";
+import { CAPTION_HINTS, CHANNEL_PLATFORMS, channelIdsOf, dayLabel, time12, PLATFORM_NAMES, type AutoChannel, type CalendarPost, type ChannelPlatform } from "@/lib/social/auto";
 import { canAddOn, earliestDay, isTime, latestDay, MAX_CAPTION_LENGTH, momentHasPassed, pictureProblem } from "@/lib/social/new-post";
 import { ChannelLogo } from "./channel-logo";
+import { SMALL_DARK, SMALL_SOFT } from "./small-buttons";
 
 interface NewPostDialogProps {
   /** The day the post is for (`YYYY-MM-DD`); the person can change it here. */
@@ -58,6 +58,10 @@ async function sizeOf(file: File): Promise<{ readonly width: number; readonly he
 export function NewPostDialog({ day, onDayChange, time: startTime, today, channels, post, onClose }: NewPostDialogProps): ReactElement {
   const [selected, setSelected] = useState<ReadonlySet<string>>(() => new Set(post === undefined ? channels.map((channel) => channel.id) : channelIdsOf(post)));
   const [caption, setCaption] = useState(post?.caption ?? "");
+  // A caption of their own for single networks: the text typed for each, and whether the boxes are open at all.
+  const [own, setOwn] = useState<Readonly<Partial<Record<ChannelPlatform, string>>>>(() => post?.variants ?? {});
+  const [customize, setCustomize] = useState(() => Object.keys(post?.variants ?? {}).length > 0);
+  const [previewOf, setPreviewOf] = useState<ChannelPlatform | null>(null);
   const [time, setTime] = useState(post?.time ?? startTime);
   const [removing, setRemoving] = useState(false);
   const [posting, setPosting] = useState(false);
@@ -99,6 +103,15 @@ export function NewPostDialog({ day, onDayChange, time: startTime, today, channe
     setPicked({ file, url: URL.createObjectURL(file), problem });
   };
 
+  const selectedChannels = channels.filter((channel) => selected.has(channel.id));
+  const platformsSelected = CHANNEL_PLATFORMS.filter((platform) => selectedChannels.some((channel) => channel.platform === platform));
+  // What a network posts: its own caption when the boxes are open and it has one, otherwise the main caption.
+  const captionFor = (platform: ChannelPlatform): string => (customize ? (own[platform] ?? caption) : caption);
+  const sentVariants = (): Partial<Record<ChannelPlatform, string>> =>
+    Object.fromEntries(platformsSelected.flatMap((platform) => (customize && captionFor(platform).trim() !== "" && captionFor(platform).trim() !== caption.trim() ? [[platform, captionFor(platform).trim()]] : []))) as Partial<Record<ChannelPlatform, string>>;
+  const previewPlatform = customize && previewOf !== null && platformsSelected.includes(previewOf) ? previewOf : null;
+  const previewCaption = previewPlatform === null ? caption : captionFor(previewPlatform);
+
   const problem = ((): string | null => {
     if (!isTime(time)) return "Choose a time, like 14:30.";
     if (!(post?.day === day && post.time === time) && momentHasPassed(day, time, new Date())) return "That time has already passed. Choose a later time.";
@@ -108,6 +121,8 @@ export function NewPostDialog({ day, onDayChange, time: startTime, today, channe
     if (picked !== null && picked.problem !== null) return picked.problem;
     if (caption.trim() === "") return "Write what the post should say.";
     if (caption.length > MAX_CAPTION_LENGTH) return `The caption is ${caption.length} characters. Instagram allows ${MAX_CAPTION_LENGTH}.`;
+    const tooLong = platformsSelected.find((platform) => captionFor(platform).length > MAX_CAPTION_LENGTH);
+    if (tooLong !== undefined) return `The ${PLATFORM_NAMES[tooLong]} caption is ${captionFor(tooLong).length} characters. The limit is ${MAX_CAPTION_LENGTH}.`;
     return null;
   })();
 
@@ -134,6 +149,8 @@ export function NewPostDialog({ day, onDayChange, time: startTime, today, channe
         form.set("time", time);
         form.set("caption", caption);
         for (const id of selected) form.append("channel", id);
+        // Only a network with a caption of its own is named; the others follow the main caption. A network that had one and lost it is put back by the server.
+        if (customize) for (const platform of platformsSelected) form.set(`caption_${platform}`, captionFor(platform));
         if (post !== undefined) {
           form.set("postId", post.id);
           form.set("ownDay", post.day);
@@ -151,7 +168,7 @@ export function NewPostDialog({ day, onDayChange, time: startTime, today, channe
   // What is on screen differs from the post as saved; Post now sends the saved one, so the person saves first.
   const dirty =
     post !== undefined &&
-    (caption !== post.caption || day !== post.day || time !== post.time || picked !== null || selected.size !== channelIdsOf(post).length || channelIdsOf(post).some((id) => !selected.has(id)));
+    (caption !== post.caption || JSON.stringify(CHANNEL_PLATFORMS.map((platform) => sentVariants()[platform] ?? null)) !== JSON.stringify(CHANNEL_PLATFORMS.map((platform) => post.variants?.[platform] ?? null)) || day !== post.day || time !== post.time || picked !== null || selected.size !== channelIdsOf(post).length || channelIdsOf(post).some((id) => !selected.has(id)));
   const platformsNow = post === undefined ? [] : [...new Set(channels.filter((channel) => selected.has(channel.id)).map((channel) => PLATFORM_NAMES[channel.platform]))];
 
   const postNow = (): void => {
@@ -190,7 +207,6 @@ export function NewPostDialog({ day, onDayChange, time: startTime, today, channe
     });
   };
 
-  const selectedChannels = channels.filter((channel) => selected.has(channel.id));
   const previewPicture = picked?.url ?? post?.imageUrl;
 
   return (
@@ -263,7 +279,7 @@ export function NewPostDialog({ day, onDayChange, time: startTime, today, channe
                         <ChannelLogo platform={channel.platform} />
                       </span>
                       {on ? (
-                        <span aria-hidden="true" className="absolute -right-1 -top-1 grid size-4 place-items-center rounded-full bg-ink text-white">
+                        <span aria-hidden="true" className="absolute -right-1 -top-1 grid size-4 place-items-center rounded-full bg-ok text-white">
                           <Check size={10} weight="bold" />
                         </span>
                       ) : null}
@@ -291,7 +307,38 @@ export function NewPostDialog({ day, onDayChange, time: startTime, today, channe
               <p className={cn("text-xs", caption.length > MAX_CAPTION_LENGTH ? "font-semibold text-error" : "text-ink-3")}>
                 {caption.length} of {MAX_CAPTION_LENGTH}
               </p>
+              {platformsSelected.length > 1 ? (
+                <label className="mt-1 flex cursor-pointer items-center gap-2 text-[0.84375rem] text-ink">
+                  <input type="checkbox" checked={customize} onChange={(event) => setCustomize(event.target.checked)} className="size-4 accent-ink" />
+                  Write a different caption for each network
+                </label>
+              ) : null}
             </div>
+            {customize && platformsSelected.length > 1
+              ? platformsSelected.map((platform) => {
+                  const text = captionFor(platform);
+                  const same = text.trim() === caption.trim();
+                  return (
+                    <div key={platform} className="grid gap-1.5">
+                      <label htmlFor={`new-post-caption-${platform}`} className="flex items-center gap-2 text-xs font-semibold text-ink-2">
+                        <ChannelLogo platform={platform} small />
+                        {PLATFORM_NAMES[platform]} caption
+                      </label>
+                      <textarea
+                        id={`new-post-caption-${platform}`}
+                        value={text}
+                        onChange={(event) => setOwn((current) => ({ ...current, [platform]: event.target.value }))}
+                        onFocus={() => setPreviewOf(platform)}
+                        rows={platform === "linkedin" ? 7 : 4}
+                        className={cn(FIELD, "py-2.5 leading-relaxed")}
+                      />
+                      <p className={cn("text-xs", text.length > MAX_CAPTION_LENGTH ? "font-semibold text-error" : "text-ink-3")}>
+                        {text.length} of {MAX_CAPTION_LENGTH}. {same ? "Same as the main caption." : "Its own caption."} {CAPTION_HINTS[platform]}
+                      </p>
+                    </div>
+                  );
+                })
+              : null}
           </div>
 
           <div className="grid content-start gap-3">
@@ -306,7 +353,16 @@ export function NewPostDialog({ day, onDayChange, time: startTime, today, channe
                   <img src={previewPicture} alt={picked === null ? "The present picture" : "The chosen picture"} className="size-full object-cover" />
                 )}
               </div>
-              <p className="line-clamp-4 whitespace-pre-wrap break-words text-[0.84375rem] leading-snug text-ink">{caption.trim() === "" ? "Your words appear here." : caption}</p>
+              {customize && platformsSelected.length > 1 ? (
+                <div className="flex flex-wrap gap-1.5" role="group" aria-label="Preview as">
+                  {[null, ...platformsSelected].map((platform) => (
+                    <button key={platform ?? "main"} type="button" onClick={() => setPreviewOf(platform)} aria-pressed={previewPlatform === platform} className={cn("rounded-lg border px-2.5 py-1 text-xs font-semibold", previewPlatform === platform ? "border-ink bg-ink text-white" : "border-line text-ink-2")}>
+                      {platform === null ? "Main" : PLATFORM_NAMES[platform]}
+                    </button>
+                  ))}
+                </div>
+              ) : null}
+              <p className="line-clamp-4 whitespace-pre-wrap break-words text-[0.84375rem] leading-snug text-ink">{previewCaption.trim() === "" ? "Your words appear here." : previewCaption}</p>
               {selectedChannels.length === 0 ? null : (
                 <div className="flex flex-wrap gap-1.5" aria-hidden="true">
                   {selectedChannels.map((channel) => (
@@ -317,7 +373,7 @@ export function NewPostDialog({ day, onDayChange, time: startTime, today, channe
             </div>
             <div className="flex flex-wrap items-center gap-3">
               <input id="new-post-picture" type="file" accept="image/jpeg" onChange={(event) => void choose(event)} className="peer sr-only" />
-              <label htmlFor="new-post-picture" className={cn(SOFT_BUTTON, "h-9 cursor-pointer px-3 text-[0.84375rem] peer-focus-visible:ring-2 peer-focus-visible:ring-ink")}>
+              <label htmlFor="new-post-picture" className={cn(SMALL_SOFT, "cursor-pointer peer-focus-visible:ring-2 peer-focus-visible:ring-ink")}>
                 {previewPicture === undefined ? "Choose a picture" : "Replace picture"}
               </label>
               <span className="text-xs text-ink-3">A square JPG, 320 to 4096 pixels, up to 4 MB.</span>
@@ -340,20 +396,20 @@ export function NewPostDialog({ day, onDayChange, time: startTime, today, channe
           </p>
         )}
         <div className="flex flex-wrap items-center gap-3 border-t border-line pt-4">
-          <button type="submit" disabled={pending || sent} className={DARK_BUTTON}>
+          <button type="submit" disabled={pending || sent} className={SMALL_DARK}>
             {pending ? "Saving" : post === undefined ? "Schedule post" : "Save changes"}
           </button>
           {post === undefined || sent ? null : posting ? (
             <>
-              <button type="button" onClick={postNow} disabled={pending} className={SOFT_BUTTON}>
+              <button type="button" onClick={postNow} disabled={pending} className={SMALL_SOFT}>
                 Yes, post it now
               </button>
-              <button type="button" onClick={() => setPosting(false)} disabled={pending} className={SOFT_BUTTON}>
+              <button type="button" onClick={() => setPosting(false)} disabled={pending} className={SMALL_SOFT}>
                 Not yet
               </button>
             </>
           ) : (
-            <button type="button" onClick={() => setPosting(true)} disabled={pending || dirty} className={SOFT_BUTTON}>
+            <button type="button" onClick={() => setPosting(true)} disabled={pending || dirty} className={SMALL_SOFT}>
               Post now
             </button>
           )}

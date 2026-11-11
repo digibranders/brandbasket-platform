@@ -4,9 +4,11 @@ import { describe, expect, it, vi } from "vitest";
 
 vi.mock("@/app/app-host/(protected)/social/actions", () => ({ approvePostsAction: vi.fn(), connectChannelAction: vi.fn() }));
 vi.mock("@/app/app-host/(protected)/setup-actions", () => ({ saveSetupItemAction: vi.fn() }));
+vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
+vi.mock("@/app/app-host/(protected)/social/brand-actions", () => ({ addBrandAction: vi.fn(), archiveBrandAction: vi.fn(), selectBrandAction: vi.fn() }));
 
 import { SocialView } from "@/components/social/social-view";
-import { DARK_BUTTON } from "@/components/v2/classes";
+import { SMALL_DARK } from "@/components/social/small-buttons";
 import type { SocialConnect, SocialData } from "@/lib/server/social";
 import type { CalendarPost } from "@/lib/social/auto";
 
@@ -37,6 +39,8 @@ const connect = (overrides: Partial<SocialConnect> = {}): SocialConnect => ({
   ],
   today: "2026-11-02",
   unavailable: false,
+  notices: [],
+  ai: null,
   ...overrides,
 });
 
@@ -67,7 +71,7 @@ describe("the Social media page with social-auto switched on", () => {
     expect(count(html, "Reconnect LinkedIn")).toBe(1);
     expect(html).toContain("connect-status-title");
     expect(html).toContain("lg:hidden");
-    expect(count(html, DARK_BUTTON)).toBe(1);
+    expect(count(html, SMALL_DARK)).toBe(1);
   });
 
   it("has no status card under the channels: each row carries its own Reconnect or Connect button", () => {
@@ -93,20 +97,26 @@ describe("the Social media page with social-auto switched on", () => {
     expect(html).toContain("Connect your accounts");
     expect(html).toContain("Nothing is scheduled for this week yet.");
     expect(html).toContain("No posts are booked yet.");
-    expect(count(html, DARK_BUTTON)).toBe(1);
+    expect(count(html, SMALL_DARK)).toBe(1);
   });
 
   it("has no status card and no dark button when the accounts are connected and nothing is needed", () => {
     const html = view(connect({ channels: [connect().channels[0] as SocialConnect["channels"][number]] }));
-    expect(html).not.toContain("Posting three times a week");
+    expect(html).not.toContain("We are posting for you");
     expect(html).not.toContain("Ask for a change");
     expect(html).not.toContain("connect-status-title");
-    expect(count(html, DARK_BUTTON)).toBe(0);
+    expect(count(html, SMALL_DARK)).toBe(0);
   });
 
   it("says when the posting service could not be reached", () => {
     expect(view(connect({ unavailable: true }))).toContain("We could not reach the posting service just now");
     expect(view(connect())).not.toContain("We could not reach the posting service");
+  });
+
+  it("shows a notice in plain words when posts are on hold because an account was disconnected, and nothing when there is none", () => {
+    const notice = { code: "ACCOUNT_DISCONNECTED", platform: "facebook" as const, message: "Your Facebook account is not connected, so 2 scheduled posts are for it on hold. Connect it again and they will go out if the time has not passed." };
+    expect(view(connect({ notices: [notice] }))).toContain("so 2 scheduled posts are for it on hold");
+    expect(view(connect())).not.toContain("on hold");
   });
 
   it("is the page it always was when social-auto is not set up", () => {
@@ -160,5 +170,26 @@ describe("adding a post from the calendar", () => {
     const html = view(connect({ channels: [], posts: [] }));
     expect(free(html)).toEqual([]);
     expect(html).not.toContain("New post");
+  });
+
+  it("asks to link the Instagram and Facebook pages only while no account is connected, since the buttons do that job", () => {
+    const ask = (setup: "accounts" | "budget", label: string) => ({ key: `social.${setup}`, setup, label, hint: "h", saved: undefined, currency: "INR" as const });
+    const asks = [ask("accounts", "Instagram and Facebook pages"), ask("budget", "Ad budget")];
+    const page = (connectData: SocialConnect): string => text(createElement(SocialView, { data: { connect: connectData, posts: [], monthLine: null, report: null }, notice: null, now: NOW, setup: asks }));
+    const connected = page(connect());
+    expect(connected).not.toContain("Instagram and Facebook pages");
+    expect(connected).toContain("Ad budget");
+    expect(page(connect({ channels: [] }))).toContain("Instagram and Facebook pages");
+  });
+
+  it("puts Look over your posts beside New post once posts were written, and not before", () => {
+    const ai = (jobs: SocialConnect["ai"] extends infer T ? (T extends { jobs: infer J } ? J : never) : never) => ({ jobs, website: null, jobsUnavailable: false, expired: { batches: 0, pictures: 0 } });
+    const done = { id: "j", kind: "write" as const, state: "done" as const, createdAt: "2026-11-01T10:00:00Z" };
+    const withJob = view(connect({ ai: ai([done]) }));
+    expect(withJob).toContain("Look over your posts");
+    expect(withJob).toContain('href="/social/review"');
+    expect(withJob).not.toContain("Your posts are written");
+    expect(view(connect({ ai: ai([]) }))).not.toContain("Look over your posts");
+    expect(view(connect())).not.toContain("Look over your posts");
   });
 });

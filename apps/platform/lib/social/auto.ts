@@ -20,10 +20,18 @@ export const PLATFORM_HINTS: Readonly<Record<ChannelPlatform, string>> = {
   google: "The Google account that manages your listing",
 };
 
+/** What each network reads best, shown under its caption so the customer knows what to aim for. */
+export const CAPTION_HINTS: Readonly<Record<ChannelPlatform, string>> = {
+  instagram: "Short works best, with 3 to 5 hashtags.",
+  facebook: "40 to 80 words works best, with 0 to 2 hashtags.",
+  linkedin: "A little longer works best, 120 to 250 words, with 0 to 3 hashtags.",
+  google: "Plain text only: 2 to 4 sentences, no hashtags.",
+};
+
 export const isChannelPlatform = (value: unknown): value is ChannelPlatform => CHANNEL_PLATFORMS.some((platform) => platform === value);
 
 const platformSchema = z.enum(CHANNEL_PLATFORMS);
-const postStateSchema = z.enum(["scheduled", "due", "published", "missed", "skipped", "paused"]);
+const postStateSchema = z.enum(["scheduled", "due", "published", "missed", "skipped", "paused", "held"]);
 
 const channelSchema = z.object({
   id: z.string().min(1),
@@ -36,6 +44,8 @@ const channelSchema = z.object({
   paused: z.boolean().optional(),
 });
 
+const targetSchema = z.object({ id: z.string().optional(), platform: platformSchema, account: z.string().nullable(), state: postStateSchema, permalink: z.string().nullable().optional() });
+
 const postSchema = z.object({
   id: z.string().min(1),
   /** ISO 8601 with an offset, e.g. 2026-11-04T10:00:00+05:30. */
@@ -43,8 +53,13 @@ const postSchema = z.object({
   caption: z.string(),
   imageUrl: z.string().optional(),
   manual: z.boolean(),
+  /** The accounts that have their own caption (and picture); the main caption stands for the rest. */
+  variants: z.partialRecord(platformSchema, z.object({ caption: z.string().optional(), imageUrl: z.string().optional() })).optional(),
   state: postStateSchema,
-  channels: z.array(z.object({ id: z.string().optional(), platform: platformSchema, account: z.string(), state: postStateSchema, permalink: z.string().nullable() })),
+  /** `account` is null for a network she has no connected account on any more: the post is held for it (or missed) until she connects it again. */
+  channels: z.array(z.object({ id: z.string().optional(), platform: platformSchema, account: z.string().nullable(), state: postStateSchema, permalink: z.string().nullable() })),
+  /** Everywhere the post is aimed, including a network with no connected account (held). Read instead of `channels` when it is there. */
+  targets: z.array(targetSchema).optional(),
 });
 
 export type AutoChannel = z.output<typeof channelSchema>;
@@ -69,9 +84,33 @@ export function readChannels(body: unknown): AutoChannel[] {
   return readList(channelSchema, channels);
 }
 
+/** The website a workspace is locked to (`{"workspace": {"website": "..."}}`), or null before its first job. */
+export function readWebsite(body: unknown): string | null {
+  const website = (body as { workspace?: { website?: unknown } } | null)?.workspace?.website;
+  return typeof website === "string" && website.trim() !== "" ? website.trim() : null;
+}
+
+/** An address as the customer reads it: no https://, no www., no trailing slash. */
+export const websiteLabel = (address: string): string => address.trim().replace(/^https?:\/\//i, "").replace(/^www\./i, "").replace(/\/+$/, "");
+
+/** A plain-words notice about the workspace, such as posts on hold because an account was disconnected. */
+export interface WorkspaceNotice {
+  readonly code: string;
+  readonly platform: ChannelPlatform | null;
+  readonly message: string;
+}
+
+const noticeSchema = z.object({ code: z.string().min(1), platform: platformSchema.nullish(), message: z.string().min(1) });
+
+/** The notices of a workspace answer (`{"workspace": {"notices": [...]}}`); empty when the shape is not that. */
+export function readNotices(body: unknown): WorkspaceNotice[] {
+  return readList(noticeSchema, (body as { workspace?: { notices?: unknown } } | null)?.workspace?.notices).map((notice) => ({ code: notice.code, platform: notice.platform ?? null, message: notice.message }));
+}
+
 /** The posts of a posts answer (`{"posts": [...]}`); empty when the shape is not that. */
 export function readPosts(body: unknown): AutoPost[] {
-  return readList(postSchema, (body as { posts?: unknown } | null)?.posts);
+  // The targets are the channels plus any network the post is held for, so they are what the page shows when the service sends them.
+  return readList(postSchema, (body as { posts?: unknown } | null)?.posts).map((post) => (post.targets === undefined ? post : { ...post, channels: post.targets.map((target) => ({ ...target, permalink: target.permalink ?? null })) }));
 }
 
 /** The link of a connect-link answer, or null when it is not an https (or local http) address. */
@@ -96,18 +135,32 @@ export interface CalendarPost {
   readonly time: string;
   readonly caption: string;
   readonly state: PostState;
-  readonly channels: AutoPost["channels"];
+  readonly channels: ReadonlyArray<Omit<AutoPost["channels"][number], "account"> & { readonly account: string }>;
   /** Made by the customer (not planned for them), so it can still be changed or removed. */
   readonly manual: boolean;
   readonly imageUrl?: string;
+  /** The captions the networks have of their own; a network that is not here posts the main caption. */
+  readonly variants?: Readonly<Partial<Record<ChannelPlatform, string>>>;
 }
 
 const timeFormat = new Intl.DateTimeFormat("en-GB", { timeZone: BRAND_TIME_ZONE, hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
 
+/** The captions a post's networks have of their own, as `{ variants }` for a calendar post, or nothing when none has. */
+function variantCaptions(post: AutoPost): { readonly variants?: Readonly<Partial<Record<ChannelPlatform, string>>> } {
+  const captions: Partial<Record<ChannelPlatform, string>> = {};
+  for (const platform of CHANNEL_PLATFORMS) {
+    const caption = post.variants?.[platform]?.caption;
+    if (caption !== undefined) captions[platform] = caption;
+  }
+  return Object.keys(captions).length === 0 ? {} : { variants: captions };
+}
+
 export function toCalendarPost(post: AutoPost): CalendarPost | null {
   const at = new Date(post.date);
   if (Number.isNaN(at.getTime())) return null;
-  return { id: post.id, day: localDateIn(BRAND_TIME_ZONE, at), time: timeFormat.format(at), caption: post.caption, state: post.state, channels: post.channels, manual: post.manual, ...(post.imageUrl === undefined ? {} : { imageUrl: post.imageUrl }) };
+  // A network with no connected account has no account name to show: the row says so instead.
+  const channels = post.channels.map((channel) => ({ ...channel, account: channel.account ?? "Not connected" }));
+  return { id: post.id, day: localDateIn(BRAND_TIME_ZONE, at), time: timeFormat.format(at), caption: post.caption, state: post.state, channels, manual: post.manual, ...(post.imageUrl === undefined ? {} : { imageUrl: post.imageUrl }), ...variantCaptions(post) };
 }
 
 /** How far back and ahead the page loads posts, so the calendar can be moved without asking again. */
@@ -177,7 +230,7 @@ export function connectStatus(channels: readonly AutoChannel[], posts: readonly 
   if (channels.length === 0) {
     return {
       title: "Let us start your social posts",
-      text: "Connect your accounts and we write and post three times a week for you.",
+      text: "Connect your accounts and we write and post for you.",
       action: { kind: "channels" },
       actionLabel: "Connect your accounts",
     };
@@ -185,7 +238,7 @@ export function connectStatus(channels: readonly AutoChannel[], posts: readonly 
   const today = localDateIn(BRAND_TIME_ZONE, now);
   const next = posts.filter((post) => post.state !== "published" && post.day >= today).sort((a, b) => `${a.day}${a.time}`.localeCompare(`${b.day}${b.time}`))[0];
   return {
-    title: "Posting three times a week",
+    title: "We are posting for you",
     text:
       next === undefined
         ? "Your accounts are connected. We are writing your next posts, and they will appear on the calendar."
@@ -242,6 +295,8 @@ export function postStatus(post: CalendarPost, shown: ReadonlySet<ChannelPlatfor
   }
   const relevant = post.channels.filter((channel) => shown.has(channel.platform));
   if (relevant.length === 0) return null;
+  const held = relevant.filter((channel) => channel.state === "held");
+  if (held.length > 0 && held.length === relevant.length) return { tone: "warn", word: `On hold: connect ${[...new Set(held.map((channel) => PLATFORM_NAMES[channel.platform]))].join(" and ")}`, state: "held" };
   const missed = relevant.filter((channel) => channel.state === "missed");
   if (missed.length > 0) {
     const names = [...new Set(missed.map((channel) => PLATFORM_NAMES[channel.platform]))];

@@ -23,5 +23,7 @@ export default async function SocialPage({ searchParams }: SocialPageProps): Pro
   const [data, { notice, social, channel }, todo] = await Promise.all([loadSocial(tenant, now), searchParams, loadTodo(tenant)]);
   // Not bought: Your plan is where Social media is added.
   if (data === null) redirect(ADD_ONS_PATH);
-  return <SocialView data={data} notice={socialNoticeLine(notice) ?? connectNoticeLine(social, channel)} now={now} setup={setupAsks(todo.items, todo.answers, "social", billing.plan?.currency ?? "INR")} />;
+  // The website given in setup is the business's own, so it is offered only for its first brand: another brand has a website of its own to give.
+  const ownsSetupWebsite = data.brand === undefined || data.brand.externalId === tenant.businessId;
+  return <SocialView data={data} notice={socialNoticeLine(notice) ?? connectNoticeLine(social, channel)} now={now} savedWebsite={ownsSetupWebsite && typeof todo.answers.social?.["websiteUrl"] === "string" ? todo.answers.social["websiteUrl"] : null} setup={setupAsks(todo.items, todo.answers, "social", billing.plan?.currency ?? "INR")} />;
 }

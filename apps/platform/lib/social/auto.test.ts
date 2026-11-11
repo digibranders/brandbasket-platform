@@ -17,6 +17,9 @@ import {
   postToShow,
   postStatus,
   readChannels,
+  readNotices,
+  readWebsite,
+  websiteLabel,
   readConnectLink,
   readPosts,
   shiftMonth,
@@ -121,7 +124,7 @@ describe("the status card", () => {
 
   it("names the next post that has not gone out, and has no button when nothing is needed", () => {
     const status = connectStatus([channel()], [post({ id: "old", day: "2026-11-02", state: "published" }), post({ id: "later", day: "2026-11-06" }), post()], NOW);
-    expect(status.title).toBe("Posting three times a week");
+    expect(status.title).toBe("We are posting for you");
     expect(status.text).toBe("Your next post goes out on Wednesday 4 November at 10:00. Nothing is needed from you right now.");
     expect(status.action).toBeNull();
     expect(status.actionLabel).toBeNull();
@@ -267,5 +270,42 @@ describe("when posting is paused for the business", () => {
   it("reads the paused flag of a channel", () => {
     const body = { workspace: { channels: [{ id: "facebook:2", platform: "facebook", account: "P", connectedAt: "t", paused: true }, { id: "instagram:1", platform: "instagram", account: "I", connectedAt: "t" }] } };
     expect(readChannels(body).map((c) => c.paused)).toEqual([true, undefined]);
+  });
+});
+
+describe("the website a workspace is locked to", () => {
+  it("reads it from the workspace answer, and is null before the first job or for anything else", () => {
+    expect(readWebsite({ workspace: { website: " https://omsweets.in " } })).toBe("https://omsweets.in");
+    expect(readWebsite({ workspace: { website: null } })).toBeNull();
+    expect(readWebsite({ workspace: { website: "  " } })).toBeNull();
+    expect(readWebsite(null)).toBeNull();
+  });
+
+  it("shows an address without https, www and the trailing slash", () => {
+    expect(websiteLabel("https://www.omsweets.in/")).toBe("omsweets.in");
+    expect(websiteLabel("http://omsweets.in/shop")).toBe("omsweets.in/shop");
+  });
+});
+
+describe("notices and posts held for a disconnected account", () => {
+  it("reads the notices of a workspace and drops what is not one", () => {
+    const body = { workspace: { notices: [{ code: "ACCOUNT_DISCONNECTED", platform: "facebook", message: "Your Facebook account is not connected." }, { nope: true }, { code: "X", message: "No platform." }] } };
+    expect(readNotices(body)).toEqual([{ code: "ACCOUNT_DISCONNECTED", platform: "facebook", message: "Your Facebook account is not connected." }, { code: "X", platform: null, message: "No platform." }]);
+    expect(readNotices(null)).toEqual([]);
+  });
+
+  it("shows a held network from the targets when the service sends them, and the channels otherwise", () => {
+    const base = { id: "p", date: "2026-11-14T15:30:00+05:30", caption: "x", manual: false, state: "scheduled", channels: [{ id: "instagram:1", platform: "instagram", account: "acme", state: "scheduled", permalink: null }] };
+    const targets = [{ id: "instagram:1", platform: "instagram", account: "acme", state: "scheduled" }, { id: "linkedin", platform: "linkedin", account: null, state: "held", code: "ACCOUNT_DISCONNECTED" }];
+    expect(readPosts({ posts: [{ ...base, targets }] })[0]?.channels.map((c) => `${c.platform}:${c.state}`)).toEqual(["instagram:scheduled", "linkedin:held"]);
+    expect(readPosts({ posts: [base] })[0]?.channels.map((c) => c.platform)).toEqual(["instagram"]);
+  });
+
+  it("keeps a post whose network has no connected account, held, instead of dropping the whole post", () => {
+    const [post] = readPosts({ posts: [{ id: "p", date: "2026-11-14T15:30:00+05:30", caption: "x", manual: false, state: "scheduled", channels: [{ id: "instagram:1", platform: "instagram", account: "acme", state: "scheduled", permalink: null }, { id: "facebook", platform: "facebook", account: null, state: "held", permalink: null, code: "ACCOUNT_DISCONNECTED" }] }] });
+    const calendar = post === undefined ? null : toCalendarPost(post);
+    expect(calendar?.channels.map((c) => c.account)).toEqual(["acme", "Not connected"]);
+    expect(postStatus(calendar as NonNullable<typeof calendar>, new Set(["facebook"]))).toMatchObject({ state: "held", word: "On hold: connect Facebook" });
+    expect(postStatus(calendar as NonNullable<typeof calendar>, new Set(["instagram", "facebook"]))).toMatchObject({ state: "scheduled" });
   });
 });

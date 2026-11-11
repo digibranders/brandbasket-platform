@@ -3,23 +3,38 @@ import { latestMonthlyReport, listBoughtSetupServices, listDeliverablesForBusine
 import type { TenantContext } from "@brandbasket/shared/lib/access";
 import { localDateIn } from "@brandbasket/shared/lib/calendar/local-date";
 import { BRAND_TIME_ZONE } from "@/lib/call-dates";
-import { loadWindow, toCalendarPost, type AutoChannel, type CalendarPost } from "@/lib/social/auto";
+import { loadWindow, toCalendarPost, type AutoChannel, type CalendarPost, type WorkspaceNotice } from "@/lib/social/auto";
 import { monthLine, needsOkBy, postWindow, type PostView } from "@/lib/social/week";
 import { errorLogInfo } from "@brandbasket/shared/server/error-log-info";
 import { getAppDb } from "./db";
+import { socialBrand, type SocialBrand } from "./social-brand";
 import { quietly } from "./quietly";
-import { loadChannels, loadPosts, socialAutoSettings, type SocialAutoSettings } from "./social-auto";
+import type { SiteJob } from "@/lib/social/ai";
+import { loadBatches, loadChannels, loadPosters, loadPosts, loadSiteJobs, loadWorkspaceFacts, socialAutoSettings, type SocialAutoSettings } from "./social-auto";
+import { socialAiEnabled } from "./social-ai-flag";
 
 /** What social-auto knows about the business: its connected channels and the posts it writes and publishes. */
 export interface SocialConnect {
   /** The business's name, shown under each connected account. */
   readonly businessName: string;
   readonly channels: readonly AutoChannel[];
+  /** What the workspace says in plain words, such as posts on hold because an account was disconnected. */
+  readonly notices: readonly WorkspaceNotice[];
   readonly posts: readonly CalendarPost[];
   /** Today in India, `YYYY-MM-DD`. */
   readonly today: string;
   /** True when social-auto could not be asked, so the page says so instead of showing an empty calendar as if it were true. */
   readonly unavailable: boolean;
+  /** The AI side's state, or null when it is switched off on this server. */
+  readonly ai: {
+    readonly jobs: readonly SiteJob[];
+    /** The website social-auto has locked this business to, or null before its first job. */
+    readonly website: string | null;
+    /** True when the jobs could not be read, so "no jobs" would not be true and the page must not invite a start. */
+    readonly jobsUnavailable: boolean;
+    /** How many written batches and pictures were put away because nobody decided in time, so the customer is told. */
+    readonly expired: { readonly batches: number; readonly pictures: number };
+  } | null;
 }
 
 export interface SocialData {
@@ -29,19 +44,25 @@ export interface SocialData {
   readonly monthLine: string | null;
   /** The address of the latest monthly report, when staff have added one. */
   readonly report: string | null;
+  /** The brand being looked at and all the business's brands, for the switcher. */
+  readonly brand?: SocialBrand;
 }
 
 /** Asks social-auto for the channels and the posts. Each is its own failure: what could be read is shown and the page says the rest could not be. */
 async function loadConnect(settings: SocialAutoSettings, business: { readonly id: string; readonly name: string }, now: Date): Promise<SocialConnect> {
   const today = localDateIn(BRAND_TIME_ZONE, now);
-  const [channels, posts] = await Promise.allSettled([loadChannels(settings, business.id), loadPosts(settings, business.id, loadWindow(today))]);
-  for (const outcome of [channels, posts]) if (outcome.status === "rejected") console.error("[social] could not read social-auto", errorLogInfo(outcome.reason));
+  const ai = socialAiEnabled();
+  const [channels, posts, jobs, facts, written, expiredPictures] = await Promise.allSettled([loadChannels(settings, business.id), loadPosts(settings, business.id, loadWindow(today)), ai ? loadSiteJobs(settings, business.id) : Promise.resolve([] as SiteJob[]), loadWorkspaceFacts(settings, business.id), ai ? loadBatches(settings, business.id) : Promise.resolve(null), ai ? loadPosters(settings, business.id, "expired") : Promise.resolve(null)]);
+  for (const outcome of [channels, posts, jobs, facts, written, expiredPictures]) if (outcome.status === "rejected") console.error("[social] could not read social-auto", errorLogInfo(outcome.reason));
   return {
     businessName: business.name,
     channels: channels.status === "fulfilled" ? channels.value : [],
+    notices: facts.status === "fulfilled" ? facts.value.notices : [],
     posts: posts.status === "fulfilled" ? posts.value.flatMap((post) => toCalendarPost(post) ?? []) : [],
     today,
     unavailable: channels.status === "rejected" || posts.status === "rejected",
+    // A failed read of the jobs shows as none yet: the page still draws, and the log says why.
+    ai: ai ? { jobs: jobs.status === "fulfilled" ? jobs.value : [], website: facts.status === "fulfilled" ? facts.value.website : null, jobsUnavailable: jobs.status === "rejected", expired: { batches: written.status === "fulfilled" ? (written.value?.expired.length ?? 0) : 0, pictures: expiredPictures.status === "fulfilled" ? (expiredPictures.value?.posters.length ?? 0) : 0 } } : null,
   };
 }
 
@@ -67,12 +88,14 @@ export async function loadSocial(tenant: TenantContext, now: Date): Promise<Soci
   if (!bought.includes("social")) return null;
   const window = postWindow(now);
   const settings = await quietly("social", "the social-auto settings", null, async () => socialAutoSettings());
+  // Every call to social-auto is for the brand being looked at: the business's own workspace unless it chose another of its brands.
+  const brand = await socialBrand(tenant);
   const [rows, report, connect] = await Promise.all([
     quietly("social", "the posts", [] as DeliverableRow[], () =>
       withTenantScope(db, tenant, (tx) => listDeliverablesForBusiness(tx, tenant.businessId, { service: "social", from: window.from, to: window.to })),
     ),
     quietly("social", "the monthly report", null, () => withTenantScope(db, tenant, (tx) => latestMonthlyReport(tx, tenant.businessId, "social"))),
-    settings === null ? Promise.resolve(null) : loadConnect(settings, { id: tenant.businessId, name: tenant.businessName }, now),
+    settings === null ? Promise.resolve(null) : loadConnect(settings, { id: brand.externalId, name: brand.name }, now),
   ]);
   const posts = postViews(rows);
   return {
@@ -80,6 +103,7 @@ export async function loadSocial(tenant: TenantContext, now: Date): Promise<Soci
     posts,
     monthLine: monthLine(posts, now),
     report: report?.url ?? null,
+    brand,
   };
 }
 

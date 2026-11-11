@@ -8,9 +8,9 @@ const ANSWERS = { social: { accounts: "x" }, search: { areas: "Thane" } };
 
 describe("isBlockingSetup", () => {
   it("asks for the website, the accounts, the ad budget and the areas, and no longer for what to promote", () => {
-    expect(BLOCKING_SETUP_KEYS).toEqual(["website", "accounts", "budget", "areas"]);
+    expect(BLOCKING_SETUP_KEYS).toEqual(["website", "accounts", "areas"]);
     expect(isBlockingSetup("offers")).toBe(false);
-    expect(isBlockingSetup("budget")).toBe(true);
+    expect(isBlockingSetup("budget")).toBe(false);
   });
 });
 

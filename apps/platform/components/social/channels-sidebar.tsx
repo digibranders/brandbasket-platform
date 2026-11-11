@@ -30,7 +30,7 @@ function ConnectButton({ platform, label, className, logo = false }: { readonly 
   return (
     <form action={connectChannelAction}>
       <input type="hidden" name="channel" value={platform} />
-      <button type="submit" className={cn(SOFT_BUTTON, "w-full", logo && "justify-start gap-2.5 px-3", className)}>
+      <button type="submit" className={cn(SOFT_BUTTON, "w-full", logo && "h-9 justify-start gap-2 whitespace-nowrap px-2.5 text-[0.84375rem]", className)}>
         {logo ? <ChannelLogo platform={platform} small /> : null}
         {label}
       </button>
@@ -71,9 +71,9 @@ export function ChannelsSidebar({ rows, bookedLine }: ChannelsSidebarProps): Rea
                 type="button"
                 aria-pressed={selected}
                 onClick={() => only(row.platform)}
-                className={cn("grid w-full grid-cols-[2.25rem_minmax(0,1fr)] items-center gap-2.5 rounded-lg px-1.5 py-2 text-left transition-colors hover:bg-sunken", selected && "bg-sunken")}
+                className={cn("grid w-full grid-cols-[1.75rem_minmax(0,1fr)] items-center gap-2.5 rounded-lg px-1.5 py-1.5 text-left transition-colors hover:bg-sunken", selected && "bg-sunken")}
               >
-                <ChannelLogo platform={row.platform} />
+                <ChannelLogo platform={row.platform} medium />
                 <span className={cn("min-w-0", filtering && !selected && "opacity-60")}>
                   <span className="block break-words text-[0.84375rem] font-semibold leading-tight text-ink">
                     {row.account}
@@ -83,7 +83,7 @@ export function ChannelsSidebar({ rows, bookedLine }: ChannelsSidebarProps): Rea
                 </span>
               </button>
               {row.ending === null ? null : (
-                <div className="mt-1 grid gap-2 pb-2 pl-[3.75rem] pr-1.5">
+                <div className="mt-1 grid gap-2 pb-2 pl-[2.75rem] pr-1.5">
                   <span className="inline-flex w-fit items-center gap-1 rounded-full bg-warn-wash px-2 py-0.5 text-xs font-semibold text-warn">
                     <Warning size={14} weight="fill" aria-hidden="true" />
                     {row.ending}

@@ -4,6 +4,9 @@ import { describe, expect, it, vi } from "vitest";
 import type { CalendarPost } from "@/lib/social/auto";
 import { PostDetailsDialog } from "./post-details-dialog";
 
+vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
+vi.mock("@/app/app-host/(protected)/social/actions", () => ({ changeWrittenPostTimeAction: vi.fn() }));
+
 const text = (post: CalendarPost): string => renderToStaticMarkup(createElement(PostDetailsDialog, { post, onClose: vi.fn() })).replaceAll("<!-- -->", "");
 
 const post = (overrides: Partial<CalendarPost> = {}): CalendarPost => ({
@@ -51,5 +54,27 @@ describe("a post opened to read", () => {
   it("says plainly when a post was skipped or is paused, even one we wrote", () => {
     expect(text(post({ manual: false, state: "skipped" }))).toContain("This post was skipped, so it will not be sent.");
     expect(text(post({ state: "paused" }))).toContain("This post is paused, so it is not going out right now.");
+  });
+});
+
+describe("changing when a post we wrote goes out", () => {
+  const written = (overrides: Partial<CalendarPost> = {}): CalendarPost => post({ id: "w01-d1", manual: false, state: "scheduled", day: "2099-01-05", time: "10:00", ...overrides });
+
+  it("offers Change time on a scheduled post we wrote, and still sends words and picture changes to us", () => {
+    const html = text(written());
+    expect(html).toContain("Change time");
+    expect(html).toContain("Change the words or picture");
+    expect(html).toContain('href="/social/review"');
+  });
+
+  it.each([
+    ["a post the customer made, which has its own edit window", { manual: true }],
+    ["a paused post", { state: "paused" as const }],
+    ["a skipped post", { state: "skipped" as const }],
+    ["a post that has gone out", { state: "published" as const }],
+    ["a post whose time has passed", { day: "2020-01-01" }],
+  ])("does not offer it on %s", (_name, change) => {
+    const html = text(written(change));
+    expect(html).not.toContain("Change time");
   });
 });

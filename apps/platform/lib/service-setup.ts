@@ -12,10 +12,10 @@ export const SETUP_KEYS = ["website", "accounts", "offers", "budget", "areas"] a
 export type SetupKey = (typeof SETUP_KEYS)[number];
 
 /**
- * The answers we cannot start without: the website the posts are written from, where to post and advertise, how much to spend, and which areas to work on. "What to
- * promote" is no longer asked: it comes up on the kickoff call. Only these are asked of the customer after it.
+ * The answers we cannot start without: the website the posts are written from, where to post and advertise, and which areas to work on. "What to
+ * promote" is no longer asked: it comes up on the kickoff call, and so does the ad budget. Only these are asked of the customer after it.
  */
-export const BLOCKING_SETUP_KEYS: readonly SetupKey[] = ["website", "accounts", "budget", "areas"];
+export const BLOCKING_SETUP_KEYS: readonly SetupKey[] = ["website", "accounts", "areas"];
 
 export function isBlockingSetup(key: SetupKey): boolean {
   return BLOCKING_SETUP_KEYS.includes(key);

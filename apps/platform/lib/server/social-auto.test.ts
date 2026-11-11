@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 
 vi.mock("server-only", () => ({}));
 
-import { connectLink, createPost, deletePost, ensureWorkspace, loadChannels, loadPosts, SocialAutoError, movePost, sendPostNow, socialAutoSettings, updatePost, uploadPicture, type SocialAutoSettings } from "./social-auto";
+import { actorOf, connectLink, createPost, decideBatch, decideFact, decidePoster, drawBatch, addNetwork, archiveBrand, createBrand, fetchPosterImage, loadBrands, loadBatches, loadTopics, loadFacts, loadPosters, loadSiteJobs, startSiteJob, deletePost, ensureWorkspace, loadChannels, loadPosts, SocialAutoError, movePost, sendPostNow, socialAutoSettings, updatePost, uploadPicture, type SocialAutoSettings } from "./social-auto";
 
 const SETTINGS: SocialAutoSettings = { baseUrl: "https://social.example", key: "key-1234567890abcdef", returnUrl: "https://app.example/social" };
 const json = (status: number, body: unknown): Response => new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } });
@@ -213,5 +213,178 @@ describe("moving a post", () => {
   it("gives social-auto's words when it refuses", async () => {
     const refused = await movePost(SETTINGS, "b", "manual-0123456789ab", { day: "2026-11-01", time: "10:00" }, sender(json(400, { error: "that time has already passed. Choose a later time." })).send).catch((e: unknown) => e);
     expect((refused as SocialAutoError).detail).toBe("that time has already passed. Choose a later time.");
+  });
+});
+
+describe("captions of their own for single networks", () => {
+  it("sends them with a new post, only for the networks that have one", async () => {
+    const { send, calls } = sender(json(201, { post: { id: "manual-0123456789ab", date: "2026-11-04T10:00:00+05:30", caption: "Hi", manual: true, state: "scheduled", channels: [], variants: { linkedin: { caption: "Long" } } } }));
+    const post = await createPost(SETTINGS, "b", { day: "2026-11-04", time: "10:00", caption: "Hi", pictureId: "a".repeat(32), channels: ["linkedin:1"], variants: { linkedin: "Long" } }, send);
+    expect(JSON.parse(String(calls[0]?.init.body)).variants).toEqual({ linkedin: { caption: "Long" } });
+    expect(post.variants?.linkedin?.caption).toBe("Long");
+  });
+
+  it("sends nothing about them when there are none, and null for a network put back on the main caption", async () => {
+    const answer = json(200, { post: { id: "manual-0123456789ab", date: "2026-11-04T10:00:00+05:30", caption: "Hi", manual: true, state: "scheduled", channels: [] } });
+    const first = sender(answer);
+    await updatePost(SETTINGS, "b", "manual-0123456789ab", { day: "2026-11-06", time: "10:00", caption: "New", channels: ["instagram:1"] }, first.send);
+    expect("variants" in JSON.parse(String(first.calls[0]?.init.body))).toBe(false);
+    const second = sender(answer);
+    await updatePost(SETTINGS, "b", "manual-0123456789ab", { day: "2026-11-06", time: "10:00", caption: "New", channels: ["instagram:1"], variants: { linkedin: "Longer", instagram: null } }, second.send);
+    expect(JSON.parse(String(second.calls[0]?.init.body)).variants).toEqual({ linkedin: { caption: "Longer" }, instagram: null });
+  });
+});
+
+
+describe("the AI side", () => {
+  const job = { id: "job_1", kind: "write", state: "queued", createdAt: "2026-11-11T10:00:00Z" };
+
+  it("builds the person who decides from the session, within the length social-auto accepts", () => {
+    expect(actorOf({ businessId: "b", userId: "user-1" })).toBe("brandbasket:user-1");
+    expect(actorOf({ businessId: "b", userId: "u".repeat(100) })).toHaveLength(64);
+  });
+
+  it("starts a website job with the person who asked, and only the networks that were named", async () => {
+    const { send, calls } = sender(json(202, { job, created: true }));
+    const started = await startSiteJob(SETTINGS, "business-1", { site: "omsweets.in", page: false, networks: ["instagram", "linkedin"] }, "brandbasket:user-1", send);
+    expect(started).toEqual({ job, created: true });
+    expect(calls[0]?.url).toBe("https://social.example/api/v1/site-jobs");
+    expect((calls[0]?.init.headers as Record<string, string>)["X-Social-Actor"]).toBe("brandbasket:user-1");
+    expect(JSON.parse(String(calls[0]?.init.body))).toEqual({ externalId: "business-1", site: "omsweets.in", networks: ["instagram", "linkedin"] });
+    const one = sender(json(200, { job, created: false }));
+    await startSiteJob(SETTINGS, "business-1", { site: "https://omsweets.in/diwali", page: true }, "brandbasket:user-1", one.send);
+    expect(JSON.parse(String(one.calls[0]?.init.body))).toEqual({ externalId: "business-1", site: "https://omsweets.in/diwali", page: true });
+  });
+
+  it("keeps the error's code, so the page can use its own words", async () => {
+    const refused = await startSiteJob(SETTINGS, "b", { site: "x.in", page: false }, "brandbasket:u", sender(json(429, { error: "limit", code: "JOB_LIMIT_REACHED" })).send).catch((e: unknown) => e);
+    expect(refused).toBeInstanceOf(SocialAutoError);
+    expect(refused).toMatchObject({ status: 429, code: "JOB_LIMIT_REACHED", detail: "limit" });
+    const old = await startSiteJob(SETTINGS, "b", { site: "x.in", page: false }, "brandbasket:u", sender(json(400, { error: "no code here" })).send).catch((e: unknown) => e);
+    expect(old).toMatchObject({ code: null });
+    await expect(startSiteJob(SETTINGS, "b", { site: "x.in", page: false }, "brandbasket:u", sender(json(202, { job: { id: 1 } })).send)).rejects.toThrow(/could not be read/);
+  });
+
+  it("lists the jobs, reading a missing customer as none yet", async () => {
+    expect(await loadSiteJobs(SETTINGS, "b", sender(json(200, { jobs: [job] })).send)).toHaveLength(1);
+    expect(await loadSiteJobs(SETTINGS, "b", sender(json(404, { error: "no", code: "WORKSPACE_NOT_FOUND" })).send)).toEqual([]);
+    await expect(loadSiteJobs(SETTINGS, "b", sender(json(503, { error: "down", code: "ENGINE_UNAVAILABLE" })).send)).rejects.toBeInstanceOf(SocialAutoError);
+  });
+
+  it("reads the facts, and null before the website was read, and decides one with the actor", async () => {
+    expect(await loadFacts(SETTINGS, "b", sender(json(404, { error: "not yet", code: "NOT_FOUND" })).send)).toBeNull();
+    const facts = { builtAt: "2026-11-11T10:00:00Z", facts: [{ id: "f1", text: "Free delivery", state: "confirmed", held: false }] };
+    const { send, calls } = sender(json(200, facts));
+    const decided = await decideFact(SETTINGS, "business-1", "f1", "remove", "brandbasket:u", send);
+    expect(decided.facts[0]?.id).toBe("f1");
+    expect(JSON.parse(String(calls[0]?.init.body))).toEqual({ externalId: "business-1", factId: "f1", action: "remove" });
+    const held = await decideFact(SETTINGS, "b", "f1", "confirm", "brandbasket:u", sender(json(409, { error: "held", code: "FACT_HELD" })).send).catch((e: unknown) => e);
+    expect(held).toMatchObject({ status: 409, code: "FACT_HELD" });
+  });
+
+  it("changes a written post and asks for the pictures", async () => {
+    const batch = { id: "week-05", createdAt: "2026-11-11T10:00:00Z", networks: ["instagram"], posts: [{ id: "p1", headline: "H", caption: "C", state: "kept" }] };
+    const first = sender(json(200, { batch }));
+    const kept = await decideBatch(SETTINGS, "business-1", "week-05", { action: "keep", postId: "p1" }, "brandbasket:u", first.send);
+    expect(kept.posts[0]?.state).toBe("kept");
+    expect(JSON.parse(String(first.calls[0]?.init.body))).toEqual({ externalId: "business-1", batchId: "week-05", action: "keep", postId: "p1" });
+    const edit = sender(json(200, { batch }));
+    await decideBatch(SETTINGS, "business-1", "week-05", { action: "edit", postId: "p1", network: "linkedin", caption: "New words" }, "brandbasket:u", edit.send);
+    expect(JSON.parse(String(edit.calls[0]?.init.body))).toMatchObject({ action: "edit", network: "linkedin", caption: "New words" });
+    const drawn = sender(json(202, { job: { ...job, kind: "draw" }, created: true }));
+    expect((await drawBatch(SETTINGS, "business-1", "week-05", "brandbasket:u", drawn.send)).job.kind).toBe("draw");
+    expect(JSON.parse(String(drawn.calls[0]?.init.body))).toEqual({ externalId: "business-1", batchId: "week-05", action: "draw" });
+    expect((await loadBatches(SETTINGS, "b", sender(json(200, { batches: [batch], expired: [{ id: "week-00.json", expiredAt: "2026-11-19T09:00:00.000Z" }] })).send)).batches).toHaveLength(1);
+    expect((await loadBatches(SETTINGS, "b", sender(json(200, { batches: [batch], expired: [{ id: "week-00.json", expiredAt: "2026-11-19T09:00:00.000Z" }] })).send)).expired).toEqual([{ id: "week-00.json", expiredAt: "2026-11-19T09:00:00.000Z" }]);
+    const locked = await decideBatch(SETTINGS, "b", "week-05", { action: "drop", postId: "p1" }, "brandbasket:u", sender(json(409, { error: "final", code: "BATCH_LOCKED" })).send).catch((e: unknown) => e);
+    expect(locked).toMatchObject({ code: "BATCH_LOCKED" });
+  });
+
+  it("lists the pictures and takes the customer's decision, including one more picture", async () => {
+    const poster = { id: "v1", batchId: "week-05", postId: "p1", network: "instagram", shape: "square", width: 1024, height: 1024, headline: "H", caption: "C", versionNumber: 1, status: "pending", canRedraw: true, redrawsLeft: 1, createdAt: "2026-11-11T10:00:00Z" };
+    const listed = sender(json(200, { posters: [poster], reasons: ["weak_copy"] }));
+    expect((await loadPosters(SETTINGS, "business-1", "open", listed.send)).posters).toHaveLength(1);
+    expect(listed.calls[0]?.url).toContain("status=open");
+    const approve = sender(json(200, { decision: { id: "v1", status: "approved", decidedAt: "x" } }));
+    expect((await decidePoster(SETTINGS, "business-1", { action: "approve", id: "v1" }, "brandbasket:u", approve.send)).job).toBeNull();
+    expect(JSON.parse(String(approve.calls[0]?.init.body))).toEqual({ externalId: "business-1", action: "approve", id: "v1" });
+    const reject = sender(json(200, { decision: { id: "v1", status: "rejected", decidedAt: "x" } }));
+    await decidePoster(SETTINGS, "business-1", { action: "reject", id: "v1", reason: "weak_copy" }, "brandbasket:u", reject.send);
+    expect(JSON.parse(String(reject.calls[0]?.init.body))).toMatchObject({ action: "reject", reason: "weak_copy" });
+    const redraw = sender(json(202, { job: { ...job, kind: "draw" }, created: true }));
+    expect((await decidePoster(SETTINGS, "business-1", { action: "redraw", id: "v1" }, "brandbasket:u", redraw.send)).job?.kind).toBe("draw");
+    const topic = sender(json(200, { decisions: [] }));
+    await decidePoster(SETTINGS, "business-1", { action: "approve-topic", batchId: "week-05", postId: "p1" }, "brandbasket:u", topic.send);
+    expect(JSON.parse(String(topic.calls[0]?.init.body))).toMatchObject({ action: "approve-topic", batchId: "week-05", postId: "p1" });
+    const blocked = await decidePoster(SETTINGS, "b", { action: "approve", id: "v1" }, "brandbasket:u", sender(json(409, { error: "blocked", code: "POSTER_BLOCKED" })).send).catch((e: unknown) => e);
+    expect(blocked).toMatchObject({ status: 409, code: "POSTER_BLOCKED" });
+  });
+});
+
+describe("fetchPosterImage", () => {
+  const jpeg = (status: number): Response => new Response(new Uint8Array([0xff, 0xd8, 0xff, 0xd9]), { status, headers: { "content-type": "image/jpeg" } });
+
+  it("asks for the picture of this customer with the product key, and answers its bytes", async () => {
+    const calls: Array<{ url: string; init: RequestInit }> = [];
+    const send = (async (url: URL | string, init?: RequestInit) => {
+      calls.push({ url: String(url), init: init ?? {} });
+      return jpeg(200);
+    }) as typeof fetch;
+    const bytes = await fetchPosterImage(SETTINGS, "business-1", "v1", send);
+    expect(bytes).toEqual(new Uint8Array([0xff, 0xd8, 0xff, 0xd9]));
+    expect(calls[0]?.url).toBe("https://social.example/api/v1/posters?externalId=business-1&id=v1&image=1");
+    expect((calls[0]?.init.headers as Record<string, string>)["Authorization"]).toBe("Bearer key-1234567890abcdef");
+  });
+
+  it("answers null for a picture that is not there, and refuses an answer that is not a picture", async () => {
+    expect(await fetchPosterImage(SETTINGS, "b", "v1", (async () => jpeg(404)) as typeof fetch)).toBeNull();
+    await expect(fetchPosterImage(SETTINGS, "b", "v1", (async () => new Response("{}", { status: 200, headers: { "content-type": "application/json" } })) as typeof fetch)).rejects.toBeInstanceOf(SocialAutoError);
+    await expect(fetchPosterImage(SETTINGS, "b", "v1", (async () => { throw new Error("down"); }) as typeof fetch)).rejects.toThrow(/could not be reached/);
+  });
+});
+
+describe("topics and adding a network", () => {
+  it("reads each topic with the networks it lacks, and keeps what is readable", async () => {
+    const body = { topics: [{ batchId: "week-01.json", postId: "w01-d1", headline: "H", networks: [{ network: "instagram", status: "approved" }], missing: ["facebook"] }, { nope: true }], connected: ["instagram", "facebook"] };
+    const topics = await loadTopics(SETTINGS, "b", sender(json(200, body)).send);
+    expect(topics).toHaveLength(1);
+    expect(topics[0]?.missing).toEqual(["facebook"]);
+    expect(await loadTopics(SETTINGS, "b", sender(json(404, { error: "none", code: "WORKSPACE_NOT_FOUND" })).send)).toEqual([]);
+  });
+
+  it("asks for the network with the actor, follows the job it answers, and shows the service's code when refused", async () => {
+    const answer = sender(json(202, { job: { id: "j1", kind: "network", batchId: "week-01.json", state: "queued", createdAt: "x" }, created: true }));
+    const job = await addNetwork(SETTINGS, "business-1", "week-01.json", "facebook", "brandbasket:u", answer.send);
+    expect(job).toMatchObject({ id: "j1", kind: "network" });
+    expect(JSON.parse(String(answer.calls[0]?.init.body))).toEqual({ externalId: "business-1", batchId: "week-01.json", action: "add-network", network: "facebook" });
+    const refused = await addNetwork(SETTINGS, "b", "week-01.json", "facebook", "brandbasket:u", sender(json(409, { error: "there", code: "NETWORK_ALREADY_THERE" })).send).catch((e: unknown) => e);
+    expect(refused).toMatchObject({ code: "NETWORK_ALREADY_THERE" });
+  });
+});
+
+describe("brands", () => {
+  it("reads the business's brands by its group, and is null for a service that does not know them", async () => {
+    const answer = sender(json(200, { workspaces: [{ externalId: "b", name: "One" }], brandsAllowed: 2, brandsUsed: 1 }));
+    expect(await loadBrands(SETTINGS, "b", "Fallback", answer.send)).toMatchObject({ allowed: 2, used: 1 });
+    expect(answer.calls[0]?.url).toContain("/api/v1/workspaces?group=b");
+    expect(await loadBrands(SETTINGS, "b", "x", sender(json(400, { error: "externalId is required" })).send)).toBeNull();
+    expect(await loadBrands(SETTINGS, "b", "x", sender(json(404, { error: "none" })).send)).toBeNull();
+    await expect(loadBrands(SETTINGS, "b", "x", sender(json(500, { error: "x" })).send)).rejects.toMatchObject({ status: 500 });
+  });
+
+  it("makes a further brand in the business's group, and passes on the service's code when it refuses", async () => {
+    const made = sender(json(201, { workspace: { id: "x" } }));
+    await createBrand(SETTINGS, "b", "abc12345", "Om Snacks", made.send);
+    expect(JSON.parse(String(made.calls[0]?.init.body))).toEqual({ externalId: "b:abc12345", name: "Om Snacks", group: "b" });
+    const refused = await createBrand(SETTINGS, "b", "k", "N", sender(json(409, { error: "limit", code: "BRAND_LIMIT_REACHED" })).send).catch((e: unknown) => e);
+    expect(refused).toMatchObject({ code: "BRAND_LIMIT_REACHED" });
+  });
+
+  it("archives and brings back a brand", async () => {
+    const answer = sender(json(200, { ok: true }));
+    await archiveBrand(SETTINGS, "b:k", true, answer.send);
+    expect(answer.calls[0]?.url).toContain("/api/v1/workspaces/archive");
+    expect(JSON.parse(String(answer.calls[0]?.init.body))).toEqual({ externalId: "b:k", archived: true });
+    await expect(archiveBrand(SETTINGS, "b:k", false, sender(json(409, { error: "x", code: "BRAND_LIMIT_REACHED" })).send)).rejects.toMatchObject({ code: "BRAND_LIMIT_REACHED" });
   });
 });

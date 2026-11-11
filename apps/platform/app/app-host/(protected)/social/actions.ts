@@ -6,10 +6,13 @@ import { revalidatePath } from "next/cache";
 import { notFound, redirect, unstable_rethrow } from "next/navigation";
 import { z } from "zod";
 import { requireBillingAccess } from "@/lib/server/billing";
+import { socialBrand } from "@/lib/server/social-brand";
 import { getAppDb } from "@/lib/server/db";
-import { connectLink, createPost, deletePost, ensureWorkspace, loadChannels, movePost, sendPostNow, SocialAutoError, socialAutoSettings, updatePost } from "@/lib/server/social-auto";
-import { CHANNEL_PLATFORMS } from "@/lib/social/auto";
-import { canAddOn, checkNewPost, checkPostEdit, isChangeablePostId, isTime, momentHasPassed, type NewPostState } from "@/lib/social/new-post";
+import { actorOf, connectLink, createPost, deletePost, ensureWorkspace, loadChannels, movePost, sendPostNow, SocialAutoError, socialAutoSettings, startSiteJob, updatePost } from "@/lib/server/social-auto";
+import { socialAiEnabled } from "@/lib/server/social-ai-flag";
+import { wordsForCode } from "@/lib/social/ai";
+import { CHANNEL_PLATFORMS, type ChannelPlatform } from "@/lib/social/auto";
+import { canAddOn, checkNewPost, checkPostEdit, wordsForPostRefusal, isChangeablePostId, isTime, isWrittenPostId, momentHasPassed, type NewPostState } from "@/lib/social/new-post";
 import { localDateIn } from "@brandbasket/shared/lib/calendar/local-date";
 import { BRAND_TIME_ZONE } from "@/lib/call-dates";
 
@@ -41,6 +44,21 @@ export async function approvePostsAction(formData: FormData): Promise<void> {
   redirect(`/social?notice=${notice}`);
 }
 
+/** The captions the customer wrote for single networks (`caption_linkedin` and so on). Only the networks whose box was open are sent. */
+function variantsOf(formData: FormData): Record<string, string> {
+  return Object.fromEntries(CHANNEL_PLATFORMS.flatMap((platform) => {
+    const text = formData.get(`caption_${platform}`);
+    return typeof text === "string" ? [[platform, text]] : [];
+  }));
+}
+
+/** The state to show when social-auto refuses a change to a post with a sentence the customer can act on, or null for any other fault. */
+function refusalState(error: unknown): NewPostState | null {
+  if (!(error instanceof SocialAutoError)) return null;
+  const message = wordsForPostRefusal(error.code, error.detail);
+  return message === null ? null : { status: "error", message };
+}
+
 const connectSchema = z.object({ channel: z.enum(CHANNEL_PLATFORMS) });
 
 /**
@@ -67,8 +85,9 @@ export async function connectChannelAction(formData: FormData): Promise<void> {
   if (settings === null) redirect("/social?social=unavailable");
   let link: string;
   try {
-    await ensureWorkspace(settings, { id: tenant.businessId, name: tenant.businessName });
-    link = await connectLink(settings, tenant.businessId, parsed.data.channel);
+    const brand = await socialBrand(tenant);
+    await ensureWorkspace(settings, { id: brand.externalId, name: brand.name, ...(brand.externalId === tenant.businessId ? {} : { group: tenant.businessId }) });
+    link = await connectLink(settings, brand.externalId, parsed.data.channel);
   } catch (error) {
     unstable_rethrow(error);
     console.error("[social] could not start a connection", errorLogInfo(error));
@@ -90,17 +109,18 @@ export async function createPostAction(formData: FormData): Promise<NewPostState
   try {
     const settings = socialAutoSettings();
     if (settings === null) return unavailable;
-    const connected = (await loadChannels(settings, tenant.businessId)).map((channel) => channel.id);
+    const connected = (await loadChannels(settings, (await socialBrand(tenant)).externalId)).map((channel) => channel.id);
     const checked = checkNewPost(
-      { day: formData.get("day"), time: formData.get("time"), caption: formData.get("caption"), pictureId: formData.get("pictureId"), channels: formData.getAll("channel") },
+      { day: formData.get("day"), time: formData.get("time"), caption: formData.get("caption"), pictureId: formData.get("pictureId"), channels: formData.getAll("channel"), variants: variantsOf(formData) },
       localDateIn(BRAND_TIME_ZONE, new Date()),
       connected,
     );
     if (!checked.ok) return { status: "error", message: checked.message };
-    await createPost(settings, tenant.businessId, checked.post);
+    await createPost(settings, (await socialBrand(tenant)).externalId, checked.post);
   } catch (error) {
     unstable_rethrow(error);
-    if (error instanceof SocialAutoError && error.detail !== null) return { status: "error", message: error.detail };
+    const refused = refusalState(error);
+    if (refused !== null) return refused;
     console.error("[social] could not schedule a post", errorLogInfo(error));
     return { status: "error", message: "The post could not be saved. Try again." };
   }
@@ -124,18 +144,19 @@ export async function updatePostAction(formData: FormData): Promise<NewPostState
   try {
     const settings = socialAutoSettings();
     if (settings === null) return { status: "error", message: "Posting is not available just now. Try again later." };
-    const connected = (await loadChannels(settings, tenant.businessId)).map((channel) => channel.id);
+    const connected = (await loadChannels(settings, (await socialBrand(tenant)).externalId)).map((channel) => channel.id);
     const checked = checkPostEdit(
-      { day: formData.get("day"), time: formData.get("time"), caption: formData.get("caption"), pictureId: formData.get("pictureId"), channels: formData.getAll("channel") },
+      { day: formData.get("day"), time: formData.get("time"), caption: formData.get("caption"), pictureId: formData.get("pictureId"), channels: formData.getAll("channel"), variants: variantsOf(formData) },
       localDateIn(BRAND_TIME_ZONE, new Date()),
       connected,
       { day: ownDay, time: ownTime },
     );
     if (!checked.ok) return { status: "error", message: checked.message };
-    await updatePost(settings, tenant.businessId, postId, checked.edit);
+    await updatePost(settings, (await socialBrand(tenant)).externalId, postId, checked.edit);
   } catch (error) {
     unstable_rethrow(error);
-    if (error instanceof SocialAutoError && error.detail !== null) return { status: "error", message: error.detail };
+    const refused = refusalState(error);
+    if (refused !== null) return refused;
     console.error("[social] could not change a post", errorLogInfo(error));
     return { status: "error", message: "The changes could not be saved. Try again." };
   }
@@ -153,10 +174,11 @@ export async function deletePostAction(formData: FormData): Promise<NewPostState
   try {
     const settings = socialAutoSettings();
     if (settings === null) return { status: "error", message: "Posting is not available just now. Try again later." };
-    await deletePost(settings, tenant.businessId, postId);
+    await deletePost(settings, (await socialBrand(tenant)).externalId, postId);
   } catch (error) {
     unstable_rethrow(error);
-    if (error instanceof SocialAutoError && error.detail !== null) return { status: "error", message: error.detail };
+    const refused = refusalState(error);
+    if (refused !== null) return refused;
     console.error("[social] could not remove a post", errorLogInfo(error));
     return { status: "error", message: "The post could not be removed. Try again." };
   }
@@ -178,10 +200,11 @@ export async function sendPostNowAction(formData: FormData): Promise<NewPostStat
   try {
     const settings = socialAutoSettings();
     if (settings === null) return { status: "error", message: "Posting is not available just now. Try again later." };
-    result = await sendPostNow(settings, tenant.businessId, postId);
+    result = await sendPostNow(settings, (await socialBrand(tenant)).externalId, postId);
   } catch (error) {
     unstable_rethrow(error);
-    if (error instanceof SocialAutoError && error.detail !== null) return { status: "error", message: error.detail };
+    const refused = refusalState(error);
+    if (refused !== null) return refused;
     console.error("[social] could not send a post now", errorLogInfo(error));
     return { status: "error", message: "The post could not be sent. Try again." };
   }
@@ -192,29 +215,70 @@ export async function sendPostNowAction(formData: FormData): Promise<NewPostStat
 }
 
 /**
- * Drag and drop on the calendar: moves a post the business made to another day and time, leaving its words, picture and accounts as
- * they are. The new moment must be ahead of now, which social-auto checks again. Answers a state the calendar shows.
+ * Moves a post to another day and time. `written` says whether it is one we wrote for the business (changed from its details window)
+ * or one the business made (dragged on the calendar). The new moment must be ahead of now, which social-auto checks again.
  */
-export async function movePostAction(formData: FormData): Promise<NewPostState> {
+async function moveToMoment(formData: FormData, written: boolean): Promise<NewPostState> {
   const { tenant } = await requireBillingAccess();
   const bought = await withTenantScope(getAppDb(), tenant, (tx) => listBoughtSetupServices(tx, tenant.businessId));
   if (!bought.includes("social")) notFound();
   const postId = formData.get("postId");
   const day = formData.get("day");
   const time = formData.get("time");
-  if (!isChangeablePostId(postId)) return { status: "error", message: "That post could not be found. Reload the page." };
+  if (typeof postId !== "string" || !(written ? isWrittenPostId(postId) : isChangeablePostId(postId))) return { status: "error", message: "That post could not be found. Reload the page." };
   const today = localDateIn(BRAND_TIME_ZONE, new Date());
   if (typeof day !== "string" || !canAddOn(day, today)) return { status: "error", message: "Choose a day from today to 89 days ahead." };
   if (!isTime(time) || momentHasPassed(day, time, new Date())) return { status: "error", message: "That time has already passed. Choose a later time." };
   try {
     const settings = socialAutoSettings();
     if (settings === null) return { status: "error", message: "Posting is not available just now. Try again later." };
-    await movePost(settings, tenant.businessId, postId, { day, time });
+    await movePost(settings, (await socialBrand(tenant)).externalId, postId, { day, time });
   } catch (error) {
     unstable_rethrow(error);
-    if (error instanceof SocialAutoError && error.detail !== null) return { status: "error", message: error.detail };
+    const refused = refusalState(error);
+    if (refused !== null) return refused;
     console.error("[social] could not move a post", errorLogInfo(error));
     return { status: "error", message: "The post could not be moved. Try again." };
+  }
+  revalidatePath("/social");
+  return { status: "saved" };
+}
+
+/** Drag and drop on the calendar: moves a post the business made, leaving its words, picture and accounts as they are. */
+export async function movePostAction(formData: FormData): Promise<NewPostState> {
+  return moveToMoment(formData, false);
+}
+
+/** "Change time" in the details window of a post we wrote: moves it to another day and time, leaving its words and picture as approved. */
+export async function changeWrittenPostTimeAction(formData: FormData): Promise<NewPostState> {
+  return moveToMoment(formData, true);
+}
+
+const siteSchema = z.object({ site: z.string().trim().min(1, "Write your website address.").max(300, "That address is too long."), page: z.boolean(), networks: z.array(z.enum(CHANNEL_PLATFORMS)).max(CHANNEL_PLATFORMS.length) });
+
+/**
+ * "Read my website" (or "Read this page"): starts a batch of written posts for the business. Nothing is drawn or paid for yet. The
+ * business and the person come from the session; the form gives only the address, whether it is one page, and the networks. The
+ * website is the business's own: social-auto keeps the first one it was given and refuses another. Answers a state the dialog shows.
+ */
+export async function startSiteJobAction(formData: FormData): Promise<NewPostState> {
+  const { tenant } = await requireBillingAccess();
+  const bought = await withTenantScope(getAppDb(), tenant, (tx) => listBoughtSetupServices(tx, tenant.businessId));
+  if (!bought.includes("social") || !socialAiEnabled()) notFound();
+  const parsed = siteSchema.safeParse({ site: formData.get("site"), page: formData.get("mode") === "page", networks: formData.getAll("network") });
+  if (!parsed.success) return { status: "error", message: parsed.error.issues[0]?.message ?? "Check the address and try again." };
+  if (parsed.data.networks.length === 0) return { status: "error", message: wordsForCode("INVALID_NETWORKS") };
+  try {
+    const settings = socialAutoSettings();
+    if (settings === null) return { status: "error", message: "Posting is not available just now. Try again later." };
+    const brand = await socialBrand(tenant);
+    await ensureWorkspace(settings, { id: brand.externalId, name: brand.name, ...(brand.externalId === tenant.businessId ? {} : { group: tenant.businessId }) });
+    await startSiteJob(settings, brand.externalId, { site: parsed.data.site, page: parsed.data.page, networks: parsed.data.networks satisfies ChannelPlatform[] }, actorOf(tenant));
+  } catch (error) {
+    unstable_rethrow(error);
+    if (error instanceof SocialAutoError && error.code !== null) return { status: "error", message: wordsForCode(error.code) };
+    console.error("[social] could not start a website job", errorLogInfo(error));
+    return { status: "error", message: wordsForCode(null) };
   }
   revalidatePath("/social");
   return { status: "saved" };

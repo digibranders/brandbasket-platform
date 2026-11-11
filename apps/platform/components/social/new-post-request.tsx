@@ -2,6 +2,7 @@
 
 import { Plus } from "@phosphor-icons/react/dist/ssr";
 import { createContext, useCallback, useContext, useMemo, useState, type ReactElement, type ReactNode } from "react";
+import { SMALL_ACCENT } from "./small-buttons";
 
 interface NewPostRequests {
   /** How many times New post has been pressed; the calendar opens its window each time this goes up. */
@@ -29,8 +30,8 @@ export function useNewPostRequests(): NewPostRequests {
 export function NewPostButton(): ReactElement {
   const { request } = useNewPostRequests();
   return (
-    <button type="button" onClick={request} className="inline-flex h-11 items-center justify-center gap-2 rounded-[0.625rem] bg-rattan-text px-5 text-[0.9375rem] font-semibold text-white transition-[transform,opacity] duration-200 hover:opacity-90 active:translate-y-px">
-      <Plus size={16} weight="bold" aria-hidden="true" />
+    <button type="button" onClick={request} className={SMALL_ACCENT}>
+      <Plus size={14} weight="bold" aria-hidden="true" />
       New post
     </button>
   );

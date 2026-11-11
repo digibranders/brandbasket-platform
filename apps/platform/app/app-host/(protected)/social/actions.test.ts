@@ -2,8 +2,9 @@ import { approveDeliverables, DeliverableError, listBoughtSetupServices, withTen
 import { revalidatePath } from "next/cache";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { requireBillingAccess } from "@/lib/server/billing";
-import { connectLink, createPost, deletePost, ensureWorkspace, loadChannels, movePost, sendPostNow, SocialAutoError, socialAutoSettings, updatePost } from "@/lib/server/social-auto";
-import { approvePostsAction, connectChannelAction, createPostAction, deletePostAction, movePostAction, sendPostNowAction, updatePostAction } from "./actions";
+import { connectLink, createPost, deletePost, ensureWorkspace, loadChannels, movePost, sendPostNow, SocialAutoError, socialAutoSettings, startSiteJob, updatePost } from "@/lib/server/social-auto";
+import { socialAiEnabled } from "@/lib/server/social-ai-flag";
+import { approvePostsAction, changeWrittenPostTimeAction, connectChannelAction, createPostAction, deletePostAction, movePostAction, sendPostNowAction, startSiteJobAction, updatePostAction } from "./actions";
 
 vi.mock("server-only", () => ({}));
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
@@ -19,7 +20,9 @@ vi.mock("next/navigation", () => ({
 vi.mock("@/lib/server/db", () => ({ getAppDb: vi.fn(() => ({ kind: "app-db" })) }));
 vi.mock("@/lib/server/billing", () => ({ requireBillingAccess: vi.fn() }));
 vi.mock("@brandbasket/db", async (importOriginal) => ({ ...(await importOriginal<typeof import("@brandbasket/db")>()), approveDeliverables: vi.fn(), listBoughtSetupServices: vi.fn(), withTenantScope: vi.fn() }));
-vi.mock("@/lib/server/social-auto", async (importOriginal) => ({ ...(await importOriginal<typeof import("@/lib/server/social-auto")>()), socialAutoSettings: vi.fn(), ensureWorkspace: vi.fn(), connectLink: vi.fn(), loadChannels: vi.fn(), createPost: vi.fn(), updatePost: vi.fn(), deletePost: vi.fn(), sendPostNow: vi.fn(), movePost: vi.fn() }));
+vi.mock("@/lib/server/social-auto", async (importOriginal) => ({ ...(await importOriginal<typeof import("@/lib/server/social-auto")>()), socialAutoSettings: vi.fn(), ensureWorkspace: vi.fn(), connectLink: vi.fn(), loadChannels: vi.fn(), createPost: vi.fn(), updatePost: vi.fn(), deletePost: vi.fn(), sendPostNow: vi.fn(), movePost: vi.fn(), startSiteJob: vi.fn() }));
+vi.mock("@/lib/server/social-ai-flag", () => ({ socialAiEnabled: vi.fn() }));
+vi.mock("@/lib/server/social-brand", () => ({ socialBrand: async (tenant: { businessId: string; businessName: string }) => ({ externalId: tenant.businessId, name: tenant.businessName, view: null }) }));
 
 const A = "0192f3c4-0000-7000-8000-00000000000a";
 const B = "0192f3c4-0000-7000-8000-00000000000b";
@@ -47,6 +50,8 @@ beforeEach(() => {
   vi.mocked(connectLink).mockResolvedValue("https://dash.example/api/instagram-start?invite=abc");
   vi.mocked(loadChannels).mockResolvedValue([{ id: "instagram:1", platform: "instagram", account: "acme", connectedAt: "2026-10-30T09:00:00Z" }, { id: "linkedin:3", platform: "linkedin", account: "Meera", connectedAt: "2026-10-30T09:00:00Z" }]);
   vi.mocked(createPost).mockResolvedValue({} as never);
+  vi.mocked(socialAiEnabled).mockReturnValue(true);
+  vi.mocked(startSiteJob).mockResolvedValue({ job: { id: "job_1", kind: "write", state: "queued", createdAt: "2026-11-11T10:00:00Z" }, created: true });
 });
 
 describe("approvePostsAction", () => {
@@ -233,7 +238,7 @@ describe("updatePostAction and deletePostAction", () => {
 
   it("saves the changes for the session's business, with no new picture unless one was stored, and refreshes the page", async () => {
     expect(await updatePostAction(change({ businessId: "business-2" }))).toEqual({ status: "saved" });
-    expect(updatePost).toHaveBeenCalledWith(expect.anything(), "business-1", POST_ID, { day: farDay(), time: "14:30", caption: "New words.", channels: ["instagram:1"] });
+    expect(updatePost).toHaveBeenCalledWith(expect.anything(), "business-1", POST_ID, { day: farDay(), time: "14:30", caption: "New words.", channels: ["instagram:1"], variants: { instagram: null, facebook: null, linkedin: null, google: null } });
     await updatePostAction(change({ pictureId: "b".repeat(32) }));
     expect(updatePost).toHaveBeenLastCalledWith(expect.anything(), "business-1", POST_ID, expect.objectContaining({ pictureId: "b".repeat(32) }));
     expect(revalidatePath).toHaveBeenCalledWith("/social");
@@ -339,10 +344,72 @@ describe("movePostAction", () => {
     expect(movePost).not.toHaveBeenCalled();
   });
 
+  it("moves a post we wrote from its details window, and refuses an id that could be a path", async () => {
+    vi.mocked(movePost).mockResolvedValue({} as never);
+    expect(await changeWrittenPostTimeAction(drop({ postId: "w01-d1" }))).toEqual({ status: "saved" });
+    expect(movePost).toHaveBeenCalledWith(expect.anything(), "business-1", "w01-d1", { day: farDay(), time: "11:15" });
+    vi.mocked(movePost).mockClear();
+    expect(await changeWrittenPostTimeAction(drop({ postId: "../x" }))).toEqual({ status: "error", message: expect.stringContaining("could not be found") });
+    expect(movePost).not.toHaveBeenCalled();
+  });
+
+  it("uses its own sentence for a code it knows, and the service's sentence for one it does not", async () => {
+    vi.mocked(movePost).mockRejectedValue(new SocialAutoError("refused", 400, "that time has already passed. Choose a later time.", "TIME_PASSED"));
+    expect(await movePostAction(drop())).toEqual({ status: "error", message: "That time has already passed. Choose a later time." });
+    vi.mocked(movePost).mockRejectedValue(new SocialAutoError("refused", 409, "another post is already planned for that day", "CONFLICT"));
+    expect(await movePostAction(drop())).toEqual({ status: "error", message: "another post is already planned for that day" });
+    vi.mocked(movePost).mockRejectedValue(new SocialAutoError("refused", 409, "x", "POST_NOT_EDITABLE"));
+    expect(await movePostAction(drop())).toEqual({ status: "error", message: expect.stringContaining("already going out") });
+  });
+
   it("passes on social-auto's words, and says only that it could not for any other fault", async () => {
     vi.mocked(movePost).mockRejectedValue(new SocialAutoError("refused", 409, "this post is already due or sent, so it can no longer be changed"));
     expect(await movePostAction(drop())).toEqual({ status: "error", message: "this post is already due or sent, so it can no longer be changed" });
     vi.mocked(movePost).mockRejectedValue(new Error("ECONNREFUSED"));
     expect(await movePostAction(drop())).toEqual({ status: "error", message: "The post could not be moved. Try again." });
+  });
+});
+
+describe("startSiteJobAction", () => {
+  function site(fields: Record<string, string | readonly string[]>): FormData {
+    const data = new FormData();
+    for (const [name, value] of Object.entries(fields)) for (const one of typeof value === "string" ? [value] : value) data.append(name, one);
+    return data;
+  }
+
+  it("starts a job for the session's business and person, with only the networks that were ticked", async () => {
+    expect(await startSiteJobAction(site({ site: " omsweets.in ", mode: "site", network: ["instagram", "linkedin"] }))).toEqual({ status: "saved" });
+    expect(ensureWorkspace).toHaveBeenCalledWith(expect.anything(), { id: "business-1", name: "Sai Dental Care" });
+    expect(startSiteJob).toHaveBeenCalledWith(expect.anything(), "business-1", { site: "omsweets.in", page: false, networks: ["instagram", "linkedin"] }, "brandbasket:user-1");
+    expect(revalidatePath).toHaveBeenCalledWith("/social");
+    await startSiteJobAction(site({ site: "omsweets.in/diwali", mode: "page", network: "facebook" }));
+    expect(startSiteJob).toHaveBeenLastCalledWith(expect.anything(), "business-1", { site: "omsweets.in/diwali", page: true, networks: ["facebook"] }, "brandbasket:user-1");
+  });
+
+  it("is not found for a business that has not bought Social media, or while the AI side is off", async () => {
+    vi.mocked(listBoughtSetupServices).mockResolvedValue([] as never);
+    await expect(startSiteJobAction(site({ site: "omsweets.in", network: "instagram" }))).rejects.toThrow("notFound");
+    vi.mocked(listBoughtSetupServices).mockResolvedValue(["social"] as never);
+    vi.mocked(socialAiEnabled).mockReturnValue(false);
+    await expect(startSiteJobAction(site({ site: "omsweets.in", network: "instagram" }))).rejects.toThrow("notFound");
+    expect(startSiteJob).not.toHaveBeenCalled();
+  });
+
+  it("asks for an address and a network before it calls social-auto, and ignores a network it does not know", async () => {
+    expect(await startSiteJobAction(site({ site: "   ", network: "instagram" }))).toMatchObject({ status: "error", message: "Write your website address." });
+    expect(await startSiteJobAction(site({ site: "omsweets.in" }))).toMatchObject({ status: "error", message: "Choose at least one network to write for." });
+    expect(await startSiteJobAction(site({ site: "omsweets.in", network: "myspace" }))).toMatchObject({ status: "error" });
+    expect(startSiteJob).not.toHaveBeenCalled();
+  });
+
+  it("says in the customer's own words why social-auto refused, and keeps the code out of the page", async () => {
+    vi.mocked(startSiteJob).mockRejectedValue(new SocialAutoError("refused", 400, "different website", "SITE_MISMATCH"));
+    const mismatch = await startSiteJobAction(site({ site: "other.in", network: "instagram" }));
+    expect(mismatch).toMatchObject({ status: "error", message: expect.stringMatching(/website you gave us first/) });
+    expect(JSON.stringify(mismatch)).not.toContain("SITE_MISMATCH");
+    vi.mocked(startSiteJob).mockRejectedValue(new SocialAutoError("refused", 429, "limit", "JOB_LIMIT_REACHED"));
+    expect(await startSiteJobAction(site({ site: "omsweets.in", network: "instagram" }))).toMatchObject({ message: expect.stringMatching(/tomorrow/) });
+    vi.mocked(startSiteJob).mockRejectedValue(new Error("boom"));
+    expect(await startSiteJobAction(site({ site: "omsweets.in", network: "instagram" }))).toMatchObject({ status: "error", message: "That did not work. Try again in a few minutes." });
   });
 });

@@ -5,6 +5,7 @@ const TODAY = "2026-11-02";
 const PICTURE = "a".repeat(32);
 const CONNECTED = ["instagram:1", "facebook:2", "linkedin:3"];
 const NOW = new Date("2026-11-02T05:00:00.000Z"); // 10:30 in India
+const NO_OWN = { instagram: null, facebook: null, linkedin: null, google: null };
 const valid = { day: "2026-11-04", time: "14:30", caption: "Fresh sourdough.", pictureId: PICTURE, channels: ["instagram:1", "linkedin:3"] };
 
 describe("which days can take a post", () => {
@@ -88,7 +89,7 @@ describe("changes to a post", () => {
   const own = { day: "2026-11-04", time: "10:00" };
 
   it("keeps the picture when none is sent, and takes a new one when it is", () => {
-    expect(checkPostEdit(edit, TODAY, CONNECTED, own, NOW)).toEqual({ ok: true, edit: { day: "2026-11-06", time: "09:15", caption: "New words", channels: ["instagram:1"] } });
+    expect(checkPostEdit(edit, TODAY, CONNECTED, own, NOW)).toEqual({ ok: true, edit: { day: "2026-11-06", time: "09:15", caption: "New words", channels: ["instagram:1"], variants: NO_OWN } });
     expect(checkPostEdit({ ...edit, pictureId: null }, TODAY, CONNECTED, own, NOW)).toMatchObject({ ok: true });
     expect(checkPostEdit({ ...edit, pictureId: PICTURE }, TODAY, CONNECTED, own, NOW)).toMatchObject({ ok: true, edit: { pictureId: PICTURE } });
     expect(checkPostEdit({ ...edit, pictureId: "nope" }, TODAY, CONNECTED, own, NOW)).toEqual({ ok: false, message: "Add the picture again." });
@@ -129,5 +130,27 @@ describe("times", () => {
     expect(momentHasPassed("2026-11-02", "10:29", NOW)).toBe(true);
     expect(momentHasPassed("2026-11-02", "10:31", NOW)).toBe(false);
     expect(momentHasPassed("2026-11-03", "00:00", NOW)).toBe(false);
+  });
+});
+
+describe("a caption of its own for a network", () => {
+  const OWN = { ...valid, caption: "Main words" };
+
+  it("keeps a network's caption when it differs from the main one, and drops the ones that match or are empty", () => {
+    const checked = checkNewPost({ ...OWN, variants: { instagram: "Short one", linkedin: "Main words", facebook: "   ", google: 7 } }, TODAY, CONNECTED, NOW);
+    expect(checked).toMatchObject({ ok: true, post: { variants: { instagram: "Short one" } } });
+    const plain = checkNewPost(OWN, TODAY, CONNECTED, NOW);
+    expect(plain.ok && "variants" in plain.post).toBe(false);
+  });
+
+  it("holds each network's caption to the same length and hashtag rules", () => {
+    expect(checkNewPost({ ...OWN, variants: { linkedin: "x".repeat(MAX_CAPTION_LENGTH + 1) } }, TODAY, CONNECTED, NOW)).toMatchObject({ ok: false, message: expect.stringMatching(/characters/) });
+    expect(checkNewPost({ ...OWN, variants: { instagram: Array.from({ length: 31 }, (_, i) => `#t${i}`).join(" ") } }, TODAY, CONNECTED, NOW)).toMatchObject({ ok: false });
+  });
+
+  it("names every network on a change, so one that lost its caption goes back to the main one", () => {
+    const own = { day: "2026-11-04", time: "14:30" };
+    const edit = checkPostEdit({ ...OWN, pictureId: null, variants: { linkedin: "Longer story" } }, TODAY, CONNECTED, own, NOW);
+    expect(edit).toMatchObject({ ok: true, edit: { variants: { instagram: null, facebook: null, linkedin: "Longer story", google: null } } });
   });
 });

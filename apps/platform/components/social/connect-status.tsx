@@ -1,7 +1,8 @@
 import type { ReactElement } from "react";
 import { cn } from "@brandbasket/shared/lib/cn";
 import { connectChannelAction } from "@/app/app-host/(protected)/social/actions";
-import { DARK_BUTTON, LIFT } from "@/components/v2/classes";
+import { LIFT } from "@/components/v2/classes";
+import { SMALL_DARK } from "./small-buttons";
 import type { ConnectStatus } from "@/lib/social/auto";
 
 /**
@@ -22,12 +23,12 @@ export function ConnectStatusCard({ status }: { readonly status: ConnectStatus }
       {action === null ? null : action.kind === "connect" ? (
         <form action={connectChannelAction}>
           <input type="hidden" name="channel" value={action.platform} />
-          <button type="submit" className={cn(DARK_BUTTON, "w-full sm:w-auto")}>
+          <button type="submit" className={SMALL_DARK}>
             {status.actionLabel}
           </button>
         </form>
       ) : (
-        <a href="#channels" className={cn(DARK_BUTTON, "w-full sm:w-auto")}>
+        <a href="#channels" className={cn(SMALL_DARK, "justify-self-start")}>
           {status.actionLabel}
         </a>
       )}

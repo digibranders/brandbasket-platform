@@ -4,13 +4,13 @@ import { Check } from "@phosphor-icons/react/dist/ssr";
 import { useFormStatus } from "react-dom";
 import type { ReactElement } from "react";
 import { approvePostsAction } from "@/app/app-host/(protected)/social/actions";
-import { DARK_BUTTON } from "@/components/v2/classes";
+import { SMALL_DARK } from "./small-buttons";
 import { approveAllLabel, type PostView } from "@/lib/social/week";
 
 function ApproveButton({ count }: { readonly count: number }): ReactElement {
   const { pending } = useFormStatus();
   return (
-    <button type="submit" disabled={pending} className={DARK_BUTTON}>
+    <button type="submit" disabled={pending} className={SMALL_DARK}>
       <Check size={16} weight="bold" aria-hidden="true" />
       {approveAllLabel(count)}
     </button>
