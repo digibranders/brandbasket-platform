@@ -44,7 +44,7 @@ describe("the payment step on the seeded services plan", () => {
   });
 
   it("prices the button, the terms and the banner from the website line, GST included", () => {
-    expect(paymentStep({ ...OPEN, status: "unpaid", plan: usd })).toMatchObject({ kind: "pay-and-send", amount: "$65" });
+    expect(paymentStep({ ...OPEN, status: "unpaid", plan: usd })).toMatchObject({ kind: "pay-and-send", amount: "$59" });
     expect(paymentStep({ ...OPEN, status: "unpaid", plan: inr })).toMatchObject({
       kind: "pay-and-send",
       amount: "₹2,999",
@@ -73,6 +73,6 @@ describe("the payment step on the seeded services plan", () => {
     expect(describePlanTerms(inr, websiteCents)).toContain("₹2,999 a month, GST included");
     expect(firstPaymentAmount(inr, websiteCents)).toBe("₹2,999");
     expect(monthlyPaymentAmount(inr, websiteCents)).toBe("₹2,999");
-    expect(monthlyPaymentAmount(usd, websiteAloneNetCents("USD"))).toBe("$65");
+    expect(monthlyPaymentAmount(usd, websiteAloneNetCents("USD"))).toBe("$59");
   });
 });

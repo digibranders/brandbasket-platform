@@ -182,7 +182,7 @@ function cents(amount: string): number {
   return match[1] === "-" ? -value : value;
 }
 
-/** A services payment as the payment path records it: the package priced by packageDiscountsFor, a code taken off the net. */
+/** A services payment as the payment path records it: the package priced by packageDiscountsFor (every line at list now), a code taken off the net. */
 function servicesPayment(
   services: readonly MonthlyAddOnId[],
   extras: { readonly codeCents?: number; readonly retentionCents?: number; readonly code?: string } = {},
@@ -215,49 +215,13 @@ describe("receiptDocument for services", () => {
     expect(cents(doc.total.amount)).toBe(paid);
   }
 
-  it("lists two services at list, the 10% package offer, the GST inside and the total", () => {
+  it("lists two services at list, with no offer row, the GST inside and the total", () => {
     const paid = servicesPayment(["managed-website", "social-media"]);
     const doc = receiptDocument(paid, CUSTOMER);
 
-    expect(doc.lines.map((line) => line.label)).toEqual([
-      "Website Management",
-      "Social Media Management",
-      "Package offer, 10% off",
-      "Includes GST 18%",
-    ]);
-    expect(doc.lines.map((line) => line.amount)).toEqual(["INR 2,999.00", "INR 9,999.00", "-INR 1,299.00", "INR 1,784.60"]);
-    expect(doc.total).toEqual({ label: "Total paid", amount: "INR 11,699.00" });
-    rowsAddUp(doc, paid.amountCents);
-  });
-
-  it("lists three services with the 20% package offer", () => {
-    const paid = servicesPayment(["managed-website", "social-media", "paid-ads"]);
-    const doc = receiptDocument(paid, CUSTOMER);
-
-    expect(doc.lines.map((line) => line.label)).toEqual([
-      "Website Management",
-      "Social Media Management",
-      "Paid Ads Management",
-      "Package offer, 20% off",
-      "Includes GST 18%",
-    ]);
-    expect(doc.lines.map((line) => line.amount)).toEqual([
-      "INR 2,999.00",
-      "INR 9,999.00",
-      "INR 24,999.00",
-      "-INR 7,599.00",
-      "INR 4,636.98",
-    ]);
-    expect(doc.total.amount).toBe("INR 30,398.00");
-    rowsAddUp(doc, paid.amountCents);
-  });
-
-  it("names the 10% offer on any two-service package", () => {
-    const paid = servicesPayment(["social-media", "paid-ads"]);
-    const doc = receiptDocument(paid, CUSTOMER);
-    expect(doc.lines.map((line) => line.label)).toContain("Package offer, 10% off");
-    expect(doc.lines.map((line) => line.amount)).toEqual(["INR 9,999.00", "INR 24,999.00", "-INR 3,499.00", "INR 4,804.94"]);
-    expect(doc.total.amount).toBe("INR 31,499.00");
+    expect(doc.lines.map((line) => line.label)).toEqual(["Website Management", "Social Media Management", "Includes GST 18%"]);
+    expect(doc.lines.map((line) => line.amount)).toEqual(["INR 2,999.00", "INR 2,999.00", "INR 914.94"]);
+    expect(doc.total).toEqual({ label: "Total paid", amount: "INR 5,998.00" });
     rowsAddUp(doc, paid.amountCents);
   });
 
@@ -273,37 +237,31 @@ describe("receiptDocument for services", () => {
     rowsAddUp(doc, paid.amountCents);
   });
 
-  it("takes a code off as one figure after the package offer, and a stay offer as its own row", () => {
+  it("takes a code off as one figure after the two services at list, and a stay offer as its own row", () => {
     const withCode = servicesPayment(["managed-website", "social-media"], { codeCents: 150_000 });
     const codeDoc = receiptDocument(withCode, CUSTOMER);
-    expect(codeDoc.lines.map((line) => line.label)).toEqual([
-      "Website Management",
-      "Social Media Management",
-      "Package offer, 10% off",
-      "Code discount",
-      "Includes GST 18%",
-    ]);
-    expect(codeDoc.lines[3]?.amount).toBe("-INR 1,500.00");
-    expect(codeDoc.lines[4]?.amount).toBe("INR 1,555.78");
-    expect(codeDoc.total.amount).toBe("INR 10,199.00");
+    expect(codeDoc.lines.map((line) => line.label)).toEqual(["Website Management", "Social Media Management", "Code discount", "Includes GST 18%"]);
+    expect(codeDoc.lines[2]?.amount).toBe("-INR 1,500.00");
+    expect(codeDoc.lines[3]?.amount).toBe("INR 686.14");
+    expect(codeDoc.total.amount).toBe("INR 4,498.00");
     rowsAddUp(codeDoc, withCode.amountCents);
 
     const withStay = servicesPayment(["managed-website", "social-media"], { codeCents: 150_000, retentionCents: 50_000 });
     const stayDoc = receiptDocument(withStay, CUSTOMER);
     expect(stayDoc.lines.map((line) => line.label)).toContain("Stay offer");
-    expect(stayDoc.lines.at(-1)).toEqual({ label: "Includes GST 18%", amount: "INR 1,479.50" });
-    expect(stayDoc.total.amount).toBe("INR 9,699.00");
+    expect(stayDoc.lines.at(-1)).toEqual({ label: "Includes GST 18%", amount: "INR 609.86" });
+    expect(stayDoc.total.amount).toBe("INR 3,998.00");
     rowsAddUp(stayDoc, withStay.amountCents);
   });
 
-  it("names the code on its row when the payment kept it, over a package or a single service", () => {
-    const onPackage = servicesPayment(["managed-website", "social-media"], { codeCents: 116_990, code: "SAVE10" });
-    const packageDoc = receiptDocument(onPackage, CUSTOMER);
-    expect(packageDoc.lines.map((line) => line.label)).toEqual(["Website Management", "Social Media Management", "Package offer, 10% off", "Code SAVE10", "Includes GST 18%"]);
-    expect(packageDoc.lines[3]?.amount).toBe("-INR 1,169.90");
-    expect(packageDoc.lines[4]?.amount).toBe("INR 1,606.14");
-    expect(packageDoc.total.amount).toBe("INR 10,529.10");
-    rowsAddUp(packageDoc, onPackage.amountCents);
+  it("names the code on its row when the payment kept it, over two services or a single service", () => {
+    const onTwo = servicesPayment(["managed-website", "social-media"], { codeCents: 59_980, code: "SAVE10" });
+    const twoDoc = receiptDocument(onTwo, CUSTOMER);
+    expect(twoDoc.lines.map((line) => line.label)).toEqual(["Website Management", "Social Media Management", "Code SAVE10", "Includes GST 18%"]);
+    expect(twoDoc.lines[2]?.amount).toBe("-INR 599.80");
+    expect(twoDoc.lines[3]?.amount).toBe("INR 823.46");
+    expect(twoDoc.total.amount).toBe("INR 5,398.20");
+    rowsAddUp(twoDoc, onTwo.amountCents);
 
     const alone = servicesPayment(["managed-website"], { codeCents: 30_000, code: "SAVE10" });
     expect(receiptDocument(alone, CUSTOMER).lines.map((line) => line.label)).toEqual(["Website Management", "Code SAVE10", "Includes GST 18%"]);
@@ -315,6 +273,25 @@ describe("receiptDocument for services", () => {
     expect(wrongAmount.lines.map((line) => line.label)).toEqual(["Care plan · Monthly payment", "Includes GST 18%"]);
   });
 
+  it("names the percentage a payment was sold at under a package offer, though none is on sale any more", () => {
+    const invoiceBasis: PaymentInvoiceBasis = {
+      netAmountCents: 0,
+      discountAmountCents: 0,
+      retentionDiscountCents: 0,
+      lines: [
+        { addOn: "managed-website", listAmountCents: 299_900, offerDiscountAmountCents: 29_990, taxRateBasisPoints: 1800 },
+        { addOn: "social-media", listAmountCents: 299_900, offerDiscountAmountCents: 29_910, taxRateBasisPoints: 1800 },
+      ],
+    };
+    const doc = receiptDocument(receipt({ amountCents: 539_900, invoiceBasis }), CUSTOMER);
+    expect(doc.lines.map((line) => [line.label, line.amount])).toEqual([
+      ["Website Management", "INR 2,999.00"],
+      ["Social Media Management", "INR 2,999.00"],
+      ["Package offer, 10% off", "-INR 599.00"],
+      ["Includes GST 18%", "INR 823.58"],
+    ]);
+  });
+
   it("keeps today's single line for a payment with no basis", () => {
     expect(receiptDocument(receipt({ invoiceBasis: null }), CUSTOMER).lines).toEqual([
       { label: "Care plan · Monthly payment", amount: "INR 2,999.00" },
@@ -322,23 +299,22 @@ describe("receiptDocument for services", () => {
     ]);
   });
 
-  it("lists a dollar basket at list and the package offer, with no GST row", () => {
+  it("lists a dollar basket at list, with no GST row", () => {
     const invoiceBasis: PaymentInvoiceBasis = {
       netAmountCents: 0,
       discountAmountCents: 0,
       retentionDiscountCents: 0,
       lines: [
-        { addOn: "managed-website", listAmountCents: 6_500, offerDiscountAmountCents: 650, taxRateBasisPoints: 0 },
-        { addOn: "social-media", listAmountCents: 15_000, offerDiscountAmountCents: 1_450, taxRateBasisPoints: 0 },
+        { addOn: "managed-website", listAmountCents: 5_900, offerDiscountAmountCents: 0, taxRateBasisPoints: 0 },
+        { addOn: "social-media", listAmountCents: 5_900, offerDiscountAmountCents: 0, taxRateBasisPoints: 0 },
       ],
     };
-    const doc = receiptDocument(receipt({ currency: "USD", amountCents: 19_400, taxRateBasisPoints: 0, invoiceBasis }), CUSTOMER);
+    const doc = receiptDocument(receipt({ currency: "USD", amountCents: 11_800, taxRateBasisPoints: 0, invoiceBasis }), CUSTOMER);
 
     expect(doc.lines).toEqual([
-      { label: "Website Management", amount: "USD 65.00" },
-      { label: "Social Media Management", amount: "USD 150.00" },
-      { label: "Package offer, 10% off", amount: "-USD 21.00" },
+      { label: "Website Management", amount: "USD 59.00" },
+      { label: "Social Media Management", amount: "USD 59.00" },
     ]);
-    expect(doc.total).toEqual({ label: "Total paid", amount: "USD 194.00" });
+    expect(doc.total).toEqual({ label: "Total paid", amount: "USD 118.00" });
   });
 });

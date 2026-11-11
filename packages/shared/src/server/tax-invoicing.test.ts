@@ -437,41 +437,27 @@ describe("issueTaxInvoice for a payment of services", () => {
     vi.resetAllMocks();
   });
 
-  it("gives all three services a line each with its package discount, and no line for the plan row that costs nothing", async () => {
+  it("gives all three services a line each at list, with no discount or note, and no line for the plan row that costs nothing", async () => {
     const { inserted } = arrangeInvoiceStore();
 
-    // The package is 20% off all three, as a whole-rupee saving of ₹7,599: the lines' own 20% is 40 paise more, taken off the dearest.
-    await issueTaxInvoice(tx, payment(3_039_800), source([line("managed-website", WEBSITE, 59_980), line("social-media", SOCIAL, 199_980), line("paid-ads", SEO, 499_940)]));
+    await issueTaxInvoice(tx, payment(899_700), source([line("managed-website", WEBSITE, 0), line("social-media", WEBSITE, 0), line("paid-ads", WEBSITE, 0)]));
 
     expect(inserted().lines.map((l) => [l.description, l.unitAmountCents, l.discountAmountCents, l.note])).toEqual([
-      ["Website Management", 299_900, 59_980, "Package offer, 20% off"],
-      ["Social Media Management", 999_900, 199_980, "Package offer, 20% off"],
-      ["Paid Ads Management", 2_499_900, 499_940, "Package offer, 20% off"],
+      ["Website Management", 299_900, 0, null],
+      ["Social Media Management", 299_900, 0, null],
+      ["Paid Ads Management", 299_900, 0, null],
     ]);
-    // ₹30,398 paid holds 463,698 paise of GST (₹30,398 x 9 / 118 rounded to a whole paisa, doubled): 231,849 each of CGST and SGST.
-    expect(inserted()).toMatchObject({ taxableCents: 2_576_102, cgstCents: 231_849, sgstCents: 231_849, roundOffCents: 0, totalCents: 3_039_800 });
+    // ₹8,997 paid holds 137,242 paise of GST (₹8,997 x 9 / 118 rounded to a whole paisa, doubled): 68,621 each of CGST and SGST.
+    expect(inserted()).toMatchObject({ taxableCents: 762_458, cgstCents: 68_621, sgstCents: 68_621, roundOffCents: 0, totalCents: 899_700 });
     expect(inserted().lines.every((l) => l.detail === "Monthly subscription, 12 Oct to 11 Nov 2026")).toBe(true);
   });
 
   it("never mentions ad credit on the invoice", async () => {
     const { inserted } = arrangeInvoiceStore();
 
-    await issueTaxInvoice(tx, payment(3_039_800), source([line("managed-website", WEBSITE, 59_980), line("social-media", SOCIAL, 199_980), line("paid-ads", SEO, 499_940)]));
+    await issueTaxInvoice(tx, payment(899_700), source([line("managed-website", WEBSITE, 0), line("social-media", WEBSITE, 0), line("paid-ads", WEBSITE, 0)]));
 
     expect(JSON.stringify(inserted().lines)).not.toMatch(/credit/i);
-  });
-
-  it("names the package's percentage even when a line's discount has a few paise more in it than that percentage", async () => {
-    const { inserted } = arrangeInvoiceStore();
-    // ₹2,999 and ₹9,999 at 10% off, the package total floored to the whole rupee: the dearest line carries 80 paise less
-    // than its own 10%, so it holds 99,910 against the 99,990 a tenth of its price comes to.
-    const paid = 299_900 - 29_990 + (999_900 - 99_910);
-    expect(paid).toBe(1_169_900);
-
-    await issueTaxInvoice(tx, payment(1_169_900), source([line("managed-website", 299_900, 29_990), line("social-media", 999_900, 99_910)]));
-
-    expect(inserted().lines.map((l) => l.note)).toEqual(["Package offer, 10% off", "Package offer, 10% off"]);
-    expect(inserted()).toMatchObject({ taxableCents: 991_440, cgstCents: 89_230, sgstCents: 89_230, totalCents: 1_169_900, roundOffCents: 0 });
   });
 
   it("gives a single service no discount and no note", async () => {
@@ -495,11 +481,17 @@ describe("issueTaxInvoice for a payment of services", () => {
     ]);
   });
 
-  it("refuses a package discount on a set of services that earns no package", async () => {
-    arrangeInvoiceStore();
+  it("names the percentage a line was sold at, though no package is on sale any more", async () => {
+    const { inserted } = arrangeInvoiceStore();
+    // Website + Social sold under the old 10% offer: the 80 paise of the rounding sat on the Social line.
+    const lines = [line("managed-website", WEBSITE, 29_990), line("social-media", SOCIAL, 99_910)];
 
-    await expect(issueTaxInvoice(tx, payment(949_900), source([line("social-media", SOCIAL, 50_000)]))).rejects.toThrow(/earn no package offer/);
-    expect(db.insertTaxInvoice).not.toHaveBeenCalled();
+    await issueTaxInvoice(tx, payment(1_169_900), source(lines));
+
+    expect(inserted().lines.map((l) => [l.description, l.discountAmountCents, l.note])).toEqual([
+      ["Website Management", 29_990, "Package offer, 10% off"],
+      ["Social Media Management", 99_910, "Package offer, 10% off"],
+    ]);
   });
 
   it("refuses a line that is not a catalogue service, as before", async () => {
@@ -508,7 +500,7 @@ describe("issueTaxInvoice for a payment of services", () => {
     await expect(issueTaxInvoice(tx, payment(999_900), source([line("press-release", SOCIAL, 0)]))).rejects.toThrow("not a monthly add-on");
   });
 
-  describe("with a referral code taken once off the package", () => {
+  describe("with a referral code taken once off the basket", () => {
     /** The payment is on a subscription carrying the code, which the invoice reads to name it on each line it touches. */
     const withCode = (code: { discountKind: "amount" | "percent"; discountPercentBasisPoints: number | null }): void => {
       vi.mocked(db.findSubscriptionById).mockResolvedValue({ referralCodeId: "code-1" } as Awaited<ReturnType<typeof db.findSubscriptionById>>);
@@ -519,44 +511,31 @@ describe("issueTaxInvoice for a payment of services", () => {
     it("shares the code over two lines in proportion to their nets, the leftover paisa on the larger, adding up to the paisa", async () => {
       const { inserted } = arrangeInvoiceStore();
       withCode({ discountKind: "amount", discountPercentBasisPoints: null });
-      // Prices after the 10% package offer: ₹2,699.10 and ₹8,999.90. A ₹1,500 code is 34,606.4 and 115,393.6 paise of it:
-      // each share rounded down (34,606 and 115,393), the one paisa left on the larger line.
-      const lines = [line("managed-website", WEBSITE, 29_990), line("social-media", SOCIAL, 99_910)];
+      // Both lines at list: ₹2,999 and ₹9,999. A ₹1,500 code is 34,609.2 and 115,390.8 paise of it:
+      // each share rounded down (34,609 and 115,390), the one paisa left on the larger line.
+      const lines = [line("managed-website", WEBSITE, 0), line("social-media", SOCIAL, 0)];
 
-      await issueTaxInvoice(tx, paymentOn(chargedAmountCents(1_169_900, 150_000)), source(lines, 150_000));
+      await issueTaxInvoice(tx, paymentOn(chargedAmountCents(1_299_800, 150_000)), source(lines, 150_000));
 
       expect(inserted().lines.map((l) => [l.description, l.discountAmountCents, l.note])).toEqual([
-        ["Website Management", 29_990 + 34_606, "Package offer, 10% off. Coupon SAVE10 applied"],
-        ["Social Media Management", 99_910 + 115_394, "Package offer, 10% off. Coupon SAVE10 applied"],
+        ["Website Management", 34_609, "Coupon SAVE10 applied"],
+        ["Social Media Management", 115_391, "Coupon SAVE10 applied"],
       ]);
-      const codeShares = inserted().lines.map((l, i) => l.discountAmountCents - [29_990, 99_910][i]!);
-      expect(codeShares.reduce((total, share) => total + share, 0)).toBe(150_000);
-      // ₹10,199 paid holds 155,578 paise of GST.
-      expect(inserted()).toMatchObject({ taxableCents: 864_322, cgstCents: 77_789, sgstCents: 77_789, totalCents: 1_019_900 });
+      expect(inserted().lines.reduce((total, l) => total + l.discountAmountCents, 0)).toBe(150_000);
+      expect(inserted().totalCents).toBe(1_149_800);
     });
 
     it("shares it over three lines the same way, and the invoice still comes to what was charged", async () => {
       const { inserted } = arrangeInvoiceStore();
       withCode({ discountKind: "amount", discountPercentBasisPoints: null });
-      const lines = [line("managed-website", WEBSITE, 59_980), line("social-media", SOCIAL, 199_980), line("paid-ads", SEO, 499_940)];
+      const lines = [line("managed-website", WEBSITE, 0), line("social-media", WEBSITE, 0), line("paid-ads", WEBSITE, 0)];
 
-      // A ₹1,000 code over prices of 239,920, 799,920 and 1,999,960 paise (3,039,800 together): 7,892.4, 26,314.4 and 65,793.2
-      // rounded down, the 2 paise left on the largest line.
-      await issueTaxInvoice(tx, paymentOn(chargedAmountCents(3_039_800, 100_000)), source(lines, 100_000));
+      // A ₹1,000 code over three equal lines of 299,900 paise: 33,333.3 each rounded down, the 1 paisa left on the first.
+      await issueTaxInvoice(tx, paymentOn(chargedAmountCents(899_700, 100_000)), source(lines, 100_000));
 
-      expect(inserted().lines.map((l) => l.discountAmountCents)).toEqual([59_980 + 7_892, 199_980 + 26_314, 499_940 + 65_794]);
-      expect(inserted().lines.every((l) => l.note === "Package offer, 20% off. Coupon SAVE10 applied")).toBe(true);
-      expect(inserted()).toMatchObject({ taxableCents: 2_491_356, cgstCents: 224_222, sgstCents: 224_222, totalCents: 2_939_800 });
-    });
-
-    it("names a percentage code without a share on a package, since no line holds that share of its own net", async () => {
-      const { inserted } = arrangeInvoiceStore();
-      withCode({ discountKind: "percent", discountPercentBasisPoints: 1_000 });
-      const lines = [line("managed-website", WEBSITE, 29_990), line("social-media", SOCIAL, 99_910)];
-
-      await issueTaxInvoice(tx, paymentOn(chargedAmountCents(1_169_900, 116_990)), source(lines, 116_990));
-
-      expect(inserted().lines.map((l) => l.note)).toEqual(["Package offer, 10% off. Coupon SAVE10 applied", "Package offer, 10% off. Coupon SAVE10 applied"]);
+      expect(inserted().lines.map((l) => l.discountAmountCents)).toEqual([33_334, 33_333, 33_333]);
+      expect(inserted().lines.every((l) => l.note === "Coupon SAVE10 applied")).toBe(true);
+      expect(inserted()).toMatchObject({ taxableCents: 677_712, cgstCents: 60_994, sgstCents: 60_994, totalCents: 799_700 });
     });
 
     it("keeps naming the share on a single service", async () => {
@@ -573,11 +552,11 @@ describe("issueTaxInvoice for a payment of services", () => {
       const { inserted } = arrangeInvoiceStore();
       withCode({ discountKind: "amount", discountPercentBasisPoints: null });
       // One paisa over two lines: the whole of it lands on the larger, so the smaller line is untouched.
-      const lines = [line("managed-website", WEBSITE, 29_990), line("social-media", SOCIAL, 99_910)];
+      const lines = [line("managed-website", WEBSITE, 0), line("social-media", SOCIAL, 0)];
 
-      await issueTaxInvoice(tx, paymentOn(chargedAmountCents(1_169_900, 1)), source(lines, 1));
+      await issueTaxInvoice(tx, paymentOn(chargedAmountCents(1_299_800, 1)), source(lines, 1));
 
-      expect(inserted().lines.map((l) => l.note)).toEqual(["Package offer, 10% off", "Package offer, 10% off. Coupon SAVE10 applied"]);
+      expect(inserted().lines.map((l) => l.note)).toEqual([null, "Coupon SAVE10 applied"]);
     });
   });
 });

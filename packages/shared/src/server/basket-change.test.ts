@@ -33,24 +33,23 @@ const line = (addOn: string, listAmountCents: number): BundledAddOn =>
   ({ id: `line-${addOn}`, addOn, status: "active", endRequestedAt: null, listAmountCents, offerDiscountAmountCents: 0, netAmountCents: listAmountCents }) as unknown as BundledAddOn;
 
 describe("assessAddOn", () => {
-  it("quotes the service as a line of the basket it joins", () => {
+  it("quotes the service at list, as a line of the basket it joins, with no discount", () => {
     const assessment = assessAddOn({ state, live: [line("managed-website", 299_900)], addOn: "social-media", forfeited: false, providerName: "fake", now: NOW });
 
-    expect(assessment).toMatchObject({ kind: "offer", line: { listCents: 999_900, discountCents: 99_910, netCents: 899_990 }, quote: { nextRenewalCents: 1_169_900 } });
+    expect(assessment).toMatchObject({ kind: "offer", line: { listCents: 299_900, discountCents: 0, netCents: 299_900 }, quote: { nextRenewalCents: 599_800 } });
   });
 
-  it("quotes the next renewal of the whole package when the leftover lands on a line already there", () => {
+  it("quotes the next renewal as the list of both lines, the one already there keeping the price it was sold at", () => {
     const assessment = assessAddOn({ state, live: [line("paid-ads", 2_499_900)], addOn: "managed-website", forfeited: false, providerName: "fake", now: NOW });
 
-    // Website + SEO is 2,519,900 for the two: the website takes its 10% (29,990), and the SEO line already there takes the
-    // 80 paise the whole-rupee saving gives back.
-    expect(assessment).toMatchObject({ kind: "offer", line: { discountCents: 29_990, netCents: 269_910 }, quote: { nextRenewalCents: 2_519_900 } });
+    // Website at list (2,999) beside the SEO line already there (24,999): 27,998, no discount on either.
+    expect(assessment).toMatchObject({ kind: "offer", line: { discountCents: 0, netCents: 299_900 }, quote: { nextRenewalCents: 2_799_800 } });
   });
 
   it("quotes the next renewal at list once the offer is given up", () => {
     const assessment = assessAddOn({ state, live: [line("managed-website", 299_900)], addOn: "social-media", forfeited: true, providerName: "fake", now: NOW });
 
-    expect(assessment).toMatchObject({ kind: "offer", line: { discountCents: 0, netCents: 999_900 }, quote: { nextRenewalCents: 1_299_800 } });
+    expect(assessment).toMatchObject({ kind: "offer", line: { discountCents: 0, netCents: 299_900 }, quote: { nextRenewalCents: 599_800 } });
   });
 
   it("does not sell monitoring beside all three plans, which include it", () => {
@@ -58,18 +57,18 @@ describe("assessAddOn", () => {
     expect(assessAddOn({ state, live: allThree, addOn: "expert-monitoring", forfeited: false, providerName: "fake", now: NOW })).toEqual({ kind: "blocked", reason: "included" });
   });
 
-  it("prices monitoring at list beside one or two plans, outside the package", () => {
+  it("prices monitoring at list beside one or two plans", () => {
     const two = [{ ...line("managed-website", 299_900), offerDiscountAmountCents: 29_990 }, { ...line("social-media", 999_900), offerDiscountAmountCents: 99_910 }];
     const assessment = assessAddOn({ state, live: two, addOn: "expert-monitoring", forfeited: false, providerName: "fake", now: NOW });
-    // Website + Social stays 11,699 a month; monitoring adds its 6,000.
-    expect(assessment).toMatchObject({ kind: "offer", line: { listCents: 600_000, discountCents: 0, netCents: 600_000 }, quote: { nextRenewalCents: 1_769_900 } });
+    // Repricing puts the two plans at list (2,999 and 9,999) and monitoring adds its 6,000.
+    expect(assessment).toMatchObject({ kind: "offer", line: { listCents: 600_000, discountCents: 0, netCents: 600_000 }, quote: { nextRenewalCents: 1_899_800 } });
   });
 
-  it("leaves monitoring out of the renewal quoted for the plan that completes all three", () => {
-    const held = [line("managed-website", 299_900), line("social-media", 999_900), line("expert-monitoring", 600_000)];
+  it("leaves monitoring out of the renewal quoted for the plan that completes all three, at list with no discount", () => {
+    const held = [line("managed-website", 299_900), line("social-media", 299_900), line("expert-monitoring", 600_000)];
     const assessment = assessAddOn({ state, live: held, addOn: "paid-ads", forfeited: false, providerName: "fake", now: NOW });
-    // All three: 37,997 less 20% (7,599) is 30,398 a month, with no monitoring line.
-    expect(assessment).toMatchObject({ kind: "offer", quote: { nextRenewalCents: 3_039_800 } });
+    // All three at list is 8,997 a month, with no monitoring line.
+    expect(assessment).toMatchObject({ kind: "offer", quote: { nextRenewalCents: 899_700 } });
   });
 
   describe("with a referral code on the subscription", () => {
@@ -89,8 +88,8 @@ describe("assessAddOn", () => {
         now: NOW,
       });
 
-      // The pair costs 11,699 at the package price; less the 500.
-      expect(assessment).toMatchObject({ kind: "offer", quote: { nextRenewalCents: 1_119_900 } });
+      // The pair costs 5,998 at list; less the 500.
+      expect(assessment).toMatchObject({ kind: "offer", quote: { nextRenewalCents: 549_800 } });
     });
 
     it("reprices a percentage code on the new basket's price", () => {
@@ -104,8 +103,8 @@ describe("assessAddOn", () => {
         now: NOW,
       });
 
-      // 10% of the 11,699 the pair costs is 1,169.90, not the 299.90 it took off the website alone: 10,529.10 is left.
-      expect(assessment).toMatchObject({ kind: "offer", quote: { nextRenewalCents: 1_052_910 } });
+      // 10% of the 5,998 the pair costs is 599.80, not the 299.90 it took off the website alone: 5,398.20 is left.
+      expect(assessment).toMatchObject({ kind: "offer", quote: { nextRenewalCents: 539_820 } });
     });
 
     it("takes nothing once the code's months have run out", () => {
@@ -119,7 +118,7 @@ describe("assessAddOn", () => {
         now: NOW,
       });
 
-      expect(assessment).toMatchObject({ kind: "offer", quote: { nextRenewalCents: 1_169_900 } });
+      expect(assessment).toMatchObject({ kind: "offer", quote: { nextRenewalCents: 599_800 } });
     });
   });
 

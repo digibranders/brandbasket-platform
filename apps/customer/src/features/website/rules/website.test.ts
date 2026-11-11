@@ -69,19 +69,13 @@ describe("pagePath", () => {
 describe("websiteOffer", () => {
   it("is the list price alone, with no package", () => {
     expect(websiteOffer([], false, "INR")).toMatchObject({ title: "Website Management", netCents: 299_900, offerCents: 0, unit: "a month" });
-    expect(websiteOffer([], false, "USD")).toMatchObject({ netCents: 6_500, offerCents: 0 });
+    expect(websiteOffer([], false, "USD")).toMatchObject({ netCents: 5_900, offerCents: 0 });
   });
 
-  it("takes the package discount the shared rule gives with the services held", () => {
-    // All three: 20% off the website's ₹2,999.
-    expect(websiteOffer(["social-media", "paid-ads"], false, "INR")).toMatchObject({ netCents: 239_920, offerCents: 59_980 });
-    expect(websiteOffer(["paid-ads"], false, "INR").offerCents).toBeGreaterThan(0);
-    // Monitoring is in no package: the website alone beside it is at list.
+  it("prices the website at list whatever services are held, with no package offer", () => {
+    expect(websiteOffer(["social-media", "paid-ads"], false, "INR")).toMatchObject({ netCents: 299_900, offerCents: 0 });
+    expect(websiteOffer(["paid-ads"], false, "INR")).toMatchObject({ netCents: 299_900, offerCents: 0 });
     expect(websiteOffer(["expert-monitoring"], false, "INR")).toMatchObject({ netCents: 299_900, offerCents: 0 });
-  });
-
-  it("gives no discount once the business has given the offer up", () => {
-    expect(websiteOffer(["social-media", "paid-ads"], true, "INR")).toMatchObject({ netCents: 299_900, offerCents: 0 });
   });
 });
 
