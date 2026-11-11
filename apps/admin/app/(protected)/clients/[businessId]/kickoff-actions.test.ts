@@ -54,7 +54,7 @@ describe("markCallHeldAction", () => {
 
   it("completes the kickoff as the signed-in staff member, logs it and returns to the section", async () => {
     vi.mocked(completeKickoff).mockResolvedValue({ newlyHeld: true, buildStarted: true });
-    await expect(markCallHeldAction(form({ businessId: BUSINESS }))).rejects.toThrow(`redirect:/clients/${BUSINESS}/project#kickoff-call`);
+    await expect(markCallHeldAction(form({ businessId: BUSINESS }))).rejects.toThrow(`redirect:/clients/${BUSINESS}/website#kickoff-call`);
     expect(completeKickoff).toHaveBeenCalledWith(DB, { businessId: BUSINESS, staffId: "staff-1", now: expect.any(Date), notes: null });
     expect(logStaffAccessOrThrow).toHaveBeenCalledWith({
       staffUserId: "staff-1",
@@ -68,7 +68,7 @@ describe("markCallHeldAction", () => {
 
   it("writes no log entry, and still returns to the section, when the call was already held", async () => {
     vi.mocked(completeKickoff).mockResolvedValue({ newlyHeld: false, buildStarted: false });
-    await expect(markCallHeldAction(form({ businessId: BUSINESS }))).rejects.toThrow(`redirect:/clients/${BUSINESS}/project#kickoff-call`);
+    await expect(markCallHeldAction(form({ businessId: BUSINESS }))).rejects.toThrow(`redirect:/clients/${BUSINESS}/website#kickoff-call`);
     expect(logStaffAccessOrThrow).not.toHaveBeenCalled();
   });
 
@@ -88,7 +88,7 @@ describe("undoCallHeldAction", () => {
 
   it("clears the mark, logs it and returns to the section", async () => {
     vi.mocked(clearSetupCallHeld).mockResolvedValue(true);
-    await expect(undoCallHeldAction(form({ businessId: BUSINESS }))).rejects.toThrow(`redirect:/clients/${BUSINESS}/project#kickoff-call`);
+    await expect(undoCallHeldAction(form({ businessId: BUSINESS }))).rejects.toThrow(`redirect:/clients/${BUSINESS}/website#kickoff-call`);
     expect(clearSetupCallHeld).toHaveBeenCalledWith(DB, BUSINESS, expect.any(Date));
     expect(logStaffAccessOrThrow).toHaveBeenCalledWith({
       staffUserId: "staff-1",
@@ -102,7 +102,7 @@ describe("undoCallHeldAction", () => {
 
   it("writes no log entry, and still returns to the section, when there was no mark to clear", async () => {
     vi.mocked(clearSetupCallHeld).mockResolvedValue(false);
-    await expect(undoCallHeldAction(form({ businessId: BUSINESS }))).rejects.toThrow(`redirect:/clients/${BUSINESS}/project#kickoff-call`);
+    await expect(undoCallHeldAction(form({ businessId: BUSINESS }))).rejects.toThrow(`redirect:/clients/${BUSINESS}/website#kickoff-call`);
     expect(logStaffAccessOrThrow).not.toHaveBeenCalled();
   });
 

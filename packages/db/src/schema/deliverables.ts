@@ -6,6 +6,11 @@ import { users } from "./auth";
 import { businesses } from "./businesses";
 import type { SetupService } from "./client-activity";
 import { createdAt, updatedAt } from "./columns";
+import type { PostChannel } from "./connected-accounts";
+
+/** What kind of post it is, as the customer reads it on its card ("Instagram reel"). */
+export const POST_FORMATS = ["post", "reel", "story", "carousel", "video"] as const;
+export type PostFormat = (typeof POST_FORMATS)[number];
 
 /**
  * One piece of Social media or Search work: a post (waits for the customer's OK), a page we improved or a listing we
@@ -27,6 +32,9 @@ export const deliverables = pgTable(
     title: text("title").notNull(),
     /** The words that go with a post, as the customer reads them on its card. */
     caption: text("caption"),
+    /** A post's format and the network it goes out on. Null on pages and listings, and on posts made before v4. */
+    format: text("format").$type<PostFormat>(),
+    channel: text("channel").$type<PostChannel>(),
     /** The day a post goes out, or the day a page or listing was done. */
     dueOn: date("due_on", { mode: "string" }),
     status: text("status").$type<DeliverableStatus>().notNull().default("planned"),
@@ -51,6 +59,8 @@ export const deliverables = pgTable(
     check("deliverables_kind_service_check", sql`(${table.kind} = 'post' and ${table.service} = 'social') or (${table.kind} in ('page', 'listing') and ${table.service} = 'search')`),
     check("deliverables_status_check", sql`${table.status} in ('planned', 'awaiting_approval', 'approved', 'published')`),
     check("deliverables_title_check", sql`char_length(btrim(${table.title})) between 3 and 140`),
+    check("deliverables_format_check", sql`${table.format} is null or (${table.kind} = 'post' and ${table.format} in ('post', 'reel', 'story', 'carousel', 'video'))`),
+    check("deliverables_channel_check", sql`${table.channel} is null or (${table.kind} = 'post' and ${table.channel} in ('facebook', 'instagram', 'google_business', 'youtube', 'linkedin', 'x'))`),
     check("deliverables_caption_check", sql`${table.caption} is null or char_length(${table.caption}) <= 600`),
     check("deliverables_link_check", sql`${table.linkUrl} is null or (char_length(${table.linkUrl}) <= 500 and ${table.linkUrl} ~ '^https://')`),
     check("deliverables_post_date_check", sql`${table.kind} <> 'post' or ${table.dueOn} is not null`),

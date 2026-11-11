@@ -80,7 +80,7 @@ beforeEach(() => {
 
 describe("endClientAddOn", () => {
   it("ends the add-on through the one shared function, as the staff member, with the staff provider", async () => {
-    const outcome = { kind: "scheduled", addOn: "digital-growth", endKind: "pause", endsOn: NOW } as const;
+    const outcome = { kind: "scheduled", addOn: "social-media", endKind: "pause", endsOn: NOW } as const;
     vi.mocked(scheduleAddOnEndFor).mockResolvedValue(outcome);
 
     const result = await endClientAddOn({ businessId: BUSINESS, addOnSubscriptionId: ROW, kind: "pause", staffUserId: STAFF }, NOW);
@@ -95,7 +95,7 @@ describe("endClientAddOn", () => {
   });
 
   it("passes a refusal back unchanged, so the caller can say why", async () => {
-    const refused = { kind: "refused", reason: "provider-unavailable", addOn: "digital-growth", endKind: null, endsOn: null } as const;
+    const refused = { kind: "refused", reason: "provider-unavailable", addOn: "social-media", endKind: null, endsOn: null } as const;
     vi.mocked(scheduleAddOnEndFor).mockResolvedValue(refused);
     expect(await endClientAddOn({ businessId: BUSINESS, addOnSubscriptionId: ROW, kind: "cancel", staffUserId: STAFF }, NOW)).toBe(refused);
   });
@@ -164,7 +164,7 @@ describe("loadClientAddOns", () => {
       {
         id: ROW,
         businessId: BUSINESS,
-        addOn: "digital-growth",
+        addOn: "social-media",
         discountAmountCents: 0,
         netAmountCents: 999_900,
         currency: "INR",
@@ -190,7 +190,7 @@ describe("loadClientAddOns", () => {
 
     expect(listAddOnSubscriptionsForStaff).toHaveBeenCalledWith({ name: "staff-db" }, BUSINESS);
     expect(loaded.addOns).toHaveLength(1);
-    expect(loaded.addOns[0]).toMatchObject({ id: ROW, title: "Social Media and Ads", canEnd: true });
+    expect(loaded.addOns[0]).toMatchObject({ id: ROW, title: "Social Media Management", canEnd: true });
     expect(loaded.pressReleases).toHaveLength(1);
     expect(loaded.pressReleases[0]).toMatchObject({ id: RELEASE, nextSteps: ["in_progress", "published"] });
     expect(logBillingEvent).not.toHaveBeenCalled();
@@ -201,7 +201,7 @@ describe("loadClientAddOns", () => {
       {
         id: ROW,
         businessId: BUSINESS,
-        addOn: "digital-growth",
+        addOn: "social-media",
         discountAmountCents: 0,
         netAmountCents: 999_900,
         currency: "INR",
@@ -233,7 +233,7 @@ describe("add-ons taken with the plan", () => {
   const bundledRow = (overrides: Record<string, unknown> = {}) => ({
     id: BUNDLED,
     businessId: BUSINESS,
-    addOn: "digital-growth",
+    addOn: "social-media",
     status: "active",
     listAmountCents: 999_900,
     offerDiscountAmountCents: 99_990,
@@ -260,7 +260,7 @@ describe("add-ons taken with the plan", () => {
     expect(loaded.bundledAddOns).toEqual([
       expect.objectContaining({
         id: BUNDLED,
-        title: "Social Media and Ads",
+        title: "Social Media Management",
         state: { tone: "done", label: "Active" },
         price: "₹8,999.10 a month, GST included, package price, billed with the monthly payment",
         needsContact: true,
@@ -268,7 +268,7 @@ describe("add-ons taken with the plan", () => {
     ]);
   });
 
-  it("says which package the client has, the ad credit a month, and when the offer was given up", async () => {
+  it("says no package for two services, a stored ad credit a month, and when the offer was given up", async () => {
     const FORFEITED = new Date("2026-11-05T09:00:00.000Z");
     vi.mocked(listAddOnSubscriptionsForStaff).mockResolvedValue([] as never);
     vi.mocked(listPressReleasesForBusiness).mockResolvedValue([] as never);
@@ -278,7 +278,7 @@ describe("add-ons taken with the plan", () => {
     ] as never);
     vi.mocked(findLatestSubscriptionForBusiness).mockResolvedValue({ id: "sub-1", status: "active", activatedAt: NOW, cancelRequestedAt: null, adCreditCents: 150_000, paidThroughAt: null } as never);
 
-    expect((await loadClientAddOns(BUSINESS, NOW)).package).toEqual({ package: "Website + Social, 10% off each service", adCredit: "₹1,500 a month", forfeitedOn: null });
+    expect((await loadClientAddOns(BUSINESS, NOW)).package).toEqual({ package: "No package", adCredit: "₹1,500 a month", forfeitedOn: null });
 
     vi.mocked(findPackageOfferForfeitedAt).mockResolvedValue(FORFEITED);
     expect((await loadClientAddOns(BUSINESS, NOW)).package).toEqual({ package: "No package", adCredit: "₹1,500 a month", forfeitedOn: "5 November 2026" });
@@ -289,7 +289,7 @@ describe("add-ons taken with the plan", () => {
     vi.mocked(listPressReleasesForBusiness).mockResolvedValue([] as never);
     vi.mocked(listBundledAddOnsForBusiness).mockResolvedValue([
       bundledRow({ endRequestedAt: new Date("2026-10-20T09:00:00.000Z") }),
-      bundledRow({ id: "y", addOn: "local-seo-aeo", status: "removed", removedAt: new Date("2026-11-09T09:00:00.000Z") }),
+      bundledRow({ id: "y", addOn: "paid-ads", status: "removed", removedAt: new Date("2026-11-09T09:00:00.000Z") }),
     ] as never);
 
     const loaded = await loadClientAddOns(BUSINESS, NOW);
@@ -322,21 +322,21 @@ describe("adding, removing and retrying an add-on for the client", () => {
     vi.mocked(listAddOnSubscriptionsForStaff).mockResolvedValue([] as never);
     vi.mocked(listPressReleasesForBusiness).mockResolvedValue([] as never);
     vi.mocked(readAddOnAssessment).mockImplementation(async (_db, input) =>
-      input.addOn === "digital-growth"
+      input.addOn === "social-media"
         ? ({ kind: "offer", plan: { taxRateBasisPoints: 1_800 }, quote: { chargeCents: 826_000, nextRenewalCents: 999_900, daysLeft: 31 } } as never)
         : { kind: "blocked", reason: "already-added" },
     );
 
     const loaded = await loadClientAddOns(BUSINESS, NOW);
 
-    expect(readAddOnAssessment).toHaveBeenCalledWith({ name: "staff-db" }, { businessId: BUSINESS, addOn: "digital-growth", providerName: "razorpay", now: NOW });
-    expect(loaded.options).toEqual([expect.objectContaining({ addOn: "digital-growth", kind: "add", costText: expect.stringContaining("₹8,260 now") })]);
+    expect(readAddOnAssessment).toHaveBeenCalledWith({ name: "staff-db" }, { businessId: BUSINESS, addOn: "social-media", providerName: "razorpay", now: NOW });
+    expect(loaded.options).toEqual([expect.objectContaining({ addOn: "social-media", kind: "add", costText: expect.stringContaining("₹8,260 now") })]);
   });
 
   it("reads the day a waiting kept plan starts, and stops offering the row a removal", async () => {
     vi.mocked(listAddOnSubscriptionsForStaff).mockResolvedValue([] as never);
     vi.mocked(listPressReleasesForBusiness).mockResolvedValue([] as never);
-    vi.mocked(listBundledAddOnsForBusiness).mockResolvedValue([{ id: ROW, addOn: "local-seo-aeo", status: "active", activatedAt: NOW, billedFrom: NOW, endRequestedAt: null, contactedAt: NOW, createdAt: NOW, listAmountCents: 2_499_900, netAmountCents: 2_499_900, offerDiscountAmountCents: 0, taxRateBasisPoints: 1_800 }] as never);
+    vi.mocked(listBundledAddOnsForBusiness).mockResolvedValue([{ id: ROW, addOn: "paid-ads", status: "active", activatedAt: NOW, billedFrom: NOW, endRequestedAt: null, contactedAt: NOW, createdAt: NOW, listAmountCents: 2_499_900, netAmountCents: 2_499_900, offerDiscountAmountCents: 0, taxRateBasisPoints: 1_800 }] as never);
     vi.mocked(findLatestSubscriptionForBusiness).mockResolvedValue({ paidThroughAt: NOW, cancelRequestedAt: null } as never);
     vi.mocked(findKeptPlanStart).mockResolvedValue(new Date("2026-11-19T00:00:00.000Z"));
 
@@ -349,7 +349,7 @@ describe("adding, removing and retrying an add-on for the client", () => {
   it("shows the amount of an added add-on's open charge", async () => {
     vi.mocked(listAddOnSubscriptionsForStaff).mockResolvedValue([] as never);
     vi.mocked(listPressReleasesForBusiness).mockResolvedValue([] as never);
-    vi.mocked(listBundledAddOnsForBusiness).mockResolvedValue([{ id: ROW, addOn: "local-seo-aeo", status: "pending", activatedAt: null, chargeId: "charge-1", contactedAt: null, createdAt: NOW, listAmountCents: 2_499_900, netAmountCents: 2_499_900, offerDiscountAmountCents: 0, taxRateBasisPoints: 1_800 }] as never);
+    vi.mocked(listBundledAddOnsForBusiness).mockResolvedValue([{ id: ROW, addOn: "paid-ads", status: "pending", activatedAt: null, chargeId: "charge-1", contactedAt: null, createdAt: NOW, listAmountCents: 2_499_900, netAmountCents: 2_499_900, offerDiscountAmountCents: 0, taxRateBasisPoints: 1_800 }] as never);
     vi.mocked(findChargeForBusiness).mockResolvedValue({ id: "charge-1", status: "open", amountCents: 1_332_258 } as never);
 
     const loaded = await loadClientAddOns(BUSINESS, NOW);
@@ -363,9 +363,9 @@ describe("adding, removing and retrying an add-on for the client", () => {
     vi.mocked(moveBasketAtProvider).mockResolvedValue({ kind: "scheduled" });
     vi.mocked(listBundledAddOnsForBusiness).mockResolvedValue([{ id: ROW, subscriptionId: SUBSCRIPTION }] as never);
 
-    expect(await addClientAddOn({ businessId: BUSINESS, addOn: "digital-growth", staffUserId: STAFF }, NOW)).toEqual({ kind: "pay", chargeId: "charge-1" });
-    expect(startAddOn).toHaveBeenCalledWith({ name: "basket-deps" }, { businessId: BUSINESS, addOn: "digital-growth", staffId: STAFF, now: NOW });
-    expect(await removeClientAddOn({ businessId: BUSINESS, addOn: "digital-growth" }, NOW)).toEqual({ kind: "scheduled", endsOn: NOW });
+    expect(await addClientAddOn({ businessId: BUSINESS, addOn: "social-media", staffUserId: STAFF }, NOW)).toEqual({ kind: "pay", chargeId: "charge-1" });
+    expect(startAddOn).toHaveBeenCalledWith({ name: "basket-deps" }, { businessId: BUSINESS, addOn: "social-media", staffId: STAFF, now: NOW });
+    expect(await removeClientAddOn({ businessId: BUSINESS, addOn: "social-media" }, NOW)).toEqual({ kind: "scheduled", endsOn: NOW });
     expect(await retryClientAddOnProvider({ businessId: BUSINESS, bundledAddOnId: ROW }, NOW)).toEqual({ kind: "scheduled" });
     expect(moveBasketAtProvider).toHaveBeenCalledWith({ name: "basket-deps" }, SUBSCRIPTION, NOW);
   });

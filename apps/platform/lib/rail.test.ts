@@ -45,12 +45,11 @@ describe("railSections", () => {
 describe("the service links", () => {
   const services = (input: Partial<Parameters<typeof railSections>[0]>) => railSections({ ...FULL, ...input }).find((section) => section.label === "Services");
 
-  it("lists Website, the Blog under it, Social media, Ads and Local SEO + AEO in that order for a customer with all three", () => {
+  it("lists Website, the Blog under it, Social & Ads and Local SEO + AEO in that order for a customer with all three", () => {
     expect(services({ hasSocial: true, hasSearch: true })?.links.map((entry) => [entry.label, entry.href, entry.mark])).toEqual([
       ["Website", "/website", "website"],
       ["Blog", "/content/blog", undefined],
-      ["Social media", "/social", "social"],
-      ["Ads", "/ads", "social"],
+      ["Social & Ads", "/social", "social"],
       ["Local SEO + AEO", "/search", "search"],
     ]);
   });
@@ -61,8 +60,8 @@ describe("the service links", () => {
     expect(labels).not.toContain("Search");
   });
 
-  it("has Social media and Ads, and no Website link, for a plan without the website", () => {
-    expect(services({ hasWebsite: false, hasSocial: true })?.links.map((entry) => entry.label)).toEqual(["Social media", "Ads"]);
+  it("has Social & Ads and no Website link for a plan without the website", () => {
+    expect(services({ hasWebsite: false, hasSocial: true })?.links.map((entry) => entry.label)).toEqual(["Social & Ads"]);
   });
 
   it("leaves a service out when it is not bought, or not said", () => {
@@ -72,8 +71,7 @@ describe("the service links", () => {
 
   it("can be found by search", () => {
     const sections = railSections({ ...FULL, hasSocial: true, hasSearch: true });
-    expect(searchRail(sections, "social").map((target) => target.label)).toEqual(["Social media"]);
-    expect(searchRail(sections, "ads").map((target) => [target.label, target.href])).toEqual([["Ads", "/ads"]]);
+    expect(searchRail(sections, "social").map((target) => target.label)).toEqual(["Social & Ads"]);
     expect(searchRail(sections, "seo").map((target) => target.href)).toEqual(["/search"]);
   });
 
@@ -93,7 +91,7 @@ describe("current link", () => {
 
   it("marks the website current on every page of its tabs, and not on the blog's", () => {
     const website = link("Website");
-    for (const path of [WEBSITE_PATH, "/website/pages", "/website/enquiries", "/domain", "/content/blog", "/content/authors"]) {
+    for (const path of [WEBSITE_PATH, "/website/enquiries", "/domain", "/content/blog", "/content/authors"]) {
       // /domain is not a tab: it is reached from the Overview. The blog is its own link.
       expect(website === undefined ? false : linkIsCurrent(website, path), path).toBe(!["/domain", "/content/blog", "/content/authors"].includes(path));
     }
@@ -101,8 +99,8 @@ describe("current link", () => {
 
   it("marks the blog current on its posts, the editor, authors and categories, and not on the website's pages", () => {
     const blog = link("Blog");
-    for (const path of ["/content/blog", "/content/blog/new", "/content/blog/abc", "/content/authors", "/content/authors/new", "/content/categories", "/content/categories/abc", "/website/pages"]) {
-      expect(blog === undefined ? false : linkIsCurrent(blog, path), path).toBe(path !== "/website/pages");
+    for (const path of ["/content/blog", "/content/blog/new", "/content/blog/abc", "/content/authors", "/content/authors/new", "/content/categories", "/content/categories/abc", "/website/enquiries"]) {
+      expect(blog === undefined ? false : linkIsCurrent(blog, path), path).toBe(path !== "/website/enquiries");
     }
   });
 
@@ -124,8 +122,14 @@ describe("menuChildren and search", () => {
   it("lists the website's other tabs, and the blog's authors and categories under the blog", () => {
     const website = link("Website");
     const blog = link("Blog");
-    expect(website === undefined ? [] : menuChildren(website).map((child) => child.label)).toEqual(["Pages", "Enquiries"]);
+    expect(website === undefined ? [] : menuChildren(website).map((child) => child.label)).toEqual(["Enquiries"]);
     expect(blog === undefined ? [] : menuChildren(blog).map((child) => child.label)).toEqual(["Authors", "Categories"]);
+  });
+
+  it("lists Enquiries under the website only once it is live", () => {
+    const before = link("Website", { ...FULL, websiteLive: false });
+    expect(before === undefined ? ["x"] : menuChildren(before)).toEqual([]);
+    expect(searchRail(railSections({ ...FULL, websiteLive: false }), "enquiries")).toEqual([]);
   });
 
   it("lists Billing under Plan & billing, and Calls under Requests only for a paid account", () => {
@@ -165,8 +169,8 @@ describe("phoneTabs", () => {
     expect(labels({ ...FULL, hasSocial: true })).toEqual(["Home", "Website", "Requests", "Business"]);
   });
 
-  it("uses Social media as the service tab, and keeps Business, for a plan without the website", () => {
-    expect(labels({ ...FULL, hasWebsite: false, hasSocial: true })).toEqual(["Home", "Social media", "Requests", "Business"]);
+  it("uses Social & Ads as the service tab, and keeps Business, for a plan without the website", () => {
+    expect(labels({ ...FULL, hasWebsite: false, hasSocial: true })).toEqual(["Home", "Social & Ads", "Requests", "Business"]);
   });
 
   it("has no service tab when none is bought", () => {

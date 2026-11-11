@@ -7,18 +7,24 @@
 #                                                            the env files, run both databases' migrations, then switch
 #                                                            each <app> to it
 #   brandbasket-platform-release --build-only <release> <app>...   build and link env files only
+#   brandbasket-platform-release --prebuilt <release> <app>...     the same as the first form, for a release GitHub Actions
+#                                                            already built (releases/<release> holds the source and each
+#                                                            app's .next): install dependencies and link env files, no build
 #   brandbasket-platform-release --activate <app> <release>  switch one app to an already-built release (manual
 #                                                            rollback); pauses the autodeploy
 #   brandbasket-platform-release --list                      releases, newest first, and which app runs which
 #
-# <app> is `platform` or `admin`. Both live in one repository and share every package, but each runs from its own symlink
-# (current-platform, current-admin), so a change confined to one app's folder rebuilds and restarts that app only.
-# brandbasket-platform-autodeploy decides which apps a commit needs; this script does what it is told.
+# <app> is `platform`, `admin` or `customer`. They live in one repository and share every package, but each runs from its own
+# symlink (current-platform, current-admin, current-customer), so a change confined to one app's folder rebuilds and restarts
+# that app only. brandbasket-platform-autodeploy decides which apps a commit needs; this script does what it is told.
+# `customer` (apps/customer, the v4 customer app on 3202) is named only by brandbasket-gha-deploy, and only when the owner has set
+# the repository variable CUSTOMER_APP_ENABLED=1 (docs/deployment/brandbasket-vps.md, "Customer app v4"). Its env file is
+# shared/customer.env.production, linked to apps/customer/.env.production.
 #
 # Layout under /srv/brandbasket:
 #   releases/<release>/     the monorepo at one commit (<sha>, or <sha>+<unix time> when <sha> is already live for the other
 #                           app), with node_modules and the built app(s)
-#   shared/<app>.env.local  each app's env file, linked into every release after its build
+#   shared/<app>.env.local  each app's env file, linked into every release after its build (customer: shared/customer.env.production)
 #   current-<app> ->        the release that app runs; its unit resolves it when it starts
 #   deploying ->            the release being deployed, which brandbasket-migrate (root) runs the migrations from
 #
@@ -40,6 +46,7 @@ set -euo pipefail
 
 readonly ROOT=/srv/brandbasket
 readonly BUILD_ENV=/etc/brandbasket-platform-build.env
+# Every app answers 200 on /login without a session (apps/customer has no health route; adding one would touch apps/customer/src).
 readonly HEALTH_PATH=/login
 readonly KEEP_OTHERS=2
 readonly PAUSED="$ROOT/autodeploy-paused"
@@ -49,17 +56,24 @@ die() { echo "error: $*" >&2; exit 1; }
 # Wherever it was started from (brandbasket cannot read root's home, which upsets find).
 cd "$ROOT"
 ARGS=("$@")
+# --prebuilt: GitHub Actions built the apps; this script installs, migrates and switches. Set after ARGS so a re-exec keeps the flag.
+PREBUILT=0
+if [[ "${1:-}" == --prebuilt ]]; then PREBUILT=1; shift; fi
 # shellcheck source=heavy-lock.sh
 source /usr/local/lib/brandbasket/heavy-lock.sh
 
-readonly APPS=(platform admin)
+readonly APPS=(platform admin customer)
 valid_app() { [[ " ${APPS[*]} " == *" $1 "* ]] || die "not an app: $1 (${APPS[*]})"; }
 valid_release() { [[ "$1" =~ ^[0-9a-f]{40}(\+[0-9]+)?$ ]] || die "not a release name: $1"; }
 
 # Each app's systemd unit with its port, and the host its health check asks for. The unit names are exactly the ones the
 # sudoers rule allows brandbasket to restart and stop.
-units_of() { case "$1" in platform) echo "brandbasket-app:3201" ;; admin) echo "brandbasket-admin:3203" ;; esac; }
-host_of() { case "$1" in platform) echo app.brandbasket.in ;; admin) echo console.brandbasket.in ;; esac; }
+units_of() { case "$1" in platform) echo "brandbasket-app:3201" ;; admin) echo "brandbasket-admin:3203" ;; customer) echo "brandbasket-customer:3202" ;; esac; }
+host_of() { case "$1" in platform) echo app.brandbasket.in ;; admin) echo console.brandbasket.in ;; customer) echo app.brandbasket.in ;; esac; }
+# The env file a release gets for an app, relative to the app's folder, and where it lives in shared/. The customer app uses Next's
+# production file rather than .env.local.
+env_link_of() { case "$1" in customer) echo ".env.production" ;; *) echo ".env.local" ;; esac; }
+env_source_of() { case "$1" in customer) echo "$ROOT/shared/customer.env.production" ;; *) echo "$ROOT/shared/$1.env.local" ;; esac; }
 
 take_lock() {
   local rc=0
@@ -109,7 +123,7 @@ build() {
     filters+=(--filter "@brandbasket/$app")
   done
   # No real env file may be present while building (see the header).
-  for app in "${APPS[@]}"; do rm -f "$dir/apps/$app/.env.local"; done
+  for app in "${APPS[@]}"; do rm -f "$dir/apps/$app/$(env_link_of "$app")"; done
   (
     cd "$dir"
     set -a
@@ -126,11 +140,16 @@ build() {
     if [[ "${FF_RELEASE_CHECKS:-0}" == 1 ]]; then echo "== step: typecheck"; nice -n 10 pnpm typecheck; fi
     if [[ "${FF_RELEASE_CHECKS:-0}" == 1 ]]; then echo "== step: test"; nice -n 10 pnpm -r test; fi
     # Two builds at a time, as Firstfold's platform deploy measures it (about 4.4 GB peak against the 6G cap).
-    echo "== step: build $*"; nice -n 10 pnpm --workspace-concurrency=2 "${filters[@]}" build
+    if (( PREBUILT )); then
+      for app in "$@"; do is_built "$app" "$release" || die "$app has no build in $release"; done
+      echo "== step: build $* (done by GitHub Actions)"
+    else
+      echo "== step: build $*"; nice -n 10 pnpm --workspace-concurrency=2 "${filters[@]}" build
+    fi
   )
   # An app folder a release does not have gets no link.
   for app in "${APPS[@]}"; do
-    if [[ -d "$dir/apps/$app" ]]; then ln -sfn "$ROOT/shared/$app.env.local" "$dir/apps/$app/.env.local"; fi
+    if [[ -d "$dir/apps/$app" ]]; then ln -sfn "$(env_source_of "$app")" "$dir/apps/$app/$(env_link_of "$app")"; fi
   done
   echo "built $* in $release"
 }
@@ -138,8 +157,27 @@ build() {
 # Stops before the database is touched when a setting the apps refuse to start without is blank (a Brevo or Razorpay key
 # the owner has not filled in yet), a secret differs between the two files, or fake billing is on. Names settings, never values.
 check_env() {
+  local release=$1; shift
   echo "== step: env"
-  ( cd "$ROOT/releases/$1" && pnpm env:check --platform "$ROOT/shared/platform.env.local" --admin "$ROOT/shared/admin.env.local" )
+  ( cd "$ROOT/releases/$release" && pnpm env:check --platform "$ROOT/shared/platform.env.local" --admin "$ROOT/shared/admin.env.local" )
+  [[ " $* " == *" customer "* ]] && check_customer_env
+  return 0
+}
+
+# pnpm env:check does not read the customer app's file. The app itself refuses to start without its database URLs, auth secret and
+# origin (apps/customer/src/instrumentation.ts), which the health check then reports; this catches the rest before any restart.
+check_customer_env() {
+  local file value
+  file="$(env_source_of customer)"
+  [[ -s "$file" ]] || die "customer: $file is missing or empty (copy apps/customer/.env.production.example there and fill it in)"
+  if grep -qE '^(EMAIL_CODE_BYPASS|BRANDBASKET_ALLOW_FAKE_BILLING)=.' "$file"; then
+    die "customer: EMAIL_CODE_BYPASS and BRANDBASKET_ALLOW_FAKE_BILLING must not be set on a real deployment"
+  fi
+  value="$(sed -n 's/^BETTER_AUTH_SECRET=//p' "$file" | tail -n 1)"
+  [[ "${#value}" -ge 32 ]] || die "customer: BETTER_AUTH_SECRET is missing or shorter than 32 characters"
+  # Names only, never values. A different secret is fine on next.brandbasket.in, but sessions end at the cutover unless it matches.
+  [[ "$value" == "$(sed -n 's/^BETTER_AUTH_SECRET=//p' "$(env_source_of platform)" | tail -n 1)" ]] \
+    || echo "warning: customer BETTER_AUTH_SECRET differs from platform's; make them equal before the cutover or every customer is signed out" >&2
 }
 
 migrate() {
@@ -229,13 +267,13 @@ case "${1:-}" in
     take_lock
     build "$2" "${@:3}" ;;
   *)
-    queue_turn brandbasket-platform-release 2700 "$@"
+    (( PREBUILT )) || queue_turn brandbasket-platform-release 2700 "${ARGS[@]}"
     valid_release "${1:-}"; [[ $# -ge 2 ]] || die "name at least one app"
     release=$1; shift
     for app in "$@"; do valid_app "$app"; done
     take_lock
     build "$release" "$@"
-    check_env "$release"
+    check_env "$release" "$@"
     migrate "$release"
     for app in "$@"; do activate "$app" "$release"; done
     prune ;;

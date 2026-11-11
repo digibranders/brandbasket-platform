@@ -74,7 +74,7 @@ describe("parseOperatorKeyForm", () => {
 
 describe("chatbot notices", () => {
   it("links back to the client's Chatbot section with a key only", () => {
-    expect(chatbotNoticeHref("0192f3c4-1111-7000-8000-000000000001", "added")).toBe("/clients/0192f3c4-1111-7000-8000-000000000001?chatbots=added#chatbots");
+    expect(chatbotNoticeHref("0192f3c4-1111-7000-8000-000000000001", "added")).toBe("/clients/0192f3c4-1111-7000-8000-000000000001/billing?chatbots=added#chatbots");
   });
 
   it("reads only keys it knows, so nothing from the address is ever shown", () => {

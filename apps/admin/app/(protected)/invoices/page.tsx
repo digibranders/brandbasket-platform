@@ -15,6 +15,7 @@ import { Figures } from "@/components/console/figures";
 import { FilterPills } from "@/components/console/filter-pills";
 import { HairlineList, HairlineRow } from "@/components/console/hairline-list";
 import { PageHeader } from "@/components/console/page-header";
+import { SectionTabs } from "@/components/console/section-tabs";
 import { Quiet, Section } from "@/components/console/section";
 import { GstSummary } from "@/components/invoices/gst-summary";
 import { PaymentsSection } from "@/components/invoices/payments-section";
@@ -60,7 +61,7 @@ interface InvoicesPageProps {
  * invoice shows up here instead of only in a log (D15). Tables, as the console's lists are (DESIGN.md).
  */
 export default async function InvoicesPage({ searchParams }: InvoicesPageProps): Promise<ReactElement> {
-  const { user } = await requireStaffCan("money");
+  const { user, staff: viewer } = await requireStaffCan("money");
   const params = await searchParams;
   const month = resolveRegisterMonth(params.month, new Date());
   const range = month === null ? null : monthRange(month);
@@ -127,6 +128,7 @@ export default async function InvoicesPage({ searchParams }: InvoicesPageProps):
           </>
         }
       />
+      <SectionTabs role={viewer.role} page="/invoices" />
 
       <Section title={`Financial year ${year.label}`} aside={`${plural(yearCount, "invoice")}, ${registerMoney(yearCents)}`} className="mt-6">
         <FilterPills

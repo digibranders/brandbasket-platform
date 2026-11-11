@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { ReactElement } from "react";
-import { addOnById, MONTHLY_ADD_ON_IDS, type MonthlyAddOnId } from "@brandbasket/shared/lib/billing/add-ons";
+import { addOnById, PLAN_ADD_ON_IDS, type MonthlyAddOnId } from "@brandbasket/shared/lib/billing/add-ons";
 import { formatMoney, type MoneyCurrency } from "@brandbasket/shared/lib/money";
 import { continueToCheckoutAction, toggleServiceAction } from "@/app/app-host/(protected)/personalize/actions";
 import { DARK_BUTTON, SOFT_BUTTON } from "@/components/v2/classes";
@@ -33,6 +33,33 @@ export function IntakeSummary({
         <p className="text-base text-ink-2">We will carry this into your kickoff call. It is a starting point, not a brief, and nothing in it is final.</p>
       </header>
 
+      <section aria-labelledby="intake-services" className="grid gap-2">
+        <h2 id="intake-services" className="font-display text-lg font-semibold text-ink">Your services</h2>
+        <p className="text-[0.9375rem] text-ink-2">Already chosen by you. Add another before checkout and any package saving updates by itself.</p>
+        <ul className="divide-y divide-line rounded-control border border-line">
+          {PLAN_ADD_ON_IDS.map((id) => {
+            const on = services.includes(id);
+            const onlyOne = on && servicesAfterToggle(services, id) === services;
+            return (
+              <li key={id} className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
+                <span className="grid">
+                  <span className="text-base font-semibold text-ink">{addOnById(id).title}</span>
+                  <span className="font-figure text-[0.9375rem] tabular-nums text-ink-2">{prices[id]} a month</span>
+                </span>
+                <form action={toggleServiceAction}>
+                  <input type="hidden" name="services" value={basket} />
+                  <input type="hidden" name="toggle" value={id} />
+                  <button type="submit" disabled={onlyOne} className={`${SOFT_BUTTON} disabled:cursor-not-allowed disabled:opacity-45`} aria-label={`${on ? "Remove" : "Add"} ${addOnById(id).title}`}>
+                    {on ? "Remove" : "Add"}
+                  </button>
+                </form>
+              </li>
+            );
+          })}
+        </ul>
+        <p className="sr-only">Prices in {currency}. {formatMoney(0, currency)} to set up.</p>
+      </section>
+
       <section aria-labelledby="intake-answers" className="grid gap-2">
         <h2 id="intake-answers" className="font-display text-lg font-semibold text-ink">About your business</h2>
         <dl className="divide-y divide-line rounded-control border border-line">
@@ -55,33 +82,6 @@ export function IntakeSummary({
             , or skip them and we will cover them on the call.
           </p>
         ) : null}
-      </section>
-
-      <section aria-labelledby="intake-services" className="grid gap-2">
-        <h2 id="intake-services" className="font-display text-lg font-semibold text-ink">Your services</h2>
-        <p className="text-[0.9375rem] text-ink-2">Already chosen by you. Add another before checkout and any package saving updates by itself.</p>
-        <ul className="divide-y divide-line rounded-control border border-line">
-          {MONTHLY_ADD_ON_IDS.map((id) => {
-            const on = services.includes(id);
-            const onlyOne = on && servicesAfterToggle(services, id) === services;
-            return (
-              <li key={id} className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
-                <span className="grid">
-                  <span className="text-base font-semibold text-ink">{addOnById(id).title}</span>
-                  <span className="font-figure text-[0.9375rem] tabular-nums text-ink-2">{prices[id]} a month</span>
-                </span>
-                <form action={toggleServiceAction}>
-                  <input type="hidden" name="services" value={basket} />
-                  <input type="hidden" name="toggle" value={id} />
-                  <button type="submit" disabled={onlyOne} className={`${SOFT_BUTTON} disabled:cursor-not-allowed disabled:opacity-45`} aria-label={`${on ? "Remove" : "Add"} ${addOnById(id).title}`}>
-                    {on ? "Remove" : "Add"}
-                  </button>
-                </form>
-              </li>
-            );
-          })}
-        </ul>
-        <p className="sr-only">Prices in {currency}. {formatMoney(0, currency)} to set up.</p>
       </section>
 
       <form action={continueToCheckoutAction} className="flex flex-wrap items-center justify-end gap-3 border-t border-line pt-5">

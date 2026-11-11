@@ -5,9 +5,9 @@ The parts every Brandbasket client website needs to read its content from the pl
 | File | What it is |
 | --- | --- |
 | `lib/brandbasket.ts` | `brandbasketGet(path)`: calls `/api/site/*` with the site token and returns `ok`, `offline` or `error`. |
-| `components/maintenance.tsx` | The full-page "under maintenance" notice, with the Brandbasket builder typing at his laptop, glancing up now and then (`components/builder.tsx`). |
+| `components/maintenance.tsx` | The full-page "under maintenance" notice, drawn from `lib/maintenance-page.ts`. It says only that the site is being maintained: visitors are the business's customers, so nothing mentions a plan or payment. |
 | `app/layout.tsx` | Example root layout: shows the notice instead of every page while the plan has ended. |
-| `proxy.ts` | Answers every request with the notice as a 503 (with `Retry-After` and `noindex`) while the plan has ended, so the site's own API routes and form posts are covered too. Uses `lib/offline-check.ts` (the answer kept for a minute) and `lib/maintenance-response.ts` (the notice as plain HTML, because Next refuses `react-dom/server` inside the proxy). |
+| `proxy.ts` | Answers every request with the notice as a 503 (with `Retry-After` and `noindex`) while the plan has ended, so the site's own API routes and form posts are covered too. Uses `lib/offline-check.ts` (the answer kept for a minute) and `lib/maintenance-response.ts` (the same notice as plain HTML, because Next refuses `react-dom/server` inside the proxy; both come from `lib/maintenance-page.ts`). |
 
 ## Environment
 
@@ -18,7 +18,9 @@ Set these in the site's hosting (Vercel), not in the code:
 
 Optional, for the maintenance notice (the platform sends no business details once a plan has ended):
 
-- `SITE_BUSINESS_NAME`: "Riverside Dental is taking a short break".
+- `SITE_BUSINESS_NAME`: the name shown on the notice.
+- `SITE_CONTACT_PHONE`: the business's public phone number, shown as a call link. Left out when empty or not a phone number.
+- `SITE_CONTACT_EMAIL`: the business's public email address, shown as a mail link. Left out when empty or not an email address.
 
 ## When the plan ends
 

@@ -2,8 +2,8 @@ import { describe, expect, it } from "vitest";
 import { PROJECT_MOVE_NOTICES, projectMoveNoticeHref, readProjectMoveNotice } from "./project-move-notices";
 
 describe("project move notices", () => {
-  it("links back to the client's Project tab with the notice", () => {
-    expect(projectMoveNoticeHref("b1", "cancelled")).toBe("/clients/b1/project?move=cancelled");
+  it("links back to the client's Website tab with the notice", () => {
+    expect(projectMoveNoticeHref("b1", "cancelled")).toBe("/clients/b1/website?move=cancelled");
   });
 
   it("reads only a known notice, never free text", () => {

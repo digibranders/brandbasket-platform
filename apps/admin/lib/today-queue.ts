@@ -4,7 +4,7 @@ import type { AttentionItem } from "./pipeline";
 import { clock, longDay, shortDate } from "./team-time";
 
 /** Every kind of work Today shows: the pipeline's attention kinds, plus requests, sign-ups, errors, failed deliveries and kickoff calls. */
-export type TodayKind = AttentionItem["kind"] | "request" | "signup" | "error" | "delivery" | "kickoff";
+export type TodayKind = AttentionItem["kind"] | "request" | "signup" | "error" | "delivery" | "kickoff" | "google";
 
 export interface TodayItem {
   /** Unique across the queue. */
@@ -15,6 +15,14 @@ export interface TodayItem {
   readonly detail: string;
   /** When it should be dealt with by; null when nothing sets a clock. */
   readonly dueAt: Date | null;
+  /** The button's words when the kind's usual one does not fit (the Google rows each say what the button does). */
+  readonly action?: string;
+}
+
+export interface KickoffNeedingOutcome {
+  readonly businessId: string;
+  readonly businessName: string;
+  readonly endsAt: Date;
 }
 
 export interface TodayInput {
@@ -28,8 +36,10 @@ export interface TodayInput {
   readonly newErrors: readonly Pick<ErrorIssue, "id" | "operation" | "route" | "occurrenceCount" | "firstSeenAt">[];
   /** Deliveries that failed in the last 24 hours (the rail's count); null when that count could not be read. */
   readonly failedDeliveries: number | null;
-  /** End times of kickoff calls that are over and not marked held; null when they could not be read. The count is its length. */
-  readonly kickoffsNeedingOutcome: readonly Date[] | null;
+  /** Kickoff calls that are over and not marked held (or as missed); null when they could not be read. One item each. */
+  readonly kickoffsNeedingOutcome: readonly KickoffNeedingOutcome[] | null;
+  /** Google problems: sites that cannot be verified, silent sources, a lost sign-in (lib/google-today.ts). Already built and shown in their own section. */
+  readonly google?: readonly TodayItem[];
   /** The end of the team's day: a preview due after it is not today's work. */
   readonly endOfToday: Date;
 }
@@ -125,34 +135,32 @@ export function todayQueue(input: TodayInput): readonly TodayItem[] {
             key: "deliveries:failed",
             kind: "delivery",
             href: "/deliveries",
-            title: `${input.failedDeliveries} ${input.failedDeliveries === 1 ? "delivery" : "deliveries"} failed`,
+            title: `${input.failedDeliveries} ${input.failedDeliveries === 1 ? "email or webhook" : "emails and webhooks"} failed`,
             detail: "",
             dueAt: null,
           },
         ]
       : [];
-  // Every call here has already ended, so the item is overdue from the start; its clock is the earliest end time.
-  const kickoffEnds = input.kickoffsNeedingOutcome ?? [];
-  const kickoffs: readonly TodayItem[] =
-    kickoffEnds.length > 0
-      ? [
-          {
-            key: "kickoff:needs-outcome",
-            kind: "kickoff",
-            href: "/calls",
-            title: kickoffEnds.length === 1 ? "1 kickoff call needs an outcome" : `${kickoffEnds.length} kickoff calls need an outcome`,
-            detail: "",
-            dueAt: kickoffEnds.reduce((earliest, end) => (end.getTime() < earliest.getTime() ? end : earliest)),
-          },
-        ]
-      : [];
-  return [...attention, ...requests, ...signups, ...errors, ...deliveries, ...kickoffs].sort(byDue);
+  // Every call here has already ended, so each item is overdue from the start; its clock is the call's end time. Recording an
+  // outcome on the Calls page marks the call held or removes its booking, which takes it out of this list.
+  const kickoffs = (input.kickoffsNeedingOutcome ?? []).map(
+    (call): TodayItem => ({
+      key: `kickoff:${call.businessId}`,
+      kind: "kickoff",
+      href: "/calls",
+      title: "Did the kickoff happen?",
+      detail: `${call.businessName} · ended ${shortDate(call.endsAt)}, ${clock(call.endsAt)}`,
+      dueAt: call.endsAt,
+    }),
+  );
+  return [...attention, ...requests, ...signups, ...errors, ...deliveries, ...kickoffs, ...(input.google ?? [])].sort(byDue);
 }
 
 export const GROUP_HEADINGS = {
   overdue: "Overdue",
   dueToday: "Due today",
   waiting: "Waiting for someone",
+  google: "Google",
 } as const;
 
 export interface TodayGroup {
@@ -162,15 +170,18 @@ export interface TodayGroup {
 
 /**
  * Splits a queue from todayQueue into Overdue (due before now), Due today (due from now until the end of the team's day)
- * and Waiting for someone (everything else, including items with no due time). Each group keeps the queue's order and
- * empty groups are left out.
+ * and Waiting for someone (everything else, including items with no due time), then Google (its three kinds, whatever
+ * their clocks). Each group keeps the queue's order and empty groups are left out.
  */
 export function groupTodayQueue(queue: readonly TodayItem[], now: Date, endOfToday: Date): readonly TodayGroup[] {
   const overdue: TodayItem[] = [];
   const dueToday: TodayItem[] = [];
   const waiting: TodayItem[] = [];
+  const google: TodayItem[] = [];
   for (const item of queue) {
-    if (item.dueAt !== null && item.dueAt.getTime() < now.getTime()) overdue.push(item);
+    // Google problems sit together in their own section, whatever their clocks say.
+    if (item.kind === "google") google.push(item);
+    else if (item.dueAt !== null && item.dueAt.getTime() < now.getTime()) overdue.push(item);
     else if (item.dueAt !== null && item.dueAt.getTime() < endOfToday.getTime()) dueToday.push(item);
     else waiting.push(item);
   }
@@ -178,6 +189,7 @@ export function groupTodayQueue(queue: readonly TodayItem[], now: Date, endOfTod
     { heading: GROUP_HEADINGS.overdue, items: overdue },
     { heading: GROUP_HEADINGS.dueToday, items: dueToday },
     { heading: GROUP_HEADINGS.waiting, items: waiting },
+    { heading: GROUP_HEADINGS.google, items: google },
   ];
   return groups.filter((group) => group.items.length > 0);
 }

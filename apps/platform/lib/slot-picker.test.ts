@@ -8,7 +8,7 @@ vi.mock("@/app/app-host/(protected)/setup-call-actions", () => ({ loadCallSlots:
 
 import { SlotPicker } from "@/components/calls/slot-picker";
 
-// Wed 2 Dec 2026, 10:00 and 14:00 in India; then 10:00 on Thu 3 Dec.
+// Wed 2 Dec 2026, 10:00 am and 2:00 pm in India; then 10:00 am on Thu 3 Dec.
 const SLOTS = ["2026-12-02T04:30:00.000Z", "2026-12-02T08:30:00.000Z", "2026-12-03T04:30:00.000Z"];
 
 let root: Root;
@@ -47,8 +47,8 @@ it("books the picked time and tells its owner, and not before a time is picked",
   mocks.book.mockResolvedValue({ ok: true });
   await render(picker());
   expect(button("Pick a time").disabled).toBe(true);
-  await click("14:00");
-  await click("Book Wed 2 Dec, 14:00");
+  await click("2:00 pm");
+  await click("Book Wed 2 Dec, 2:00 pm");
   expect(mocks.book).toHaveBeenCalledWith(SLOTS[1]);
   expect(mocks.onBooked).toHaveBeenCalledTimes(1);
 });
@@ -56,25 +56,25 @@ it("books the picked time and tells its owner, and not before a time is picked",
 it("says a fourth call is not allowed, and keeps the picked time", async () => {
   mocks.book.mockResolvedValue({ ok: false, reason: "limit" });
   await render(picker());
-  await click("10:00");
-  await click("Book Wed 2 Dec, 10:00");
+  await click("10:00 am");
+  await click("Book Wed 2 Dec, 10:00 am");
   expect(container.querySelector('[role="alert"]')?.textContent).toBe("You already have 3 calls booked. Change or cancel one first.");
-  expect(button("10:00").getAttribute("aria-pressed")).toBe("true");
+  expect(button("10:00 am").getAttribute("aria-pressed")).toBe("true");
   expect(mocks.onBooked).not.toHaveBeenCalled();
 });
 
 it("shows a sentence the booking sent with its refusal in place of the standard one", async () => {
   mocks.book.mockResolvedValue({ ok: false, reason: "failed", message: "Choose what the call is about." });
   await render(picker());
-  await click("10:00");
-  await click("Book Wed 2 Dec, 10:00");
+  await click("10:00 am");
+  await click("Book Wed 2 Dec, 10:00 am");
   expect(container.querySelector('[role="alert"]')?.textContent).toBe("Choose what the call is about.");
 });
 
 it("draws the note under the button for the picked time", async () => {
   await render(picker({ note: (slot) => createElement("p", { "data-testid": "note" }, slot === null ? "nothing picked" : `picked ${slot}`) }));
   expect(container.querySelector('[data-testid="note"]')?.textContent).toBe("nothing picked");
-  await click("14:00");
+  await click("2:00 pm");
   expect(container.querySelector('[data-testid="note"]')?.textContent).toBe(`picked ${SLOTS[1]}`);
 });
 

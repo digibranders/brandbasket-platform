@@ -10,6 +10,7 @@ import { FilterPills } from "@/components/console/filter-pills";
 import { EmptyLine } from "@/components/console/hairline-list";
 import { Notice } from "@/components/console/notice";
 import { PageHeader } from "@/components/console/page-header";
+import { SectionTabs } from "@/components/console/section-tabs";
 import { StatusPill, type PillTone } from "@/components/console/status-pill";
 import { TABLE, TD, TD_TIME, TH } from "@/components/console/table";
 import { deliveriesHref, deliveryFigures, deliveryTotals, DELIVERY_SOURCES, readDeliveryFilter, SOURCE_LABELS, type DeliveryOutcome } from "@/lib/deliveries-view";
@@ -20,7 +21,7 @@ import { logStaffAccess } from "@/lib/server/staff-access-log";
 import { resendAlertAction, resendAllFailedAction, resendEmailAction } from "./actions";
 import { TableScroll } from "@/components/console/table-scroll";
 
-export const metadata: Metadata = { title: "Deliveries" };
+export const metadata: Metadata = { title: "Emails and webhooks" };
 
 const PILL: Readonly<Record<DeliveryOutcome, PillTone>> = { ok: "done", quiet: "todo", failed: "problem" };
 
@@ -34,7 +35,7 @@ interface DeliveriesSearch {
 }
 
 export default async function DeliveriesPage({ searchParams }: { readonly searchParams: Promise<DeliveriesSearch> }): Promise<ReactElement> {
-  const { user } = await requireStaffAccess();
+  const { user, staff: viewer } = await requireStaffAccess();
   const search = await searchParams;
   const filter = readDeliveryFilter(search);
   await logStaffAccess({ staffUserId: user.id, action: "delivery.view", targetType: "deliveries" });
@@ -45,7 +46,7 @@ export default async function DeliveriesPage({ searchParams }: { readonly search
   return (
     <>
       <PageHeader
-        title="Deliveries"
+        title="Emails and webhooks"
         meta={`Last 24 hours · ${totals.in} in, ${totals.out} out · ${totals.failed} failed`}
         action={
           totals.failed === 0 ? null : (
@@ -57,6 +58,7 @@ export default async function DeliveriesPage({ searchParams }: { readonly search
           )
         }
       />
+      <SectionTabs role={viewer.role} page="/deliveries" />
       {notice === null ? null : (
         <Notice tone={notice.tone} className="mt-4">
           {notice.text}

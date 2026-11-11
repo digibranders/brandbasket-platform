@@ -57,7 +57,7 @@ beforeEach(() => {
 describe("markLiveAction address check", () => {
   it("sends staff back with the warning when the address does not load, and records nothing", async () => {
     vi.mocked(launchProject).mockRejectedValue(new ProjectLaunchAddressUnverifiedError(BUSINESS, "dns"));
-    await expect(markLiveAction(form({ businessId: BUSINESS }))).rejects.toThrow(`redirect:/clients/${BUSINESS}?launch=address-unverified`);
+    await expect(markLiveAction(form({ businessId: BUSINESS }))).rejects.toThrow(`redirect:/clients/${BUSINESS}/website?launch=address-unverified`);
     expect(launchProject).toHaveBeenCalledWith(DB, { businessId: BUSINESS, confirmUnverifiedAddress: false }, expect.any(Date));
     expect(recordStaffAction).not.toHaveBeenCalled();
   });
@@ -65,7 +65,7 @@ describe("markLiveAction address check", () => {
   it("passes the confirmation on and records that staff confirmed it", async () => {
     vi.mocked(launchProject).mockResolvedValue("emailed");
     await expect(markLiveAction(form({ businessId: BUSINESS, confirmUnverifiedAddress: "yes" }))).rejects.toThrow(
-      `redirect:/clients/${BUSINESS}?launch=launched`,
+      `redirect:/clients/${BUSINESS}/website?launch=launched`,
     );
     expect(launchProject).toHaveBeenCalledWith(DB, { businessId: BUSINESS, confirmUnverifiedAddress: true }, expect.any(Date));
     expect(recordStaffAction).toHaveBeenCalledWith(

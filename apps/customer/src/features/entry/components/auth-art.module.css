@@ -1,0 +1,113 @@
+/*
+ * The entry frame's art panel, ported from the old app (entry-panel.module.css): ink ground, a faint 45 degree cross
+ * weave, one soft glow, and the launch-path lines taking turns. Colours are tokens; the service rattan stands in for
+ * the old amber. The resting line colour keeps 4.5:1 on the ground (white at 55% is about 6:1).
+ */
+.frame {
+  display: grid;
+  min-height: 100dvh;
+  grid-template-columns: 1fr;
+  background: var(--surface);
+}
+@media (min-width: 900px) {
+  .frame {
+    grid-template-columns: 1.18fr minmax(380px, 1fr);
+  }
+}
+
+.art {
+  display: none;
+}
+@media (min-width: 900px) {
+  /* Stays one screen tall beside a long form (sign up), so the lines never drift down the page. */
+  .art {
+    position: sticky;
+    top: 12px;
+    order: -1;
+    align-self: start;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    height: calc(100dvh - 24px);
+    margin: 12px;
+    padding: 40px 44px;
+    overflow: hidden;
+    isolation: isolate;
+    border-radius: 22px;
+    color: var(--surface);
+    background:
+      radial-gradient(ellipse 30% 50% at 50% 100%, color-mix(in srgb, var(--svc-site) 22%, transparent), transparent 70%),
+      repeating-linear-gradient(45deg, color-mix(in srgb, var(--svc-site) 6%, transparent) 0 1.5px, transparent 1.5px 9px),
+      repeating-linear-gradient(-45deg, color-mix(in srgb, var(--svc-site) 6%, transparent) 0 1.5px, transparent 1.5px 9px),
+      var(--ink);
+  }
+}
+
+.steps {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.line {
+  color: color-mix(in srgb, var(--surface) 55%, transparent);
+  font-size: clamp(30px, min(3.9vw, 7vh), 60px);
+  font-weight: 500;
+  line-height: 1.04;
+  letter-spacing: -0.05em;
+}
+.line:last-child {
+  --on: var(--svc-site);
+  color: var(--svc-site);
+}
+.promise {
+  max-width: 34ch;
+  margin: clamp(16px, 3.5vh, 28px) 0 0;
+  color: color-mix(in srgb, var(--surface) 70%, transparent);
+  font-size: 18px;
+  line-height: 1.55;
+}
+
+/*
+ * Each line takes a two second turn: it lights up and slides 10px right, then fades back; the last lands in rattan.
+ * Six lines make a 12 second loop. Without motion nothing moves and only the last line is highlighted.
+ */
+@media (prefers-reduced-motion: no-preference) {
+  /* `backwards` holds the first keyframe through the delay, so the last line is not rattan before its turn. */
+  .line {
+    animation: line-turn 12s var(--ease-out) infinite backwards;
+  }
+  .line:nth-child(2) {
+    animation-delay: 2s;
+  }
+  .line:nth-child(3) {
+    animation-delay: 4s;
+  }
+  .line:nth-child(4) {
+    animation-delay: 6s;
+  }
+  .line:nth-child(5) {
+    animation-delay: 8s;
+  }
+  .line:nth-child(6) {
+    animation-delay: 10s;
+  }
+}
+
+@keyframes line-turn {
+  0% {
+    color: color-mix(in srgb, var(--surface) 55%, transparent);
+    transform: none;
+  }
+  4%,
+  15% {
+    color: var(--on, var(--surface));
+    transform: translateX(10px);
+  }
+  20%,
+  100% {
+    color: color-mix(in srgb, var(--surface) 55%, transparent);
+    transform: none;
+  }
+}

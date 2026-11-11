@@ -29,9 +29,9 @@ beforeEach(() => {
 
 describe("applyMembershipCode", () => {
   it("prices the code against the catalogue services of the bound basket, in the catalogue's order", async () => {
-    await applyMembershipCode(["local-seo-aeo", "managed-website", "not-a-service"], IDLE, form("SAVE"));
+    await applyMembershipCode(["paid-ads", "managed-website", "not-a-service"], IDLE, form("SAVE"));
 
-    expect(applyReferralCodeFor).toHaveBeenCalledWith(CUSTOMER, "SAVE", ["managed-website", "local-seo-aeo"], expect.any(Date));
+    expect(applyReferralCodeFor).toHaveBeenCalledWith(CUSTOMER, "SAVE", ["managed-website", "paid-ads"], expect.any(Date));
   });
 
   it.each([

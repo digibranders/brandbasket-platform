@@ -8,6 +8,7 @@ const COUNTS = {
   accountOtps: 0,
   leads: 3,
   enquiries: 5,
+  enquiryDetails: 2,
   visitors: 1,
   exitFeedback: 0,
   privacyRequests: 0,
@@ -15,7 +16,7 @@ const COUNTS = {
   staffAccessLog: 12,
   consentRecords: 2,
 };
-const SCHEDULED = "3 leads, 5 enquiries, 1 visitor accounts, 0 exit feedback, 0 privacy requests, 0 breach records, 12 staff access log rows, 2 consent records";
+const SCHEDULED = "3 leads, 5 enquiries, 2 sets of enquirer details, 1 visitor accounts, 0 exit feedback, 0 privacy requests, 0 breach records, 12 staff access log rows, 2 consent records";
 
 describe("retentionReport", () => {
   it("says what was removed, one count per kind, on one line", () => {

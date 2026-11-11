@@ -255,10 +255,10 @@ export interface ChatbotLeadInput {
 
 /**
  * Records a lead once per chat session. A redelivery, or a second delivery for the same session with more details, fills
- * in what was missing and never blanks what is already there. Staff connection only.
+ * in what was missing and never blanks what is already there. Returns the lead's id. Staff connection only.
  */
-export async function recordChatbotLead(db: Runner, input: ChatbotLeadInput): Promise<void> {
-  await db
+export async function recordChatbotLead(db: Runner, input: ChatbotLeadInput): Promise<string> {
+  const rows = await db
     .insert(chatbotLeads)
     .values(input)
     .onConflictDoUpdate({
@@ -270,7 +270,11 @@ export async function recordChatbotLead(db: Runner, input: ChatbotLeadInput): Pr
         company: sql`coalesce(excluded.company, ${chatbotLeads.company})`,
         updatedAt: new Date(),
       },
-    });
+    })
+    .returning({ id: chatbotLeads.id });
+  const row = rows[0];
+  if (row === undefined) throw new Error("The chatbot lead was not stored.");
+  return row.id;
 }
 
 /** Rates a lead that exists. False for a session that left no details, which is not a lead. Staff connection only. */

@@ -21,7 +21,7 @@ import {
 } from "@/lib/blog-author-fields";
 import type { BlogAuthorWithStats } from "@/lib/server/blog-taxonomy";
 import { uploadContentMedia } from "@/lib/uploads/content-media-upload-client";
-import { ACCEPTED_UPLOAD_TYPES, isAcceptedUploadType, MAX_UPLOAD_BYTES, TOO_LARGE_MESSAGE } from "@/lib/uploads/limits";
+import { ACCEPTED_UPLOAD_TYPES, isAcceptedUploadType, MAX_UPLOAD_BYTES, TOO_LARGE_MESSAGE } from "@brandbasket/shared/lib/uploads/limits";
 import { AuthorAvatar } from "./author-avatar";
 import { Counter, INPUT_CLASS, PostDate, SidebarSection } from "./parts";
 

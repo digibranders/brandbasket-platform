@@ -104,9 +104,12 @@ describe("daily metrics", () => {
     expect(await sqlState(() => upsertDailyMetrics(staff(), businessId, [{ metric: "gsc.clicks", day: MONTH, value: -1 }], NOW))).toBe("23514");
   });
 
-  it("is private: a customer cannot read the raw numbers", async () => {
+  it("is read only for a customer, and only their own business's rows (migration 0219)", async () => {
     await upsertDailyMetrics(staff(), businessId, [{ metric: "gsc.clicks", day: MONTH, value: 1 }], NOW);
-    expect(await sqlState(() => asOwner((tx) => tx.select().from(metricDaily)))).toBe("42501");
+    await upsertDailyMetrics(staff(), otherBusinessId, [{ metric: "gsc.clicks", day: MONTH, value: 9 }], NOW);
+    expect((await asOwner((tx) => tx.select().from(metricDaily))).map((row) => row.value)).toEqual([1]);
+    expect(await sqlState(() => asOwner((tx) => tx.update(metricDaily).set({ value: 2 })))).toBe("42501");
+    expect(await sqlState(() => asOwner((tx) => tx.delete(metricDaily)))).toBe("42501");
   });
 });
 

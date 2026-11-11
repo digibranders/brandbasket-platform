@@ -14,6 +14,13 @@ describe("websiteMilestones", () => {
     expect(items[1]?.note).toBe("Preview by Sun 1 Nov");
   });
 
+  it("does not show building as now while staff have not said the kickoff happened", () => {
+    const items = websiteMilestones({ kind: "kickoff_unconfirmed", callAt: input.kickoffAt }, input);
+    expect(items.map((item) => item.state)).toEqual(["now", "next", "next", "next", "next"]);
+    expect(items.map((item) => item.note)).not.toContain("Now");
+    expect(items.some((item) => item.note?.startsWith("Preview by"))).toBe(false);
+  });
+
   it("leaves a date out when none is stored, and does not guess one", () => {
     const items = websiteMilestones({ kind: "starting" }, { kickoffAt: null, firstPreviewDueAt: null });
     expect(items[0]?.note).toBeNull();

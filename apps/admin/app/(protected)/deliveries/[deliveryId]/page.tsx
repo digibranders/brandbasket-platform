@@ -91,7 +91,7 @@ export default async function DeliveryPage({
   return (
     <>
       <PageHeader
-        back={{ href: "/deliveries", label: "Deliveries" }}
+        back={{ href: "/deliveries", label: "Emails and webhooks" }}
         title={webhook !== null ? webhook.eventType : (alert?.title ?? "Delivery")}
         meta={webhook !== null ? `${SOURCE_LABELS[webhook.source]} webhook` : "Teams alert"}
       />

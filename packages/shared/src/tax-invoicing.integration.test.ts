@@ -278,7 +278,7 @@ describe("issueTaxInvoice", () => {
     // ₹2,999 and ₹9,999 at 10% off, the saving floored to the whole rupee: the dearest line carries 80 paise less discount than its own 10%.
     const bundledAddOns = [
       { addOn: "managed-website", listAmountCents: 299_900, offerDiscountAmountCents: 29_990, taxRateBasisPoints: 1_800 },
-      { addOn: "digital-growth", listAmountCents: 999_900, offerDiscountAmountCents: 99_990 - 80, taxRateBasisPoints: 1_800 },
+      { addOn: "social-media", listAmountCents: 999_900, offerDiscountAmountCents: 99_990 - 80, taxRateBasisPoints: 1_800 },
     ];
     const payment = await seedPayment(dbs.staff.db, "fake_pay_odd", { kind: "initial", amountCents: 1_169_900 });
 

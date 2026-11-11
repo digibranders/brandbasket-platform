@@ -3,8 +3,7 @@
 import { redirect } from "next/navigation";
 import { readBundleSelection } from "@brandbasket/shared/lib/billing/bundle";
 import { INTAKE_SUMMARY_STEP, personalizeHref } from "@/lib/intake/links";
-import { questionAfter, type IntakeField } from "@brandbasket/shared/lib/intake/questions";
-import { SERVICE_KEY_OF } from "@/lib/first-look";
+import { intakeServicesOf, questionAfter, type IntakeField } from "@brandbasket/shared/lib/intake/questions";
 import { membershipHrefWithServices, readSelectedServices, servicesAfterToggle } from "@/lib/membership";
 import { requireCustomerAccess, type CustomerAccessOptions } from "@/lib/server/customer-access";
 import { completeIntake, loadIntake, saveIntakeAnswer, saveIntakeServices } from "@/lib/server/intake";
@@ -40,7 +39,7 @@ export async function saveAnswerAction(_previous: IntakeFormState, formData: For
   });
   if (outcome.kind === "refused") return { error: outcome.message };
   const { answers } = await loadIntake(tenant);
-  const next = questionAfter(services.map((id) => SERVICE_KEY_OF[id]), answers, field as IntakeField);
+  const next = questionAfter(intakeServicesOf(services), answers, field as IntakeField);
   redirect(personalizeHref(services, next === null ? INTAKE_SUMMARY_STEP : next.field));
 }
 

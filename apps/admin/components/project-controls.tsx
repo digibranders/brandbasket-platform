@@ -13,7 +13,7 @@ import {
   cancelProjectAction,
   grantRoundAction,
   planLaunchAction,
-} from "@/app/(protected)/clients/[businessId]/project/actions";
+} from "@/app/(protected)/clients/[businessId]/website/actions";
 
 interface ProjectControlsProps {
   readonly businessId: string;
@@ -50,12 +50,6 @@ export async function ProjectControls({ businessId, notice }: ProjectControlsPro
             {ids}
             <GatedSubmitButton className={buttonSecondary}>Add a round of changes</GatedSubmitButton>
           </form>
-        ) : null}
-
-        {canMoveProject("grant-round", project.status) ? (
-          <p className="text-sm text-ink-2">
-            Rounds of changes used: <span className="font-figure tabular-nums">{project.revisionRoundsUsed} of {project.revisionRoundsIncluded}</span>
-          </p>
         ) : null}
 
         {canMoveProject("plan-launch", project.status) ? (

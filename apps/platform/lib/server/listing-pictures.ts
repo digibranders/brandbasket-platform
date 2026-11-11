@@ -15,7 +15,7 @@ import { GALLERY_SLOTS, PICTURE_SHAPES } from "@brandbasket/shared/lib/directory
 import { deleteMediaFiles, mediaStorageKey, type MediaStorage } from "@brandbasket/shared/server/media-storage";
 import { pictureCopyKey } from "@brandbasket/shared/server/media-keys";
 import { NO_LISTING_MESSAGE, type SlotPictures } from "@/lib/photos-view";
-import { makePictureCopies, processUpload, UploadRejectedError, type ProcessedUpload, type UploadRejection } from "./media-upload";
+import { makePictureCopies, processUpload, UploadRejectedError, type ProcessedUpload, type UploadRejection } from "@brandbasket/shared/server/media-upload";
 
 /*
  * A free listing account's own pictures (docs/superpowers/specs/2026-09-30-listing-pictures-crop-design.md). Reads go

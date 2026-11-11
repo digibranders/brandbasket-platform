@@ -18,6 +18,7 @@ import { finishAddOnAfterPayment } from "@brandbasket/shared/server/basket-chang
 import { recordChargePaymentWithInvoice } from "@brandbasket/shared/server/charge-payments";
 import { basketDeps } from "./basket-deps";
 import { getStaffDb } from "./db";
+import { sendPaymentReceipt } from "./payment-emails";
 import { announcePaymentToTeams } from "./teams-admin";
 
 /** How many charges one client page lists. */
@@ -101,6 +102,8 @@ export async function markClientChargePaid(
     return { outcome: recorded.outcome, newPaymentId: recorded.alreadyRecorded ? null : recorded.payment.id };
   });
   if (newPaymentId !== null) void announcePaymentToTeams(newPaymentId);
+  // Only a charge that was paid is a receipt: a refused one is kept for staff and bought nothing.
+  if (newPaymentId !== null && outcome === "paid") void sendPaymentReceipt(newPaymentId);
   // A paid add-on is on; the provider is told to bill it from the next renewal, with the payment's transaction committed.
   if (outcome === "paid") await finishAddOnAfterPayment(basketDeps(), { businessId: input.businessId, chargeId: input.chargeId, now });
   return outcome;

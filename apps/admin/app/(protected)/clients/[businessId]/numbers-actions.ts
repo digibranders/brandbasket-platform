@@ -14,7 +14,7 @@ const idSchema = z.uuid();
 
 function finish(businessId: string, notice: "saved" | "invalid" | "not-bought"): never {
   revalidatePath(`/clients/${businessId}`);
-  redirect(`/clients/${businessId}?numbers=${notice}#numbers`);
+  redirect(`/clients/${businessId}/billing?numbers=${notice}#numbers`);
 }
 
 /** Staff save one month's figures for one service the customer has bought; it replaces that month's row. */

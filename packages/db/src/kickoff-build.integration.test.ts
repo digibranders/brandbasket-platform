@@ -1,7 +1,9 @@
 import { eq } from "drizzle-orm";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { findActivePlan, insertSubscription } from "./queries/billing";
-import { firstPreviewDueAfterKickoff, listKickoffBoard, listKickoffsToStart, markProjectReadyAfterKickoff } from "./queries/kickoff-build";
+import { firstPreviewDueAfterKickoff, KICKOFF_FALLBACK_START_HOURS, listKickoffBoard, listKickoffsToStart, markProjectReadyAfterKickoff } from "./queries/kickoff-build";
+import { recordKickoffOutcome } from "./queries/setup-call-outcomes";
+import { clearUnheldKickoffBooking } from "./queries/setup-calls";
 import { insertOnboardingProject } from "./queries/projects";
 import { bundledAddOns, businesses, projects, setupCallBookings, users } from "./schema";
 import { openTestDatabases, resetTestDatabase, seedPlansFromMigrations, type TestDatabases } from "./testing";
@@ -45,12 +47,12 @@ beforeEach(async () => {
   await seedPlansFromMigrations(dbs.owner);
   await dbs.staff.db.insert(users).values({ id: STAFF, name: "Staff", email: `${STAFF}@example.com`, emailVerified: true });
   subscriptionOf = {};
-  siteId = await business("site-business", ["managed-website", "digital-growth"]);
-  socialId = await business("social-business", ["digital-growth"]);
+  siteId = await business("site-business", ["managed-website", "social-media"]);
+  socialId = await business("social-business", ["social-media"]);
 });
 
 describe("markProjectReadyAfterKickoff", () => {
-  it("moves a Managed Website project from onboarding to submitted with the preview date, and leaves the checklist stamp null", async () => {
+  it("moves a Website Management project from onboarding to submitted with the preview date, and leaves the checklist stamp null", async () => {
     expect(await markProjectReadyAfterKickoff(dbs.staff.db, { businessId: siteId, dueAt: DUE, now: NOW })).toBe(true);
     const project = await statusOf(siteId);
     expect(project).toMatchObject({ status: "submitted", onboardingSubmittedAt: null });
@@ -69,7 +71,7 @@ describe("markProjectReadyAfterKickoff", () => {
     expect((await statusOf(siteId))?.slaDueAt?.toISOString()).toBe(DUE.toISOString());
   });
 
-  it("leaves a business without Managed Website alone", async () => {
+  it("leaves a business without Website Management alone", async () => {
     expect(await markProjectReadyAfterKickoff(dbs.staff.db, { businessId: socialId, dueAt: DUE, now: NOW })).toBe(false);
     expect((await statusOf(socialId))?.status).toBe("onboarding");
   });
@@ -80,7 +82,7 @@ describe("markProjectReadyAfterKickoff", () => {
     expect((await statusOf(siteId))?.status).toBe("building");
   });
 
-  it("does not count a Managed Website line that is no longer active", async () => {
+  it("does not count a Website Management line that is no longer active", async () => {
     await dbs.staff.db.update(bundledAddOns).set({ status: "removed" }).where(eq(bundledAddOns.businessId, siteId));
     expect(await markProjectReadyAfterKickoff(dbs.staff.db, { businessId: siteId, dueAt: DUE, now: NOW })).toBe(false);
   });
@@ -120,6 +122,52 @@ describe("listKickoffsToStart", () => {
   });
 });
 
+describe("which kickoffs the sweep starts (the cut-off it passes is KICKOFF_FALLBACK_START_HOURS before now)", () => {
+  const HOUR = 3_600_000;
+  const cutoff = (now: Date) => new Date(now.getTime() - KICKOFF_FALLBACK_START_HOURS * HOUR);
+  const endedHoursAgo = (hours: number) => ({ startsAt: new Date(NOW.getTime() - (hours + 0.5) * HOUR), endsAt: new Date(NOW.getTime() - hours * HOUR) });
+  const startable = async (now: Date = NOW) => (await listKickoffsToStart(dbs.staff.db, { endedBefore: cutoff(now) })).map((row) => row.businessId);
+  const booking = (businessId: string, values: Partial<typeof setupCallBookings.$inferInsert>) => dbs.staff.db.insert(setupCallBookings).values({ businessId, ...values });
+
+  it("starts a call staff marked held, even one that ended a minute ago", async () => {
+    await booking(siteId, { ...endedHoursAgo(0.02), heldAt: NOW, heldByStaffId: STAFF });
+    expect(await startable()).toEqual([siteId]);
+  });
+
+  it("does not start an unmarked call before 24 hours have passed since it ended", async () => {
+    await booking(siteId, endedHoursAgo(23));
+    expect(await startable()).toEqual([]);
+  });
+
+  it("starts an unmarked call once 24 hours have passed since it ended", async () => {
+    await booking(siteId, endedHoursAgo(25));
+    expect(await startable()).toEqual([siteId]);
+  });
+
+  it("never starts a call staff marked as not attended, however long ago it ended", async () => {
+    const { startsAt, endsAt } = endedHoursAgo(30);
+    await booking(siteId, { startsAt, endsAt });
+    expect(await startable()).toEqual([siteId]);
+
+    // What the wrap-up's "did not attend" buttons do: the booking goes and the outcome keeps the call's times.
+    expect(await clearUnheldKickoffBooking(dbs.staff.db, siteId)).toBe(true);
+    await recordKickoffOutcome(dbs.staff.db, { businessId: siteId, outcome: "customer_no_show", note: null, startsAt, endsAt, staffId: STAFF, now: NOW });
+
+    expect(await startable()).toEqual([]);
+    expect(await startable(new Date(NOW.getTime() + 365 * 24 * HOUR))).toEqual([]);
+    expect((await statusOf(siteId))?.status).toBe("onboarding");
+  });
+
+  it("follows the new call after a no-show by the same rule", async () => {
+    await booking(siteId, endedHoursAgo(30));
+    await clearUnheldKickoffBooking(dbs.staff.db, siteId);
+    await recordKickoffOutcome(dbs.staff.db, { businessId: siteId, outcome: "team_no_show", note: null, startsAt: null, endsAt: null, staffId: STAFF, now: NOW });
+    await booking(siteId, endedHoursAgo(2));
+    expect(await startable()).toEqual([]);
+    expect(await startable(new Date(NOW.getTime() + 23 * HOUR))).toEqual([siteId]);
+  });
+});
+
 describe("firstPreviewDueAfterKickoff", () => {
   it("is 48 hours after the call was held, else after it ended", () => {
     expect(firstPreviewDueAfterKickoff({ endsAt: ENDED, heldAt: null, now: NOW }).toISOString()).toBe(DUE.toISOString());
@@ -143,7 +191,7 @@ describe("listKickoffBoard", () => {
     ]);
     const board = await listKickoffBoard(dbs.staff.db, { now: NOW, lookBackDays: 7 });
     expect(board).toHaveLength(1);
-    expect(board[0]).toMatchObject({ businessId: siteId, businessName: "site-business", projectStatus: "onboarding", hasWebsite: true, services: ["digital-growth", "managed-website"], heldAt: null });
+    expect(board[0]).toMatchObject({ businessId: siteId, businessName: "site-business", projectStatus: "onboarding", hasWebsite: true, services: ["managed-website", "social-media"], heldAt: null });
     expect(board[0]?.endsAt?.toISOString()).toBe(ENDED.toISOString());
   });
 });

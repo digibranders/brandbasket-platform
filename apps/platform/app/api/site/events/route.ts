@@ -1,5 +1,5 @@
 import "server-only";
-import { consumeRateLimit, recordSiteEvent } from "@brandbasket/db";
+import { consumeRateLimit, recordSiteEvent, upsertEnquiryFromSiteEvent } from "@brandbasket/db";
 import { errorLogInfo } from "@brandbasket/shared/server/error-log-info";
 import { getStaffDb } from "@/lib/server/db";
 import { findTenantBySiteToken, siteHasAccess } from "@/lib/server/site-api";
@@ -44,7 +44,13 @@ export async function POST(request: Request): Promise<Response> {
         { status: 429, headers: { ...NO_STORE, "Retry-After": String(limit.retryAfterSeconds) } },
       );
     }
-    await recordSiteEvent(db, { businessId: tenant.businessId, kind: event.kind, at: new Date() });
+    const eventId = await recordSiteEvent(db, { businessId: tenant.businessId, kind: event.kind, at: new Date() });
+    // The tap is saved; the nightly backfill heals a miss here, so it never fails the visitor's request.
+    try {
+      await upsertEnquiryFromSiteEvent(db, eventId);
+    } catch (error) {
+      console.error("A site event was saved but its enquiry could not be written.", errorLogInfo(error));
+    }
     return new Response(null, { status: 204, headers: NO_STORE });
   } catch (error) {
     // Never the raw error: Drizzle puts the failed query's params, here the site token, into its message.

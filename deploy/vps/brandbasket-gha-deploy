@@ -1,0 +1,43 @@
+#!/usr/bin/env bash
+# Receives a release that GitHub Actions built and hands it to brandbasket-platform-release --prebuilt. Installed as
+# /usr/local/sbin/brandbasket-gha-deploy (root:root 0755) and run only as the forced command of one SSH key (see
+# docs/deployment/brandbasket-vps.md, "Deploying from GitHub Actions"): the key can run nothing else.
+#
+#   ssh root@vps "deploy <40 hex sha>" < release.tgz            platform and admin (what has always run)
+#   ssh root@vps "deploy <40 hex sha> customer" < release.tgz   the same, then apps/customer too
+#
+# The word `customer` is sent by .github/workflows/deploy.yml only while the repository variable CUSTOMER_APP_ENABLED is 1
+# (docs/deployment/brandbasket-vps.md, "Customer app v4"). Install this script before setting the variable: an older copy refuses it.
+#
+# The tarball is the source of one commit plus apps/platform/.next and apps/admin/.next (and apps/customer/.next with `customer`), without node_modules; it is built at
+# /srv/brandbasket/releases/<sha> on the runner so no path inside it changes. This script checks the name, unpacks as
+# `brandbasket`, and the release script installs dependencies, checks the env files, migrates and switches both apps.
+set -euo pipefail
+
+readonly ROOT=/srv/brandbasket
+readonly REQUEST="${SSH_ORIGINAL_COMMAND:-}"
+
+[[ "$REQUEST" =~ ^deploy\ ([0-9a-f]{40})(\ customer)?$ ]] || { echo "refused: expected 'deploy <40 hex sha>' or 'deploy <40 hex sha> customer'" >&2; exit 2; }
+readonly SHA="${BASH_REMATCH[1]}"
+APPS=(platform admin)
+[[ -z "${BASH_REMATCH[2]}" ]] || APPS+=(customer)
+readonly APPS
+readonly DIR="$ROOT/releases/$SHA"
+
+as_bb() { runuser -u brandbasket -- env HOME=/home/brandbasket "$@"; }
+
+for app in "${APPS[@]}"; do
+  [[ "$(basename "$(readlink -f "$ROOT/current-$app" 2>/dev/null || echo none)")" != "$SHA" ]] \
+    || { echo "refused: $app already runs $SHA" >&2; exit 3; }
+done
+
+# A folder left by an interrupted run of this release is replaced; a live one was refused above.
+as_bb rm -rf "$DIR"
+as_bb mkdir "$DIR"
+as_bb tar -xz -C "$DIR" --no-same-owner --no-same-permissions
+built=1
+[[ -f "$DIR/package.json" ]] || built=0
+for app in "${APPS[@]}"; do [[ -f "$DIR/apps/$app/.next/BUILD_ID" ]] || built=0; done
+(( built )) || { echo "refused: the archive is not a built release (${APPS[*]})" >&2; as_bb rm -rf "$DIR"; exit 4; }
+
+exec runuser -u brandbasket -- env HOME=/home/brandbasket /usr/local/bin/brandbasket-platform-release --prebuilt "$SHA" "${APPS[@]}"

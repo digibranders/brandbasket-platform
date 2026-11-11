@@ -24,7 +24,7 @@ vi.mock("server-only", () => ({}));
 
 /**
  * The prices a customer is shown and charged as services are added one by one to a running plan, against a real database:
- * Managed Website, then Social Media and Ads, then Local SEO + AEO, each added the day the month was paid for (so the whole
+ * Website Management, then Social Media Management, then Paid Ads Management, each added the day the month was paid for (so the whole
  * month is left and the charge is the line's full monthly price).
  */
 
@@ -123,14 +123,14 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-describe("a website client adds Social Media and Ads, then Local SEO + AEO, on the day the month was paid", () => {
+describe("a website client adds Social Media Management, then Paid Ads Management, on the day the month was paid", () => {
   /** What the Your plan page shows for each service the plan holds, in the catalogue's order. */
   async function cards(subscription: Subscription): Promise<Record<string, number>> {
     const rows = (await rowsOf(subscription)).filter((row) => row.status === "active" && row.endRequestedAt === null);
     return Object.fromEntries(rows.map((row) => [row.addOn, bundledLinePrice(row, "INR").netCents]));
   }
 
-  async function offer(addOn: "digital-growth" | "local-seo-aeo") {
+  async function offer(addOn: "social-media" | "paid-ads") {
     const assessment = await readAddOnAssessment(dbs.staff.db, { businessId, addOn, providerName: "fake", now: ADDED_AT });
     if (assessment?.kind !== "offer") throw new Error(`Expected an offer, got ${assessment?.kind}`);
     return assessment;
@@ -141,37 +141,35 @@ describe("a website client adds Social Media and Ads, then Local SEO + AEO, on t
     return (fresh?.pendingBundledAddOnNetCents ?? fresh?.bundledAddOnNetCents ?? 0) + managed.recurringAmountCents;
   }
 
-  it("shows, charges and renews at the same prices at each step, and the cards add up to the next renewal", async () => {
+  it("charges and renews every service at list at each step, and the cards add up to the next renewal", async () => {
     const subscription = await paidSubscription(bundleOf("managed-website"));
 
-    // Step 1: Website + Social is 10% off ₹12,998, a saving of ₹1,299 (rounded down), so ₹11,699. The 80 paise that rounding
-    // keeps sit on the dearest line: Social is ₹8,999.90 (not 10% of ₹9,999 off, ₹8,999.10) and the website ₹2,699.10.
-    const social = await offer("digital-growth");
-    expect(social.line.netCents).toBe(899_990);
-    expect(social.quote).toMatchObject({ chargeCents: 899_990, nextRenewalCents: 1_169_900 });
-    const socialCharge = await addAndPay("digital-growth");
-    expect(socialCharge).toBe(899_990);
-    expect(await renewalAmount(subscription)).toBe(1_169_900);
-    expect(await cards(subscription)).toEqual({ "managed-website": 269_910, "digital-growth": 899_990 });
+    // Step 1: Website + Social is two plans at list, ₹2,999 each, so ₹5,998 a month and no discount.
+    const social = await offer("social-media");
+    expect(social.line.netCents).toBe(299_900);
+    expect(social.quote).toMatchObject({ chargeCents: 299_900, nextRenewalCents: 599_800 });
+    const socialCharge = await addAndPay("social-media");
+    expect(socialCharge).toBe(299_900);
+    expect(await renewalAmount(subscription)).toBe(599_800);
+    expect(await cards(subscription)).toEqual({ "managed-website": 299_900, "social-media": 299_900 });
 
-    // Step 2: all three is 20% off ₹37,997, a saving of ₹7,599, so ₹30,398; the 40 paise are on the dearest line (SEO).
-    const seo = await offer("local-seo-aeo");
-    expect(seo.line.netCents).toBe(1_999_960);
-    expect(seo.quote).toMatchObject({ chargeCents: 1_999_960, nextRenewalCents: 3_039_800 });
-    const seoCharge = await addAndPay("local-seo-aeo");
-    expect(seoCharge).toBe(1_999_960);
-    expect(await renewalAmount(subscription)).toBe(3_039_800);
-    // Every card is at the price the next renewal bills for it, so Social reads ₹7,999.20 (20% off), not the 10% it was bought at.
+    // Step 2: all three at list is ₹8,997 a month, with no discount.
+    const ads = await offer("paid-ads");
+    expect(ads.line.netCents).toBe(299_900);
+    expect(ads.quote).toMatchObject({ chargeCents: 299_900, nextRenewalCents: 899_700 });
+    const adsCharge = await addAndPay("paid-ads");
+    expect(adsCharge).toBe(299_900);
+    expect(await renewalAmount(subscription)).toBe(899_700);
     const shown = await cards(subscription);
-    expect(shown).toEqual({ "managed-website": 239_920, "digital-growth": 799_920, "local-seo-aeo": 1_999_960 });
-    expect(Object.values(shown).reduce((total, net) => total + net, 0)).toBe(3_039_800);
+    expect(shown).toEqual({ "managed-website": 299_900, "social-media": 299_900, "paid-ads": 299_900 });
+    expect(Object.values(shown).reduce((total, net) => total + net, 0)).toBe(899_700);
 
-    // The month that was paid for is not repriced: ₹2,999 + ₹8,999.90 + ₹19,999.60 was taken in October, and the renewal is ₹30,398.
-    expect(299_900 + socialCharge + seoCharge).toBe(3_199_850);
+    // The month that was paid for is ₹2,999 for each of the three, and the renewal is the same ₹8,997.
+    expect(299_900 + socialCharge + adsCharge).toBe(899_700);
 
     // After the renewal the cards are the same, and equal what a customer who bought all three at once sees.
     await dbs.staff.db.transaction((tx) => completeBundledAddOnChanges(tx, { subscriptionId: subscription.id, now: subscription.paidThroughAt ?? PAID_AT }));
     expect(await cards(subscription)).toEqual(shown);
-    expect(Object.fromEntries(bundleLines(["managed-website", "digital-growth", "local-seo-aeo"], "INR").map((line) => [line.addOn, line.netCents]))).toEqual(shown);
+    expect(Object.fromEntries(bundleLines(["managed-website", "social-media", "paid-ads"], "INR").map((line) => [line.addOn, line.netCents]))).toEqual(shown);
   });
 });

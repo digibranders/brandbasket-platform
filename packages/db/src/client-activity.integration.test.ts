@@ -268,6 +268,9 @@ describe("a business's monthly numbers", () => {
     postsPlanned: null,
     keywordsPageOne: null,
     keywordsPageOnePrev: null,
+    reach: null,
+    followers: null,
+    profileVisits: null,
   };
   const save = (figures: SnapshotFigures, month = MONTH, db: Parameters<typeof upsertMonthlySnapshot>[0] = dbs.staff.db) =>
     upsertMonthlySnapshot(db, { businessId, service: "social", month, figures, staffId: STAFF, now: NOW });

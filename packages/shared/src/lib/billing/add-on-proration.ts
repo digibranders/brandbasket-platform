@@ -31,7 +31,9 @@ export type AddOnBlock =
   /** It has not paid for anything yet. */
   | "unpaid"
   /** Money arrived that bought nothing and staff have not dealt with it. */
-  | "under-review";
+  | "under-review"
+  /** Monitoring, which comes at no cost with all three plans the business holds. */
+  | "included";
 
 export interface AddOnStanding {
   readonly hasSubscription: boolean;

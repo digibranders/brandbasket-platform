@@ -16,6 +16,12 @@ export type SettingsNotice =
   | "teams-nothing-pasted"
   | "rounds-saved"
   | "rounds-invalid"
+  | "google-connected"
+  | "google-not-configured"
+  | "google-wrong-account"
+  | "google-missing-permission"
+  | "google-cancelled"
+  | "google-failed"
   | TeamsUrlProblem;
 
 export const SETTINGS_NOTICES: Readonly<Record<SettingsNotice, { readonly text: string; readonly ok: boolean }>> = {
@@ -23,6 +29,12 @@ export const SETTINGS_NOTICES: Readonly<Record<SettingsNotice, { readonly text: 
   "setup-call-cleared": { text: "Cleared. Customers no longer see the Book a call card.", ok: true },
   "rounds-saved": { text: "Saved. New builds include this many rounds of changes. Builds already under way keep theirs.", ok: true },
   "rounds-invalid": { text: `Enter a whole number from ${MIN_REVISION_ROUNDS} to ${MAX_REVISION_ROUNDS}.`, ok: false },
+  "google-connected": { text: "Connected. The Google account is signed in for that purpose.", ok: true },
+  "google-not-configured": { text: "The Google sign-in is not set up on this server yet. The OAuth client id, secret, redirect address and account email are missing.", ok: false },
+  "google-wrong-account": { text: "That was not the Brandbasket Google account, so nothing was saved. Sign in with the account named on this page.", ok: false },
+  "google-missing-permission": { text: "Google did not give every permission asked for, so nothing was saved. Connect again and leave every box ticked.", ok: false },
+  "google-cancelled": { text: "The Google sign-in was cancelled. Nothing was saved.", ok: false },
+  "google-failed": { text: "Google did not complete the sign-in. Try again in a minute.", ok: false },
   "not-a-web-address": { text: SETUP_CALL_URL_PROBLEMS["not-a-web-address"], ok: false },
   "not-secure": { text: SETUP_CALL_URL_PROBLEMS["not-secure"], ok: false },
   "too-long": { text: SETUP_CALL_URL_PROBLEMS["too-long"], ok: false },
@@ -42,7 +54,7 @@ export const SETTINGS_NOTICES: Readonly<Record<SettingsNotice, { readonly text: 
 };
 
 export function settingsNoticeHref(notice: SettingsNotice): string {
-  return `/settings?saved=${notice}${notice.startsWith("teams-") ? "#teams" : notice.startsWith("rounds-") ? "#revision-rounds" : ""}`;
+  return `/settings?saved=${notice}${notice.startsWith("teams-") ? "#teams" : notice.startsWith("rounds-") ? "#revision-rounds" : notice.startsWith("google-") ? "#google" : ""}`;
 }
 
 export function readSettingsNotice(value: string | string[] | undefined): SettingsNotice | null {

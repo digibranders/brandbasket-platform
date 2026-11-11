@@ -13,19 +13,19 @@ const SUBSCRIPTION = {
 const line = (addOn: string, overrides: Partial<BundledAddOn> = {}): BundledAddOn =>
   ({ subscriptionId: "sub-1", addOn, status: "active", endRequestedAt: null, ...overrides }) as BundledAddOn;
 
-const WEBSITE_AND_SOCIAL = [line("managed-website"), line("digital-growth")];
+const WEBSITE_AND_SOCIAL = [line("managed-website"), line("social-media")];
 
 describe("clientPackageFacts", () => {
-  it("names the services and the percentage off each, the credit a month, and no forfeit date", () => {
+  it("is no package for two services, since no package offers exist, and still shows a stored credit a month", () => {
     expect(clientPackageFacts({ lines: WEBSITE_AND_SOCIAL, subscription: SUBSCRIPTION, currency: "INR", forfeitedAt: null })).toEqual({
-      package: "Website + Social, 10% off each service",
+      package: "No package",
       adCredit: "₹1,500 a month",
       forfeitedOn: null,
     });
   });
 
   it("is no package for a single service", () => {
-    expect(clientPackageFacts({ lines: [line("local-seo-aeo")], subscription: { ...SUBSCRIPTION, adCreditCents: 0 }, currency: "INR", forfeitedAt: null })).toEqual({
+    expect(clientPackageFacts({ lines: [line("paid-ads")], subscription: { ...SUBSCRIPTION, adCreditCents: 0 }, currency: "INR", forfeitedAt: null })).toEqual({
       package: "No package",
       adCredit: "None",
       forfeitedOn: null,
@@ -46,10 +46,10 @@ describe("clientPackageFacts", () => {
   it("counts only the services that stay: not one asked to end, removed, still waiting, or on another subscription", () => {
     const lines = [
       line("managed-website"),
-      line("digital-growth", { endRequestedAt: new Date("2026-11-01T00:00:00.000Z") }),
-      line("local-seo-aeo", { status: "removed" }),
-      line("local-seo-aeo", { status: "pending" }),
-      line("local-seo-aeo", { subscriptionId: "sub-0" }),
+      line("social-media", { endRequestedAt: new Date("2026-11-01T00:00:00.000Z") }),
+      line("paid-ads", { status: "removed" }),
+      line("paid-ads", { status: "pending" }),
+      line("paid-ads", { subscriptionId: "sub-0" }),
     ];
     expect(clientPackageFacts({ lines, subscription: SUBSCRIPTION, currency: "INR", forfeitedAt: null }).package).toBe("No package");
   });

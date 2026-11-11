@@ -38,6 +38,9 @@ export async function findLatestKickoffOutcome(
 ): Promise<{
   readonly outcome: KickoffOutcome;
   readonly note: string | null;
+  /** The call's times as the booking held them when the outcome was recorded; null when the booking page never reported them. */
+  readonly callStartsAt: Date | null;
+  readonly callEndsAt: Date | null;
   readonly recordedAt: Date;
   readonly recordedByStaffId: string;
 } | null> {
@@ -45,6 +48,8 @@ export async function findLatestKickoffOutcome(
     .select({
       outcome: setupCallOutcomes.outcome,
       note: setupCallOutcomes.note,
+      callStartsAt: setupCallOutcomes.callStartsAt,
+      callEndsAt: setupCallOutcomes.callEndsAt,
       recordedAt: setupCallOutcomes.recordedAt,
       recordedByStaffId: setupCallOutcomes.recordedByStaffId,
     })

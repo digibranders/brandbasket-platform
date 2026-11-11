@@ -6,6 +6,7 @@ export function retentionReport(counts: RetentionCounts, dryRun: boolean): strin
   const scheduled = [
     `${counts.leads} leads`,
     `${counts.enquiries} enquiries`,
+    `${counts.enquiryDetails} sets of enquirer details`,
     `${counts.visitors} visitor accounts`,
     `${counts.exitFeedback} exit feedback`,
     `${counts.privacyRequests} privacy requests`,

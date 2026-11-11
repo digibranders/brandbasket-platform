@@ -1,13 +1,15 @@
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, sql } from "drizzle-orm";
 import type { Database } from "../client";
-import { projectFeedbackTickets, supportTickets, type SupportStatus } from "../schema";
+import type { ScopedTransaction } from "../scope";
+import { projectFeedbackTickets, supportMessages, supportTickets, type SupportStatus } from "../schema";
 
 /**
  * Records that a support ticket is the feedback a customer sent on a project's preview. Written through the staff connection
- * when the feedback is sent. A retry with the same ticket finds the row already there and leaves it as it was.
+ * when the feedback is sent, or a transaction on it so the link commits with the ticket and the round. A retry with the
+ * same ticket finds the row already there and leaves it as it was.
  */
 export async function linkFeedbackTicket(
-  db: Database,
+  db: Database | ScopedTransaction,
   input: { readonly ticketId: string; readonly projectId: string; readonly businessId: string; readonly round: number },
 ): Promise<void> {
   await db
@@ -33,7 +35,10 @@ export async function findFeedbackLinkForTicket(
   return link ?? null;
 }
 
-/** The feedback sent on one project, newest first. Scoped by the business as well as the project, so a wrong business finds nothing. */
+/**
+ * The feedback sent on one project, newest first. Scoped by the business as well as the project, so a wrong business finds nothing.
+ * `body` is what the customer wrote (the ticket's first customer message), not the shortened subject.
+ */
 export async function listFeedbackForProject(
   db: Database,
   input: { readonly projectId: string; readonly businessId: string },
@@ -42,6 +47,7 @@ export async function listFeedbackForProject(
     readonly ticketId: string;
     readonly displayRef: string;
     readonly subject: string;
+    readonly body: string | null;
     readonly status: SupportStatus;
     readonly round: number;
     readonly createdAt: Date;
@@ -52,6 +58,7 @@ export async function listFeedbackForProject(
       ticketId: projectFeedbackTickets.ticketId,
       displayRef: supportTickets.displayRef,
       subject: supportTickets.subject,
+      body: sql<string | null>`(select ${supportMessages.body} from ${supportMessages} where ${supportMessages.ticketId} = ${projectFeedbackTickets.ticketId} and ${supportMessages.authorRole} = 'customer' order by ${supportMessages.id} limit 1)`,
       status: supportTickets.status,
       round: projectFeedbackTickets.round,
       createdAt: projectFeedbackTickets.createdAt,

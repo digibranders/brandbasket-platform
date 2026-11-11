@@ -29,6 +29,7 @@ import { type ManualPaymentOutcome } from "@brandbasket/shared/lib/billing/manua
 import { activateFirstPayment, activateReactivationPayment } from "@brandbasket/shared/server/billing-activation";
 import { getStaffDb } from "./db";
 import { syncTenantForBusiness } from "./payload-tenant-sync";
+import { sendPaymentReceipt } from "./payment-emails";
 import { announcePaymentToTeams } from "./teams-admin";
 import { cancelAtProvider } from "@brandbasket/shared/server/provider-cancellation";
 import { loadCarriedCode, loadReactivationBasket } from "@brandbasket/shared/server/reactivation-basket";
@@ -233,7 +234,10 @@ export async function recordManualFirstPayment(input: ManualFirstPayment, now: D
     return { outcome: { kind: "recorded" }, replaced, openedMembership: activation.openedMembership, newPaymentId: activation.alreadyRecorded ? null : activation.payment.id };
   });
 
-  if (step.newPaymentId != null) void announcePaymentToTeams(step.newPaymentId);
+  if (step.newPaymentId != null) {
+    void announcePaymentToTeams(step.newPaymentId);
+    void sendPaymentReceipt(step.newPaymentId);
+  }
 
   // A free listing account that paid by bank transfer has just become a client, so it gets a client's Payload tenant.
   if (step.openedMembership != null) await syncTenantForBusiness({ businessId, name: step.openedMembership.businessName });

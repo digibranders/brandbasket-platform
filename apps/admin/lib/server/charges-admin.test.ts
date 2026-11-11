@@ -16,6 +16,7 @@ vi.mock("@brandbasket/db", async () => {
 vi.mock("@brandbasket/shared/server/charge-payments", () => ({ recordChargePaymentWithInvoice: vi.fn() }));
 vi.mock("@brandbasket/shared/server/basket-change", () => ({ finishAddOnAfterPayment: vi.fn() }));
 vi.mock("./basket-deps", () => ({ basketDeps: () => ({ name: "basket-deps" }) }));
+vi.mock("./payment-emails", () => ({ sendPaymentReceipt: vi.fn(async () => undefined) }));
 vi.mock("./teams-admin", () => ({ announcePaymentToTeams: vi.fn(async () => undefined) }));
 vi.mock("./db", () => ({
   getStaffDb: () => ({ name: "staff-db", transaction: (fn: (tx: unknown) => unknown) => fn({ name: "staff-tx" }) }),
@@ -24,6 +25,7 @@ vi.mock("./db", () => ({
 import { findBillingState, findChargeForBusiness, insertCharge, lockBusinessForBilling } from "@brandbasket/db";
 import { finishAddOnAfterPayment } from "@brandbasket/shared/server/basket-change";
 import { recordChargePaymentWithInvoice } from "@brandbasket/shared/server/charge-payments";
+import { sendPaymentReceipt } from "./payment-emails";
 import { announcePaymentToTeams } from "./teams-admin";
 import { addClientCharge, markClientChargePaid } from "./charges-admin";
 
@@ -103,6 +105,7 @@ describe("markClientChargePaid", () => {
       markClientChargePaid({ businessId: BUSINESS, chargeId: "charge-1", staffUserId: "staff-1", details }, NOW),
     ).resolves.toBe("paid");
     expect(announcePaymentToTeams).toHaveBeenCalledWith("pay-charge-1");
+    expect(sendPaymentReceipt).toHaveBeenCalledWith("pay-charge-1");
     expect(lockBusinessForBilling).toHaveBeenCalledWith({ name: "staff-tx" }, BUSINESS);
     expect(recordChargePaymentWithInvoice).toHaveBeenCalledWith(
       { name: "staff-tx" },
@@ -114,6 +117,14 @@ describe("markClientChargePaid", () => {
       }),
     );
     expect(finishAddOnAfterPayment).toHaveBeenCalledWith({ name: "basket-deps" }, { businessId: BUSINESS, chargeId: "charge-1", now: NOW });
+  });
+
+  it("sends no receipt for a payment the charge refused, which is kept for staff", async () => {
+    vi.mocked(findChargeForBusiness).mockResolvedValue(OPEN_CHARGE);
+    vi.mocked(recordChargePaymentWithInvoice).mockResolvedValue({ outcome: "amount-mismatch", alreadyRecorded: false, payment: { id: "pay-kept" } as never } as never);
+    await markClientChargePaid({ businessId: BUSINESS, chargeId: "charge-1", staffUserId: "staff-1", details }, NOW);
+    expect(announcePaymentToTeams).toHaveBeenCalledWith("pay-kept");
+    expect(sendPaymentReceipt).not.toHaveBeenCalled();
   });
 
   it("writes nothing for a charge already settled, or not the client's", async () => {

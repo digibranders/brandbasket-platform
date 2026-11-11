@@ -1,5 +1,6 @@
 import { and, asc, eq, sql, type SQL } from "drizzle-orm";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { phoneAccountEmail } from "./phone-account";
 import { createSetupInvite } from "./queries/invites";
 import { createLead } from "./queries/leads";
 import {
@@ -9,6 +10,7 @@ import {
   newMediaAssetId,
   PhotoLimitReachedError,
   recordBrandAsset,
+  recordBrandAssetForStaff,
   recordUploadedMedia,
   removeBrandAsset,
   softDeleteMediaAsset,
@@ -21,6 +23,7 @@ import {
   DuplicateServiceIdError,
   getBusinessHours,
   getBusinessProfile,
+  getOwnerContact,
   getPrimaryDomain,
   getProjectBrief,
   listServices,
@@ -311,6 +314,13 @@ describe("saving and reading every step", () => {
     expect(created).toMatchObject({ displayName: "Only contact", email: "hello@example.test", tagline: null });
   });
 
+  it("offers the email and mobile given at sign-up, and nothing for a phone account's placeholder email", async () => {
+    await dbs.staff.db.update(users).set({ phoneNumber: "+919812345678" }).where(eq(users.id, USER_A));
+    expect(await asTenant("A", (tx) => getOwnerContact(tx, USER_A))).toEqual({ email: "ana@example.com", phone: "+919812345678" });
+    await dbs.staff.db.update(users).set({ email: phoneAccountEmail("+919812345678") }).where(eq(users.id, USER_A));
+    expect(await asTenant("A", (tx) => getOwnerContact(tx, USER_A))).toEqual({ email: null, phone: "+919812345678" });
+  });
+
   it("upserts the profile and brief instead of adding rows", async () => {
     await asTenant("A", async (tx) => {
       await saveBusinessProfile(tx, profileInput("First name"));
@@ -492,6 +502,37 @@ describe("brand assets after the website is built", () => {
     expect(await asTenant("A", (tx) => removeBrandAsset(tx, photo.asset.id))).toBeNull();
     expect(await asTenant("A", (tx) => removeBrandAsset(tx, "not-an-id"))).toBeNull();
     expect(await asTenant("A", (tx) => listMediaAssets(tx, "photo"))).toEqual([]);
+  });
+
+  it("lets staff add a photo and a logo for a business, which its own tenant then sees", async () => {
+    const photo = await recordBrandAssetForStaff(dbs.staff.db, businessA, { ...mediaInput(USER_A, businessA) }, LIMITS);
+    const mark = await recordBrandAssetForStaff(dbs.staff.db, businessA, { ...logo(), uploadedByUserId: USER_A }, LIMITS);
+
+    expect(photo.asset).toMatchObject({ businessId: businessA, purpose: "photo", uploadedByUserId: USER_A });
+    expect(mark.asset.purpose).toBe("logo");
+    expect((await asTenant("A", (tx) => listMediaAssets(tx, "photo"))).map((asset) => asset.id)).toEqual([photo.asset.id]);
+    expect(await asTenant("B", (tx) => listMediaAssets(tx, "photo"))).toEqual([]);
+  });
+
+  it("replaces the logo when staff add a new one, whoever added the old one, and hands back the replaced file", async () => {
+    const first = await asTenant("A", (tx) => recordBrandAsset(tx, logo(), LIMITS));
+    const second = await recordBrandAssetForStaff(dbs.staff.db, businessA, { ...logo(), uploadedByUserId: USER_A }, LIMITS);
+
+    expect(second.replacedStorageKeys).toEqual([first.asset.storageKey]);
+    expect((await asTenant("A", (tx) => listMediaAssets(tx, "logo"))).map((asset) => asset.id)).toEqual([second.asset.id]);
+  });
+
+  it("counts the customer's own photos against the limit when staff add one", async () => {
+    for (let index = 0; index < 2; index += 1) await asTenant("A", (tx) => recordBrandAsset(tx, mediaInput(USER_A, businessA), { maxPhotos: 2 }));
+
+    await expect(recordBrandAssetForStaff(dbs.staff.db, businessA, mediaInput(USER_A, businessA), { maxPhotos: 2 })).rejects.toBeInstanceOf(
+      PhotoLimitReachedError,
+    );
+    expect(await asTenant("A", (tx) => listMediaAssets(tx, "photo"))).toHaveLength(2);
+  });
+
+  it("refuses a business id that is not a UUID", async () => {
+    await expect(recordBrandAssetForStaff(dbs.staff.db, "not-an-id", mediaInput(USER_A, businessA), LIMITS)).rejects.toThrow("Business id must be a UUID");
   });
 });
 

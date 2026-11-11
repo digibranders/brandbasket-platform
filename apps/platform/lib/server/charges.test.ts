@@ -19,6 +19,8 @@ vi.mock("@brandbasket/shared/server/charge-payments", () => ({ recordChargePayme
 vi.mock("@brandbasket/shared/server/basket-change", () => ({ finishAddOnAfterPayment: vi.fn() }));
 vi.mock("./add-ons", () => ({ basketDeps: () => ({ name: "basket-deps" }) }));
 vi.mock("./billing", () => ({ getBillingProvider: vi.fn() }));
+vi.mock("./payment-emails", () => ({ sendPaymentReceipt: vi.fn(async () => undefined) }));
+vi.mock("./teams", () => ({ announcePaymentToTeams: vi.fn(async () => undefined) }));
 vi.mock("./db", () => ({
   getAppDb: () => ({ name: "app-db" }),
   getStaffDb: () => ({ name: "staff-db", transaction: (fn: (tx: unknown) => unknown) => fn({ name: "staff-tx" }) }),
@@ -34,6 +36,7 @@ import {
 import { finishAddOnAfterPayment } from "@brandbasket/shared/server/basket-change";
 import { recordChargePaymentWithInvoice } from "@brandbasket/shared/server/charge-payments";
 import { getBillingProvider } from "./billing";
+import { sendPaymentReceipt } from "./payment-emails";
 import {
   confirmFakeChargePayment,
   openBlogUnlock,
@@ -197,6 +200,21 @@ describe("confirmFakeChargePayment", () => {
     );
     // A paid add-on's provider step runs after the payment's transaction: it is a no-op for any other charge.
     expect(finishAddOnAfterPayment).toHaveBeenCalledWith({ name: "basket-deps" }, { businessId: BUSINESS, chargeId: CHARGE_ID, now: NOW });
+  });
+
+  it("emails a receipt for a charge that was paid, once, and none for a payment kept for staff or recorded before", async () => {
+    vi.mocked(getBillingProvider).mockReturnValue(provider({ confirmChargePayment: vi.fn().mockResolvedValue(confirmed) }));
+    vi.mocked(recordChargePaymentWithInvoice).mockResolvedValue({ outcome: "paid", alreadyRecorded: false, payment: { id: "pay-charge" } as never });
+    await confirmFakeChargePayment(TENANT, { token: "t" }, NOW);
+    expect(sendPaymentReceipt).toHaveBeenCalledTimes(1);
+    expect(sendPaymentReceipt).toHaveBeenCalledWith("pay-charge");
+
+    vi.mocked(sendPaymentReceipt).mockClear();
+    vi.mocked(recordChargePaymentWithInvoice).mockResolvedValue({ outcome: "paid", alreadyRecorded: true, payment: { id: "pay-charge" } as never });
+    await confirmFakeChargePayment(TENANT, { token: "t" }, NOW);
+    vi.mocked(recordChargePaymentWithInvoice).mockResolvedValue({ outcome: "amount-mismatch", alreadyRecorded: false, payment: { id: "pay-kept" } as never } as never);
+    await confirmFakeChargePayment(TENANT, { token: "t" }, NOW);
+    expect(sendPaymentReceipt).not.toHaveBeenCalled();
   });
 
   it("refuses a link for another business, and a link that does not verify, recording nothing", async () => {

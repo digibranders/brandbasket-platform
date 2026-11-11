@@ -24,7 +24,7 @@ function readText(formData: FormData, name: string): string {
 
 function finish(businessId: string, notice: "added" | "removed" | "invalid"): never {
   revalidatePath(`/clients/${businessId}`);
-  redirect(`/clients/${businessId}?updates=${notice}#updates`);
+  redirect(`/clients/${businessId}/billing?updates=${notice}#updates`);
 }
 
 /** Staff add a dated line that appears under What we did on the customer's Overview. */

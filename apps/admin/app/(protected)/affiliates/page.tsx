@@ -8,6 +8,7 @@ import { formatMoney } from "@brandbasket/shared/lib/money";
 import { buttonPrimary } from "@/components/console/buttons";
 import { Avatar } from "@/components/console/avatar";
 import { PageHeader } from "@/components/console/page-header";
+import { SectionTabs } from "@/components/console/section-tabs";
 import {
   PANEL_TABLE,
   PANEL_TD,
@@ -46,7 +47,7 @@ function owedByCurrency(rows: readonly { readonly totals: readonly AffiliateTota
 }
 
 export default async function AffiliatesPage(): Promise<ReactElement> {
-  const { user } = await requireStaffCan("money");
+  const { user, staff: viewer } = await requireStaffCan("money");
   await logStaffAccess({ staffUserId: user.id, action: "affiliates.list", targetType: "affiliates" });
   const affiliates = await listAffiliates(getStaffDb(), LIST_LIMIT);
   const members = affiliates.reduce((total, affiliate) => total + affiliate.members, 0);
@@ -64,6 +65,7 @@ export default async function AffiliatesPage(): Promise<ReactElement> {
           </Link>
         }
       />
+      <SectionTabs role={viewer.role} page="/affiliates" />
 
       <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
         <StatCard label="Affiliates" value={affiliates.length} icon={<Handshake className="size-4" weight="regular" />} />

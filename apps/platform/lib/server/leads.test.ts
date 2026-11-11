@@ -85,7 +85,7 @@ describe("recordLead", () => {
     expect(await recordLead(contact, "203.0.113.9", null)).toBe("recorded");
     expect(createLead).toHaveBeenCalledWith(DB, expect.objectContaining({ source: "pricing_page", plans: ["website", "growth"], city: "Pune", currency: "USD" }));
     const text = JSON.stringify(vi.mocked(alertTeams).mock.calls[0]?.[1]);
-    expect(text).toContain("Website, Social media");
+    expect(text).toContain("Website, Social & Ads");
     expect(text).toContain("Not given");
   });
 });

@@ -154,10 +154,10 @@ describe("activateFirstPayment", () => {
     expect(activation.openedMembership).toEqual({ businessName: "Smile Dental" });
   });
 
-  it("opens no onboarding project when the basket has no Managed Website line", async () => {
+  it("opens no onboarding project when the basket has no Website Management line", async () => {
     const tx = {} as never;
     vi.mocked(recordPaymentAndActivate).mockResolvedValue({ alreadyRecorded: false, payment: { id: "payment_1" } } as never);
-    vi.mocked(activateBundledAddOns).mockResolvedValueOnce([{ addOn: "digital-growth" } as BundledAddOn, { addOn: "local-seo-aeo" } as BundledAddOn]);
+    vi.mocked(activateBundledAddOns).mockResolvedValueOnce([{ addOn: "social-media" } as BundledAddOn, { addOn: "paid-ads" } as BundledAddOn]);
     vi.mocked(openMembershipForListingBusiness).mockResolvedValue({ businessName: "Smile Dental" });
     await activateFirstPayment(tx, BASE);
     expect(openMembershipForListingBusiness).toHaveBeenCalledWith(tx, "biz-1", { withProject: false });
@@ -359,7 +359,7 @@ describe("the tax invoice", () => {
     vi.mocked(accrueAffiliateEarning).mockClear();
     const lines = [
       { addOn: "managed-website", listAmountCents: 299_900, offerDiscountAmountCents: 59_980, taxRateBasisPoints: 1_800 },
-      { addOn: "digital-growth", listAmountCents: 999_900, offerDiscountAmountCents: 200_020, taxRateBasisPoints: 1_800 },
+      { addOn: "social-media", listAmountCents: 999_900, offerDiscountAmountCents: 200_020, taxRateBasisPoints: 1_800 },
     ];
     await activateRenewalPayment({} as never, { ...renewal, invoicedPrice: { plan, bundledAddOns: lines, netAmountCents: 0, discountAmountCents: 0, retentionDiscountCents: 0 } });
     expect(accrueAffiliateEarning).toHaveBeenCalledWith({}, { paymentId: "payment_1", subscriptionId: "sub_1", kind: "renewal", invoiced: { netCents: 1_039_800, discountCents: 0 } });

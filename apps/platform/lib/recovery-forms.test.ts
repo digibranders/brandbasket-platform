@@ -42,7 +42,7 @@ async function type(name: string, value: string): Promise<void> {
   });
 }
 
-const JOIN_PROPS = { initialChoice: "managed", services: ["managed-website"], basket: { name: "Managed Website", prices: { INR: null, USD: null } }, preselected: null, choices: BRAND.joinChoices, legalLinks: legalLinksFor(BRAND), prices: { INR: { managed: null }, USD: { managed: null } }, confirmsCodes: true, countries: [{ code: "IN", name: "India" }, { code: "AE", name: "United Arab Emirates" }], phoneCountries: [{ code: "IN", name: "India", dialCode: "+91", flag: "IN", example: "98765 43210", digits: { min: 10, max: 10 } }, { code: "AE", name: "United Arab Emirates", dialCode: "+971", flag: "AE", example: "50 123 4567", digits: { min: 8, max: 9 } }], defaultPhoneCountry: "IN" } as const;
+const JOIN_PROPS = { initialChoice: "managed", services: ["managed-website"], basket: { name: "Website Management", prices: { INR: null, USD: null } }, preselected: null, choices: BRAND.joinChoices, legalLinks: legalLinksFor(BRAND), prices: { INR: { managed: null }, USD: { managed: null } }, confirmsCodes: true, countries: [{ code: "IN", name: "India" }, { code: "AE", name: "United Arab Emirates" }], phoneCountries: [{ code: "IN", name: "India", dialCode: "+91", flag: "IN", example: "98765 43210", digits: { min: 10, max: 10 } }, { code: "AE", name: "United Arab Emirates", dialCode: "+971", flag: "AE", example: "50 123 4567", digits: { min: 8, max: 9 } }], defaultPhoneCountry: "IN" } as const;
 const codeStep = { otpId: "challenge", emailHint: "o•••@example.test", confirmRequired: true };
 
 /** Picks a state the way a person does: India is the country already chosen, and the state is never filled in for them. */
@@ -59,7 +59,7 @@ function optionsOf(fieldName: string): HTMLElement[] {
   return [...field.parentElement.querySelectorAll<HTMLElement>('[role="option"]')];
 }
 
-/** Fills the details a Managed Website sign-up asks for and asks for the code. */
+/** Fills the details a Website Management sign-up asks for and asks for the code. */
 async function askForCode(): Promise<void> {
   await type("businessName", "Smile Dental");
   await type("name", "Owner");
@@ -109,11 +109,11 @@ it("names the services the link chose and their package price above the details"
   await render(createElement(JoinForm, {
     ...JOIN_PROPS,
     action: async (): Promise<JoinFormState> => ({ status: "idle" }),
-    services: ["digital-growth", "local-seo-aeo"],
-    basket: { name: "Social Media and Ads and Local SEO + AEO", prices: { INR: "₹27,998 a month + 18% GST", USD: "$340 a month" } },
+    services: ["social-media", "paid-ads"],
+    basket: { name: "Social Media Management and Paid Ads Management", prices: { INR: "₹27,998 a month + 18% GST", USD: "$340 a month" } },
   }));
-  expect(container.textContent).toContain("Signing up for Social Media and Ads and Local SEO + AEO · ₹27,998 a month + 18% GST");
-  expect(container.textContent).not.toContain("Managed Website plan");
+  expect(container.textContent).toContain("Signing up for Social Media Management and Paid Ads Management · ₹27,998 a month + 18% GST");
+  expect(container.textContent).not.toContain("Website Management plan");
 });
 
 it("focuses signup details when replacing the plan chooser", async () => {
@@ -232,7 +232,7 @@ it("locks the details while a code is being sent", async () => {
 
 it("sends the services the website's basket chose with the sign-up details, so the plan's page opens on them", async () => {
   await render(createElement(JoinForm, {
-    ...JOIN_PROPS, services: ["digital-growth", "local-seo-aeo"], action: async (): Promise<JoinFormState> => ({ status: "idle" }),
+    ...JOIN_PROPS, services: ["social-media", "paid-ads"], action: async (): Promise<JoinFormState> => ({ status: "idle" }),
   }));
-  expect(container.querySelector<HTMLInputElement>('input[type="hidden"][name="services"]')?.value).toBe("digital-growth,local-seo-aeo");
+  expect(container.querySelector<HTMLInputElement>('input[type="hidden"][name="services"]')?.value).toBe("social-media,paid-ads");
 });

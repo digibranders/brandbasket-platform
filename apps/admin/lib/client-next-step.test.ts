@@ -1,6 +1,7 @@
 import type { ClientProject } from "@brandbasket/db";
 import { describe, expect, it } from "vitest";
 import { clientNextStep, overviewNextStep, previewLateReason } from "./client-next-step";
+import { NEXT_STEP_HEADLINES } from "./delivery-tab";
 
 const NOW = new Date("2026-11-30T09:00:00.000Z");
 
@@ -69,15 +70,15 @@ describe("overviewNextStep", () => {
     expect(overviewNextStep({ project: project({ status: "live" }), movingTo: { hostname: "omsweets.in", status: "pending" } }, NOW)).toEqual({ label: "Move them to their own domain", anchor: "domain" });
   });
 
-  it("starts a submitted build, late or not, linking to the top of the Project tab, where Start building is", () => {
-    expect(overviewNextStep({ project: project({}), movingTo: null }, NOW)).toEqual({ label: "Start building the website: preview 2 days late", anchor: null });
-    expect(overviewNextStep({ project: project({ slaDueAt: null }), movingTo: null }, NOW)).toEqual({ label: "Start building the website", anchor: null });
+  it("starts a submitted build, late or not, linking to the top of the Website tab, where Start building is", () => {
+    expect(overviewNextStep({ project: project({}), movingTo: null }, NOW)).toEqual({ label: "Start building: preview 2 days late", anchor: null });
+    expect(overviewNextStep({ project: project({ slaDueAt: null }), movingTo: null }, NOW)).toEqual({ label: "Start building", anchor: null });
   });
 
-  it("keeps sending the preview while building or in revisions, late or not", () => {
-    expect(overviewNextStep({ project: project({ status: "building" }), movingTo: null }, NOW)).toEqual({ label: "Send the preview: preview 2 days late", anchor: null });
-    expect(overviewNextStep({ project: project({ status: "building", slaDueAt: null }), movingTo: null }, NOW)).toEqual({ label: "Send the preview", anchor: null });
-    expect(overviewNextStep({ project: project({ status: "revisions" }), movingTo: null }, NOW)).toEqual({ label: "Send the preview: preview 2 days late", anchor: null });
+  it("keeps sending the preview while building, and making the changes in revisions, late or not", () => {
+    expect(overviewNextStep({ project: project({ status: "building" }), movingTo: null }, NOW)).toEqual({ label: "Send the first preview: preview 2 days late", anchor: null });
+    expect(overviewNextStep({ project: project({ status: "building", slaDueAt: null }), movingTo: null }, NOW)).toEqual({ label: "Send the first preview", anchor: null });
+    expect(overviewNextStep({ project: project({ status: "revisions" }), movingTo: null }, NOW)).toEqual({ label: "Make the customer's changes: preview 2 days late", anchor: null });
   });
 
   it("names going live once approved", () => {
@@ -85,8 +86,15 @@ describe("overviewNextStep", () => {
   });
 
   it("starts the build and goes live for kickoff-first projects", () => {
-    expect(overviewNextStep({ project: project({ onboardingSubmittedAt: null, slaDueAt: null }), movingTo: null }, NOW)).toEqual({ label: "Start building the website", anchor: null });
+    expect(overviewNextStep({ project: project({ onboardingSubmittedAt: null, slaDueAt: null }), movingTo: null }, NOW)).toEqual({ label: "Start building", anchor: null });
     expect(overviewNextStep({ project: project({ status: "approved", onboardingSubmittedAt: null }), movingTo: null }, NOW)).toEqual({ label: "Go live", anchor: "domain" });
+  });
+
+  it("uses the Website tab's next-step headline for every stage it shows", () => {
+    for (const status of ["submitted", "building", "revisions", "approved"] as const) {
+      const next = overviewNextStep({ project: project({ status, slaDueAt: null }), movingTo: null }, NOW);
+      expect(next?.label, status).toBe(NEXT_STEP_HEADLINES[status]);
+    }
   });
 
   it("is null when nothing waits on us", () => {

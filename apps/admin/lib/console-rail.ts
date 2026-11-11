@@ -1,91 +1,165 @@
 import type { StaffRole } from "@brandbasket/db";
 import { staffCan, type StaffCapability } from "@brandbasket/shared/lib/access";
 
-export type ConsoleRailIcon =
-  | "today" | "leads" | "clients" | "projects" | "requests" | "calls"
-  | "payments" | "invoices" | "prices" | "coupons" | "affiliates" | "ad-credit"
-  | "deliveries" | "errors" | "staff" | "settings" | "compliance";
+export type ConsoleRailIcon = "today" | "clients" | "inbox" | "calls" | "money" | "ads" | "team" | "settings";
 
 export type RailCountKey = "today" | "leads" | "projects" | "requests" | "calls" | "payments" | "deliveries";
 
-export interface ConsoleRailLink {
+export type RailCountTone = "accent" | "alert" | "quiet";
+
+/** "alert" draws a count in red (late or failed work); "quiet" in grey; the rest use the rattan accent. */
+const COUNT_TONES: Readonly<Record<RailCountKey, RailCountTone>> = {
+  today: "accent",
+  leads: "accent",
+  requests: "accent",
+  projects: "alert",
+  calls: "quiet",
+  payments: "accent",
+  deliveries: "alert",
+};
+
+const TONE_LOUDNESS: Readonly<Record<RailCountTone, number>> = { quiet: 0, accent: 1, alert: 2 };
+
+/** One page of a menu item. `label` is what its tab strip shows; `needs` hides it from roles that cannot open it. */
+export interface ConsoleRailPage {
   readonly href: string;
   readonly label: string;
-  readonly icon: ConsoleRailIcon;
-  readonly countKey?: RailCountKey;
-  /** "alert" draws the count in red (late or failed work); "quiet" in grey; default is the rattan accent. */
-  readonly countTone?: "accent" | "alert" | "quiet";
-  /** Hidden for roles without this capability. */
   readonly needs?: StaffCapability;
 }
 
-export interface ConsoleRailSection {
-  readonly label: string | null;
-  readonly links: readonly ConsoleRailLink[];
+export interface ConsoleRailGroup {
+  readonly label: string;
+  readonly icon: ConsoleRailIcon;
+  /** The counts added up beside the item. */
+  readonly countKeys?: readonly RailCountKey[];
+  /** Every page the item covers, in tab order. The first page the role may open is where the item links. */
+  readonly pages: readonly ConsoleRailPage[];
+}
+
+/** A group as one role sees it: only the pages that role may open, and the address the item links to. */
+export interface ConsoleRailLink extends ConsoleRailGroup {
+  readonly href: string;
 }
 
 export type RailCounts = Readonly<Partial<Record<RailCountKey, number>>>;
 
-/** The console's navigation, in order (plan 41, contract C2). Each later phase adds its own entry here. */
-export const CONSOLE_RAIL: readonly ConsoleRailSection[] = [
-  { label: null, links: [{ href: "/", label: "Today", icon: "today", countKey: "today" }] },
+/** The console's menu, in order. URLs never change when an item is renamed or regrouped. */
+export const CONSOLE_RAIL: readonly ConsoleRailGroup[] = [
+  { label: "Today", icon: "today", countKeys: ["today"], pages: [{ href: "/", label: "Today" }] },
   {
-    label: "Work",
-    links: [
-      { href: "/leads", label: "Enquiries", icon: "leads", countKey: "leads" },
-      { href: "/clients", label: "Clients", icon: "clients" },
-      { href: "/projects", label: "Projects", icon: "projects", countKey: "projects", countTone: "alert" },
-      { href: "/support", label: "Requests", icon: "requests", countKey: "requests" },
-      { href: "/calls", label: "Calls", icon: "calls", countKey: "calls", countTone: "quiet" },
+    label: "Clients",
+    icon: "clients",
+    countKeys: ["projects"],
+    pages: [
+      { href: "/clients", label: "List" },
+      { href: "/projects", label: "Board" },
+      { href: "/reports", label: "Reports" },
     ],
   },
+  {
+    label: "Inbox",
+    icon: "inbox",
+    countKeys: ["requests", "leads"],
+    pages: [
+      { href: "/support", label: "Requests" },
+      { href: "/leads", label: "Enquiries" },
+    ],
+  },
+  { label: "Calls", icon: "calls", countKeys: ["calls"], pages: [{ href: "/calls", label: "Calls" }] },
   {
     label: "Money",
-    links: [
-      { href: "/payments", label: "Payments", icon: "payments", countKey: "payments", needs: "money" },
-      { href: "/invoices", label: "Invoices", icon: "invoices", needs: "money" },
-      { href: "/pricing", label: "Prices", icon: "prices", needs: "money" },
-      { href: "/coupons", label: "Coupons", icon: "coupons", needs: "money" },
-      { href: "/affiliates", label: "Affiliates", icon: "affiliates", needs: "money" },
-      { href: "/ad-credit", label: "Ad credit", icon: "ad-credit" },
-      { href: "/ad-results", label: "Ad results", icon: "ad-credit", needs: "money" },
+    icon: "money",
+    countKeys: ["payments"],
+    pages: [
+      { href: "/payments", label: "Payments", needs: "money" },
+      { href: "/invoices", label: "Invoices", needs: "money" },
+      { href: "/pricing", label: "Prices", needs: "money" },
+      { href: "/coupons", label: "Coupons", needs: "money" },
+      { href: "/affiliates", label: "Affiliates", needs: "money" },
     ],
   },
   {
-    label: "System",
-    links: [
-      { href: "/deliveries", label: "Deliveries", icon: "deliveries", countKey: "deliveries", countTone: "alert" },
-      { href: "/support/errors", label: "Errors", icon: "errors" },
-      { href: "/staff", label: "Staff", icon: "staff", needs: "oversight" },
-      { href: "/settings", label: "Settings", icon: "settings" },
-      { href: "/access-log", label: "Compliance", icon: "compliance", needs: "oversight" },
+    label: "Ads",
+    icon: "ads",
+    pages: [
+      { href: "/ad-credit", label: "Ad credit" },
+      { href: "/ad-results", label: "Ad results", needs: "money" },
+    ],
+  },
+  {
+    label: "Team",
+    icon: "team",
+    pages: [
+      { href: "/staff", label: "Staff", needs: "oversight" },
+      { href: "/access-log", label: "Compliance", needs: "oversight" },
+    ],
+  },
+  {
+    label: "Settings",
+    icon: "settings",
+    countKeys: ["deliveries"],
+    pages: [
+      { href: "/settings", label: "Settings" },
+      { href: "/support/errors", label: "App errors" },
+      { href: "/deliveries", label: "Emails and webhooks" },
     ],
   },
 ];
 
-/** The rail a role sees: entries it cannot use are left out, and a section left empty goes too. */
-export function railFor(role: StaffRole): readonly ConsoleRailSection[] {
-  return CONSOLE_RAIL.map((section) => ({ ...section, links: section.links.filter((link) => link.needs === undefined || staffCan(role, link.needs)) })).filter(
-    (section) => section.links.length > 0,
-  );
+function pagesFor(role: StaffRole, group: ConsoleRailGroup): readonly ConsoleRailPage[] {
+  return group.pages.filter((page) => page.needs === undefined || staffCan(role, page.needs));
 }
 
-/** Pages that belong to a rail entry without sitting under its address. */
+/** The menu a role sees: pages it cannot open are left out, and an item left with no page goes too. */
+export function railFor(role: StaffRole): readonly ConsoleRailLink[] {
+  return CONSOLE_RAIL.flatMap((group) => {
+    const pages = pagesFor(role, group);
+    const first = pages[0];
+    return first === undefined ? [] : [{ ...group, href: first.href, pages }];
+  });
+}
+
+/** The tabs for the menu item that holds `page`, as `role` may open them; null when the role has no other page to switch to. */
+export function tabsFor(role: StaffRole, page: string): { readonly label: string; readonly pages: readonly ConsoleRailPage[] } | null {
+  const group = CONSOLE_RAIL.find((candidate) => candidate.pages.some((entry) => entry.href === page));
+  if (group === undefined) return null;
+  const pages = pagesFor(role, group);
+  return pages.length < 2 ? null : { label: group.label, pages };
+}
+
+/** The number and tone beside an item: its counts added up, drawn in the loudest tone among those that have something waiting. */
+export function railCount(link: ConsoleRailGroup, counts: RailCounts): { readonly value: number; readonly tone: RailCountTone } | null {
+  let value = 0;
+  let tone: RailCountTone | null = null;
+  for (const key of link.countKeys ?? []) {
+    const count = counts[key];
+    if (count === undefined || count === 0) continue;
+    value += count;
+    if (tone === null || TONE_LOUDNESS[COUNT_TONES[key]] > TONE_LOUDNESS[tone]) tone = COUNT_TONES[key];
+  }
+  return tone === null ? null : { value, tone };
+}
+
+/** Pages that belong to a menu item without sitting under its address. */
 export const RAIL_ALIASES: Readonly<Record<string, string>> = { "/breaches": "/access-log", "/privacy-requests": "/access-log" };
 
-/** Today only on "/" itself; every other entry on its own address and the pages under it. */
+/** Today only on "/" itself; every other page on its own address and the pages under it. */
 export function isCurrent(pathname: string, href: string): boolean {
   if (href === "/") return pathname === "/";
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
-/** The one entry to mark as the current page: the longest address that matches, so Errors wins over Requests. */
-export function currentHref(sections: readonly ConsoleRailSection[], pathname: string): string | null {
+/** The one item to mark as the current page: the one holding the longest matching address, so App errors wins over Requests. */
+export function currentHref(links: readonly ConsoleRailLink[], pathname: string): string | null {
   const resolved = Object.entries(RAIL_ALIASES).find(([prefix]) => isCurrent(pathname, prefix))?.[1] ?? pathname;
   let best: string | null = null;
-  for (const section of sections) {
-    for (const link of section.links) {
-      if (isCurrent(resolved, link.href) && (best === null || link.href.length > best.length)) best = link.href;
+  let bestLength = -1;
+  for (const link of links) {
+    for (const page of link.pages) {
+      if (isCurrent(resolved, page.href) && page.href.length > bestLength) {
+        best = link.href;
+        bestLength = page.href.length;
+      }
     }
   }
   return best;

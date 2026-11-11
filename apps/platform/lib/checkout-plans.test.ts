@@ -12,18 +12,18 @@ describe("the checkout's words", () => {
     expect(CHECKOUT_PLAN_COPY["managed-website"].blurb("₹2,999")).toBe("Website free to build, ₹2,999 a month to keep it running");
   });
 
-  it("names the package percentages from the pricing module", () => {
-    expect(CHECKOUT_COPY.packageNote).toBe("Two plans are 10% off, all three are 20% off.");
-    expect(CHECKOUT_COPY.allThree).toBe("All three plans: 20% off every month.");
+  it("names the monitoring offer instead of a package percentage", () => {
+    expect(CHECKOUT_COPY.packageNote).toBe("Take all three plans and Dedicated Expert Monitoring is free.");
+    expect(CHECKOUT_COPY.allThree).toBe("All three plans: Dedicated Expert Monitoring free every month.");
   });
 
   it("shows the build and launch steps when the basket has the website", () => {
     expect(checkoutSteps(["managed-website"]).map((step) => step.title)).toEqual(["You pay", "Book your kickoff call", "We start building", "Your website is live"]);
-    expect(checkoutSteps(["digital-growth", "managed-website"])).toHaveLength(4);
+    expect(checkoutSteps(["social-media", "managed-website"])).toHaveLength(4);
   });
 
   it("ends on 'We start on your plan' when the basket has no website", () => {
-    for (const services of [["digital-growth"], ["local-seo-aeo"], ["digital-growth", "local-seo-aeo"]] as const) {
+    for (const services of [["social-media"], ["paid-ads"], ["social-media", "paid-ads"]] as const) {
       expect(checkoutSteps(services)).toEqual([
         { title: "You pay", note: "Secure payment" },
         { title: "Book your kickoff call", note: "30 minutes, video" },

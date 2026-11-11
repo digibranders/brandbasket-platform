@@ -1,4 +1,4 @@
-import { applyChatbotQualification, findChatbotWebhookTarget, recordChatbotLead } from "@brandbasket/db";
+import { applyChatbotQualification, findChatbotWebhookTarget, recordChatbotLead, upsertEnquiryFromChatLead } from "@brandbasket/db";
 import { createHmac } from "node:crypto";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { getStaffDb } from "./db";
@@ -13,6 +13,7 @@ vi.mock("@brandbasket/db", () => ({
   applyChatbotQualification: vi.fn(),
   findChatbotWebhookTarget: vi.fn(),
   recordChatbotLead: vi.fn(),
+  upsertEnquiryFromChatLead: vi.fn(),
 }));
 
 const SECRET = "0123456789abcdef0123456789abcdef";
@@ -36,6 +37,8 @@ beforeEach(() => {
   vi.mocked(getStaffDb).mockReturnValue(staffDb);
   vi.mocked(findChatbotWebhookTarget).mockResolvedValue(TARGET);
   vi.mocked(applyChatbotQualification).mockResolvedValue(true);
+  vi.mocked(recordChatbotLead).mockResolvedValue("lead-1");
+  vi.mocked(upsertEnquiryFromChatLead).mockResolvedValue(true);
 });
 
 describe("handleOyeChatsWebhook", () => {
@@ -55,6 +58,33 @@ describe("handleOyeChatsWebhook", () => {
       company: null,
       capturedAt: new Date("2026-10-16T09:00:00.000Z"),
     });
+  });
+
+  it("writes the lead's enquiry right after storing it, once per delivery", async () => {
+    const body = lead();
+    await handleOyeChatsWebhook(body, sign(body));
+    expect(upsertEnquiryFromChatLead).toHaveBeenCalledTimes(1);
+    expect(upsertEnquiryFromChatLead).toHaveBeenCalledWith(staffDb, "lead-1");
+  });
+
+  it("still records the lead, alerts Teams and answers when the enquiry write fails", async () => {
+    const log = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    vi.mocked(upsertEnquiryFromChatLead).mockRejectedValue(new Error("insert failed, params: meera@example.com"));
+    const body = lead();
+
+    expect(await handleOyeChatsWebhook(body, sign(body))).toEqual({ kind: "recorded", businessId: "business-1" });
+
+    expect(recordChatbotLead).toHaveBeenCalledTimes(1);
+    expect(alertTeams).toHaveBeenCalledTimes(1);
+    expect(log).toHaveBeenCalled();
+    expect(JSON.stringify(log.mock.calls)).not.toContain("meera@example.com");
+    log.mockRestore();
+  });
+
+  it("writes no enquiry for a rating or an event it does not use", async () => {
+    const rating = JSON.stringify({ event: "tier_transition", bot_id: 41, timestamp: "2026-10-16T10:00:00+00:00", data: { session_id: "sess-1", new_tier: "sql", score: 80 } });
+    await handleOyeChatsWebhook(rating, sign(rating));
+    expect(upsertEnquiryFromChatLead).not.toHaveBeenCalled();
   });
 
   it("posts a Teams card for a new lead that names the client and none of the visitor's details", async () => {

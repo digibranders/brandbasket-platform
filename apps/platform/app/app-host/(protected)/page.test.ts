@@ -59,13 +59,13 @@ describe("reporting the first payment to Tag Manager", () => {
 
   it("reads the first payment only for the visit that opens the welcome, and hands it to the popup", async () => {
     vi.mocked(loadFirstPaymentEvent).mockResolvedValue(purchase);
-    await renderHome(home({ kind: "kickoff_unbooked" }), { welcome: "1" });
+    await renderHome(home({ kind: "kickoff_unbooked", missedAt: null }), { welcome: "1" });
     expect(loadFirstPaymentEvent).toHaveBeenCalledWith(tenant);
     expect(welcomeProps).toHaveBeenCalledWith(expect.objectContaining({ purchase }));
   });
 
   it("reads nothing on an ordinary visit", async () => {
-    await renderHome(home({ kind: "kickoff_unbooked" }));
+    await renderHome(home({ kind: "kickoff_unbooked", missedAt: null }));
     expect(loadFirstPaymentEvent).not.toHaveBeenCalled();
     expect(welcomeProps).toHaveBeenCalledWith(expect.objectContaining({ purchase: null }));
   });
@@ -92,7 +92,7 @@ describe("a payment problem keeps the old setup Home", () => {
 
 describe("before the kickoff", () => {
   it("greets the customer by name and asks them to book, with no checklist", async () => {
-    const html = await renderHome(home({ kind: "kickoff_unbooked" }));
+    const html = await renderHome(home({ kind: "kickoff_unbooked", missedAt: null }));
     expect(html).toMatch(/Good (morning|afternoon|evening), Asha/);
     expect(html).toContain("Book your kickoff");
     expect(html).toContain("[picker]");
@@ -101,7 +101,7 @@ describe("before the kickoff", () => {
   });
 
   it("shows what they told us before paying, only the rows they answered", async () => {
-    const html = await renderHome(home({ kind: "kickoff_unbooked" }, { intake: [{ field: "businessType", label: "Business", value: "Dental clinic" }] }));
+    const html = await renderHome(home({ kind: "kickoff_unbooked", missedAt: null }, { intake: [{ field: "businessType", label: "Business", value: "Dental clinic" }] }));
     expect(html).toContain("Dental clinic");
     expect(html).toContain("What we will cover");
   });
@@ -115,6 +115,51 @@ describe("before the kickoff", () => {
     expect(html).toContain("Add to calendar");
     expect(html).toContain("Reschedule");
     expect(html).not.toContain("Join meeting");
+  });
+});
+
+describe("a missed kickoff", () => {
+  it("asks again with the missed day and time above the picker when staff marked the call missed", async () => {
+    const html = await renderHome(home({ kind: "kickoff_unbooked", missedAt: new Date("2026-10-29T09:15:00Z") }));
+    expect(html).toContain("Book your kickoff");
+    expect(html).toContain("We missed each other on Thu 29 Oct, 2:45 pm. Pick a new time.");
+    expect(html.indexOf("We missed each other")).toBeLessThan(html.indexOf("[picker]"));
+  });
+
+  it("shows the plain booking screen when no call was missed", async () => {
+    expect(await renderHome(home({ kind: "kickoff_unbooked", missedAt: null }))).not.toContain("We missed each other");
+  });
+});
+
+describe("a call that ended with no word from staff", () => {
+  const unconfirmed = (callAt: string): ClientHomeState => ({ kind: "kickoff_unconfirmed", callAt: new Date(callAt) });
+
+  it("says we are confirming, with the time only when the call was today, and offers a new time", async () => {
+    const html = await renderHome(home(unconfirmed("2026-10-30T09:15:00Z")));
+    expect(html).toContain("We&#x27;re confirming your call");
+    expect(html).toContain("Your call was at 2:45 pm. If you couldn&#x27;t join, you can book a new time.");
+    expect(html).toContain("Book a new time");
+  });
+
+  it("names the day when the call was not today", async () => {
+    const html = await renderHome(home(unconfirmed("2026-10-29T09:15:00Z")));
+    expect(html).toContain("Your call was at Thu 29 Oct, 2:45 pm.");
+  });
+
+  it("does not say the kickoff is done, promise a preview date, or show building as now", async () => {
+    const html = await renderHome(home(unconfirmed("2026-10-30T09:15:00Z"), { project: { slaDueAt: new Date("2026-11-01T06:30:00Z"), previewSentAt: null, launchPlannedOn: null } }));
+    expect(html).not.toContain("kickoff is done");
+    expect(html).not.toContain("getting your website started");
+    expect(html).not.toContain("first preview");
+    expect(html).not.toContain("Preview by");
+    expect(html).not.toMatch(/Building<span[^>]*> \(now\)/);
+    expect(html).toMatch(/Kickoff<span[^>]*> \(now\)/);
+  });
+
+  it("keeps the old words for a call staff marked held", async () => {
+    const html = await renderHome(home({ kind: "starting" }));
+    expect(html).toContain("We are getting your website started");
+    expect(html).toContain("Your kickoff is done.");
   });
 });
 
@@ -133,7 +178,7 @@ describe("while the website is built", () => {
   });
 
   it("offers no Open Website button until there is a preview or a live site", async () => {
-    for (const state of [{ kind: "starting" }, { kind: "preparing", dueAt: null }, { kind: "building", dueAt: null }, { kind: "revisions" }, { kind: "approved" }] as const) {
+    for (const state of [{ kind: "starting" }, { kind: "kickoff_unconfirmed", callAt: new Date("2026-10-30T09:15:00Z") }, { kind: "preparing", dueAt: null }, { kind: "building", dueAt: null }, { kind: "revisions" }, { kind: "approved" }] as const) {
       expect(await renderHome(home(state))).not.toContain("Open Website");
     }
   });

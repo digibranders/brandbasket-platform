@@ -3,7 +3,7 @@
 import { Check } from "@phosphor-icons/react/dist/ssr";
 import Link from "next/link";
 import { useActionState, useEffect, useMemo, useRef, useState, type ReactElement } from "react";
-import { addOnById, MONTHLY_ADD_ON_IDS, type MonthlyAddOnId } from "@brandbasket/shared/lib/billing/add-ons";
+import { addOnById, PLAN_ADD_ON_IDS, type MonthlyAddOnId } from "@brandbasket/shared/lib/billing/add-ons";
 import { bundleLines } from "@brandbasket/shared/lib/billing/bundle";
 import { formatMoney } from "@brandbasket/shared/lib/money";
 import { applyMembershipCode, removeMembershipCode, startMembership, startMembershipWithBilling } from "@/app/app-host/(protected)/plan/actions";
@@ -148,7 +148,7 @@ export function CheckoutLedger({
             <>
               <p className="text-ink-2">{CHECKOUT_COPY.packageNote}</p>
               <div role="group" aria-label="Plans" className="mt-4 grid gap-2">
-                {MONTHLY_ADD_ON_IDS.map((id) => {
+                {PLAN_ADD_ON_IDS.map((id) => {
                   const on = services.includes(id);
                   const addOn = addOnById(id);
                   return (
@@ -187,7 +187,7 @@ export function CheckoutLedger({
                   );
                 })}
               </div>
-              {services.length === MONTHLY_ADD_ON_IDS.length ? (
+              {services.length === PLAN_ADD_ON_IDS.length ? (
                 <p className="mt-3 text-[0.84375rem] font-semibold text-sage-deep">{CHECKOUT_COPY.allThree}</p>
               ) : null}
             </>
@@ -224,18 +224,7 @@ export function CheckoutLedger({
             {summary.adCredit === null ? null : <p className="mt-1 text-right text-[0.8125rem] font-semibold text-sage-deep">{summary.adCredit.label}</p>}
           </div>
 
-          {billed ? (
-            <form id="checkout-pay" ref={gstFormRef} action={gstFormAction} noValidate>
-              {payFields}
-            </form>
-          ) : (
-            <form id="checkout-pay" action={usdAction}>
-              {payFields}
-            </form>
-          )}
-          <p className="mt-3 text-[0.8125rem] text-ink-2">{renewalTerms(summary, { ...pricing, initialTermMonths }, code?.months ?? null)}</p>
-
-          <div className="mt-3.5 flex flex-wrap gap-x-[22px] gap-y-1.5 border-t border-line pt-3.5">
+          <div className="my-3.5 flex flex-wrap gap-x-[22px] gap-y-1.5 border-t border-line pt-3.5">
             <details className="min-w-0 open:basis-full" open={code !== null || lapsedCode !== null}>
               <summary className={DETAILS_SUMMARY}>Have a code? (optional)</summary>
               <div className="mt-2.5">
@@ -252,6 +241,17 @@ export function CheckoutLedger({
               </div>
             </details>
           </div>
+
+          {billed ? (
+            <form id="checkout-pay" ref={gstFormRef} action={gstFormAction} noValidate>
+              {payFields}
+            </form>
+          ) : (
+            <form id="checkout-pay" action={usdAction}>
+              {payFields}
+            </form>
+          )}
+          <p className="mt-3 text-[0.8125rem] text-ink-2">{renewalTerms(summary, { ...pricing, initialTermMonths }, code?.months ?? null)}</p>
         </section>
 
         <aside aria-label="About your plan">

@@ -25,7 +25,7 @@ export default async function TodayPage(): Promise<ReactElement> {
   await logStaffAccess({ staffUserId: user.id, action: "today.view", targetType: "today" });
   const now = new Date();
   const endOfToday = todayRange(now).end;
-  const today = await loadTodayPage(now, staffCan(staff.role, "money"));
+  const today = await loadTodayPage(now, staffCan(staff.role, "money"), staffCan(staff.role, "integrations"));
   const late = today.items.filter((item) => item.dueAt !== null && item.dueAt.getTime() < now.getTime()).length;
 
   return (

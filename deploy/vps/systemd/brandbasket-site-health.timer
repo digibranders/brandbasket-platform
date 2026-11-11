@@ -1,0 +1,12 @@
+# Starts brandbasket-site-health.service every 10 minutes for uptime and certificate checks; the phone speed check inside it
+# limits itself to once a day per site. Installed, not enabled (docs/deployment/brandbasket-vps.md, "Site health").
+[Unit]
+Description=Brandbasket site health checks every 10 minutes
+
+[Timer]
+OnCalendar=*:0/10
+Persistent=true
+RandomizedDelaySec=30
+
+[Install]
+WantedBy=timers.target

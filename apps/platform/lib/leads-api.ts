@@ -52,8 +52,11 @@ export const leadApiRequestSchema = z.object({
 
 export type LeadApiRequest = z.infer<typeof leadApiRequestSchema>;
 
-/** The plan ids the website's basket sends (brandbasket-website lib/pricing.ts PLAN_IDS). */
-export const WEBSITE_PLAN_IDS = ["website", "growth", "search"] as const;
+/**
+ * The plan ids the website's basket sends (brandbasket-website lib/pricing.ts PLAN_IDS). `growth` and `search` are the ids
+ * before 2026-11-06, still accepted from a page that was open across the release.
+ */
+export const WEBSITE_PLAN_IDS = ["website", "social", "ads", "growth", "search"] as const;
 
 /**
  * An enquiry from the website's contact and pricing form (brandbasket-website app/api/contact/route.ts), posted after the

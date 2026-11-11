@@ -49,6 +49,21 @@ const serverEnvSchema = z.object({
   }),
   /** The domain free addresses are made on (<name>.<this>). Optional: unset, no free address is offered. */
   CLIENT_SITE_BASE_DOMAIN: optionalClientSiteBaseDomain,
+  /** The email of the Google service account customers add as a Viewer on their Analytics property. Shown to staff only; the key is the platform's, not this app's. */
+  GA4_SERVICE_ACCOUNT_EMAIL: z
+    .string()
+    .trim()
+    .refine((value) => value === "" || z.email().safeParse(value).success, { error: "GA4_SERVICE_ACCOUNT_EMAIL must be an email address" })
+    .optional(),
+  /** The OAuth client of the Brandbasket Google project (plan 62). All four set means the Google account can be connected from Settings. */
+  GOOGLE_OAUTH_CLIENT_ID: z.string().trim().min(1).optional(),
+  GOOGLE_OAUTH_CLIENT_SECRET: z.string().trim().min(1).optional(),
+  /** The callback Google sends staff back to; it must be one of the client's authorised redirect URIs. */
+  GOOGLE_OAUTH_REDIRECT_URI: z.url({ protocol: /^https?$/, error: "GOOGLE_OAUTH_REDIRECT_URI must be an absolute http:// or https:// URL" }).optional(),
+  /** The one Google account the console accepts a sign-in from. */
+  GOOGLE_ACCOUNT_EMAIL: z.email({ error: "GOOGLE_ACCOUNT_EMAIL must be an email address" }).optional(),
+  /** The same switch the platform's go live job reads: whether the Analytics tag goes on client sites. The Google card only reports it. */
+  GOOGLE_ANALYTICS_TAG_ENABLED: z.string().optional(),
 });
 
 export type ServerEnv = z.infer<typeof serverEnvSchema>;

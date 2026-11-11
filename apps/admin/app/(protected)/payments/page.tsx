@@ -11,6 +11,7 @@ import { FilterPills } from "@/components/console/filter-pills";
 import { EmptyLine } from "@/components/console/hairline-list";
 import { Notice } from "@/components/console/notice";
 import { PageHeader } from "@/components/console/page-header";
+import { SectionTabs } from "@/components/console/section-tabs";
 import { StatusPill } from "@/components/console/status-pill";
 import { TABLE, TD, TD_NUM, TD_TIME, TH } from "@/components/console/table";
 import { monthLabel, resolveRegisterMonth } from "@/lib/invoice-register-view";
@@ -46,7 +47,7 @@ interface PaymentsPageProps {
  * cover the whole month. Finance and admin only.
  */
 export default async function PaymentsPage({ searchParams }: PaymentsPageProps): Promise<ReactElement> {
-  const { user } = await requireStaffCan("money");
+  const { user, staff: viewer } = await requireStaffCan("money");
   const params = await searchParams;
   const month = resolveRegisterMonth(params.month, new Date());
   const bounds = month === null ? null : paymentMonthBounds(month);
@@ -87,6 +88,7 @@ export default async function PaymentsPage({ searchParams }: PaymentsPageProps):
           </>
         }
       />
+      <SectionTabs role={viewer.role} page="/payments" />
 
       <Figures
         items={[

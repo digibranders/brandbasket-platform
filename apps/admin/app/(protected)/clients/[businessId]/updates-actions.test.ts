@@ -48,7 +48,7 @@ describe("addUpdateAction", () => {
   it("adds the update as the signed-in staff member, logs it and returns to the section", async () => {
     await expect(
       addUpdateAction(form({ businessId: BUSINESS, service: "website", title: "  Fixed the menu page ", date: "2026-10-20" })),
-    ).rejects.toThrow(`redirect:/clients/${BUSINESS}?updates=added#updates`);
+    ).rejects.toThrow(`redirect:/clients/${BUSINESS}/billing?updates=added#updates`);
     expect(addActivityEvent).toHaveBeenCalledWith(DB, {
       businessId: BUSINESS,
       service: "website",
@@ -74,7 +74,7 @@ describe("addUpdateAction", () => {
 
   it("calls nothing and redirects with invalid when the form is not valid", async () => {
     await expect(addUpdateAction(form({ businessId: BUSINESS, service: "", title: "ab", date: "" }))).rejects.toThrow(
-      `redirect:/clients/${BUSINESS}?updates=invalid#updates`,
+      `redirect:/clients/${BUSINESS}/billing?updates=invalid#updates`,
     );
     expect(addActivityEvent).not.toHaveBeenCalled();
     expect(logStaffAccessOrThrow).not.toHaveBeenCalled();
@@ -95,7 +95,7 @@ describe("addUpdateAction", () => {
 describe("removeUpdateAction", () => {
   it("removes the update only within the given business, logs it and returns to the section", async () => {
     vi.mocked(removeActivityEvent).mockResolvedValue(true);
-    await expect(removeUpdateAction(form({ id: EVENT, businessId: BUSINESS }))).rejects.toThrow(`redirect:/clients/${BUSINESS}?updates=removed#updates`);
+    await expect(removeUpdateAction(form({ id: EVENT, businessId: BUSINESS }))).rejects.toThrow(`redirect:/clients/${BUSINESS}/billing?updates=removed#updates`);
     expect(removeActivityEvent).toHaveBeenCalledWith(DB, { id: EVENT, businessId: BUSINESS });
     expect(logStaffAccessOrThrow).toHaveBeenCalledWith({
       staffUserId: "staff-1",
@@ -115,7 +115,7 @@ describe("removeUpdateAction", () => {
 
   it("writes no log entry, and still returns to the section, when the update was already gone", async () => {
     vi.mocked(removeActivityEvent).mockResolvedValue(false);
-    await expect(removeUpdateAction(form({ id: EVENT, businessId: BUSINESS }))).rejects.toThrow(`redirect:/clients/${BUSINESS}?updates=removed#updates`);
+    await expect(removeUpdateAction(form({ id: EVENT, businessId: BUSINESS }))).rejects.toThrow(`redirect:/clients/${BUSINESS}/billing?updates=removed#updates`);
     expect(logStaffAccessOrThrow).not.toHaveBeenCalled();
   });
 

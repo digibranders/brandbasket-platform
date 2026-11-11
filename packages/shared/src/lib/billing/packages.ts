@@ -1,15 +1,15 @@
 import type { MoneyCurrency } from "../money";
-import { addOnById, addOnPrice, MONTHLY_ADD_ON_IDS, type AddOnPrice, type MonthlyAddOnId } from "./add-ons";
+import { addOnById, addOnPrice, MONITORING_ID, MONTHLY_ADD_ON_IDS, type AddOnPrice, type MonthlyAddOnId, type PlanAddOnId } from "./add-ons";
 
 /**
- * Package offers (owner decisions, 2026-10-21 and 2026-10-26; docs/plans/16-platform-pricing-offers.md and
- * docs/plans/25-money-gst-and-offers.md). Two services on one subscription are 10% off and all three 20% off, taken off the
- * price the customer pays (GST included), and the package saving is rounded down to a whole rupee or dollar (the rule in
- * packageDiscountsFor); a package bought together at the first checkout also earns monthly ad credit. Pure and
- * browser-safe. brandbasket-website holds the same numbers in lib/pricing.ts.
+ * Package offers. There are none now (owner, 2026-11-11): each plan is at its own price whatever else is bought, and the
+ * only offer is Dedicated Expert Monitoring at no cost with all three plans (add-ons.ts monitoringIncludedWith). The
+ * rules below stay for rows sold under the old offers (10% off two services, 20% off all three, with monthly ad credit;
+ * docs/plans/25-money-gst-and-offers.md): a discount stored on a row keeps its price. Pure and browser-safe.
+ * brandbasket-website holds the same rule in lib/pricing.ts.
  */
 interface PackageOffer {
-  readonly services: readonly MonthlyAddOnId[];
+  readonly services: readonly PlanAddOnId[];
   readonly basisPoints: number;
   readonly adCreditCents: Readonly<Record<MoneyCurrency, number>>;
 }
@@ -27,16 +27,8 @@ const BASIS_POINTS_DENOMINATOR = 10_000;
 /** A package saving is a whole number of rupees or dollars: a multiple of this many minor units. */
 const PACKAGE_ROUNDING_CENTS = 100;
 
-/**
- * Ad credit a month at the first checkout (owner, 2026-10-26): 1,500 rupees for Website + Social and for Social + SEO, 3,000 for
- * all three, none for Website + SEO. In dollars it is $30 for the two-plan packages and $60 for all three (owner, 2026-10-26).
- */
-export const PACKAGE_OFFERS: readonly PackageOffer[] = [
-  { services: ["managed-website", "digital-growth"], basisPoints: 1000, adCreditCents: { INR: 150000, USD: 3000 } },
-  { services: ["managed-website", "local-seo-aeo"], basisPoints: 1000, adCreditCents: { INR: 0, USD: 0 } },
-  { services: ["digital-growth", "local-seo-aeo"], basisPoints: 1000, adCreditCents: { INR: 150000, USD: 3000 } },
-  { services: ["managed-website", "digital-growth", "local-seo-aeo"], basisPoints: 2000, adCreditCents: { INR: 300000, USD: 6000 } },
-];
+/** Every package offer on sale: none since 2026-11-11, so no basket takes a package discount or ad credit. */
+export const PACKAGE_OFFERS: readonly PackageOffer[] = [];
 
 /** The services once each, in the catalogue's order. */
 function distinctServices(services: readonly MonthlyAddOnId[]): readonly MonthlyAddOnId[] {
@@ -44,9 +36,15 @@ function distinctServices(services: readonly MonthlyAddOnId[]): readonly Monthly
   return MONTHLY_ADD_ON_IDS.filter((id) => picked.has(id));
 }
 
+/** Whether a service is part of packages: every plan; never monitoring. */
+function inPackage(id: MonthlyAddOnId): boolean {
+  return id !== MONITORING_ID;
+}
+
+/** The offer for the plans among these services, or null when they make no package. */
 function offerFor(services: readonly MonthlyAddOnId[]): PackageOffer | null {
-  const picked = new Set(services);
-  return PACKAGE_OFFERS.find((o) => o.services.length === picked.size && o.services.every((id) => picked.has(id))) ?? null;
+  const plans = distinctServices(services).filter(inPackage);
+  return PACKAGE_OFFERS.find((o) => o.services.length === plans.length && o.services.every((id) => plans.includes(id))) ?? null;
 }
 
 /** Basis points off each line for this set of services; 0 for one service or once the business has forfeited. */
@@ -78,16 +76,19 @@ export interface PackageListLine {
  * the order summary, the invoice and the console all take their discounts from here.
  */
 export function packageDiscountsFor(lines: readonly PackageListLine[], basisPoints: number): number[] {
-  const discounts = lines.map((line) => packageDiscountCentsFor(line.listCents, basisPoints));
-  if (basisPoints === 0 || lines.length === 0) return discounts;
-  const listCents = lines.reduce((total, line) => total + line.listCents, 0);
+  // A line outside packages (monitoring) takes no share and carries no rounding.
+  const counted = (line: PackageListLine): boolean => inPackage(line.addOn);
+  const discounts = lines.map((line) => (counted(line) ? packageDiscountCentsFor(line.listCents, basisPoints) : 0));
+  if (basisPoints === 0 || !lines.some(counted)) return discounts;
+  const listCents = lines.reduce((total, line) => total + (counted(line) ? line.listCents : 0), 0);
   const savingCents = Math.floor((listCents * basisPoints) / (BASIS_POINTS_DENOMINATOR * PACKAGE_ROUNDING_CENTS)) * PACKAGE_ROUNDING_CENTS;
   const differenceCents = savingCents - discounts.reduce((total, discount) => total + discount, 0);
   if (differenceCents === 0) return discounts;
   const catalogueRank = (line: PackageListLine): number => MONTHLY_ADD_ON_IDS.indexOf(line.addOn);
   const dearest = lines.reduce((best, line, index) => {
+    if (!counted(line)) return best;
     const bestLine = lines[best];
-    if (bestLine === undefined) return index;
+    if (bestLine === undefined || !counted(bestLine)) return index;
     return line.listCents > bestLine.listCents || (line.listCents === bestLine.listCents && catalogueRank(line) < catalogueRank(bestLine)) ? index : best;
   }, 0);
   return discounts.map((discount, index) => (index === dearest ? discount + differenceCents : discount));
@@ -154,6 +155,14 @@ export function percentOf(basisPoints: number): string {
   const hundredths = basisPoints % 100;
   if (hundredths === 0) return String(whole);
   return `${whole}.${String(hundredths).padStart(2, "0").replace(/0$/, "")}`;
+}
+
+/**
+ * The whole percentage, in basis points, of an offer stored on lines sold under a package that is no longer on sale
+ * (none is since 2026-11-11): 10% or 20%, the paise of the package rounding aside. 0 when nothing is listed.
+ */
+export function soldPackageBasisPoints(listCents: number, offerCents: number): number {
+  return listCents > 0 ? Math.round((offerCents * 100) / listCents) * 100 : 0;
 }
 
 /**

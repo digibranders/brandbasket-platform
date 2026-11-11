@@ -43,7 +43,7 @@ export const MANUAL_PAYMENT_NOTICES: Readonly<Record<ManualPaymentNotice, { read
 };
 
 export function manualPaymentNoticeHref(businessId: string, notice: ManualPaymentNotice): string {
-  return `/clients/${businessId}?payment=${notice}`;
+  return `/clients/${businessId}/billing?payment=${notice}`;
 }
 
 export function readManualPaymentNotice(value: string | string[] | undefined): ManualPaymentNotice | null {

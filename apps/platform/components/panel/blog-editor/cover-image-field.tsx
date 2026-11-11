@@ -5,7 +5,7 @@ import { useRef, useState, useTransition, type ReactElement } from "react";
 import type { BlogFormResult } from "@/app/app-host/(protected)/content/blog/actions";
 import type { BlogPostImage } from "@/lib/server/blog";
 import { uploadContentMedia } from "@/lib/uploads/content-media-upload-client";
-import { ACCEPTED_UPLOAD_TYPES, isAcceptedUploadType, MAX_UPLOAD_BYTES, TOO_LARGE_MESSAGE } from "@/lib/uploads/limits";
+import { ACCEPTED_UPLOAD_TYPES, isAcceptedUploadType, MAX_UPLOAD_BYTES, TOO_LARGE_MESSAGE } from "@brandbasket/shared/lib/uploads/limits";
 import { INPUT_CLASS } from "./parts";
 
 interface CoverImageFieldProps {

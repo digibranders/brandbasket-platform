@@ -39,6 +39,15 @@ export function getAppDb(): Database {
  * - lib/server/kickoff-sync.ts, the scheduled job that starts a website build once its kickoff call is over. It takes no
  *   input but the clock; it writes only a project's status and first-preview date and one "What we did" line, and is reached
  *   only through app/api/internal/start-builds-after-kickoff, which needs its own secret.
+ * - lib/server/missed-kickoff.ts, which reads the signed-in customer's own latest kickoff outcome from setup_call_outcomes
+ *   (staff-only, append only) to say on Home that the last call was missed. It reads one row for the business in the session,
+ *   returns only the call's start time, never the note or the staff member, and writes nothing.
+ * - lib/server/preview-versions.ts, which reads the signed-in customer's own project's preview history for the Website page:
+ *   the versions staff sent (project_preview_versions, staff-only, append only) and the rounds of changes the customer sent
+ *   (project_feedback_tickets, staff-only, with the first message of the customer's own ticket). Read only. The business id
+ *   comes only from the session and every query matches it as well as the project, so another business's project finds
+ *   nothing; it returns the number, link and time of each version and the round, ticket, text and time of each round, never
+ *   the sender or any staff note.
  * - app/api/site/info/route.ts and app/api/site/events/route.ts, because the site token has already proven the business, so
  *   there is no customer session to scope a connection under -- and the public role can't read the module settings and
  *   services these need before they read anything.

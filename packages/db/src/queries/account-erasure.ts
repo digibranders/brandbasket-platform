@@ -1,4 +1,6 @@
 import { eraseChatbotsOfBusiness } from "./chatbots";
+import { eraseEnquiriesOfBusiness } from "./enquiries";
+import { enquiries } from "../schema/enquiries";
 import { and, asc, eq, inArray, isNotNull, isNull, lte, ne, or, sql } from "drizzle-orm";
 import type { Database } from "../client";
 import { listBusinessProductPhotoIds } from "./directory-business-catalog";
@@ -6,6 +8,12 @@ import { waiveChangeChargesForErasure } from "./change-request-payment";
 import { eraseSupportDataForUser } from "./support";
 import type { ScopedTransaction } from "../scope";
 import {
+  businessInvites,
+  siteChecks,
+  connectedAccounts,
+  notificationPreferences,
+  notificationReads,
+  websitePages,
   accountClosures,
   accountOtps,
   accounts,
@@ -44,6 +52,7 @@ import {
   metricDaily,
   monthlyReports,
   monthlySnapshots,
+  adCampaignSnapshots,
   onboardingProgress,
   patients,
   practitionerHours,
@@ -335,6 +344,7 @@ export async function eraseClosedAccount(db: Database, input: { readonly closure
     await tx.delete(activityEvents).where(eq(activityEvents.businessId, businessId));
     await tx.delete(businessActivity).where(eq(businessActivity.businessId, businessId));
     await tx.delete(monthlySnapshots).where(eq(monthlySnapshots.businessId, businessId));
+    await tx.delete(adCampaignSnapshots).where(eq(adCampaignSnapshots.businessId, businessId));
     await tx.delete(deliverables).where(eq(deliverables.businessId, businessId));
     await tx.delete(monthlyReports).where(eq(monthlyReports.businessId, businessId));
     await tx.delete(siteEvents).where(eq(siteEvents.businessId, businessId));
@@ -355,6 +365,15 @@ export async function eraseClosedAccount(db: Database, input: { readonly closure
     await tx.delete(mediaAssets).where(eq(mediaAssets.businessId, businessId));
     // The chatbots OyeChats runs for the business, their webhook secrets and the visitors' details they collected.
     await eraseChatbotsOfBusiness(tx, businessId);
+    // Customer app v4: everyone who got in touch with the business, its pages and accounts, the invites the owner sent,
+    // and each person's notification settings for it (other members block erasure, so only the leaving user has any).
+    await eraseEnquiriesOfBusiness(tx, businessId);
+    await tx.delete(websitePages).where(eq(websitePages.businessId, businessId));
+    await tx.delete(siteChecks).where(eq(siteChecks.businessId, businessId));
+    await tx.delete(connectedAccounts).where(eq(connectedAccounts.businessId, businessId));
+    await tx.delete(businessInvites).where(eq(businessInvites.businessId, businessId));
+    await tx.delete(notificationPreferences).where(or(eq(notificationPreferences.businessId, businessId), eq(notificationPreferences.userId, userId)));
+    await tx.delete(notificationReads).where(or(eq(notificationReads.businessId, businessId), eq(notificationReads.userId, userId)));
 
     // The directory listing: what the owner wrote and uploaded goes; the place itself is public and stays, unclaimed.
     await tx.delete(directoryBusinessCategories).where(eq(directoryBusinessCategories.businessId, businessId));
@@ -410,4 +429,38 @@ export async function eraseClosedAccount(db: Database, input: { readonly closure
     await tx.update(accountClosures).set({ erasedAt: now }).where(eq(accountClosures.id, closureId));
     return { kind: "erased", closureId, userId, businessId, storageKeys, vimeoIds };
   });
+}
+
+/*
+ * Enquirers' details (gate G2). An enquiry that holds a form's or an ad lead's contents carries `retain_until`. These two
+ * erase the details and keep the row, so the customer's counts do not change. Both run on the staff connection.
+ */
+
+const ERASED_DETAILS = { name: null, phone: null, email: null, message: null } as const;
+
+/** Erases the details of every enquiry of one business that carries this email address or phone number, on the enquirer's request. Returns how many. */
+export async function eraseEnquirerDetails(
+  db: Database,
+  input: { readonly businessId: string; readonly email?: string; readonly phone?: string; readonly now: Date },
+): Promise<number> {
+  const email = input.email?.trim();
+  const phone = input.phone?.trim();
+  if (!email && !phone) throw new Error("Erasing an enquirer's details needs an email address or a phone number to find them by.");
+  const matches = [email ? sql`lower(${enquiries.email}) = lower(${email})` : undefined, phone ? eq(enquiries.phone, phone) : undefined];
+  const rows = await db
+    .update(enquiries)
+    .set({ ...ERASED_DETAILS, detailsErasedAt: input.now, updatedAt: input.now })
+    .where(and(eq(enquiries.businessId, input.businessId), isNull(enquiries.detailsErasedAt), or(...matches)))
+    .returning({ id: enquiries.id });
+  return rows.length;
+}
+
+/** The retention job's step: erases the details of every enquiry whose `retain_until` has passed. Returns how many. */
+export async function eraseExpiredEnquiryDetails(db: Database, now: Date): Promise<number> {
+  const rows = await db
+    .update(enquiries)
+    .set({ ...ERASED_DETAILS, detailsErasedAt: now, updatedAt: now })
+    .where(and(isNotNull(enquiries.retainUntil), lte(enquiries.retainUntil, now), isNull(enquiries.detailsErasedAt)))
+    .returning({ id: enquiries.id });
+  return rows.length;
 }

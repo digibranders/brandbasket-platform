@@ -3,6 +3,7 @@ import type { Database } from "../client";
 import type { ScopedTransaction } from "../scope";
 import { bundledNetCents, findLiveBundledAddOns, insertBundledAddOns, removeBundledAddOnsOf, type NewBundledAddOn } from "./bundled-add-ons";
 import { markLeadPaidForBusiness } from "./leads";
+import { isUnappliedReason } from "../unapplied-reasons";
 import { isUuid } from "./tenant";
 import {
   addOnPayments,
@@ -288,10 +289,7 @@ export function paymentMethodValues(method: PaymentMethodDetails | null | undefi
   };
 }
 
-/** True for an attention reason whose payment bought nothing. */
-export function isUnappliedReason(reason: PaymentAttentionReason | null): boolean {
-  return reason !== null && (UNAPPLIED_PAYMENT_REASONS as readonly PaymentAttentionReason[]).includes(reason);
-}
+export { isUnappliedReason };
 
 /** A payment that was applied: it has no attention reason, or its reason came after it applied. */
 export function paymentWasApplied(): SQL {
@@ -1171,7 +1169,7 @@ export interface Receipt extends Payment {
   /** The payment's tax invoice, when it has one. Its number replaces the receipt's title on the bill. */
   readonly taxInvoiceId: string | null;
   readonly taxInvoiceNumber: string | null;
-  /** For an add-on payment, the catalogue id of what was bought ("digital-growth"). Null for everything else. */
+  /** For an add-on payment, the catalogue id of what was bought ("social-media"). Null for everything else. */
   readonly addOnId: string | null;
   /** What a plan payment was billed as (its services and discounts), for a receipt that lists them. Null when not kept. */
   readonly invoiceBasis: PaymentInvoiceBasis | null;

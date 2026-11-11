@@ -80,7 +80,7 @@ async function saveKarnatakaDetails(): Promise<void> {
   });
 }
 
-/** The services as a checkout freezes them: each with the package discount the set earns. */
+/** The services as a checkout freezes them: each at list. */
 function linesOf(plan: Plan, ...ids: MonthlyAddOnId[]): readonly NewBundledAddOn[] {
   return packageLines({ services: ids, forfeited: false }, plan.currency).map((line) => ({
     addOn: line.addOn,
@@ -168,7 +168,7 @@ function payRenewal(subscriptionId: string, invoicedPrice: RenewalInvoicedPrice,
 }
 
 /**
- * Buys Social Media and Ads on a new add-on row and records its first payment, then invoices it in the same transaction, as the
+ * Buys Social Media Management on a new add-on row and records its first payment, then invoices it in the same transaction, as the
  * add-on activation will: the invoice is the last write. The row is priced as a purchase freezes it: its list price of
  * 9,999 rupees, less a discount of 50,000 paise when `discounted`.
  */
@@ -177,7 +177,7 @@ async function payAddOn(discounted: boolean, providerPaymentId: string) {
   const row = await insertAddOnSubscription(dbs.staff.db, {
     id: randomUUID(),
     businessId,
-    addOn: "digital-growth",
+    addOn: "social-media",
     listAmountCents: 999_900,
     discountAmountCents,
     offerDiscountAmountCents: discountAmountCents,
@@ -256,7 +256,7 @@ describe("invoicing every payment path", () => {
     });
     expect(invoice?.cgstCents).toBe(invoice?.sgstCents);
     expect(invoice?.lines).toHaveLength(1);
-    expect(invoice?.lines[0]).toMatchObject({ description: "Managed Website", quantity: 1, unitAmountCents: 299_900, discountAmountCents: 0, note: null });
+    expect(invoice?.lines[0]).toMatchObject({ description: "Website Management", quantity: 1, unitAmountCents: 299_900, discountAmountCents: 0, note: null });
   });
 
   it("issues nothing more when the same payment is delivered again, and takes no number", async () => {
@@ -313,7 +313,7 @@ describe("invoicing every payment path", () => {
     );
 
     expect((await findTaxInvoiceByPaymentId(dbs.staff.db, activation.payment.id))?.lines[0]).toMatchObject({
-      description: "Managed Website",
+      description: "Website Management",
       unitAmountCents: 299_900,
       discountAmountCents: 0,
     });
@@ -394,7 +394,7 @@ describe("what the invoice describes", () => {
     expect(coupon.discountAmountCents).toBe(59_980);
     expect(invoice?.lines).toHaveLength(1);
     expect(invoice?.lines[0]).toMatchObject({
-      description: "Managed Website",
+      description: "Website Management",
       detail: "Monthly subscription, 09 Oct to 08 Nov 2026",
       note: "Coupon GAURAV applied, 20% off",
       unitAmountCents: 299_900,
@@ -432,7 +432,7 @@ describe("what the invoice describes", () => {
     const invoice = await findTaxInvoiceByPaymentId(dbs.staff.db, renewal.payment.id);
     expect(invoice?.lines).toHaveLength(1);
     expect(invoice?.lines[0]).toMatchObject({
-      description: "Managed Website",
+      description: "Website Management",
       detail: "Monthly subscription, 09 Nov to 08 Dec 2026",
       note: "Coupon GAURAV applied, 20% off. Stay offer applied",
       unitAmountCents: 299_900,
@@ -443,7 +443,7 @@ describe("what the invoice describes", () => {
     expect(invoice?.totalCents).toBe(renewal.payment.amountCents);
   });
 
-  it("describes a Social Media and Ads payment with a discount by the add-on, the month and the discount, adding up to the payment", async () => {
+  it("describes a Social Media Management payment with a discount by the add-on, the month and the discount, adding up to the payment", async () => {
     await saveMaharashtraDetails("27AAPFU0939F1ZV");
 
     const { payment, issued } = await payAddOn(true, "fake_pay_add_on_offer");
@@ -452,7 +452,7 @@ describe("what the invoice describes", () => {
     const invoice = await findTaxInvoiceByPaymentId(dbs.staff.db, payment.id);
     expect(invoice?.lines).toHaveLength(1);
     expect(invoice?.lines[0]).toMatchObject({
-      description: "Social Media and Ads",
+      description: "Social Media Management",
       detail: "Monthly subscription, 09 Oct to 08 Nov 2026",
       note: null,
       quantity: 1,
@@ -467,58 +467,58 @@ describe("what the invoice describes", () => {
     expect(invoice?.totalCents).toBe(payment.amountCents);
   });
 
-  it("describes a Social Media and Ads payment with no discount without a note, at the full price", async () => {
+  it("describes a Social Media Management payment with no discount without a note, at the full price", async () => {
     await saveMaharashtraDetails("27AAPFU0939F1ZV");
 
     const { payment } = await payAddOn(false, "fake_pay_add_on_list");
 
     const invoice = await findTaxInvoiceByPaymentId(dbs.staff.db, payment.id);
-    expect(invoice?.lines[0]).toMatchObject({ description: "Social Media and Ads", note: null, unitAmountCents: 999_900, discountAmountCents: 0 });
+    expect(invoice?.lines[0]).toMatchObject({ description: "Social Media Management", note: null, unitAmountCents: 999_900, discountAmountCents: 0 });
     // ₹9,999 holds ₹1,525.28 of GST.
     expect(invoice).toMatchObject({ taxableCents: 847_372, totalCents: 999_900 });
     expect(invoice?.totalCents).toBe(payment.amountCents);
   });
 
-  it("describes a first payment of all three services by a line each at its list price less 20%, with no line for the plan row and nothing about ad credit", async () => {
+  it("describes a first payment of all three services by a line each at list with no package note, no line for the plan row and nothing about ad credit", async () => {
     await saveMaharashtraDetails("27AAPFU0939F1ZV");
-    const lines = linesOf(services, "managed-website", "digital-growth", "local-seo-aeo");
+    const lines = linesOf(services, "managed-website", "social-media", "paid-ads");
 
     const activation = await payFirst(await openSubscription(businessId, services, null, lines), services);
 
     const invoice = await findTaxInvoiceByPaymentId(dbs.staff.db, activation.payment.id);
     expect(invoice?.lines.map((line) => [line.description, line.unitAmountCents, line.discountAmountCents, line.note])).toEqual([
-      ["Managed Website", 299_900, 59_980, "Package offer, 20% off"],
-      ["Social Media and Ads", 999_900, 199_980, "Package offer, 20% off"],
-      ["Local SEO + AEO", 2_499_900, 499_940, "Package offer, 20% off"],
+      ["Website Management", 299_900, 0, null],
+      ["Social Media Management", 299_900, 0, null],
+      ["Paid Ads Management", 299_900, 0, null],
     ]);
-    // ₹30,398 holds ₹4,636.98 of GST: ₹2,318.49 each of CGST and SGST.
-    expect(invoice).toMatchObject({ taxableCents: 2_576_102, cgstCents: 231_849, sgstCents: 231_849, roundOffCents: 0, totalCents: 3_039_800 });
-    expect(activation.payment.amountCents).toBe(3_039_800);
+    // ₹8,997 holds ₹1,372.42 of GST: ₹686.21 each of CGST and SGST (68_621 paise each, rounded separately).
+    expect(invoice).toMatchObject({ taxableCents: 762_458, cgstCents: 68_621, sgstCents: 68_621, roundOffCents: 0, totalCents: 899_700 });
+    expect(activation.payment.amountCents).toBe(899_700);
     expect(JSON.stringify(invoice?.lines)).not.toMatch(/credit/i);
   });
 
-  it("describes a first payment of Website and Social at 10% by a line each", async () => {
+  it("describes a first payment of Website and Social at list by a line each", async () => {
     await saveMaharashtraDetails("27AAPFU0939F1ZV");
 
-    const activation = await payFirst(await openSubscription(businessId, services, null, linesOf(services, "managed-website", "digital-growth")), services);
+    const activation = await payFirst(await openSubscription(businessId, services, null, linesOf(services, "managed-website", "social-media")), services);
 
     const invoice = await findTaxInvoiceByPaymentId(dbs.staff.db, activation.payment.id);
     expect(invoice?.lines.map((line) => [line.description, line.discountAmountCents, line.note])).toEqual([
-      ["Managed Website", 29_990, "Package offer, 10% off"],
-      ["Social Media and Ads", 99_910, "Package offer, 10% off"],
+      ["Website Management", 0, null],
+      ["Social Media Management", 0, null],
     ]);
-    expect(invoice?.totalCents).toBe(1_169_900);
+    expect(invoice?.totalCents).toBe(599_800);
   });
 
   it("describes a first payment of one service with no discount and no note", async () => {
     await saveMaharashtraDetails("27AAPFU0939F1ZV");
 
-    const activation = await payFirst(await openSubscription(businessId, services, null, linesOf(services, "local-seo-aeo")), services);
+    const activation = await payFirst(await openSubscription(businessId, services, null, linesOf(services, "paid-ads")), services);
 
     const invoice = await findTaxInvoiceByPaymentId(dbs.staff.db, activation.payment.id);
     expect(invoice?.lines).toHaveLength(1);
-    expect(invoice?.lines[0]).toMatchObject({ description: "Local SEO + AEO", discountAmountCents: 0, note: null });
-    expect(invoice?.totalCents).toBe(2_499_900);
+    expect(invoice?.lines[0]).toMatchObject({ description: "Paid Ads Management", discountAmountCents: 0, note: null });
+    expect(invoice?.totalCents).toBe(299_900);
   });
 
   it("calls a first payment that covers three months a subscription, not a monthly one", async () => {

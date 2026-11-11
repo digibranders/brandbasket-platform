@@ -8,9 +8,10 @@ export {
   type EmailMessage,
   type EmailOutboxCopy,
 } from "./message";
-export { emailBrandName, emailSenderDefaults, emailTeamInboxDefault, type EmailAddress } from "./brand";
+export { emailBrandName, emailLogoUrl, emailSenderDefaults, emailTeamInboxDefault, type EmailAddress } from "./brand";
 export { createOutboxTransport, OUTBOX_TRANSPORT_NAME, type EmailTransport, type OutboxOptions } from "./outbox";
 export { affiliateLinkEmail, type AffiliateLinkInput } from "./templates/affiliate-link";
+export { businessInviteEmail, type BusinessInviteInput } from "./templates/business-invite";
 export { bookingCodeEmail, type BookingCodeInput } from "./templates/booking-code";
 export { changeRequestUpdateEmail, type ChangeRequestUpdate, type ChangeRequestUpdateInput } from "./templates/change-request-update";
 export { leadReceivedEmail, type LeadReceivedInput } from "./templates/lead-received";
@@ -22,7 +23,16 @@ export { domainMovedEmail, type DomainMovedInput } from "./templates/domain-move
 export { domainRequestedEmail, type DomainRequestedInput } from "./templates/domain-requested";
 export { domainReadyEmail, type DomainReadyInput } from "./templates/domain-ready";
 export { onboardingSentEmail, type OnboardingSentInput } from "./templates/onboarding-sent";
-export { paymentReceivedEmail, type PaymentReceivedInput, type PaymentReceivedLine } from "./templates/payment-received";
+export { assertMinorUnits, emailDate, emailMoney, type EmailCurrency } from "./format";
+export { paymentFailedEmail, type PaymentFailedInput, type PaymentFailedPlan } from "./templates/payment-failed";
+export { monthlyReportEmail, type MonthlyReportInput } from "./templates/monthly-report";
+export { paymentReceivedEmail, type PaymentReceivedInput } from "./templates/payment-received";
+export {
+  previewChangesReceivedEmail,
+  CHANGES_QUOTE_LIMIT,
+  clampChangesText,
+  type PreviewChangesReceivedInput,
+} from "./templates/preview-changes-received";
 export { previewApprovedEmail, type PreviewApprovedInput } from "./templates/preview-approved";
 export { previewReadyEmail, type PreviewReadyInput } from "./templates/preview-ready";
 export {
@@ -30,7 +40,7 @@ export {
   type PreviewRevisionsRequestedInput,
 } from "./templates/preview-revisions-requested";
 export { signupCodeEmail, type SignupCodeInput } from "./templates/signup-code";
-export { staffSignInCodeEmail, type StaffSignInCodeInput } from "./templates/staff-sign-in-code";
+export { siteDownAlertEmail, type SiteDownAlertInput } from "./templates/site-down-alert";
 export { setupLinkEmail, type SetupLinkInput } from "./templates/setup-link";
 export { supportRequestOpenedEmail, type SupportRequestOpenedInput } from "./templates/support-request-opened";
 export { staffInviteEmail, type StaffInviteInput } from "./templates/staff-invite";

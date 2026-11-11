@@ -55,7 +55,7 @@ describe("announcePayment", () => {
     queries.findPaymentAlertBase.mockResolvedValue(base("initial"));
     await announcePayment(DB, SECRET, "pay-1", ORIGIN);
     const card = sent();
-    for (const part of ["New customer paid: ₹2,999", "Asha Rao", "asha@example.com", "Rao Clinic", "Managed Website", "UPI (asha@okhdfc)", "BB/2026-27/0001", "+91 98200 11111", "https://console.example/clients/biz-1"]) {
+    for (const part of ["New customer paid: ₹2,999", "Asha Rao", "asha@example.com", "Rao Clinic", "Website Management", "UPI (asha@okhdfc)", "BB/2026-27/0001", "+91 98200 11111", "https://console.example/clients/biz-1"]) {
       expect(card).toContain(part);
     }
     expect(card).toContain("₹457.48 GST inside");
@@ -65,9 +65,9 @@ describe("announcePayment", () => {
 
   it("names the add-on of an add-on payment and the description of a one-off charge", async () => {
     queries.findPaymentAlertBase.mockResolvedValue(base("add_on"));
-    queries.findAddOnSubscriptionForPayment.mockResolvedValue({ addOn: "digital-growth", listAmountCents: 999_900, offerDiscountAmountCents: 99_910 });
+    queries.findAddOnSubscriptionForPayment.mockResolvedValue({ addOn: "social-media", listAmountCents: 999_900, offerDiscountAmountCents: 99_910 });
     await announcePayment(DB, SECRET, "pay-1", ORIGIN);
-    expect(sent()).toContain("Social Media and Ads");
+    expect(sent()).toContain("Social Media Management");
 
     vi.clearAllMocks();
     queries.findPaymentAlertBase.mockResolvedValue(base("charge"));

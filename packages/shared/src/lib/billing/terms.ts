@@ -62,9 +62,19 @@ export function renewalCharge(
   discountAmountCents: number,
   bundledAddOnPriceCents = 0,
 ): string | null {
+  const cents = renewalChargeCents(plan, discountAmountCents, bundledAddOnPriceCents);
+  return cents === null ? null : formatMoney(cents, plan.currency);
+}
+
+/** What `renewalCharge` says, in minor units of the plan's currency, for a caller that formats it itself. */
+export function renewalChargeCents(
+  plan: Pick<Plan, "recurringAmountCents">,
+  discountAmountCents: number,
+  bundledAddOnPriceCents = 0,
+): number | null {
   const priceCents = plan.recurringAmountCents + bundledAddOnPriceCents;
   if (discountAmountCents >= priceCents) return null;
-  return formatMoney(chargedAmountCents(priceCents, discountAmountCents), plan.currency);
+  return chargedAmountCents(priceCents, discountAmountCents);
 }
 
 /**

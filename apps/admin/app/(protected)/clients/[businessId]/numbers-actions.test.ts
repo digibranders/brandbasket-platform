@@ -50,7 +50,7 @@ describe("saveNumbersAction", () => {
   });
 
   it("saves good Social figures in paise for the first of the month, logs it and returns to the section", async () => {
-    await expect(saveNumbersAction(form(SOCIAL))).rejects.toThrow(`redirect:/clients/${BUSINESS}?numbers=saved#numbers`);
+    await expect(saveNumbersAction(form(SOCIAL))).rejects.toThrow(`redirect:/clients/${BUSINESS}/billing?numbers=saved#numbers`);
     expect(upsertMonthlySnapshot).toHaveBeenCalledWith(DB, {
       businessId: BUSINESS,
       service: "social",
@@ -63,6 +63,9 @@ describe("saveNumbersAction", () => {
         postsPlanned: 12,
         keywordsPageOne: null,
         keywordsPageOnePrev: null,
+        reach: null,
+        followers: null,
+        profileVisits: null,
       },
       staffId: "staff-1",
       now: expect.any(Date),
@@ -88,14 +91,14 @@ describe("saveNumbersAction", () => {
   });
 
   it("calls nothing and redirects with invalid when a figure is not a whole number", async () => {
-    await expect(saveNumbersAction(form({ ...SOCIAL, adEnquiries: "nine" }))).rejects.toThrow(`redirect:/clients/${BUSINESS}?numbers=invalid#numbers`);
+    await expect(saveNumbersAction(form({ ...SOCIAL, adEnquiries: "nine" }))).rejects.toThrow(`redirect:/clients/${BUSINESS}/billing?numbers=invalid#numbers`);
     expect(upsertMonthlySnapshot).not.toHaveBeenCalled();
     expect(logStaffAccessOrThrow).not.toHaveBeenCalled();
   });
 
   it("refuses a service the business did not buy and saves nothing", async () => {
     vi.mocked(listBoughtServices).mockResolvedValue(["search"]);
-    await expect(saveNumbersAction(form(SOCIAL))).rejects.toThrow(`redirect:/clients/${BUSINESS}?numbers=not-bought#numbers`);
+    await expect(saveNumbersAction(form(SOCIAL))).rejects.toThrow(`redirect:/clients/${BUSINESS}/billing?numbers=not-bought#numbers`);
     expect(listBoughtServices).toHaveBeenCalledWith(DB, BUSINESS);
     expect(upsertMonthlySnapshot).not.toHaveBeenCalled();
     expect(logStaffAccessOrThrow).not.toHaveBeenCalled();

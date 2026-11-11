@@ -8,7 +8,7 @@ describe("the client page's add-on notices", () => {
   it("reads the notices an address names, and nothing else", () => {
     for (const key of Object.keys(ADD_ON_NOTICES)) expect(readAddOnNotice(key)).toBe(key);
     expect(readAddOnNotice("<script>alert(1)</script>")).toBeNull();
-    expect(readAddOnNotice("Social Media and Ads was cancelled")).toBeNull();
+    expect(readAddOnNotice("Social Media Management was cancelled")).toBeNull();
     expect(readAddOnNotice(["cancel-scheduled"])).toBeNull();
     expect(readAddOnNotice("toString")).toBeNull();
     expect(readAddOnNotice("__proto__")).toBeNull();
@@ -16,7 +16,7 @@ describe("the client page's add-on notices", () => {
   });
 
   it("scrolls back to the Add-ons section", () => {
-    expect(addOnNoticeHref("abc", "contacted")).toBe("/clients/abc?addOns=contacted#add-ons");
+    expect(addOnNoticeHref("abc", "contacted")).toBe("/clients/abc/billing?addOns=contacted#add-ons");
   });
 
   it("calls only a change that happened a success", () => {
@@ -47,12 +47,12 @@ describe("the client page's add-on notices", () => {
   });
 
   it("turns each result of an end into its own fixed notice", () => {
-    const scheduled = (endKind: "cancel" | "pause"): AddOnEndOutcome => ({ kind: "scheduled", addOn: "digital-growth", endKind, endsOn: ENDS_ON });
-    const undone = (endKind: "cancel" | "pause"): AddOnEndOutcome => ({ kind: "keep-undone", addOn: "digital-growth", endKind, endsOn: ENDS_ON });
+    const scheduled = (endKind: "cancel" | "pause"): AddOnEndOutcome => ({ kind: "scheduled", addOn: "social-media", endKind, endsOn: ENDS_ON });
+    const undone = (endKind: "cancel" | "pause"): AddOnEndOutcome => ({ kind: "keep-undone", addOn: "social-media", endKind, endsOn: ENDS_ON });
     const refused = (reason: Extract<AddOnEndOutcome, { kind: "refused" }>["reason"]): AddOnEndOutcome => ({
       kind: "refused",
       reason,
-      addOn: "digital-growth",
+      addOn: "social-media",
       endKind: null,
       endsOn: null,
     });

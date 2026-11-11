@@ -103,11 +103,11 @@ describe("todaySummary", () => {
 describe("failed deliveries", () => {
   it("adds one item that links to the deliveries page", () => {
     const queue = todayQueue({ ...EMPTY, failedDeliveries: 3 });
-    expect(queue).toEqual([{ key: "deliveries:failed", kind: "delivery", href: "/deliveries", title: "3 deliveries failed", detail: "", dueAt: null }]);
+    expect(queue).toEqual([{ key: "deliveries:failed", kind: "delivery", href: "/deliveries", title: "3 emails and webhooks failed", detail: "", dueAt: null }]);
   });
 
-  it("says 1 delivery in the singular", () => {
-    expect(todayQueue({ ...EMPTY, failedDeliveries: 1 })[0]?.title).toBe("1 delivery failed");
+  it("keeps the same wording for a single failure", () => {
+    expect(todayQueue({ ...EMPTY, failedDeliveries: 1 })[0]?.title).toBe("1 email or webhook failed");
   });
 
   it("adds nothing when none failed or the count could not be read", () => {
@@ -117,23 +117,25 @@ describe("failed deliveries", () => {
 });
 
 describe("kickoff calls needing an outcome", () => {
-  it("adds one item that links to the Calls page, due at the earliest end time", () => {
-    const queue = todayQueue({
-      ...EMPTY,
-      kickoffsNeedingOutcome: [new Date("2026-11-30T05:00:00.000Z"), new Date("2026-11-29T05:00:00.000Z")],
-    });
+  const EARLY = { businessId: "b-early", businessName: "Green Leaf Cafe", endsAt: new Date("2026-11-29T05:00:00.000Z") };
+  const LATE = { businessId: "b-late", businessName: "Kestrel Bakery", endsAt: new Date("2026-11-30T05:00:00.000Z") };
+
+  it("adds one item per business that links to the Calls page, due when its call ended", () => {
+    const queue = todayQueue({ ...EMPTY, kickoffsNeedingOutcome: [LATE, EARLY] });
     expect(queue).toEqual([
-      { key: "kickoff:needs-outcome", kind: "kickoff", href: "/calls", title: "2 kickoff calls need an outcome", detail: "", dueAt: new Date("2026-11-29T05:00:00.000Z") },
+      { key: "kickoff:b-early", kind: "kickoff", href: "/calls", title: "Did the kickoff happen?", detail: "Green Leaf Cafe · ended 29 Nov, 10:30", dueAt: EARLY.endsAt },
+      { key: "kickoff:b-late", kind: "kickoff", href: "/calls", title: "Did the kickoff happen?", detail: "Kestrel Bakery · ended 30 Nov, 10:30", dueAt: LATE.endsAt },
     ]);
   });
 
-  it("says 1 kickoff call in the singular", () => {
-    expect(todayQueue({ ...EMPTY, kickoffsNeedingOutcome: [new Date("2026-11-30T05:00:00.000Z")] })[0]?.title).toBe("1 kickoff call needs an outcome");
+  it("is overdue, so it groups under Overdue", () => {
+    const queue = todayQueue({ ...EMPTY, kickoffsNeedingOutcome: [LATE] });
+    expect(groupTodayQueue(queue, NOW, END_OF_TODAY).map((group) => group.heading)).toEqual(["Overdue"]);
   });
 
-  it("is overdue, so it groups under Overdue", () => {
-    const queue = todayQueue({ ...EMPTY, kickoffsNeedingOutcome: [new Date("2026-11-30T05:00:00.000Z")] });
-    expect(groupTodayQueue(queue, NOW, END_OF_TODAY).map((group) => group.heading)).toEqual(["Overdue"]);
+  it("is gone once the call is marked: a business no longer in the list has no item", () => {
+    expect(todayQueue({ ...EMPTY, kickoffsNeedingOutcome: [EARLY, LATE] }).map((entry) => entry.key)).toEqual(["kickoff:b-early", "kickoff:b-late"]);
+    expect(todayQueue({ ...EMPTY, kickoffsNeedingOutcome: [LATE] }).map((entry) => entry.key)).toEqual(["kickoff:b-late"]);
   });
 
   it("adds nothing at zero or when the read failed", () => {
@@ -176,6 +178,29 @@ describe("groupTodayQueue", () => {
 
   it("leaves out empty groups", () => {
     expect(groupTodayQueue([item("none", null)], NOW, END_OF_TODAY).map((group) => group.heading)).toEqual(["Waiting for someone"]);
+    expect(groupTodayQueue([], NOW, END_OF_TODAY)).toEqual([]);
+  });
+});
+
+describe("Google items", () => {
+  const google = (key: string, dueAt: Date | null, action = "Open client"): TodayItem => ({ key, kind: "google", href: "/x", title: key, detail: "", action, dueAt });
+  const INPUT: TodayInput = { attention: [], newTickets: [], unpaidSignups: [], newErrors: [], failedDeliveries: null, kickoffsNeedingOutcome: null, endOfToday: END_OF_TODAY };
+
+  it("joins the queue, so the count follows, and sorts with the rest by due time", () => {
+    const early = google("google:a", new Date(NOW.getTime() - 3_600_000));
+    const late = google("google:b", new Date(NOW.getTime() - 7_200_000));
+    expect(todayQueue({ ...INPUT, google: [early, late] }).map((item) => item.key)).toEqual(["google:b", "google:a"]);
+    expect(todayQueue(INPUT)).toEqual([]);
+  });
+
+  it("sits in its own Google section after the others, whatever its clock", () => {
+    const overdue = google("google:a", new Date(NOW.getTime() - 3_600_000));
+    const other: TodayItem = { key: "request:1", kind: "request", href: "/support/1", title: "r", detail: "", dueAt: new Date(NOW.getTime() - 60_000) };
+    const groups = groupTodayQueue([overdue, other], NOW, END_OF_TODAY);
+    expect(groups.map((group) => [group.heading, group.items.map((item) => item.key)])).toEqual([["Overdue", ["request:1"]], ["Google", ["google:a"]]]);
+  });
+
+  it("leaves no Google section when there are no Google rows", () => {
     expect(groupTodayQueue([], NOW, END_OF_TODAY)).toEqual([]);
   });
 });

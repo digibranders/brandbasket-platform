@@ -20,7 +20,7 @@ describe("normaliseSearchTerm", () => {
 describe("hits", () => {
   it("finds clients by business or owner and links to the client", () => {
     const clients = [
-      { businessId: "b1", businessName: "Sai Dental Care", owner: { name: "Priya Sharma", email: "priya@sai.example", phone: null } },
+      { businessId: "b1", businessName: "Sai Dental Care", owner: { userId: "user-priya", name: "Priya Sharma", email: "priya@sai.example", phone: null } },
       { businessId: "b2", businessName: "Om Sweets", owner: null },
     ];
     expect(clientHits(clients, "priya")).toEqual([{ kind: "client", label: "Sai Dental Care", sub: "Priya Sharma", href: "/clients/b1" }]);

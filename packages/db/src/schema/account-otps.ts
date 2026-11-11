@@ -4,8 +4,9 @@ import { uuidv7 } from "uuidv7";
 import { createdAt } from "./columns";
 
 /**
- * `signup`: proving an email address before an account is opened with it. `staff_sign_in`: the second factor of a
- * console sign-in, emailed once the password was right. A password reset is a link, never a code.
+ * `signup`: proving an email address before an account is opened with it. `staff_sign_in` is unused: the console's
+ * emailed sign-in code was removed, but migration 0213 had already added the value, so it stays to match the database.
+ * A password reset is a link, never a code.
  */
 export const ACCOUNT_OTP_PURPOSES = ["signup", "staff_sign_in"] as const;
 export const accountOtpPurpose = pgEnum("account_otp_purpose", ACCOUNT_OTP_PURPOSES);

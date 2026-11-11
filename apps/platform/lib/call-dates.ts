@@ -1,5 +1,7 @@
-import { addDays, weekdayIndex } from "@brandbasket/shared/lib/calendar/local-date";
 import { dayKey } from "@brandbasket/shared/lib/call-slots";
+import { addWorkingDays } from "@brandbasket/shared/lib/working-days";
+
+export { addWorkingDays };
 
 /** Where the team works: call times, promises and paid dates are all said in India's time. */
 export const BRAND_TIME_ZONE = "Asia/Kolkata";
@@ -21,17 +23,6 @@ export function promiseDates(callStartIso: string): PromiseDates {
   return { startBy, liveBy: addWorkingDays(dayKey(callStartIso, BRAND_TIME_ZONE), LIVE_WITHIN_WORKING_DAYS) };
 }
 
-/** shortcut: Monday to Friday only, public holidays are not skipped; add a holiday list when the team publishes one. */
-export function addWorkingDays(date: string, days: number): string {
-  let day = date;
-  let left = days;
-  while (left > 0) {
-    day = addDays(day, 1);
-    if (weekdayIndex(day) < 5) left -= 1;
-  }
-  return day;
-}
-
 /** "Thu 5 Nov" for a `YYYY-MM-DD` date. */
 export function shortDay(date: string): string {
   return new Intl.DateTimeFormat("en-GB", { weekday: "short", day: "numeric", month: "short", timeZone: "UTC" }).format(new Date(`${date}T00:00:00Z`));
@@ -42,14 +33,24 @@ export function slotDay(iso: string): string {
   return new Intl.DateTimeFormat("en-GB", { weekday: "short", timeZone: BRAND_TIME_ZONE }).format(new Date(iso));
 }
 
-/** "14:00" for a slot's start, in India. */
+/** "2:00 pm" for a slot's start, in India. */
 export function slotTime(iso: string): string {
-  return new Intl.DateTimeFormat("en-GB", { hour: "2-digit", minute: "2-digit", hourCycle: "h23", timeZone: BRAND_TIME_ZONE }).format(new Date(iso));
+  return new Intl.DateTimeFormat("en-GB", { hour: "numeric", minute: "2-digit", hour12: true, timeZone: BRAND_TIME_ZONE }).format(new Date(iso));
 }
 
-/** "Tue 27 Oct, 14:00" for a slot's start, in India. */
+/** The hour of a slot's start on a 24 hour clock (0 to 23), in India: for splitting a day at noon. */
+export function slotHour(iso: string): number {
+  return Number(new Intl.DateTimeFormat("en-GB", { hour: "2-digit", hourCycle: "h23", timeZone: BRAND_TIME_ZONE }).format(new Date(iso)));
+}
+
+/** "Tue 27 Oct, 2:00 pm" for a slot's start, in India. */
 export function slotLabel(iso: string): string {
   return `${shortDay(dayKey(iso, BRAND_TIME_ZONE))}, ${slotTime(iso)}`;
+}
+
+/** "2:45 pm" for a call today, "Tue 27 Oct, 2:45 pm" on any other day (India's days), for a call that already took place. */
+export function callWhen(iso: string, now: Date): string {
+  return dayKey(iso, BRAND_TIME_ZONE) === dayKey(now.toISOString(), BRAND_TIME_ZONE) ? slotTime(iso) : slotLabel(iso);
 }
 
 /** "26 Oct" for a moment, in India. */

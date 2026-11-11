@@ -1,6 +1,8 @@
 import { and, asc, eq, inArray, isNull, type SQL } from "drizzle-orm";
+import { isPhoneAccountEmail } from "../phone-account";
 import type { ScopedTransaction } from "../scope";
 import {
+  users,
   businessHours,
   businessProfiles,
   domains,
@@ -159,6 +161,17 @@ export async function getBusinessProfile(tx: ScopedTransaction): Promise<Busines
     .where(eq(businessProfiles.businessId, businessId))
     .limit(1);
   return rows[0] ?? null;
+}
+
+/**
+ * The email and mobile number the owner gave at sign-up, for a Business page that has nothing saved yet. A phone account's
+ * email is a placeholder (isPhoneAccountEmail), so it is not offered.
+ */
+export async function getOwnerContact(tx: ScopedTransaction, userId: string): Promise<{ email: string | null; phone: string | null }> {
+  const rows = await tx.select({ email: users.email, phone: users.phoneNumber }).from(users).where(eq(users.id, userId)).limit(1);
+  const row = rows[0];
+  if (row === undefined) return { email: null, phone: null };
+  return { email: isPhoneAccountEmail(row.email) ? null : row.email, phone: row.phone };
 }
 
 /** Creates or replaces the whole profile. Every field is written, so a field sent as null is cleared. */

@@ -5,9 +5,9 @@ import {
   supportStorageKey,
   type SupportStorage,
 } from "@brandbasket/shared/server/support-storage";
-import { detectImageType } from "./media-upload";
-import { BodyTooLargeError, readLimitedBody } from "./read-limited-body";
-import { createSemaphore, SemaphoreFullError } from "./semaphore";
+import { detectImageType } from "@brandbasket/shared/server/media-upload";
+import { BodyTooLargeError, readLimitedBody } from "@brandbasket/shared/server/read-limited-body";
+import { createSemaphore, SemaphoreFullError } from "@brandbasket/shared/server/semaphore";
 import { refuseUploadEnvelope, refuseUpload } from "./upload-request";
 
 const SUPPORT_FILE_LIMIT = 4 * 1024 * 1024;

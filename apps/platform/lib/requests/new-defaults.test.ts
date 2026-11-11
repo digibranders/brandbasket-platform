@@ -27,6 +27,12 @@ describe("readAskDefaults", () => {
     expect(readAskDefaults({ page: "a".repeat(250) }, OFFERED).page).toBe("a".repeat(200));
   });
 
+  it("strips control characters and runs of spaces from the page, so only plain text reaches the box", () => {
+    expect(readAskDefaults({ page: "  Home\u0000\n\tpage \u0007 two  " }, OFFERED).page).toBe("Home page two");
+    expect(readAskDefaults({ page: "\u0000\u0001" }, OFFERED).page).toBe("");
+    expect(readAskDefaults({ page: "<b>Home</b>" }, OFFERED).page).toBe("<b>Home</b>");
+  });
+
   it("leaves the page empty when it is missing or repeated", () => {
     expect(readAskDefaults({}, OFFERED).page).toBe("");
     expect(readAskDefaults({ page: ["Home", "About"] }, OFFERED).page).toBe("");

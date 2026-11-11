@@ -93,7 +93,7 @@ describe("StartBuildingForm", () => {
 });
 
 describe("WebsiteSection facts", () => {
-  it("shows the status in words and only the dates that exist, in India time", async () => {
+  it("does not repeat the status and dates the Website tab already shows", async () => {
     vi.mocked(loadWebsiteBuild).mockResolvedValue({
       project: project("preview", {
         onboardingSubmittedAt: new Date("2026-10-20T06:30:00Z"),
@@ -103,21 +103,10 @@ describe("WebsiteSection facts", () => {
       picture: null,
     });
     const html = await render();
-    expect(html).toContain("Awaiting client review");
-    expect(html).toContain("Setup sent");
-    expect(html).toContain("20 October 2026");
-    expect(html).toContain("First preview due");
-    expect(html).toContain("22 October 2026");
-    expect(html).toContain("Preview sent");
-    expect(html).toContain("21 October 2026");
-    expect(html).not.toContain("Went live");
-  });
-
-  it("shows the pause reason as plain text, escaped", async () => {
-    vi.mocked(loadWebsiteBuild).mockResolvedValue({ project: project("on_hold", { onHoldReason: "<img src=x onerror=alert(1)> logo" }), picture: null });
-    const html = await render();
-    expect(html).toContain("&lt;img src=x onerror=alert(1)&gt; logo");
-    expect(html).not.toContain("<img");
+    for (const repeated of ["Awaiting client review", "Setup sent", "First preview due", "Preview sent", "Went live"]) {
+      expect(html).not.toContain(repeated);
+    }
+    expect(html).not.toContain("<dl");
   });
 });
 

@@ -8,6 +8,6 @@ describe("LEGAL_TEXT_VERSION", () => {
   });
 
   it("is the dated label the website's privacy policy shows, not the one used before the policy was updated", () => {
-    expect(LEGAL_TEXT_VERSION).toBe("2026-10-13.5");
+    expect(LEGAL_TEXT_VERSION).toBe("2026-11-06.1");
   });
 });

@@ -10,7 +10,7 @@ vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: mocks.refresh }
 
 import { BookCallButton } from "@/components/calls/book-call-button";
 
-// Wed 2 Dec 2026, 10:00 and 14:00 in India.
+// Wed 2 Dec 2026, 10:00 am and 2:00 pm in India.
 const SLOTS = ["2026-12-02T04:30:00.000Z", "2026-12-02T08:30:00.000Z"];
 const OPTIONS = [
   { value: "website", label: "Website" },
@@ -67,8 +67,8 @@ it("books the picked time with the reason and the note the customer chose, and r
     Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")?.set?.call(note, "Ads for braces in January.");
     note.dispatchEvent(new Event("input", { bubbles: true }));
   });
-  await click("14:00");
-  await click("Book Wed 2 Dec, 14:00");
+  await click("2:00 pm");
+  await click("Book Wed 2 Dec, 2:00 pm");
   expect(mocks.bookCallAction).toHaveBeenCalledWith({ startIso: SLOTS[1], timeZone: "Asia/Kolkata", reason: "social", note: "Ads for braces in January.", replaceId: null });
   expect(mocks.refresh).toHaveBeenCalled();
   expect(container.querySelector("#call-note")).toBeNull();
@@ -76,14 +76,14 @@ it("books the picked time with the reason and the note the customer chose, and r
 
 it("starts from the reason and note it was given, and names the call it replaces", async () => {
   mocks.bookCallAction.mockResolvedValue({ ok: true });
-  await render(sheet({ defaultReason: "billing", defaultNote: "About my invoice", replacing: { id: "call-1", when: "Wed 2 Dec, 14:00" } }));
+  await render(sheet({ defaultReason: "billing", defaultNote: "About my invoice", replacing: { id: "call-1", when: "Wed 2 Dec, 2:00 pm" } }));
   await click("Book a call");
   expect(container.querySelector("h2")?.textContent).toBe("Change your call");
-  expect(container.textContent).toContain("Your call is booked for Wed 2 Dec, 14:00.");
+  expect(container.textContent).toContain("Your call is booked for Wed 2 Dec, 2:00 pm.");
   expect((container.querySelector('input[value="billing"]') as HTMLInputElement).checked).toBe(true);
   expect((container.querySelector("#call-note") as HTMLTextAreaElement).value).toBe("About my invoice");
-  await click("10:00");
-  await click("Book Wed 2 Dec, 10:00");
+  await click("10:00 am");
+  await click("Book Wed 2 Dec, 10:00 am");
   expect(mocks.bookCallAction).toHaveBeenCalledWith(expect.objectContaining({ reason: "billing", note: "About my invoice", replaceId: "call-1" }));
 });
 
@@ -91,8 +91,8 @@ it("shows the sentence the server gave when it refuses the reason or the note", 
   mocks.bookCallAction.mockResolvedValue({ ok: false, reason: "invalid", message: "Keep the note to 500 characters or fewer." });
   await render(sheet());
   await click("Book a call");
-  await click("10:00");
-  await click("Book Wed 2 Dec, 10:00");
+  await click("10:00 am");
+  await click("Book Wed 2 Dec, 10:00 am");
   expect(container.querySelector('[role="alert"]')?.textContent).toBe("Keep the note to 500 characters or fewer.");
   expect(mocks.refresh).not.toHaveBeenCalled();
 });
@@ -126,8 +126,8 @@ it("sends the default reason and an empty note when the disclosure was never ope
   mocks.bookCallAction.mockResolvedValue({ ok: true });
   await render(sheet());
   await click("Book a call");
-  await click("10:00");
-  await click("Book Wed 2 Dec, 10:00");
+  await click("10:00 am");
+  await click("Book Wed 2 Dec, 10:00 am");
   expect(mocks.bookCallAction).toHaveBeenCalledWith({ startIso: SLOTS[0], timeZone: "Asia/Kolkata", reason: "website", note: "", replaceId: null });
 });
 
@@ -135,12 +135,12 @@ it("puts the times under Morning and Afternoon, and marks the picked one with a 
   await render(sheet());
   await click("Book a call");
   const group = (name: string): HTMLElement => container.querySelector(`[role="group"][aria-label="Time"] [role="group"][aria-labelledby="slot-${name}"]`) as HTMLElement;
-  expect([...group("morning").querySelectorAll("button")].map((item) => item.textContent)).toEqual(["10:00"]);
-  expect([...group("afternoon").querySelectorAll("button")].map((item) => item.textContent)).toEqual(["14:00"]);
-  expect(button("14:00").querySelector("svg")).toBeNull();
-  await click("14:00");
-  expect(button("14:00").querySelector("svg")).not.toBeNull();
-  expect(button("14:00").getAttribute("aria-pressed")).toBe("true");
+  expect([...group("morning").querySelectorAll("button")].map((item) => item.textContent)).toEqual(["10:00 am"]);
+  expect([...group("afternoon").querySelectorAll("button")].map((item) => item.textContent)).toEqual(["2:00 pm"]);
+  expect(button("2:00 pm").querySelector("svg")).toBeNull();
+  await click("2:00 pm");
+  expect(button("2:00 pm").querySelector("svg")).not.toBeNull();
+  expect(button("2:00 pm").getAttribute("aria-pressed")).toBe("true");
 });
 
 it("has no fixed width inside the sheet that could be wider than a phone", async () => {

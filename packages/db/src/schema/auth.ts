@@ -44,8 +44,8 @@ export const sessions = pgTable(
     ipAddress: text("ip_address"),
     userAgent: text("user_agent"),
     /**
-     * Set only on a session made by the console's two-step sign-in (password, then an emailed code). The console
-     * ignores any session without it, so a password-only session from another door (the customer dashboard) opens nothing there.
+     * Unused. The console's emailed sign-in code was removed, but migration 0213 had already added this column, so it
+     * stays to match the database. Nothing reads it: sessions with and without it are equally valid.
      */
     secondFactorAt: timestamp("second_factor_at", { withTimezone: true }),
     userId: text("user_id")

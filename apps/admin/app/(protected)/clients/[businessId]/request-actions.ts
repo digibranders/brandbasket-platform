@@ -40,7 +40,7 @@ async function requestOf(businessId: string, requestId: string) {
 function finish(businessId: string, notice: RequestActionNotice, mail?: MailOutcome): never {
   revalidatePath(`/clients/${businessId}`);
   revalidatePath("/support");
-  redirect(`/clients/${businessId}?requests=${notice}${mail === undefined ? "" : `&mail=${mail}`}#requests`);
+  redirect(`/clients/${businessId}/requests?requests=${notice}${mail === undefined ? "" : `&mail=${mail}`}#requests`);
 }
 
 /** The word the page shows for a refusal from the database functions. Anything else is a fault and is rethrown. */

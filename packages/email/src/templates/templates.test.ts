@@ -3,7 +3,6 @@ import { bookingCodeEmail } from "./booking-code";
 import { leadReceivedEmail } from "./lead-received";
 import { listingEnquiryEmail } from "./listing-enquiry";
 import { passwordResetEmail } from "./password-reset";
-import { paymentReceivedEmail } from "./payment-received";
 import { privacyRequestCodeEmail } from "./privacy-request-code";
 import { domainConnectedEmail } from "./domain-connected";
 import { domainMovedEmail } from "./domain-moved";
@@ -17,9 +16,9 @@ import { previewReadyEmail } from "./preview-ready";
 import { previewRevisionsRequestedEmail } from "./preview-revisions-requested";
 import { setupLinkEmail } from "./setup-link";
 import { affiliateLinkEmail } from "./affiliate-link";
+import { businessInviteEmail } from "./business-invite";
 import { staffInviteEmail } from "./staff-invite";
 import { signupCodeEmail } from "./signup-code";
-import { staffSignInCodeEmail } from "./staff-sign-in-code";
 import { supportReplyAlertEmail } from "./support-reply-alert";
 import { supportTicketAlertEmail } from "./support-ticket-alert";
 import { systemErrorAlertEmail } from "./system-error-alert";
@@ -149,6 +148,38 @@ describe("affiliateLinkEmail", () => {
     expect(email.bodyText).toContain("https://app.brandbasket.in/affiliate/setup/token-123");
     expect(email.bodyHtml).toContain('href="https://app.brandbasket.in/affiliate/setup/token-123"');
     expect(JSON.stringify(email.outboxCopy)).not.toContain("token-123");
+  });
+});
+
+describe("businessInviteEmail", () => {
+  const email = businessInviteEmail({
+    to: "front.desk@example.com",
+    inviterName: "Anand Verma",
+    businessName: "Apex Diagnostics",
+    roleLabel: "Viewer",
+    acceptUrl: "https://app.brandbasket.in/invite/token-123",
+    expiresInDays: 7,
+  });
+
+  it("names the business, the person who invited and the role", () => {
+    expect(email.template).toBe("business-invite");
+    expect(email.to).toBe("front.desk@example.com");
+    expect(email.subject).toBe("Join Apex Diagnostics on Brandbasket");
+    expect(email.bodyText).toContain("Anand Verma invited you");
+    expect(email.bodyText).toContain("as Viewer");
+    expect(email.bodyText).toContain("7 days");
+  });
+
+  it("includes the link in both bodies but not in the outbox copy", () => {
+    expect(email.bodyText).toContain("https://app.brandbasket.in/invite/token-123");
+    expect(email.bodyHtml).toContain('href="https://app.brandbasket.in/invite/token-123"');
+    expect(JSON.stringify(email.outboxCopy)).not.toContain("token-123");
+  });
+
+  it("escapes the business name in the html and refuses a link that is not http or https", () => {
+    const tricky = businessInviteEmail({ to: "a@example.com", inviterName: "A", businessName: "<b>Bold</b>", roleLabel: "Editor", acceptUrl: "https://app.brandbasket.in/invite/t", expiresInDays: 7 });
+    expect(tricky.bodyHtml).not.toContain("<b>Bold</b>");
+    expect(() => businessInviteEmail({ to: "a@example.com", inviterName: "A", businessName: "B", roleLabel: "Editor", acceptUrl: "javascript:alert(1)", expiresInDays: 7 })).toThrow("acceptUrl must use http or https");
   });
 });
 
@@ -675,36 +706,6 @@ describe("signupCodeEmail", () => {
   });
 });
 
-describe("staffSignInCodeEmail", () => {
-  const input = { to: "asha@brandbasket.in", code: "482913", expiresInMinutes: 5 };
-  const email = staffSignInCodeEmail(input);
-
-  it("carries the code and how long it lasts", () => {
-    expect(email.template).toBe("staff-sign-in-code");
-    expect(email.subject).toBe("Your Brandbasket console sign-in code");
-    for (const body of [email.bodyText, email.bodyHtml]) {
-      expect(body).toContain("482913");
-      expect(body).toContain("expires in 5 minutes");
-    }
-    expect(JSON.stringify(email)).not.toMatch(/[\u2013\u2014]/);
-  });
-
-  it("keeps the code out of the subject, and out of the copy the outbox stores", () => {
-    expect(email.subject).not.toContain("482913");
-    for (const text of [email.outboxCopy?.subject, email.outboxCopy?.bodyText, email.outboxCopy?.bodyHtml]) {
-      expect(text).not.toContain("482913");
-    }
-    // Local development reads the code from the outbox: this flag lets only that inbox keep the full message.
-    expect(email.outboxCopy?.linkWithheld).toBe(true);
-  });
-
-  it("refuses anything but a six-digit code", () => {
-    for (const code of ["12345", "1234567", "12345a", "<b>1</b>", ""]) {
-      expect(() => staffSignInCodeEmail({ ...input, code })).toThrow("code");
-    }
-  });
-});
-
 describe("bookingCodeEmail", () => {
   const input = { to: "patient@example.com", code: "061427", expiresInMinutes: 10 };
   const email = bookingCodeEmail(input);
@@ -764,80 +765,6 @@ describe("privacyRequestCodeEmail", () => {
     for (const code of ["12345", "1234567", "12345a", "<b>1</b>", ""]) {
       expect(() => privacyRequestCodeEmail({ ...input, code })).toThrow("code");
     }
-  });
-});
-
-describe("paymentReceivedEmail", () => {
-  const base = {
-    to: "ravi@maplecafe.in",
-    ownerName: "Ravi",
-    businessName: "Maple Cafe",
-    currency: "INR",
-    lines: [{ label: "Plan", amountCents: 299_900 }],
-    gstRatePercent: 18,
-    gstCents: 53_982,
-    totalCents: 353_882,
-    paidAt: new Date("2026-10-15T08:00:00Z"),
-    invoiceUrl: "https://app.brandbasket.in/billing/invoices/0192f3c4",
-    logoUrl: "https://app.brandbasket.in/email/email-logo.png",
-    nextPayment: { amountCents: 353_882, dueOn: new Date("2026-11-15T08:00:00Z") },
-  } as const;
-
-  it("puts the amount in the subject and the receipt lines in both bodies", () => {
-    const email = paymentReceivedEmail(base);
-    expect(email.subject).toBe("We received your payment of ₹3,538.82");
-    expect(email.template).toBe("payment-received");
-    for (const body of [email.bodyText, email.bodyHtml]) {
-      for (const detail of ["Plan", "₹2,999.00", "GST 18%", "₹539.82", "₹3,538.82", "15 October 2026", "Maple Cafe"]) {
-        expect(body).toContain(detail);
-      }
-    }
-  });
-
-  it("links to the invoice and names the next payment", () => {
-    const email = paymentReceivedEmail(base);
-    expect(email.bodyHtml).toContain('href="https://app.brandbasket.in/billing/invoices/0192f3c4"');
-    expect(email.bodyText).toContain("https://app.brandbasket.in/billing/invoices/0192f3c4");
-    expect(email.bodyText).toContain("Your next payment is ₹3,538.82 on 15 November 2026.");
-    expect(email.bodyHtml).toContain("15 November 2026");
-  });
-
-  it("leaves the next payment out when there is none, and the name out when it is unknown", () => {
-    const email = paymentReceivedEmail({ ...base, ownerName: null, nextPayment: null });
-    expect(email.bodyText).not.toContain("next payment");
-    expect(email.bodyHtml).not.toContain("Next payment");
-    expect(email.bodyText).toContain("Hi, thank you for your payment.");
-  });
-
-  it("shows a discount as its own line", () => {
-    const email = paymentReceivedEmail({
-      ...base,
-      lines: [
-        { label: "Social media", amountCents: 199_900 },
-        { label: "Package offer, 20% off", amountCents: -39_980 },
-      ],
-      gstCents: 28_786,
-      totalCents: 188_706,
-    });
-    expect(email.bodyText).toContain("Package offer, 20% off: minus ₹399.80");
-  });
-
-  it("escapes what customers typed", () => {
-    const email = paymentReceivedEmail({ ...base, businessName: "<b>Cafe</b> & Co", ownerName: "<i>Ravi</i>" });
-    expect(email.bodyHtml).not.toContain("<b>Cafe</b>");
-    expect(email.bodyHtml).toContain("&lt;b&gt;Cafe&lt;/b&gt; &amp; Co");
-    expect(email.bodyHtml).not.toContain("<i>Ravi</i>");
-  });
-
-  it("refuses links that are not web addresses and amounts that are not whole minor units", () => {
-    expect(() => paymentReceivedEmail({ ...base, invoiceUrl: "javascript:alert(1)" })).toThrow("invoiceUrl");
-    expect(() => paymentReceivedEmail({ ...base, totalCents: 10.5 })).toThrow(RangeError);
-  });
-
-  it("uses no dashes as punctuation and no exclamation marks", () => {
-    const email = paymentReceivedEmail(base);
-    expect(email.bodyText).not.toMatch(/[!\u2014\u2013]/);
-    expect(email.subject).not.toMatch(/[!\u2014\u2013]/);
   });
 });
 

@@ -48,7 +48,7 @@ const INTENT_RULES: Readonly<Record<RequestIntent, IntentRule>> = {
     category: "website_change",
     change: "website",
     service: "website",
-    bodyLabel: "What do you want changed?",
+    bodyLabel: "What should change?",
     placeholder: "Tell us what to change. A screenshot helps.",
   },
   social_request: {
@@ -125,7 +125,7 @@ export function intentOptions(services: readonly ServiceKey[]): readonly IntentO
   }).map((value) => ({ value, label: INTENT_RULES[value].label, hint: INTENT_RULES[value].hint }));
 }
 
-/** Old `?kind=` links (the Pages tab, a post's Change link, the help link) land on the intent that means the same. */
+/** Old `?kind=` links (a post's Change link, the help link) land on the intent that means the same. */
 const INTENT_OF_KIND: Readonly<Record<ChangeKind, RequestIntent>> = {
   website: "website_update",
   social: "social_request",
@@ -171,15 +171,20 @@ export function titleFromText(text: string): string {
 }
 
 /** The page's limit on the Which page box (the form's maxLength and parseAskForm agree). */
-const PAGE_FIELD_LIMIT = 200;
+export const PAGE_FIELD_LIMIT = 200;
 
-/** What the new request page starts with when a link came with it (the Pages tab, a post's Change link, the preview's Ask for changes). */
+/** What the new request page starts with when a link came with it (a post's Change link, a link that names a page). */
 export interface AskDefaults {
   /** The intent to start on, only when this customer may pick it. */
   readonly intent: RequestIntent | null;
   readonly page: string;
   /** Whether the customer came from the preview, so the page says the preview is waiting. */
   readonly fromPreview: boolean;
+}
+
+/** A page name from the address: control characters become spaces, runs of spaces become one, and it is cut at the box's limit. */
+export function cleanPage(raw: string): string {
+  return raw.replace(/[\p{Cc}\s]+/gu, " ").trim().slice(0, PAGE_FIELD_LIMIT);
 }
 
 /** Reads the link's query: `intent`, or the older `kind`. Repeated or unknown values are ignored, never shown. */
@@ -196,7 +201,7 @@ export function readAskDefaults(
   const offered = options.find((option) => option.value === asked);
   return {
     intent: offered?.value ?? null,
-    page: (single("page") ?? "").trim().slice(0, PAGE_FIELD_LIMIT),
+    page: cleanPage(single("page") ?? ""),
     fromPreview: single("from") === "preview",
   };
 }
@@ -241,5 +246,5 @@ export function parseAskForm(form: FormData, allowed: readonly RequestIntent[]):
     return { success: false, field: String(issue?.path[0] ?? ""), message: issue?.message ?? "Check what you wrote and try again." };
   }
   const { intent, page, body, attachmentIds, submissionKey } = parsed.data;
-  return { success: true, data: { intent: intent as RequestIntent, page: intent === "website_update" && page !== undefined && page !== "" ? page : null, body, attachmentIds, submissionKey } };
+  return { success: true, data: { intent: intent as RequestIntent, page: intent === "website_update" && page !== undefined && cleanPage(page) !== "" ? cleanPage(page) : null, body, attachmentIds, submissionKey } };
 }

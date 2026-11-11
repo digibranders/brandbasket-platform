@@ -15,7 +15,7 @@ export * from "./queries/support-ticket-error-links";
 export * from "./queries/deliveries";
 export * from "./queries/staff-payments";
 export * from "./queries/staff-domains";
-export { assertValidRule, clearRateLimits, consumeRateLimit, windowStartFor, type RateLimitResult, type RateLimitRule } from "./rate-limit";
+export { assertValidRule, consumeRateLimit, windowStartFor, type RateLimitResult, type RateLimitRule } from "./rate-limit";
 export {
   BillingBusinessNotFoundError,
   cancelStaleSubscription,
@@ -157,7 +157,7 @@ export {
   saveProviderDiscountPlan,
   type DiscountPlanKey,
 } from "./queries/discount-plans";
-export { listMembershipsForUser, type BusinessMembership } from "./queries/memberships";
+export { listMembershipsForUser, removeBusinessMember, type BusinessMembership } from "./queries/memberships";
 export {
   addStaffMember,
   countActiveAdmins,
@@ -177,6 +177,7 @@ export {
 } from "./queries/staff";
 export {
   findEmail,
+  hasEmailContaining,
   listEmailDeliveries,
   listRecentEmails,
   purgeOldEmailMessages,
@@ -251,6 +252,7 @@ export {
   newMediaAssetId,
   PhotoLimitReachedError,
   recordBrandAsset,
+  recordBrandAssetForStaff,
   recordUploadedMedia,
   removeBrandAsset,
   softDeleteMediaAsset,
@@ -265,6 +267,7 @@ export {
   DuplicateServiceIdError,
   getBusinessHours,
   getBusinessProfile,
+  getOwnerContact,
   getPrimaryDomain,
   getProjectBrief,
   InvalidHostnameError,
@@ -812,6 +815,28 @@ export {
   type NewAddOnSubscription,
   type RecordedAddOnPayment,
 } from "./queries/add-ons";
+export {
+  countGoogleSources,
+  detachGoogle,
+  listGoogleAttention,
+  listProvisionCandidates,
+  provisionGoogleAgain,
+  retryGoogleVerification,
+  saveProvisionedSource,
+  type GoogleAttentionCutoffs,
+  type GoogleAttentionRow,
+  type ProvisionCandidate,
+  type ProvisionedSourceInput,
+  type ProvisionSource,
+} from "./queries/google-provisioning";
+export {
+  findGoogleConnection,
+  listGoogleConnections,
+  markGoogleConnectionLost,
+  markGoogleConnectionOk,
+  saveGoogleConnection,
+} from "./queries/google-connections";
+export { GOOGLE_CONNECTION_PURPOSES, GOOGLE_CONNECTION_STATUSES, type GoogleConnectionPurpose, type GoogleConnectionRow, type GoogleConnectionStatus } from "./schema/google-connections";
 export { clearSiteSetting, findIncludedRevisionRounds, findSiteSetting, findSiteSettingWithEditor, saveSiteSetting } from "./queries/site-settings";
 export {
   DEFAULT_REVISION_ROUNDS,
@@ -840,7 +865,7 @@ export { boughtSetupServicesFrom, listBoughtSetupServices, listServiceSetups, sa
 export {
   firstPreviewDueAfterKickoff,
   KICKOFF_PREVIEW_DUE_HOURS,
-  KICKOFF_SETTLE_HOURS,
+  KICKOFF_FALLBACK_START_HOURS,
   listKickoffBoard,
   listKickoffsToStart,
   markProjectReadyAfterKickoff,
@@ -849,7 +874,15 @@ export {
 } from "./queries/kickoff-build";
 export { completeClientIntake, findClientIntake, saveClientIntakeAnswers, type ClientIntakeAnswers } from "./queries/client-intakes";
 export { addActivityEvent, listActivityEvents, removeActivityEvent } from "./queries/activity-events";
-export { listMonthlySnapshots, upsertMonthlySnapshot, type SnapshotFigures } from "./queries/monthly-snapshots";
+export { latestSocialReach, listMonthlySnapshots, upsertMonthlySnapshot, type SnapshotFigures } from "./queries/monthly-snapshots";
+export {
+  addAdCampaign,
+  listAdCampaigns,
+  removeAdCampaign,
+  updateAdCampaign,
+  type AdCampaignFigures,
+  type AdCampaignSaveResult,
+} from "./queries/ad-campaigns";
 export {
   approveDeliverables,
   countSiteEvents,
@@ -892,12 +925,14 @@ export {
   getReport,
   listDailyMetrics,
   listReportSources,
+  listReportsForReview,
   listReportsInState,
   listSentReports,
   listSourceRuns,
   moveReport,
   recordSourceRun,
   ReportMoveError,
+  setReportPdfKey,
   setReportSourceStatus,
   upsertBreakdown,
   upsertDailyMetrics,
@@ -905,7 +940,19 @@ export {
   type BreakdownInput,
   type ComposeInput,
   type DailyMetricInput,
+  type ReportForReview,
 } from "./queries/reports";
+export {
+  indianDay,
+  indianMonthBounds,
+  listReportBusinesses,
+  listReportServices,
+  readReportFacts,
+  type RawKindCounts,
+  type RawMonthData,
+  type RawReportFacts,
+  type ReportBusiness,
+} from "./queries/report-facts";
 export { HIT_CHANNELS, HIT_DEVICES, HIT_KINDS, type HitChannel, type HitDevice, type HitKind } from "./site-hit-lists";
 export {
   deleteSaltsBefore,
@@ -923,6 +970,32 @@ export {
   type NewSiteHit,
   type RollupCandidate,
 } from "./queries/site-hits";
+export {
+  findAnalyticsConnection,
+  findSearchConnection,
+  latestGa4Day,
+  latestGscDay,
+  listGa4Properties,
+  listGscSites,
+  listSearchDays,
+  listSearchLists,
+  listVisitDays,
+  listVisitLists,
+  SEARCH_DIMENSIONS,
+  SEARCH_METRICS,
+  VISIT_DIMENSIONS,
+  VISIT_METRICS,
+  type Ga4Property,
+  type SearchDay,
+  type SearchDimension,
+  type SearchList,
+  type SearchMetric,
+  type VisitDay,
+  type VisitDimension,
+  type VisitList,
+  type VisitMetric,
+  type VisitSource,
+} from "./queries/site-visits";
 export { listAdFunnelData, type AdFunnelData } from "./queries/ad-funnel";
 export { claimConversionEvent, listRetryableConversionPayments, markConversionEvent, MAX_CONVERSION_ATTEMPTS } from "./queries/conversion-events";
 export { getSignupAttribution, recordSignupAttribution, type NewSignupAttribution } from "./queries/signup-attribution";
@@ -1323,6 +1396,8 @@ export {
 } from "./queries/directory-business-profiles";
 export {
   eraseClosedAccount,
+  eraseEnquirerDetails,
+  eraseExpiredEnquiryDetails,
   erasedBusinessSlug,
   erasedUserEmail,
   findErasureBlock,
@@ -1438,6 +1513,7 @@ export {
 } from "./queries/consent-records";
 export {
   countExpiredRetention,
+  RETENTION_PERIODS,
   purgeExpiredRetention,
   type RetentionCounts,
 } from "./queries/retention";
@@ -1475,5 +1551,71 @@ export {
   type StoredPrivacyRequest,
 } from "./queries/privacy-requests";
 export { clearNominee, findNominee, saveNominee, type Nominee } from "./queries/user-privacy-settings";
-export { listExportedSessions, readExportedAccount, readExportedBusiness, type ExportedSession } from "./queries/account-export";
+export { listExportedSessions, readExportedAccount, readExportedBusiness, readExportedNotificationPreferences, type ExportedSession } from "./queries/account-export";
 export { findBusinessAlertDetails, findPaymentAlertBase, type AlertPerson, type PaymentAlertBase } from "./queries/payment-alerts";
+// Customer app v4 (plan 61 section 6).
+export {
+  backfillEnquiries,
+  countNewEnquiries,
+  EnquiryNoteTooLongError,
+  eraseEnquiriesOfBusiness,
+  recordEnquiryContents,
+  findEnquiry,
+  listEnquiries,
+  updateEnquiry,
+  upsertEnquiryFromChatLead,
+  upsertEnquiryFromSiteEvent,
+  type EnquiryBackfillResult,
+  type EnquiryChange,
+  type EnquiryContentsInput,
+  type EnquiryFilter,
+} from "./queries/enquiries";
+export {
+  fetchSitemapText,
+  listWebsitePages,
+  SitemapTooLargeError,
+  syncWebsitePages,
+  type FetchedText,
+  type FetchText,
+  type WebsitePagesSyncResult,
+} from "./queries/website-pages";
+export { parseSitemap, type ParsedSitemap } from "./sitemap";
+export {
+  findSiteCheckState,
+  findSiteHealthFacts,
+  insertSiteCheck,
+  listLiveWebsites,
+  PHONE_SPEED_FAILED,
+  type SiteHealthWebsite,
+  type SiteCheckState,
+  type SiteHealthFacts,
+} from "./queries/site-checks";
+export {
+  listConnectedAccounts,
+  listConnectedAccountsForStaff,
+  removeConnectedAccount,
+  saveConnectedAccount,
+  type ConnectedAccountInput,
+} from "./queries/connected-accounts";
+export {
+  effectivePreferences,
+  emailByDefault,
+  getNotificationsSeenAt,
+  listNotificationPreferences,
+  markNotificationsSeen,
+  resolveEmailPreference,
+  setNotificationPreference,
+  shouldEmail,
+} from "./queries/notifications";
+export {
+  acceptBusinessInvite,
+  BUSINESS_INVITE_DAYS,
+  BusinessInviteOpenError,
+  createBusinessInvite,
+  listBusinessInvites,
+  revokeBusinessInvite,
+  type AcceptBusinessInviteResult,
+  type BusinessInviteRefusal,
+  type BusinessInviteView,
+  type InvitableRole,
+} from "./queries/business-invites";

@@ -5,7 +5,7 @@ import { useActionState, useCallback, useEffect, useRef, useState, type Clipboar
 import { askForChangeAction } from "@/app/app-host/(protected)/requests/actions";
 import { SupportAttachments, type SupportAttachmentsHandle } from "@/components/panel/support/support-attachments";
 import { DARK_BUTTON } from "@/components/v2/classes";
-import { intentRule, type IntentOption, type RequestIntent } from "@/lib/requests/form";
+import { intentRule, PAGE_FIELD_LIMIT, type IntentOption, type RequestIntent } from "@/lib/requests/form";
 import { requestHref } from "@/lib/requests/links";
 import { handleImagePaste } from "@/lib/support-paste";
 import { INITIAL_SUPPORT_STATE } from "@/lib/support-form-state";
@@ -78,10 +78,23 @@ export function AskForm({ options, submissionKey, defaultIntent, includedLine = 
       {intent === "website_update" ? (
         <div>
           <label htmlFor="ask-page" className="block text-[0.9375rem] font-semibold text-ink">
-            Which page? (optional)
+            Which page?
           </label>
-          <input id="ask-page" name="page" type="text" maxLength={200} defaultValue={defaultPage} disabled={pending} placeholder="For example Home or Services" className={INPUT} />
-          {includedLine === null ? null : <p className="mt-1.5 text-[0.8125rem] text-ink-2">{includedLine}</p>}
+          <input
+            id="ask-page"
+            name="page"
+            type="text"
+            maxLength={PAGE_FIELD_LIMIT}
+            defaultValue={defaultPage}
+            disabled={pending}
+            aria-describedby="ask-page-help"
+            placeholder="For example Home, or www.yoursite.com/about"
+            className={INPUT}
+          />
+          <p id="ask-page-help" className="mt-1.5 text-[0.8125rem] text-ink-2">
+            Already picked if you came from a page.
+          </p>
+          {includedLine === null ? null : <p className="mt-1 text-[0.8125rem] text-ink-2">{includedLine}</p>}
         </div>
       ) : null}
       <div>
@@ -108,11 +121,12 @@ export function AskForm({ options, submissionKey, defaultIntent, includedLine = 
           </p>
         )}
       </div>
-      <SupportAttachments ref={attachments} onChange={setIds} onBusy={setUploading} disabled={pending} />
+      <SupportAttachments ref={attachments} onChange={setIds} onBusy={setUploading} disabled={pending} label="Add a screenshot or photo (optional)" />
       <div className="flex flex-wrap items-center gap-3">
         <button type="submit" disabled={pending || uploading} className={DARK_BUTTON}>
-          {pending ? "Sending..." : "Send"}
+          {pending ? "Sending..." : "Send to the team"}
         </button>
+        {intent === "website_update" ? <p className="text-[0.9375rem] text-ink-2">We will email you when it is done.</p> : null}
         <p ref={status} tabIndex={-1} role={state.status === "error" ? "alert" : "status"} className="text-[0.8125rem] font-semibold text-error outline-none">
           {state.status === "error" && state.field !== "body" && state.field !== "intent" ? state.message : ""}
         </p>

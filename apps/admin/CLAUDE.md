@@ -8,7 +8,6 @@ The app at console.brandbasket.in where Brandbasket staff run clients, billing, 
 
 - Staff accounts are created only with `pnpm staff:create` on the server (`docs/STAFF-ACCESS.md`). Roles are `support`, `finance` and `admin`.
 - Every page and server action starts with `requireStaffAccess()` from `lib/server/staff-access.ts`. It also checks the session belongs to an active staff record, so a customer session opens nothing here.
-- Sign-in is two steps: password, then a 6-digit code emailed to the account (`lib/server/sign-in.ts`; the code logic is in `packages/auth/src/staff-sign-in-code.ts`). Only the code step starts a session, and the session carries `second_factor_at`; `lib/server/session.ts` ignores any session without it. Never call `signInEmail` here, it would start a password-only session. Lockouts: `pnpm staff:reset-2fa` (`docs/STAFF-ACCESS.md`).
 - Sessions are host-only cookies on this origin and last 12 hours.
 
 ## Data
@@ -25,10 +24,10 @@ The app at console.brandbasket.in where Brandbasket staff run clients, billing, 
 | `app/(protected)/` | Sections: leads (Enquiries), clients (one route per tab under `[businessId]/`), projects, calls, support (Requests) and `support/errors`, payments, invoices, pricing, coupons, affiliates, ad-credit, deliveries, staff, settings, access-log, privacy-requests, breaches, outbox, search. Dormant and switched off: directory, geography, ads, deals |
 | `app/login/` | Staff sign-in |
 | `app/(protected)/**/actions.ts` | Server actions, beside the page that uses them |
-| `lib/console-rail.ts` | The rail's sections, items, roles and current-link rule |
+| `lib/console-rail.ts` | The menu's items, the pages each covers (and their tab strips), roles, counts and current-item rule |
 | `lib/server/` | Console server logic: auth, session, staff access, access log, activity (`activity.ts`), rail counts |
 | `lib/*.ts` | Form state, rules and view helpers, most with a `.test.ts` beside them |
-| `components/console/` | Building blocks: buttons, page header, section, figures, filter pills, tables, status pill, notice |
+| `components/console/` | Building blocks: buttons, page header, section tabs, section, figures, filter pills, tables, status pill, notice |
 | `components/console/` (shell) | `console-shell.tsx`, `rail.tsx`, `rail-nav.tsx`, `rail-icon.tsx`, `phone-bar.tsx`, `global-search.tsx` |
 | `app/console.css` | The gold token remap and the reduced-motion rule |
 

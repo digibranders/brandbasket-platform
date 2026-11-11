@@ -19,7 +19,7 @@ afterEach(() => {
 
 describe("maintenanceResponse", () => {
   it("is a 503 that asks to be retried and keeps the page out of search", async () => {
-    const response = maintenanceResponse("Riverside Dental");
+    const response = maintenanceResponse({ businessName: "Riverside Dental" });
     expect(response.status).toBe(503);
     expect(response.headers.get("Retry-After")).toBe("300");
     expect(response.headers.get("X-Robots-Tag")).toBe("noindex, nofollow");
@@ -27,17 +27,18 @@ describe("maintenanceResponse", () => {
     expect(response.headers.get("Content-Type")).toContain("text/html");
     const html = await response.text();
     expect(html).toContain("<title>Under maintenance</title>");
-    expect(html).toContain("Riverside Dental is taking a short break");
+    expect(html).toContain("Riverside Dental");
+    expect(html).toContain("temporarily unavailable");
   });
 
   it("escapes a business name that carries markup, and shows no links", async () => {
-    const html = await maintenanceResponse("<script>x</script>").text();
+    const html = await maintenanceResponse({ businessName: "<script>x</script>" }).text();
     expect(html).not.toContain("<script>x");
     expect(html).not.toContain("<a ");
   });
 
-  it("falls back to the plain headline without a name", async () => {
-    expect(await maintenanceResponse().text()).toContain("We'll be back soon");
+  it("falls back to a plain notice without a name", async () => {
+    expect(await maintenanceResponse().text()).toContain("This website is temporarily unavailable");
   });
 });
 

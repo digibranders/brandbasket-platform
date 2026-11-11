@@ -2,6 +2,7 @@ import { createSupportTicketWithOutcome, findLatestProject, linkFeedbackTicket, 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { requireCustomerAccess } from "@/lib/server/customer-access";
 import { getAppDb, getStaffDb } from "@/lib/server/db";
+import { sendPreviewChangesReceived } from "@/lib/server/preview-changes-email";
 import { respondToPreview } from "@/lib/server/project-response";
 import { sendSupportTicketAlert } from "@/lib/server/support-alerts";
 import { supportRateLimit } from "@/lib/server/support-limits";
@@ -29,6 +30,7 @@ vi.mock("@brandbasket/db", () => {
 vi.mock("@/lib/server/customer-access", () => ({ requireCustomerAccess: vi.fn() }));
 vi.mock("@/lib/server/db", () => ({ getAppDb: vi.fn(), getStaffDb: vi.fn() }));
 vi.mock("@/lib/server/error-report", () => ({ reportServerError: vi.fn() }));
+vi.mock("@/lib/server/preview-changes-email", () => ({ sendPreviewChangesReceived: vi.fn() }));
 vi.mock("@/lib/server/project-response", () => ({ respondToPreview: vi.fn() }));
 vi.mock("@/lib/server/support-alerts", () => ({ sendSupportTicketAlert: vi.fn() }));
 vi.mock("@/lib/server/support-limits", () => ({ supportRateLimit: vi.fn() }));
@@ -84,7 +86,7 @@ describe("sendPreviewFeedbackAction", () => {
   }
 
   beforeEach(() => {
-    vi.mocked(requireCustomerAccess).mockResolvedValue({ user: { id: "user-a", email: "owner@example.test" }, tenant, billing: { hasAccess: true } } as never);
+    vi.mocked(requireCustomerAccess).mockResolvedValue({ user: { id: "user-a", name: "Asha Rao", email: "owner@example.test" }, tenant, billing: { hasAccess: true } } as never);
     vi.mocked(canCreateSupportRequest).mockReturnValue(true);
     vi.mocked(supportRateLimit).mockResolvedValue(null);
     vi.mocked(getAppDb).mockReturnValue({ kind: "app-db" } as never);
@@ -121,6 +123,28 @@ describe("sendPreviewFeedbackAction", () => {
     await expect(sendPreviewFeedbackAction(INITIAL_SUPPORT_STATE, form())).rejects.toThrow("REDIRECT:/website?response=changes-sent");
     expect(sendSupportTicketAlert).toHaveBeenCalledTimes(1);
     expect(respondToPreview).toHaveBeenCalledTimes(2);
+  });
+
+  it("confirms the changes to the customer once, with the round and the words they wrote, and not again for a repeated form", async () => {
+    await expect(sendPreviewFeedbackAction(INITIAL_SUPPORT_STATE, form())).rejects.toThrow("REDIRECT:/website?response=changes-sent");
+    expect(sendPreviewChangesReceived).toHaveBeenCalledTimes(1);
+    expect(sendPreviewChangesReceived).toHaveBeenCalledWith({
+      user: expect.objectContaining({ name: "Asha Rao", email: "owner@example.test" }),
+      body: FEEDBACK,
+      round: 2,
+      rounds: 2,
+      now: expect.any(Date),
+    });
+    vi.mocked(createSupportTicketWithOutcome).mockResolvedValue({ ticket: { id: "ticket-1", displayRef: "FY-1" }, created: false } as never);
+    await expect(sendPreviewFeedbackAction(INITIAL_SUPPORT_STATE, form())).rejects.toThrow("REDIRECT:/website?response=changes-sent");
+    expect(sendPreviewChangesReceived).toHaveBeenCalledTimes(1);
+  });
+
+  it("sends no confirmation when nothing was saved", async () => {
+    await sendPreviewFeedbackAction(INITIAL_SUPPORT_STATE, form({ body: "Short" }));
+    vi.mocked(findLatestProject).mockResolvedValue({ status: "building", revisionRoundsGranted: 0 } as never);
+    await expect(sendPreviewFeedbackAction(INITIAL_SUPPORT_STATE, form())).rejects.toThrow("REDIRECT:/website?response=not-ready");
+    expect(sendPreviewChangesReceived).not.toHaveBeenCalled();
   });
 
   it("sends nothing and says what was wrong when the box is too short", async () => {

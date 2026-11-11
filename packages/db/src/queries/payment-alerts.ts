@@ -7,6 +7,8 @@ type Runner = Database;
 
 /** The person behind a business: its earliest owner. Null fields when the business has no owner on record. */
 export interface AlertPerson {
+  /** The owner's user id, for checking their email preferences; null when the business has no owner on record. */
+  readonly userId: string | null;
   readonly name: string | null;
   readonly email: string | null;
   readonly phone: string | null;
@@ -45,7 +47,7 @@ export async function findBusinessAlertDetails(
   const business = found[0];
   if (business === undefined) return null;
   const owners = await db
-    .select({ name: users.name, email: users.email, phone: users.phoneNumber })
+    .select({ userId: users.id, name: users.name, email: users.email, phone: users.phoneNumber })
     .from(businessMembers)
     .innerJoin(users, eq(users.id, businessMembers.userId))
     .where(and(eq(businessMembers.businessId, businessId), eq(businessMembers.role, "owner")))
@@ -55,7 +57,7 @@ export async function findBusinessAlertDetails(
   const accountPhone = owner?.phone?.trim() ? owner.phone : null;
   // An account made before numbers were kept has none; the number they gave when they signed up is on their lead.
   const phone = accountPhone ?? (await findLeadPhone(db, businessId));
-  return { business, owner: owner === undefined ? { name: null, email: null, phone } : { name: owner.name, email: owner.email, phone } };
+  return { business, owner: owner === undefined ? { userId: null, name: null, email: null, phone } : { userId: owner.userId, name: owner.name, email: owner.email, phone } };
 }
 
 export async function findPaymentAlertBase(db: Runner, paymentId: string): Promise<PaymentAlertBase | null> {

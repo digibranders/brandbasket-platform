@@ -6,8 +6,12 @@ const HOUR_MS = 3_600_000;
 
 /** How long after the kickoff the first preview is promised. */
 export const KICKOFF_PREVIEW_DUE_HOURS = 48;
-/** A kickoff is left this long after its end time before the build starts by itself, so staff who write notes straight after the call start it first. */
-export const KICKOFF_SETTLE_HOURS = 2;
+/**
+ * Staff are the only ones who know whether a kickoff happened (the booking page cannot see who joined a video call), so a
+ * call nobody marked starts the build by itself only this long after its end time. It is a fallback so a forgotten call
+ * never blocks a customer for good.
+ */
+export const KICKOFF_FALLBACK_START_HOURS = 24;
 /** When a start is late (the sweep was down), the promise is this far from now rather than a date already past. */
 const LATE_START_PREVIEW_HOURS = 24;
 
@@ -44,7 +48,7 @@ export async function markProjectReadyAfterKickoff(db: Database, input: { readon
   return rows.length > 0;
 }
 
-/** A kickoff whose project is still waiting in onboarding: the call was held by staff, or its end time has passed. */
+/** A kickoff whose project is still waiting in onboarding: the call was held by staff, or ended long enough ago to start without a mark. */
 export interface KickoffToStart {
   readonly businessId: string;
   readonly endsAt: Date | null;
@@ -52,8 +56,9 @@ export interface KickoffToStart {
 }
 
 /**
- * The kickoffs that are over and whose project has not started: held by staff, or ended at or before `endedBefore`. With
- * `confirmedOnly`, only the ones staff marked held, whatever their end time. Staff connection.
+ * The kickoffs whose project has not started and whose build may start: held by staff, or ended at or before `endedBefore`
+ * with no mark. With `confirmedOnly`, only the ones staff marked held, whatever their end time. A call staff marked as not
+ * attended has no booking row any more (clearUnheldKickoffBooking), so it is never listed here. Staff connection.
  */
 export async function listKickoffsToStart(db: Database, input: { readonly endedBefore: Date; readonly confirmedOnly?: boolean }): Promise<KickoffToStart[]> {
   const over =

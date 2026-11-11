@@ -5,12 +5,12 @@ import { usePathname } from "next/navigation";
 import { useCallback, useState, type ReactElement } from "react";
 import type { StaffRole } from "@brandbasket/db";
 import { WordmarkLogo, type BrandLogo } from "@brandbasket/shared/ui/logo";
-import { currentHref, type ConsoleRailSection, type RailCounts } from "@/lib/console-rail";
+import { currentHref, type ConsoleRailLink, type RailCounts } from "@/lib/console-rail";
 import { GlobalSearch } from "./global-search";
 import { RailAccount, RailNav } from "./rail-nav";
 
 export interface RailProps {
-  readonly sections: readonly ConsoleRailSection[];
+  readonly links: readonly ConsoleRailLink[];
   readonly counts: RailCounts;
   readonly userName: string;
   readonly role: StaffRole;
@@ -18,8 +18,8 @@ export interface RailProps {
   readonly logo: BrandLogo;
 }
 
-/** The dark rail from `lg` up: logo, search, the sections with their counts, and the account at the foot. */
-export function Rail({ sections, counts, userName, role, signOut, logo }: RailProps): ReactElement {
+/** The dark rail from `lg` up: logo, search, the menu items with their counts, and the account at the foot. */
+export function Rail({ links, counts, userName, role, signOut, logo }: RailProps): ReactElement {
   const pathname = usePathname();
   const [searching, setSearching] = useState(false);
   const openSearch = useCallback(() => setSearching(true), []);
@@ -38,7 +38,7 @@ export function Rail({ sections, counts, userName, role, signOut, logo }: RailPr
         Search everything
         <kbd className="ml-auto rounded-md bg-white/10 px-1.5 font-figure text-[0.6875rem]">⌘K</kbd>
       </button>
-      <RailNav sections={sections} counts={counts} current={currentHref(sections, pathname)} tone="dark" />
+      <RailNav links={links} counts={counts} current={currentHref(links, pathname)} tone="dark" />
       <div className="mt-auto pt-3">
         <RailAccount userName={userName} role={role} signOut={signOut} tone="dark" />
       </div>

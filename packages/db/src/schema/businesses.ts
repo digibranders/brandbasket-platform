@@ -6,7 +6,8 @@ import { createdAt } from "./columns";
 import { billingCurrency } from "./currency";
 import { referralCodes } from "./referrals";
 
-export const businessMemberRole = pgEnum("business_member_role", ["owner", "editor"]);
+/** `viewer` reads everything an editor reads and writes no business data (row-level security, migration 0216). */
+export const businessMemberRole = pgEnum("business_member_role", ["owner", "editor", "viewer"]);
 export type BusinessMemberRole = (typeof businessMemberRole.enumValues)[number];
 
 /**

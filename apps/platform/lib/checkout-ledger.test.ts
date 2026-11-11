@@ -9,8 +9,8 @@ import { orderSummary } from "./membership";
 const PRICING: LedgerPricing = { planInitialAmountCents: 0, currency: "INR", taxRateBasisPoints: 1800, forfeited: false, hasEverPaid: false };
 
 const WEBSITE: readonly MonthlyAddOnId[] = ["managed-website"];
-const TWO: readonly MonthlyAddOnId[] = ["managed-website", "digital-growth"];
-const THREE: readonly MonthlyAddOnId[] = ["managed-website", "digital-growth", "local-seo-aeo"];
+const TWO: readonly MonthlyAddOnId[] = ["managed-website", "social-media"];
+const THREE: readonly MonthlyAddOnId[] = ["managed-website", "social-media", "paid-ads"];
 
 const PERCENT_CODE: LedgerCode = { code: "SAVE20", months: 3, stated: { kind: "percent", basisPoints: 2000 } };
 const FLAT_CODE: LedgerCode = { code: "FLAT500", months: null, stated: { kind: "amount", amountCents: 50_000 } };
@@ -24,8 +24,8 @@ function serverTotalCents(services: readonly MonthlyAddOnId[], discountCents: nu
 describe("ledgerSummary without a code", () => {
   it.each([
     ["one plan", WEBSITE, 299_900],
-    ["two plans", TWO, 1_169_900],
-    ["three plans", THREE, 3_039_800],
+    ["two plans", TWO, 599_800],
+    ["three plans", THREE, 899_700],
   ])("charges %s what the server charges", (_label, services, expected) => {
     const summary = ledgerSummary(PRICING, services, null);
     expect(summary.totalCents).toBe(expected);
@@ -87,20 +87,19 @@ describe("ledgerRows", () => {
     ]);
   });
 
-  it("lists each other plan at its list price and the package saving as one line", () => {
+  it("lists each other plan at its list price, with no saving line", () => {
     expect(rows(TWO)).toEqual([
       { key: "website", label: "Website", amount: "Free", tone: "free" },
       { key: "maintenance", label: "Maintenance", amount: "₹2,999", tone: "plain" },
-      { key: "digital-growth", label: "Social Media and Ads", amount: "₹9,999", tone: "plain" },
-      { key: "offer", label: "10% off", amount: "-₹1,299", tone: "save" },
+      { key: "social-media", label: "Social Media Management", amount: "₹2,999", tone: "plain" },
     ]);
   });
 
-  it("names 20% for three plans, and the saving is what the lines lose", () => {
+  it("has no offer line for three plans, and every line is at list", () => {
     const summary = ledgerSummary(PRICING, THREE, null);
-    const offer = ledgerRows(summary, "INR", null).find((row) => row.key === "offer");
-    expect(offer?.label).toBe("20% off");
-    expect(summary.offer?.discountCents).toBe(summary.lines.reduce((total, line) => total + line.listCents - line.netCents, 0));
+    expect(ledgerRows(summary, "INR", null).some((row) => row.key === "offer")).toBe(false);
+    expect(summary.offer).toBeNull();
+    expect(summary.lines.every((line) => line.netCents === line.listCents)).toBe(true);
   });
 
   it("adds the code's line after the package saving", () => {

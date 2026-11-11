@@ -29,8 +29,8 @@ const RENEWED_AT = new Date("2026-11-21T10:05:00.000Z");
 /** All three services in rupees at the package's 20% off, the saving rounded down to a whole rupee with the difference on the dearest line (40 paise less discount there), as packageLines in @brandbasket/shared prices them. */
 const ALL_THREE_INR: readonly NewBundledAddOn[] = [
   { addOn: "managed-website", listAmountCents: 299_900, offerDiscountAmountCents: 59_980, netAmountCents: 239_920, taxRateBasisPoints: 1800 },
-  { addOn: "digital-growth", listAmountCents: 999_900, offerDiscountAmountCents: 199_980, netAmountCents: 799_920, taxRateBasisPoints: 1800 },
-  { addOn: "local-seo-aeo", listAmountCents: 2_499_900, offerDiscountAmountCents: 499_940, netAmountCents: 1_999_960, taxRateBasisPoints: 1800 },
+  { addOn: "social-media", listAmountCents: 999_900, offerDiscountAmountCents: 199_980, netAmountCents: 799_920, taxRateBasisPoints: 1800 },
+  { addOn: "paid-ads", listAmountCents: 2_499_900, offerDiscountAmountCents: 499_940, netAmountCents: 1_999_960, taxRateBasisPoints: 1800 },
 ];
 
 let dbs: TestDatabases;
@@ -79,8 +79,8 @@ describe("opening a checkout for a package", () => {
     const rows = await findBundledAddOnsForSubscription(dbs.staff.db, subscription.id);
     expect(rows.map((row) => [row.addOn, row.listAmountCents, row.offerDiscountAmountCents, row.netAmountCents, row.status])).toEqual([
       ["managed-website", 299_900, 59_980, 239_920, "pending"],
-      ["digital-growth", 999_900, 199_980, 799_920, "pending"],
-      ["local-seo-aeo", 2_499_900, 499_940, 1_999_960, "pending"],
+      ["social-media", 999_900, 199_980, 799_920, "pending"],
+      ["paid-ads", 2_499_900, 499_940, 1_999_960, "pending"],
     ]);
     expect(rows.reduce((total, row) => total + row.netAmountCents, 0)).toBe(3_039_800);
   });
@@ -151,7 +151,7 @@ describe("a line moving to another package offer", () => {
     const [website, growth] = await findBundledAddOnsForSubscription(dbs.staff.db, subscription.id);
     if (website === undefined || growth === undefined) throw new Error("The package lines were not written");
 
-    // Local SEO + AEO is dropped and the offer forfeited: the website and Social Media and Ads go back to list price.
+    // Paid Ads Management is dropped and the offer forfeited: the website and Social Media Management go back to list price.
     await dbs.staff.db.transaction((tx) =>
       setPendingOfferDiscounts(tx, {
         subscriptionId: subscription.id,
@@ -175,8 +175,8 @@ describe("a line moving to another package offer", () => {
     const rows = await findBundledAddOnsForSubscription(dbs.staff.db, subscription.id);
     expect(rows.map((row) => [row.addOn, row.offerDiscountAmountCents, row.netAmountCents, row.pendingOfferDiscountAmountCents])).toEqual([
       ["managed-website", 0, 299_900, null],
-      ["digital-growth", 0, 999_900, null],
-      ["local-seo-aeo", 499_940, 1_999_960, null],
+      ["social-media", 0, 999_900, null],
+      ["paid-ads", 499_940, 1_999_960, null],
     ]);
     expect(await findSubscriptionById(dbs.staff.db, subscription.id)).toMatchObject({
       bundledAddOnNetCents: 3_299_760,
@@ -234,7 +234,7 @@ describe("ending the package offer", () => {
     });
     await activateBundledAddOns(dbs.staff.db, { subscriptionId: subscription.id, now: OPENED_AT });
     const waiting = [] as { readonly addOn: string; readonly chargeId: string }[];
-    for (const addOn of ["digital-growth", "local-seo-aeo"]) {
+    for (const addOn of ["social-media", "paid-ads"]) {
       const inserted = await dbs.owner.db
         .insert(charges)
         .values({ businessId, kind: "add_on", description: addOn, quantity: 1, unitAmountCents: 100_000, taxRateBasisPoints: 1800, amountCents: 100_000, currency: "INR" })
@@ -253,8 +253,8 @@ describe("ending the package offer", () => {
     const rows = await findBundledAddOnsForSubscription(dbs.staff.db, subscription.id);
     expect(rows.map((row) => [row.addOn, row.status])).toEqual([
       ["managed-website", "active"],
-      ["digital-growth", "removed"],
-      ["local-seo-aeo", "removed"],
+      ["social-media", "removed"],
+      ["paid-ads", "removed"],
     ]);
     const statuses = await dbs.owner.db.select({ id: charges.id, status: charges.status }).from(charges);
     expect(waiting.map((entry) => statuses.find((charge) => charge.id === entry.chargeId)?.status)).toEqual(["waived", "waived"]);
