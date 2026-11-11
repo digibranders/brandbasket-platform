@@ -379,6 +379,7 @@ describe("removeBundledAddOnFor", () => {
     planId: PLAN.id,
     provider: "fake",
     providerSubscriptionId: PROVIDER_SUBSCRIPTION,
+    billingInterval: "month",
     status: "active",
     activatedAt: PAID_AT,
     paidThroughAt: PAID_THROUGH,
@@ -413,7 +414,7 @@ describe("removeBundledAddOnFor", () => {
       endsOn: PAID_THROUGH,
       message: "Social Media Management stays until your next payment date, then it stops.",
     });
-    expect(ensureDiscountPlan).toHaveBeenCalledWith(provider, PLAN, 0, 2_799_800);
+    expect(ensureDiscountPlan).toHaveBeenCalledWith(provider, PLAN, 0, 2_799_800, "month");
     expect(changed).toHaveBeenCalledWith(PROVIDER_SUBSCRIPTION, "plan_lower");
     expect(recordBundledAddOnRemoval).toHaveBeenCalledWith(expect.anything(), {
       id: bundledRow("social-media").id,
@@ -454,7 +455,7 @@ describe("removeBundledAddOnFor", () => {
 
     await removeBundledAddOnFor(customer, "social-media", NOW);
 
-    expect(ensureDiscountPlan).toHaveBeenCalledWith(provider, PLAN, 50_000, 2_799_800);
+    expect(ensureDiscountPlan).toHaveBeenCalledWith(provider, PLAN, 50_000, 2_799_800, "month");
     expect(setNextDiscount).toHaveBeenCalledWith(expect.anything(), { subscriptionId: "sub-1", discountCents: 50_000, now: NOW });
   });
 
@@ -466,7 +467,7 @@ describe("removeBundledAddOnFor", () => {
     await removeBundledAddOnFor(customer, "social-media", NOW);
 
     // 10% of the 27,998 (website and SEO at list) that stays.
-    expect(ensureDiscountPlan).toHaveBeenCalledWith(provider, PLAN, 279_980, 2_799_800);
+    expect(ensureDiscountPlan).toHaveBeenCalledWith(provider, PLAN, 279_980, 2_799_800, "month");
     expect(setNextDiscount).toHaveBeenCalledWith(expect.anything(), { subscriptionId: "sub-1", discountCents: 279_980, now: NOW });
   });
 
@@ -476,7 +477,7 @@ describe("removeBundledAddOnFor", () => {
 
     await removeBundledAddOnFor(customer, "social-media", NOW);
 
-    expect(ensureDiscountPlan).toHaveBeenCalledWith(provider, PLAN, 0, 2_799_800);
+    expect(ensureDiscountPlan).toHaveBeenCalledWith(provider, PLAN, 0, 2_799_800, "month");
     expect(setNextDiscount).toHaveBeenCalledWith(expect.anything(), { subscriptionId: "sub-1", discountCents: 0, now: NOW });
   });
 

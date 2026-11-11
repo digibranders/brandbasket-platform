@@ -193,7 +193,11 @@ export default async function ClientsPage({
                     <td className={TD}>
                       <StatusPill tone={CLIENT_ROW_STAGE_TONES[rowStage]}>{CLIENT_ROW_STAGE_LABELS[rowStage]}</StatusPill>
                     </td>
-                    <td className={TD_NUM}>{service === undefined || service.monthlyCents === 0 ? "None" : formatMoney(service.monthlyCents, client.currency)}</td>
+                    <td className={TD_NUM}>
+                      {service === undefined || service.monthlyCents === 0
+                        ? "None"
+                        : `${formatMoney(service.monthlyCents, client.currency)}${client.billing.subscription?.billingInterval === "year" ? " a year" : ""}`}
+                    </td>
                     <td className={TD}>
                       {closure !== undefined ? (
                         <>

@@ -10,6 +10,7 @@ export function basketDeps(): BasketDeps {
   return {
     staffDb,
     provider: getBillingProvider(),
-    ensureDiscountPlan: (provider, plan, discountAmountCents, addOnNetCents) => ensureDiscountPlanFor(staffDb, provider, plan, discountAmountCents, addOnNetCents),
+    ensureDiscountPlan: (provider, plan, discountAmountCents, addOnNetCents, interval) =>
+      ensureDiscountPlanFor(staffDb, provider, plan, discountAmountCents, addOnNetCents, interval),
   };
 }

@@ -253,7 +253,7 @@ describe("loadOverview", () => {
       log.mockRestore();
     });
 
-    it("does not read the posts for a business without Social & Ads", async () => {
+    it("does not read the posts for a business without Social media", async () => {
       vi.mocked(loadTodo).mockResolvedValue(todoFor(["website"]));
 
       await loadOverview(tenant, noBilling, now);

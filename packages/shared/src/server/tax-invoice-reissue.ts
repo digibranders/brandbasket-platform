@@ -1,5 +1,5 @@
 import "server-only";
-import { addMonthsUtc, chargedAmountCents } from "@brandbasket/billing";
+import { addMonthsUtc, chargedAmountCents, monthsPerCycle } from "@brandbasket/billing";
 import {
   findAddOnSubscriptionForPayment,
   findChargeByPaymentId,
@@ -62,7 +62,8 @@ export class UnsupportedPaymentKindError extends Error {
  * subscription's rows as they stand now: a service dropped, the package offer forfeited or a code's discount ended since
  * would otherwise print a different invoice from the one the payment path would have issued. The lines must come to exactly
  * what the payment took, as buildTaxInvoice also checks, so the invoice explains the charge to the paisa. The period is the
- * payment date plus the plan's initial term (a first payment) or one month, since the provider's cycle dates are not kept.
+ * payment date plus the plan's initial term (a first payment) or one month (a year on a yearly subscription), since the
+ * provider's cycle dates are not kept.
  */
 async function sourceFor(tx: ScopedTransaction, payment: Payment): Promise<InvoiceSource> {
   // Nothing records a payment of this kind today (the value is left from the first billing tables), so there is no
@@ -101,7 +102,8 @@ async function sourceFor(tx: ScopedTransaction, payment: Payment): Promise<Invoi
     retentionDiscountCents: basis.retentionDiscountCents,
     monthly: !initial || plan.initialTermMonths === 1,
     periodStart: payment.paidAt,
-    periodEnd: addMonthsUtc(payment.paidAt, initial ? plan.initialTermMonths : 1),
+    // A yearly subscription's every payment, the first included, buys a year.
+    periodEnd: addMonthsUtc(payment.paidAt, subscription.billingInterval === "year" ? monthsPerCycle("year") : initial ? plan.initialTermMonths : 1),
   };
 }
 

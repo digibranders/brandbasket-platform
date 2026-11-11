@@ -27,6 +27,10 @@ import { referralCodes } from "./referrals";
  * by hand in the staff console; it never has a checkout.
  */
 export const billingProvider = pgEnum("billing_provider", ["fake", "razorpay", "manual"]);
+
+/** How often a subscription is charged: every month, or once a year at 10% off (owner, 2026-11-11). */
+export const billingInterval = pgEnum("billing_interval", ["month", "year"]);
+export type BillingInterval = (typeof billingInterval.enumValues)[number];
 export type BillingProviderName = (typeof billingProvider.enumValues)[number];
 
 /** Our own status, mapped from whatever the provider calls it. See packages/billing. */
@@ -147,6 +151,11 @@ export const subscriptions = pgTable(
       .references(() => plans.id),
     provider: billingProvider("provider").notNull(),
     providerSubscriptionId: text("provider_subscription_id").notNull(),
+    /**
+     * How often it is charged, fixed when it opens. On a yearly subscription every amount on it and on its lines (the
+     * services' prices, the add-on total, a code's discount) is for a year.
+     */
+    billingInterval: billingInterval("billing_interval").notNull().default("month"),
     /** Exactly as the provider reported it, for support and for reconciliation. */
     providerStatus: text("provider_status"),
     /**
@@ -306,14 +315,16 @@ export const providerBundlePlans = pgTable(
     planId: uuid("plan_id")
       .notNull()
       .references(() => plans.id),
-    /** The monthly price this provider plan charges, GST included, in minor units. */
+    /** The price this provider plan charges each cycle, GST included, in minor units. (A month's when the name was given.) */
     netMonthlyCents: integer("net_monthly_cents").notNull(),
+    /** The cycle it charges that price for. */
+    billingInterval: billingInterval("billing_interval").notNull().default("month"),
     provider: billingProvider("provider").notNull(),
     providerPlanId: text("provider_plan_id").notNull(),
     createdAt: createdAt(),
   },
   (table) => [
-    uniqueIndex("provider_bundle_plans_plan_net_idx").on(table.planId, table.netMonthlyCents, table.provider),
+    uniqueIndex("provider_bundle_plans_plan_net_idx").on(table.planId, table.netMonthlyCents, table.provider, table.billingInterval),
     check("provider_bundle_plans_net_check", sql`${table.netMonthlyCents} > 0`),
     check("provider_bundle_plans_provider_plan_check", sql`${table.providerPlanId} <> ''`),
   ],

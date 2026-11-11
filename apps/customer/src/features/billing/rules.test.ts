@@ -86,6 +86,12 @@ describe("dropCopy", () => {
     });
   });
 
+  it("says a year for a yearly plan", () => {
+    const preview = dropPreview({ staying: [WEBSITE, SOCIAL, SEO], dropping: "paid-ads", forfeited: false, currency: "INR" });
+    if (preview === null) throw new Error("Expected a preview");
+    expect(dropCopy(preview, "Thu 11 Nov 2027", "year").monthly).toBe("From Thu 11 Nov 2027 you pay ₹12,998 a year, GST included.");
+  });
+
   it("names one service kept, says nothing about a package already given up, and adds no GST in dollars", () => {
     const usd = (addOn: "managed-website" | "social-media") => ({ addOn, listAmountCents: 6_500, taxRateBasisPoints: 0 });
     const preview = dropPreview({ staying: [usd("managed-website"), usd("social-media")], dropping: "social-media", forfeited: true, currency: "USD" });
@@ -179,6 +185,12 @@ describe("nextPaymentLine", () => {
 
   it("names the amount and the date, and that prices include GST", () => {
     expect(nextPaymentLine({ subscription, totalCents: 3_039_800, plan: INR_PLAN, now: NOW })).toBe("Next payment ₹30,398 on Fri 27 Nov. All prices include 18% GST.");
+  });
+
+  it("says a yearly plan is paid yearly", () => {
+    expect(nextPaymentLine({ subscription: { ...subscription, billingInterval: "year" }, totalCents: 3_238_900, plan: INR_PLAN, now: NOW })).toBe(
+      "Next payment ₹32,389 on Fri 27 Nov, paid yearly. All prices include 18% GST.",
+    );
   });
 
   it("never mentions GST in dollars", () => {

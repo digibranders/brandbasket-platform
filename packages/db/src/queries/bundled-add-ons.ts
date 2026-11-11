@@ -8,6 +8,7 @@ import {
   providerBundlePlans,
   subscriptions,
   type BillingCurrency,
+  type BillingInterval,
   type BillingProviderName,
   type BundledAddOn,
 } from "../schema";
@@ -138,11 +139,12 @@ export async function removeBundledAddOnsOf(db: Runner, input: { readonly subscr
     .where(and(eq(bundledAddOns.subscriptionId, input.subscriptionId), inArray(bundledAddOns.status, ["pending", "active"])));
 }
 
-/** A base plan at one total net monthly price, at one provider. */
+/** A base plan at one total net price a cycle, at one provider. */
 export interface BundlePlanKey {
   readonly planId: string;
-  /** The monthly price the provider plan charges, GST included, in minor units. Greater than 0. */
+  /** The price the provider plan charges each cycle, GST included, in minor units. Greater than 0. */
   readonly netMonthlyCents: number;
+  readonly billingInterval: BillingInterval;
   readonly provider: BillingProviderName;
 }
 
@@ -156,6 +158,7 @@ export async function findProviderBundlePlan(db: Runner, key: BundlePlanKey): Pr
       and(
         eq(providerBundlePlans.planId, key.planId),
         eq(providerBundlePlans.netMonthlyCents, key.netMonthlyCents),
+        eq(providerBundlePlans.billingInterval, key.billingInterval),
         eq(providerBundlePlans.provider, key.provider),
       ),
     )

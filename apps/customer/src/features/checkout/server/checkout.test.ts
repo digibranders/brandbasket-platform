@@ -126,6 +126,7 @@ function subscription(overrides: Partial<Subscription>): Subscription {
     planId: PLAN.id,
     provider: "fake",
     providerSubscriptionId: `fake_sub_${"a".repeat(24)}`,
+    billingInterval: "month",
     status: "incomplete",
     activatedAt: null,
     paidThroughAt: null,
@@ -252,6 +253,7 @@ describe("startCheckoutFor", () => {
         planId: PLAN.id,
         provider: "fake",
         providerSubscriptionId: expect.stringMatching(/^fake_sub_[0-9a-f]{24}$/),
+        billingInterval: "month",
         referralCodeId: null,
         discountAmountCents: 0,
         discountMonthsLeft: null,
@@ -594,7 +596,7 @@ describe("startMembershipCheckoutFor", () => {
     redirectUrl(await startMembershipCheckoutFor(owner, NOW, "managed", WEBSITE_ALONE));
 
     // The website line in rupees, ₹2,999 a month with the GST inside it, is billed with the plan.
-    expect(ensureDiscountPlan).toHaveBeenCalledWith(provider, INR_PLAN, 50_000, 299_900);
+    expect(ensureDiscountPlan).toHaveBeenCalledWith(provider, INR_PLAN, 50_000, 299_900, "month");
     expect(started).toHaveBeenCalledWith(expect.objectContaining({ providerPlanId: "plan_discounted", discountAmountCents: 50_000 }));
     expect(openCheckoutSubscription).toHaveBeenCalledWith(
       { name: "tx2" },
@@ -632,7 +634,7 @@ describe("startMembershipCheckoutFor", () => {
 
     expect(charged).toBe(899_700);
     // The provider runs one plan for the lines' total, ₹8,997 a month with the GST inside it.
-    expect(ensureDiscountPlan).toHaveBeenCalledWith(provider, INR_PLAN, 0, 899_700);
+    expect(ensureDiscountPlan).toHaveBeenCalledWith(provider, INR_PLAN, 0, 899_700, "month");
     expect(openCheckoutSubscription).toHaveBeenCalledWith(
       { name: "tx2" },
       expect.objectContaining({
@@ -778,7 +780,7 @@ describe("startMembershipCheckoutFor", () => {
 
     // The website and Social Media Management come to ₹5,998 at list; the code takes 10% of that once, ₹599.80.
     expect(charged).toBe(539_820);
-    expect(ensureDiscountPlan).toHaveBeenCalledWith(provider, INR_PLAN, 59_980, 599_800);
+    expect(ensureDiscountPlan).toHaveBeenCalledWith(provider, INR_PLAN, 59_980, 599_800, "month");
     expect(openCheckoutSubscription).toHaveBeenCalledWith(
       { name: "tx2" },
       expect.objectContaining({ referralCodeId: code.id, discountAmountCents: 59_980, discountMonthsLeft: 3 }),
@@ -808,7 +810,7 @@ describe("startMembershipCheckoutFor", () => {
 
     // 10% of ₹2,999 is ₹299.90, leaving ₹2,699.10 with the GST inside it.
     expect(charged).toBe(269_910);
-    expect(ensureDiscountPlan).toHaveBeenCalledWith(provider, INR_PLAN, 29_990, 299_900);
+    expect(ensureDiscountPlan).toHaveBeenCalledWith(provider, INR_PLAN, 29_990, 299_900, "month");
     expect(openCheckoutSubscription).toHaveBeenCalledWith({ name: "tx2" }, expect.objectContaining({ referralCodeId: code.id, discountAmountCents: 29_990 }));
   });
 
@@ -929,7 +931,7 @@ describe("startReactivationFor", () => {
       const lines = [usdLine("managed-website", 5_900, 0), usdLine("social-media", 5_900, 0), usdLine("paid-ads", 5_900, 0)];
       expect(openCheckoutSubscription).toHaveBeenCalledWith({ name: "tx2" }, expect.objectContaining({ bundledAddOns: lines, adCreditCents: 6_000, replacing: "sub-lapsed", referralCodeId: null, discountAmountCents: 0 }));
       expect(started).toHaveBeenCalledWith(expect.objectContaining({ bundledAddOnNetCents: 17_700, discountAmountCents: 0 }));
-      expect(ensureDiscountPlan).toHaveBeenCalledWith(provider, PLAN, 0, 17_700);
+      expect(ensureDiscountPlan).toHaveBeenCalledWith(provider, PLAN, 0, 17_700, "month");
       expect(markPackageOfferForfeited).not.toHaveBeenCalled();
     });
 
@@ -1003,7 +1005,7 @@ describe("startReactivationFor", () => {
           expect.objectContaining({ referralCodeId: CODE.id, discountAmountCents: 1_770, discountMonthsLeft: 2, adCreditCents: 6_000, replacing: "sub-lapsed" }),
         );
         expect(started).toHaveBeenCalledWith(expect.objectContaining({ bundledAddOnNetCents: 17_700, discountAmountCents: 1_770 }));
-        expect(ensureDiscountPlan).toHaveBeenCalledWith(provider, PLAN, 1_770, 17_700);
+        expect(ensureDiscountPlan).toHaveBeenCalledWith(provider, PLAN, 1_770, 17_700, "month");
         // The client has the code already: it need not still be redeemable, and the redemption cap is not used again.
         expect(findRedeemableReferralCode).not.toHaveBeenCalled();
         expect(findBusinessReferralCode).not.toHaveBeenCalled();

@@ -1,5 +1,6 @@
 import { chargedAmountCents, gstInsideCents } from "@brandbasket/billing/tax";
-import { MONTHLY_ADD_ON_IDS, type MonthlyAddOnId } from "@brandbasket/shared/lib/billing/add-ons";
+import type { BillingInterval } from "@brandbasket/db";
+import { annualListCents, MONTHLY_ADD_ON_IDS, type MonthlyAddOnId } from "@brandbasket/shared/lib/billing/add-ons";
 import { bundleLines, bundleNetCents, readBundleSelection, WEBSITE_ALONE, type BundleLine } from "@brandbasket/shared/lib/billing/bundle";
 import { adCreditCentsAtCheckout, packageBasisPointsFor } from "@brandbasket/shared/lib/billing/packages";
 import { initialTermPhrase, renewalChargeCents } from "@brandbasket/shared/lib/billing/terms";
@@ -28,6 +29,33 @@ export function membershipPathFor(tier: MembershipTier): string {
 
 /** The plan page's parameter naming its basket of services, comma separated. */
 export const MEMBERSHIP_SERVICES_PARAM = "services";
+
+/** The plan page's parameter for paying yearly: `?billing=yearly`. Absent, or anything else, is monthly. */
+export const MEMBERSHIP_BILLING_PARAM = "billing";
+const YEARLY_VALUE = "yearly";
+
+/** How often the page's basket is paid for, as its address says. */
+export function readBillingInterval(params: Readonly<Record<string, string | string[] | undefined>>): BillingInterval {
+  const raw = params[MEMBERSHIP_BILLING_PARAM];
+  return (Array.isArray(raw) ? raw[0] : raw) === YEARLY_VALUE ? "year" : "month";
+}
+
+/** `path` with monthly, and with yearly, billing: every other parameter (the basket) kept as it is. */
+export function billingSwitchHrefs(path: string, params: Readonly<Record<string, string | string[] | undefined>>): { readonly monthlyHref: string; readonly yearlyHref: string } {
+  const query = new URLSearchParams();
+  for (const [key, value] of Object.entries(params)) {
+    if (key === MEMBERSHIP_BILLING_PARAM || value === undefined) continue;
+    for (const item of Array.isArray(value) ? value : [value]) query.append(key, item);
+  }
+  const monthly = query.toString();
+  query.set(MEMBERSHIP_BILLING_PARAM, YEARLY_VALUE);
+  return { monthlyHref: monthly === "" ? path : `${path}?${monthly}`, yearlyHref: `${path}?${query.toString()}` };
+}
+
+/** The form value a Pay or code form posts for the interval, read back by readBillingInterval. */
+export function billingParamValue(interval: BillingInterval): string {
+  return interval === "year" ? YEARLY_VALUE : "monthly";
+}
 
 /**
  * The services named in a page's address (`?services=managed-website,social-media`), as catalogue ids only: the whole
@@ -125,9 +153,9 @@ export function servicesPhrase(services: readonly MonthlyAddOnId[]): string {
   return titles.length < 2 ? (titles[0] ?? "") : `${titles.slice(0, -1).join(", ")} and ${titles[titles.length - 1]}`;
 }
 
-/** What the services cost a month for a new sign-up, GST included, at the package price (a new account has given up nothing). */
-export function basketNetCents(services: readonly MonthlyAddOnId[], currency: MoneyCurrency): number {
-  return bundleNetCents(bundleLines(services, currency));
+/** What the services cost a month (or a year, paid yearly) for a new sign-up, GST included, at the package price (a new account has given up nothing). */
+export function basketNetCents(services: readonly MonthlyAddOnId[], currency: MoneyCurrency, interval: BillingInterval = "month"): number {
+  return bundleNetCents(bundleLines(services, currency, false, interval));
 }
 
 /**
@@ -181,6 +209,11 @@ export interface OrderSummary {
   readonly totalWithoutCodeCents: number;
   /** The monthly ad credit this checkout would freeze, or null when it freezes none. */
   readonly adCredit: AdCreditRow | null;
+  /**
+   * Paid yearly: what twelve months of the lines' monthly prices come to, and what paying for the year saves on that (the lines'
+   * yearly prices already have it taken off). Null when paid monthly.
+   */
+  readonly annual: { readonly listCents: number; readonly savingCents: number } | null;
 }
 
 /** The basket and the business facts the checkout prices it with: the same inputs, so the page quotes what Razorpay will charge. */
@@ -194,6 +227,8 @@ export interface OrderSummaryInput {
   readonly forfeited: boolean;
   /** The business has paid before: it earns no ad credit. */
   readonly hasEverPaid: boolean;
+  /** How often it is paid for: every amount is for a year when `year`. Absent is every month. */
+  readonly interval?: BillingInterval;
 }
 
 /**
@@ -205,7 +240,8 @@ export interface OrderSummaryInput {
  */
 export function orderSummary(input: OrderSummaryInput, discountCents: number): OrderSummary {
   const { planInitialAmountCents, services, currency, taxRateBasisPoints, forfeited, hasEverPaid } = input;
-  const lines = bundleLines(services, currency, forfeited);
+  const interval = input.interval ?? "month";
+  const lines = bundleLines(services, currency, forfeited, interval);
   if (lines.length === 0) throw new RangeError("An order needs at least one service");
   const chargeableCents = planInitialAmountCents + lines.reduce((total, line) => total + line.netCents, 0);
   const totalCents = chargedAmountCents(chargeableCents, discountCents);
@@ -221,7 +257,14 @@ export function orderSummary(input: OrderSummaryInput, discountCents: number): O
     totalCents,
     totalWithoutCodeCents: chargedAmountCents(chargeableCents, 0),
     adCredit: adCreditCents === 0 ? null : { cents: adCreditCents, label: `We add ${formatMoney(adCreditCents, currency)} a month to your ads` },
+    annual: interval === "year" ? annualParts(services, currency, forfeited, lines) : null,
   };
+}
+
+/** Twelve months of the lines at their monthly prices, and what paying for the year takes off that. */
+function annualParts(services: readonly MonthlyAddOnId[], currency: MoneyCurrency, forfeited: boolean, yearly: readonly BundleLine[]): { readonly listCents: number; readonly savingCents: number } {
+  const listCents = bundleLines(services, currency, forfeited).reduce((total, line) => total + annualListCents(line.netCents), 0);
+  return { listCents, savingCents: listCents - yearly.reduce((total, line) => total + line.netCents, 0) };
 }
 
 /** The plan facts the line under the Pay button is worded from. */
@@ -229,6 +272,8 @@ export interface RenewalTermsPlan {
   readonly currency: MoneyCurrency;
   readonly taxRateBasisPoints: number;
   readonly initialTermMonths: number;
+  /** Absent is every month. */
+  readonly interval?: BillingInterval;
 }
 
 /**
@@ -240,9 +285,16 @@ export function renewalTerms(
   parts: Pick<OrderSummary, "totalCents" | "totalWithoutCodeCents" | "discountCents" | "lines">,
   plan: RenewalTermsPlan,
   codeMonths: number | null,
+  /** Paid yearly: the day the year paid for ends, already worded ("Thu 11 Nov 2027"). */
+  paidThrough: string | null = null,
 ): string {
   const money = (cents: number): string => formatMoney(cents, plan.currency);
   const gst = plan.taxRateBasisPoints > 0 ? " (GST included)" : "";
+  if (plan.interval === "year") {
+    // A code on a yearly payment covers that payment only, so every renewal is at the price without it.
+    const until = paidThrough === null ? "" : `, to ${paidThrough}`;
+    return `Your payment covers 12 months${until}. Then ${money(parts.totalWithoutCodeCents)}${gst} is taken each year for your ${parts.lines.length === 1 ? "service" : "services"}.`;
+  }
   const first = `Your first payment covers ${initialTermPhrase(plan.initialTermMonths)}, then`;
   const services = parts.lines.length === 1 ? "service" : "services";
   if (parts.discountCents === 0 || codeMonths === null) return `${first} ${money(parts.totalCents)}${gst} is taken each month for your ${services}.`;

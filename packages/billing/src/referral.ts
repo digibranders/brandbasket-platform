@@ -88,6 +88,21 @@ export function discountCentsFor(discount: ReferralDiscount, basketNetCents: num
   return Math.floor((basketNetCents * discount.basisPoints + HALF_BASIS_POINTS) / BASIS_POINTS_PER_WHOLE);
 }
 
+/** A yearly subscription's code covers at most this many of its months: the year its one discounted payment buys. */
+export const MONTHS_IN_A_YEAR = 12;
+
+/**
+ * What a code takes off the first payment of a yearly subscription, whose basket nets `yearNetCents` for the year (owner,
+ * 2026-11-11): a percentage is that share of the year's price (discountCentsFor); an amount is taken once for each month the
+ * code runs, up to the 12 the payment buys, and for all 12 when the code has no limit. The caller freezes it with one paid
+ * month left (one payment), and checks it with isChargeableDiscount as for any code.
+ */
+export function firstYearDiscountCents(discount: ReferralDiscount, yearNetCents: number, discountMonths: number | null): number {
+  if (discount.kind !== "amount") return discountCentsFor(discount, yearNetCents);
+  assertWholeNonNegative(yearNetCents, "A basket net");
+  return discount.amountCents * Math.min(discountMonths ?? MONTHS_IN_A_YEAR, MONTHS_IN_A_YEAR);
+}
+
 /**
  * What a code takes off the next renewal once the basket has changed (a service added or dropped), on a basket whose package
  * net is `netCents`. An amount code keeps its amount and a percentage code is repriced on the new net (discountCentsFor); a code

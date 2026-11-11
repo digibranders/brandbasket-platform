@@ -711,6 +711,7 @@ describe("listClients billing", () => {
       subscription: {
         status: "active",
         provider: "fake",
+        billingInterval: "month",
         activatedAt: PAID_AT,
         paidThroughAt: THREE_MONTHS_ON,
         commitmentEndsAt: THREE_MONTHS_ON,

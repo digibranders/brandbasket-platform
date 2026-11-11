@@ -2,7 +2,7 @@ import { addDays, localDateIn, mondayOf } from "@brandbasket/shared/lib/calendar
 import { BRAND_TIME_ZONE, shortDay } from "@/lib/call-dates";
 import { monthKey, monthName } from "@/lib/overview";
 
-/** One social post as the Social & Ads page reads it. */
+/** One social post as the Social media page reads it. */
 export interface PostView {
   readonly id: string;
   readonly title: string;
@@ -45,7 +45,7 @@ export function weekBounds(now: Date): { readonly from: string; readonly to: str
   return { from, to: addDays(from, 6) };
 }
 
-/** The days Social & Ads and Search load: this India month, stretched to the end of the week when that week runs into the next. */
+/** The days Social media and Search load: this India month, stretched to the end of the week when that week runs into the next. */
 export function postWindow(now: Date): { readonly from: string; readonly to: string } {
   const from = monthKey(now);
   const [year = 0, month = 0] = from.split("-").map(Number);

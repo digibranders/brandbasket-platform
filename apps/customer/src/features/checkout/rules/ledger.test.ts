@@ -109,3 +109,33 @@ describe("ledgerRows", () => {
     expect(rows(WEBSITE, AFFILIATE_CODE).map((row) => row.key)).toEqual(["website", "maintenance"]);
   });
 });
+
+describe("paying yearly", () => {
+  const YEARLY: LedgerPricing = { ...PRICING, interval: "year" };
+
+  it("charges a year of each plan at 10% off twelve months, rounded down to a whole rupee", () => {
+    expect(ledgerSummary(YEARLY, WEBSITE, null).totalCents).toBe(3_238_900);
+    expect(ledgerSummary(YEARLY, THREE, null).totalCents).toBe(9_716_700);
+  });
+
+  it("shows twelve months of each plan, then the yearly saving, adding up to the total", () => {
+    const summary = ledgerSummary(YEARLY, WEBSITE, null);
+    expect(ledgerRows(summary, "INR", null).map((row) => [row.label, row.amount])).toEqual([
+      ["Website", "Free"],
+      ["Maintenance, 12 months", "₹35,988"],
+      ["Paid yearly, 10% off", "-₹3,599"],
+    ]);
+  });
+
+  it("takes a percentage code off the year's payment, and an amount code once for each month it runs", () => {
+    expect(codeDiscountCents(PERCENT_CODE, WEBSITE, "INR", "year")).toBe(647_780);
+    expect(codeDiscountCents(FLAT_CODE, WEBSITE, "INR", "year")).toBe(600_000);
+    const rows = ledgerRows(ledgerSummary(YEARLY, WEBSITE, PERCENT_CODE), "INR", PERCENT_CODE);
+    expect(rows.at(-1)).toEqual({ key: "code", label: "Code SAVE20, first year", amount: "-₹6,477.80", tone: "save" });
+  });
+
+  it("leaves a monthly basket as it was", () => {
+    expect(ledgerSummary(PRICING, WEBSITE, null).annual).toBeNull();
+    expect(codeDiscountCents(PERCENT_CODE, WEBSITE, "INR")).toBe(59_980);
+  });
+});

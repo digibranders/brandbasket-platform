@@ -26,6 +26,11 @@ export interface SecurityHeaderOptions {
    * out on the staff console, which loads no tags.
    */
   readonly tagManager?: boolean;
+  /**
+   * Where the pictures of a customer's social posts are served from (social-auto), so the Social media page can show them.
+   * Left out when social-auto is not set up. It must be a bare origin; a bad value is refused, not passed into the policy.
+   */
+  readonly pictureOrigin?: string;
 }
 
 export interface SecurityHeader {
@@ -143,6 +148,15 @@ function assertFramedOrigin(origin: string): void {
   }
 }
 
+/** Where pictures may come from: a bare https origin, or, on a developer's machine, a bare http origin on localhost. */
+const BARE_PICTURE_ORIGIN = /^(?:https:\/\/[a-z0-9.-]+|http:\/\/(?:(?:[a-z0-9-]+\.)?localhost|127\.0\.0\.1))(?::\d+)?$/;
+
+function assertPictureOrigin(origin: string): void {
+  if (!BARE_PICTURE_ORIGIN.test(origin)) {
+    throw new RangeError(`The picture origin must be a bare https origin such as https://example.com (or http on localhost), received "${origin}"`);
+  }
+}
+
 /** The origins of the case studies that are framed live, once each, in the order given. */
 export function framedSiteOrigins(
   studies: readonly { readonly liveUrl: string; readonly embeddable: boolean }[],
@@ -151,8 +165,9 @@ export function framedSiteOrigins(
   return [...new Set(origins)];
 }
 
-export function contentSecurityPolicy({ development, https, framedOrigins, razorpayCheckout, errorReportingOrigin, tagManager = false }: SecurityHeaderOptions): string {
+export function contentSecurityPolicy({ development, https, framedOrigins, razorpayCheckout, errorReportingOrigin, tagManager = false, pictureOrigin }: SecurityHeaderOptions): string {
   framedOrigins.forEach(assertFramedOrigin);
+  if (pictureOrigin !== undefined) assertPictureOrigin(pictureOrigin);
   const tags = tagManager ? TAG_MANAGER_ORIGINS : NO_TAG_ORIGINS;
 
   const directives: readonly (readonly string[])[] = [
@@ -171,7 +186,8 @@ export function contentSecurityPolicy({ development, https, framedOrigins, razor
     ["style-src", "'self'", "'unsafe-inline'", CALENDLY_SCRIPT_ORIGIN, ...tags.style],
     // i.ytimg.com: a free listing's featured video is a YouTube link, shown in the dashboard by its thumbnail.
     // i.vimeocdn.com: the poster of a Premium member's Vimeo video.
-    ["img-src", "'self'", "data:", "blob:", YOUTUBE_THUMBNAIL_ORIGIN, VIMEO_IMAGE_ORIGIN, ...tags.img],
+    // pictureOrigin: social-auto, which serves the pictures of a customer's social posts.
+    ["img-src", "'self'", "data:", "blob:", YOUTUBE_THUMBNAIL_ORIGIN, VIMEO_IMAGE_ORIGIN, ...(pictureOrigin === undefined ? [] : [pictureOrigin]), ...tags.img],
     // blob: lets the Photos tab read a chosen video's length in the browser before it is sent; videos are the page's own.
     ["media-src", "'self'", "blob:"],
     ["font-src", "'self'", ...tags.font],

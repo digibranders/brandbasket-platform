@@ -9,7 +9,7 @@ import { formDataObject } from "@/lib/form";
 import { requireCustomer, requireOwner, type CustomerContext } from "@/lib/guards";
 import { reportError } from "@/lib/report";
 import { chargeNoticeHref, chargePayPath } from "./rules/charge-notices";
-import { MEMBERSHIP_PATH } from "./rules/membership";
+import { MEMBERSHIP_BILLING_PARAM, MEMBERSHIP_PATH, readBillingInterval } from "./rules/membership";
 import { lookupBillingPincode, saveBillingDetailsFor, type BillingPincodeLookup } from "./server/billing-details";
 import { startCustomerChargePayment } from "./server/charges";
 import { startCheckoutFor, startMembershipCheckoutFor } from "./server/checkout";
@@ -29,7 +29,12 @@ const SAVE_FAILED_MESSAGE = "We couldn't save your billing details just now. Ple
 
 /** The basket a form names: at most the catalogue's services, as short strings. Anything else reads as no basket. */
 const ServiceList = z.union([z.string().max(40), z.array(z.string().max(40)).max(10)]).optional();
-const PayForm = z.object({ tier: z.literal("managed", { error: UNKNOWN_PLAN_MESSAGE }), service: ServiceList });
+const PayForm = z.object({
+  tier: z.literal("managed", { error: UNKNOWN_PLAN_MESSAGE }),
+  service: ServiceList,
+  // How often to pay, as the page's address says it (readBillingInterval): anything but "yearly" is monthly.
+  billing: z.string().max(16).optional(),
+});
 const CodeForm = z.object({ referralCode: z.string().max(64).default(""), service: ServiceList });
 
 function servicesOf(value: z.output<typeof ServiceList>) {
@@ -53,10 +58,11 @@ export async function startPaymentAction(_previous: ActionResult | null, formDat
   }
   const entry = await loadBusinessEntry(customer);
   const now = new Date();
+  const interval = readBillingInterval({ [MEMBERSHIP_BILLING_PARAM]: parsed.data.billing });
   const outcome =
     entry.kind === "listing"
-      ? await startMembershipCheckoutFor(customer, now, parsed.data.tier, servicesOf(parsed.data.service))
-      : await startCheckoutFor(customer, now);
+      ? await startMembershipCheckoutFor(customer, now, parsed.data.tier, servicesOf(parsed.data.service), interval)
+      : await startCheckoutFor(customer, now, interval);
   if (outcome.kind === "refused") return actionFail(outcome.problem.message);
   redirect(outcome.url);
 }

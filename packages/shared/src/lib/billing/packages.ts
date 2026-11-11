@@ -1,5 +1,6 @@
+import type { BillingInterval } from "@brandbasket/db";
 import type { MoneyCurrency } from "../money";
-import { addOnById, addOnPrice, MONITORING_ID, MONTHLY_ADD_ON_IDS, type AddOnPrice, type MonthlyAddOnId, type PlanAddOnId } from "./add-ons";
+import { addOnById, addOnPrice, cyclePriceCents, MONITORING_ID, MONTHLY_ADD_ON_IDS, type AddOnPrice, type MonthlyAddOnId, type PlanAddOnId } from "./add-ons";
 
 /**
  * Package offers. There are none now (owner, 2026-11-11): each plan is at its own price whatever else is bought, and the
@@ -110,12 +111,12 @@ export function shareDiscountAcrossLines(netCents: readonly number[], totalCents
   return shares.map((share, index) => (index === largest ? share + leftoverCents : share));
 }
 
-/** Every line of the basket with its package discount, once each, in catalogue order. */
-export function packageLines(input: PackageInput, currency: MoneyCurrency): PackageLine[] {
+/** Every line of the basket with its package discount, once each, in catalogue order, priced for each month or each year. */
+export function packageLines(input: PackageInput, currency: MoneyCurrency, interval: BillingInterval = "month"): PackageLine[] {
   const services = distinctServices(input.services);
-  const listed = services.map((id) => ({ addOn: id, listCents: addOnById(id).prices[currency] }));
+  const listed = services.map((id) => ({ addOn: id, listCents: cyclePriceCents(addOnById(id), currency, interval) }));
   const discounts = packageDiscountsFor(listed, packageBasisPointsFor(input));
-  return services.map((id, index) => ({ addOn: id, ...addOnPrice(addOnById(id), currency, discounts[index] ?? 0) }));
+  return services.map((id, index) => ({ addOn: id, ...addOnPrice(addOnById(id), currency, discounts[index] ?? 0, interval) }));
 }
 
 /**
@@ -123,12 +124,18 @@ export function packageLines(input: PackageInput, currency: MoneyCurrency): Pack
  * percentage and whole-unit rounding it shares with every line already there (their new discounts are
  * packageDiscountsFor over the same lines). A held line keeps the list price it was sold at; the new one has the catalogue's.
  */
-export function packageLineWith(held: readonly PackageListLine[], forfeited: boolean, service: MonthlyAddOnId, currency: MoneyCurrency): PackageLine {
+export function packageLineWith(
+  held: readonly PackageListLine[],
+  forfeited: boolean,
+  service: MonthlyAddOnId,
+  currency: MoneyCurrency,
+  interval: BillingInterval = "month",
+): PackageLine {
   const addOn = addOnById(service);
-  const members: PackageListLine[] = [...held.filter((line) => line.addOn !== service), { addOn: service, listCents: addOn.prices[currency] }];
+  const members: PackageListLine[] = [...held.filter((line) => line.addOn !== service), { addOn: service, listCents: cyclePriceCents(addOn, currency, interval) }];
   const basisPoints = packageBasisPointsFor({ services: members.map((line) => line.addOn), forfeited });
   const discounts = packageDiscountsFor(members, basisPoints);
-  return { addOn: service, ...addOnPrice(addOn, currency, discounts[members.length - 1] ?? 0) };
+  return { addOn: service, ...addOnPrice(addOn, currency, discounts[members.length - 1] ?? 0, interval) };
 }
 
 /** The monthly list prices of these lines added up: what they cost together with no package offer. */

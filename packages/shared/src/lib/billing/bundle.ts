@@ -1,4 +1,4 @@
-import type { BundledAddOn, Subscription } from "@brandbasket/db";
+import type { BillingInterval, BundledAddOn, Subscription } from "@brandbasket/db";
 // The subpath, not the package index: this module reaches client components, and the index pulls in the database.
 import { chargedAmountCents } from "@brandbasket/billing/tax";
 import type { MoneyCurrency } from "../money";
@@ -40,10 +40,11 @@ export const WEBSITE_ALONE: readonly MonthlyAddOnId[] = ["managed-website"];
 
 /**
  * The lines of a first-checkout bundle in the plan's currency, each with the package discount, in the catalogue's order.
- * `forfeited` is a business that has given the package offer up for good: its lines are at list.
+ * `forfeited` is a business that has given the package offer up for good: its lines are at list. On a yearly checkout every
+ * line is priced for the year.
  */
-export function bundleLines(selection: readonly MonthlyAddOnId[], currency: MoneyCurrency, forfeited = false): readonly BundleLine[] {
-  return packageLines({ services: selection, forfeited }, currency).map((line) => ({
+export function bundleLines(selection: readonly MonthlyAddOnId[], currency: MoneyCurrency, forfeited = false, interval: BillingInterval = "month"): readonly BundleLine[] {
+  return packageLines({ services: selection, forfeited }, currency, interval).map((line) => ({
     addOn: line.addOn,
     title: addOnById(line.addOn).title,
     listCents: line.listCents,
@@ -111,7 +112,10 @@ export function nextDiscountCents(subscription: Pick<Subscription, "discountAmou
 }
 
 /** What a reactivation needs to know of the business's newest subscription. */
-export type LapsedSubscription = Pick<Subscription, "status" | "activatedAt" | "cancelRequestedAt" | "adCreditCents">;
+export type LapsedSubscription = Pick<Subscription, "status" | "activatedAt" | "cancelRequestedAt" | "adCreditCents"> & {
+  /** How often it was charged; absent is every month. */
+  readonly billingInterval?: BillingInterval;
+};
 
 /** What a reactivation needs to know of one of the lines of the subscription the business last paid for. */
 export type LapsedLine = Pick<BundledAddOn, "addOn" | "activatedAt" | "endRequestedAt">;
@@ -126,6 +130,8 @@ export interface ReactivationBasket {
   readonly adCreditCents: number;
   /** The customer asked the plan to end (cancelRequestedAt), so its package offer ended with it. A cancel they did not ask for is a lapse. */
   readonly cancelled: boolean;
+  /** How often it is charged when it comes back: a lapse on the interval it had, a cancelled plan every month. */
+  readonly billingInterval: BillingInterval;
 }
 
 /**
@@ -163,10 +169,12 @@ export function reactivationBasketOf(input: {
     // The website alone, when nothing is left to restore, is not the package the credit was earned by.
     adCreditCents: forfeited || subscription === null || services.length === 0 ? 0 : subscription.adCreditCents,
     cancelled,
+    // A client who cancelled chooses again, on the monthly reactivation card; a lapse comes back as it was.
+    billingInterval: cancelled ? "month" : (subscription?.billingInterval ?? "month"),
   };
 }
 
-/** What the basket costs a month, GST included. */
+/** What the basket costs each cycle of the interval it comes back on, GST included. */
 export function reactivationNetCents(basket: ReactivationBasket, currency: MoneyCurrency): number {
-  return bundleNetCents(bundleLines(basket.services, currency, basket.forfeited));
+  return bundleNetCents(bundleLines(basket.services, currency, basket.forfeited, basket.billingInterval));
 }
