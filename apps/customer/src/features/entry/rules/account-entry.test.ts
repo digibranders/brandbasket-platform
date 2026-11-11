@@ -25,7 +25,7 @@ describe("readEntryRequest", () => {
 
   it("reads an ad's start token or older addons as a sign-up link", () => {
     expect(readEntryRequest({ start: "abc" }).view).toBe("create");
-    expect(readEntryRequest({ addons: "local-seo-aeo" }).view).toBe("create");
+    expect(readEntryRequest({ addons: "paid-ads" }).view).toBe("create");
   });
 });
 
@@ -60,7 +60,7 @@ describe("the basket the website's link carries", () => {
     expect(readEntryRequest({ plan: "managed", addons: "paid-ads,nonsense,social-media" }).services).toEqual(["managed-website", "social-media", "paid-ads"]);
     expect(readEntryRequest({ plan: "managed", addons: ["paid-ads"] }).services).toEqual(["managed-website", "paid-ads"]);
     expect(readEntryRequest({ plan: "managed", addons: "social,advertising" }).services).toEqual(["managed-website"]);
-    // A plan no longer sold is never bought from an old link.
+    // The plans retired on 2026-11-06 are not services any more.
     expect(readEntryRequest({ plan: "managed", addons: "local-seo-aeo,digital-growth" }).services).toEqual(["managed-website"]);
   });
 });
@@ -74,7 +74,7 @@ describe("signUpHrefFromLogin", () => {
   it("sends a sign-up link to /signup with its parameters, dropping new=1", () => {
     expect(signUpHrefFromLogin({ new: "1" })).toBe("/signup");
     expect(signUpHrefFromLogin({ new: "1", plan: "website,growth", start: "tok" })).toBe("/signup?plan=website%2Cgrowth&start=tok");
-    expect(signUpHrefFromLogin({ plan: "managed", addons: ["local-seo-aeo", "digital-growth"] })).toBe("/signup?plan=managed&addons=local-seo-aeo&addons=digital-growth");
+    expect(signUpHrefFromLogin({ plan: "managed", addons: ["paid-ads", "social-media"] })).toBe("/signup?plan=managed&addons=paid-ads&addons=social-media");
   });
 });
 

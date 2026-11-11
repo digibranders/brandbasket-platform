@@ -1,7 +1,7 @@
 import { BRANDBASKET_DEFAULT_CHOICE, offersChoice, type Brand } from "@/lib/brand";
 import { readJoinChoice, type JoinChoice } from "@/lib/join-form";
 import type { MonthlyAddOnId } from "@brandbasket/shared/lib/billing/add-ons";
-import { readSoldSelection, WEBSITE_ALONE } from "@brandbasket/shared/lib/billing/bundle";
+import { readBundleSelection, WEBSITE_ALONE } from "@brandbasket/shared/lib/billing/bundle";
 
 /*
  * The one entry page (/login): everyone signs in and everyone creates their account here (docs/superpowers/specs/
@@ -31,8 +31,8 @@ const WEBSITE_SERVICE_IDS: ReadonlyMap<string, MonthlyAddOnId> = new Map([
   ["website", "managed-website"],
   ["social", "social-media"],
   ["ads", "paid-ads"],
-  // The ids before 2026-11-06, on links shared before then: Social Media and Ads became Social Media Management in its slot,
-  // and Local SEO + AEO is no longer sold, so it names nothing.
+  // The id before 2026-11-06, on links shared before then: Social Media and Ads became Social Media Management. Local SEO +
+  // AEO ("search") is no longer sold, so it names nothing.
   ["growth", "social-media"],
 ]);
 /** What the address calls each plan: the database's `listing_only` is `free` here, so the link reads as the owner thinks of it. */
@@ -82,7 +82,7 @@ export function readEntryRequest(params: SearchParams, brand: Brand): EntryReque
 
 /** The services a plan parameter names in the website's words (`website,social`), or none. Spaces and capitals around a word are ignored. */
 function namedServices(plan: string): readonly MonthlyAddOnId[] {
-  return readSoldSelection(plan.split(",").flatMap((id) => WEBSITE_SERVICE_IDS.get(id.trim().toLowerCase()) ?? []));
+  return readBundleSelection(plan.split(",").flatMap((id) => WEBSITE_SERVICE_IDS.get(id.trim().toLowerCase()) ?? []));
 }
 
 /**
@@ -93,7 +93,7 @@ function readLinkServices(params: SearchParams): readonly MonthlyAddOnId[] {
   const named = namedServices(single(params[PLAN_PARAM]));
   if (named.length > 0) return named;
   const extras = [params[ADDONS_PARAM] ?? ""].flat().join(",").split(",");
-  return readSoldSelection([...WEBSITE_ALONE, ...extras]);
+  return readBundleSelection([...WEBSITE_ALONE, ...extras]);
 }
 
 /**

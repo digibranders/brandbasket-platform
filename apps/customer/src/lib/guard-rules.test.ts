@@ -64,7 +64,7 @@ describe("requirementRedirect", () => {
   });
 
   describe("the Website", () => {
-    it("sends a paying business without the Managed Website Home (Social-only or SEO-only)", () => {
+    it("sends a paying business without the Website Management Home (Social-only or SEO-only)", () => {
       const socialOnly = facts({ status: "paid", hasWebsite: false, services: ["social"] });
       expect(requirementRedirect(socialOnly, { paid: "ever", service: "website" })).toBe(GUARD_PATHS.home);
     });
@@ -111,6 +111,6 @@ describe("servicesFrom", () => {
   });
 
   it("takes Social and Search only from the db package's rule, not from the plan lines", () => {
-    expect(servicesFrom([line("digital-growth"), line("local-seo-aeo")], [])).toEqual([]);
+    expect(servicesFrom([line("social-media"), line("paid-ads")], [])).toEqual([]);
   });
 });

@@ -6,7 +6,7 @@ import { publicPricing } from "./public-prices";
 describe("publicPricing", () => {
   const pricing = publicPricing();
 
-  it("lists every service on sale with its list price in each currency, in minor units", () => {
+  it("lists every service with its list price in each currency, in minor units", () => {
     expect(pricing.services).toEqual([
       { id: "managed-website", title: "Website Management", prices: { INR: 299_900, USD: 6_500 } },
       { id: "social-media", title: "Social Media Management", prices: { INR: 999_900, USD: 15_000 } },
@@ -25,7 +25,7 @@ describe("publicPricing", () => {
   });
 
   it("is the catalogue and the package offers, not a copy of them", () => {
-    expect(pricing.services.map((service) => service.id)).toEqual(ADD_ONS.filter((addOn) => addOn.sold).map((addOn) => addOn.id));
+    expect(pricing.services.map((service) => service.id)).toEqual(ADD_ONS.map((addOn) => addOn.id));
     expect(pricing.packages).toHaveLength(PACKAGE_OFFERS.length);
   });
 

@@ -961,8 +961,8 @@ describe("a subscription with add-ons billed in the plan's charge", () => {
     it("accepts the renewal at the lower amount, invoices only what stays, and finishes the removal", async () => {
       vi.mocked(findSubscriptionByProviderId).mockResolvedValue(WITH_REMOVAL as never);
       vi.mocked(findPlanById).mockResolvedValue(GST_PLAN as never);
-      const staying = row("local-seo-aeo", null);
-      vi.mocked(findBundledAddOnsForSubscription).mockResolvedValue([row("digital-growth", new Date("2026-10-02T00:00:00.000Z")), staying] as never);
+      const staying = row("paid-ads", null);
+      vi.mocked(findBundledAddOnsForSubscription).mockResolvedValue([row("social-media", new Date("2026-10-02T00:00:00.000Z")), staying] as never);
 
       await handleRazorpayWebhookEvent(chargedAt(LOWER_TOTAL));
 
@@ -977,7 +977,7 @@ describe("a subscription with add-ons billed in the plan's charge", () => {
     it("still accepts the old amount if the provider had not moved yet, flags the payment for staff, without finishing the removal", async () => {
       vi.mocked(findSubscriptionByProviderId).mockResolvedValue(WITH_REMOVAL as never);
       vi.mocked(findPlanById).mockResolvedValue(GST_PLAN as never);
-      vi.mocked(findBundledAddOnsForSubscription).mockResolvedValue([row("digital-growth", new Date("2026-10-02T00:00:00.000Z")), row("local-seo-aeo", null)] as never);
+      vi.mocked(findBundledAddOnsForSubscription).mockResolvedValue([row("social-media", new Date("2026-10-02T00:00:00.000Z")), row("paid-ads", null)] as never);
 
       await handleRazorpayWebhookEvent(chargedAt(OLD_TOTAL));
 
@@ -994,7 +994,7 @@ describe("a subscription with add-ons billed in the plan's charge", () => {
     it("refuses an amount that is neither", async () => {
       vi.mocked(findSubscriptionByProviderId).mockResolvedValue(WITH_REMOVAL as never);
       vi.mocked(findPlanById).mockResolvedValue(GST_PLAN as never);
-      vi.mocked(findBundledAddOnsForSubscription).mockResolvedValue([row("digital-growth", new Date("2026-10-02T00:00:00.000Z")), row("local-seo-aeo", null)] as never);
+      vi.mocked(findBundledAddOnsForSubscription).mockResolvedValue([row("social-media", new Date("2026-10-02T00:00:00.000Z")), row("paid-ads", null)] as never);
 
       await handleRazorpayWebhookEvent(chargedAt(LOWER_TOTAL - 1));
 
@@ -1004,7 +1004,7 @@ describe("a subscription with add-ons billed in the plan's charge", () => {
   });
 
   describe("after the customer added an add-on this month", () => {
-    // Social Media and Ads, at a fixture price of ₹7,000, was added and its rest-of-month charge paid: the next renewal is ₹2,999 + ₹7,000, GST included.
+    // Social Media Management, at a fixture price of ₹7,000, was added and its rest-of-month charge paid: the next renewal is ₹2,999 + ₹7,000, GST included.
     const SIGNED_UP = new Date("2026-09-01T00:00:00.000Z");
     const ADDED = { ...BUNDLED, activatedAt: SIGNED_UP, bundledAddOnNetCents: 0, pendingBundledAddOnNetCents: 700_000 };
     const NEW_TOTAL = 999_900;
@@ -1024,7 +1024,7 @@ describe("a subscription with add-ons billed in the plan's charge", () => {
     it("accepts the renewal at the higher amount, invoices the added add-on, and starts billing it", async () => {
       vi.mocked(findSubscriptionByProviderId).mockResolvedValue(ADDED as never);
       vi.mocked(findPlanById).mockResolvedValue(GST_PLAN as never);
-      const growth = row("digital-growth", 700_000, null);
+      const growth = row("social-media", 700_000, null);
       vi.mocked(findBundledAddOnsForSubscription).mockResolvedValue([growth] as never);
 
       await handleRazorpayWebhookEvent(chargedAt(NEW_TOTAL));
@@ -1040,7 +1040,7 @@ describe("a subscription with add-ons billed in the plan's charge", () => {
     it("still accepts the old amount if the provider had not moved yet, invoicing only what that amount billed", async () => {
       vi.mocked(findSubscriptionByProviderId).mockResolvedValue(ADDED as never);
       vi.mocked(findPlanById).mockResolvedValue(GST_PLAN as never);
-      vi.mocked(findBundledAddOnsForSubscription).mockResolvedValue([row("digital-growth", 700_000, null)] as never);
+      vi.mocked(findBundledAddOnsForSubscription).mockResolvedValue([row("social-media", 700_000, null)] as never);
 
       await handleRazorpayWebhookEvent(chargedAt(OLD_TOTAL));
 
@@ -1055,7 +1055,7 @@ describe("a subscription with add-ons billed in the plan's charge", () => {
     it("flags nothing when the renewal arrives at the new amount", async () => {
       vi.mocked(findSubscriptionByProviderId).mockResolvedValue(ADDED as never);
       vi.mocked(findPlanById).mockResolvedValue(GST_PLAN as never);
-      vi.mocked(findBundledAddOnsForSubscription).mockResolvedValue([row("digital-growth", 700_000, null)] as never);
+      vi.mocked(findBundledAddOnsForSubscription).mockResolvedValue([row("social-media", 700_000, null)] as never);
 
       await handleRazorpayWebhookEvent(chargedAt(NEW_TOTAL));
 
@@ -1065,7 +1065,7 @@ describe("a subscription with add-ons billed in the plan's charge", () => {
     it("finishes an add-on added and then taken out in the same month at the plan's own price", async () => {
       vi.mocked(findSubscriptionByProviderId).mockResolvedValue({ ...ADDED, pendingBundledAddOnNetCents: 0 } as never);
       vi.mocked(findPlanById).mockResolvedValue(GST_PLAN as never);
-      vi.mocked(findBundledAddOnsForSubscription).mockResolvedValue([row("digital-growth", 700_000, null, new Date("2026-10-10T00:00:00.000Z"))] as never);
+      vi.mocked(findBundledAddOnsForSubscription).mockResolvedValue([row("social-media", 700_000, null, new Date("2026-10-10T00:00:00.000Z"))] as never);
 
       await handleRazorpayWebhookEvent(chargedAt(OLD_TOTAL));
 
@@ -1077,11 +1077,11 @@ describe("a subscription with add-ons billed in the plan's charge", () => {
     });
 
     it("adds to an add-on taken at sign-up, which keeps its offer price", async () => {
-      // Social Media and Ads at ₹6,650 since sign-up, Local SEO + AEO added at ₹24,999.
+      // Social Media Management at ₹6,650 since sign-up, Paid Ads Management added at ₹24,999.
       vi.mocked(findSubscriptionByProviderId).mockResolvedValue({ ...ADDED, bundledAddOnNetCents: 665_000, pendingBundledAddOnNetCents: 665_000 + 2_499_900 } as never);
       vi.mocked(findPlanById).mockResolvedValue(GST_PLAN as never);
-      const growth = row("digital-growth", 665_000, SIGNED_UP);
-      const search = row("local-seo-aeo", 2_499_900, null);
+      const growth = row("social-media", 665_000, SIGNED_UP);
+      const search = row("paid-ads", 2_499_900, null);
       vi.mocked(findBundledAddOnsForSubscription).mockResolvedValue([growth, search] as never);
 
       await handleRazorpayWebhookEvent(chargedAt(3_464_800));
@@ -1289,7 +1289,7 @@ describe("the renewal after a service was added to a package", () => {
   });
   const WEBSITE_MOVING = line("managed-website", 299_900, 0, 29_990, BILLED_FROM);
   // Social takes the 80 paise that round the package saving down to a whole rupee, being the dearest line.
-  const SOCIAL_ADDED = line("digital-growth", 999_900, 99_910, null, null);
+  const SOCIAL_ADDED = line("social-media", 999_900, 99_910, null, null);
   // The website was billed alone at ₹2,999; the next renewal is website 10% off plus Social 10% off: ₹11,699, GST included.
   const SUBSCRIPTION = {
     id: "sub_row_added",
@@ -1329,7 +1329,7 @@ describe("the renewal after a service was added to a package", () => {
     const invoiced = renewal?.invoicedPrice.bundledAddOns ?? [];
     expect(invoiced.map((row) => [row.addOn, row.listAmountCents, row.offerDiscountAmountCents])).toEqual([
       ["managed-website", 299_900, 29_990],
-      ["digital-growth", 999_900, 99_910],
+      ["social-media", 999_900, 99_910],
     ]);
     const net = invoiced.reduce((total, row) => total + row.listAmountCents - row.offerDiscountAmountCents, 0);
     expect(chargedAmountCents(net, 0)).toBe(1_169_900);
@@ -1338,7 +1338,7 @@ describe("the renewal after a service was added to a package", () => {
 
   it("invoices the line that carries the leftover at the discount it moved to, so Website + SEO adds up to the paisa", async () => {
     // SEO was billed alone at list; the website joins, and the 80 paise that round the package saving down land on SEO, the dearest line.
-    const seoMoving = line("local-seo-aeo", 2_499_900, 0, 249_910, BILLED_FROM);
+    const seoMoving = line("paid-ads", 2_499_900, 0, 249_910, BILLED_FROM);
     const websiteAdded = line("managed-website", 299_900, 29_990, null, null);
     vi.mocked(findSubscriptionByProviderId).mockResolvedValue({ ...SUBSCRIPTION, bundledAddOnNetCents: 2_499_900, pendingBundledAddOnNetCents: 2_519_900 } as never);
     vi.mocked(findPlanById).mockResolvedValue(SERVICES_PLAN as never);
@@ -1350,7 +1350,7 @@ describe("the renewal after a service was added to a package", () => {
     const invoiced = renewal?.invoicedPrice.bundledAddOns ?? [];
     expect(invoiced.map((row) => [row.addOn, row.listAmountCents, row.offerDiscountAmountCents])).toEqual([
       ["managed-website", 299_900, 29_990],
-      ["local-seo-aeo", 2_499_900, 249_910],
+      ["paid-ads", 2_499_900, 249_910],
     ]);
     expect(completeBundledAddOnChanges).toHaveBeenCalled();
     expect(recordUnappliedPayment).not.toHaveBeenCalled();

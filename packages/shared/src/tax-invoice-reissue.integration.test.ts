@@ -161,14 +161,14 @@ async function payFirstWithoutPrintableInvoice(subscription: Subscription, disco
 }
 
 /**
- * An add-on payment recorded without an invoice, through the same recorder the webhook uses: Social Media and Ads at the
+ * An add-on payment recorded without an invoice, through the same recorder the webhook uses: Social Media Management at the
  * list price, with a discount when one is given. Returns the payment and the add-on row it paid for.
  */
 async function seedAddOnPayment(discountAmountCents: number, providerPaymentId: string): Promise<{ readonly payment: Payment; readonly addOnSubscriptionId: string }> {
   const row = await insertAddOnSubscription(dbs.staff.db, {
     id: randomUUID(),
     businessId,
-    addOn: "digital-growth",
+    addOn: "social-media",
     listAmountCents: 999_900,
     discountAmountCents,
     offerDiscountAmountCents: discountAmountCents,
@@ -603,7 +603,7 @@ describe("issueMissingTaxInvoice", () => {
 
     expect(invoice).toMatchObject({ issuedOn: "2026-11-15", paidOn: "2026-10-09", paymentId: payment.id, totalCents: 949_900 });
     expect(invoice.lines[0]).toMatchObject({
-      description: "Social Media and Ads",
+      description: "Social Media Management",
       detail: "Monthly subscription, 09 Oct to 08 Nov 2026",
       note: null,
       unitAmountCents: 999_900,
@@ -617,7 +617,7 @@ describe("issueMissingTaxInvoice", () => {
     const invoice = await issue(payment.id);
 
     expect(invoice.totalCents).toBe(999_900);
-    expect(invoice.lines[0]).toMatchObject({ description: "Social Media and Ads", note: null, discountAmountCents: 0 });
+    expect(invoice.lines[0]).toMatchObject({ description: "Social Media Management", note: null, discountAmountCents: 0 });
   });
 
   it("says no price explains an add-on payment that is not linked to an add-on, and takes no number", async () => {

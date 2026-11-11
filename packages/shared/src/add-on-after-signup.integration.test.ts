@@ -1442,7 +1442,7 @@ describe("a basket that changes while the provider is being told", () => {
   });
 });
 
-describe("Dedicated Expert Monitoring and the plans no longer sold", () => {
+describe("Dedicated Expert Monitoring", () => {
   let moves: string[];
   let plansMade: { readonly net: number; readonly discount: number }[];
   let provider: BillingProvider;
@@ -1530,19 +1530,5 @@ describe("Dedicated Expert Monitoring and the plans no longer sold", () => {
     await paidSubscription(bundleOf("social-media", "expert-monitoring"));
 
     expect(await removeBundledAddOn(deps(), { businessId, addOn: "social-media", now: FIFTH_NOV })).toEqual({ kind: "last-service" });
-  });
-
-  it("never sells a plan that is no longer sold, and keeps an old basket's package when a new plan joins it", async () => {
-    const subscription = await paidSubscription(bundleOf("managed-website", "digital-growth"), { adCreditCents: 150_000 });
-
-    expect(await startAddOn(deps(), { businessId, addOn: "local-seo-aeo", staffId: null, now: FIFTH_NOV })).toEqual({
-      kind: "refused",
-      assessment: { kind: "blocked", reason: "not-sold" },
-    });
-
-    // Social Media and Ads counts as Social: with Paid Ads Management it is all three, 20% off.
-    await addAndPay("paid-ads");
-    expect(await findSubscriptionById(dbs.staff.db, subscription.id)).toMatchObject({ pendingBundledAddOnNetCents: 3_039_800, adCreditCents: 150_000 });
-    expect(await forfeitedAt()).toBeNull();
   });
 });

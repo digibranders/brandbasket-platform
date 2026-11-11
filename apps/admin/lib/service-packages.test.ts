@@ -11,11 +11,6 @@ describe("packageLabel", () => {
   it("names one service on its own", () => {
     expect(packageLabel(["social-media"])).toBe("Social");
   });
-
-  it("names the plans no longer sold, which older clients still have", () => {
-    expect(packageLabel(["digital-growth", "managed-website"])).toBe("Website + Social & Ads");
-    expect(packageLabel(["local-seo-aeo"])).toBe("SEO");
-  });
 });
 
 describe("catalogueRows", () => {

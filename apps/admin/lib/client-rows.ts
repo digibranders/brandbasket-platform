@@ -69,7 +69,7 @@ export const CLIENT_ROW_STAGE_TONES: Readonly<Record<ClientRowStage, PillTone>> 
 };
 
 export interface ClientServices {
-  /** Service ids in catalogue order (managed-website, digital-growth, local-seo-aeo). */
+  /** Service ids in catalogue order (managed-website, social-media, paid-ads, expert-monitoring). */
   readonly addOns: readonly string[];
   /** What the active lines bill each month, GST included (a line's net is what is charged). */
   readonly monthlyCents: number;

@@ -1169,7 +1169,7 @@ export interface Receipt extends Payment {
   /** The payment's tax invoice, when it has one. Its number replaces the receipt's title on the bill. */
   readonly taxInvoiceId: string | null;
   readonly taxInvoiceNumber: string | null;
-  /** For an add-on payment, the catalogue id of what was bought ("digital-growth"). Null for everything else. */
+  /** For an add-on payment, the catalogue id of what was bought ("social-media"). Null for everything else. */
   readonly addOnId: string | null;
   /** What a plan payment was billed as (its services and discounts), for a receipt that lists them. Null when not kept. */
   readonly invoiceBasis: PaymentInvoiceBasis | null;

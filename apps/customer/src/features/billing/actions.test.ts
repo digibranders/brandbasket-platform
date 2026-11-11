@@ -41,8 +41,8 @@ describe("guards", () => {
     vi.mocked(removeBundledAddOnFor).mockResolvedValue({ kind: "scheduled", endsOn: new Date(), message: "ok" });
     vi.mocked(saveBillingDetailsFor).mockResolvedValue({ ok: true });
     vi.mocked(startReactivationFor).mockResolvedValue({ kind: "refused", problem: { message: "no" } } as never);
-    await addServiceAction(null, form({ addOn: "digital-growth" }));
-    await cancelServiceAction(null, form({ addOn: "digital-growth" }));
+    await addServiceAction(null, form({ addOn: "social-media" }));
+    await cancelServiceAction(null, form({ addOn: "social-media" }));
     expect(vi.mocked(requireOwner).mock.calls).toEqual([[{ write: true }], [{ write: true }]]);
     await reactivateAction(null, form({}));
     await saveBillingDetailsAction(null, form({}));
@@ -51,8 +51,8 @@ describe("guards", () => {
 
   it("changes nothing when the guard sends an editor, a viewer or a lapsed plan away", async () => {
     vi.mocked(requireOwner).mockRejectedValue(new Error("redirect:/"));
-    await expect(addServiceAction(null, form({ addOn: "digital-growth" }))).rejects.toThrow("redirect:/");
-    await expect(cancelServiceAction(null, form({ addOn: "digital-growth" }))).rejects.toThrow("redirect:/");
+    await expect(addServiceAction(null, form({ addOn: "social-media" }))).rejects.toThrow("redirect:/");
+    await expect(cancelServiceAction(null, form({ addOn: "social-media" }))).rejects.toThrow("redirect:/");
     await expect(reactivateAction(null, form({}))).rejects.toThrow("redirect:/");
     await expect(saveBillingDetailsAction(null, form({}))).rejects.toThrow("redirect:/");
     expect(addBundledAddOnFor).not.toHaveBeenCalled();
@@ -72,15 +72,15 @@ describe("addServiceAction", () => {
   it("sends the customer to pay the charge for the rest of the month", async () => {
     vi.mocked(addBundledAddOnFor).mockResolvedValue({ kind: "pay", chargeId: CHARGE_ID });
     vi.mocked(startCustomerChargePayment).mockResolvedValue({ kind: "razorpay", charge: { id: CHARGE_ID } } as never);
-    await expect(addServiceAction(null, form({ addOn: "local-seo-aeo" }))).rejects.toThrow(`redirect:/checkout/charges/${CHARGE_ID}`);
-    expect(addBundledAddOnFor).toHaveBeenCalledWith(OWNER, "local-seo-aeo", expect.any(Date));
+    await expect(addServiceAction(null, form({ addOn: "paid-ads" }))).rejects.toThrow(`redirect:/checkout/charges/${CHARGE_ID}`);
+    expect(addBundledAddOnFor).toHaveBeenCalledWith(OWNER, "paid-ads", expect.any(Date));
   });
 
   it("returns the refusal, and a plain message when something breaks", async () => {
     vi.mocked(addBundledAddOnFor).mockResolvedValue({ kind: "refused", message: "Your payment is due within the hour." });
-    expect(await addServiceAction(null, form({ addOn: "digital-growth" }))).toEqual({ ok: false, message: "Your payment is due within the hour." });
+    expect(await addServiceAction(null, form({ addOn: "social-media" }))).toEqual({ ok: false, message: "Your payment is due within the hour." });
     vi.mocked(addBundledAddOnFor).mockRejectedValue(new Error("db down"));
-    expect((await addServiceAction(null, form({ addOn: "digital-growth" }))).ok).toBe(false);
+    expect((await addServiceAction(null, form({ addOn: "social-media" }))).ok).toBe(false);
     expect(reportError).toHaveBeenCalled();
   });
 });
@@ -88,16 +88,16 @@ describe("addServiceAction", () => {
 describe("cancelServiceAction", () => {
   it("passes the service and the trimmed reason, and says when it stops", async () => {
     vi.mocked(removeBundledAddOnFor).mockResolvedValue({ kind: "scheduled", endsOn: new Date(), message: "Social & Ads stays until your next payment date, then it stops." });
-    const result = await cancelServiceAction(null, form({ addOn: "digital-growth", reason: "  Too busy to post. " }));
-    expect(removeBundledAddOnFor).toHaveBeenCalledWith(OWNER, "digital-growth", expect.any(Date), "Too busy to post.");
+    const result = await cancelServiceAction(null, form({ addOn: "social-media", reason: "  Too busy to post. " }));
+    expect(removeBundledAddOnFor).toHaveBeenCalledWith(OWNER, "social-media", expect.any(Date), "Too busy to post.");
     expect(result).toEqual({ ok: true, data: { message: "Social & Ads stays until your next payment date, then it stops." } });
   });
 
   it("sends no reason when none is given, and refuses one over 500 characters", async () => {
     vi.mocked(removeBundledAddOnFor).mockResolvedValue({ kind: "scheduled", endsOn: new Date(), message: "ok" });
-    await cancelServiceAction(null, form({ addOn: "digital-growth", reason: "" }));
-    expect(removeBundledAddOnFor).toHaveBeenLastCalledWith(OWNER, "digital-growth", expect.any(Date), null);
-    const long = await cancelServiceAction(null, form({ addOn: "digital-growth", reason: "a".repeat(501) }));
+    await cancelServiceAction(null, form({ addOn: "social-media", reason: "" }));
+    expect(removeBundledAddOnFor).toHaveBeenLastCalledWith(OWNER, "social-media", expect.any(Date), null);
+    const long = await cancelServiceAction(null, form({ addOn: "social-media", reason: "a".repeat(501) }));
     expect(long).toMatchObject({ ok: false, fieldErrors: { reason: "Keep the reason to 500 characters or fewer." } });
     expect(removeBundledAddOnFor).toHaveBeenCalledTimes(1);
   });
@@ -111,7 +111,7 @@ describe("cancelServiceAction", () => {
 describe("reactivateAction", () => {
   it("passes only catalogue services and goes to pay", async () => {
     vi.mocked(startReactivationFor).mockResolvedValue({ kind: "redirect", url: "/checkout/pay" } as never);
-    await expect(reactivateAction(null, form({ service: ["digital-growth", "free-money"] }))).rejects.toThrow("redirect:/checkout/pay");
-    expect(startReactivationFor).toHaveBeenCalledWith(OWNER, expect.any(Date), ["digital-growth"]);
+    await expect(reactivateAction(null, form({ service: ["social-media", "free-money"] }))).rejects.toThrow("redirect:/checkout/pay");
+    expect(startReactivationFor).toHaveBeenCalledWith(OWNER, expect.any(Date), ["social-media"]);
   });
 });

@@ -87,7 +87,7 @@ function addOnRow(overrides: Partial<AddOnSubscription> = {}): AddOnSubscription
   return {
     id: `0192f3c4-2222-7000-8000-${nextRow.toString(16).padStart(12, "0")}`,
     businessId: BUSINESS_ID,
-    addOn: "digital-growth",
+    addOn: "social-media",
     provider: "fake",
     providerSubscriptionId: `fake_sub_${nextRow.toString(16).padStart(24, "0")}`,
     status: "active",
@@ -362,7 +362,7 @@ describe("loadPackageEndsFor", () => {
   const tenantTx = { name: "tenant-tx" } as unknown as ScopedTransaction;
   const line = (addOn: BundledAddOn["addOn"], overrides: Partial<BundledAddOn> = {}): BundledAddOn =>
     ({ addOn, status: "active", endRequestedAt: null, ...overrides }) as BundledAddOn;
-  const staying = [line("managed-website"), line("digital-growth"), line("local-seo-aeo")];
+  const staying = [line("managed-website"), line("social-media"), line("paid-ads")];
   const withCredit = (adCreditCents: number, overrides: Partial<Subscription> = {}): AccountCustomer =>
     customer({ ...PLAN_SUBSCRIPTION, adCreditCents, ...overrides } as Subscription);
 
@@ -384,7 +384,7 @@ describe("loadPackageEndsFor", () => {
   });
 
   it("does not count a service that is already ending", async () => {
-    vi.mocked(findLiveBundledAddOns).mockResolvedValue([line("managed-website"), line("digital-growth", { endRequestedAt: NOW }), line("local-seo-aeo")]);
+    vi.mocked(findLiveBundledAddOns).mockResolvedValue([line("managed-website"), line("social-media", { endRequestedAt: NOW }), line("paid-ads")]);
 
     await expect(loadPackageEndsFor(withCredit(0))).resolves.toEqual([
       "Your package price (10% off)",
@@ -399,7 +399,7 @@ describe("loadPackageEndsFor", () => {
   });
 
   it("does not count a service that is not yet paid for", async () => {
-    vi.mocked(findLiveBundledAddOns).mockResolvedValue([line("managed-website"), line("digital-growth"), line("local-seo-aeo", { status: "pending" })]);
+    vi.mocked(findLiveBundledAddOns).mockResolvedValue([line("managed-website"), line("social-media"), line("paid-ads", { status: "pending" })]);
 
     await expect(loadPackageEndsFor(withCredit(0))).resolves.toEqual([
       "Your package price (10% off)",

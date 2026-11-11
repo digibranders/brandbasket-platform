@@ -3,8 +3,8 @@ import { onboardingReviewDestination, withQuery } from "./old-paths";
 
 describe("withQuery", () => {
   it("carries the old address's query to the new one", () => {
-    expect(withQuery("/checkout", { services: "managed-website,digital-growth", payment: "received" })).toBe("/checkout?services=managed-website,digital-growth&payment=received");
-    expect(withQuery("/start", { services: "local-seo-aeo", q: "summary" })).toBe("/start?services=local-seo-aeo&q=summary");
+    expect(withQuery("/checkout", { services: "managed-website,social-media", payment: "received" })).toBe("/checkout?services=managed-website,social-media&payment=received");
+    expect(withQuery("/start", { services: "paid-ads", q: "summary" })).toBe("/start?services=paid-ads&q=summary");
   });
 
   it("keeps a bare address bare, and repeated parameters repeated", () => {

@@ -9,8 +9,6 @@ export const SERVICE_KEY_OF: Readonly<Record<MonthlyAddOnId, ServiceKey | null>>
   "social-media": "social",
   "paid-ads": "social",
   "expert-monitoring": null,
-  "digital-growth": "social",
-  "local-seo-aeo": "search",
 };
 
 export const SERVICE_NAMES: Readonly<Record<ServiceKey, string>> = { website: "Website", social: "Social & Ads", search: "Local SEO + AEO" };

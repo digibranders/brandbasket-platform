@@ -47,21 +47,21 @@ describe("loadMembershipCheckout", () => {
   it("is the basket the address names for a business that has not paid", async () => {
     vi.mocked(findBillingState).mockResolvedValue(stateWith(false));
 
-    const view = await loadMembershipCheckout(customer, "managed", ["digital-growth", "local-seo-aeo"], NOW);
+    const view = await loadMembershipCheckout(customer, "managed", ["social-media", "paid-ads"], NOW);
 
-    expect(view.services).toEqual(["digital-growth", "local-seo-aeo"]);
+    expect(view.services).toEqual(["social-media", "paid-ads"]);
     expect(loadReactivationBasket).not.toHaveBeenCalled();
   });
 
   it("is the basket the business lapsed with, at its offer, for one that has paid before: the same one checkout reopens", async () => {
     vi.mocked(findBillingState).mockResolvedValue(stateWith(true));
-    const lapsed: ReactivationBasket = { services: ["managed-website", "digital-growth"], forfeited: true, adCreditCents: 0, cancelled: true };
+    const lapsed: ReactivationBasket = { services: ["managed-website", "social-media"], forfeited: true, adCreditCents: 0, cancelled: true };
     vi.mocked(loadReactivationBasket).mockResolvedValue(lapsed);
 
-    const view = await loadMembershipCheckout(customer, "managed", ["local-seo-aeo"], NOW);
+    const view = await loadMembershipCheckout(customer, "managed", ["paid-ads"], NOW);
 
     expect(loadReactivationBasket).toHaveBeenCalledWith(staffDb, BUSINESS_ID);
-    expect(view).toMatchObject({ services: ["managed-website", "digital-growth"], forfeited: true, hasEverPaid: true, offer: { kind: "none" } });
+    expect(view).toMatchObject({ services: ["managed-website", "social-media"], forfeited: true, hasEverPaid: true, offer: { kind: "none" } });
     // Reactivation takes no code, so none is looked for against the basket.
     expect(resolveAppliedDiscount).not.toHaveBeenCalled();
     expect(findLapsedAppliedCode).not.toHaveBeenCalled();
@@ -78,7 +78,7 @@ describe("loadMembershipCheckout", () => {
   it("looks for a code against the package net for a package", async () => {
     vi.mocked(findBillingState).mockResolvedValue(stateWith(false));
 
-    await loadMembershipCheckout(customer, "managed", ["managed-website", "digital-growth"], NOW);
+    await loadMembershipCheckout(customer, "managed", ["managed-website", "social-media"], NOW);
 
     expect(resolveAppliedDiscount).toHaveBeenCalledWith(BUSINESS_ID, { currency: "INR", netCents: 1_169_900 }, NOW);
   });

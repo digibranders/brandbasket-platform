@@ -653,15 +653,6 @@ describe("startMembershipCheckoutFor", () => {
     );
   });
 
-  it("never sells a plan that is no longer sold, whatever the basket names", async () => {
-    await startMembershipCheckoutFor(owner, NOW, "managed", ["managed-website", "digital-growth", "local-seo-aeo"]);
-
-    expect(openCheckoutSubscription).toHaveBeenCalledWith(
-      { name: "tx2" },
-      expect.objectContaining({ bundledAddOns: [inrLine("managed-website", 299_900, 0)], adCreditCents: 0 }),
-    );
-  });
-
   it("charges Website + Ads at 10% off, which earns no ad credit", async () => {
     const charged = await chargedFor(await startMembershipCheckoutFor(owner, NOW, "managed", ["managed-website", "paid-ads"]));
 

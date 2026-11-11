@@ -90,6 +90,4 @@ export const SERVICE_KEY_OF: Readonly<Record<MonthlyAddOnId, "website" | "social
   "social-media": "social",
   "paid-ads": "social",
   "expert-monitoring": null,
-  "digital-growth": "social",
-  "local-seo-aeo": "search",
 };

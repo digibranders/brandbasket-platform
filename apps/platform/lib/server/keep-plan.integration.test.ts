@@ -112,7 +112,7 @@ async function paidPlan(provider: "fake" | "razorpay"): Promise<Subscription> {
     discountAmountCents: 30_000,
     discountMonthsLeft: 5,
     adCreditCents: AD_CREDIT_CENTS,
-    bundledAddOns: linesOf("managed-website", "digital-growth"),
+    bundledAddOns: linesOf("managed-website", "social-media"),
     replacing: null,
     now: PAID_AT,
   });
@@ -280,7 +280,7 @@ describe("the checkout Keep my plan opens", () => {
     const lines = await findBundledAddOnsForSubscription(dbs().staff.db, successor.id);
     expect(lines.map((line) => [line.addOn, line.listAmountCents, line.offerDiscountAmountCents, line.netAmountCents, line.status])).toEqual([
       ["managed-website", 299_900, 29_990, 269_910, "pending"],
-      ["digital-growth", 999_900, 99_910, 899_990, "pending"],
+      ["social-media", 999_900, 99_910, 899_990, "pending"],
     ]);
   });
 
@@ -429,7 +429,7 @@ describe("the first charge of a kept plan", () => {
     const newLines = await findBundledAddOnsForSubscription(dbs().staff.db, successor.id);
     expect(newLines.map((line) => [line.addOn, line.status])).toEqual([
       ["managed-website", "active"],
-      ["digital-growth", "active"],
+      ["social-media", "active"],
     ]);
     const oldLines = await findBundledAddOnsForSubscription(dbs().staff.db, old.id);
     expect(oldLines.every((line) => line.status === "removed")).toBe(true);

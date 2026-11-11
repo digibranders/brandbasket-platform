@@ -65,9 +65,9 @@ describe("announcePayment", () => {
 
   it("names the add-on of an add-on payment and the description of a one-off charge", async () => {
     queries.findPaymentAlertBase.mockResolvedValue(base("add_on"));
-    queries.findAddOnSubscriptionForPayment.mockResolvedValue({ addOn: "digital-growth", listAmountCents: 999_900, offerDiscountAmountCents: 99_910 });
+    queries.findAddOnSubscriptionForPayment.mockResolvedValue({ addOn: "social-media", listAmountCents: 999_900, offerDiscountAmountCents: 99_910 });
     await announcePayment(DB, SECRET, "pay-1", ORIGIN);
-    expect(sent()).toContain("Social Media and Ads");
+    expect(sent()).toContain("Social Media Management");
 
     vi.clearAllMocks();
     queries.findPaymentAlertBase.mockResolvedValue(base("charge"));

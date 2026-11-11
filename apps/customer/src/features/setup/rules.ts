@@ -54,16 +54,17 @@ export function setupCardTitle(count: number): string {
 
 // ---- Not bought ----
 
-// Social pitches Social Media Management; Local SEO + AEO is no longer sold, so its Not bought page offers what it was.
-const ADD_ON_OF: Readonly<Record<SetupService, MonthlyAddOnId>> = { social: "social-media", search: "local-seo-aeo" };
+/** A service area with something to buy. Local SEO + AEO is no longer sold, so the Search area has no Not bought page. */
+export type SoldSetupService = Exclude<SetupService, "search">;
 
-const LEAD: Readonly<Record<SetupService, string>> = {
+const ADD_ON_OF: Readonly<Record<SoldSetupService, MonthlyAddOnId>> = { social: "social-media" };
+
+const LEAD: Readonly<Record<SoldSetupService, string>> = {
   social: "We plan and publish your posts each month on up to 4 platforms, with captions and images made with AI. You approve every post before it goes out.",
-  search: "We improve how you show up on Google, Maps and in AI answers like ChatGPT. Every month you see what we did and how your searches moved.",
 };
 
 export interface NotBoughtView {
-  readonly service: SetupService;
+  readonly service: SoldSetupService;
   readonly lead: string;
   readonly includes: readonly string[];
   /** "₹8,999 a month". */
@@ -81,7 +82,7 @@ export interface NotBoughtView {
  * The service as it would be priced once it joins the services already held: from the shared package rules, so the
  * discount here is the one checkout will take. Nothing on the screen works a price out.
  */
-export function notBoughtView(input: { readonly service: SetupService; readonly held: readonly PackageListLine[]; readonly forfeited: boolean; readonly currency: MoneyCurrency }): NotBoughtView {
+export function notBoughtView(input: { readonly service: SoldSetupService; readonly held: readonly PackageListLine[]; readonly forfeited: boolean; readonly currency: MoneyCurrency }): NotBoughtView {
   const addOn = ADD_ON_OF[input.service];
   const line = packageLineWith(input.held, input.forfeited, addOn, input.currency);
   const offered = line.discountCents > 0;

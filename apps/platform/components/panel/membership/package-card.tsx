@@ -1,10 +1,10 @@
 import type { ReactElement } from "react";
 import Link from "next/link";
-import { Check, GlobeSimple, MagnifyingGlass, Megaphone } from "@phosphor-icons/react/dist/ssr";
+import { Check, GlobeSimple, Megaphone } from "@phosphor-icons/react/dist/ssr";
 import type { Icon } from "@phosphor-icons/react";
 import { cn } from "@brandbasket/shared/lib/cn";
 import { SOFT_BUTTON } from "@/components/v2/classes";
-import { addOnPrice, ADD_ONS, type AddOn, type MonthlyAddOnId } from "@brandbasket/shared/lib/billing/add-ons";
+import { addOnPrice, ADD_ONS, MONITORING_ID, type AddOn, type MonthlyAddOnId } from "@brandbasket/shared/lib/billing/add-ons";
 import type { BundleLine } from "@brandbasket/shared/lib/billing/bundle";
 import { formatMoney, type MoneyCurrency } from "@brandbasket/shared/lib/money";
 import { servicesAfterToggle } from "@/lib/membership";
@@ -25,8 +25,6 @@ const MARKS: Readonly<Record<AddOn["id"], Icon>> = {
   "social-media": Megaphone,
   "paid-ads": Megaphone,
   "expert-monitoring": GlobeSimple,
-  "digital-growth": Megaphone,
-  "local-seo-aeo": MagnifyingGlass,
 };
 
 /** A service's icon on a soft round mark, the one the rail uses for it. */
@@ -111,7 +109,7 @@ export function PackageCard({ selected, lines, hrefFor, currency }: PackageCardP
   return (
     <section aria-label="Services">
       <ul className="divide-y divide-line border-y border-line">
-        {ADD_ONS.filter((addOn) => addOn.packageSlot === addOn.id).map((addOn) => {
+        {ADD_ONS.filter((addOn) => addOn.id !== MONITORING_ID).map((addOn) => {
           const added = selected.includes(addOn.id);
           return (
             <ServiceRow

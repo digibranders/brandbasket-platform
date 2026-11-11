@@ -1,13 +1,12 @@
 import type { MoneyCurrency } from "../money";
-import { addOnById, addOnPrice, MONTHLY_ADD_ON_IDS, type AddOnPrice, type MonthlyAddOnId, type PlanAddOnId } from "./add-ons";
+import { addOnById, addOnPrice, MONITORING_ID, MONTHLY_ADD_ON_IDS, type AddOnPrice, type MonthlyAddOnId, type PlanAddOnId } from "./add-ons";
 
 /**
  * Package offers (owner decisions, 2026-10-21 and 2026-10-26; docs/plans/16-platform-pricing-offers.md and
  * docs/plans/25-money-gst-and-offers.md). Two services on one subscription are 10% off and all three 20% off, taken off the
  * price the customer pays (GST included), and the package saving is rounded down to a whole rupee or dollar (the rule in
  * packageDiscountsFor); a package bought together at the first checkout also earns monthly ad credit. A package is made of
- * plans: an unsold plan counts as the plan in its slot (AddOn.packageSlot), and monitoring is never part of one, so it is
- * always at list. Pure and browser-safe. brandbasket-website holds the same numbers in lib/pricing.ts.
+ * plans: monitoring is never part of one, so it is always at list. Pure and browser-safe. brandbasket-website holds the same numbers in lib/pricing.ts.
  */
 interface PackageOffer {
   readonly services: readonly PlanAddOnId[];
@@ -46,20 +45,15 @@ function distinctServices(services: readonly MonthlyAddOnId[]): readonly Monthly
   return MONTHLY_ADD_ON_IDS.filter((id) => picked.has(id));
 }
 
-/** The plan a service counts as in a package, or null for one that is never in a package (monitoring). */
-function slotOf(id: MonthlyAddOnId): PlanAddOnId | null {
-  return addOnById(id).packageSlot;
+/** Whether a service is part of packages: every plan; never monitoring. */
+function inPackage(id: MonthlyAddOnId): boolean {
+  return id !== MONITORING_ID;
 }
 
-/**
- * The offer for these services: matched on the plans they count as, each slot once. A basket holding two lines in one slot
- * (an unsold plan and the one that replaced it) is no package, so nothing is priced twice.
- */
+/** The offer for the plans among these services, or null when they make no package. */
 function offerFor(services: readonly MonthlyAddOnId[]): PackageOffer | null {
-  const lines = distinctServices(services).flatMap((id) => slotOf(id) ?? []);
-  const slots = new Set(lines);
-  if (slots.size !== lines.length) return null;
-  return PACKAGE_OFFERS.find((o) => o.services.length === slots.size && o.services.every((id) => slots.has(id))) ?? null;
+  const plans = distinctServices(services).filter(inPackage);
+  return PACKAGE_OFFERS.find((o) => o.services.length === plans.length && o.services.every((id) => plans.includes(id))) ?? null;
 }
 
 /** Basis points off each line for this set of services; 0 for one service or once the business has forfeited. */
@@ -92,18 +86,18 @@ export interface PackageListLine {
  */
 export function packageDiscountsFor(lines: readonly PackageListLine[], basisPoints: number): number[] {
   // A line outside packages (monitoring) takes no share and carries no rounding.
-  const inPackage = (line: PackageListLine): boolean => slotOf(line.addOn) !== null;
-  const discounts = lines.map((line) => (inPackage(line) ? packageDiscountCentsFor(line.listCents, basisPoints) : 0));
-  if (basisPoints === 0 || !lines.some(inPackage)) return discounts;
-  const listCents = lines.reduce((total, line) => total + (inPackage(line) ? line.listCents : 0), 0);
+  const counted = (line: PackageListLine): boolean => inPackage(line.addOn);
+  const discounts = lines.map((line) => (counted(line) ? packageDiscountCentsFor(line.listCents, basisPoints) : 0));
+  if (basisPoints === 0 || !lines.some(counted)) return discounts;
+  const listCents = lines.reduce((total, line) => total + (counted(line) ? line.listCents : 0), 0);
   const savingCents = Math.floor((listCents * basisPoints) / (BASIS_POINTS_DENOMINATOR * PACKAGE_ROUNDING_CENTS)) * PACKAGE_ROUNDING_CENTS;
   const differenceCents = savingCents - discounts.reduce((total, discount) => total + discount, 0);
   if (differenceCents === 0) return discounts;
   const catalogueRank = (line: PackageListLine): number => MONTHLY_ADD_ON_IDS.indexOf(line.addOn);
   const dearest = lines.reduce((best, line, index) => {
-    if (!inPackage(line)) return best;
+    if (!counted(line)) return best;
     const bestLine = lines[best];
-    if (bestLine === undefined || !inPackage(bestLine)) return index;
+    if (bestLine === undefined || !counted(bestLine)) return index;
     return line.listCents > bestLine.listCents || (line.listCents === bestLine.listCents && catalogueRank(line) < catalogueRank(bestLine)) ? index : best;
   }, 0);
   return discounts.map((discount, index) => (index === dearest ? discount + differenceCents : discount));

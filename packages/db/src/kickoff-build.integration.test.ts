@@ -47,12 +47,12 @@ beforeEach(async () => {
   await seedPlansFromMigrations(dbs.owner);
   await dbs.staff.db.insert(users).values({ id: STAFF, name: "Staff", email: `${STAFF}@example.com`, emailVerified: true });
   subscriptionOf = {};
-  siteId = await business("site-business", ["managed-website", "digital-growth"]);
-  socialId = await business("social-business", ["digital-growth"]);
+  siteId = await business("site-business", ["managed-website", "social-media"]);
+  socialId = await business("social-business", ["social-media"]);
 });
 
 describe("markProjectReadyAfterKickoff", () => {
-  it("moves a Managed Website project from onboarding to submitted with the preview date, and leaves the checklist stamp null", async () => {
+  it("moves a Website Management project from onboarding to submitted with the preview date, and leaves the checklist stamp null", async () => {
     expect(await markProjectReadyAfterKickoff(dbs.staff.db, { businessId: siteId, dueAt: DUE, now: NOW })).toBe(true);
     const project = await statusOf(siteId);
     expect(project).toMatchObject({ status: "submitted", onboardingSubmittedAt: null });
@@ -71,7 +71,7 @@ describe("markProjectReadyAfterKickoff", () => {
     expect((await statusOf(siteId))?.slaDueAt?.toISOString()).toBe(DUE.toISOString());
   });
 
-  it("leaves a business without Managed Website alone", async () => {
+  it("leaves a business without Website Management alone", async () => {
     expect(await markProjectReadyAfterKickoff(dbs.staff.db, { businessId: socialId, dueAt: DUE, now: NOW })).toBe(false);
     expect((await statusOf(socialId))?.status).toBe("onboarding");
   });
@@ -82,7 +82,7 @@ describe("markProjectReadyAfterKickoff", () => {
     expect((await statusOf(siteId))?.status).toBe("building");
   });
 
-  it("does not count a Managed Website line that is no longer active", async () => {
+  it("does not count a Website Management line that is no longer active", async () => {
     await dbs.staff.db.update(bundledAddOns).set({ status: "removed" }).where(eq(bundledAddOns.businessId, siteId));
     expect(await markProjectReadyAfterKickoff(dbs.staff.db, { businessId: siteId, dueAt: DUE, now: NOW })).toBe(false);
   });
@@ -191,7 +191,7 @@ describe("listKickoffBoard", () => {
     ]);
     const board = await listKickoffBoard(dbs.staff.db, { now: NOW, lookBackDays: 7 });
     expect(board).toHaveLength(1);
-    expect(board[0]).toMatchObject({ businessId: siteId, businessName: "site-business", projectStatus: "onboarding", hasWebsite: true, services: ["digital-growth", "managed-website"], heldAt: null });
+    expect(board[0]).toMatchObject({ businessId: siteId, businessName: "site-business", projectStatus: "onboarding", hasWebsite: true, services: ["managed-website", "social-media"], heldAt: null });
     expect(board[0]?.endsAt?.toISOString()).toBe(ENDED.toISOString());
   });
 });

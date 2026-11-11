@@ -86,15 +86,15 @@ describe("startPaymentAction", () => {
 
   it("opens a sign-up account's checkout on the catalogue services named, dropping anything else", async () => {
     vi.mocked(startMembershipCheckoutFor).mockResolvedValue({ kind: "redirect", url: "/checkout/pay" });
-    await expect(startPaymentAction(null, form({ tier: "managed", service: ["digital-growth", "nonsense", "managed-website"] }))).rejects.toThrow("redirect:/checkout/pay");
-    expect(startMembershipCheckoutFor).toHaveBeenCalledWith(CUSTOMER, expect.any(Date), "managed", ["managed-website", "digital-growth"]);
+    await expect(startPaymentAction(null, form({ tier: "managed", service: ["social-media", "nonsense", "managed-website"] }))).rejects.toThrow("redirect:/checkout/pay");
+    expect(startMembershipCheckoutFor).toHaveBeenCalledWith(CUSTOMER, expect.any(Date), "managed", ["managed-website", "social-media"]);
     expect(startCheckoutFor).not.toHaveBeenCalled();
   });
 
   it("opens a website client's checkout for the website alone, whatever the form says", async () => {
     vi.mocked(loadBusinessEntry).mockResolvedValue({ kind: "website", signupChoice: null });
     vi.mocked(startCheckoutFor).mockResolvedValue({ kind: "redirect", url: "/checkout/pay" });
-    await expect(startPaymentAction(null, form({ tier: "managed", service: "local-seo-aeo" }))).rejects.toThrow("redirect:/checkout/pay");
+    await expect(startPaymentAction(null, form({ tier: "managed", service: "paid-ads" }))).rejects.toThrow("redirect:/checkout/pay");
     expect(startCheckoutFor).toHaveBeenCalledWith(CUSTOMER, expect.any(Date));
     expect(startMembershipCheckoutFor).not.toHaveBeenCalled();
   });
@@ -122,14 +122,14 @@ describe("startPaymentAction", () => {
 describe("codes", () => {
   it("prices a sign-up account's code against its basket", async () => {
     vi.mocked(applyReferralCodeFor).mockResolvedValue({ kind: "applied", discount: {} as never });
-    expect(await applyCodeAction(null, form({ referralCode: "FRIEND10", service: ["managed-website", "digital-growth"] }))).toEqual({ ok: true });
-    expect(applyReferralCodeFor).toHaveBeenCalledWith(CUSTOMER, "FRIEND10", ["managed-website", "digital-growth"], expect.any(Date));
+    expect(await applyCodeAction(null, form({ referralCode: "FRIEND10", service: ["managed-website", "social-media"] }))).toEqual({ ok: true });
+    expect(applyReferralCodeFor).toHaveBeenCalledWith(CUSTOMER, "FRIEND10", ["managed-website", "social-media"], expect.any(Date));
   });
 
   it("prices a website client's code against the website alone", async () => {
     vi.mocked(loadBusinessEntry).mockResolvedValue({ kind: "website", signupChoice: null });
     vi.mocked(applyReferralCodeFor).mockResolvedValue({ kind: "applied", discount: {} as never });
-    await applyCodeAction(null, form({ referralCode: "FRIEND10", service: "local-seo-aeo" }));
+    await applyCodeAction(null, form({ referralCode: "FRIEND10", service: "paid-ads" }));
     expect(applyReferralCodeFor).toHaveBeenCalledWith(CUSTOMER, "FRIEND10", ["managed-website"], expect.any(Date));
   });
 

@@ -297,7 +297,7 @@ describe("recordManualFirstPayment", () => {
       adCreditCents: 0,
       createdAt: new Date(NOW.getTime() - 60_000),
     } as Subscription;
-    const SOCIAL_LINE = { addOn: "digital-growth", listAmountCents: 15_000, offerDiscountAmountCents: 1_450, netAmountCents: 13_550, taxRateBasisPoints: 0 };
+    const SOCIAL_LINE = { addOn: "social-media", listAmountCents: 15_000, offerDiscountAmountCents: 1_450, netAmountCents: 13_550, taxRateBasisPoints: 0 };
 
     it.each([
       ["a second service", [{ ...WEBSITE_USD_LINE, status: "pending" }, { ...SOCIAL_LINE, status: "pending" }], 0],
@@ -480,7 +480,7 @@ describe("recordManualFirstPayment", () => {
     };
 
     it("books every service it had at the package price with its ad credit, not the website alone", async () => {
-      lapse({ adCreditCents: 6_000 }, [["managed-website", 5_200], ["digital-growth", 12_000], ["local-seo-aeo", 28_000]]);
+      lapse({ adCreditCents: 6_000 }, [["managed-website", 5_200], ["social-media", 12_000], ["paid-ads", 28_000]]);
 
       await expect(recordManualFirstPayment(MANUAL, NOW)).resolves.toEqual({ kind: "recorded" });
 
@@ -490,7 +490,7 @@ describe("recordManualFirstPayment", () => {
           replacing: "sub-lapsed",
           adCreditCents: 6_000,
           referralCodeId: null,
-          bundledAddOns: [usdLine("managed-website", 6_500, 1_300), usdLine("digital-growth", 15_000, 3_000), usdLine("local-seo-aeo", 35_000, 7_000)],
+          bundledAddOns: [usdLine("managed-website", 6_500, 1_300), usdLine("social-media", 15_000, 3_000), usdLine("paid-ads", 35_000, 7_000)],
         }),
       );
       expect(recordPaymentAndActivate).toHaveBeenCalledWith(tx, expect.objectContaining({ kind: "reactivation", amountCents: 45_200 }));
@@ -498,20 +498,20 @@ describe("recordManualFirstPayment", () => {
     });
 
     it("books a cancelled subscription's services at list with no ad credit, and ends the package offer for good", async () => {
-      lapse({ status: "cancelled", cancelRequestedAt: AGO, adCreditCents: 6_000 }, [["managed-website", 6_500], ["digital-growth", 15_000]]);
+      lapse({ status: "cancelled", cancelRequestedAt: AGO, adCreditCents: 6_000 }, [["managed-website", 6_500], ["social-media", 15_000]]);
 
       await expect(recordManualFirstPayment(MANUAL, NOW)).resolves.toEqual({ kind: "recorded" });
 
       expect(openCheckoutSubscription).toHaveBeenCalledWith(
         tx,
-        expect.objectContaining({ replacing: null, adCreditCents: 0, bundledAddOns: [usdLine("managed-website", 6_500, 0), usdLine("digital-growth", 15_000, 0)] }),
+        expect.objectContaining({ replacing: null, adCreditCents: 0, bundledAddOns: [usdLine("managed-website", 6_500, 0), usdLine("social-media", 15_000, 0)] }),
       );
       expect(markPackageOfferForfeited).toHaveBeenCalledWith(tx, BUSINESS_ID, NOW);
     });
 
     describe("with the code the lapsed subscription was paying with", () => {
       const THREE = { id: "code-3", code: "THREE", currency: "USD", discount: { kind: "percent", basisPoints: 1_000 }, discountMonths: 3, active: false, expiresAt: NOW } as ReferralCode;
-      const PACKAGE = [["managed-website", 5_200], ["digital-growth", 12_000], ["local-seo-aeo", 28_000]] as const;
+      const PACKAGE = [["managed-website", 5_200], ["social-media", 12_000], ["paid-ads", 28_000]] as const;
 
       beforeEach(() => {
         vi.mocked(findReferralCodeById).mockResolvedValue(THREE);
@@ -547,7 +547,7 @@ describe("recordManualFirstPayment", () => {
       });
 
       it("carries nothing after the client's own cancel", async () => {
-        lapse({ status: "cancelled", cancelRequestedAt: AGO, referralCodeId: "code-3", discountMonthsLeft: 2 }, [["managed-website", 6_500], ["digital-growth", 15_000]]);
+        lapse({ status: "cancelled", cancelRequestedAt: AGO, referralCodeId: "code-3", discountMonthsLeft: 2 }, [["managed-website", 6_500], ["social-media", 15_000]]);
 
         await recordManualFirstPayment(MANUAL, NOW);
 
@@ -573,7 +573,7 @@ describe("recordManualFirstPayment", () => {
         (
           [
             ["managed-website", 5_850],
-            ["digital-growth", 13_550],
+            ["social-media", 13_550],
           ] as const
         ).map(
           ([addOn, netAmountCents]) =>
@@ -586,7 +586,7 @@ describe("recordManualFirstPayment", () => {
       await expect(recordManualFirstPayment(MANUAL, NOW)).resolves.toEqual({ kind: "recorded" });
       expect(openCheckoutSubscription).toHaveBeenCalledWith(
         tx,
-        expect.objectContaining({ replacing: "sub-lapsed", adCreditCents: 2_500, bundledAddOns: [usdLine("managed-website", 6_500, 650), usdLine("digital-growth", 15_000, 1_450)] }),
+        expect.objectContaining({ replacing: "sub-lapsed", adCreditCents: 2_500, bundledAddOns: [usdLine("managed-website", 6_500, 650), usdLine("social-media", 15_000, 1_450)] }),
       );
     });
   });

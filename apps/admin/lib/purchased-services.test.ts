@@ -14,10 +14,10 @@ describe("isWebsiteBoughtFrom", () => {
   });
 
   it("is false for a Social-only or Search-only business", () => {
-    const social: Plan[] = [plan("digital-growth", "active")];
-    const search: Plan[] = [plan("local-seo-aeo", "pending")];
+    const social: Plan[] = [plan("social-media", "active")];
+    const search: Plan[] = [plan("paid-ads", "pending")];
     expect(isWebsiteBoughtFrom(social, [])).toBe(false);
-    expect(isWebsiteBoughtFrom(search, [later("digital-growth", "active")])).toBe(false);
+    expect(isWebsiteBoughtFrom(search, [later("social-media", "active")])).toBe(false);
   });
 
   it("is true for any managed-website plan line, whatever its state", () => {

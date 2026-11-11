@@ -317,7 +317,7 @@ export function questionPosition(services: readonly IntakeService[], answers: In
 
 /** The intake's services for the catalogue ids a basket holds (ids it does not know are dropped), so the console reads a saved basket the way the portal does. */
 export function intakeServicesOf(addOnIds: readonly string[]): readonly IntakeService[] {
-  const keyOf: Readonly<Record<string, IntakeService>> = { "managed-website": "website", "social-media": "social", "paid-ads": "social", "digital-growth": "social", "local-seo-aeo": "search" };
+  const keyOf: Readonly<Record<string, IntakeService>> = { "managed-website": "website", "social-media": "social", "paid-ads": "social" };
   return [...new Set(addOnIds.flatMap((id) => (keyOf[id] === undefined ? [] : [keyOf[id]])))];
 }
 

@@ -40,7 +40,7 @@ describe("assessAddOn", () => {
   });
 
   it("quotes the next renewal of the whole package when the leftover lands on a line already there", () => {
-    const assessment = assessAddOn({ state, live: [line("local-seo-aeo", 2_499_900)], addOn: "managed-website", forfeited: false, providerName: "fake", now: NOW });
+    const assessment = assessAddOn({ state, live: [line("paid-ads", 2_499_900)], addOn: "managed-website", forfeited: false, providerName: "fake", now: NOW });
 
     // Website + SEO is 2,519,900 for the two: the website takes its 10% (29,990), and the SEO line already there takes the
     // 80 paise the whole-rupee saving gives back.
@@ -51,17 +51,6 @@ describe("assessAddOn", () => {
     const assessment = assessAddOn({ state, live: [line("managed-website", 299_900)], addOn: "social-media", forfeited: true, providerName: "fake", now: NOW });
 
     expect(assessment).toMatchObject({ kind: "offer", line: { discountCents: 0, netCents: 999_900 }, quote: { nextRenewalCents: 1_299_800 } });
-  });
-
-  it("never sells a plan that is no longer sold, though a business that has it can keep it", () => {
-    expect(assessAddOn({ state, live: [line("managed-website", 299_900)], addOn: "digital-growth", forfeited: false, providerName: "fake", now: NOW })).toEqual({ kind: "blocked", reason: "not-sold" });
-    expect(assessAddOn({ state, live: [line("managed-website", 299_900)], addOn: "local-seo-aeo", forfeited: false, providerName: "fake", now: NOW })).toEqual({ kind: "blocked", reason: "not-sold" });
-  });
-
-  it("prices a new plan joining an old one in the package their slots make, so an old basket keeps its offer", () => {
-    // Social Media and Ads counts as Social: with Paid Ads Management it is Social + Ads, 10% off 34,998, a saving of 3,499.
-    const assessment = assessAddOn({ state, live: [line("digital-growth", 999_900)], addOn: "paid-ads", forfeited: false, providerName: "fake", now: NOW });
-    expect(assessment).toMatchObject({ kind: "offer", line: { listCents: 2_499_900, discountCents: 249_910 }, quote: { nextRenewalCents: 3_149_900 } });
   });
 
   it("does not sell monitoring beside all three plans, which include it", () => {
@@ -139,16 +128,16 @@ describe("assessAddOn", () => {
     const website = [line("managed-website", 299_900)];
 
     it("refuses an add, saying when the plan starts", () => {
-      const assessment = assessAddOn({ state, live: website, addOn: "digital-growth", forfeited: false, keptStartsOn: STARTS_ON, providerName: "fake", now: NOW });
+      const assessment = assessAddOn({ state, live: website, addOn: "social-media", forfeited: false, keptStartsOn: STARTS_ON, providerName: "fake", now: NOW });
 
       expect(assessment).toEqual({ kind: "plan-kept", startsOn: STARTS_ON });
     });
 
     it("refuses keeping a service that was being dropped, which would otherwise be kept at no charge", () => {
-      const ending = [{ ...line("digital-growth", 999_900), endRequestedAt: NOW }];
+      const ending = [{ ...line("social-media", 999_900), endRequestedAt: NOW }];
 
-      expect(assessAddOn({ state, live: ending, addOn: "digital-growth", forfeited: false, providerName: "fake", now: NOW })).toMatchObject({ kind: "keep" });
-      expect(assessAddOn({ state, live: ending, addOn: "digital-growth", forfeited: false, keptStartsOn: STARTS_ON, providerName: "fake", now: NOW })).toEqual({
+      expect(assessAddOn({ state, live: ending, addOn: "social-media", forfeited: false, providerName: "fake", now: NOW })).toMatchObject({ kind: "keep" });
+      expect(assessAddOn({ state, live: ending, addOn: "social-media", forfeited: false, keptStartsOn: STARTS_ON, providerName: "fake", now: NOW })).toEqual({
         kind: "plan-kept",
         startsOn: STARTS_ON,
       });
@@ -157,7 +146,7 @@ describe("assessAddOn", () => {
     it("leaves the closing account's own reason first: the plan is not yet kept until it is authorised", () => {
       const closing = { ...state, subscription: { ...state.subscription, cancelRequestedAt: NOW } } as unknown as BillingState;
 
-      expect(assessAddOn({ state: closing, live: website, addOn: "digital-growth", forfeited: false, keptStartsOn: STARTS_ON, providerName: "fake", now: NOW })).toEqual({
+      expect(assessAddOn({ state: closing, live: website, addOn: "social-media", forfeited: false, keptStartsOn: STARTS_ON, providerName: "fake", now: NOW })).toEqual({
         kind: "blocked",
         reason: "ending",
       });

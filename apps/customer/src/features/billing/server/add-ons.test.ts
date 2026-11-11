@@ -190,20 +190,7 @@ describe("loadAddOnsPage", () => {
     ]);
   });
 
-  it("lists a plan no longer sold only while the business has it, and no monitoring beside all three plans", async () => {
-    vi.mocked(findLiveBundledAddOns).mockResolvedValue([
-      includedRow({ id: "line-website", addOn: "managed-website", listAmountCents: 299_900, offerDiscountAmountCents: 0, netAmountCents: 299_900 }),
-      includedRow({ id: "line-old", addOn: "digital-growth" }),
-    ]);
-    const held = await loadAddOnsPage(subscribed, NOW);
-    expect(held.addOns.map((entry) => [entry.addOn, entry.kind])).toEqual([
-      ["managed-website", "included"],
-      ["social-media", "available"],
-      ["paid-ads", "available"],
-      ["expert-monitoring", "available"],
-      ["digital-growth", "included"],
-    ]);
-
+  it("lists no monitoring beside all three plans, which include it", async () => {
     vi.mocked(findLiveBundledAddOns).mockResolvedValue([
       includedRow({ id: "line-website", addOn: "managed-website" }),
       includedRow({ id: "line-social", addOn: "social-media" }),

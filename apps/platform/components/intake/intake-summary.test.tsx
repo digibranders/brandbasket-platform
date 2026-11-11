@@ -11,7 +11,7 @@ const html = (): string =>
     createElement(IntakeSummary, {
       rows: [{ field: "businessType", label: "Business", value: "Dental" }],
       services: ["managed-website"],
-      prices: { "managed-website": "₹2,999", "social-media-ads": "₹9,999", "local-seo-aeo": "₹24,999" },
+      prices: { "managed-website": "₹2,999", "social-media-ads": "₹9,999", "paid-ads": "₹24,999" },
       currency: "INR",
       unanswered: 0,
       firstUnansweredHref: null,

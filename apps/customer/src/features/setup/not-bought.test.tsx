@@ -26,16 +26,16 @@ describe("NotBought", () => {
   });
 
   it("gives a viewer the page without the button", async () => {
-    vi.mocked(loadNotBought).mockResolvedValue(notBoughtView({ service: "search", held: [], forfeited: false, currency: "INR" }));
-    render(await NotBought({ service: "search", customer: customer("viewer") }));
-    expect(screen.getByRole("heading", { name: "Local SEO + AEO", level: 1 })).toBeTruthy();
+    vi.mocked(loadNotBought).mockResolvedValue(notBoughtView({ service: "social", held: [], forfeited: false, currency: "INR" }));
+    render(await NotBought({ service: "social", customer: customer("viewer") }));
+    expect(screen.getByRole("heading", { name: "Social & Ads", level: 1 })).toBeTruthy();
     expect(screen.queryByRole("link", { name: "Add to plan" })).toBeNull();
   });
 
   it("shows an error, not a price of zero, when the price cannot be read", async () => {
     vi.mocked(loadNotBought).mockRejectedValue(new Error("down"));
-    render(await NotBought({ service: "search", customer: customer() }));
-    expect(screen.getByText("We could not load the price of Local SEO + AEO.")).toBeTruthy();
+    render(await NotBought({ service: "social", customer: customer() }));
+    expect(screen.getByText("We could not load the price of Social & Ads.")).toBeTruthy();
     expect(screen.queryByRole("link", { name: "Add to plan" })).toBeNull();
   });
 });

@@ -37,7 +37,7 @@ export const clientIntakes = pgTable(
   (table) => [
     check(
       "client_intakes_services_check",
-      sql`${table.askedForServices} <@ array['managed-website', 'social-media', 'paid-ads', 'expert-monitoring', 'digital-growth', 'local-seo-aeo']::text[]`,
+      sql`${table.askedForServices} <@ array['managed-website', 'social-media', 'paid-ads', 'expert-monitoring']::text[]`,
     ),
     // The customer writes these columns, so the database keeps each one small whatever the app sends.
     check(
@@ -45,7 +45,7 @@ export const clientIntakes = pgTable(
       sql`coalesce(char_length(${table.businessType}), 0) <= 60 and coalesce(char_length(${table.businessSubtype}), 0) <= 60 and coalesce(char_length(${table.primaryGoal}), 0) <= 60
         and coalesce(char_length(${table.websiteState}), 0) <= 60 and coalesce(char_length(${table.primaryAction}), 0) <= 60 and coalesce(char_length(${table.designDirection}), 0) <= 60
         and coalesce(char_length(${table.searchScope}), 0) <= 60 and coalesce(char_length(${table.existingWebsiteUrl}), 0) <= 300
-        and cardinality(${table.socialChannels}) <= 8 and cardinality(${table.askedForServices}) <= 6`,
+        and cardinality(${table.socialChannels}) <= 8 and cardinality(${table.askedForServices}) <= 4`,
     ),
   ],
 );

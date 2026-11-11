@@ -7,8 +7,6 @@ const SERVICE_TAGS: Readonly<Record<string, { readonly label: string; readonly d
   "paid-ads": { label: "Ads", dot: "bg-c-growth" },
   // Monitoring watches over the other services and has no colour of its own.
   "expert-monitoring": { label: "Monitoring", dot: "bg-ink-3" },
-  "digital-growth": { label: "Social & Ads", dot: "bg-c-growth" },
-  "local-seo-aeo": { label: "Search", dot: "bg-c-search" },
 };
 
 /** The services a business has, each with its colour. "None" when it has none. */

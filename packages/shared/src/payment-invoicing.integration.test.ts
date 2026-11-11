@@ -168,7 +168,7 @@ function payRenewal(subscriptionId: string, invoicedPrice: RenewalInvoicedPrice,
 }
 
 /**
- * Buys Social Media and Ads on a new add-on row and records its first payment, then invoices it in the same transaction, as the
+ * Buys Social Media Management on a new add-on row and records its first payment, then invoices it in the same transaction, as the
  * add-on activation will: the invoice is the last write. The row is priced as a purchase freezes it: its list price of
  * 9,999 rupees, less a discount of 50,000 paise when `discounted`.
  */
@@ -177,7 +177,7 @@ async function payAddOn(discounted: boolean, providerPaymentId: string) {
   const row = await insertAddOnSubscription(dbs.staff.db, {
     id: randomUUID(),
     businessId,
-    addOn: "digital-growth",
+    addOn: "social-media",
     listAmountCents: 999_900,
     discountAmountCents,
     offerDiscountAmountCents: discountAmountCents,
@@ -443,7 +443,7 @@ describe("what the invoice describes", () => {
     expect(invoice?.totalCents).toBe(renewal.payment.amountCents);
   });
 
-  it("describes a Social Media and Ads payment with a discount by the add-on, the month and the discount, adding up to the payment", async () => {
+  it("describes a Social Media Management payment with a discount by the add-on, the month and the discount, adding up to the payment", async () => {
     await saveMaharashtraDetails("27AAPFU0939F1ZV");
 
     const { payment, issued } = await payAddOn(true, "fake_pay_add_on_offer");
@@ -452,7 +452,7 @@ describe("what the invoice describes", () => {
     const invoice = await findTaxInvoiceByPaymentId(dbs.staff.db, payment.id);
     expect(invoice?.lines).toHaveLength(1);
     expect(invoice?.lines[0]).toMatchObject({
-      description: "Social Media and Ads",
+      description: "Social Media Management",
       detail: "Monthly subscription, 09 Oct to 08 Nov 2026",
       note: null,
       quantity: 1,
@@ -467,13 +467,13 @@ describe("what the invoice describes", () => {
     expect(invoice?.totalCents).toBe(payment.amountCents);
   });
 
-  it("describes a Social Media and Ads payment with no discount without a note, at the full price", async () => {
+  it("describes a Social Media Management payment with no discount without a note, at the full price", async () => {
     await saveMaharashtraDetails("27AAPFU0939F1ZV");
 
     const { payment } = await payAddOn(false, "fake_pay_add_on_list");
 
     const invoice = await findTaxInvoiceByPaymentId(dbs.staff.db, payment.id);
-    expect(invoice?.lines[0]).toMatchObject({ description: "Social Media and Ads", note: null, unitAmountCents: 999_900, discountAmountCents: 0 });
+    expect(invoice?.lines[0]).toMatchObject({ description: "Social Media Management", note: null, unitAmountCents: 999_900, discountAmountCents: 0 });
     // ₹9,999 holds ₹1,525.28 of GST.
     expect(invoice).toMatchObject({ taxableCents: 847_372, totalCents: 999_900 });
     expect(invoice?.totalCents).toBe(payment.amountCents);

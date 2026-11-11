@@ -1,4 +1,4 @@
-import { addOnById, MONTHLY_ADD_ON_IDS, SOLD_ADD_ON_IDS, type MonthlyAddOnId } from "@brandbasket/shared/lib/billing/add-ons";
+import { addOnById, MONTHLY_ADD_ON_IDS, type MonthlyAddOnId } from "@brandbasket/shared/lib/billing/add-ons";
 import { PACKAGE_OFFERS } from "@brandbasket/shared/lib/billing/packages";
 import { formatMoney } from "@brandbasket/shared/lib/money";
 
@@ -8,8 +8,6 @@ const SHORT_NAMES: Readonly<Record<MonthlyAddOnId, string>> = {
   "social-media": "Social",
   "paid-ads": "Ads",
   "expert-monitoring": "Monitoring",
-  "digital-growth": "Social & Ads",
-  "local-seo-aeo": "SEO",
 };
 
 /** The services as staff say them, in the catalogue's order: "Website + Social". */
@@ -28,7 +26,7 @@ export interface CatalogueRow {
 
 /** The services on sale with their list prices a month, GST included: what the Pricing page shows. */
 export function catalogueRows(): CatalogueRow[] {
-  return SOLD_ADD_ON_IDS.map((id) => {
+  return MONTHLY_ADD_ON_IDS.map((id) => {
     const service = addOnById(id);
     return { id, title: service.title, inr: formatMoney(service.prices.INR, "INR"), usd: formatMoney(service.prices.USD, "USD") };
   });

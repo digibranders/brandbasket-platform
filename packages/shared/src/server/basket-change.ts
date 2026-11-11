@@ -33,7 +33,7 @@ import {
   type Subscription,
 } from "@brandbasket/db";
 import { addOnBlock, quoteAddOn, type AddOnBlock, type AddOnQuote } from "../lib/billing/add-on-proration";
-import { addOnById, isMonthlyAddOnId, isSoldAddOnId, MONITORING_ID, monitoringIncludedWith, type MonthlyAddOnId } from "../lib/billing/add-ons";
+import { addOnById, isMonthlyAddOnId, MONITORING_ID, monitoringIncludedWith, type MonthlyAddOnId } from "../lib/billing/add-ons";
 import { nextDiscountCents } from "../lib/billing/bundle";
 import { listTotalCents, packageBasisPointsFor, packageDiscountsFor, packageLineWith, type PackageLine, type PackageListLine } from "../lib/billing/packages";
 import { billingPeriodProgress } from "../lib/billing/period";
@@ -262,8 +262,7 @@ export function assessAddOn(input: AddOnAssessmentInput): AddOnAssessment {
   if (subscription === null || state.plan === null || subscription.paidThroughAt === null) return { kind: "blocked", reason: "unpaid" };
   if (subscription.provider !== input.providerName) return { kind: "unavailable", reason: "provider-not-ready" };
   if (active !== undefined) return { kind: "keep", row: active };
-  // An unsold service can be kept (above) but never taken again; monitoring is never billed beside all three plans.
-  if (!isSoldAddOnId(input.addOn)) return { kind: "blocked", reason: "not-sold" };
+  // Monitoring is never billed beside all three plans.
   const held = stayingLines(input.live);
   const allThree = monitoringIncludedWith([...held.map(serviceOf), input.addOn]);
   if (input.addOn === MONITORING_ID && allThree) return { kind: "blocked", reason: "included" };

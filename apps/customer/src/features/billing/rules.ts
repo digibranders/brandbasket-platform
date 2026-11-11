@@ -43,18 +43,14 @@ export const SERVICE_KEY_OF: Readonly<Record<MonthlyAddOnId, ServiceKey | null>>
   // Ad accounts and campaigns live in the Social area, as they did under Social Media and Ads.
   "paid-ads": "social",
   "expert-monitoring": null,
-  "digital-growth": "social",
-  "local-seo-aeo": "search",
 };
 
-/** A service as Plan & billing names it: the catalogue's title, shortened where the mock did ("Social & Ads"). */
+/** A service as Plan & billing names it: the catalogue's title. */
 const BILLING_NAMES: Readonly<Record<MonthlyAddOnId, string>> = {
   "managed-website": "Website Management",
   "social-media": "Social Media Management",
   "paid-ads": "Paid Ads Management",
   "expert-monitoring": "Dedicated Expert Monitoring",
-  "digital-growth": "Social & Ads",
-  "local-seo-aeo": "Local SEO + AEO",
 };
 
 export function serviceName(addOn: MonthlyAddOnId): string {

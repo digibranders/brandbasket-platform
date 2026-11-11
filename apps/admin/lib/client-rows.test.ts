@@ -50,12 +50,12 @@ describe("clientRowStage", () => {
 describe("servicesByBusiness", () => {
   it("lists each business's services in catalogue order and adds up only active lines as the monthly amount", () => {
     const map = servicesByBusiness([
-      { businessId: "a", addOn: "local-seo-aeo", netAmountCents: 2_499_900, status: "active" },
+      { businessId: "a", addOn: "paid-ads", netAmountCents: 2_499_900, status: "active" },
       { businessId: "a", addOn: "managed-website", netAmountCents: 299_900, status: "active" },
-      { businessId: "a", addOn: "digital-growth", netAmountCents: 999_900, status: "pending" },
+      { businessId: "a", addOn: "social-media", netAmountCents: 999_900, status: "pending" },
       { businessId: "b", addOn: "managed-website", netAmountCents: 299_900, status: "pending" },
     ]);
-    expect(map.get("a")).toEqual({ addOns: ["managed-website", "digital-growth", "local-seo-aeo"], monthlyCents: 2_799_800 });
+    expect(map.get("a")).toEqual({ addOns: ["managed-website", "social-media", "paid-ads"], monthlyCents: 2_799_800 });
     expect(map.get("b")).toEqual({ addOns: ["managed-website"], monthlyCents: 0 });
     expect(map.get("c")).toBeUndefined();
   });

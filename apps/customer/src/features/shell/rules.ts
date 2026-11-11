@@ -112,7 +112,8 @@ export function navModel(input: NavInput): NavModel {
   if (!input.kickoffOver) {
     return { sections: [{ label: null, links: [HOME, requests] }, { label: "Business", links: [BUSINESS] }], foot: FOOT };
   }
-  const services = SERVICES_IN_ORDER.map((service): NavLink => {
+  // Local SEO + AEO is no longer sold, so its link shows only to a business that has it.
+  const services = SERVICES_IN_ORDER.filter((service) => service !== "search" || input.services.includes(service)).map((service): NavLink => {
     const bought = input.services.includes(service);
     return { ...SERVICE_LINKS[service], bought, children: bought ? SERVICE_CHILDREN[service] : [] };
   });

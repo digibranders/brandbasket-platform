@@ -1,5 +1,5 @@
 {
-  "id": "53205fbe-4779-4520-a981-4567a490c708",
+  "id": "98348228-c7fa-4c0f-8094-0edb5c48637c",
   "prevId": "da9ca47c-da1d-466a-959c-c1222f7e904d",
   "version": "7",
   "dialect": "postgresql",
@@ -960,7 +960,7 @@
       "checkConstraints": {
         "add_on_subscriptions_add_on_check": {
           "name": "add_on_subscriptions_add_on_check",
-          "value": "\"add_on_subscriptions\".\"add_on\" in ('digital-growth', 'local-seo-aeo')"
+          "value": "\"add_on_subscriptions\".\"add_on\" in ('social-media', 'paid-ads')"
         },
         "add_on_subscriptions_offer_check": {
           "name": "add_on_subscriptions_offer_check",
@@ -1267,7 +1267,7 @@
         },
         "bundled_add_ons_add_on_check": {
           "name": "bundled_add_ons_add_on_check",
-          "value": "\"bundled_add_ons\".\"add_on\" in ('managed-website', 'social-media', 'paid-ads', 'expert-monitoring', 'digital-growth', 'local-seo-aeo')"
+          "value": "\"bundled_add_ons\".\"add_on\" in ('managed-website', 'social-media', 'paid-ads', 'expert-monitoring')"
         },
         "bundled_add_ons_amounts_check": {
           "name": "bundled_add_ons_amounts_check",
@@ -6558,11 +6558,11 @@
       "checkConstraints": {
         "client_intakes_services_check": {
           "name": "client_intakes_services_check",
-          "value": "\"client_intakes\".\"asked_for_services\" <@ array['managed-website', 'social-media', 'paid-ads', 'expert-monitoring', 'digital-growth', 'local-seo-aeo']::text[]"
+          "value": "\"client_intakes\".\"asked_for_services\" <@ array['managed-website', 'social-media', 'paid-ads', 'expert-monitoring']::text[]"
         },
         "client_intakes_size_check": {
           "name": "client_intakes_size_check",
-          "value": "coalesce(char_length(\"client_intakes\".\"business_type\"), 0) <= 60 and coalesce(char_length(\"client_intakes\".\"business_subtype\"), 0) <= 60 and coalesce(char_length(\"client_intakes\".\"primary_goal\"), 0) <= 60\n        and coalesce(char_length(\"client_intakes\".\"website_state\"), 0) <= 60 and coalesce(char_length(\"client_intakes\".\"primary_action\"), 0) <= 60 and coalesce(char_length(\"client_intakes\".\"design_direction\"), 0) <= 60\n        and coalesce(char_length(\"client_intakes\".\"search_scope\"), 0) <= 60 and coalesce(char_length(\"client_intakes\".\"existing_website_url\"), 0) <= 300\n        and cardinality(\"client_intakes\".\"social_channels\") <= 8 and cardinality(\"client_intakes\".\"asked_for_services\") <= 6"
+          "value": "coalesce(char_length(\"client_intakes\".\"business_type\"), 0) <= 60 and coalesce(char_length(\"client_intakes\".\"business_subtype\"), 0) <= 60 and coalesce(char_length(\"client_intakes\".\"primary_goal\"), 0) <= 60\n        and coalesce(char_length(\"client_intakes\".\"website_state\"), 0) <= 60 and coalesce(char_length(\"client_intakes\".\"primary_action\"), 0) <= 60 and coalesce(char_length(\"client_intakes\".\"design_direction\"), 0) <= 60\n        and coalesce(char_length(\"client_intakes\".\"search_scope\"), 0) <= 60 and coalesce(char_length(\"client_intakes\".\"existing_website_url\"), 0) <= 300\n        and cardinality(\"client_intakes\".\"social_channels\") <= 8 and cardinality(\"client_intakes\".\"asked_for_services\") <= 4"
         }
       },
       "isRLSEnabled": false

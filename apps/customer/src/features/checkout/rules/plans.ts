@@ -34,15 +34,6 @@ export const CHECKOUT_PLAN_COPY: Readonly<Record<MonthlyAddOnId, CheckoutPlanCop
     blurb: () => "Free with all three plans",
     gets: ["Experts watching your website, social media and ads", "Fixes for what slips", "Help to grow"],
   },
-  // No longer sold: named on the invoices and pages of businesses that still have them.
-  "digital-growth": {
-    blurb: () => "Instagram, Facebook, Google profile and Meta ads",
-    gets: ["Posts planned with you each month", "Replies to your reviews"],
-  },
-  "local-seo-aeo": {
-    blurb: () => "Google search and AI answers",
-    gets: ["Keyword research", "Up to 5 pages optimised a month", "Schema and ranking tracking"],
-  },
 };
 
 export interface CheckoutStep {

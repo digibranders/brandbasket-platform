@@ -1,6 +1,6 @@
 import { chargedAmountCents, gstInsideCents } from "@brandbasket/billing/tax";
 import { MONTHLY_ADD_ON_IDS, type MonthlyAddOnId } from "@brandbasket/shared/lib/billing/add-ons";
-import { bundleLines, bundleNetCents, readSoldSelection, WEBSITE_ALONE, type BundleLine } from "@brandbasket/shared/lib/billing/bundle";
+import { bundleLines, bundleNetCents, readBundleSelection, WEBSITE_ALONE, type BundleLine } from "@brandbasket/shared/lib/billing/bundle";
 import { adCreditCentsAtCheckout, packageBasisPointsFor } from "@brandbasket/shared/lib/billing/packages";
 import { initialTermPhrase, renewalChargeCents } from "@brandbasket/shared/lib/billing/terms";
 import { formatMoney, type MoneyCurrency } from "@brandbasket/shared/lib/money";
@@ -36,7 +36,7 @@ export const MEMBERSHIP_SERVICES_PARAM = "services";
 export function readSelectedServices(params: Readonly<Record<string, string | string[] | undefined>>): readonly MonthlyAddOnId[] {
   const raw = params[MEMBERSHIP_SERVICES_PARAM];
   const text = Array.isArray(raw) ? raw.join(",") : (raw ?? "");
-  const named = readSoldSelection(text.split(","));
+  const named = readBundleSelection(text.split(","));
   return named.length === 0 ? WEBSITE_ALONE : named;
 }
 

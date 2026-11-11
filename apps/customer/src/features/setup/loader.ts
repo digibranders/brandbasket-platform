@@ -4,7 +4,7 @@ import { isMonthlyAddOnId } from "@brandbasket/shared/lib/billing/add-ons";
 import { readSavedAnswers } from "@/features/checklist/server/saved-answers";
 import { getAppDb } from "@/lib/db";
 import type { CustomerContext } from "@/lib/guards";
-import { notBoughtView, setupAsks, type NotBoughtView, type SetupAsk, type SetupService } from "./rules";
+import { notBoughtView, setupAsks, type NotBoughtView, type SetupAsk, type SetupService, type SoldSetupService } from "./rules";
 
 type Reader = Pick<CustomerContext, "tenant" | "businessId">;
 
@@ -15,7 +15,7 @@ export async function loadSetupAsks(customer: Reader, service: SetupService): Pr
 }
 
 /** The Not bought screen's content, priced as part of the services the business already holds. */
-export async function loadNotBought(customer: Reader & Pick<CustomerContext, "currency">, service: SetupService): Promise<NotBoughtView> {
+export async function loadNotBought(customer: Reader & Pick<CustomerContext, "currency">, service: SoldSetupService): Promise<NotBoughtView> {
   const { bundled, forfeited } = await withTenantScope(getAppDb(), customer.tenant, async (tx) => ({
     bundled: await findLiveBundledAddOns(tx, customer.businessId),
     forfeited: await isPackageOfferForfeited(tx, customer.businessId),

@@ -18,8 +18,6 @@ const SERVICE_COLOUR: Readonly<Record<AddOnId, string>> = {
   "paid-ads": SERVICE_DOT.social,
   // Monitoring watches over the other services; this app was replaced by apps/customer before it was sold.
   "expert-monitoring": SERVICE_DOT.website,
-  "digital-growth": SERVICE_DOT.social,
-  "local-seo-aeo": SERVICE_DOT.search,
 };
 
 const STATUS_TONE: Readonly<Record<AddOnStatus["tone"], string>> = {
