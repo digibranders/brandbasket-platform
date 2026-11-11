@@ -11,7 +11,7 @@ describe("lead sources", () => {
 
 describe("websitePlanLabels", () => {
   it("names the website's plan ids, and keeps an unknown id as it is", () => {
-    expect(websitePlanLabels(["website", "growth", "search"])).toEqual(["Website", "Social media", "Search"]);
+    expect(websitePlanLabels(["website", "growth", "search"])).toEqual(["Website", "Social & Ads", "Search"]);
     expect(websitePlanLabels(["care"])).toEqual(["care"]);
   });
 });
