@@ -31,13 +31,13 @@ const wrap = (node: ReactNode) =>
 
 const SERVICES: ServicesPanelView = {
   rows: [
-    { addOn: "managed-website", service: "website", name: "Managed Website", status: { word: "Active", tone: "pos" }, price: "₹2,399", line: "Since Thu 27 Aug.", action: { kind: "cancel" } },
-    { addOn: "digital-growth", service: "social", name: "Social & Ads", status: { word: "Active", tone: "pos" }, price: "₹7,999", line: "Since Thu 27 Aug.", action: { kind: "cancel" } },
-    { addOn: "local-seo-aeo", service: "search", name: "Local SEO + AEO", status: { word: "Not added", tone: "neutral" }, price: "₹22,499", line: "Local search.", action: { kind: "add", quote: "₹18,000 today for the 24 days left this month, then ₹30,398 a month from Fri 27 Nov, GST included." } },
+    { addOn: "managed-website", service: "website", name: "Website Management", status: { word: "Active", tone: "pos" }, price: "₹2,399", line: "Since Thu 27 Aug.", action: { kind: "cancel" } },
+    { addOn: "social-media", service: "social", name: "Social & Ads", status: { word: "Active", tone: "pos" }, price: "₹7,999", line: "Since Thu 27 Aug.", action: { kind: "cancel" } },
+    { addOn: "paid-ads", service: "search", name: "Local SEO + AEO", status: { word: "Not added", tone: "neutral" }, price: "₹22,499", line: "Local search.", action: { kind: "add", quote: "₹18,000 today for the 24 days left this month, then ₹30,398 a month from Fri 27 Nov, GST included." } },
   ],
   cancel: {
     endsOn: "Fri 27 Nov",
-    options: [{ addOn: "digital-growth", name: "Social & Ads", copy: { keeps: "You keep Managed Website.", monthly: "From Fri 27 Nov you pay ₹2,999 a month, GST included.", websiteOffline: null, packageEnds: null } }],
+    options: [{ addOn: "social-media", name: "Social & Ads", copy: { keeps: "You keep Website Management.", monthly: "From Fri 27 Nov you pay ₹2,999 a month, GST included.", websiteOffline: null, packageEnds: null } }],
   },
   bill: { rows: [{ label: "List price, 2 services", amount: "₹12,998", discount: false }, { label: "Package discount, 10%", amount: "−₹1,299", discount: true }], totalCents: 1_169_900, total: "₹11,699", gstLine: "Includes ₹1,784.59 GST.", adMoneyLine: null },
   headerLine: "Next payment ₹11,699 on Fri 27 Nov. All prices include 18% GST.",
@@ -64,7 +64,7 @@ describe("Plan & billing, Your services", () => {
   });
 
   it("opens the add straight away for the service ?add= names, with what it costs", async () => {
-    vi.mocked(loadBillingOverview).mockResolvedValue(overview({ preselect: "local-seo-aeo" }));
+    vi.mocked(loadBillingOverview).mockResolvedValue(overview({ preselect: "paid-ads" }));
     wrap(await BillingScreen({ customer, params: { add: "search" } }));
     const dialog = await screen.findByRole("dialog");
     expect(within(dialog).getByText(/₹18,000 today for the 24 days left/)).toBeTruthy();
@@ -127,7 +127,7 @@ describe("Invoices", () => {
   const paid = { kind: "payment", id: "p1", number: "FY/26-27/000041", date: new Date("2026-10-27T06:00:00Z"), amountCents: 3_039_800, amount: "₹30,398", status: "Paid", tone: "pos", downloadable: true } as const;
 
   it("lists each invoice with its PDF through the receipts route", async () => {
-    vi.mocked(loadInvoices).mockResolvedValue({ invoices: [{ row: paid, lines: [{ label: "Managed Website", amount: "INR 2,999.00" }], total: "INR 30,398.00" }], billedTo: null, canDownload: true });
+    vi.mocked(loadInvoices).mockResolvedValue({ invoices: [{ row: paid, lines: [{ label: "Website Management", amount: "INR 2,999.00" }], total: "INR 30,398.00" }], billedTo: null, canDownload: true });
     wrap(await InvoicesScreen({ customer }));
     expect(screen.getByText("FY/26-27/000041")).toBeTruthy();
     expect(screen.getByRole("link", { name: "PDF" }).getAttribute("href")).toBe("/billing/receipts?ids=p1");

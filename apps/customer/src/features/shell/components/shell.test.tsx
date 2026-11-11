@@ -54,14 +54,14 @@ beforeEach(() => {
 });
 
 describe("AppShell", () => {
-  it("draws the sidebar of the mock with the current page, counts and a service not bought", async () => {
+  it("draws the sidebar of the mock with the current page and counts, and no link to Local SEO + AEO, which is not sold", async () => {
     const { container } = shell();
     const main = screen.getByRole("navigation", { name: "Main" });
     expect(within(main).getByRole("link", { name: "Requests" }).getAttribute("aria-current")).toBe("page");
     expect(within(main).getByRole("link", { name: /^Enquiries\s*, 4 new$/ })).toBeTruthy();
     // The Requests count failed to load: the link stays, only its number is gone.
     expect(within(main).getByRole("link", { name: "Requests" })).toBeTruthy();
-    expect(within(main).getByRole("link", { name: /^Local SEO \+ AEO\s*, not on your plan$/ }).getAttribute("href")).toBe("/search");
+    expect(within(main).queryByRole("link", { name: /Local SEO/ })).toBeNull();
     expect(screen.getByRole("navigation", { name: "Main tabs" })).toBeTruthy();
     await expectNoAxeViolations(container);
   });

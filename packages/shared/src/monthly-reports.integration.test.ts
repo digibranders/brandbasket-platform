@@ -70,7 +70,7 @@ async function addBusiness(): Promise<string> {
 }
 
 async function buyAllThree(plan: Plan): Promise<void> {
-  const lines: NewBundledAddOn[] = packageLines({ services: ["managed-website", "digital-growth", "local-seo-aeo"], forfeited: false }, plan.currency).map((line) => ({
+  const lines: NewBundledAddOn[] = packageLines({ services: ["managed-website", "social-media", "paid-ads"], forfeited: false }, plan.currency).map((line) => ({
     addOn: line.addOn,
     listAmountCents: line.listCents,
     offerDiscountAmountCents: line.offerCents,
@@ -220,10 +220,9 @@ describe("composeMonthlyReports", () => {
     expect(summary.results.map((result) => [result.service, result.outcome])).toEqual([
       ["website", "composed"],
       ["social", "composed"],
-      ["search", "composed"],
     ]);
     const rows = await drafts();
-    expect(rows).toHaveLength(3);
+    expect(rows).toHaveLength(2);
     expect(rows.every((row) => row.state === "draft" && row.month === "2026-10-01" && row.contentVersion === REPORT_CONTENT_VERSION)).toBe(true);
 
     const website = reportContentSchema.parse(rows.find((row) => row.service === "website")?.content);
@@ -244,15 +243,6 @@ describe("composeMonthlyReports", () => {
     expect(social.figures).toContainEqual({ label: "Cost of one ad enquiry", value: "₹250" });
     expect(social.figures).toContainEqual({ label: "Posts published in October", value: "2 of 3 planned" });
 
-    const search = reportContentSchema.parse(rows.find((row) => row.service === "search")?.content);
-    expect(search.figures).toContainEqual({ label: "Keywords on page one of Google in October", value: "18 (3 more than September)" });
-    // Search Console ran for October only, so there is no comparison with September, and the position is weighted by the days' views.
-    expect(search.figures.slice(0, 3)).toEqual([
-      { label: "Clicks from Google search in October", value: "412" },
-      { label: "Times you appeared in Google search in October", value: "9,800" },
-      { label: "Average position in Google search in October", value: "8.4" },
-    ]);
-    expect(search.lists).toEqual([{ title: "Top searches that found you in October", rows: [{ label: "physio near me", value: "90 clicks" }] }]);
     expect(JSON.stringify(rows.map((row) => row.content))).not.toMatch(/[–—]/);
 
     const asCustomer = await withTenantScope(dbs.app.db, { userId: OWNER, businessId }, (tx) => listSentReports(tx, businessId));
@@ -261,26 +251,24 @@ describe("composeMonthlyReports", () => {
 
   it("writes nothing on a dry run, and leaves out a service with nothing measured", async () => {
     const dry = await composeMonthlyReports(dbs.staff.db, { month: "2026-10", now: NOW, dryRun: true });
-    expect(dry.results.map((result) => result.outcome)).toEqual(["composed", "composed", "composed"]);
+    expect(dry.results.map((result) => result.outcome)).toEqual(["composed", "composed"]);
     expect(await drafts()).toHaveLength(0);
 
     const empty = await composeMonthlyReports(dbs.staff.db, { month: "2026-06", now: NOW });
-    expect(empty.results.map((result) => result.outcome)).toEqual(["nothing-measured", "nothing-measured", "nothing-measured"]);
+    expect(empty.results.map((result) => result.outcome)).toEqual(["nothing-measured", "nothing-measured"]);
     expect(await drafts()).toHaveLength(0);
   });
 
   it("rewrites a draft from the latest records but never an approved or sent report", async () => {
     await composeMonthlyReports(dbs.staff.db, { month: "2026-10", now: NOW });
-    await dbs.owner.db.insert(deliverables).values({ businessId, service: "search", kind: "page", dueOn: "2026-10-30", title: "Knee pain page" });
-    await markPublished(["Knee pain page"]);
     const again = await composeMonthlyReports(dbs.staff.db, { month: "2026-10", now: NOW });
-    expect(again.results.map((result) => result.outcome)).toEqual(["composed", "composed", "composed"]);
-    const search = (await drafts()).find((row) => row.service === "search");
-    expect(reportContentSchema.parse(search?.content).figures).toContainEqual({ label: "Pages we improved in October", value: "2" });
+    expect(again.results.map((result) => result.outcome)).toEqual(["composed", "composed"]);
+    expect(await drafts()).toHaveLength(2);
+    const social = (await drafts()).find((row) => row.service === "social");
 
-    await sendReport(dbs.staff.db, deps(), { reportId: search?.id ?? "", staffId: "staff-1", now: NOW });
+    await sendReport(dbs.staff.db, deps(), { reportId: social?.id ?? "", staffId: "staff-1", now: NOW });
     const frozen = await composeMonthlyReports(dbs.staff.db, { month: "2026-10", now: NOW });
-    expect(frozen.results.find((result) => result.service === "search")?.outcome).toBe("frozen");
+    expect(frozen.results.find((result) => result.service === "social")?.outcome).toBe("frozen");
   });
 });
 
@@ -323,13 +311,13 @@ describe("sendReport", () => {
 
   it("keeps a failed PDF from marking the report sent", async () => {
     await composeMonthlyReports(dbs.staff.db, { month: "2026-10", now: NOW });
-    const search = (await drafts()).find((row) => row.service === "search");
+    const social = (await drafts()).find((row) => row.service === "social");
     const broken: SendReportDeps = { ...deps(), storage: { ...storage, put: () => Promise.reject(new Error("disk full")) } };
-    await expect(sendReport(dbs.staff.db, broken, { reportId: search?.id ?? "", staffId: "staff-1", now: NOW })).rejects.toThrow("disk full");
-    expect((await getReport(dbs.staff.db, search?.id ?? ""))?.state).toBe("approved");
+    await expect(sendReport(dbs.staff.db, broken, { reportId: social?.id ?? "", staffId: "staff-1", now: NOW })).rejects.toThrow("disk full");
+    expect((await getReport(dbs.staff.db, social?.id ?? ""))?.state).toBe("approved");
     expect(sent).toHaveLength(0);
     // The retry finishes the job.
-    const retried = await sendReport(dbs.staff.db, deps(), { reportId: search?.id ?? "", staffId: "staff-1", now: NOW });
+    const retried = await sendReport(dbs.staff.db, deps(), { reportId: social?.id ?? "", staffId: "staff-1", now: NOW });
     expect(retried.report.state).toBe("sent");
   });
 });

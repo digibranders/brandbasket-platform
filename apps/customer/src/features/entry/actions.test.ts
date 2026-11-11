@@ -60,7 +60,7 @@ const SIGN_UP = {
   phoneCountry: "IN",
   phone: "9820011223",
   agree: "yes",
-  services: "managed-website,local-seo-aeo,nonsense",
+  services: "managed-website,paid-ads,nonsense",
 };
 const INVITE = `/invite/${"A".repeat(43)}`;
 const OTHER_NEXT = ["//evil.com", "https://evil.com", `https://evil.com${INVITE}`, "/invite/../x", `${INVITE}/extra`, `${INVITE}?x=1`, "/billing", "/", "", "javascript:alert(1)"];
@@ -153,7 +153,7 @@ describe("signUpAction", () => {
 
   it("opens the account and goes to the questions on the services the link chose, catalogue ids only", async () => {
     vi.mocked(createListingAccount).mockResolvedValue({ kind: "created" });
-    await expect(signUpAction(ON_CODE, form({ ...SIGN_UP, otpId: OTP.otpId, code: "123456" }))).rejects.toThrow("redirect:/start?services=managed-website,local-seo-aeo");
+    await expect(signUpAction(ON_CODE, form({ ...SIGN_UP, otpId: OTP.otpId, code: "123456" }))).rejects.toThrow("redirect:/start?services=managed-website,paid-ads");
     expect(createListingAccount).toHaveBeenCalledWith(expect.objectContaining({ email: "meera@example.test", code: { otpId: OTP.otpId, code: "123456" } }), null);
   });
 
@@ -164,7 +164,7 @@ describe("signUpAction", () => {
 
   it.each(OTHER_NEXT)("ignores the return address %j and goes to the questions", async (next) => {
     vi.mocked(createListingAccount).mockResolvedValue({ kind: "created" });
-    await expect(signUpAction(ON_CODE, form({ ...SIGN_UP, otpId: OTP.otpId, code: "123456", next }))).rejects.toThrow("redirect:/start?services=managed-website,local-seo-aeo");
+    await expect(signUpAction(ON_CODE, form({ ...SIGN_UP, otpId: OTP.otpId, code: "123456", next }))).rejects.toThrow("redirect:/start?services=managed-website,paid-ads");
   });
 });
 
@@ -175,7 +175,7 @@ describe("the sign-up form through signUpAction", () => {
       createElement(SignUpForm, {
         siteKey: null,
         services: ["managed-website"],
-        basket: { name: "Managed Website", prices: { INR: "₹2,999/month", USD: "$65/month" } },
+        basket: { name: "Website Management", prices: { INR: "₹2,999/month", USD: "$65/month" } },
         confirmsCodes: true,
         countries: [{ value: "IN", label: "India" }],
         phoneCountries: [

@@ -36,18 +36,32 @@ export const BILLING_TABS = [
 
 // ---- Which service ----
 
-/** The app's short name of each catalogue service. */
-export const SERVICE_KEY_OF: Readonly<Record<MonthlyAddOnId, ServiceKey>> = { "managed-website": "website", "digital-growth": "social", "local-seo-aeo": "search" };
+/** The app's short name of each catalogue service: the area of the app it is worked in. Monitoring has none of its own. */
+export const SERVICE_KEY_OF: Readonly<Record<MonthlyAddOnId, ServiceKey | null>> = {
+  "managed-website": "website",
+  "social-media": "social",
+  // Ad accounts and campaigns live in the Social area, as they did under Social Media and Ads.
+  "paid-ads": "social",
+  "expert-monitoring": null,
+};
 
-/** A service as Plan & billing names it (the mock's words): "Social & Ads", not the catalogue's longer title. */
-const BILLING_NAMES: Readonly<Record<MonthlyAddOnId, string>> = { "managed-website": "Managed Website", "digital-growth": "Social & Ads", "local-seo-aeo": "Local SEO + AEO" };
+/** A service as Plan & billing names it: the catalogue's title. */
+const BILLING_NAMES: Readonly<Record<MonthlyAddOnId, string>> = {
+  "managed-website": "Website Management",
+  "social-media": "Social Media Management",
+  "paid-ads": "Paid Ads Management",
+  "expert-monitoring": "Dedicated Expert Monitoring",
+};
 
 export function serviceName(addOn: MonthlyAddOnId): string {
   return BILLING_NAMES[addOn];
 }
 
-/** `?add=` uses the app's short service names (Not bought links to `/billing?add=social`). */
-const SERVICE_OF_PARAM: Readonly<Record<string, MonthlyAddOnId>> = { website: "managed-website", social: "digital-growth", search: "local-seo-aeo" };
+/**
+ * `?add=` uses the app's short service names (Not bought links to `/billing?add=social`). `search` names Local SEO + AEO,
+ * which is no longer sold, so it preselects nothing.
+ */
+const SERVICE_OF_PARAM: Readonly<Record<string, MonthlyAddOnId>> = { website: "managed-website", social: "social-media" };
 
 /** The service `?add=` names, or null for anything else (a repeated or unknown value is ignored). */
 export function readAddParam(value: string | string[] | undefined): MonthlyAddOnId | null {

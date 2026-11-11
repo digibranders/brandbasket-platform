@@ -81,9 +81,13 @@ export function parseIntakeAnswer(field: string, raw: readonly string[], answers
   return parsed;
 }
 
-/** The question group each catalogue service is asked under. Ported from apps/platform lib/first-look.ts SERVICE_KEY_OF. */
-export const SERVICE_KEY_OF: Readonly<Record<MonthlyAddOnId, "website" | "social" | "search">> = {
+/**
+ * The question group each catalogue service is asked under (the same as intakeServicesOf); monitoring asks nothing. Ported
+ * from apps/platform lib/first-look.ts SERVICE_KEY_OF.
+ */
+export const SERVICE_KEY_OF: Readonly<Record<MonthlyAddOnId, "website" | "social" | "search" | null>> = {
   "managed-website": "website",
-  "digital-growth": "social",
-  "local-seo-aeo": "search",
+  "social-media": "social",
+  "paid-ads": "social",
+  "expert-monitoring": null,
 };

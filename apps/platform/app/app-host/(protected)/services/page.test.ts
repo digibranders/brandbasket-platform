@@ -21,8 +21,8 @@ beforeEach(() => {
   vi.mocked(loadAddOnsPage).mockResolvedValue({
     addOns: [
       { addOn: "managed-website", kind: "included" },
-      { addOn: "digital-growth", kind: "available" },
-      { addOn: "local-seo-aeo", kind: "available" },
+      { addOn: "social-media", kind: "available" },
+      { addOn: "paid-ads", kind: "available" },
     ],
   } as never);
 });
@@ -38,7 +38,7 @@ describe("the Plan & billing page, Your services tab", () => {
     expect(html).toContain("[tabs Plan and billing]");
     expect(html).not.toContain(">Your plan</h1>");
     expect(html).not.toContain(">Services</h1>");
-    for (const id of ["managed-website", "digital-growth", "local-seo-aeo"]) expect(html).toContain(`[row ${id}]`);
+    for (const id of ["managed-website", "social-media", "paid-ads"]) expect(html).toContain(`[row ${id}]`);
     expect(html).toContain("divide-y divide-line");
   });
 

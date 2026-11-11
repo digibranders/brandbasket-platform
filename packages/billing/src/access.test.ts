@@ -55,9 +55,9 @@ describe("hasWebsiteService", () => {
   const PAID = subscription("active", FUTURE);
   const WEBSITE = { addOn: "managed-website", status: "active" } as const;
   const DROPPED = { addOn: "managed-website", status: "active", endRequestedAt: PAST } as const;
-  const SOCIAL = { addOn: "digital-growth", status: "active" } as const;
+  const SOCIAL = { addOn: "social-media", status: "active" } as const;
 
-  it("is true for an active Managed Website line on a paid subscription", () => {
+  it("is true for an active Website Management line on a paid subscription", () => {
     expect(hasWebsiteService([SOCIAL, WEBSITE], PAID, NOW)).toBe(true);
   });
 
@@ -71,9 +71,9 @@ describe("hasWebsiteService", () => {
     expect(hasWebsiteService([WEBSITE], subscription("active", PAST), NOW)).toBe(false);
   });
 
-  it("is false with no Managed Website line, a Social-only or SEO-only plan included", () => {
+  it("is false with no Website Management line, a Social-only or SEO-only plan included", () => {
     expect(hasWebsiteService([], PAID, NOW)).toBe(false);
-    expect(hasWebsiteService([SOCIAL, { addOn: "local-seo-aeo", status: "active" }], PAID, NOW)).toBe(false);
+    expect(hasWebsiteService([SOCIAL, { addOn: "paid-ads", status: "active" }], PAID, NOW)).toBe(false);
   });
 
   it("is false for a line that is not active yet or has gone", () => {

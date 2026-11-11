@@ -4,8 +4,8 @@ import { INTAKE_SUMMARY_STEP, normalizeWebsiteUrl, parseIntakeAnswer, startHref 
 
 describe("startHref", () => {
   it("names the basket with plain commas, and the step when there is one", () => {
-    expect(startHref(["managed-website", "digital-growth"])).toBe("/start?services=managed-website,digital-growth");
-    expect(startHref(["local-seo-aeo"], "searchScope")).toBe("/start?services=local-seo-aeo&q=searchScope");
+    expect(startHref(["managed-website", "social-media"])).toBe("/start?services=managed-website,social-media");
+    expect(startHref(["paid-ads"], "searchScope")).toBe("/start?services=paid-ads&q=searchScope");
     expect(startHref(["managed-website"], INTAKE_SUMMARY_STEP)).toBe("/start?services=managed-website&q=summary");
   });
 });

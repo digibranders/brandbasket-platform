@@ -8,7 +8,7 @@ const EARLIER = new Date("2026-08-16T12:00:00.000Z");
 
 const PLAN = { id: "plan-usd", currency: "USD", initialAmountCents: 22500 } as Plan;
 const WEBSITE_LINE = { addOn: "managed-website", status: "active" } as BundledAddOn;
-const SOCIAL_LINE = { addOn: "digital-growth", status: "active" } as BundledAddOn;
+const SOCIAL_LINE = { addOn: "social-media", status: "active" } as BundledAddOn;
 
 function subscription(status: SubscriptionStatus, paidThroughAt: Date | null): Subscription {
   return { id: "sub-1", status, paidThroughAt } as Subscription;
@@ -113,7 +113,7 @@ describe("summariseBilling", () => {
     expect(summariseBilling({ ...state(null), currency: "INR", plan: null }, NOW).plan).toBeNull();
   });
 
-  it("has a website only with an active Managed Website line on a paid subscription", () => {
+  it("has a website only with an active Website Management line on a paid subscription", () => {
     const paid = subscription("active", LATER);
     expect(summariseBilling(state(paid, { addOns: [SOCIAL_LINE, WEBSITE_LINE] }), NOW).hasWebsite).toBe(true);
     expect(summariseBilling(state(paid, { addOns: [SOCIAL_LINE] }), NOW).hasWebsite).toBe(false);

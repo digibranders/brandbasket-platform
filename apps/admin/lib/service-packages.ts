@@ -5,8 +5,9 @@ import { formatMoney } from "@brandbasket/shared/lib/money";
 /** What staff call each service in a list or a line: short, since a package names two or three of them. */
 const SHORT_NAMES: Readonly<Record<MonthlyAddOnId, string>> = {
   "managed-website": "Website",
-  "digital-growth": "Social",
-  "local-seo-aeo": "SEO",
+  "social-media": "Social",
+  "paid-ads": "Ads",
+  "expert-monitoring": "Monitoring",
 };
 
 /** The services as staff say them, in the catalogue's order: "Website + Social". */

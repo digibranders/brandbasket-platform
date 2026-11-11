@@ -18,7 +18,7 @@ describe("readEntryRequest", () => {
     expect(readEntryRequest({ new: "1" })).toEqual({ view: "create", choice: null, preselected: null, services: ["managed-website"] });
   });
 
-  it("opens Create account with Managed Website already chosen from the website's plan button", () => {
+  it("opens Create account with Website Management already chosen from the website's plan button", () => {
     expect(readEntryRequest({ plan: "managed" })).toEqual({ view: "create", choice: "managed", preselected: null, services: ["managed-website"] });
   });
 
@@ -75,22 +75,22 @@ describe("entryHrefForJoin", () => {
   });
 });
 
-describe("readEntryRequest under Brandbasket, which sells Managed Website only", () => {
+describe("readEntryRequest under Brandbasket, which sells Website Management only", () => {
   const brandbasket = (params: Params): ReturnType<typeof readFor> => readFor(params, BRAND);
 
   it("opens Sign in by default, and Create account with the plan the link names", () => {
     expect(brandbasket({})).toEqual({ view: "sign-in", choice: null, preselected: "managed", services: ["managed-website"] });
     expect(brandbasket({ plan: "managed" })).toEqual({ view: "create", choice: "managed", preselected: "managed", services: ["managed-website"] });
-    // The retired plan names are not read: a link that names one opens the plan question with Managed Website ticked.
+    // The retired plan names are not read: a link that names one opens the plan question with Website Management ticked.
     expect(brandbasket({ plan: "care" })).toEqual({ view: "create", choice: null, preselected: "managed", services: ["managed-website"] });
     expect(brandbasket({ plan: "premium" })).toEqual({ view: "create", choice: null, preselected: "managed", services: ["managed-website"] });
   });
 
-  it("asks the question with Managed Website ticked when nothing is named", () => {
+  it("asks the question with Website Management ticked when nothing is named", () => {
     expect(brandbasket({ new: "1" })).toEqual({ view: "create", choice: null, preselected: "managed", services: ["managed-website"] });
   });
 
-  it("never lets the address choose the free listing: plan=free and plans it does not know fall back to Managed Website", () => {
+  it("never lets the address choose the free listing: plan=free and plans it does not know fall back to Website Management", () => {
     for (const plan of ["free", "listing_only", "gold", "own_website"]) {
       const request = brandbasket({ plan });
       expect(request.view, plan).toBe("create");
@@ -111,23 +111,29 @@ describe("readEntryRequest under Brandbasket, which sells Managed Website only",
 
 describe("the basket the website's link carries", () => {
   it("reads the website's services from the plan the link names, in the catalogue's order", () => {
-    expect(readFor({ plan: "website,growth" }, BRAND).services).toEqual(["managed-website", "digital-growth"]);
-    expect(readFor({ plan: "search,growth" }, BRAND).services).toEqual(["digital-growth", "local-seo-aeo"]);
-    expect(readFor({ plan: "growth,search,website" }, BRAND).services).toEqual(["managed-website", "digital-growth", "local-seo-aeo"]);
+    expect(readFor({ plan: "website,social" }, BRAND).services).toEqual(["managed-website", "social-media"]);
+    expect(readFor({ plan: "ads,social" }, BRAND).services).toEqual(["social-media", "paid-ads"]);
+    expect(readFor({ plan: "ads,social,website" }, BRAND).services).toEqual(["managed-website", "social-media", "paid-ads"]);
+  });
+
+  it("still reads a link shared before the plans changed: growth is Social Media Management, and search names nothing on sale", () => {
+    expect(readFor({ plan: "website,growth" }, BRAND).services).toEqual(["managed-website", "social-media"]);
+    expect(readFor({ plan: "search,growth" }, BRAND).services).toEqual(["social-media"]);
+    expect(readFor({ plan: "search" }, BRAND)).toMatchObject({ view: "create", services: ["managed-website"] });
   });
 
   it("ignores spaces and capitals around each service the link names", () => {
-    expect(readFor({ plan: "website, growth" }, BRAND).services).toEqual(["managed-website", "digital-growth"]);
-    expect(readFor({ plan: " Search ,GROWTH " }, BRAND).services).toEqual(["digital-growth", "local-seo-aeo"]);
-    expect(readFor({ plan: "website, growth" }, BRAND)).toMatchObject({ view: "create", choice: "managed" });
+    expect(readFor({ plan: "website, social" }, BRAND).services).toEqual(["managed-website", "social-media"]);
+    expect(readFor({ plan: " Ads ,SOCIAL " }, BRAND).services).toEqual(["social-media", "paid-ads"]);
+    expect(readFor({ plan: "website, social" }, BRAND)).toMatchObject({ view: "create", choice: "managed" });
   });
 
-  it("opens Create account on Managed Website for a link that names services, as it does for plan=managed", () => {
-    expect(readFor({ plan: "growth,search" }, BRAND)).toEqual({
+  it("opens Create account on Website Management for a link that names services, as it does for plan=managed", () => {
+    expect(readFor({ plan: "social,ads" }, BRAND)).toEqual({
       view: "create",
       choice: "managed",
       preselected: "managed",
-      services: ["digital-growth", "local-seo-aeo"],
+      services: ["social-media", "paid-ads"],
     });
   });
 
@@ -138,16 +144,14 @@ describe("the basket the website's link carries", () => {
   });
 
   it("still reads the older link: the website, plus the add-ons it lists, catalogue ids only", () => {
-    expect(readFor({ plan: "managed", addons: "local-seo-aeo,nonsense,digital-growth" }, BRAND).services).toEqual([
-      "managed-website",
-      "digital-growth",
-      "local-seo-aeo",
-    ]);
-    expect(readFor({ plan: "managed", addons: ["local-seo-aeo"] }, BRAND).services).toEqual(["managed-website", "local-seo-aeo"]);
-    expect(readFor({ plan: "managed", addons: "social-media,advertising" }, BRAND).services).toEqual(["managed-website"]);
+    expect(readFor({ plan: "managed", addons: "paid-ads,nonsense,social-media" }, BRAND).services).toEqual(["managed-website", "social-media", "paid-ads"]);
+    expect(readFor({ plan: "managed", addons: ["paid-ads"] }, BRAND).services).toEqual(["managed-website", "paid-ads"]);
+    expect(readFor({ plan: "managed", addons: "social,advertising" }, BRAND).services).toEqual(["managed-website"]);
+    // The plans retired on 2026-11-06 are not services any more.
+    expect(readFor({ plan: "managed", addons: "local-seo-aeo,digital-growth" }, BRAND).services).toEqual(["managed-website"]);
   });
 
-  it("keeps the services in the address when the owner continues with Managed Website", () => {
+  it("keeps the services in the address when the owner continues with Website Management", () => {
     expect(entryHrefForPlan("?plan=website,growth", "managed")).toBe("/login?plan=website%2Cgrowth&new=1");
   });
 });

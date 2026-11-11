@@ -161,14 +161,14 @@ async function payFirstWithoutPrintableInvoice(subscription: Subscription, disco
 }
 
 /**
- * An add-on payment recorded without an invoice, through the same recorder the webhook uses: Social Media and Ads at the
+ * An add-on payment recorded without an invoice, through the same recorder the webhook uses: Social Media Management at the
  * list price, with a discount when one is given. Returns the payment and the add-on row it paid for.
  */
 async function seedAddOnPayment(discountAmountCents: number, providerPaymentId: string): Promise<{ readonly payment: Payment; readonly addOnSubscriptionId: string }> {
   const row = await insertAddOnSubscription(dbs.staff.db, {
     id: randomUUID(),
     businessId,
-    addOn: "digital-growth",
+    addOn: "social-media",
     listAmountCents: 999_900,
     discountAmountCents,
     offerDiscountAmountCents: discountAmountCents,
@@ -240,7 +240,7 @@ afterEach(() => {
 
 describe("issueMissingTaxInvoice", () => {
   it("invoices a first payment of all three services with a line and a package note for each, on the day staff issue it", async () => {
-    const lines = linesOf("managed-website", "digital-growth", "local-seo-aeo");
+    const lines = linesOf("managed-website", "social-media", "paid-ads");
     const subscription = await openSubscription(lines);
     const payment = await payFirstWithoutPrintableInvoice(subscription);
 
@@ -256,23 +256,23 @@ describe("issueMissingTaxInvoice", () => {
       totalCents: 3_039_800,
     });
     expect(invoice.lines.map((line) => [line.description, line.unitAmountCents, line.discountAmountCents, line.note, line.detail])).toEqual([
-      ["Managed Website", 299_900, 59_980, "Package offer, 20% off", "Monthly subscription, 09 Oct to 08 Nov 2026"],
-      ["Social Media and Ads", 999_900, 199_980, "Package offer, 20% off", "Monthly subscription, 09 Oct to 08 Nov 2026"],
-      ["Local SEO + AEO", 2_499_900, 499_940, "Package offer, 20% off", "Monthly subscription, 09 Oct to 08 Nov 2026"],
+      ["Website Management", 299_900, 59_980, "Package offer, 20% off", "Monthly subscription, 09 Oct to 08 Nov 2026"],
+      ["Social Media Management", 999_900, 199_980, "Package offer, 20% off", "Monthly subscription, 09 Oct to 08 Nov 2026"],
+      ["Paid Ads Management", 2_499_900, 499_940, "Package offer, 20% off", "Monthly subscription, 09 Oct to 08 Nov 2026"],
     ]);
   });
 
   it("invoices a payment as it was billed, though the package was dropped and the offer forfeited since", async () => {
-    const subscription = await openSubscription(linesOf("managed-website", "digital-growth", "local-seo-aeo"));
+    const subscription = await openSubscription(linesOf("managed-website", "social-media", "paid-ads"));
     const payment = await payFirstWithoutPrintableInvoice(subscription);
-    // The customer drops Local SEO + AEO: the offer ends for good, the services that stay go to list and the rows move on.
+    // The customer drops Paid Ads Management: the offer ends for good, the services that stay go to list and the rows move on.
     await execSql(
       dbs.owner,
-      `update bundled_add_ons set status = 'removed', removed_at = now() where subscription_id = '${subscription.id}' and add_on = 'local-seo-aeo'`,
+      `update bundled_add_ons set status = 'removed', removed_at = now() where subscription_id = '${subscription.id}' and add_on = 'paid-ads'`,
     );
     await execSql(
       dbs.owner,
-      `update bundled_add_ons set offer_discount_amount_cents = 0, net_amount_cents = list_amount_cents where subscription_id = '${subscription.id}' and add_on <> 'local-seo-aeo'`,
+      `update bundled_add_ons set offer_discount_amount_cents = 0, net_amount_cents = list_amount_cents where subscription_id = '${subscription.id}' and add_on <> 'paid-ads'`,
     );
     await execSql(dbs.owner, `update businesses set package_offer_forfeited_at = now() where id = '${businessId}'`);
 
@@ -280,14 +280,14 @@ describe("issueMissingTaxInvoice", () => {
 
     expect(invoice.totalCents).toBe(3_039_800);
     expect(invoice.lines.map((line) => [line.description, line.discountAmountCents, line.note])).toEqual([
-      ["Managed Website", 59_980, "Package offer, 20% off"],
-      ["Social Media and Ads", 199_980, "Package offer, 20% off"],
-      ["Local SEO + AEO", 499_940, "Package offer, 20% off"],
+      ["Website Management", 59_980, "Package offer, 20% off"],
+      ["Social Media Management", 199_980, "Package offer, 20% off"],
+      ["Paid Ads Management", 499_940, "Package offer, 20% off"],
     ]);
   });
 
   it("invoices a single service at its list price with no discount and no note", async () => {
-    const lines = linesOf("digital-growth");
+    const lines = linesOf("social-media");
     const subscription = await openSubscription(lines);
     const payment = await payFirstWithoutPrintableInvoice(subscription);
 
@@ -295,7 +295,7 @@ describe("issueMissingTaxInvoice", () => {
 
     expect(invoice.totalCents).toBe(999_900);
     expect(invoice.lines).toHaveLength(1);
-    expect(invoice.lines[0]).toMatchObject({ description: "Social Media and Ads", discountAmountCents: 0, note: null });
+    expect(invoice.lines[0]).toMatchObject({ description: "Social Media Management", discountAmountCents: 0, note: null });
   });
 
   it("names the coupon on a single service from what the payment kept, though the subscription's discount has ended since (its months ran out)", async () => {
@@ -319,14 +319,14 @@ describe("issueMissingTaxInvoice", () => {
 
     expect(payment.amountCents).toBe(239_920);
     expect(invoice.lines).toHaveLength(1);
-    expect(invoice.lines[0]).toMatchObject({ description: "Managed Website", discountAmountCents, note: "Coupon GAURAV applied, 20% off" });
+    expect(invoice.lines[0]).toMatchObject({ description: "Website Management", discountAmountCents, note: "Coupon GAURAV applied, 20% off" });
     expect(invoice.totalCents).toBe(payment.amountCents);
   });
 
   it.each([
     // [name, services, what the member pays (the package net less 10%), the taxable value of that: the payment less the GST inside it]
-    ["two services", ["managed-website", "digital-growth"] as const, 1_052_910, 892_296],
-    ["three services", ["managed-website", "digital-growth", "local-seo-aeo"] as const, 2_735_820, 2_318_492],
+    ["two services", ["managed-website", "social-media"] as const, 1_052_910, 892_296],
+    ["three services", ["managed-website", "social-media", "paid-ads"] as const, 2_735_820, 2_318_492],
   ])("reissues the invoice for a code taken once off %s, shared over the lines to the paisa", async (_name, services_, paidCents, taxableCents) => {
     const discount = { kind: "percent", basisPoints: 1_000 } as const;
     const created = await createReferralCode(dbs.staff.db, {
@@ -358,7 +358,7 @@ describe("issueMissingTaxInvoice", () => {
   });
 
   it("invoices a renewal from the lines it was billed at, a month from the cycle it paid for", async () => {
-    const lines = linesOf("managed-website", "digital-growth");
+    const lines = linesOf("managed-website", "social-media");
     const subscription = await openSubscription(lines);
     await dbs.staff.db.transaction((tx) =>
       activateFirstPayment(tx, { businessId, subscriptionId: subscription.id, plan: services, provider: "fake", providerPaymentId: "pay_first", paidAt: PAID_AT, discountAmountCents: 0 }),
@@ -387,14 +387,14 @@ describe("issueMissingTaxInvoice", () => {
     const renewed = await issue(renewal.payment.id);
 
     expect(renewed.lines.map((line) => [line.description, line.discountAmountCents, line.note, line.detail])).toEqual([
-      ["Managed Website", 29_990, "Package offer, 10% off", "Monthly subscription, 09 Nov to 08 Dec 2026"],
-      ["Social Media and Ads", 99_910, "Package offer, 10% off", "Monthly subscription, 09 Nov to 08 Dec 2026"],
+      ["Website Management", 29_990, "Package offer, 10% off", "Monthly subscription, 09 Nov to 08 Dec 2026"],
+      ["Social Media Management", 99_910, "Package offer, 10% off", "Monthly subscription, 09 Nov to 08 Dec 2026"],
     ]);
     expect(renewed.totalCents).toBe(renewal.payment.amountCents);
   });
 
   it("invoices a restart from the lines its checkout was opened with, a month from the day paid", async () => {
-    const subscription = await openSubscription(linesOf("digital-growth", "local-seo-aeo"));
+    const subscription = await openSubscription(linesOf("social-media", "paid-ads"));
     await dbs.owner.db.delete(billingProfiles);
     await execSql(dbs.owner, `update businesses set name = '${DEVANAGARI_NAME}' where id = '${businessId}'`);
     const restart = await dbs.staff.db.transaction((tx) =>
@@ -407,8 +407,8 @@ describe("issueMissingTaxInvoice", () => {
 
     expect(restart.payment.amountCents).toBe(3_149_900);
     expect(restarted.lines.map((line) => [line.description, line.discountAmountCents, line.note])).toEqual([
-      ["Social Media and Ads", 99_990, "Package offer, 10% off"],
-      ["Local SEO + AEO", 249_910, "Package offer, 10% off"],
+      ["Social Media Management", 99_990, "Package offer, 10% off"],
+      ["Paid Ads Management", 249_910, "Package offer, 10% off"],
     ]);
     expect(restarted.lines[0]?.detail).toBe("Monthly subscription, 09 Dec 2026 to 08 Jan 2027");
     expect(restarted.totalCents).toBe(restart.payment.amountCents);
@@ -479,7 +479,7 @@ describe("issueMissingTaxInvoice", () => {
 
     await dbs.staff.db.transaction(async (tx) => {
       await savePaymentInvoiceBasis(tx, payment.id, basisOf(first));
-      await savePaymentInvoiceBasis(tx, payment.id, basisOf(linesOf("managed-website", "digital-growth")));
+      await savePaymentInvoiceBasis(tx, payment.id, basisOf(linesOf("managed-website", "social-media")));
     });
 
     const kept = await querySql<{ invoice_basis: PaymentInvoiceBasis }>(dbs.owner, `select invoice_basis from payments where id = '${payment.id}'`);
@@ -487,7 +487,7 @@ describe("issueMissingTaxInvoice", () => {
   });
 
   it("refuses a payment whose kept lines do not come to what it took, leaving no invoice and spending no number", async () => {
-    const lines = linesOf("managed-website", "digital-growth");
+    const lines = linesOf("managed-website", "social-media");
     const subscription = await openSubscription(lines);
     const payment = await seedPayment({
       providerPaymentId: "pay_odd",
@@ -592,7 +592,7 @@ describe("issueMissingTaxInvoice", () => {
 
     const invoice = await issue(payment.id);
 
-    expect(invoice.lines[0]).toMatchObject({ description: "Managed Website", unitAmountCents: 299_900 });
+    expect(invoice.lines[0]).toMatchObject({ description: "Website Management", unitAmountCents: 299_900 });
     expect(await invoiceCount()).toBe(1);
   });
 
@@ -603,7 +603,7 @@ describe("issueMissingTaxInvoice", () => {
 
     expect(invoice).toMatchObject({ issuedOn: "2026-11-15", paidOn: "2026-10-09", paymentId: payment.id, totalCents: 949_900 });
     expect(invoice.lines[0]).toMatchObject({
-      description: "Social Media and Ads",
+      description: "Social Media Management",
       detail: "Monthly subscription, 09 Oct to 08 Nov 2026",
       note: null,
       unitAmountCents: 999_900,
@@ -617,7 +617,7 @@ describe("issueMissingTaxInvoice", () => {
     const invoice = await issue(payment.id);
 
     expect(invoice.totalCents).toBe(999_900);
-    expect(invoice.lines[0]).toMatchObject({ description: "Social Media and Ads", note: null, discountAmountCents: 0 });
+    expect(invoice.lines[0]).toMatchObject({ description: "Social Media Management", note: null, discountAmountCents: 0 });
   });
 
   it("says no price explains an add-on payment that is not linked to an add-on, and takes no number", async () => {
@@ -647,7 +647,7 @@ describe("issueMissingTaxInvoice", () => {
   });
 
   it("lists a payment recorded with its invoice lines kept as missing, and keeps them when the invoice fails", async () => {
-    const lines = linesOf("managed-website", "local-seo-aeo");
+    const lines = linesOf("managed-website", "paid-ads");
     const subscription = await openSubscription(lines);
     const payment = await payFirstWithoutPrintableInvoice(subscription);
 

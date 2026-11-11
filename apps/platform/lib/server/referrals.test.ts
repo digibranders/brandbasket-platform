@@ -62,9 +62,9 @@ const PLAN = {
   taxRateBasisPoints: 1_800,
 } as const satisfies Plan;
 
-/** What a code is priced against on a Managed Website subscription: the website's ₹2,999 list price, which is its package net. */
+/** What a code is priced against on a Website Management subscription: the website's ₹2,999 list price, which is its package net. */
 const WEBSITE = { currency: "INR", netCents: 299_900 } as const;
-/** The website and Social Media and Ads together: ₹11,699 after the 10% package offer. */
+/** The website and Social Media Management together: ₹11,699 after the 10% package offer. */
 const PACKAGE_BASIS = { currency: "INR", netCents: 1_169_900 } as const;
 const WEBSITE_ALONE = ["managed-website"] as const;
 
@@ -113,12 +113,12 @@ function refusalOf(outcome: Awaited<ReturnType<typeof applyReferralCodeFor>>): s
 describe("codeBasisFor", () => {
   it("is the basket's net: the service's list price when it is alone", () => {
     expect(codeBasisFor(["managed-website"], "INR")).toEqual(WEBSITE);
-    expect(codeBasisFor(["local-seo-aeo"], "USD")).toEqual({ currency: "USD", netCents: 35_000 });
+    expect(codeBasisFor(["paid-ads"], "USD")).toEqual({ currency: "USD", netCents: 35_000 });
   });
 
   it("is the package net, after the package offer, for two or more services", () => {
-    expect(codeBasisFor(["managed-website", "digital-growth"], "INR")).toEqual(PACKAGE_BASIS);
-    expect(codeBasisFor(["managed-website", "digital-growth", "local-seo-aeo"], "INR")).toEqual({ currency: "INR", netCents: 3_039_800 });
+    expect(codeBasisFor(["managed-website", "social-media"], "INR")).toEqual(PACKAGE_BASIS);
+    expect(codeBasisFor(["managed-website", "social-media", "paid-ads"], "INR")).toEqual({ currency: "INR", netCents: 3_039_800 });
   });
 
   it("is null for no services at all", () => {
@@ -146,7 +146,7 @@ describe("discountFrom", () => {
     const tenPercent = discountFrom(code({ discount: { kind: "percent", basisPoints: 1_000 } }), WEBSITE);
     expect(tenPercent).toMatchObject({ amountCents: 29_990, stated: { kind: "percent", basisPoints: 1_000 } });
     expect(discountFrom(code({ discount: { kind: "percent", basisPoints: 1_250 } }), WEBSITE)?.amountCents).toBe(37_488);
-    // 10% of Local SEO + AEO's ₹24,999.
+    // 10% of Paid Ads Management's ₹24,999.
     expect(discountFrom(code({ discount: { kind: "percent", basisPoints: 1_000 } }), { currency: "INR", netCents: 2_499_900 })?.amountCents).toBe(249_990);
   });
 
@@ -251,15 +251,15 @@ describe("applyReferralCodeFor", () => {
 
   it("accepts a code on a package of two or more services, priced against the package net", async () => {
     vi.mocked(findRedeemableReferralCode).mockResolvedValue(code({ discount: { kind: "percent", basisPoints: 1_000 }, discountMonths: 3 }));
-    const outcome = await applyReferralCodeFor(customer, "SAVE15", ["managed-website", "digital-growth"], NOW);
+    const outcome = await applyReferralCodeFor(customer, "SAVE15", ["managed-website", "social-media"], NOW);
     expect(outcome).toMatchObject({ kind: "applied", discount: { amountCents: 116_990, months: 3 } });
     expect(setBusinessReferralCode).toHaveBeenCalledWith(expect.anything(), { businessId: BUSINESS_ID, referralCodeId: "code-1" });
   });
 
   it("prices a code on a single service against that service's list price", async () => {
     vi.mocked(findRedeemableReferralCode).mockResolvedValue(code({ discount: { kind: "percent", basisPoints: 1_000 } }));
-    const outcome = await applyReferralCodeFor(customer, "SAVE15", ["digital-growth"], NOW);
-    // 10% of Social Media and Ads' ₹9,999.
+    const outcome = await applyReferralCodeFor(customer, "SAVE15", ["social-media"], NOW);
+    // 10% of Social Media Management' ₹9,999.
     expect(outcome).toMatchObject({ kind: "applied", discount: { amountCents: 99_990 } });
   });
 

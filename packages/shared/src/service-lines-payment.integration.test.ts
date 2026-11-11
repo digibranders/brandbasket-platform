@@ -77,8 +77,8 @@ afterEach(() => {
 });
 
 describe("a payment for service lines on the services plan", () => {
-  it("charges the website and Social Media and Ads at the package price, and invoices a line for each", async () => {
-    const subscription = await open(linesOf("managed-website", "digital-growth"), `fake_sub_${"d".repeat(24)}`);
+  it("charges the website and Social Media Management at the package price, and invoices a line for each", async () => {
+    const subscription = await open(linesOf("managed-website", "social-media"), `fake_sub_${"d".repeat(24)}`);
     const activation = await dbs.staff.db.transaction((tx) =>
       activateFirstPayment(tx, { businessId, subscriptionId: subscription.id, plan, provider: "fake", providerPaymentId: "fake_pay_lines", paidAt: PAID_AT }),
     );
@@ -87,8 +87,8 @@ describe("a payment for service lines on the services plan", () => {
     const invoice = await findTaxInvoiceByPaymentId(dbs.staff.db, activation.payment.id);
     expect(invoice?.totalCents).toBe(1_169_900);
     expect(invoice?.lines.map((line) => [line.description, line.unitAmountCents, line.discountAmountCents])).toEqual([
-      ["Managed Website", 299_900, 29_990],
-      ["Social Media and Ads", 999_900, 99_910],
+      ["Website Management", 299_900, 29_990],
+      ["Social Media Management", 999_900, 99_910],
     ]);
   });
 
@@ -109,7 +109,7 @@ describe("a payment for service lines on the services plan", () => {
     expect(activation.payment).toMatchObject({ amountCents: 299_900, kind: "reactivation" });
     expect((await findBundledAddOnsForSubscription(dbs.staff.db, subscription.id)).map((row) => row.status)).toEqual(["active"]);
     const invoice = await findTaxInvoiceByPaymentId(dbs.staff.db, activation.payment.id);
-    expect(invoice?.lines.map((line) => [line.description, line.unitAmountCents])).toEqual([["Managed Website", 299_900]]);
+    expect(invoice?.lines.map((line) => [line.description, line.unitAmountCents])).toEqual([["Website Management", 299_900]]);
     expect(invoice?.totalCents).toBe(299_900);
   });
 });

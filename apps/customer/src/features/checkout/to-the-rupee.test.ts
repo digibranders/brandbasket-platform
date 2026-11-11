@@ -19,8 +19,8 @@ vi.mock("./server/db", () => ({ getAppDb: vi.fn(), getStaffDb: vi.fn() }));
  */
 
 const WEBSITE: readonly MonthlyAddOnId[] = ["managed-website"];
-const TWO: readonly MonthlyAddOnId[] = ["managed-website", "digital-growth"];
-const THREE: readonly MonthlyAddOnId[] = ["managed-website", "digital-growth", "local-seo-aeo"];
+const TWO: readonly MonthlyAddOnId[] = ["managed-website", "social-media"];
+const THREE: readonly MonthlyAddOnId[] = ["managed-website", "social-media", "paid-ads"];
 
 /** The services plan as sold: the plan row costs nothing, the lines are the charge. INR carries 18% GST inside; USD none. */
 const PLAN: Readonly<Record<MoneyCurrency, { readonly initialAmountCents: number; readonly taxRateBasisPoints: number }>> = {

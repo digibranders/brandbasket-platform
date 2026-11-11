@@ -1,9 +1,7 @@
 import { addOnById, type MonthlyAddOnId } from "@brandbasket/shared/lib/billing/add-ons";
 import { packageLines } from "@brandbasket/shared/lib/billing/packages";
 import type { MoneyCurrency } from "@brandbasket/shared/lib/money";
-import type { CustomerContext, Service } from "@/lib/guards";
-
-const ADD_ON_OF: Readonly<Record<Service, MonthlyAddOnId>> = { website: "managed-website", social: "digital-growth", search: "local-seo-aeo" };
+import type { CustomerContext } from "@/lib/guards";
 
 export interface WebsiteOffer {
   readonly title: string;
@@ -16,13 +14,13 @@ export interface WebsiteOffer {
 }
 
 /**
- * What the Managed Website would cost this business a month if added to the services it holds: priced by the shared package
- * rule (packageLines), never on the page.
+ * What the Website would cost this business a month if added to the services it holds (the catalogue ids of its staying
+ * lines): priced by the shared package rule (packageLines), never on the page.
  */
-export function websiteOffer(held: readonly Service[], forfeited: boolean, currency: MoneyCurrency): WebsiteOffer {
-  const services = [...held.map((service) => ADD_ON_OF[service]), ADD_ON_OF.website];
+export function websiteOffer(held: readonly MonthlyAddOnId[], forfeited: boolean, currency: MoneyCurrency): WebsiteOffer {
+  const services = [...held, "managed-website" as const];
   const line = packageLines({ services, forfeited }, currency).find((entry) => entry.addOn === "managed-website");
-  if (line === undefined) throw new Error("The package lines left out the Managed Website.");
+  if (line === undefined) throw new Error("The package lines left out the website.");
   const addOn = addOnById("managed-website");
   return { title: addOn.title, included: addOn.line, netCents: line.netCents, offerCents: line.offerCents, unit: addOn.unit };
 }

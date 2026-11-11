@@ -32,7 +32,7 @@ describe("the questions' actions run the guard first", () => {
   it("writes nothing when the guard turns the person away", async () => {
     vi.mocked(requireCustomer).mockRejectedValue(new Error("redirect:/login"));
     await expect(saveAnswerAction(null, form({ field: "businessType", value: "clinic" }))).rejects.toThrow("redirect:/login");
-    await expect(toggleServiceAction(null, form({ toggle: "digital-growth" }))).rejects.toThrow("redirect:/login");
+    await expect(toggleServiceAction(null, form({ toggle: "social-media" }))).rejects.toThrow("redirect:/login");
     await expect(continueToCheckoutAction(null, form({}))).rejects.toThrow("redirect:/login");
     expect(saveIntakeAnswer).not.toHaveBeenCalled();
     expect(saveIntakeServices).not.toHaveBeenCalled();
@@ -43,7 +43,7 @@ describe("the questions' actions run the guard first", () => {
     vi.mocked(requireCustomer).mockResolvedValue({ tenant: { ...TENANT, role: "viewer" }, role: "viewer" } as never);
     const refused = { ok: false, message: VIEWER_MESSAGE };
     expect(await saveAnswerAction(null, form({ field: "businessType", value: "clinic" }))).toEqual(refused);
-    expect(await toggleServiceAction(null, form({ toggle: "digital-growth" }))).toEqual(refused);
+    expect(await toggleServiceAction(null, form({ toggle: "social-media" }))).toEqual(refused);
     expect(await continueToCheckoutAction(null, form({}))).toEqual(refused);
     expect(saveIntakeAnswer).not.toHaveBeenCalled();
     expect(saveIntakeServices).not.toHaveBeenCalled();
@@ -71,23 +71,23 @@ describe("saveAnswerAction", () => {
 
   it("passes every value of a multi-choice answer", async () => {
     vi.mocked(saveIntakeAnswer).mockResolvedValue({ kind: "saved" });
-    await expect(saveAnswerAction(null, form({ field: "socialChannels", value: ["instagram", "facebook"], services: "digital-growth" }))).rejects.toThrow(/redirect:/);
+    await expect(saveAnswerAction(null, form({ field: "socialChannels", value: ["instagram", "facebook"], services: "social-media" }))).rejects.toThrow(/redirect:/);
     expect(vi.mocked(saveIntakeAnswer).mock.calls[0]?.[1].values).toEqual(["instagram", "facebook"]);
   });
 });
 
 describe("the basket", () => {
   it("adds a service and stays on the summary", async () => {
-    await expect(toggleServiceAction(null, form({ services: "managed-website", toggle: "local-seo-aeo" }))).rejects.toThrow("redirect:/start?services=managed-website,local-seo-aeo&q=summary");
-    expect(saveIntakeServices).toHaveBeenCalledWith(TENANT, ["managed-website", "local-seo-aeo"], expect.any(Date));
+    await expect(toggleServiceAction(null, form({ services: "managed-website", toggle: "paid-ads" }))).rejects.toThrow("redirect:/start?services=managed-website,paid-ads&q=summary");
+    expect(saveIntakeServices).toHaveBeenCalledWith(TENANT, ["managed-website", "paid-ads"], expect.any(Date));
   });
 
   it("never empties the basket", async () => {
-    await expect(toggleServiceAction(null, form({ services: "digital-growth", toggle: "digital-growth" }))).rejects.toThrow("redirect:/start?services=digital-growth&q=summary");
+    await expect(toggleServiceAction(null, form({ services: "social-media", toggle: "social-media" }))).rejects.toThrow("redirect:/start?services=social-media&q=summary");
   });
 
   it("finishes the questions and opens the checkout on the basket", async () => {
-    await expect(continueToCheckoutAction(null, form({ services: "managed-website,digital-growth" }))).rejects.toThrow("redirect:/checkout?services=managed-website,digital-growth");
+    await expect(continueToCheckoutAction(null, form({ services: "managed-website,social-media" }))).rejects.toThrow("redirect:/checkout?services=managed-website,social-media");
     expect(completeIntake).toHaveBeenCalledWith(TENANT, expect.any(Date));
   });
 });

@@ -75,7 +75,7 @@ export const addOnSubscriptions = pgTable(
       .on(table.businessId, table.addOn)
       .where(sql`${table.status} = 'incomplete'`),
     index("add_on_subscriptions_business_idx").on(table.businessId, table.createdAt),
-    check("add_on_subscriptions_add_on_check", sql`${table.addOn} in ('digital-growth', 'local-seo-aeo')`),
+    check("add_on_subscriptions_add_on_check", sql`${table.addOn} in ('social-media', 'paid-ads')`),
     check(
       "add_on_subscriptions_offer_check",
       sql`${table.offerDiscountAmountCents} >= 0 and ${table.offerDiscountAmountCents} <= ${table.discountAmountCents}`,
@@ -182,7 +182,10 @@ export const bundledAddOns = pgTable(
     uniqueIndex("bundled_add_ons_charge_idx").on(table.chargeId).where(sql`${table.chargeId} is not null`),
     index("bundled_add_ons_business_idx").on(table.businessId, table.createdAt),
     check("bundled_add_ons_end_reason_check", sql`${table.endReason} is null or char_length(${table.endReason}) <= 500`),
-    check("bundled_add_ons_add_on_check", sql`${table.addOn} in ('managed-website', 'digital-growth', 'local-seo-aeo')`),
+    check(
+      "bundled_add_ons_add_on_check",
+      sql`${table.addOn} in ('managed-website', 'social-media', 'paid-ads', 'expert-monitoring')`,
+    ),
     check(
       "bundled_add_ons_amounts_check",
       sql`${table.listAmountCents} > 0 and ${table.offerDiscountAmountCents} >= 0

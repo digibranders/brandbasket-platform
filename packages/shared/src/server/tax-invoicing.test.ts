@@ -261,14 +261,14 @@ describe("issueTaxInvoice for an add-on payment", () => {
     };
   }
 
-  /** Social Media and Ads at its list price of 9,999 rupees, with a discount when `discountAmountCents` is given. */
+  /** Social Media Management at its list price of 9,999 rupees, with a discount when `discountAmountCents` is given. */
   function addOnRow(overrides: Partial<AddOnSubscription> = {}): AddOnSubscription {
     const discountAmountCents = overrides.discountAmountCents ?? 0;
     return {
       offerDiscountAmountCents: discountAmountCents,
       id: "add-on-1",
       businessId: "business-1",
-      addOn: "digital-growth",
+      addOn: "social-media",
       listAmountCents: 999_900,
       discountAmountCents,
       netAmountCents: 999_900 - discountAmountCents,
@@ -311,14 +311,14 @@ describe("issueTaxInvoice for an add-on payment", () => {
     vi.resetAllMocks();
   });
 
-  it("gives a Social Media and Ads payment with a discount one line with the period and the discount, and no offer note", async () => {
+  it("gives a Social Media Management payment with a discount one line with the period and the discount, and no offer note", async () => {
     const { inserted } = arrange(addOnRow({ discountAmountCents: 50_000 }));
 
     await issueTaxInvoice(tx, addOnPayment(949_900), source);
 
     expect(inserted().lines).toHaveLength(1);
     expect(inserted().lines[0]).toMatchObject({
-      description: "Social Media and Ads",
+      description: "Social Media Management",
       detail: "Monthly subscription, 12 Oct to 11 Nov 2026",
       note: null,
       sac: BRANDBASKET_SAC,
@@ -336,16 +336,16 @@ describe("issueTaxInvoice for an add-on payment", () => {
 
     await issueTaxInvoice(tx, addOnPayment(999_900), source);
 
-    expect(inserted().lines[0]).toMatchObject({ description: "Social Media and Ads", note: null, discountAmountCents: 0 });
+    expect(inserted().lines[0]).toMatchObject({ description: "Social Media Management", note: null, discountAmountCents: 0 });
     expect(inserted()).toMatchObject({ taxableCents: 847_372, cgstCents: 76_264, sgstCents: 76_264, totalCents: 999_900 });
   });
 
-  it("names Local SEO + AEO by its catalogue title", async () => {
-    const { inserted } = arrange(addOnRow({ addOn: "local-seo-aeo", listAmountCents: 800_000, netAmountCents: 800_000 }));
+  it("names Paid Ads Management by its catalogue title", async () => {
+    const { inserted } = arrange(addOnRow({ addOn: "paid-ads", listAmountCents: 800_000, netAmountCents: 800_000 }));
 
     await issueTaxInvoice(tx, addOnPayment(800_000), source);
 
-    expect(inserted().lines[0]).toMatchObject({ description: "Local SEO + AEO", unitAmountCents: 800_000 });
+    expect(inserted().lines[0]).toMatchObject({ description: "Paid Ads Management", unitAmountCents: 800_000 });
   });
 
   it("refuses a payment that is not linked to an add-on, without issuing or taking a number", async () => {
@@ -441,12 +441,12 @@ describe("issueTaxInvoice for a payment of services", () => {
     const { inserted } = arrangeInvoiceStore();
 
     // The package is 20% off all three, as a whole-rupee saving of ₹7,599: the lines' own 20% is 40 paise more, taken off the dearest.
-    await issueTaxInvoice(tx, payment(3_039_800), source([line("managed-website", WEBSITE, 59_980), line("digital-growth", SOCIAL, 199_980), line("local-seo-aeo", SEO, 499_940)]));
+    await issueTaxInvoice(tx, payment(3_039_800), source([line("managed-website", WEBSITE, 59_980), line("social-media", SOCIAL, 199_980), line("paid-ads", SEO, 499_940)]));
 
     expect(inserted().lines.map((l) => [l.description, l.unitAmountCents, l.discountAmountCents, l.note])).toEqual([
-      ["Managed Website", 299_900, 59_980, "Package offer, 20% off"],
-      ["Social Media and Ads", 999_900, 199_980, "Package offer, 20% off"],
-      ["Local SEO + AEO", 2_499_900, 499_940, "Package offer, 20% off"],
+      ["Website Management", 299_900, 59_980, "Package offer, 20% off"],
+      ["Social Media Management", 999_900, 199_980, "Package offer, 20% off"],
+      ["Paid Ads Management", 2_499_900, 499_940, "Package offer, 20% off"],
     ]);
     // ₹30,398 paid holds 463,698 paise of GST (₹30,398 x 9 / 118 rounded to a whole paisa, doubled): 231,849 each of CGST and SGST.
     expect(inserted()).toMatchObject({ taxableCents: 2_576_102, cgstCents: 231_849, sgstCents: 231_849, roundOffCents: 0, totalCents: 3_039_800 });
@@ -456,7 +456,7 @@ describe("issueTaxInvoice for a payment of services", () => {
   it("never mentions ad credit on the invoice", async () => {
     const { inserted } = arrangeInvoiceStore();
 
-    await issueTaxInvoice(tx, payment(3_039_800), source([line("managed-website", WEBSITE, 59_980), line("digital-growth", SOCIAL, 199_980), line("local-seo-aeo", SEO, 499_940)]));
+    await issueTaxInvoice(tx, payment(3_039_800), source([line("managed-website", WEBSITE, 59_980), line("social-media", SOCIAL, 199_980), line("paid-ads", SEO, 499_940)]));
 
     expect(JSON.stringify(inserted().lines)).not.toMatch(/credit/i);
   });
@@ -468,7 +468,7 @@ describe("issueTaxInvoice for a payment of services", () => {
     const paid = 299_900 - 29_990 + (999_900 - 99_910);
     expect(paid).toBe(1_169_900);
 
-    await issueTaxInvoice(tx, payment(1_169_900), source([line("managed-website", 299_900, 29_990), line("digital-growth", 999_900, 99_910)]));
+    await issueTaxInvoice(tx, payment(1_169_900), source([line("managed-website", 299_900, 29_990), line("social-media", 999_900, 99_910)]));
 
     expect(inserted().lines.map((l) => l.note)).toEqual(["Package offer, 10% off", "Package offer, 10% off"]);
     expect(inserted()).toMatchObject({ taxableCents: 991_440, cgstCents: 89_230, sgstCents: 89_230, totalCents: 1_169_900, roundOffCents: 0 });
@@ -477,17 +477,17 @@ describe("issueTaxInvoice for a payment of services", () => {
   it("gives a single service no discount and no note", async () => {
     const { inserted } = arrangeInvoiceStore();
 
-    await issueTaxInvoice(tx, payment(999_900), source([line("digital-growth", SOCIAL, 0)]));
+    await issueTaxInvoice(tx, payment(999_900), source([line("social-media", SOCIAL, 0)]));
 
     expect(inserted().lines).toHaveLength(1);
-    expect(inserted().lines[0]).toMatchObject({ description: "Social Media and Ads", discountAmountCents: 0, note: null });
+    expect(inserted().lines[0]).toMatchObject({ description: "Social Media Management", discountAmountCents: 0, note: null });
     expect(inserted().totalCents).toBe(999_900);
   });
 
   it("leaves a service whose package offer has ended at list, with no note", async () => {
     const { inserted } = arrangeInvoiceStore();
 
-    await issueTaxInvoice(tx, payment(1_299_800), source([line("managed-website", WEBSITE, 0), line("digital-growth", SOCIAL, 0)]));
+    await issueTaxInvoice(tx, payment(1_299_800), source([line("managed-website", WEBSITE, 0), line("social-media", SOCIAL, 0)]));
 
     expect(inserted().lines.map((l) => [l.discountAmountCents, l.note])).toEqual([
       [0, null],
@@ -498,7 +498,7 @@ describe("issueTaxInvoice for a payment of services", () => {
   it("refuses a package discount on a set of services that earns no package", async () => {
     arrangeInvoiceStore();
 
-    await expect(issueTaxInvoice(tx, payment(949_900), source([line("digital-growth", SOCIAL, 50_000)]))).rejects.toThrow(/earn no package offer/);
+    await expect(issueTaxInvoice(tx, payment(949_900), source([line("social-media", SOCIAL, 50_000)]))).rejects.toThrow(/earn no package offer/);
     expect(db.insertTaxInvoice).not.toHaveBeenCalled();
   });
 
@@ -521,13 +521,13 @@ describe("issueTaxInvoice for a payment of services", () => {
       withCode({ discountKind: "amount", discountPercentBasisPoints: null });
       // Prices after the 10% package offer: ₹2,699.10 and ₹8,999.90. A ₹1,500 code is 34,606.4 and 115,393.6 paise of it:
       // each share rounded down (34,606 and 115,393), the one paisa left on the larger line.
-      const lines = [line("managed-website", WEBSITE, 29_990), line("digital-growth", SOCIAL, 99_910)];
+      const lines = [line("managed-website", WEBSITE, 29_990), line("social-media", SOCIAL, 99_910)];
 
       await issueTaxInvoice(tx, paymentOn(chargedAmountCents(1_169_900, 150_000)), source(lines, 150_000));
 
       expect(inserted().lines.map((l) => [l.description, l.discountAmountCents, l.note])).toEqual([
-        ["Managed Website", 29_990 + 34_606, "Package offer, 10% off. Coupon SAVE10 applied"],
-        ["Social Media and Ads", 99_910 + 115_394, "Package offer, 10% off. Coupon SAVE10 applied"],
+        ["Website Management", 29_990 + 34_606, "Package offer, 10% off. Coupon SAVE10 applied"],
+        ["Social Media Management", 99_910 + 115_394, "Package offer, 10% off. Coupon SAVE10 applied"],
       ]);
       const codeShares = inserted().lines.map((l, i) => l.discountAmountCents - [29_990, 99_910][i]!);
       expect(codeShares.reduce((total, share) => total + share, 0)).toBe(150_000);
@@ -538,7 +538,7 @@ describe("issueTaxInvoice for a payment of services", () => {
     it("shares it over three lines the same way, and the invoice still comes to what was charged", async () => {
       const { inserted } = arrangeInvoiceStore();
       withCode({ discountKind: "amount", discountPercentBasisPoints: null });
-      const lines = [line("managed-website", WEBSITE, 59_980), line("digital-growth", SOCIAL, 199_980), line("local-seo-aeo", SEO, 499_940)];
+      const lines = [line("managed-website", WEBSITE, 59_980), line("social-media", SOCIAL, 199_980), line("paid-ads", SEO, 499_940)];
 
       // A ₹1,000 code over prices of 239,920, 799,920 and 1,999,960 paise (3,039,800 together): 7,892.4, 26,314.4 and 65,793.2
       // rounded down, the 2 paise left on the largest line.
@@ -552,7 +552,7 @@ describe("issueTaxInvoice for a payment of services", () => {
     it("names a percentage code without a share on a package, since no line holds that share of its own net", async () => {
       const { inserted } = arrangeInvoiceStore();
       withCode({ discountKind: "percent", discountPercentBasisPoints: 1_000 });
-      const lines = [line("managed-website", WEBSITE, 29_990), line("digital-growth", SOCIAL, 99_910)];
+      const lines = [line("managed-website", WEBSITE, 29_990), line("social-media", SOCIAL, 99_910)];
 
       await issueTaxInvoice(tx, paymentOn(chargedAmountCents(1_169_900, 116_990)), source(lines, 116_990));
 
@@ -563,7 +563,7 @@ describe("issueTaxInvoice for a payment of services", () => {
       const { inserted } = arrangeInvoiceStore();
       withCode({ discountKind: "percent", discountPercentBasisPoints: 1_000 });
 
-      await issueTaxInvoice(tx, paymentOn(chargedAmountCents(SOCIAL, 99_990)), source([line("digital-growth", SOCIAL, 0)], 99_990));
+      await issueTaxInvoice(tx, paymentOn(chargedAmountCents(SOCIAL, 99_990)), source([line("social-media", SOCIAL, 0)], 99_990));
 
       expect(inserted().lines).toHaveLength(1);
       expect(inserted().lines[0]).toMatchObject({ discountAmountCents: 99_990, note: "Coupon SAVE10 applied, 10% off" });
@@ -573,7 +573,7 @@ describe("issueTaxInvoice for a payment of services", () => {
       const { inserted } = arrangeInvoiceStore();
       withCode({ discountKind: "amount", discountPercentBasisPoints: null });
       // One paisa over two lines: the whole of it lands on the larger, so the smaller line is untouched.
-      const lines = [line("managed-website", WEBSITE, 29_990), line("digital-growth", SOCIAL, 99_910)];
+      const lines = [line("managed-website", WEBSITE, 29_990), line("social-media", SOCIAL, 99_910)];
 
       await issueTaxInvoice(tx, paymentOn(chargedAmountCents(1_169_900, 1)), source(lines, 1));
 

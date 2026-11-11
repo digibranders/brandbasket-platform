@@ -14,5 +14,8 @@
  * contact them.
  * "2026-10-13.5": the Privacy Policy states the approved retention periods, is published in Hindi at /privacy/hi, and
  * offers it in any language of the Eighth Schedule.
+ * "2026-11-06.1": the Terms name Website Management, Social Media Management and Paid Ads Management (Local SEO + AEO is no
+ * longer sold) and Dedicated Expert Monitoring, included with all three plans or priced monthly with one or two. The labels
+ * the website published between 2026-10-19.1 and 2026-10-28.3 were never copied here; this one is.
  */
-export const LEGAL_TEXT_VERSION = "2026-10-13.5";
+export const LEGAL_TEXT_VERSION = "2026-11-06.1";

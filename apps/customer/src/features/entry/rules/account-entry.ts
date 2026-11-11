@@ -16,17 +16,20 @@ export const SIGN_UP_PATH = "/signup";
 
 /** Opens the old single page on its Create account view. */
 const NEW_PARAM = "new";
-/** The older links' add-ons on top of the website, comma separated: `plan=managed&addons=digital-growth,local-seo-aeo`. */
+/** The older links' add-ons on top of the website, comma separated: `plan=managed&addons=social-media,paid-ads`. */
 const ADDONS_PARAM = "addons";
-/** The services the website's basket chose (`plan=website,growth`), or `managed` on older links. */
+/** The services the website's basket chose (`plan=website,social`), or `managed` on older links. */
 const PLAN_PARAM = "plan";
 /** The ad landing page's sealed details (start-token.ts). */
 const START_PARAM = "start";
 /** What brandbasket-website calls each service in its links (its lib/pricing.ts), and the catalogue id it is here. */
 const WEBSITE_SERVICE_IDS: ReadonlyMap<string, MonthlyAddOnId> = new Map([
   ["website", "managed-website"],
-  ["growth", "digital-growth"],
-  ["search", "local-seo-aeo"],
+  ["social", "social-media"],
+  ["ads", "paid-ads"],
+  // The id before 2026-11-06, on links shared before then: Social Media and Ads became Social Media Management. Local SEO +
+  // AEO ("search") is no longer sold, so it names nothing.
+  ["growth", "social-media"],
 ]);
 
 /** The address and form field that carry where to go after sign-in or sign-up. Only an invite accept page is ever honoured. */
@@ -75,7 +78,7 @@ export function readEntryRequest(params: SearchParams): EntryRequest {
   };
 }
 
-/** The services a plan parameter names in the website's words (`website,growth`), or none. Spaces and capitals are ignored. */
+/** The services a plan parameter names in the website's words (`website,social`), or none. Spaces and capitals are ignored. */
 function namedServices(plan: string): readonly MonthlyAddOnId[] {
   return readBundleSelection(plan.split(",").flatMap((id) => WEBSITE_SERVICE_IDS.get(id.trim().toLowerCase()) ?? []));
 }

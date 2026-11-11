@@ -3,13 +3,13 @@ import type { CustomerContext } from "@/lib/guards";
 import { load } from "@/lib/loaded";
 import { Icon, LinkButton, SERVICE_NAMES } from "@/ui";
 import { loadNotBought } from "../loader";
-import type { SetupService } from "../rules";
+import type { SoldSetupService } from "../rules";
 
 /**
  * Service not bought (plan 61, section 4): what it does in two sentences, what is included, the price with the package
  * discount, and Add to plan. No preview of a dashboard that would have nothing in it. Viewers read it; only others get the button.
  */
-export async function NotBought({ service, customer }: { readonly service: SetupService; readonly customer: CustomerContext }) {
+export async function NotBought({ service, customer }: { readonly service: SoldSetupService; readonly customer: CustomerContext }) {
   const name = SERVICE_NAMES[service];
   const view = await load("setup.not-bought", () => loadNotBought(customer, service));
   const canAdd = customer.role !== "viewer";

@@ -15,7 +15,7 @@ const FUTURE = new Date("2026-11-15T09:00:00.000Z");
 const PAST = new Date("2026-10-10T09:00:00.000Z");
 
 const WEBSITE_LINE = { addOn: "managed-website", status: "active" };
-const SOCIAL_LINE = { addOn: "digital-growth", status: "active" };
+const SOCIAL_LINE = { addOn: "social-media", status: "active" };
 
 function stateWith(status: string, paidThroughAt: Date | null, addOns: readonly object[] = [WEBSITE_LINE]): never {
   return { subscription: { status, paidThroughAt }, addOns } as never;
@@ -25,7 +25,7 @@ beforeEach(() => {
   vi.resetAllMocks();
 });
 
-describe("siteHasAccess: a website is served only while its plan and its Managed Website line are", () => {
+describe("siteHasAccess: a website is served only while its plan and its Website Management line are", () => {
   it("serves a paid and healthy website", async () => {
     vi.mocked(findBillingState).mockResolvedValue(stateWith("active", FUTURE));
     expect(await siteHasAccess("biz-1", NOW)).toBe(true);
@@ -46,7 +46,7 @@ describe("siteHasAccess: a website is served only while its plan and its Managed
     expect(await siteHasAccess("biz-1", NOW)).toBe(false);
   });
 
-  it("never serves a paid Social-only or SEO-only client: no Managed Website line, no site", async () => {
+  it("never serves a paid Social-only or SEO-only client: no Website Management line, no site", async () => {
     vi.mocked(findBillingState).mockResolvedValue(stateWith("active", FUTURE, [SOCIAL_LINE]));
     expect(await siteHasAccess("biz-1", NOW)).toBe(false);
     vi.mocked(findBillingState).mockResolvedValue(stateWith("active", FUTURE, []));
@@ -78,7 +78,7 @@ describe("findOnlineTenantBySiteToken: the routes that answer a bad token the sa
     } as never);
   }
 
-  it("finds the tenant of a business that holds the Managed Website service", async () => {
+  it("finds the tenant of a business that holds the Website Management service", async () => {
     tokenBelongsTo("biz-1");
     vi.mocked(findBillingState).mockResolvedValue(stateWith("active", new Date(Date.now() + 86_400_000)));
     expect(await findOnlineTenantBySiteToken("token")).toEqual({ businessId: "biz-1", name: "Riverside Dental" });
