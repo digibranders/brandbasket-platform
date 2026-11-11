@@ -479,8 +479,8 @@ describe("recordManualFirstPayment", () => {
       );
     };
 
-    it("books every service it had at the package price with its ad credit, not the website alone", async () => {
-      lapse({ adCreditCents: 6_000 }, [["managed-website", 4_760], ["social-media", 4_720], ["paid-ads", 4_720]]);
+    it("books every service it had at list, carrying its stored ad credit, not the website alone", async () => {
+      lapse({ adCreditCents: 6_000 }, [["managed-website", 5_900], ["social-media", 5_900], ["paid-ads", 5_900]]);
 
       await expect(recordManualFirstPayment(MANUAL, NOW)).resolves.toEqual({ kind: "recorded" });
 
@@ -490,10 +490,10 @@ describe("recordManualFirstPayment", () => {
           replacing: "sub-lapsed",
           adCreditCents: 6_000,
           referralCodeId: null,
-          bundledAddOns: [usdLine("managed-website", 5_900, 1_140), usdLine("social-media", 5_900, 1_180), usdLine("paid-ads", 5_900, 1_180)],
+          bundledAddOns: [usdLine("managed-website", 5_900, 0), usdLine("social-media", 5_900, 0), usdLine("paid-ads", 5_900, 0)],
         }),
       );
-      expect(recordPaymentAndActivate).toHaveBeenCalledWith(tx, expect.objectContaining({ kind: "reactivation", amountCents: 14_200 }));
+      expect(recordPaymentAndActivate).toHaveBeenCalledWith(tx, expect.objectContaining({ kind: "reactivation", amountCents: 17_700 }));
       expect(markPackageOfferForfeited).not.toHaveBeenCalled();
     });
 
@@ -511,7 +511,7 @@ describe("recordManualFirstPayment", () => {
 
     describe("with the code the lapsed subscription was paying with", () => {
       const THREE = { id: "code-3", code: "THREE", currency: "USD", discount: { kind: "percent", basisPoints: 1_000 }, discountMonths: 3, active: false, expiresAt: NOW } as ReferralCode;
-      const PACKAGE = [["managed-website", 4_760], ["social-media", 4_720], ["paid-ads", 4_720]] as const;
+      const PACKAGE = [["managed-website", 5_900], ["social-media", 5_900], ["paid-ads", 5_900]] as const;
 
       beforeEach(() => {
         vi.mocked(findReferralCodeById).mockResolvedValue(THREE);
@@ -522,11 +522,11 @@ describe("recordManualFirstPayment", () => {
 
         await expect(recordManualFirstPayment(MANUAL, NOW)).resolves.toEqual({ kind: "recorded" });
 
-        // 10% of the package net 14,200 is 1,420, not the 1,000 the code took off the smaller basket it was frozen on. The code is retired, and still carries.
-        expect(openCheckoutSubscription).toHaveBeenCalledWith(tx, expect.objectContaining({ referralCodeId: "code-3", discountAmountCents: 1_420, discountMonthsLeft: 2 }));
+        // 10% of the basket at list, 17,700, is 1,770, not the 1,000 the code took off the smaller basket it was frozen on. The code is retired, and still carries.
+        expect(openCheckoutSubscription).toHaveBeenCalledWith(tx, expect.objectContaining({ referralCodeId: "code-3", discountAmountCents: 1_770, discountMonthsLeft: 2 }));
         expect(findRedeemableReferralCode).not.toHaveBeenCalled();
-        expect(recordPaymentAndActivate).toHaveBeenCalledWith(tx, expect.objectContaining({ kind: "reactivation", amountCents: 12_780 }));
-        expect(settleDiscountAfterPayment).toHaveBeenCalledWith(tx, expect.objectContaining({ subscriptionId: "sub-manual", discountTakenCents: 1_420 }));
+        expect(recordPaymentAndActivate).toHaveBeenCalledWith(tx, expect.objectContaining({ kind: "reactivation", amountCents: 15_930 }));
+        expect(settleDiscountAfterPayment).toHaveBeenCalledWith(tx, expect.objectContaining({ subscriptionId: "sub-manual", discountTakenCents: 1_770 }));
       });
 
       it("carries a code with no limit as no limit", async () => {
@@ -543,7 +543,7 @@ describe("recordManualFirstPayment", () => {
         await recordManualFirstPayment(MANUAL, NOW);
 
         expect(openCheckoutSubscription).toHaveBeenCalledWith(tx, expect.objectContaining({ referralCodeId: null, discountAmountCents: 0, discountMonthsLeft: null }));
-        expect(recordPaymentAndActivate).toHaveBeenCalledWith(tx, expect.objectContaining({ amountCents: 14_200 }));
+        expect(recordPaymentAndActivate).toHaveBeenCalledWith(tx, expect.objectContaining({ amountCents: 17_700 }));
       });
 
       it("carries nothing after the client's own cancel", async () => {
@@ -559,7 +559,7 @@ describe("recordManualFirstPayment", () => {
         lapse({ referralCodeId: "code-3", discountMonthsLeft: 2 }, PACKAGE);
         const basket = await loadReactivationBasket(tx, BUSINESS_ID);
 
-        expect(await loadManualCarriedCode(tx, BUSINESS_ID, basket, "USD")).toMatchObject({ monthsLeft: 2, discountCents: 1_420, code: { code: "THREE" } });
+        expect(await loadManualCarriedCode(tx, BUSINESS_ID, basket, "USD")).toMatchObject({ monthsLeft: 2, discountCents: 1_770, code: { code: "THREE" } });
         expect(await loadManualCarriedCode(tx, BUSINESS_ID, { ...basket, cancelled: true }, "USD")).toBeNull();
       });
     });
@@ -572,8 +572,8 @@ describe("recordManualFirstPayment", () => {
       vi.mocked(findBundledAddOnsForSubscription).mockImplementation(async (_db, subscriptionId) =>
         (
           [
-            ["managed-website", 5_390],
-            ["social-media", 5_310],
+            ["managed-website", 5_900],
+            ["social-media", 5_900],
           ] as const
         ).map(
           ([addOn, netAmountCents]) =>
@@ -586,7 +586,7 @@ describe("recordManualFirstPayment", () => {
       await expect(recordManualFirstPayment(MANUAL, NOW)).resolves.toEqual({ kind: "recorded" });
       expect(openCheckoutSubscription).toHaveBeenCalledWith(
         tx,
-        expect.objectContaining({ replacing: "sub-lapsed", adCreditCents: 2_500, bundledAddOns: [usdLine("managed-website", 5_900, 510), usdLine("social-media", 5_900, 590)] }),
+        expect.objectContaining({ replacing: "sub-lapsed", adCreditCents: 2_500, bundledAddOns: [usdLine("managed-website", 5_900, 0), usdLine("social-media", 5_900, 0)] }),
       );
     });
   });

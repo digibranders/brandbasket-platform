@@ -2,11 +2,11 @@ import type { MoneyCurrency } from "../money";
 import { addOnById, addOnPrice, MONITORING_ID, MONTHLY_ADD_ON_IDS, type AddOnPrice, type MonthlyAddOnId, type PlanAddOnId } from "./add-ons";
 
 /**
- * Package offers (owner decisions, 2026-10-21 and 2026-10-26; docs/plans/16-platform-pricing-offers.md and
- * docs/plans/25-money-gst-and-offers.md). Two services on one subscription are 10% off and all three 20% off, taken off the
- * price the customer pays (GST included), and the package saving is rounded down to a whole rupee or dollar (the rule in
- * packageDiscountsFor); a package bought together at the first checkout also earns monthly ad credit. A package is made of
- * plans: monitoring is never part of one, so it is always at list. Pure and browser-safe. brandbasket-website holds the same numbers in lib/pricing.ts.
+ * Package offers. There are none now (owner, 2026-11-11): each plan is at its own price whatever else is bought, and the
+ * only offer is Dedicated Expert Monitoring at no cost with all three plans (add-ons.ts monitoringIncludedWith). The
+ * rules below stay for rows sold under the old offers (10% off two services, 20% off all three, with monthly ad credit;
+ * docs/plans/25-money-gst-and-offers.md): a discount stored on a row keeps its price. Pure and browser-safe.
+ * brandbasket-website holds the same rule in lib/pricing.ts.
  */
 interface PackageOffer {
   readonly services: readonly PlanAddOnId[];
@@ -27,17 +27,8 @@ const BASIS_POINTS_DENOMINATOR = 10_000;
 /** A package saving is a whole number of rupees or dollars: a multiple of this many minor units. */
 const PACKAGE_ROUNDING_CENTS = 100;
 
-/**
- * Ad credit a month at the first checkout (owner, 2026-10-26, kept slot for slot on 2026-11-06): 1,500 rupees for Website +
- * Social and for Social + Ads, 3,000 for all three, none for Website + Ads. In dollars it is $30 for those two-plan packages
- * and $60 for all three.
- */
-export const PACKAGE_OFFERS: readonly PackageOffer[] = [
-  { services: ["managed-website", "social-media"], basisPoints: 1000, adCreditCents: { INR: 150000, USD: 3000 } },
-  { services: ["managed-website", "paid-ads"], basisPoints: 1000, adCreditCents: { INR: 0, USD: 0 } },
-  { services: ["social-media", "paid-ads"], basisPoints: 1000, adCreditCents: { INR: 150000, USD: 3000 } },
-  { services: ["managed-website", "social-media", "paid-ads"], basisPoints: 2000, adCreditCents: { INR: 300000, USD: 6000 } },
-];
+/** Every package offer on sale: none since 2026-11-11, so no basket takes a package discount or ad credit. */
+export const PACKAGE_OFFERS: readonly PackageOffer[] = [];
 
 /** The services once each, in the catalogue's order. */
 function distinctServices(services: readonly MonthlyAddOnId[]): readonly MonthlyAddOnId[] {
@@ -164,6 +155,14 @@ export function percentOf(basisPoints: number): string {
   const hundredths = basisPoints % 100;
   if (hundredths === 0) return String(whole);
   return `${whole}.${String(hundredths).padStart(2, "0").replace(/0$/, "")}`;
+}
+
+/**
+ * The whole percentage, in basis points, of an offer stored on lines sold under a package that is no longer on sale
+ * (none is since 2026-11-11): 10% or 20%, the paise of the package rounding aside. 0 when nothing is listed.
+ */
+export function soldPackageBasisPoints(listCents: number, offerCents: number): number {
+  return listCents > 0 ? Math.round((offerCents * 100) / listCents) * 100 : 0;
 }
 
 /**

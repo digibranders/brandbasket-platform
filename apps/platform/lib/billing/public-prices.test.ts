@@ -15,13 +15,8 @@ describe("publicPricing", () => {
     ]);
   });
 
-  it("lists the four packages with their percentage and ad credit", () => {
-    expect(pricing.packages).toEqual([
-      { services: ["managed-website", "social-media"], basisPoints: 1_000, adCreditCents: { INR: 150_000, USD: 3_000 } },
-      { services: ["managed-website", "paid-ads"], basisPoints: 1_000, adCreditCents: { INR: 0, USD: 0 } },
-      { services: ["social-media", "paid-ads"], basisPoints: 1_000, adCreditCents: { INR: 150_000, USD: 3_000 } },
-      { services: ["managed-website", "social-media", "paid-ads"], basisPoints: 2_000, adCreditCents: { INR: 300_000, USD: 6_000 } },
-    ]);
+  it("lists no packages, as none is on sale", () => {
+    expect(pricing.packages).toEqual([]);
   });
 
   it("is the catalogue and the package offers, not a copy of them", () => {

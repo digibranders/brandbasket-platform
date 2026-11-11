@@ -65,7 +65,7 @@ const PLAN = {
 /** What a code is priced against on a Website Management subscription: the website's ₹2,999 list price, which is its package net. */
 const WEBSITE = { currency: "INR", netCents: 299_900 } as const;
 /** The website and Social Media Management together: ₹5,399 after the 10% package offer. */
-const PACKAGE_BASIS = { currency: "INR", netCents: 539_900 } as const;
+const PACKAGE_BASIS = { currency: "INR", netCents: 599_800 } as const;
 const WEBSITE_ALONE = ["managed-website"] as const;
 
 function code(overrides: Partial<ReferralCode> = {}): ReferralCode {
@@ -116,9 +116,9 @@ describe("codeBasisFor", () => {
     expect(codeBasisFor(["paid-ads"], "USD")).toEqual({ currency: "USD", netCents: 5_900 });
   });
 
-  it("is the package net, after the package offer, for two or more services", () => {
+  it("is the sum of the lists for two or more services", () => {
     expect(codeBasisFor(["managed-website", "social-media"], "INR")).toEqual(PACKAGE_BASIS);
-    expect(codeBasisFor(["managed-website", "social-media", "paid-ads"], "INR")).toEqual({ currency: "INR", netCents: 719_800 });
+    expect(codeBasisFor(["managed-website", "social-media", "paid-ads"], "INR")).toEqual({ currency: "INR", netCents: 899_700 });
   });
 
   it("is null for no services at all", () => {
@@ -152,7 +152,7 @@ describe("discountFrom", () => {
 
   it("resolves a percentage code against a package's net, after the package offer", () => {
     // 10% of ₹11,699, not of the ₹12,998 the two services list at.
-    expect(discountFrom(code({ discount: { kind: "percent", basisPoints: 1_000 } }), PACKAGE_BASIS)?.amountCents).toBe(53_990);
+    expect(discountFrom(code({ discount: { kind: "percent", basisPoints: 1_000 } }), PACKAGE_BASIS)?.amountCents).toBe(59_980);
   });
 
   it("takes a flat code's own amount on a package, which leaves something to charge", () => {
@@ -252,7 +252,7 @@ describe("applyReferralCodeFor", () => {
   it("accepts a code on a package of two or more services, priced against the package net", async () => {
     vi.mocked(findRedeemableReferralCode).mockResolvedValue(code({ discount: { kind: "percent", basisPoints: 1_000 }, discountMonths: 3 }));
     const outcome = await applyReferralCodeFor(customer, "SAVE15", ["managed-website", "social-media"], NOW);
-    expect(outcome).toMatchObject({ kind: "applied", discount: { amountCents: 53_990, months: 3 } });
+    expect(outcome).toMatchObject({ kind: "applied", discount: { amountCents: 59_980, months: 3 } });
     expect(setBusinessReferralCode).toHaveBeenCalledWith(expect.anything(), { businessId: BUSINESS_ID, referralCodeId: "code-1" });
   });
 

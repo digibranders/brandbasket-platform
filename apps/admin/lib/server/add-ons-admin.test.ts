@@ -268,7 +268,7 @@ describe("add-ons taken with the plan", () => {
     ]);
   });
 
-  it("says which package the client has, the ad credit a month, and when the offer was given up", async () => {
+  it("says no package for two services, a stored ad credit a month, and when the offer was given up", async () => {
     const FORFEITED = new Date("2026-11-05T09:00:00.000Z");
     vi.mocked(listAddOnSubscriptionsForStaff).mockResolvedValue([] as never);
     vi.mocked(listPressReleasesForBusiness).mockResolvedValue([] as never);
@@ -278,7 +278,7 @@ describe("add-ons taken with the plan", () => {
     ] as never);
     vi.mocked(findLatestSubscriptionForBusiness).mockResolvedValue({ id: "sub-1", status: "active", activatedAt: NOW, cancelRequestedAt: null, adCreditCents: 150_000, paidThroughAt: null } as never);
 
-    expect((await loadClientAddOns(BUSINESS, NOW)).package).toEqual({ package: "Website + Social, 10% off each service", adCredit: "₹1,500 a month", forfeitedOn: null });
+    expect((await loadClientAddOns(BUSINESS, NOW)).package).toEqual({ package: "No package", adCredit: "₹1,500 a month", forfeitedOn: null });
 
     vi.mocked(findPackageOfferForfeitedAt).mockResolvedValue(FORFEITED);
     expect((await loadClientAddOns(BUSINESS, NOW)).package).toEqual({ package: "No package", adCredit: "₹1,500 a month", forfeitedOn: "5 November 2026" });

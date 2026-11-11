@@ -36,7 +36,7 @@ import {
 import { stateCodeOfIndiaPostName } from "@brandbasket/db/india-states";
 import { addOnById, isMonthlyAddOnId } from "../lib/billing/add-ons";
 import { isPrintableOnInvoice, normaliseInvoiceText } from "../lib/billing/invoice-text";
-import { packageBasisPointsFor, packageOfferNote, percentOf, shareDiscountAcrossLines } from "../lib/billing/packages";
+import { packageBasisPointsFor, packageOfferNote, percentOf, shareDiscountAcrossLines, soldPackageBasisPoints } from "../lib/billing/packages";
 import { paymentLabel } from "../lib/billing/payment-method";
 import { planLabel } from "../lib/billing/receipt-title";
 import { PRODUCT_SHORT_NAME } from "../lib/deployment-brand";
@@ -282,8 +282,9 @@ function printedLine(line: InvoiceLineInput): InvoiceLineInput {
 
 /**
  * The service lines of a plan payment, each with its package discount and the package's note. The percentage comes from the
- * set of services on the invoice (packageBasisPointsFor), so every discounted line names the package it belongs to. A
- * discount on a set of services that earns no package is something this code cannot explain, and nothing is issued.
+ * set of services on the invoice (packageBasisPointsFor). No package is on sale since 2026-11-11, so a line still billed
+ * at a discount stored under an old offer names the whole percentage it was sold at (10 or 20, the paise of the package
+ * rounding aside) instead.
  */
 function serviceLinesFor(source: Extract<InvoiceSource, { kind: "plan" }>): InvoiceLineInput[] {
   const bundled = (source.bundledAddOns ?? []).map((line) => {
@@ -293,13 +294,11 @@ function serviceLinesFor(source: Extract<InvoiceSource, { kind: "plan" }>): Invo
   const services = bundled.map((line) => line.service);
   const basisPoints = packageBasisPointsFor({ services, forfeited: false });
   return bundled.map((line) => {
-    if (line.offerDiscountAmountCents > 0 && basisPoints === 0) {
-      throw new BillingRangeError(`${line.service} carries a package discount of ${line.offerDiscountAmountCents}, but ${services.join(", ")} earn no package offer`);
-    }
+    const soldBasisPoints = basisPoints > 0 ? basisPoints : soldPackageBasisPoints(line.listAmountCents, line.offerDiscountAmountCents);
     return {
       description: addOnById(line.service).title,
       detail: planLineDetail(source.monthly, source.periodStart, source.periodEnd),
-      note: line.offerDiscountAmountCents > 0 ? packageOfferNote(basisPoints) : null,
+      note: line.offerDiscountAmountCents > 0 ? packageOfferNote(soldBasisPoints) : null,
       sac: BRANDBASKET_SAC,
       quantity: 1,
       unitAmountCents: line.listAmountCents,

@@ -43,34 +43,27 @@ describe("bundleLines", () => {
     ]);
   });
 
-  it("takes 10% off two services as a whole-rupee saving, the odd paise on the first of two equal lines", () => {
-    // Worked out on their own: 10% of 599,800 paise is 59,980, so the saving is ₹599 (59,900). Each line's own 10%
-    // is 29,990, which is 80 paise too much in all, taken back from the first line of the equal pair.
+  it("prices two services at list, with no offer on either line", () => {
     expect(bundleLines(["social-media", "paid-ads"], "INR")).toEqual([
-      { addOn: "social-media", title: "Social Media Management", listCents: 299_900, offerCents: 29_910, netCents: 269_990 },
-      { addOn: "paid-ads", title: "Paid Ads Management", listCents: 299_900, offerCents: 29_990, netCents: 269_910 },
+      { addOn: "social-media", title: "Social Media Management", listCents: 299_900, offerCents: 0, netCents: 299_900 },
+      { addOn: "paid-ads", title: "Paid Ads Management", listCents: 299_900, offerCents: 0, netCents: 299_900 },
     ]);
   });
 
-  it("takes 20% off all three, again as a whole-rupee saving", () => {
-    // 20% of 899,700 is 179,940, so the saving is ₹1,799 (179,900): 40 paise less than the lines' own 20%, off the first line.
-    expect(bundleLines(["managed-website", "social-media", "paid-ads"], "INR").map((line) => [line.offerCents, line.netCents])).toEqual([
-      [59_940, 239_960],
-      [59_980, 239_920],
-      [59_980, 239_920],
+  it("prices all three at list, in the catalogue's order, in both currencies", () => {
+    expect(bundleLines(["paid-ads", "social-media", "managed-website"], "INR").map((line) => [line.addOn, line.offerCents, line.netCents])).toEqual([
+      ["managed-website", 0, 299_900],
+      ["social-media", 0, 299_900],
+      ["paid-ads", 0, 299_900],
     ]);
-  });
-
-  it("prices a dollar package in cents, in the catalogue's order", () => {
-    // 10% of 11,800 cents is 1,180, so the saving is $11 (1,100): 80 cents less than the lines' own 10%, off the first line.
-    expect(bundleLines(["paid-ads", "managed-website"], "USD")).toEqual([
-      { addOn: "managed-website", title: "Website Management", listCents: 5_900, offerCents: 510, netCents: 5_390 },
-      { addOn: "paid-ads", title: "Paid Ads Management", listCents: 5_900, offerCents: 590, netCents: 5_310 },
+    expect(bundleLines(["managed-website", "paid-ads"], "USD").map((line) => [line.offerCents, line.netCents])).toEqual([
+      [0, 5_900],
+      [0, 5_900],
     ]);
   });
 
   it("adds the nets together, and is nothing for no services", () => {
-    expect(bundleNetCents(bundleLines(["managed-website", "social-media", "paid-ads"], "INR"))).toBe(719_800);
+    expect(bundleNetCents(bundleLines(["managed-website", "social-media", "paid-ads"], "INR"))).toBe(899_700);
     expect(bundleNetCents(bundleLines([], "INR"))).toBe(0);
   });
 });
@@ -96,7 +89,7 @@ describe("reactivationBasketOf", () => {
   const line = (addOn: string, overrides: Partial<LapsedLine> = {}): LapsedLine => ({ addOn, activatedAt: PAID, endRequestedAt: null, ...overrides });
   const ALL_THREE = [line("managed-website"), line("social-media"), line("paid-ads")];
 
-  it("restores a lapsed package's own services at the package price, with its ad credit kept", () => {
+  it("restores a lapsed package's own services at list, keeping the ad credit stored on the subscription", () => {
     const basket = reactivationBasketOf({ subscription: LAPSED, lines: ALL_THREE, forfeited: false });
     expect(basket).toEqual({
       services: ["managed-website", "social-media", "paid-ads"],
@@ -104,18 +97,17 @@ describe("reactivationBasketOf", () => {
       adCreditCents: 300_000,
       cancelled: false,
     });
-    expect(reactivationNetCents(basket, "INR")).toBe(719_800);
-    // 17,700 cents of list, 20% off is 3,540, so the saving is $35 (3,500).
-    expect(reactivationNetCents(basket, "USD")).toBe(14_200);
+    expect(reactivationNetCents(basket, "INR")).toBe(899_700);
+    expect(reactivationNetCents(basket, "USD")).toBe(17_700);
   });
 
-  it("prices the set it restores, not the percentage the lapsed lines were last billed at", () => {
+  it("prices the set it restores at list, whatever the lapsed lines were last billed at", () => {
     const basket = reactivationBasketOf({
       subscription: { ...LAPSED, adCreditCents: 150_000 },
       lines: [line("managed-website"), line("social-media")],
       forfeited: false,
     });
-    expect(reactivationNetCents(basket, "INR")).toBe(539_900);
+    expect(reactivationNetCents(basket, "INR")).toBe(599_800);
     expect(basket.adCreditCents).toBe(150_000);
   });
 
@@ -182,7 +174,7 @@ describe("reactivationBasketOf", () => {
     expect(reactivationNetCents(basket, "INR")).toBe(899_700);
   });
 
-  it("restores a subscription the provider ended without the customer asking (a revoked mandate) as a lapse: package price and ad credit kept", () => {
+  it("restores a subscription the provider ended without the customer asking (a revoked mandate) as a lapse: list prices and the stored ad credit kept", () => {
     const basket = reactivationBasketOf({ subscription: { ...LAPSED, status: "cancelled" }, lines: ALL_THREE, forfeited: false });
     expect(basket).toEqual({
       services: ["managed-website", "social-media", "paid-ads"],
@@ -190,7 +182,7 @@ describe("reactivationBasketOf", () => {
       adCreditCents: 300_000,
       cancelled: false,
     });
-    expect(reactivationNetCents(basket, "INR")).toBe(719_800);
+    expect(reactivationNetCents(basket, "INR")).toBe(899_700);
   });
 
   it("falls back to the website alone, which earns no ad credit, when no service is left to restore", () => {

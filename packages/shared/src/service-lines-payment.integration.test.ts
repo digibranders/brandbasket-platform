@@ -77,18 +77,18 @@ afterEach(() => {
 });
 
 describe("a payment for service lines on the services plan", () => {
-  it("charges the website and Social Media Management at the package price, and invoices a line for each", async () => {
+  it("charges the website and Social Media Management at list, and invoices a line for each", async () => {
     const subscription = await open(linesOf("managed-website", "social-media"), `fake_sub_${"d".repeat(24)}`);
     const activation = await dbs.staff.db.transaction((tx) =>
       activateFirstPayment(tx, { businessId, subscriptionId: subscription.id, plan, provider: "fake", providerPaymentId: "fake_pay_lines", paidAt: PAID_AT }),
     );
 
-    expect(activation.payment.amountCents).toBe(539_900);
+    expect(activation.payment.amountCents).toBe(599_800);
     const invoice = await findTaxInvoiceByPaymentId(dbs.staff.db, activation.payment.id);
-    expect(invoice?.totalCents).toBe(539_900);
+    expect(invoice?.totalCents).toBe(599_800);
     expect(invoice?.lines.map((line) => [line.description, line.unitAmountCents, line.discountAmountCents])).toEqual([
-      ["Website Management", 299_900, 29_910],
-      ["Social Media Management", 299_900, 29_990],
+      ["Website Management", 299_900, 0],
+      ["Social Media Management", 299_900, 0],
     ]);
   });
 

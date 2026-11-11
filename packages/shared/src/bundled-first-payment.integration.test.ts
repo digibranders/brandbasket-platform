@@ -33,8 +33,7 @@ vi.mock("server-only", () => ({}));
 
 /**
  * The services taken at the first checkout are the whole charge, against a real database: the services plan costs
- * nothing, two or more are priced as a package, the provider runs one plan for the lines' total, a package bought together
- * freezes its ad credit, and one payment turns the lines on, is invoiced with a line for each and is taken every month after.
+ * nothing, every one is at list, the provider runs one plan for the lines' total, no ad credit is frozen, and one payment turns the lines on, is invoiced with a line for each and is taken every month after.
  */
 
 const PAID_AT = new Date("2026-10-09T09:00:00.000Z");
@@ -142,42 +141,34 @@ afterEach(() => {
 });
 
 describe("a first checkout of a package", () => {
-  it("charges all three at 20% off on one provider plan for their total, and freezes ₹3,000 of ad credit", async () => {
+  it("charges all three at list on one provider plan for their total, with no ad credit", async () => {
     const { providerPlanId, bundledAddOnNetCents, asked, subscription } = await firstCheckout(["managed-website", "social-media", "paid-ads"]);
 
-    expect(bundledAddOnNetCents).toBe(719_800);
-    expect(providerPlanId).toBe("plan_test_719800");
-    expect(await findProviderBundlePlan(dbs.staff.db, { planId: plan.id, netMonthlyCents: 719_800, provider: "fake" })).toBe("plan_test_719800");
-    expect(asked).toBe(719_800);
-    expect(subscription).toMatchObject({ bundledAddOnNetCents: 719_800, adCreditCents: 300_000 });
+    expect(bundledAddOnNetCents).toBe(899_700);
+    expect(providerPlanId).toBe("plan_test_899700");
+    expect(await findProviderBundlePlan(dbs.staff.db, { planId: plan.id, netMonthlyCents: 899_700, provider: "fake" })).toBe("plan_test_899700");
+    expect(asked).toBe(899_700);
+    expect(subscription).toMatchObject({ bundledAddOnNetCents: 899_700, adCreditCents: 0 });
 
     const activation = await payFirst(subscription);
-    expect(activation.payment.amountCents).toBe(719_800);
+    expect(activation.payment.amountCents).toBe(899_700);
   });
 
-  it("charges Social + Ads, the website's ?plan=social,ads, at 10% off with ₹1,500 of ad credit, and invoices a line for each", async () => {
+  it("charges Social + Ads, the website's ?plan=social,ads, at list with no ad credit, and invoices a line for each", async () => {
     const { asked, subscription } = await firstCheckout(["social-media", "paid-ads"]);
 
-    // ₹5,998 less 10% rounded down to the rupee (₹599): ₹5,399 a month, GST included.
-    expect(asked).toBe(539_900);
-    expect(subscription).toMatchObject({ bundledAddOnNetCents: 539_900, adCreditCents: 150_000 });
+    // Two plans at ₹2,999 each: ₹5,998 a month, GST included.
+    expect(asked).toBe(599_800);
+    expect(subscription).toMatchObject({ bundledAddOnNetCents: 599_800, adCreditCents: 0 });
 
     const activation = await payFirst(subscription);
-    expect(activation.payment.amountCents).toBe(539_900);
+    expect(activation.payment.amountCents).toBe(599_800);
     const invoice = await findTaxInvoiceByPaymentId(dbs.staff.db, activation.payment.id);
     expect(invoice?.lines.map((line) => [line.description, line.unitAmountCents, line.discountAmountCents])).toEqual([
-      ["Social Media Management", 299_900, 29_910],
-      ["Paid Ads Management", 299_900, 29_990],
+      ["Social Media Management", 299_900, 0],
+      ["Paid Ads Management", 299_900, 0],
     ]);
-    expect(invoice?.totalCents).toBe(539_900);
-  });
-
-  it("charges Website + Ads at 10% off, which earns no ad credit", async () => {
-    const { asked, subscription } = await firstCheckout(["managed-website", "paid-ads"]);
-
-    expect(asked).toBe(539_900);
-    expect(subscription.adCreditCents).toBe(0);
-    expect((await payFirst(subscription)).payment.amountCents).toBe(539_900);
+    expect(invoice?.totalCents).toBe(599_800);
   });
 
   it("charges one service its list price, GST included, with no package and no ad credit", async () => {
@@ -192,11 +183,11 @@ describe("a first payment with services", () => {
   it("freezes the add-ons on the subscription, as pending until it is paid", async () => {
     const subscription = await openSubscription(bundleOf("social-media", "paid-ads"));
 
-    expect(subscription.bundledAddOnNetCents).toBe(269_990 + 269_910);
+    expect(subscription.bundledAddOnNetCents).toBe(299_900 + 299_900);
     const rows = await findBundledAddOnsForSubscription(dbs.staff.db, subscription.id);
     expect(rows.map((row) => [row.addOn, row.status, row.netAmountCents])).toEqual([
-      ["social-media", "pending", 269_990],
-      ["paid-ads", "pending", 269_910],
+      ["social-media", "pending", 299_900],
+      ["paid-ads", "pending", 299_900],
     ]);
   });
 
@@ -204,17 +195,17 @@ describe("a first payment with services", () => {
     const subscription = await openSubscription(bundleOf("social-media", "paid-ads"));
     const activation = await payFirst(subscription);
 
-    // Social + Ads at 10% off, with the saving rounded down to the whole rupee: ₹5,998 less ₹599, so ₹5,399, GST included.
-    expect(activation.payment.amountCents).toBe(539_900);
+    // Social + Ads at list: 2 x ₹2,999 = ₹5,998, GST included.
+    expect(activation.payment.amountCents).toBe(599_800);
 
     const rows = await findBundledAddOnsForSubscription(dbs.staff.db, subscription.id);
     expect(rows.every((row) => row.status === "active" && row.activatedAt !== null)).toBe(true);
 
     const invoice = await findTaxInvoiceByPaymentId(dbs.staff.db, activation.payment.id);
-    expect(invoice?.totalCents).toBe(539_900);
+    expect(invoice?.totalCents).toBe(599_800);
     expect(invoice?.lines.map((line) => [line.description, line.unitAmountCents, line.discountAmountCents])).toEqual([
-      ["Social Media Management", 299_900, 29_910],
-      ["Paid Ads Management", 299_900, 29_990],
+      ["Social Media Management", 299_900, 0],
+      ["Paid Ads Management", 299_900, 0],
     ]);
     expect(invoice?.cgstCents).toBe(invoice?.sgstCents);
   });
@@ -284,7 +275,7 @@ describe("a first payment with services", () => {
       expect(await recordBundledAddOnRemoval(dbs.staff.db, { id: growth.id, businessId, pendingBundledAddOnNetCents: 299_900, now: NEXT_MONTH })).toBe(true);
 
       const after = await findSubscriptionById(dbs.staff.db, subscription.id);
-      expect(after).toMatchObject({ bundledAddOnNetCents: 539_900, pendingBundledAddOnNetCents: 299_900 });
+      expect(after).toMatchObject({ bundledAddOnNetCents: 599_800, pendingBundledAddOnNetCents: 299_900 });
       const row = (await findBundledAddOnsForSubscription(dbs.staff.db, subscription.id)).find((candidate) => candidate.id === growth.id);
       expect(row).toMatchObject({ status: "active", endRequestedAt: NEXT_MONTH });
     });

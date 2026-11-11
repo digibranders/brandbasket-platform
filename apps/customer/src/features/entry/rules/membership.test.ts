@@ -42,11 +42,11 @@ describe("basketNetCents", () => {
   it.each([
     [["managed-website"], "INR", 299_900],
     [["social-media"], "INR", 299_900],
-    [["managed-website", "social-media"], "INR", 539_900],
-    [["social-media", "paid-ads"], "INR", 539_900],
-    [["managed-website", "social-media", "paid-ads"], "INR", 719_800],
-    [["managed-website", "social-media", "paid-ads"], "USD", 14_200],
-  ] as const)("prices %o in %s at %i with GST included, the package price a new sign-up pays", (services, currency, net) => {
+    [["managed-website", "social-media"], "INR", 599_800],
+    [["social-media", "paid-ads"], "INR", 599_800],
+    [["managed-website", "social-media", "paid-ads"], "INR", 899_700],
+    [["managed-website", "social-media", "paid-ads"], "USD", 17_700],
+  ] as const)("prices %o in %s at %i with GST included, every service at list", (services, currency, net) => {
     expect(basketNetCents(services, currency)).toBe(net);
   });
 });

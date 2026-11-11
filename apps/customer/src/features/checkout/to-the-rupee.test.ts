@@ -81,14 +81,14 @@ describe("the new checkout charges what the old one did, to the rupee", () => {
   }
 
   it("lands on the published prices, GST included in rupees and none in dollars", () => {
-    expect([WEBSITE, TWO, THREE].map((services) => newCheckout(services, "INR", null).totalCents)).toEqual([299_900, 539_900, 719_800]);
-    expect([WEBSITE, TWO, THREE].map((services) => newCheckout(services, "USD", null).totalCents)).toEqual([5_900, 10_700, 14_200]);
+    expect([WEBSITE, TWO, THREE].map((services) => newCheckout(services, "INR", null).totalCents)).toEqual([299_900, 599_800, 899_700]);
+    expect([WEBSITE, TWO, THREE].map((services) => newCheckout(services, "USD", null).totalCents)).toEqual([5_900, 11_800, 17_700]);
     expect(newCheckout(THREE, "USD", null).gstCents).toBe(0);
   });
 
-  it("grants the first-payment ad money only for packages", () => {
+  it("grants no first-payment ad money on any basket", () => {
     expect(newCheckout(WEBSITE, "INR", null).adCreditCents).toBe(0);
-    expect(newCheckout(TWO, "INR", null).adCreditCents).toBe(150_000);
-    expect(newCheckout(THREE, "INR", null).adCreditCents).toBe(300_000);
+    expect(newCheckout(TWO, "INR", null).adCreditCents).toBe(0);
+    expect(newCheckout(THREE, "INR", null).adCreditCents).toBe(0);
   });
 });

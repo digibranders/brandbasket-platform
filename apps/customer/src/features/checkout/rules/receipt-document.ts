@@ -2,7 +2,7 @@ import { gstInsideCents } from "@brandbasket/billing/tax";
 import type { PaymentInvoiceBasis, Receipt } from "@brandbasket/db";
 import { isUnappliedReason } from "@brandbasket/db/unapplied-reasons";
 import { addOnById, isMonthlyAddOnId } from "@brandbasket/shared/lib/billing/add-ons";
-import { packageBasisPointsFor, packageOfferNote } from "@brandbasket/shared/lib/billing/packages";
+import { packageBasisPointsFor, packageOfferNote, soldPackageBasisPoints } from "@brandbasket/shared/lib/billing/packages";
 import { planLabel, receiptDescription, receiptNumber } from "@brandbasket/shared/lib/billing/receipt-title";
 import type { MoneyCurrency } from "@brandbasket/shared/lib/money";
 import { businessDetails, siteConfig } from "@brandbasket/shared/lib/site-config";
@@ -103,9 +103,10 @@ function serviceLines(receipt: Receipt, basis: PaymentInvoiceBasis): ReceiptLine
   const codeCents = basis.discountAmountCents - basis.retentionDiscountCents;
   const paidCents = listCents - offerCents - basis.discountAmountCents;
   const taxCents = gstInsideCents(receipt.amountCents, rate);
-  const packageBasisPoints = packageBasisPointsFor({ services: services.map((service) => service.id), forfeited: false });
+  // A payment made under a package offer, before they ended, names the percentage it was sold at.
+  const packageBasisPoints =
+    packageBasisPointsFor({ services: services.map((service) => service.id), forfeited: false }) || soldPackageBasisPoints(listCents, offerCents);
   if (codeCents < 0 || basis.retentionDiscountCents < 0 || paidCents <= 0 || paidCents !== receipt.amountCents) return null;
-  if (offerCents > 0 && packageBasisPoints === 0) return null;
 
   const money = (cents: number): string => receiptMoney(cents, receipt.currency);
   const minus = (label: string, cents: number): ReceiptLine[] => (cents > 0 ? [{ label, amount: `-${money(cents)}` }] : []);

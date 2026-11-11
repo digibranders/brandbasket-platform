@@ -80,7 +80,7 @@ async function saveKarnatakaDetails(): Promise<void> {
   });
 }
 
-/** The services as a checkout freezes them: each with the package discount the set earns. */
+/** The services as a checkout freezes them: each at list. */
 function linesOf(plan: Plan, ...ids: MonthlyAddOnId[]): readonly NewBundledAddOn[] {
   return packageLines({ services: ids, forfeited: false }, plan.currency).map((line) => ({
     addOn: line.addOn,
@@ -479,7 +479,7 @@ describe("what the invoice describes", () => {
     expect(invoice?.totalCents).toBe(payment.amountCents);
   });
 
-  it("describes a first payment of all three services by a line each at its list price less 20%, with no line for the plan row and nothing about ad credit", async () => {
+  it("describes a first payment of all three services by a line each at list with no package note, no line for the plan row and nothing about ad credit", async () => {
     await saveMaharashtraDetails("27AAPFU0939F1ZV");
     const lines = linesOf(services, "managed-website", "social-media", "paid-ads");
 
@@ -487,27 +487,27 @@ describe("what the invoice describes", () => {
 
     const invoice = await findTaxInvoiceByPaymentId(dbs.staff.db, activation.payment.id);
     expect(invoice?.lines.map((line) => [line.description, line.unitAmountCents, line.discountAmountCents, line.note])).toEqual([
-      ["Website Management", 299_900, 59_940, "Package offer, 20% off"],
-      ["Social Media Management", 299_900, 59_980, "Package offer, 20% off"],
-      ["Paid Ads Management", 299_900, 59_980, "Package offer, 20% off"],
+      ["Website Management", 299_900, 0, null],
+      ["Social Media Management", 299_900, 0, null],
+      ["Paid Ads Management", 299_900, 0, null],
     ]);
-    // ₹7,198 holds ₹1,098 of GST: ₹549 each of CGST and SGST.
-    expect(invoice).toMatchObject({ taxableCents: 610_000, cgstCents: 54_900, sgstCents: 54_900, roundOffCents: 0, totalCents: 719_800 });
-    expect(activation.payment.amountCents).toBe(719_800);
+    // ₹8,997 holds ₹1,372.42 of GST: ₹686.21 each of CGST and SGST (68_621 paise each, rounded separately).
+    expect(invoice).toMatchObject({ taxableCents: 762_458, cgstCents: 68_621, sgstCents: 68_621, roundOffCents: 0, totalCents: 899_700 });
+    expect(activation.payment.amountCents).toBe(899_700);
     expect(JSON.stringify(invoice?.lines)).not.toMatch(/credit/i);
   });
 
-  it("describes a first payment of Website and Social at 10% by a line each", async () => {
+  it("describes a first payment of Website and Social at list by a line each", async () => {
     await saveMaharashtraDetails("27AAPFU0939F1ZV");
 
     const activation = await payFirst(await openSubscription(businessId, services, null, linesOf(services, "managed-website", "social-media")), services);
 
     const invoice = await findTaxInvoiceByPaymentId(dbs.staff.db, activation.payment.id);
     expect(invoice?.lines.map((line) => [line.description, line.discountAmountCents, line.note])).toEqual([
-      ["Website Management", 29_910, "Package offer, 10% off"],
-      ["Social Media Management", 29_990, "Package offer, 10% off"],
+      ["Website Management", 0, null],
+      ["Social Media Management", 0, null],
     ]);
-    expect(invoice?.totalCents).toBe(539_900);
+    expect(invoice?.totalCents).toBe(599_800);
   });
 
   it("describes a first payment of one service with no discount and no note", async () => {

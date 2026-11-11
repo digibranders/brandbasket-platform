@@ -48,15 +48,9 @@ describe("notBoughtView", () => {
     expect(view.includes).not.toContain("Your ad spend is paid on top");
   });
 
-  it("takes the package discount the shared rules give once it joins what is held", () => {
+  it("prices a service at list once it joins what is held, with no package offer", () => {
     const view = notBoughtView({ service: "social", held: [{ addOn: "managed-website", listCents: 299_900 }], forfeited: false, currency: "INR" });
-    expect(view).toMatchObject({ listPrice: "₹2,999 a month", offer: "Package offer, 10% off", addHref: "/billing?add=social" });
-    expect(view.price).not.toBe("₹2,999 a month");
-  });
-
-  it("gives no discount once the business has given the offer up", () => {
-    const view = notBoughtView({ service: "social", held: [{ addOn: "managed-website", listCents: 299_900 }], forfeited: true, currency: "INR" });
-    expect(view).toMatchObject({ price: "₹2,999 a month", listPrice: null, offer: null });
+    expect(view).toMatchObject({ price: "₹2,999 a month", listPrice: null, offer: null, addHref: "/billing?add=social" });
   });
 
   it("never mentions GST beside a dollar price", () => {

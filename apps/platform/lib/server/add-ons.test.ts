@@ -188,18 +188,14 @@ describe("loadAddOnsPage", () => {
     ]);
   });
 
-  it("shows a service not yet added at the package price it would have, and at list once the offer is given up", async () => {
+  it("shows a service not yet added at its list price, with no package discount", async () => {
     vi.mocked(findLiveBundledAddOns).mockResolvedValue([includedRow({ addOn: "managed-website", listAmountCents: 299_900, offerDiscountAmountCents: 0, netAmountCents: 299_900 })]);
 
     const page = await loadAddOnsPage(subscribed, NOW);
     expect(page.addOns.find((entry) => entry.addOn === "social-media")).toMatchObject({
       kind: "available",
-      price: { listCents: 299_900, discountCents: 29_990, netCents: 269_910, chargedCents: 269_910 },
+      price: { listCents: 299_900, discountCents: 0, netCents: 299_900, chargedCents: 299_900 },
     });
-
-    vi.mocked(isPackageOfferForfeited).mockResolvedValue(true);
-    const forfeited = await loadAddOnsPage(subscribed, NOW);
-    expect(forfeited.addOns.find((entry) => entry.addOn === "social-media")).toMatchObject({ price: { discountCents: 0, netCents: 299_900 } });
   });
 
   it("prices a business billed in dollars in dollars, with no tax", async () => {
@@ -239,15 +235,15 @@ describe("loadAddOnsPage", () => {
       includedRow({ addOn, listAmountCents, offerDiscountAmountCents: PACKAGE_DISCOUNTS[addOn] ?? 0, netAmountCents: listAmountCents - (PACKAGE_DISCOUNTS[addOn] ?? 0), ...overrides });
     const all = () => [line("managed-website", 299_900), line("social-media", 999_900), line("paid-ads", 2_499_900)];
 
-    it("shows, for each of three services, the others at list: dropping Paid Ads Management leaves ₹12,998 a month, GST included, and ends the package", async () => {
+    it("shows, for each of three services, the others at list: dropping Paid Ads Management leaves ₹12,998 a month, GST included, and ends no package", async () => {
       vi.mocked(findLiveBundledAddOns).mockResolvedValue(all());
 
       const { addOns } = await loadAddOnsPage(subscribed, NOW);
 
       expect(addOns.map((entry) => (entry.kind === "included" ? [entry.addOn, entry.drop?.keeps, entry.drop?.newMonthlyCents, entry.drop?.endsPackage] : null))).toEqual([
-        ["managed-website", ["social-media", "paid-ads"], 3_499_800, true],
-        ["social-media", ["managed-website", "paid-ads"], 2_799_800, true],
-        ["paid-ads", ["managed-website", "social-media"], 1_299_800, true],
+        ["managed-website", ["social-media", "paid-ads"], 3_499_800, false],
+        ["social-media", ["managed-website", "paid-ads"], 2_799_800, false],
+        ["paid-ads", ["managed-website", "social-media"], 1_299_800, false],
       ]);
     });
 

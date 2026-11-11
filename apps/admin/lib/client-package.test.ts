@@ -16,9 +16,9 @@ const line = (addOn: string, overrides: Partial<BundledAddOn> = {}): BundledAddO
 const WEBSITE_AND_SOCIAL = [line("managed-website"), line("social-media")];
 
 describe("clientPackageFacts", () => {
-  it("names the services and the percentage off each, the credit a month, and no forfeit date", () => {
+  it("is no package for two services, since no package offers exist, and still shows a stored credit a month", () => {
     expect(clientPackageFacts({ lines: WEBSITE_AND_SOCIAL, subscription: SUBSCRIPTION, currency: "INR", forfeitedAt: null })).toEqual({
-      package: "Website + Social, 10% off each service",
+      package: "No package",
       adCredit: "₹1,500 a month",
       forfeitedOn: null,
     });

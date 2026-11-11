@@ -22,7 +22,7 @@ import { PageHeader } from "@/components/console/page-header";
 import { SectionTabs } from "@/components/console/section-tabs";
 import { Quiet, Section } from "@/components/console/section";
 import { PRICING_NOTICES, readPricingNotice } from "@/lib/pricing-notices";
-import { catalogueRows, packageRows } from "@/lib/service-packages";
+import { catalogueRows } from "@/lib/service-packages";
 import { listPricingPlans, listRecentPriceChanges } from "@/lib/server/pricing-admin";
 import { requireStaffCan } from "@/lib/server/staff-role";
 import { savePricesAction } from "./actions";
@@ -87,24 +87,6 @@ function ServicesCatalogue(): ReactElement {
             <span className="font-medium">{row.title}</span>
             <span className="tabular-nums">
               {row.inr} or {row.usd} a month
-            </span>
-          </li>
-        ))}
-      </ul>
-    </Section>
-  );
-}
-
-function PackageOffers(): ReactElement {
-  return (
-    <Section title="Packages">
-      <ul aria-label="Packages" className="max-w-3xl divide-y divide-line">
-        {packageRows().map((row) => (
-          <li key={row.services} className="grid gap-x-6 gap-y-1 py-3 text-sm first:pt-0 sm:grid-cols-[minmax(0,1fr)_auto]">
-            <span className="font-medium">{row.services}</span>
-            <span className="tabular-nums text-ink-soft sm:text-right">
-              {row.offer}
-              <span className="block">Ad credit: {row.adCredit}</span>
             </span>
           </li>
         ))}
@@ -201,7 +183,7 @@ export default async function PricingPage({
     <>
       <PageHeader
         title="Pricing"
-        meta="What each service costs a month, the package offers, and what extras cost."
+        meta="What each service costs a month, and what extras cost."
       />
       <SectionTabs role={viewer.role} page="/pricing" />
       {notice === null ? null : (
@@ -211,7 +193,6 @@ export default async function PricingPage({
       )}
       <div className="mt-12">
         <ServicesCatalogue />
-        <PackageOffers />
         {plans.map((plan) => (
           <ExtrasForm key={plan.id} plan={plan} />
         ))}

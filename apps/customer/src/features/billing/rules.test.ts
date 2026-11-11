@@ -12,7 +12,6 @@ import {
   dropPreview,
   invoiceRows,
   nextPaymentLine,
-  PACKAGE_ENDS,
   paymentMethodView,
   planStateOf,
   readAddParam,
@@ -31,19 +30,19 @@ const SOCIAL = { addOn: "social-media", listAmountCents: 999_900, taxRateBasisPo
 const SEO = { addOn: "paid-ads", listAmountCents: 2_499_900, taxRateBasisPoints: 1_800 } as const;
 
 describe("dropPreview", () => {
-  it("dropping Paid Ads Management from all three keeps the other two at list, ₹12,998 a month with GST included, and says the package ends", () => {
+  it("dropping Paid Ads Management from all three keeps the other two at list, ₹12,998 a month with GST included, and ends no package", () => {
     expect(dropPreview({ staying: [WEBSITE, SOCIAL, SEO], dropping: "paid-ads", forfeited: false, currency: "INR" })).toEqual({
       keeps: ["managed-website", "social-media"],
       newMonthlyCents: 1_299_800,
       currency: "INR",
       taxRateBasisPoints: 1_800,
-      endsPackage: true,
+      endsPackage: false,
       endsWebsite: false,
     });
   });
 
   it("prices the website kept alone at its list price, GST included", () => {
-    expect(dropPreview({ staying: [WEBSITE, SOCIAL], dropping: "social-media", forfeited: false, currency: "INR" })).toMatchObject({ keeps: ["managed-website"], newMonthlyCents: 299_900, endsPackage: true });
+    expect(dropPreview({ staying: [WEBSITE, SOCIAL], dropping: "social-media", forfeited: false, currency: "INR" })).toMatchObject({ keeps: ["managed-website"], newMonthlyCents: 299_900, endsPackage: false });
   });
 
   it("prices from the list prices on the lines, not the package prices they are billed at now", () => {
@@ -76,14 +75,14 @@ describe("dropPreview", () => {
 });
 
 describe("dropCopy", () => {
-  it("says what stays, the new monthly payment with GST, and that the package ends", () => {
+  it("says what stays and the new monthly payment with GST, with nothing about a package", () => {
     const preview = dropPreview({ staying: [WEBSITE, SOCIAL, SEO], dropping: "paid-ads", forfeited: false, currency: "INR" });
     if (preview === null) throw new Error("Expected a preview");
     expect(dropCopy(preview, "Fri 27 Nov")).toEqual({
       keeps: "You keep Website Management and Social Media Management.",
       monthly: "From Fri 27 Nov you pay ₹12,998 a month, GST included.",
       websiteOffline: null,
-      packageEnds: PACKAGE_ENDS,
+      packageEnds: null,
     });
   });
 
@@ -121,8 +120,8 @@ function subscriptionFor(services: readonly MonthlyAddOnId[]) {
 describe("billView", () => {
   it.each([
     [["managed-website"], 299_900, null],
-    [["managed-website", "social-media"], 539_900, "Package discount, 10%"],
-    [["managed-website", "social-media", "paid-ads"], 719_800, "Package discount, 20%"],
+    [["managed-website", "social-media"], 599_800, null],
+    [["managed-website", "social-media", "paid-ads"], 899_700, null],
   ] as const)("bills %j at the checkout's own total, %i", (services, expectedCents, discountLabel) => {
     const bill = billView({ lines: linesFor(services), subscription: subscriptionFor(services), plan: INR_PLAN });
     const checkout = orderSummary({ planInitialAmountCents: 0, services, currency: "INR", taxRateBasisPoints: 1_800, forfeited: false, hasEverPaid: false }, 0);
@@ -132,16 +131,15 @@ describe("billView", () => {
     expect(bill.rows.find((row) => row.discount)?.label ?? null).toBe(discountLabel);
   });
 
-  it("bills all three at ₹8,997 list, ₹1,799 off, ₹7,198 a month with ₹1,098 GST (to the paisa) and ₹3,000 ad money", () => {
+  it("bills all three at ₹8,997 list with no discount, ₹1,372.42 GST (to the paisa) and no ad money", () => {
     const services = ["managed-website", "social-media", "paid-ads"] as const;
     const bill = billView({ lines: linesFor(services), subscription: subscriptionFor(services), plan: INR_PLAN });
     expect(bill.rows).toEqual([
       { label: "List price, 3 services", amount: "₹8,997", discount: false },
-      { label: "Package discount, 20%", amount: "−₹1,799", discount: true },
     ]);
-    expect(bill.total).toBe("₹7,198");
-    expect(bill.gstLine).toBe("Includes ₹1,098 GST.");
-    expect(bill.adMoneyLine).toBe("Monthly ad money of ₹3,000 is added to your ads.");
+    expect(bill.total).toBe("₹8,997");
+    expect(bill.gstLine).toBe("Includes ₹1,372.42 GST.");
+    expect(bill.adMoneyLine).toBeNull();
   });
 
   it("after cancelling Paid Ads Management, bills the two that stay at list: the dialog's new total, no package, no ad money", () => {

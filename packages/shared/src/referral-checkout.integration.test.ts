@@ -38,7 +38,7 @@ vi.mock("server-only", () => ({}));
  * The whole code money path, end to end, against a real database: a superadmin creates a coupon or an affiliate
  * code, a customer applies it, a checkout opens at the discounted amount, the customer pays, the subscription
  * activates, and an affiliate code earns its affiliate a month for that payment and every renewal. A code is priced against
- * the basket's package net (the services' lines less the package offer), never the services plan's 0, and comes off once.
+ * the basket's package net (the services' lines at list), never the services plan's 0, and comes off once.
  *
  * This runs the same functions the app does (`packages/db`'s queries, `packages/billing`'s decision and provider,
  * and the same activation call the webhook makes) rather than doubles of them. What it deliberately does not
@@ -323,10 +323,10 @@ describe("a member paying with an affiliate code", () => {
     expect(await listAffiliateEarnings(dbs.staff.db, affiliateId, 10)).toMatchObject([{ amountCents: 13_495, basisCents: 269_910 }]);
   });
 
-  it("prices a code on a package against the package net, once, and invoices it across the lines", async () => {
+  it("prices a code on two plans at list against their net, once, and invoices it across the lines", async () => {
     const affiliateId = await seedAffiliate({ kind: "percent", basisPoints: 500 });
     const codeId = await seedCode("PKG10", affiliateId, { kind: "percent", basisPoints: 1_000 }, 3);
-    // The website and Social Media Management at the 10% package offer: ₹2,699.90 + ₹2,699.10 = ₹5,399, GST included.
+    // The website and Social Media Management at list: ₹2,999 + ₹2,999 = ₹5,998, GST included.
     const lines: NewBundledAddOn[] = packageLines({ services: ["managed-website", "social-media"], forfeited: false }, "INR").map((line) => ({
       addOn: line.addOn,
       listAmountCents: line.listCents,
@@ -335,25 +335,25 @@ describe("a member paying with an affiliate code", () => {
       taxRateBasisPoints: 1_800,
     }));
     const packageNetCents = lines.reduce((total, line) => total + line.netAmountCents, 0);
-    expect(packageNetCents).toBe(539_900);
-    // 10% of the package net, not of the ₹5,998 list: ₹539.90.
+    expect(packageNetCents).toBe(599_800);
+    // 10% of the ₹5,998 net: ₹599.80.
     const discountAmountCents = discountCentsFor({ kind: "percent", basisPoints: 1_000 }, packageNetCents);
-    expect(discountAmountCents).toBe(53_990);
+    expect(discountAmountCents).toBe(59_980);
 
     const subscription = await payFirstMonth(codeId, discountAmountCents, lines, 3);
-    expect(subscription).toMatchObject({ discountAmountCents: 53_990, discountMonthsLeft: 3, bundledAddOnNetCents: 539_900 });
+    expect(subscription).toMatchObject({ discountAmountCents: 59_980, discountMonthsLeft: 3, bundledAddOnNetCents: 599_800 });
 
     const [payment] = await listPaymentsForBusiness(dbs.staff.db, businessId, 10);
-    expect(payment).toMatchObject({ amountCents: 485_910 });
+    expect(payment).toMatchObject({ amountCents: 539_820 });
     const invoice = await findTaxInvoiceByPaymentId(dbs.staff.db, payment?.id ?? "");
     expect(invoice?.totalCents).toBe(payment?.amountCents);
     // The code is shared over both lines, which still add up to what was taxed, and each names it.
     expect(invoice?.lines.reduce((total, line) => total + line.unitAmountCents - line.discountAmountCents, 0)).toBe(packageNetCents - discountAmountCents);
-    expect(invoice?.lines.map((line) => line.note)).toEqual(["Package offer, 10% off. Coupon PKG10 applied", "Package offer, 10% off. Coupon PKG10 applied"]);
+    expect(invoice?.lines.map((line) => line.note)).toEqual(["Coupon PKG10 applied", "Coupon PKG10 applied"]);
     // The payment keeps the code's name for the receipt, which a customer's connection cannot look up.
-    expect(await findPaymentInvoiceBasis(dbs.staff.db, payment?.id ?? "")).toMatchObject({ code: "PKG10", discountAmountCents: 53_990 });
-    // The affiliate's 5% is of what the member paid, GST included (₹4,859.10): ₹242.955, taken down to ₹242.95.
-    expect(await listAffiliateEarnings(dbs.staff.db, affiliateId, 10)).toMatchObject([{ amountCents: 24_295, basisCents: 485_910 }]);
+    expect(await findPaymentInvoiceBasis(dbs.staff.db, payment?.id ?? "")).toMatchObject({ code: "PKG10", discountAmountCents: 59_980 });
+    // The affiliate's 5% is of what the member paid, GST included (₹5,398.20): ₹269.91.
+    expect(await listAffiliateEarnings(dbs.staff.db, affiliateId, 10)).toMatchObject([{ amountCents: 26_991, basisCents: 539_820 }]);
   });
 
   it("charges the full price on an affiliate code that gives no discount, and still earns", async () => {

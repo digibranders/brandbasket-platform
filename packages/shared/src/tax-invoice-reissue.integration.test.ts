@@ -78,7 +78,7 @@ async function saveMaharashtraDetails(): Promise<void> {
   });
 }
 
-/** The services as a checkout freezes them: each with the package discount the set earns. */
+/** The services as a checkout freezes them: every one at list, with no package discount. */
 function linesOf(...ids: MonthlyAddOnId[]): readonly NewBundledAddOn[] {
   return packageLines({ services: ids, forfeited: false }, "INR").map((line) => ({
     addOn: line.addOn,
@@ -239,31 +239,40 @@ afterEach(() => {
 });
 
 describe("issueMissingTaxInvoice", () => {
-  it("invoices a first payment of all three services with a line and a package note for each, on the day staff issue it", async () => {
+  it("invoices a first payment of all three services at list, a line for each with no discount, on the day staff issue it", async () => {
     const lines = linesOf("managed-website", "social-media", "paid-ads");
     const subscription = await openSubscription(lines);
     const payment = await payFirstWithoutPrintableInvoice(subscription);
 
     const invoice = await issue(payment.id);
 
-    expect(payment.amountCents).toBe(719_800);
+    expect(payment.amountCents).toBe(899_700);
+    // GST inside 899,700 paise: 137,242.37 paise, so CGST and SGST are 68,621 each and the taxable value is 762,458.
     expect(invoice).toMatchObject({
       number: "FY/26-27/000001",
       issuedOn: "2026-11-15",
       paidOn: "2026-10-09",
       paymentId: payment.id,
-      taxableCents: 610_000,
-      totalCents: 719_800,
+      taxableCents: 762_458,
+      totalCents: 899_700,
     });
     expect(invoice.lines.map((line) => [line.description, line.unitAmountCents, line.discountAmountCents, line.note, line.detail])).toEqual([
-      ["Website Management", 299_900, 59_940, "Package offer, 20% off", "Monthly subscription, 09 Oct to 08 Nov 2026"],
-      ["Social Media Management", 299_900, 59_980, "Package offer, 20% off", "Monthly subscription, 09 Oct to 08 Nov 2026"],
-      ["Paid Ads Management", 299_900, 59_980, "Package offer, 20% off", "Monthly subscription, 09 Oct to 08 Nov 2026"],
+      ["Website Management", 299_900, 0, null, "Monthly subscription, 09 Oct to 08 Nov 2026"],
+      ["Social Media Management", 299_900, 0, null, "Monthly subscription, 09 Oct to 08 Nov 2026"],
+      ["Paid Ads Management", 299_900, 0, null, "Monthly subscription, 09 Oct to 08 Nov 2026"],
     ]);
   });
 
-  it("invoices a payment as it was billed, though the package was dropped and the offer forfeited since", async () => {
-    const subscription = await openSubscription(linesOf("managed-website", "social-media", "paid-ads"));
+  it("invoices a payment stored with a package discount naming the percentage it was sold at, though the package was dropped and the offer forfeited since", async () => {
+    // Rows sold before package offers ended: 20% off each service, the paise of the package on the dearest lines.
+    const stored = [
+      ["managed-website", 59_940],
+      ["social-media", 59_980],
+      ["paid-ads", 59_980],
+    ] as const;
+    const subscription = await openSubscription(
+      stored.map(([addOn, offer]) => ({ addOn, listAmountCents: 299_900, offerDiscountAmountCents: offer, netAmountCents: 299_900 - offer, taxRateBasisPoints: services.taxRateBasisPoints })),
+    );
     const payment = await payFirstWithoutPrintableInvoice(subscription);
     // The customer drops Paid Ads Management: the offer ends for good, the services that stay go to list and the rows move on.
     await execSql(
@@ -324,9 +333,9 @@ describe("issueMissingTaxInvoice", () => {
   });
 
   it.each([
-    // [name, services, what the member pays (the package net less 10%), the taxable value of that: the payment less the GST inside it]
-    ["two services", ["managed-website", "social-media"] as const, 485_910, 411_788],
-    ["three services", ["managed-website", "social-media", "paid-ads"] as const, 647_820, 549_000],
+    // [name, services, what the member pays (list less 10%), the taxable value of that: the payment less the GST inside it]
+    ["two services", ["managed-website", "social-media"] as const, 539_820, 457_474],
+    ["three services", ["managed-website", "social-media", "paid-ads"] as const, 809_730, 686_212],
   ])("reissues the invoice for a code taken once off %s, shared over the lines to the paisa", async (_name, services_, paidCents, taxableCents) => {
     const discount = { kind: "percent", basisPoints: 1_000 } as const;
     const created = await createReferralCode(dbs.staff.db, {
@@ -357,7 +366,7 @@ describe("issueMissingTaxInvoice", () => {
     expect(invoice.lines.every((line) => line.note?.endsWith("Coupon PKGCODE applied") === true)).toBe(true);
   });
 
-  it("invoices a renewal from the lines it was billed at, a month from the cycle it paid for", async () => {
+  it("invoices a renewal from the lines it was billed at, at list, a month from the cycle it paid for", async () => {
     const lines = linesOf("managed-website", "social-media");
     const subscription = await openSubscription(lines);
     await dbs.staff.db.transaction((tx) =>
@@ -387,13 +396,13 @@ describe("issueMissingTaxInvoice", () => {
     const renewed = await issue(renewal.payment.id);
 
     expect(renewed.lines.map((line) => [line.description, line.discountAmountCents, line.note, line.detail])).toEqual([
-      ["Website Management", 29_910, "Package offer, 10% off", "Monthly subscription, 09 Nov to 08 Dec 2026"],
-      ["Social Media Management", 29_990, "Package offer, 10% off", "Monthly subscription, 09 Nov to 08 Dec 2026"],
+      ["Website Management", 0, null, "Monthly subscription, 09 Nov to 08 Dec 2026"],
+      ["Social Media Management", 0, null, "Monthly subscription, 09 Nov to 08 Dec 2026"],
     ]);
     expect(renewed.totalCents).toBe(renewal.payment.amountCents);
   });
 
-  it("invoices a restart from the lines its checkout was opened with, a month from the day paid", async () => {
+  it("invoices a restart from the lines its checkout was opened with, at list, a month from the day paid", async () => {
     const subscription = await openSubscription(linesOf("social-media", "paid-ads"));
     await dbs.owner.db.delete(billingProfiles);
     await execSql(dbs.owner, `update businesses set name = '${DEVANAGARI_NAME}' where id = '${businessId}'`);
@@ -405,10 +414,10 @@ describe("issueMissingTaxInvoice", () => {
 
     const restarted = await issue(restart.payment.id, new Date("2026-12-15T05:30:00.000Z"));
 
-    expect(restart.payment.amountCents).toBe(539_900);
+    expect(restart.payment.amountCents).toBe(599_800);
     expect(restarted.lines.map((line) => [line.description, line.discountAmountCents, line.note])).toEqual([
-      ["Social Media Management", 29_910, "Package offer, 10% off"],
-      ["Paid Ads Management", 29_990, "Package offer, 10% off"],
+      ["Social Media Management", 0, null],
+      ["Paid Ads Management", 0, null],
     ]);
     expect(restarted.lines[0]?.detail).toBe("Monthly subscription, 09 Dec 2026 to 08 Jan 2027");
     expect(restarted.totalCents).toBe(restart.payment.amountCents);

@@ -75,11 +75,11 @@ describe("loadMembershipCheckout", () => {
     expect(resolveAppliedDiscount).toHaveBeenCalledWith(BUSINESS_ID, { currency: "INR", netCents: 299_900 }, NOW);
   });
 
-  it("looks for a code against the package net for a package", async () => {
+  it("looks for a code against the two services at list for a package", async () => {
     vi.mocked(findBillingState).mockResolvedValue(stateWith(false));
 
     await loadMembershipCheckout(customer, "managed", ["managed-website", "social-media"], NOW);
 
-    expect(resolveAppliedDiscount).toHaveBeenCalledWith(BUSINESS_ID, { currency: "INR", netCents: 539_900 }, NOW);
+    expect(resolveAppliedDiscount).toHaveBeenCalledWith(BUSINESS_ID, { currency: "INR", netCents: 599_800 }, NOW);
   });
 });

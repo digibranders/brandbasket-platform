@@ -24,8 +24,8 @@ function serverTotalCents(services: readonly MonthlyAddOnId[], discountCents: nu
 describe("ledgerSummary without a code", () => {
   it.each([
     ["one plan", WEBSITE, 299_900],
-    ["two plans", TWO, 539_900],
-    ["three plans", THREE, 719_800],
+    ["two plans", TWO, 599_800],
+    ["three plans", THREE, 899_700],
   ])("charges %s what the server charges", (_label, services, expected) => {
     const summary = ledgerSummary(PRICING, services, null);
     expect(summary.totalCents).toBe(expected);
@@ -87,20 +87,19 @@ describe("ledgerRows", () => {
     ]);
   });
 
-  it("lists each other plan at its list price and the package saving as one line", () => {
+  it("lists each other plan at its list price, with no saving line", () => {
     expect(rows(TWO)).toEqual([
       { key: "website", label: "Website", amount: "Free", tone: "free" },
       { key: "maintenance", label: "Maintenance", amount: "₹2,999", tone: "plain" },
       { key: "social-media", label: "Social Media Management", amount: "₹2,999", tone: "plain" },
-      { key: "offer", label: "10% off", amount: "-₹599", tone: "save" },
     ]);
   });
 
-  it("names 20% for three plans, and the saving is what the lines lose", () => {
+  it("has no offer line for three plans, and every line is at list", () => {
     const summary = ledgerSummary(PRICING, THREE, null);
-    const offer = ledgerRows(summary, "INR", null).find((row) => row.key === "offer");
-    expect(offer?.label).toBe("20% off");
-    expect(summary.offer?.discountCents).toBe(summary.lines.reduce((total, line) => total + line.listCents - line.netCents, 0));
+    expect(ledgerRows(summary, "INR", null).some((row) => row.key === "offer")).toBe(false);
+    expect(summary.offer).toBeNull();
+    expect(summary.lines.every((line) => line.netCents === line.listCents)).toBe(true);
   });
 
   it("adds the code's line after the package saving", () => {

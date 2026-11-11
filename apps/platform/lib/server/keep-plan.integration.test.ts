@@ -100,7 +100,7 @@ function linesOf(...services: Parameters<typeof bundleLines>[0]): readonly NewBu
   }));
 }
 
-/** Website and Social at the package price, a ₹300 code for 5 months (4 left after the first payment) and an ad credit, paid on 19 Oct. */
+/** Website and Social, a ₹300 code for 5 months (4 left after the first payment) and an ad credit, paid on 19 Oct. */
 async function paidPlan(provider: "fake" | "razorpay"): Promise<Subscription> {
   const db = dbs().staff.db;
   const opened = await openCheckoutSubscription(db, {
@@ -147,9 +147,9 @@ async function kept(): Promise<Subscription> {
   return waiting;
 }
 
-/** What Razorpay takes on the start day: the two services at the 10% package price (₹5,399, GST included) less the ₹300 code. */
+/** What Razorpay takes on the start day: the two services at list (₹5,998, GST included) less the ₹300 code. */
 function renewalAmount(): number {
-  return 509_900;
+  return 569_800;
 }
 
 function firstCharge(successor: Subscription, amountCents = renewalAmount(), paymentId = "pay_kept_first") {
@@ -255,7 +255,7 @@ describe("when Keep my plan is offered", () => {
 });
 
 describe("the checkout Keep my plan opens", () => {
-  it("is a new mandate for the same plan, lines, prices, code, months and credit, starting when the paid month ends", async () => {
+  it("is a new mandate for the same plan, lines at list, code, months and credit, starting when the paid month ends", async () => {
     const old = await paidPlan("fake");
     await closeAccount(old);
 
@@ -273,14 +273,14 @@ describe("the checkout Keep my plan opens", () => {
       discountAmountCents: 30_000,
       discountMonthsLeft: 4,
       adCreditCents: AD_CREDIT_CENTS,
-      bundledAddOnNetCents: 539_900,
+      bundledAddOnNetCents: 599_800,
       commitmentEndsAt: old.commitmentEndsAt,
     });
     expect(successor.providerSubscriptionId).not.toBe(old.providerSubscriptionId);
     const lines = await findBundledAddOnsForSubscription(dbs().staff.db, successor.id);
     expect(lines.map((line) => [line.addOn, line.listAmountCents, line.offerDiscountAmountCents, line.netAmountCents, line.status])).toEqual([
-      ["managed-website", 299_900, 29_910, 269_990, "pending"],
-      ["social-media", 299_900, 29_990, 269_910, "pending"],
+      ["managed-website", 299_900, 0, 299_900, "pending"],
+      ["social-media", 299_900, 0, 299_900, "pending"],
     ]);
   });
 
