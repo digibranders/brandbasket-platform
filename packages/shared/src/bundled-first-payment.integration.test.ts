@@ -143,7 +143,7 @@ afterEach(() => {
 
 describe("a first checkout of a package", () => {
   it("charges all three at 20% off on one provider plan for their total, and freezes ₹3,000 of ad credit", async () => {
-    const { providerPlanId, bundledAddOnNetCents, asked, subscription } = await firstCheckout(["managed-website", "digital-growth", "local-seo-aeo"]);
+    const { providerPlanId, bundledAddOnNetCents, asked, subscription } = await firstCheckout(["managed-website", "social-media", "paid-ads"]);
 
     expect(bundledAddOnNetCents).toBe(3_039_800);
     expect(providerPlanId).toBe("plan_test_3039800");
@@ -155,8 +155,25 @@ describe("a first checkout of a package", () => {
     expect(activation.payment.amountCents).toBe(3_039_800);
   });
 
+  it("charges Social + Ads, the website's ?plan=social,ads, at 10% off with ₹1,500 of ad credit, and invoices a line for each", async () => {
+    const { asked, subscription } = await firstCheckout(["social-media", "paid-ads"]);
+
+    // ₹34,998 less 10% rounded down to the rupee (₹3,499): ₹31,499 a month, GST included.
+    expect(asked).toBe(3_149_900);
+    expect(subscription).toMatchObject({ bundledAddOnNetCents: 3_149_900, adCreditCents: 150_000 });
+
+    const activation = await payFirst(subscription);
+    expect(activation.payment.amountCents).toBe(3_149_900);
+    const invoice = await findTaxInvoiceByPaymentId(dbs.staff.db, activation.payment.id);
+    expect(invoice?.lines.map((line) => [line.description, line.unitAmountCents, line.discountAmountCents])).toEqual([
+      ["Social Media Management", 999_900, 99_990],
+      ["Paid Ads Management", 2_499_900, 249_910],
+    ]);
+    expect(invoice?.totalCents).toBe(3_149_900);
+  });
+
   it("charges Website + SEO at 10% off, which earns no ad credit", async () => {
-    const { asked, subscription } = await firstCheckout(["managed-website", "local-seo-aeo"]);
+    const { asked, subscription } = await firstCheckout(["managed-website", "paid-ads"]);
 
     expect(asked).toBe(2_519_900);
     expect(subscription.adCreditCents).toBe(0);
@@ -164,7 +181,7 @@ describe("a first checkout of a package", () => {
   });
 
   it("charges one service its list price, GST included, with no package and no ad credit", async () => {
-    const { asked, subscription } = await firstCheckout(["digital-growth"]);
+    const { asked, subscription } = await firstCheckout(["social-media"]);
 
     expect(asked).toBe(999_900);
     expect(subscription).toMatchObject({ bundledAddOnNetCents: 999_900, adCreditCents: 0 });
@@ -173,18 +190,18 @@ describe("a first checkout of a package", () => {
 
 describe("a first payment with services", () => {
   it("freezes the add-ons on the subscription, as pending until it is paid", async () => {
-    const subscription = await openSubscription(bundleOf("digital-growth", "local-seo-aeo"));
+    const subscription = await openSubscription(bundleOf("social-media", "paid-ads"));
 
     expect(subscription.bundledAddOnNetCents).toBe(899_910 + 2_249_990);
     const rows = await findBundledAddOnsForSubscription(dbs.staff.db, subscription.id);
     expect(rows.map((row) => [row.addOn, row.status, row.netAmountCents])).toEqual([
-      ["digital-growth", "pending", 899_910],
-      ["local-seo-aeo", "pending", 2_249_990],
+      ["social-media", "pending", 899_910],
+      ["paid-ads", "pending", 2_249_990],
     ]);
   });
 
   it("takes one payment for the services, turns them on, and invoices a line for each", async () => {
-    const subscription = await openSubscription(bundleOf("digital-growth", "local-seo-aeo"));
+    const subscription = await openSubscription(bundleOf("social-media", "paid-ads"));
     const activation = await payFirst(subscription);
 
     // Social + SEO at 10% off, with the saving rounded down to the whole rupee: ₹34,998 less ₹3,499, so ₹31,499, GST included.
@@ -196,14 +213,14 @@ describe("a first payment with services", () => {
     const invoice = await findTaxInvoiceByPaymentId(dbs.staff.db, activation.payment.id);
     expect(invoice?.totalCents).toBe(3_149_900);
     expect(invoice?.lines.map((line) => [line.description, line.unitAmountCents, line.discountAmountCents])).toEqual([
-      ["Social Media and Ads", 999_900, 99_990],
-      ["Local SEO + AEO", 2_499_900, 249_910],
+      ["Social Media Management", 999_900, 99_990],
+      ["Paid Ads Management", 2_499_900, 249_910],
     ]);
     expect(invoice?.cgstCents).toBe(invoice?.sgstCents);
   });
 
   it("does nothing more when the same payment is delivered again", async () => {
-    const subscription = await openSubscription(bundleOf("digital-growth"));
+    const subscription = await openSubscription(bundleOf("social-media"));
     await payFirst(subscription);
     const again = await payFirst(subscription);
 
@@ -214,8 +231,8 @@ describe("a first payment with services", () => {
   });
 
   it("drops the add-ons of a checkout that is replaced before anything was paid", async () => {
-    const first = await openSubscription(bundleOf("digital-growth"));
-    const second = await openSubscription(bundleOf("local-seo-aeo"), first.id, `fake_sub_${"c".repeat(24)}`);
+    const first = await openSubscription(bundleOf("social-media"));
+    const second = await openSubscription(bundleOf("paid-ads"), first.id, `fake_sub_${"c".repeat(24)}`);
 
     expect((await findBundledAddOnsForSubscription(dbs.staff.db, first.id)).map((row) => row.status)).toEqual(["removed"]);
     expect((await findBundledAddOnsForSubscription(dbs.staff.db, second.id)).map((row) => row.status)).toEqual(["pending"]);
@@ -223,7 +240,7 @@ describe("a first payment with services", () => {
   });
 
   it("invoices the renewal with the same service lines, at the same amount", async () => {
-    const subscription = await openSubscription(bundleOf("digital-growth"));
+    const subscription = await openSubscription(bundleOf("social-media"));
     await payFirst(subscription);
     const open = await findLatestSubscriptionForBusiness(dbs.staff.db, businessId);
     if (open?.commitmentEndsAt == null) throw new Error("The first payment did not open the subscription");
@@ -248,16 +265,16 @@ describe("a first payment with services", () => {
 
     const invoice = await findTaxInvoiceByPaymentId(dbs.staff.db, renewal.payment.id);
     expect(invoice?.totalCents).toBe(amountCents);
-    expect(invoice?.lines.map((line) => line.description)).toEqual(["Social Media and Ads"]);
+    expect(invoice?.lines.map((line) => line.description)).toEqual(["Social Media Management"]);
   });
 
   describe("taking an add-on out afterwards", () => {
     async function paidWithTwo() {
-      const subscription = await openSubscription(bundleOf("digital-growth", "local-seo-aeo"));
+      const subscription = await openSubscription(bundleOf("social-media", "paid-ads"));
       await payFirst(subscription);
       const rows = await findBundledAddOnsForSubscription(dbs.staff.db, subscription.id);
-      const growth = rows.find((row) => row.addOn === "digital-growth");
-      if (growth === undefined) throw new Error("Social Media and Ads was not bundled");
+      const growth = rows.find((row) => row.addOn === "social-media");
+      if (growth === undefined) throw new Error("Social Media Management was not bundled");
       return { subscription, rows, growth };
     }
 
@@ -310,13 +327,13 @@ describe("a first payment with services", () => {
       expect(after).toMatchObject({ bundledAddOnNetCents: 2_499_900, pendingBundledAddOnNetCents: null });
       const rows = await findBundledAddOnsForSubscription(dbs.staff.db, subscription.id);
       expect(rows.map((row) => [row.addOn, row.status])).toEqual([
-        ["digital-growth", "removed"],
-        ["local-seo-aeo", "active"],
+        ["social-media", "removed"],
+        ["paid-ads", "active"],
       ]);
     });
 
     it("takes the last add-on out to nothing", async () => {
-      const subscription = await openSubscription(bundleOf("digital-growth"));
+      const subscription = await openSubscription(bundleOf("social-media"));
       await payFirst(subscription);
       const [only] = await findBundledAddOnsForSubscription(dbs.staff.db, subscription.id);
       if (only === undefined) throw new Error("Nothing was bundled");
@@ -333,29 +350,29 @@ describe("a first payment with services", () => {
 
     it("lists a paid add-on taken with the plan among what staff should get in touch about, until it is marked", async () => {
       await dbs.owner.db.insert(users).values({ id: STAFF, name: "Staff", email: "staff@example.test", emailVerified: true });
-      const subscription = await openSubscription(bundleOf("local-seo-aeo"));
+      const subscription = await openSubscription(bundleOf("paid-ads"));
       expect(await listAddOnsToContact(dbs.staff.db, 10)).toEqual([]);
 
       await payFirst(subscription);
-      expect(await listAddOnsToContact(dbs.staff.db, 10)).toMatchObject([{ kind: "bundled", businessId, addOn: "local-seo-aeo", at: PAID_AT }]);
+      expect(await listAddOnsToContact(dbs.staff.db, 10)).toMatchObject([{ kind: "bundled", businessId, addOn: "paid-ads", at: PAID_AT }]);
 
       const [row] = await findBundledAddOnsForSubscription(dbs.staff.db, subscription.id);
       await markBundledAddOnContacted(dbs.staff.db, { id: row?.id ?? "", businessId, staffUserId: STAFF, now: NEXT_MONTH });
       expect(await listAddOnsToContact(dbs.staff.db, 10)).toEqual([]);
     });
 
-    it("leaves the Managed Website out, since the build is not an add-on to start", async () => {
-      const subscription = await openSubscription(bundleOf("managed-website", "local-seo-aeo"));
+    it("leaves the Website Management out, since the build is not an add-on to start", async () => {
+      const subscription = await openSubscription(bundleOf("managed-website", "paid-ads"));
       await payFirst(subscription);
 
       const list = await listAddOnsToContact(dbs.staff.db, 10);
-      expect(list.map((item) => item.addOn)).toEqual(["local-seo-aeo"]);
+      expect(list.map((item) => item.addOn)).toEqual(["paid-ads"]);
       expect(await findBundledAddOnsForSubscription(dbs.staff.db, subscription.id)).toHaveLength(2);
     });
 
     it("marks a paid add-on contacted once, and not one that was never paid", async () => {
       await dbs.owner.db.insert(users).values({ id: STAFF, name: "Staff", email: "staff@example.test", emailVerified: true });
-      const subscription = await openSubscription(bundleOf("digital-growth"));
+      const subscription = await openSubscription(bundleOf("social-media"));
       const [unpaid] = await findBundledAddOnsForSubscription(dbs.staff.db, subscription.id);
       if (unpaid === undefined) throw new Error("Nothing was bundled");
       expect(await markBundledAddOnContacted(dbs.staff.db, { id: unpaid.id, businessId, staffUserId: STAFF, now: NEXT_MONTH })).toBe(false);

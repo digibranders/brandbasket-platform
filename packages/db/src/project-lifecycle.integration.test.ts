@@ -74,7 +74,7 @@ async function createBusiness(slug: string, services: readonly string[]): Promis
 
 /** A managed-website business whose onboarding project has been moved to submitted by the kickoff. */
 async function createSubmittedSite(slug: string, due: Date = DUE_FIRST): Promise<Seeded> {
-  const seeded = await createBusiness(slug, ["managed-website", "digital-growth"]);
+  const seeded = await createBusiness(slug, ["managed-website", "social-media"]);
   expect(await markProjectReadyAfterKickoff(dbs.staff.db, { businessId: seeded.businessId, dueAt: due, now: KICKOFF_NOW })).toBe(true);
   return seeded;
 }
@@ -232,7 +232,7 @@ describe("the kickoff move", () => {
   });
 
   it("returns false and leaves a business without an active managed website in onboarding", async () => {
-    const { businessId } = await createBusiness("social-only", ["digital-growth"]);
+    const { businessId } = await createBusiness("social-only", ["social-media"]);
 
     expect(await markProjectReadyAfterKickoff(dbs.staff.db, { businessId, dueAt: DUE_FIRST, now: KICKOFF_NOW })).toBe(false);
     expect(await projectOf(businessId)).toMatchObject({ status: "onboarding", slaDueAt: null });

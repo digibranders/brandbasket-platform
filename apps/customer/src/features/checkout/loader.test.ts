@@ -23,7 +23,7 @@ function customer(billing: Record<string, unknown> = {}) {
 function view(overrides: Partial<MembershipCheckoutView> = {}): MembershipCheckoutView {
   return {
     plan: PLAN as never,
-    services: ["managed-website", "digital-growth", "local-seo-aeo"],
+    services: ["managed-website", "social-media", "paid-ads"],
     discount: null,
     lapsedCode: null,
     forfeited: false,
@@ -61,19 +61,19 @@ describe("loadCheckout", () => {
 
   it("asks a new account the questions first", async () => {
     vi.mocked(loadIntake).mockResolvedValue({ answers: {} as never, completedAt: null });
-    await expect(loadCheckout(customer(), { services: "managed-website,digital-growth,local-seo-aeo" })).rejects.toThrow(
-      "redirect:/start?services=managed-website,digital-growth,local-seo-aeo",
+    await expect(loadCheckout(customer(), { services: "managed-website,social-media,paid-ads" })).rejects.toThrow(
+      "redirect:/start?services=managed-website,social-media,paid-ads",
     );
   });
 
   it("prices all three services with the package offer, GST inside and the ad money", async () => {
-    const result = await loadCheckout(customer(), { services: "managed-website,digital-growth,local-seo-aeo" });
+    const result = await loadCheckout(customer(), { services: "managed-website,social-media,paid-ads" });
     expect(result.kind).toBe("pay");
     if (result.kind !== "pay") return;
     expect(result.ledger.total).toBe("₹30,398");
     expect(result.ledger.gstLine).toBe("Includes ₹4,636.98 of GST at 18%");
     expect(result.ledger.adCredit).toBe("We add ₹3,000 a month to your ads");
-    expect(result.ledger.changeServicesHref).toBe("/start?services=managed-website,digital-growth,local-seo-aeo&q=summary");
+    expect(result.ledger.changeServicesHref).toBe("/start?services=managed-website,social-media,paid-ads&q=summary");
   });
 
   it("names no GST for a dollar plan", async () => {
@@ -88,7 +88,7 @@ describe("loadCheckout", () => {
     vi.mocked(loadBusinessEntry).mockResolvedValue({ kind: "website", signupChoice: null });
     vi.mocked(loadIntake).mockResolvedValue({ answers: {} as never, completedAt: null });
     vi.mocked(loadMembershipCheckout).mockResolvedValue(view({ services: ["managed-website"] }));
-    const result = await loadCheckout(customer(), { services: "local-seo-aeo" });
+    const result = await loadCheckout(customer(), { services: "paid-ads" });
     expect(loadMembershipCheckout).toHaveBeenCalledWith(expect.anything(), "managed", ["managed-website"], expect.any(Date));
     if (result.kind !== "pay") throw new Error("expected the pay view");
     expect(result.ledger.changeServicesHref).toBeNull();

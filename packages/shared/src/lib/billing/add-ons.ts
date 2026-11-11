@@ -2,12 +2,13 @@ import { chargedAmountCents, GST_BASIS_POINTS } from "@brandbasket/billing/tax";
 import type { MoneyCurrency } from "../money";
 
 /**
- * The services Brandbasket sells: Managed Website, Social Media and Ads and Local SEO + AEO, each on its own or two or more
- * together as a package priced in packages.ts (docs/plans/16-platform-pricing-offers.md in the BrandBasket workspace), and
- * what each lists at in each currency a business is billed in. Every price includes GST (owner, 2026-10-26;
- * docs/plans/25-money-gst-and-offers.md): rupee prices are in paise with 18% GST inside them, dollar prices are in cents
- * with no tax of ours. They match the website's pricing page: change both together. A price
- * here only affects new purchases; what a business pays for an existing subscription is stored on it. Pure and
+ * The services Brandbasket sells, and what each lists at in each currency a business is billed in: Website Management,
+ * Social Media Management and Paid Ads Management (owner, 2026-11-06), each on its own or two or more together as a package
+ * priced in packages.ts, plus Dedicated Expert Monitoring, a monthly add-on that comes at no cost with all three plans.
+ * Social Media and Ads and Local SEO + AEO were retired with no customers on them (migration 0222). Every price
+ * includes GST (owner, 2026-10-26; docs/plans/25-money-gst-and-offers.md): rupee prices are in paise with 18% GST inside
+ * them, dollar prices are in cents with no tax of ours. They match the website's lib/pricing.ts: change both together. A
+ * price here only affects new purchases; what a business pays for an existing subscription is stored on it. Pure and
  * browser-safe.
  */
 
@@ -18,8 +19,11 @@ export const ADD_ON_GRACE_DAYS = 7;
 
 const MINOR_UNITS_PER_MAJOR = 100;
 
-export type AddOnId = "managed-website" | "digital-growth" | "local-seo-aeo";
+export type AddOnId = "managed-website" | "social-media" | "paid-ads" | "expert-monitoring";
 export type MonthlyAddOnId = AddOnId;
+
+/** The three plans on sale, which make up the packages, in the order the website lists them. */
+export type PlanAddOnId = "managed-website" | "social-media" | "paid-ads";
 
 export interface AddOn {
   readonly id: AddOnId;
@@ -36,38 +40,53 @@ export interface AddOn {
   readonly platforms?: readonly string[];
 }
 
-/** The services, in the order the website's pricing page lists them. */
+/** Dedicated Expert Monitoring: included with all three plans, otherwise billed monthly (monitoringIncludedWith). */
+export const MONITORING_ID = "expert-monitoring" satisfies AddOnId;
+
+/** The services: the plans in the order the website's pricing page lists them, then monitoring. */
 export const ADD_ONS: readonly AddOn[] = [
   {
     id: "managed-website",
-    title: "Managed Website",
+    title: "Website Management",
     line: "A professionally designed website of up to 10 pages, mobile-friendly, with enquiry forms, click-to-call, a local SEO foundation and the OyeChats professional chatbot.",
     billing: "monthly",
     prices: { INR: 2_999 * MINOR_UNITS_PER_MAJOR, USD: 65 * MINOR_UNITS_PER_MAJOR },
     unit: "a month",
   },
   {
-    // The id predates the name: database checks, existing rows and links use it.
-    id: "digital-growth",
-    title: "Social Media and Ads",
-    line: "Instagram, Facebook and Google profile posts planned with you each month, review replies, and Meta ads managed for up to ₹10,000 a month of your budget.",
+    id: "social-media",
+    title: "Social Media Management",
+    line: "AI posts, captions and scheduling on up to 4 platforms, with a monthly performance report.",
     billing: "monthly",
     prices: { INR: 9_999 * MINOR_UNITS_PER_MAJOR, USD: 150 * MINOR_UNITS_PER_MAJOR },
     unit: "a month",
-    extra: "+ your ad spend",
-    platforms: ["Google Business Profile", "Facebook Ads", "Instagram Ads"],
+    platforms: ["Instagram", "Facebook", "Google Business Profile"],
   },
   {
-    id: "local-seo-aeo",
-    title: "Local SEO + AEO",
-    line: "Local search and AI answer optimisation: keyword research, up to 5 pages optimised a month, schema, and ranking tracking.",
+    id: "paid-ads",
+    title: "Paid Ads Management",
+    line: "Meta ads with AI creatives, set up and optimised, for up to ₹10,000 a month of your budget.",
     billing: "monthly",
     prices: { INR: 24_999 * MINOR_UNITS_PER_MAJOR, USD: 350 * MINOR_UNITS_PER_MAJOR },
+    unit: "a month",
+    extra: "+ your ad spend",
+    platforms: ["Facebook Ads", "Instagram Ads"],
+  },
+  {
+    id: MONITORING_ID,
+    title: "Dedicated Expert Monitoring",
+    line: "Our experts watch your website, social media and ads, fix what slips and help you grow. Free with all three plans.",
+    billing: "monthly",
+    prices: { INR: 6_000 * MINOR_UNITS_PER_MAJOR, USD: 75 * MINOR_UNITS_PER_MAJOR },
     unit: "a month",
   },
 ];
 
-export const MONTHLY_ADD_ON_IDS: readonly MonthlyAddOnId[] = ["managed-website", "digital-growth", "local-seo-aeo"];
+/** Every service, in the catalogue's order. */
+export const MONTHLY_ADD_ON_IDS: readonly MonthlyAddOnId[] = ADD_ONS.map((addOn) => addOn.id);
+
+/** The three plans on sale. */
+export const PLAN_ADD_ON_IDS: readonly PlanAddOnId[] = ["managed-website", "social-media", "paid-ads"];
 
 const BY_ID: ReadonlyMap<string, AddOn> = new Map(ADD_ONS.map((addOn) => [addOn.id, addOn]));
 
@@ -83,6 +102,19 @@ export function addOnById(id: AddOnId): AddOn {
   const addOn = BY_ID.get(id);
   if (addOn === undefined) throw new Error(`Unknown add-on ${id}`);
   return addOn;
+}
+
+/** Whether these services include all three plans, which bring monitoring at no cost: such a basket is never billed for it. */
+export function monitoringIncludedWith(services: readonly MonthlyAddOnId[]): boolean {
+  return PLAN_ADD_ON_IDS.every((id) => services.includes(id));
+}
+
+/**
+ * The services a services page lists, in the catalogue's order: every one, except monitoring beside all three plans, which
+ * include it. `active` is every service with an active line (one that is ending included); `staying` the ones not asked to end.
+ */
+export function servicesToList(active: readonly string[], staying: readonly MonthlyAddOnId[]): MonthlyAddOnId[] {
+  return MONTHLY_ADD_ON_IDS.filter((id) => id !== MONITORING_ID || active.includes(id) || !monitoringIncludedWith(staying));
 }
 
 /** What one purchase costs, worked out once and stored on it. All amounts in minor units of the purchase's currency. */

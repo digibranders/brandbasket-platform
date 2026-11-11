@@ -64,6 +64,12 @@ describe("navModel", () => {
     expect(link("Website", { ...LIVE, services: ["website"] })).toMatchObject({ bought: true });
   });
 
+  it("shows Local SEO + AEO, which is no longer sold, only to a business that has it", () => {
+    const labels = (input: NavInput) => navModel(input).sections.flatMap((section) => section.links.map((entry) => entry.label));
+    expect(labels({ ...LIVE, services: ["website", "social"] })).not.toContain("Local SEO + AEO");
+    expect(labels(LIVE)).toContain("Local SEO + AEO");
+  });
+
   it("never calls the SEO service Search, which is what the search box is", () => {
     const labels = navModel(LIVE).sections.flatMap((section) => section.links.map((entry) => entry.label));
     expect(labels).toContain("Local SEO + AEO");

@@ -90,7 +90,9 @@ describe("summaryRows", () => {
 
 describe("intakeServicesOf", () => {
   it("names the intake's services for the catalogue ids a basket holds, and drops what it does not know", () => {
-    expect(intakeServicesOf(["managed-website", "local-seo-aeo", "gold-plating"])).toEqual(["website", "search"]);
+    expect(intakeServicesOf(["managed-website", "paid-ads", "gold-plating"])).toEqual(["website", "social"]);
+    // Both plans of the Social area ask its questions once; monitoring asks none.
+    expect(intakeServicesOf(["social-media", "paid-ads", "expert-monitoring"])).toEqual(["social"]);
     expect(intakeServicesOf([])).toEqual([]);
   });
 });

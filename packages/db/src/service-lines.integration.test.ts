@@ -34,13 +34,13 @@ describe("listLiveServiceLines", () => {
   it("lists each business's pending and active lines with their status and net amount, and leaves out removed ones", async () => {
     await dbs.owner.db.insert(bundledAddOns).values([
       { businessId, subscriptionId, addOn: "managed-website", listAmountCents: 299_900, netAmountCents: 299_900, taxRateBasisPoints: 1800, status: "active" },
-      { businessId, subscriptionId, addOn: "digital-growth", listAmountCents: 999_900, netAmountCents: 999_900, taxRateBasisPoints: 1800, status: "pending" },
-      { businessId, subscriptionId, addOn: "local-seo-aeo", listAmountCents: 2_499_900, netAmountCents: 2_499_900, taxRateBasisPoints: 1800, status: "removed" },
+      { businessId, subscriptionId, addOn: "social-media", listAmountCents: 999_900, netAmountCents: 999_900, taxRateBasisPoints: 1800, status: "pending" },
+      { businessId, subscriptionId, addOn: "paid-ads", listAmountCents: 2_499_900, netAmountCents: 2_499_900, taxRateBasisPoints: 1800, status: "removed" },
     ]);
 
     expect(await listLiveServiceLines(dbs.staff.db, [businessId])).toEqual([
       { businessId, addOn: "managed-website", netAmountCents: 299_900, status: "active" },
-      { businessId, addOn: "digital-growth", netAmountCents: 999_900, status: "pending" },
+      { businessId, addOn: "social-media", netAmountCents: 999_900, status: "pending" },
     ]);
   });
 

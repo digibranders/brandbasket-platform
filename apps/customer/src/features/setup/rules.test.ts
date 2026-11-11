@@ -4,7 +4,7 @@ import { notBoughtView, setupAsks, setupCardTitle, setupPageHref } from "./rules
 const NONE = { social: undefined, search: undefined };
 
 describe("setupAsks", () => {
-  it("asks for the accounts and the ad budget for Social & Ads, and the areas for Local SEO + AEO, in the checklist's order", () => {
+  it("asks for the accounts and the ad budget for Social & Ads, and the areas for Paid Ads Management, in the checklist's order", () => {
     expect(setupAsks("social", NONE).map((ask) => ask.key)).toEqual(["accounts", "budget"]);
     expect(setupAsks("search", NONE).map((ask) => ask.key)).toEqual(["areas"]);
   });
@@ -44,18 +44,19 @@ describe("notBoughtView", () => {
   it("prices a service alone at its list price in rupees, with GST named once", () => {
     const view = notBoughtView({ service: "social", held: [], forfeited: false, currency: "INR" });
     expect(view).toMatchObject({ price: "₹9,999 a month", listPrice: null, offer: null, note: "Prices are in rupees and include GST.", addHref: "/billing?add=social" });
-    expect(view.includes).toContain("Your ad spend is paid on top");
+    expect(view.includes).toContain("Automated posting and scheduling");
+    expect(view.includes).not.toContain("Your ad spend is paid on top");
   });
 
   it("takes the package discount the shared rules give once it joins what is held", () => {
-    const view = notBoughtView({ service: "search", held: [{ addOn: "managed-website", listCents: 299_900 }], forfeited: false, currency: "INR" });
-    expect(view).toMatchObject({ listPrice: "₹24,999 a month", offer: "Package offer, 10% off", addHref: "/billing?add=search" });
-    expect(view.price).not.toBe("₹24,999 a month");
+    const view = notBoughtView({ service: "social", held: [{ addOn: "managed-website", listCents: 299_900 }], forfeited: false, currency: "INR" });
+    expect(view).toMatchObject({ listPrice: "₹9,999 a month", offer: "Package offer, 10% off", addHref: "/billing?add=social" });
+    expect(view.price).not.toBe("₹9,999 a month");
   });
 
   it("gives no discount once the business has given the offer up", () => {
-    const view = notBoughtView({ service: "search", held: [{ addOn: "managed-website", listCents: 299_900 }], forfeited: true, currency: "INR" });
-    expect(view).toMatchObject({ price: "₹24,999 a month", listPrice: null, offer: null });
+    const view = notBoughtView({ service: "social", held: [{ addOn: "managed-website", listCents: 299_900 }], forfeited: true, currency: "INR" });
+    expect(view).toMatchObject({ price: "₹9,999 a month", listPrice: null, offer: null });
   });
 
   it("never mentions GST beside a dollar price", () => {

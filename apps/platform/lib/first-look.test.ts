@@ -5,11 +5,11 @@ const line = (addOn: string, status = "active", endRequestedAt: Date | null = nu
 
 describe("servicesBought", () => {
   it("lists paid services in catalogue order", () => {
-    expect(servicesBought([line("local-seo-aeo"), line("managed-website"), line("digital-growth")])).toEqual(["website", "social", "search"]);
+    expect(servicesBought([line("paid-ads"), line("managed-website"), line("social-media")])).toEqual(["website", "social"]);
   });
 
   it("leaves out pending lines and lines on their way out", () => {
-    expect(servicesBought([line("managed-website", "pending"), line("digital-growth", "active", new Date())])).toEqual([]);
+    expect(servicesBought([line("managed-website", "pending"), line("social-media", "active", new Date())])).toEqual([]);
   });
 });
 

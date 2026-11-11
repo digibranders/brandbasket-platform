@@ -94,14 +94,14 @@ describe("receiptRows", () => {
 
   it("names an add-on payment by the add-on in both columns", () => {
     const [row] = receiptRows([
-      receipt({ kind: "add_on", subscriptionId: null, planName: null, addOnId: "digital-growth", amountCents: 1_062_000 }),
+      receipt({ kind: "add_on", subscriptionId: null, planName: null, addOnId: "social-media", amountCents: 1_062_000 }),
     ]);
-    expect(row).toMatchObject({ description: "Social Media and Ads, monthly", plan: "Social Media and Ads", amount: "₹10,620" });
+    expect(row).toMatchObject({ description: "Social Media Management, monthly", plan: "Social Media Management", amount: "₹10,620" });
   });
 
   it("calls a payment for an add-on no longer sold just an add-on", () => {
     const [row] = receiptRows([
-      receipt({ kind: "add_on", subscriptionId: null, planName: null, addOnId: "social-media", amountCents: 1_062_000 }),
+      receipt({ kind: "add_on", subscriptionId: null, planName: null, addOnId: "local-seo", amountCents: 1_062_000 }),
     ]);
     expect(row).toMatchObject({ description: "Add-on", plan: "Add-on", amount: "₹10,620" });
   });

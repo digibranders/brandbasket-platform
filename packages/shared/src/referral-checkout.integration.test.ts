@@ -64,7 +64,7 @@ function lineOf(service: MonthlyAddOnId): NewBundledAddOn {
   return { addOn: service, listAmountCents, offerDiscountAmountCents: 0, netAmountCents: listAmountCents, taxRateBasisPoints: 1_800 };
 }
 
-/** Managed Website alone: ₹2,999 a month, GST included, what these figures are built on. */
+/** Website Management alone: ₹2,999 a month, GST included, what these figures are built on. */
 const WEBSITE = lineOf("managed-website");
 
 function addMonths(from: Date, months: number): Date {
@@ -83,7 +83,7 @@ afterAll(async () => {
 
 beforeEach(async () => {
   await resetTestDatabase(dbs.owner);
-  // These check how a code's discount and an affiliate's reward are worked out, to the paisa, against Managed Website alone
+  // These check how a code's discount and an affiliate's reward are worked out, to the paisa, against Website Management alone
   // at ₹2,999 (the figures below are built on it), on the services plan that costs nothing itself.
   await seedPlansFromMigrations(dbs.owner);
   await dbs.owner.db
@@ -274,7 +274,7 @@ describe("a member paying with an affiliate code", () => {
     // The tax invoice takes the code off the website's line: the services plan has no line of its own.
     const invoice = await findTaxInvoiceByPaymentId(staffDb, recorded[0]?.id ?? "");
     expect(invoice?.totalCents).toBe(249_900);
-    expect(invoice?.lines.map((line) => [line.description, line.unitAmountCents, line.discountAmountCents])).toEqual([["Managed Website", 299_900, 50_000]]);
+    expect(invoice?.lines.map((line) => [line.description, line.unitAmountCents, line.discountAmountCents])).toEqual([["Website Management", 299_900, 50_000]]);
     expect(invoice?.lines[0]?.note).toContain("FRIEND15");
 
     // 6. The affiliate earned their ₹200 for this payment, owed until staff pay it out. The basis is what the member paid,
@@ -312,8 +312,8 @@ describe("a member paying with an affiliate code", () => {
   it("prices a code on another single service against that service's own line", async () => {
     const affiliateId = await seedAffiliate({ kind: "percent", basisPoints: 500 });
     const codeId = await seedCode("TENPCT", affiliateId, { kind: "percent", basisPoints: 1_000 });
-    const seo = lineOf("local-seo-aeo");
-    // 10% of Local SEO + AEO's ₹24,999 is ₹2,499.90.
+    const seo = lineOf("paid-ads");
+    // 10% of Paid Ads Management's ₹24,999 is ₹2,499.90.
     const discountAmountCents = discountCentsFor({ kind: "percent", basisPoints: 1_000 }, seo.listAmountCents);
     expect(discountAmountCents).toBe(249_990);
     await payFirstMonth(codeId, discountAmountCents, seo);
@@ -326,8 +326,8 @@ describe("a member paying with an affiliate code", () => {
   it("prices a code on a package against the package net, once, and invoices it across the lines", async () => {
     const affiliateId = await seedAffiliate({ kind: "percent", basisPoints: 500 });
     const codeId = await seedCode("PKG10", affiliateId, { kind: "percent", basisPoints: 1_000 }, 3);
-    // The website and Social Media and Ads at the 10% package offer: ₹2,699.10 + ₹8,999.90 = ₹11,699, GST included.
-    const lines: NewBundledAddOn[] = packageLines({ services: ["managed-website", "digital-growth"], forfeited: false }, "INR").map((line) => ({
+    // The website and Social Media Management at the 10% package offer: ₹2,699.10 + ₹8,999.90 = ₹11,699, GST included.
+    const lines: NewBundledAddOn[] = packageLines({ services: ["managed-website", "social-media"], forfeited: false }, "INR").map((line) => ({
       addOn: line.addOn,
       listAmountCents: line.listCents,
       offerDiscountAmountCents: line.offerCents,

@@ -9,7 +9,7 @@ const PERIOD_END = new Date("2026-11-12T09:00:00.000Z");
 function row(overrides: Partial<AddOnSubscriptionForStaff> & Pick<AddOnSubscriptionForStaff, "id">): AddOnSubscriptionForStaff {
   return {
     businessId: "business-1",
-    addOn: "digital-growth",
+    addOn: "social-media",
     listAmountCents: 999_900,
     discountAmountCents: 0,
     offerDiscountAmountCents: 0,
@@ -47,7 +47,7 @@ describe("clientAddOnRows", () => {
     const [shown] = clientAddOnRows([row({ id: "a" })], NOW);
     expect(shown).toMatchObject({
       id: "a",
-      title: "Social Media and Ads",
+      title: "Social Media Management",
       state: { tone: "done", label: "Active" },
       price: "₹9,999 a month, GST included",
       dateLine: "Renews on 12 November 2026",
@@ -159,7 +159,7 @@ describe("clientAddOnRows", () => {
           currentPeriodEnd: new Date("2026-09-12T09:00:00.000Z"),
           createdAt: new Date("2026-08-12T09:00:00.000Z"),
         }),
-        row({ id: "ads", addOn: "local-seo-aeo", netAmountCents: 800_000, listAmountCents: 800_000 }),
+        row({ id: "ads", addOn: "paid-ads", netAmountCents: 800_000, listAmountCents: 800_000 }),
       ],
       NOW,
     );
@@ -169,7 +169,7 @@ describe("clientAddOnRows", () => {
       ads: ["Active", true],
     });
     expect(shown.find((entry) => entry.id === "seo-old")?.dateLine).toBe("Ended on 12 September 2026");
-    expect(shown.find((entry) => entry.id === "ads")?.title).toBe("Local SEO + AEO");
+    expect(shown.find((entry) => entry.id === "ads")?.title).toBe("Paid Ads Management");
   });
 
   it("shows payment trouble in the words the customer sees, with no end buttons", () => {
@@ -195,7 +195,7 @@ describe("clientAddOnRows", () => {
     const shown = clientAddOnRows(
       [
         row({ id: "a", endKind: "pause", endRequestedAt: NOW, endRequestedByStaffId: "s", endRequestedByStaffName: "Priya" }),
-        row({ id: "b", addOn: "local-seo-aeo", status: "halted", haltedAt: NOW }),
+        row({ id: "b", addOn: "paid-ads", status: "halted", haltedAt: NOW }),
         row({ id: "c", status: "past_due" }),
       ],
       NOW,
@@ -249,7 +249,7 @@ describe("clientBundledAddOnRows", () => {
   const bundled = (overrides: Partial<BundledAddOn> = {}): BundledAddOn =>
     ({
       id: "row-1",
-      addOn: "digital-growth",
+      addOn: "social-media",
       status: "active",
       listAmountCents: 700_000,
       offerDiscountAmountCents: 0,
@@ -341,22 +341,22 @@ describe("clientAddOnOption", () => {
       plan: { taxRateBasisPoints: 1_800 },
       quote: { kind: "quote", chargeCents: 826_000, nextRenewalCents: 999_900, daysLeft: 31 },
     } as unknown as AddOnAssessment;
-    expect(clientAddOnOption("digital-growth", assessment, "INR")).toEqual({
-      addOn: "digital-growth",
-      title: "Social Media and Ads",
+    expect(clientAddOnOption("social-media", assessment, "INR")).toEqual({
+      addOn: "social-media",
+      title: "Social Media Management",
       kind: "add",
       costText: "₹8,260 now for the 31 days left, then ₹9,999 a month, GST included. The customer pays the charge from Billing.",
     });
   });
 
   it("keeps an ending one, and offers nothing that cannot be added", () => {
-    expect(clientAddOnOption("local-seo-aeo", { kind: "keep" } as unknown as AddOnAssessment, "INR")).toMatchObject({ kind: "keep", title: "Local SEO + AEO" });
-    expect(clientAddOnOption("local-seo-aeo", { kind: "blocked", reason: "manual-billing" }, "INR")).toBeNull();
-    expect(clientAddOnOption("local-seo-aeo", null, "INR")).toBeNull();
+    expect(clientAddOnOption("paid-ads", { kind: "keep" } as unknown as AddOnAssessment, "INR")).toMatchObject({ kind: "keep", title: "Paid Ads Management" });
+    expect(clientAddOnOption("paid-ads", { kind: "blocked", reason: "manual-billing" }, "INR")).toBeNull();
+    expect(clientAddOnOption("paid-ads", null, "INR")).toBeNull();
   });
 
   it("offers nothing while the client's kept plan waits to start", () => {
-    expect(clientAddOnOption("local-seo-aeo", { kind: "plan-kept", startsOn: new Date("2026-11-19T00:00:00.000Z") }, "INR")).toBeNull();
+    expect(clientAddOnOption("paid-ads", { kind: "plan-kept", startsOn: new Date("2026-11-19T00:00:00.000Z") }, "INR")).toBeNull();
   });
 });
 
@@ -368,7 +368,7 @@ describe("removeHint", () => {
   });
 
   it("says nothing about the website when another service is removed", () => {
-    expect(removeHint("digital-growth", "12 November 2026")).not.toContain("website");
-    expect(removeHint("local-seo-aeo", "12 November 2026")).not.toContain("website");
+    expect(removeHint("social-media", "12 November 2026")).not.toContain("website");
+    expect(removeHint("paid-ads", "12 November 2026")).not.toContain("website");
   });
 });

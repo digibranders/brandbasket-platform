@@ -8,6 +8,7 @@ import {
   findSetupCallBooking,
   findSiteHealthFacts,
   getPrimaryDomain,
+  findLiveBundledAddOns,
   isPackageOfferForfeited,
   listEnquiries,
   listPreviewVersions,
@@ -22,6 +23,7 @@ import {
   type WebsitePage,
 } from "@brandbasket/db";
 import type { TenantContext } from "@brandbasket/shared/lib/access";
+import { isMonthlyAddOnId } from "@brandbasket/shared/lib/billing/add-ons";
 import { isCustomerVisitsEnabled } from "@brandbasket/shared/lib/launch-flags";
 import { isTemporarySubdomain } from "@brandbasket/shared/lib/onboarding/domain-form";
 import { addDays } from "@brandbasket/shared/lib/calendar/local-date";
@@ -189,10 +191,14 @@ export function loadSiteHealth(tenant: TenantContext, now: Date): Promise<Loaded
   return load("website.health", () => withTenantScope(getAppDb(), tenant, (tx) => findSiteHealthFacts(tx, uptimeSince(now))));
 }
 
-/** The Not bought screen's offer: the Managed Website priced with the package discount the business would get. */
+/** The Not bought screen's offer: the website priced with the package discount the services the business holds would give. */
 export function loadWebsiteOffer(context: CustomerContext): Promise<Loaded<WebsiteOffer>> {
   return load("website.offer", async () => {
-    const forfeited = await withTenantScope(getAppDb(), context.tenant, (tx) => isPackageOfferForfeited(tx, context.businessId));
-    return websiteOffer(context.services, forfeited, context.currency);
+    const { bundled, forfeited } = await withTenantScope(getAppDb(), context.tenant, async (tx) => ({
+      bundled: await findLiveBundledAddOns(tx, context.businessId),
+      forfeited: await isPackageOfferForfeited(tx, context.businessId),
+    }));
+    const held = bundled.flatMap((row) => (row.status === "active" && row.endRequestedAt === null && isMonthlyAddOnId(row.addOn) ? [row.addOn] : []));
+    return websiteOffer(held, forfeited, context.currency);
   });
 }

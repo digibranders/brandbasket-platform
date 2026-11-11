@@ -9,10 +9,10 @@ import { findAddOnProviderPlan, saveAddOnProviderPlan } from "@brandbasket/db";
 import { ensureAddOnPlan } from "./add-on-plans";
 
 const staffDb = { name: "staff-db" } as never;
-const DIGITAL_GROWTH = addOnById("digital-growth");
-// Social Media and Ads in a Website + Social package: 20% off its list price, and the 40 paise that round the package down to a whole rupee.
+const DIGITAL_GROWTH = addOnById("social-media");
+// Social Media Management in a Website + Social package: 20% off its list price, and the 40 paise that round the package down to a whole rupee.
 const PACKAGE_PRICE = addOnPrice(DIGITAL_GROWTH, "INR", 200_020);
-const KEY = { addOn: "digital-growth", netAmountCents: 799_880, taxRateBasisPoints: 1_800, currency: "INR", provider: "razorpay" } as const;
+const KEY = { addOn: "social-media", netAmountCents: 799_880, taxRateBasisPoints: 1_800, currency: "INR", provider: "razorpay" } as const;
 
 function providerWith(createPlan: BillingProvider["createPlan"]): BillingProvider {
   return { name: "razorpay", createPlan } as unknown as BillingProvider;
@@ -45,8 +45,8 @@ describe("ensureAddOnPlan", () => {
       currency: "INR",
       netMonthlyCents: 799_880,
       taxRateBasisPoints: 1_800,
-      code: "addon-digital-growth-799880",
-      itemName: "Brandbasket Social Media and Ads",
+      code: "addon-social-media-799880",
+      itemName: "Brandbasket Social Media Management",
     });
     expect(saveAddOnProviderPlan).toHaveBeenCalledWith(staffDb, { ...KEY, providerPlanId: "plan_mine" });
   });
@@ -58,7 +58,7 @@ describe("ensureAddOnPlan", () => {
 
     await expect(ensureAddOnPlan(staffDb, providerWith(createPlan), { addOn: DIGITAL_GROWTH, price: addOnPrice(DIGITAL_GROWTH, "USD") })).resolves.toBe("plan_usd");
 
-    const key = { addOn: "digital-growth", netAmountCents: 15_000, taxRateBasisPoints: 0, currency: "USD", provider: "razorpay" } as const;
+    const key = { addOn: "social-media", netAmountCents: 15_000, taxRateBasisPoints: 0, currency: "USD", provider: "razorpay" } as const;
     expect(findAddOnProviderPlan).toHaveBeenCalledWith(staffDb, key);
     expect(createPlan).toHaveBeenCalledWith(expect.objectContaining({ currency: "USD", netMonthlyCents: 15_000, taxRateBasisPoints: 0 }));
     expect(saveAddOnProviderPlan).toHaveBeenCalledWith(staffDb, { ...key, providerPlanId: "plan_usd" });

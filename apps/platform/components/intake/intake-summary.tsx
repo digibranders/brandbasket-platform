@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { ReactElement } from "react";
-import { addOnById, MONTHLY_ADD_ON_IDS, type MonthlyAddOnId } from "@brandbasket/shared/lib/billing/add-ons";
+import { addOnById, PLAN_ADD_ON_IDS, type MonthlyAddOnId } from "@brandbasket/shared/lib/billing/add-ons";
 import { formatMoney, type MoneyCurrency } from "@brandbasket/shared/lib/money";
 import { continueToCheckoutAction, toggleServiceAction } from "@/app/app-host/(protected)/personalize/actions";
 import { DARK_BUTTON, SOFT_BUTTON } from "@/components/v2/classes";
@@ -37,7 +37,7 @@ export function IntakeSummary({
         <h2 id="intake-services" className="font-display text-lg font-semibold text-ink">Your services</h2>
         <p className="text-[0.9375rem] text-ink-2">Already chosen by you. Add another before checkout and any package saving updates by itself.</p>
         <ul className="divide-y divide-line rounded-control border border-line">
-          {MONTHLY_ADD_ON_IDS.map((id) => {
+          {PLAN_ADD_ON_IDS.map((id) => {
             const on = services.includes(id);
             const onlyOne = on && servicesAfterToggle(services, id) === services;
             return (

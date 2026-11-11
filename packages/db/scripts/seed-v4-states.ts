@@ -108,7 +108,7 @@ function fakeSubscriptionId(seedKey: string): string {
 const LOGINS_HEADING = "# Customer app v4 state seeds (pnpm --filter @brandbasket/db db:seed:v4), local only, database brandbasket_platform_v4";
 
 type Stage = "preview" | "live" | "lapsed" | "failing" | "unpaid";
-type ServiceId = "managed-website" | "digital-growth" | "local-seo-aeo";
+type ServiceId = "managed-website" | "social-media" | "paid-ads";
 
 /** Days after the first payment that each project step happened. */
 interface Timeline {
@@ -156,7 +156,7 @@ const SPECS: readonly Spec[] = [
     ownerName: "Anjali Kulkarni",
     ownerPhone: "+919822047316",
     stage: "live",
-    services: ["managed-website", "digital-growth", "local-seo-aeo"],
+    services: ["managed-website", "social-media", "paid-ads"],
     stateCode: "mh",
     billing: { legalName: "Kulkarni Physio & Wellness", line1: "Shop 6, Sai Plaza, Karve Road, Kothrud", line2: null, city: "Pune", postalCode: "411038" },
     paidDaysAgo: 40,
@@ -170,7 +170,7 @@ const SPECS: readonly Spec[] = [
     ownerName: "Srinivas Reddy",
     ownerPhone: "+919848316027",
     stage: "lapsed",
-    services: ["managed-website", "digital-growth"],
+    services: ["managed-website", "social-media"],
     stateCode: "tg",
     billing: { legalName: "Reddy Driving School", line1: "Plot 22, Road No. 3, Banjara Hills", line2: null, city: "Hyderabad", postalCode: "500034" },
     paidDaysAgo: 113,
@@ -1047,7 +1047,7 @@ async function seedBusiness(context: Context, spec: Spec, index: number): Promis
     await seedCalls(context, businessId);
     await seedTeam(context, businessId, userId, slug);
   }
-  if (spec.stage === "lapsed" && hasServices("digital-growth")) {
+  if (spec.stage === "lapsed" && hasServices("social-media")) {
     await seedPosts(context, businessId, userId, reddyPosts(context.today));
     await seedConnectedAccounts(context, businessId, spec.handle, spec.name, false);
   }

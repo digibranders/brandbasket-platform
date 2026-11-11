@@ -10,7 +10,7 @@ import {
   type RateLimitRule,
   type ScopedTransaction,
 } from "@brandbasket/db";
-import { isMonthlyAddOnId, MONTHLY_ADD_ON_IDS, type AddOnPrice, type MonthlyAddOnId } from "@brandbasket/shared/lib/billing/add-ons";
+import { isMonthlyAddOnId, MONTHLY_ADD_ON_IDS, servicesToList, type AddOnPrice, type MonthlyAddOnId } from "@brandbasket/shared/lib/billing/add-ons";
 import { bundledLinePrice } from "@brandbasket/shared/lib/billing/bundle";
 import { packageLineWith } from "@brandbasket/shared/lib/billing/packages";
 import { findKeptPlanStart, readAddOnAssessment, removeBundledAddOn, startAddOn, type AddOnAssessment } from "@brandbasket/shared/server/basket-change";
@@ -134,7 +134,11 @@ export async function loadAddOnsPage(customer: Customer, now: Date): Promise<Add
   const stayingLines = bundled.filter((row) => row.status === "active" && row.endRequestedAt === null);
   const listedLines = stayingLines.flatMap((row) => (isMonthlyAddOnId(row.addOn) ? [{ addOn: row.addOn, listCents: row.listAmountCents }] : []));
   const nextBillingOn = customer.billing.subscription?.paidThroughAt ?? null;
-  const addOns = MONTHLY_ADD_ON_IDS.map((addOn): AddOnPageEntry => {
+  const listed = servicesToList(
+    bundled.filter((row) => row.status === "active").map((row) => row.addOn),
+    listedLines.map((line) => line.addOn),
+  );
+  const addOns = listed.map((addOn): AddOnPageEntry => {
     const assessment = assessments.get(addOn) ?? null;
     const included = bundled.find((row) => row.addOn === addOn && row.status === "active");
     // What it costs once added: the package price the basket would earn, which is list for a service on its own.

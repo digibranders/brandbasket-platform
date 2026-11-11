@@ -9,7 +9,7 @@ const base: AdCreditDue = {
   currency: "INR",
   adCreditCents: 200_000,
   paidThroughAt: new Date("2026-11-21T10:00:00.000Z"),
-  services: ["managed-website", "digital-growth"],
+  services: ["managed-website", "social-media"],
 };
 
 describe("adCreditDueRows", () => {
@@ -20,8 +20,8 @@ describe("adCreditDueRows", () => {
   });
 
   it("writes a dollar subscription's credit in dollars", () => {
-    expect(adCreditDueRows([{ ...base, currency: "USD", adCreditCents: 6_000, services: ["managed-website", "digital-growth", "local-seo-aeo"] }])[0]).toMatchObject({
-      package: "Website + Social + SEO",
+    expect(adCreditDueRows([{ ...base, currency: "USD", adCreditCents: 6_000, services: ["managed-website", "social-media", "paid-ads"] }])[0]).toMatchObject({
+      package: "Website + Social + Ads",
       amount: "$60 a month",
     });
   });

@@ -19,11 +19,11 @@ describe("the checkout's words", () => {
 
   it("shows the build and launch steps when the basket has the website", () => {
     expect(checkoutSteps(["managed-website"]).map((step) => step.title)).toEqual(["You pay", "Book your kickoff call", "We start building", "Your website is live"]);
-    expect(checkoutSteps(["digital-growth", "managed-website"])).toHaveLength(4);
+    expect(checkoutSteps(["social-media", "managed-website"])).toHaveLength(4);
   });
 
   it("ends on 'We start on your plan' when the basket has no website", () => {
-    for (const services of [["digital-growth"], ["local-seo-aeo"], ["digital-growth", "local-seo-aeo"]] as const) {
+    for (const services of [["social-media"], ["paid-ads"], ["social-media", "paid-ads"]] as const) {
       expect(checkoutSteps(services)).toEqual([
         { title: "You pay", note: "Secure payment" },
         { title: "Book your kickoff call", note: "30 minutes, video" },

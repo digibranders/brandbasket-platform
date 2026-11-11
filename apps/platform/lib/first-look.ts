@@ -4,10 +4,11 @@ import { MONTHLY_ADD_ON_IDS, type MonthlyAddOnId } from "@brandbasket/shared/lib
 export type ServiceKey = "website" | "social" | "search";
 
 /** The dashboard's name for each catalogue service. */
-export const SERVICE_KEY_OF: Readonly<Record<MonthlyAddOnId, ServiceKey>> = {
+export const SERVICE_KEY_OF: Readonly<Record<MonthlyAddOnId, ServiceKey | null>> = {
   "managed-website": "website",
-  "digital-growth": "social",
-  "local-seo-aeo": "search",
+  "social-media": "social",
+  "paid-ads": "social",
+  "expert-monitoring": null,
 };
 
 export const SERVICE_NAMES: Readonly<Record<ServiceKey, string>> = { website: "Website", social: "Social & Ads", search: "Local SEO + AEO" };
@@ -24,7 +25,7 @@ export interface ServiceLine {
 /** The services the plan keeps, in catalogue order: active lines that are not on their way out (a service asked to be dropped is still billed until its end, but the kickoff call does not plan it). */
 export function servicesBought(lines: readonly ServiceLine[]): readonly ServiceKey[] {
   const paid = new Set(lines.filter((line) => line.status === "active" && line.endRequestedAt === null).map((line) => line.addOn));
-  return MONTHLY_ADD_ON_IDS.filter((id) => paid.has(id)).map((id) => SERVICE_KEY_OF[id]);
+  return [...new Set(MONTHLY_ADD_ON_IDS.filter((id) => paid.has(id)).flatMap((id) => SERVICE_KEY_OF[id] ?? []))];
 }
 
 /** How long after a call's end time the first look stays open when staff have not marked it held. */

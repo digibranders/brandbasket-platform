@@ -33,7 +33,7 @@ import {
   type Subscription,
 } from "@brandbasket/db";
 import { addOnBlock, quoteAddOn, type AddOnBlock, type AddOnQuote } from "../lib/billing/add-on-proration";
-import { addOnById, isMonthlyAddOnId, type MonthlyAddOnId } from "../lib/billing/add-ons";
+import { addOnById, isMonthlyAddOnId, MONITORING_ID, monitoringIncludedWith, type MonthlyAddOnId } from "../lib/billing/add-ons";
 import { nextDiscountCents } from "../lib/billing/bundle";
 import { listTotalCents, packageBasisPointsFor, packageDiscountsFor, packageLineWith, type PackageLine, type PackageListLine } from "../lib/billing/packages";
 import { billingPeriodProgress } from "../lib/billing/period";
@@ -262,14 +262,19 @@ export function assessAddOn(input: AddOnAssessmentInput): AddOnAssessment {
   if (subscription === null || state.plan === null || subscription.paidThroughAt === null) return { kind: "blocked", reason: "unpaid" };
   if (subscription.provider !== input.providerName) return { kind: "unavailable", reason: "provider-not-ready" };
   if (active !== undefined) return { kind: "keep", row: active };
+  // Monitoring is never billed beside all three plans.
+  const held = stayingLines(input.live);
+  const allThree = monitoringIncludedWith([...held.map(serviceOf), input.addOn]);
+  if (input.addOn === MONITORING_ID && allThree) return { kind: "blocked", reason: "included" };
 
   const period = billingPeriodProgress(subscription, now);
   if (period === null) return { kind: "unavailable", reason: "renewal-due" };
   const plan = state.plan;
   // The basket once it is added: the lines staying in it share one package percentage (none for a single service or once
   // the offer is given up). The new line and every line already there move to it. A referral code carries on: an amount code
-  // keeps its amount and a percentage code is repriced on the new basket's net.
-  const staying = stayingLines(input.live);
+  // keeps its amount and a percentage code is repriced on the new basket's net. A plan that completes all three makes
+  // monitoring free: its line ends at the next billing date (endMonitoringOnceIncluded), so the renewal quoted leaves it out.
+  const staying = allThree ? held.filter((row) => row.addOn !== MONITORING_ID) : held;
   const line = packageLineWith(listedOf(staying), input.forfeited, input.addOn, plan.currency);
   const basketNetCents = line.netCents + totalNetCents(repriced(staying, input.forfeited, { addOn: input.addOn, listCents: line.listCents }));
   const renewalNetCents = plan.recurringAmountCents + basketNetCents;
@@ -371,6 +376,7 @@ export async function moveBasketAtProvider(deps: BasketDeps, subscriptionId: str
       await setNextDiscount(tx, { subscriptionId, discountCents: sentDiscountCents, now });
       await markBundledAddOnsScheduled(tx, { subscriptionId, now });
     });
+    await endMonitoringOnceIncluded(deps, subscription.businessId, now);
     return { kind: "scheduled" };
   } catch (error) {
     logBillingEvent("error", "add-on-provider-failed", { ...fields, ...describeError(error) });
@@ -410,6 +416,19 @@ export async function moveProviderAfterDiscountEnds(deps: BasketDeps, subscripti
     await flagForStaff(deps, fields, now);
     return { kind: "failed" };
   }
+}
+
+/**
+ * Monitoring is free with all three plans: once a paid add completes them, a monitoring line that was being billed is taken
+ * out from the next billing date, with the package left as it is (removeBundledAddOn does not end an offer for it). It
+ * stays until then, since that month is paid. Best effort after the add has gone through: a failure is logged, and
+ * removeBundledAddOn has already flagged it for staff.
+ */
+async function endMonitoringOnceIncluded(deps: BasketDeps, businessId: string, now: Date): Promise<void> {
+  const live = stayingLines(await findLiveBundledAddOns(deps.staffDb, businessId));
+  if (!live.some((row) => row.addOn === MONITORING_ID) || !monitoringIncludedWith(live.map(serviceOf))) return;
+  const removed = await removeBundledAddOn(deps, { businessId, addOn: MONITORING_ID, now, reason: "Included with all three plans" });
+  if (removed.kind !== "scheduled") logBillingEvent("error", "monitoring-end-failed", { businessId, result: removed.kind });
 }
 
 /** The provider step for the add-on a charge paid for, if it was one: what every charge payment path calls after committing. */
@@ -597,7 +616,8 @@ export async function removeBundledAddOn(
   if (subscription.cancelRequestedAt !== null) return { kind: "cancel-requested" };
   if (keptStartsOn !== null) return { kind: "plan-kept", startsOn: keptStartsOn };
   const sent = removalOf(live, row.id);
-  if (sent.kept.length === 0) return { kind: "last-service" };
+  // Monitoring watches over plans: it cannot be all that is left.
+  if (sent.kept.every((line) => line.addOn === MONITORING_ID)) return { kind: "last-service" };
   const fields = { businessId, subscriptionId: subscription.id, addOn };
   // A code carries on through a drop: an amount code keeps its amount, a percentage code is repriced on what is left.
   const sentDiscountCents = await discountOnBasket(deps.staffDb, subscription, sent.remainingNetCents);
@@ -616,12 +636,13 @@ export async function removeBundledAddOn(
       // removal, a paid add), so what is recorded comes from a fresh reading, and it must come to the same amount.
       const fresh = await findBundledAddOnsForSubscription(tx, subscription.id);
       const current = removalOf(fresh, row.id);
-      if (current.kept.length === 0 || current.remainingNetCents !== sent.remainingNetCents || !(await discountStillSent(tx, subscription.id, current.remainingNetCents, sentDiscountCents))) {
+      if (current.kept.every((line) => line.addOn === MONITORING_ID) || current.remainingNetCents !== sent.remainingNetCents || !(await discountStillSent(tx, subscription.id, current.remainingNetCents, sentDiscountCents))) {
         throw new BasketChangedError(subscription.id, sent.remainingNetCents, packageMove(fresh, await isPackageOfferForfeited(tx, businessId)).netCents);
       }
       const removed = await recordBundledAddOnRemoval(tx, { id: row.id, businessId, pendingBundledAddOnNetCents: current.remainingNetCents, now, ...(input.reason == null ? {} : { endReason: input.reason }) });
+      // Monitoring is outside every package, so taking it out leaves the offer, and the ad credit, as they are.
       if (removed) {
-        await endPackageOffer(tx, { businessId, subscriptionId: subscription.id, lines: current.toList, now });
+        if (addOn !== MONITORING_ID) await endPackageOffer(tx, { businessId, subscriptionId: subscription.id, lines: current.toList, now });
         await setNextDiscount(tx, { subscriptionId: subscription.id, discountCents: sentDiscountCents, now });
       }
       return removed;
@@ -639,10 +660,15 @@ export async function removeBundledAddOn(
 /**
  * What taking `removingId` out leaves: the lines that stay, their list prices added up (every line that stays is at list
  * from the next bill, since the offer is gone for good) and the moves to list for the ones not there already. A line already
- * at list with nothing pending (a business that had given the offer up) has nothing to move.
+ * at list with nothing pending (a business that had given the offer up) has nothing to move. Monitoring is the exception:
+ * it is in no package, so the lines that stay keep the prices they are billed at from the next renewal.
  */
 function removalOf(rows: readonly BundledAddOn[], removingId: string): { readonly kept: readonly BundledAddOn[]; readonly remainingNetCents: number; readonly toList: readonly PendingOfferDiscount[] } {
-  const kept = stayingLines(rows).filter((candidate) => candidate.id !== removingId);
+  const staying = stayingLines(rows);
+  const kept = staying.filter((candidate) => candidate.id !== removingId);
+  if (staying.find((candidate) => candidate.id === removingId)?.addOn === MONITORING_ID) {
+    return { kept, remainingNetCents: nextBundledNetCents(kept), toList: [] };
+  }
   const toList = kept
     .filter((line) => line.pendingOfferDiscountAmountCents !== null || line.offerDiscountAmountCents !== 0)
     .map((line) => ({ id: line.id, pendingOfferDiscountAmountCents: 0 }));

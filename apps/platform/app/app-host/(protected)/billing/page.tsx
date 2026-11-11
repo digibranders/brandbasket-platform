@@ -117,7 +117,7 @@ function RenewalFailingCard({ until }: { readonly until: Date }): ReactElement {
   );
 }
 
-/** The services the address names (`?services=managed-website,digital-growth`), as raw text: findReactivation keeps the catalogue ids. */
+/** The services the address names (`?services=managed-website,social-media`), as raw text: findReactivation keeps the catalogue ids. */
 function readServicesParam(raw: string | string[] | undefined): string[] {
   return (Array.isArray(raw) ? raw.join(",") : (raw ?? "")).split(",");
 }

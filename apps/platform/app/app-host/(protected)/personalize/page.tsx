@@ -12,7 +12,7 @@ import { STACK } from "@/components/v2/classes";
 import { ledgerRows, ledgerSummary } from "@/lib/checkout-ledger";
 import { SERVICE_KEY_OF } from "@/lib/first-look";
 import { INTAKE_STEP_PARAM, INTAKE_SUMMARY_STEP, personalizeHref } from "@/lib/intake/links";
-import { firstUnanswered, questionBefore, questionFor, questionPosition, summaryRows, unansweredCount, visibleQuestions } from "@brandbasket/shared/lib/intake/questions";
+import { firstUnanswered, intakeServicesOf, questionBefore, questionFor, questionPosition, summaryRows, unansweredCount, visibleQuestions } from "@brandbasket/shared/lib/intake/questions";
 import { MEMBER_HOME, readSelectedServices } from "@/lib/membership";
 import { getCustomerBusinessEntry, requireCustomerAccess } from "@/lib/server/customer-access";
 import { loadIntake } from "@/lib/server/intake";
@@ -37,7 +37,7 @@ export default async function PersonalizePage({ searchParams }: PersonalizePageP
 
   const params = await searchParams;
   const services = readSelectedServices(params);
-  const keys = services.map((id) => SERVICE_KEY_OF[id]);
+  const keys = intakeServicesOf(services);
   const [{ answers }, view] = await Promise.all([loadIntake(tenant), loadMembershipCheckout({ tenant, billing }, "managed", services, new Date())]);
 
   const rawStep = params[INTAKE_STEP_PARAM];

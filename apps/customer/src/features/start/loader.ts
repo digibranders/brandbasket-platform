@@ -3,6 +3,7 @@ import { addOnById, MONTHLY_ADD_ON_IDS, type MonthlyAddOnId } from "@brandbasket
 import { bundleLines } from "@brandbasket/shared/lib/billing/bundle";
 import {
   firstUnanswered,
+  intakeServicesOf,
   questionBefore,
   questionFor,
   questionPosition,
@@ -79,7 +80,7 @@ export async function loadStart(customer: CustomerContext, params: Params): Prom
   if (entry.kind !== "listing") redirect("/");
 
   const services = readSelectedServices(params);
-  const keys = services.map((id) => SERVICE_KEY_OF[id]);
+  const keys = intakeServicesOf(services);
   const { answers } = await loadIntake(customer.tenant);
 
   const rawStep = params[INTAKE_STEP_PARAM];

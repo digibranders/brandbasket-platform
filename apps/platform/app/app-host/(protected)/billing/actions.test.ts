@@ -217,11 +217,11 @@ describe("reactivateAction", () => {
   it("passes on the services the customer chose, keeping only catalogue ids once each in the catalogue's order", async () => {
     vi.mocked(startReactivationFor).mockResolvedValue({ kind: "refused", problem: { message: "Choose at least one service to continue.", field: null } });
     const data = new FormData();
-    for (const value of ["local-seo-aeo", "managed-website", "not-a-service", "local-seo-aeo"]) data.append("service", value);
+    for (const value of ["paid-ads", "managed-website", "not-a-service", "paid-ads"]) data.append("service", value);
 
     await reactivateAction({ status: "idle" }, data);
 
-    expect(startReactivationFor).toHaveBeenCalledWith({ tenant: TENANT }, expect.any(Date), ["managed-website", "local-seo-aeo"]);
+    expect(startReactivationFor).toHaveBeenCalledWith({ tenant: TENANT }, expect.any(Date), ["managed-website", "paid-ads"]);
   });
 
   it("hands the server no service when the form names none or only unknown ones, and shows its refusal", async () => {

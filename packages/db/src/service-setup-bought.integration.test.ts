@@ -89,36 +89,36 @@ beforeEach(async () => {
 
 describe("listBoughtSetupServices", () => {
   it("counts a bundled add-on that is still pending, and does not count a removed one", async () => {
-    await bundle("digital-growth", "pending");
-    await bundle("local-seo-aeo", "removed");
+    await bundle("social-media", "pending");
+    await bundle("paid-ads", "removed");
     expect(await asStaff()).toEqual(["social"]);
   });
 
   it("does not count a bundled add-on whose end is already requested", async () => {
-    await bundle("digital-growth", "active", NOW);
+    await bundle("social-media", "active", NOW);
     expect(await asStaff()).toEqual([]);
   });
 
-  it("counts a later add-on subscription that is active, scheduled or past due", async () => {
-    const row = await insertAddOnSubscription(dbs.staff.db, addOnRow("local-seo-aeo"));
+  it("counts a later add-on subscription that is active, scheduled or past due, Paid Ads Management in the Social area", async () => {
+    const row = await insertAddOnSubscription(dbs.staff.db, addOnRow("paid-ads"));
     for (const status of ["active", "scheduled", "past_due"] as const) {
       await setStatus(row.id, status);
-      expect(await asStaff()).toEqual(["search"]);
+      expect(await asStaff()).toEqual(["social"]);
     }
   });
 
   it("does not count a cancelled or unpaid add-on subscription", async () => {
-    const cancelled = await insertAddOnSubscription(dbs.staff.db, addOnRow("local-seo-aeo"));
+    const cancelled = await insertAddOnSubscription(dbs.staff.db, addOnRow("paid-ads"));
     await setStatus(cancelled.id, "cancelled");
-    await insertAddOnSubscription(dbs.staff.db, addOnRow("digital-growth"));
+    await insertAddOnSubscription(dbs.staff.db, addOnRow("social-media"));
     expect(await asStaff()).toEqual([]);
   });
 
   it("gives the customer role the same answer for its own business, and nothing for another", async () => {
-    await bundle("digital-growth", "active");
-    const later = await insertAddOnSubscription(dbs.staff.db, addOnRow("local-seo-aeo"));
+    await bundle("social-media", "active");
+    const later = await insertAddOnSubscription(dbs.staff.db, addOnRow("paid-ads"));
     await setStatus(later.id, "active");
-    expect(await asOwner()).toEqual(["social", "search"]);
+    expect(await asOwner()).toEqual(["social"]);
     expect(await asStaff()).toEqual(await asOwner());
     const crossed = await withTenantScope(dbs.app.db, { userId: OTHER_OWNER, businessId: otherBusinessId }, (tx) => listBoughtSetupServices(tx, businessId));
     expect(crossed).toEqual([]);

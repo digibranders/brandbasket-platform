@@ -9,8 +9,8 @@ import { orderSummary } from "./membership";
 const PRICING: LedgerPricing = { planInitialAmountCents: 0, currency: "INR", taxRateBasisPoints: 1800, forfeited: false, hasEverPaid: false };
 
 const WEBSITE: readonly MonthlyAddOnId[] = ["managed-website"];
-const TWO: readonly MonthlyAddOnId[] = ["managed-website", "digital-growth"];
-const THREE: readonly MonthlyAddOnId[] = ["managed-website", "digital-growth", "local-seo-aeo"];
+const TWO: readonly MonthlyAddOnId[] = ["managed-website", "social-media"];
+const THREE: readonly MonthlyAddOnId[] = ["managed-website", "social-media", "paid-ads"];
 
 const PERCENT_CODE: LedgerCode = { code: "SAVE20", months: 3, stated: { kind: "percent", basisPoints: 2000 } };
 const FLAT_CODE: LedgerCode = { code: "FLAT500", months: null, stated: { kind: "amount", amountCents: 50_000 } };
@@ -91,7 +91,7 @@ describe("ledgerRows", () => {
     expect(rows(TWO)).toEqual([
       { key: "website", label: "Website", amount: "Free", tone: "free" },
       { key: "maintenance", label: "Maintenance", amount: "₹2,999", tone: "plain" },
-      { key: "digital-growth", label: "Social Media and Ads", amount: "₹9,999", tone: "plain" },
+      { key: "social-media", label: "Social Media Management", amount: "₹9,999", tone: "plain" },
       { key: "offer", label: "10% off", amount: "-₹1,299", tone: "save" },
     ]);
   });

@@ -1,4 +1,4 @@
-import { MONTHLY_ADD_ON_IDS, type MonthlyAddOnId } from "@brandbasket/shared/lib/billing/add-ons";
+import { PLAN_ADD_ON_IDS, type MonthlyAddOnId } from "@brandbasket/shared/lib/billing/add-ons";
 import { PACKAGE_OFFERS, percentOf } from "@brandbasket/shared/lib/billing/packages";
 import type { MoneyCurrency } from "@brandbasket/shared/lib/money";
 import { pricesNote } from "./currency-words";
@@ -21,13 +21,18 @@ export const CHECKOUT_PLAN_COPY: Readonly<Record<MonthlyAddOnId, CheckoutPlanCop
     blurb: (monthly) => `Website free to build, ${monthly} a month to keep it running`,
     gets: ["A website of up to 10 pages, mobile-friendly", "Enquiry forms and click-to-call", "A local SEO foundation", "Website chat"],
   },
-  "digital-growth": {
-    blurb: () => "Instagram, Facebook, Google profile and Meta ads",
-    gets: ["Posts planned with you each month", "Replies to your reviews"],
+  // From the website's plan columns (brandbasket-website content/pricing.ts and content/basket.ts).
+  "social-media": {
+    blurb: () => "AI posts, captions and scheduling on up to 4 platforms",
+    gets: ["AI content and caption generation", "AI image and creative generation", "Automated posting and scheduling", "Up to 4 platforms managed"],
   },
-  "local-seo-aeo": {
-    blurb: () => "Google search and AI answers",
-    gets: ["Keyword research", "Up to 5 pages optimised a month", "Schema and ranking tracking"],
+  "paid-ads": {
+    blurb: () => "Meta ads with AI creatives, set up and optimised",
+    gets: ["Meta ads on Facebook and Instagram", "AI ad copy and creative generation", "Campaign setup and optimisation", "Budget and bidding management"],
+  },
+  "expert-monitoring": {
+    blurb: () => "Free with all three plans",
+    gets: ["Experts watching your website, social media and ads", "Fixes for what slips", "Help to grow"],
   },
 };
 
@@ -47,7 +52,7 @@ const WEBSITE_STEPS: readonly CheckoutStep[] = [
   { title: "Your website is live", note: "Within 7 working days of the call" },
 ];
 
-/** "What happens next" for a basket without it (Social & Ads and/or Search): there is no website to build. */
+/** "What happens next" for a basket without it (Social and/or Ads): there is no website to build. */
 const NO_WEBSITE_STEPS: readonly CheckoutStep[] = [
   PAY_STEP,
   KICKOFF_STEP,
@@ -75,7 +80,7 @@ export function checkoutLead(currency: MoneyCurrency, taxRateBasisPoints: number
 export const CHECKOUT_COPY = {
   title: "Your plan",
   packageNote: `Two plans are ${offerPercent(2)}% off, all three are ${offerPercent(3)}% off.`,
-  allThree: `All three plans: ${offerPercent(MONTHLY_ADD_ON_IDS.length)}% off every month.`,
+  allThree: `All three plans: ${offerPercent(PLAN_ADD_ON_IDS.length)}% off every month.`,
   getHeading: "What you get",
   nextHeading: "What happens next",
   websiteBadge: "Website free",

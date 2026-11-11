@@ -33,7 +33,7 @@ const NOW = new Date("2026-10-25T10:00:00.000Z");
 
 const WEBSITE_AND_SOCIAL: readonly NewBundledAddOn[] = [
   { addOn: "managed-website", listAmountCents: 299_900, offerDiscountAmountCents: 59_980, netAmountCents: 239_920, taxRateBasisPoints: 1800 },
-  { addOn: "digital-growth", listAmountCents: 999_900, offerDiscountAmountCents: 200_020, netAmountCents: 799_880, taxRateBasisPoints: 1800 },
+  { addOn: "social-media", listAmountCents: 999_900, offerDiscountAmountCents: 200_020, netAmountCents: 799_880, taxRateBasisPoints: 1800 },
 ];
 
 let dbs: TestDatabases;
@@ -96,8 +96,8 @@ describe("listAdCreditDue", () => {
     await business("Asha Cafe", { paid: true, adCreditCents: 200_000 });
 
     expect(await listAdCreditDue(dbs.staff.db, NOW)).toEqual([
-      expect.objectContaining({ businessName: "Asha Cafe", currency: "INR", adCreditCents: 200_000, paidThroughAt: PAID_THROUGH, services: ["managed-website", "digital-growth"] }),
-      expect.objectContaining({ businessName: "Zed Studio", currency: "INR", adCreditCents: 200_000, paidThroughAt: PAID_THROUGH, services: ["managed-website", "digital-growth"] }),
+      expect.objectContaining({ businessName: "Asha Cafe", currency: "INR", adCreditCents: 200_000, paidThroughAt: PAID_THROUGH, services: ["managed-website", "social-media"] }),
+      expect.objectContaining({ businessName: "Zed Studio", currency: "INR", adCreditCents: 200_000, paidThroughAt: PAID_THROUGH, services: ["managed-website", "social-media"] }),
     ]);
   });
 
@@ -150,9 +150,9 @@ describe("listAdCreditDue", () => {
   it("keeps the credit through the paid month after a service is dropped, and ends it at the renewal that takes the line off", async () => {
     const { businessId, subscriptionId } = await business("Dropper", { paid: true, adCreditCents: 200_000 });
     const lines = await findBundledAddOnsForSubscription(dbs.staff.db, subscriptionId);
-    const dropped = lines.find((row) => row.addOn === "digital-growth");
-    const staying = lines.filter((row) => row.addOn !== "digital-growth");
-    if (dropped === undefined) throw new Error("The Social Media and Ads line was not opened");
+    const dropped = lines.find((row) => row.addOn === "social-media");
+    const staying = lines.filter((row) => row.addOn !== "social-media");
+    if (dropped === undefined) throw new Error("The Social Media Management line was not opened");
     await recordBundledAddOnRemoval(dbs.staff.db, { id: dropped.id, businessId, pendingBundledAddOnNetCents: 299_900, now: OPENED_AT });
     await dbs.staff.db.transaction((tx) =>
       endPackageOffer(tx, { businessId, subscriptionId, lines: staying.map((row) => ({ id: row.id, pendingOfferDiscountAmountCents: 0 })), now: OPENED_AT }),

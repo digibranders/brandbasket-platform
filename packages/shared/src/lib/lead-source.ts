@@ -10,8 +10,11 @@ export const LEAD_SOURCE_LABELS: Readonly<Record<LeadSource, string>> = {
   staff: "Added after a call",
 };
 
-/** The plans on the website's basket, by the ids the website sends (brandbasket-website lib/pricing.ts PLAN_IDS). */
-const WEBSITE_PLAN_LABELS: Readonly<Record<string, string>> = { website: "Website", growth: "Social & Ads", search: "Search" };
+/**
+ * The plans on the website's basket, by the ids the website sends (brandbasket-website lib/pricing.ts PLAN_IDS). `growth` and
+ * `search` are the ids before 2026-11-06, still on older enquiries.
+ */
+const WEBSITE_PLAN_LABELS: Readonly<Record<string, string>> = { website: "Website", social: "Social", ads: "Ads", growth: "Social & Ads", search: "Search" };
 
 /** The website's plan ids by name; an id this list does not know is shown as it is. */
 export function websitePlanLabels(plans: readonly string[]): readonly string[] {

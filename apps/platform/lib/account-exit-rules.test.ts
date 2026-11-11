@@ -37,7 +37,7 @@ function subscription(overrides: Partial<Subscription> = {}): Subscription {
 }
 
 describe("packageEndsFor", () => {
-  const ALL_THREE = ["managed-website", "digital-growth", "local-seo-aeo"] as const;
+  const ALL_THREE = ["managed-website", "social-media", "paid-ads"] as const;
   const BASKET = { services: ALL_THREE, forfeited: false, adCreditCents: 300_000, currency: "INR" } as const;
 
   it("lists the package price, the ad credit and the full price on return for an all-three client", () => {
@@ -49,7 +49,7 @@ describe("packageEndsFor", () => {
   });
 
   it("takes the percentage from the services that are staying", () => {
-    expect(packageEndsFor({ ...BASKET, services: ["managed-website", "digital-growth"], adCreditCents: 150_000 })).toEqual([
+    expect(packageEndsFor({ ...BASKET, services: ["managed-website", "social-media"], adCreditCents: 150_000 })).toEqual([
       "Your package price (10% off)",
       "\u20B91,500 a month of ad credit",
       "If you come back, every service is at its own price",
@@ -57,7 +57,7 @@ describe("packageEndsFor", () => {
   });
 
   it("leaves the ad credit line out when the package has none", () => {
-    expect(packageEndsFor({ ...BASKET, services: ["managed-website", "local-seo-aeo"], adCreditCents: 0 })).toEqual([
+    expect(packageEndsFor({ ...BASKET, services: ["managed-website", "paid-ads"], adCreditCents: 0 })).toEqual([
       "Your package price (10% off)",
       "If you come back, every service is at its own price",
     ]);

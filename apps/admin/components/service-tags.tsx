@@ -3,8 +3,10 @@ import { cn } from "@brandbasket/shared/lib/cn";
 
 const SERVICE_TAGS: Readonly<Record<string, { readonly label: string; readonly dot: string }>> = {
   "managed-website": { label: "Website", dot: "bg-c-site" },
-  "digital-growth": { label: "Social & Ads", dot: "bg-c-growth" },
-  "local-seo-aeo": { label: "Search", dot: "bg-c-search" },
+  "social-media": { label: "Social", dot: "bg-c-growth" },
+  "paid-ads": { label: "Ads", dot: "bg-c-growth" },
+  // Monitoring watches over the other services and has no colour of its own.
+  "expert-monitoring": { label: "Monitoring", dot: "bg-ink-3" },
 };
 
 /** The services a business has, each with its colour. "None" when it has none. */
