@@ -1,3 +1,10 @@
+import type { BillingInterval } from "@brandbasket/db";
+
+/** The calendar months one payment buys on each billing interval. */
+export function monthsPerCycle(interval: BillingInterval): number {
+  return interval === "year" ? 12 : 1;
+}
+
 /**
  * `from` plus `months` calendar months, in UTC. The day is clamped to the end of a shorter month, so a payment on
  * 31 January is paid through 28 or 29 February rather than rolling into March and handing out free days.

@@ -17,6 +17,7 @@ import {
   UNAPPLIED_PAYMENT_REASONS,
   type BillingCurrency,
   type BillingProviderName,
+  type BillingInterval,
   type BundledAddOn,
   type ChargeKind,
   type PaymentAttentionReason,
@@ -152,6 +153,8 @@ export interface Subscription {
   readonly planId: string;
   readonly provider: BillingProviderName;
   readonly providerSubscriptionId: string;
+  /** How often it is charged; on a yearly one every amount below is for a year. */
+  readonly billingInterval: BillingInterval;
   readonly providerStatus: string | null;
   /** The referral code this subscription was opened with, or null at the full price. */
   readonly referralCodeId: string | null;
@@ -193,6 +196,7 @@ const SUBSCRIPTION_COLUMNS = {
   planId: subscriptions.planId,
   provider: subscriptions.provider,
   providerSubscriptionId: subscriptions.providerSubscriptionId,
+  billingInterval: subscriptions.billingInterval,
   providerStatus: subscriptions.providerStatus,
   referralCodeId: subscriptions.referralCodeId,
   discountAmountCents: subscriptions.discountAmountCents,
@@ -398,6 +402,8 @@ export interface NewSubscription {
   readonly planId: string;
   readonly provider: BillingProviderName;
   readonly providerSubscriptionId: string;
+  /** How often it is charged. Defaults to every month. */
+  readonly billingInterval?: BillingInterval;
   /** Exactly as the provider reported it, when it reported anything at all. */
   readonly providerStatus?: string | null;
   /** The referral code the checkout was opened with. Defaults to none. */
@@ -435,6 +441,7 @@ export async function insertSubscription(db: Runner, input: NewSubscription): Pr
       planId: input.planId,
       provider: input.provider,
       providerSubscriptionId: input.providerSubscriptionId,
+      billingInterval: input.billingInterval ?? "month",
       providerStatus: input.providerStatus ?? null,
       referralCodeId: input.referralCodeId ?? null,
       discountAmountCents: input.discountAmountCents ?? 0,
@@ -682,6 +689,7 @@ export async function openKeptSubscription(db: Runner, input: KeptSubscription):
       planId: continues.planId,
       provider: input.provider,
       providerSubscriptionId: input.providerSubscriptionId,
+      billingInterval: continues.billingInterval,
       referralCodeId: continues.referralCodeId,
       // The discount the next renewal would have taken (a code repriced on a changed basket, or ended), now its own.
       discountAmountCents: continues.nextDiscountAmountCents ?? continues.discountAmountCents,

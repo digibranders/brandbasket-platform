@@ -23,6 +23,7 @@ import {
   recordBundledAddOnRemoval,
   setNextDiscount,
   setPendingOfferDiscounts,
+  type BillingInterval,
   type BillingState,
   type BundledAddOn,
   type Database,
@@ -55,7 +56,13 @@ export interface BasketDeps {
   readonly staffDb: Database;
   readonly provider: BillingProvider;
   /** The provider plan for the plan's price plus `addOnNetCents`, less the discount, made when first needed. */
-  readonly ensureDiscountPlan: (provider: BillingProvider, plan: Plan, discountAmountCents: number, addOnNetCents: number) => Promise<string | undefined>;
+  readonly ensureDiscountPlan: (
+    provider: BillingProvider,
+    plan: Plan,
+    discountAmountCents: number,
+    addOnNetCents: number,
+    interval: BillingInterval,
+  ) => Promise<string | undefined>;
 }
 
 /**
@@ -97,7 +104,7 @@ async function moveProviderTo(deps: BasketDeps, subscription: Subscription, plan
   const providerPlanId =
     addOnNetCents === 0 && discountCents === 0
       ? (plan.providerPlanId ?? undefined)
-      : await deps.ensureDiscountPlan(provider, plan, discountCents, addOnNetCents);
+      : await deps.ensureDiscountPlan(provider, plan, discountCents, addOnNetCents, subscription.billingInterval);
   // The fake provider needs no plan of its own; Razorpay does, and without one there is nothing to move to.
   if (providerPlanId === undefined && provider.name === "razorpay") throw new Error(`Plan ${plan.code} has no provider plan to move to.`);
   await provider.changeSubscriptionPlanAtPeriodEnd(subscription.providerSubscriptionId, providerPlanId ?? "");
@@ -275,7 +282,8 @@ export function assessAddOn(input: AddOnAssessmentInput): AddOnAssessment {
   // keeps its amount and a percentage code is repriced on the new basket's net. A plan that completes all three makes
   // monitoring free: its line ends at the next billing date (endMonitoringOnceIncluded), so the renewal quoted leaves it out.
   const staying = allThree ? held.filter((row) => row.addOn !== MONITORING_ID) : held;
-  const line = packageLineWith(listedOf(staying), input.forfeited, input.addOn, plan.currency);
+  // On a yearly subscription the new line is priced for the year and the quote prorates it over the year paid for.
+  const line = packageLineWith(listedOf(staying), input.forfeited, input.addOn, plan.currency, subscription.billingInterval);
   const basketNetCents = line.netCents + totalNetCents(repriced(staying, input.forfeited, { addOn: input.addOn, listCents: line.listCents }));
   const renewalNetCents = plan.recurringAmountCents + basketNetCents;
   const quote = quoteAddOn({

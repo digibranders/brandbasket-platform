@@ -12,6 +12,7 @@ function subscription(overrides: Partial<Subscription> = {}): Subscription {
     planId: "plan-1",
     provider: "razorpay",
     providerSubscriptionId: "sub_abc",
+    billingInterval: "month",
     providerStatus: "active",
     referralCodeId: null,
     discountAmountCents: 0,

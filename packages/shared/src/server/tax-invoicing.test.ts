@@ -115,6 +115,12 @@ describe("planLineDetail", () => {
     );
   });
 
+  it("calls a yearly payment a yearly subscription", () => {
+    expect(planLineDetail(true, new Date("2026-11-11T06:00:00Z"), new Date("2027-11-11T06:00:00Z"), true)).toBe(
+      "Yearly subscription, 11 Nov 2026 to 10 Nov 2027",
+    );
+  });
+
   it("calls any other period a subscription", () => {
     expect(planLineDetail(false, new Date("2026-10-09T06:00:00Z"), new Date("2027-01-09T06:00:00Z"))).toBe(
       "Subscription, 09 Oct 2026 to 08 Jan 2027",

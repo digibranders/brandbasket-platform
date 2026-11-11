@@ -122,7 +122,8 @@ export async function startKeepPlanFor(
       lines: await findBundledAddOnsForSubscription(tx, subscription.id),
       forfeited: await isPackageOfferForfeited(tx, businessId),
     });
-    const bundle: readonly NewBundledAddOn[] = packageLines({ services: basket.services, forfeited: basket.forfeited }, plan.currency).map((line) => ({
+    // A yearly plan kept is kept yearly: its lines are priced for the year it goes on billing.
+    const bundle: readonly NewBundledAddOn[] = packageLines({ services: basket.services, forfeited: basket.forfeited }, plan.currency, subscription.billingInterval).map((line) => ({
       addOn: line.addOn,
       listAmountCents: line.listCents,
       offerDiscountAmountCents: line.offerCents,
@@ -145,7 +146,7 @@ export async function startKeepPlanFor(
 
   let providerPlanId: string | undefined;
   try {
-    providerPlanId = await ensureDiscountPlan(provider, plan, discountAmountCents, bundledAddOnNetCents);
+    providerPlanId = await ensureDiscountPlan(provider, plan, discountAmountCents, bundledAddOnNetCents, continues.billingInterval);
   } catch (error) {
     logBillingEvent("error", "discount-plan-failed", {
       businessId,
@@ -165,6 +166,7 @@ export async function startKeepPlanFor(
       businessName,
       email: user.email,
       plan,
+      billingInterval: continues.billingInterval,
       discountAmountCents,
       bundledAddOnNetCents,
       startAt: continues.paidThroughAt,

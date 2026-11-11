@@ -142,7 +142,10 @@ export async function loadAddOnsPage(customer: Customer, now: Date): Promise<Add
     const assessment = assessments.get(addOn) ?? null;
     const included = bundled.find((row) => row.addOn === addOn && row.status === "active");
     // What it costs once added: the package price the basket would earn, which is list for a service on its own.
-    if (included === undefined) return { kind: "available", addOn, price: packageLineWith(listedLines, forfeited, addOn, currency), offer: offerOf(assessment, nextBillingOn) };
+    if (included === undefined) {
+      const price = packageLineWith(listedLines, forfeited, addOn, currency, customer.billing.subscription?.billingInterval ?? "month");
+      return { kind: "available", addOn, price, offer: offerOf(assessment, nextBillingOn) };
+    }
     return {
       kind: "included",
       addOn,

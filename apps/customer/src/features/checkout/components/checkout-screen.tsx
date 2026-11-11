@@ -3,6 +3,7 @@ import { PageHeader, Panel, TimelineSteps } from "@/components";
 import { Banner } from "@/ui";
 import type { CheckoutView } from "../loader";
 import { BRAND } from "../rules/brand";
+import { BillingSwitch } from "./billing-switch";
 import { CodeForm } from "./code-form";
 import { PayForm } from "./pay-form";
 import { PaymentWaiting } from "./payment-waiting";
@@ -76,6 +77,7 @@ function PayScreen({ view }: { readonly view: Extract<CheckoutView, { kind: "pay
                 Change services
               </Link>
             )}
+            <BillingSwitch interval={ledger.billing.interval} monthlyHref={ledger.billing.monthlyHref} yearlyHref={ledger.billing.yearlyHref} />
             <div aria-live="polite" className="flex flex-col gap-1">
               <ul className="flex flex-col">
                 {ledger.rows.map((row) => (
@@ -100,7 +102,7 @@ function PayScreen({ view }: { readonly view: Extract<CheckoutView, { kind: "pay
                 <CodeForm services={ledger.services} code={ledger.code} lapsedCode={ledger.lapsedCode} />
               </div>
             </details>
-            <PayForm services={ledger.services} total={ledger.total} billingDetails={ledger.billingDetails} />
+            <PayForm services={ledger.services} billing={ledger.billing.value} total={ledger.total} billingDetails={ledger.billingDetails} />
             <p className="type-meta">{ledger.renewal}</p>
           </div>
         </Panel>

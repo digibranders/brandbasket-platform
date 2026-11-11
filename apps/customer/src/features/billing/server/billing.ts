@@ -1,5 +1,5 @@
 import "server-only";
-import { findActivePlan, findCurrentPaymentMethod, withTenantScope, type CurrentPaymentMethod, type Plan } from "@brandbasket/db";
+import { findActivePlan, findCurrentPaymentMethod, withTenantScope, type BillingInterval, type CurrentPaymentMethod, type Plan } from "@brandbasket/db";
 import type { MonthlyAddOnId } from "@brandbasket/shared/lib/billing/add-ons";
 import { reactivationNetCents, readBundleSelection } from "@brandbasket/shared/lib/billing/bundle";
 import { loadCarriedCode, loadReactivationBasket } from "@brandbasket/shared/server/reactivation-basket";
@@ -44,6 +44,8 @@ export interface ReactivationView {
   readonly netCents: number;
   /** What the code a lapse keeps takes off that; 0 for a customer who cancelled themselves or whose code has no months left. */
   readonly discountCents: number;
+  /** How often it is charged once it restarts: a yearly plan that lapsed comes back yearly, and `netCents` is then a year's. */
+  readonly billingInterval: BillingInterval;
 }
 
 /**
@@ -62,5 +64,5 @@ export async function findReactivation(customer: Customer, requested: readonly s
   const netCents = reactivationNetCents(priced, currency);
   const carried = await loadCarriedCode(getStaffDb(), tenant.businessId, basket);
   const discountCents = carried === null ? 0 : (discountFrom(carried.code, { currency, netCents })?.amountCents ?? 0);
-  return { cancelled: basket.cancelled, services: priced.services, netCents, discountCents };
+  return { cancelled: basket.cancelled, services: priced.services, netCents, discountCents, billingInterval: basket.billingInterval };
 }

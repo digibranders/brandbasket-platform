@@ -55,7 +55,7 @@ describe("loadMembershipCheckout", () => {
 
   it("is the basket the business lapsed with, at its offer, for one that has paid before: the same one checkout reopens", async () => {
     vi.mocked(findBillingState).mockResolvedValue(stateWith(true));
-    const lapsed: ReactivationBasket = { services: ["managed-website", "social-media"], forfeited: true, adCreditCents: 0, cancelled: true };
+    const lapsed: ReactivationBasket = { services: ["managed-website", "social-media"], forfeited: true, adCreditCents: 0, cancelled: true, billingInterval: "month" };
     vi.mocked(loadReactivationBasket).mockResolvedValue(lapsed);
 
     const view = await loadMembershipCheckout(customer, "managed", ["paid-ads"], NOW);

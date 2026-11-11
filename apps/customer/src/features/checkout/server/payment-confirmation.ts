@@ -1,7 +1,7 @@
 import "server-only";
 
 /* Ported from apps/platform lib/server/payment-confirmation.ts: the fake provider's first payment, onboarding sent inside it. */
-import { addMonthsUtc, chargedAmountCents, CheckoutVerificationError, hasBillingAccess, type ConfirmedPayment } from "@brandbasket/billing";
+import { addMonthsUtc, chargedAmountCents, monthsPerCycle, CheckoutVerificationError, hasBillingAccess, type ConfirmedPayment } from "@brandbasket/billing";
 import {
   findBillingState,
   findOpenProject,
@@ -316,7 +316,7 @@ export async function confirmFirstPayment(
     }
 
     if (verdict.reactivating) {
-      // Back on today's plan for a month from now: nothing to send, the project is already live.
+      // Back on today's plan for a month (a year, paid yearly) from now: nothing to send, the project is already live.
       const reactivation = await activateReactivationPayment(tx, {
         businessId: tenant.businessId,
         subscriptionId: subscription.id,
@@ -324,7 +324,7 @@ export async function confirmFirstPayment(
         provider: provider.name,
         providerPaymentId: confirmed.providerPaymentId,
         paidAt: confirmed.paidAt,
-        paidThroughAt: addMonthsUtc(confirmed.paidAt, 1),
+        paidThroughAt: addMonthsUtc(confirmed.paidAt, monthsPerCycle(subscription.billingInterval)),
         ...(confirmed.method === undefined ? {} : { method: confirmed.method }),
       });
       if (!reactivation.alreadyRecorded) {

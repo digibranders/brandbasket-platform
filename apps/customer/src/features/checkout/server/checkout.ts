@@ -15,6 +15,7 @@ import {
   findLatestSubscriptionForBusiness,
   findRedeemableReferralCode,
   isPackageOfferForfeited,
+  type BillingInterval,
   lockBusinessForBilling,
   markPackageOfferForfeited,
   openCheckoutSubscription,
@@ -109,6 +110,8 @@ interface PlannedCheckout {
    * under its lock and opens nothing if it moved, so what is recorded is what was priced.
    */
   readonly reactivation: ReactivationBasket | null;
+  /** How often the new subscription is charged: the one chosen, or the one a lapse comes back on. Every amount above is for one cycle of it. */
+  readonly interval: BillingInterval;
 }
 
 type DecisionStep =
@@ -160,7 +163,7 @@ async function openNewCheckout(
   // Made (or found) before anything is opened at the provider: if it cannot be made, nothing exists to clean up.
   let providerPlanId: string | undefined;
   try {
-    providerPlanId = await ensureDiscountPlan(provider, planned.plan, discountAmountCents, bundledAddOnNetCents);
+    providerPlanId = await ensureDiscountPlan(provider, planned.plan, discountAmountCents, bundledAddOnNetCents, planned.interval);
   } catch (error) {
     logBillingEvent("error", "discount-plan-failed", {
       businessId: tenant.businessId,
@@ -176,6 +179,7 @@ async function openNewCheckout(
     businessName: tenant.businessName,
     email: user.email,
     plan: planned.plan,
+    billingInterval: planned.interval,
     discountAmountCents,
     bundledAddOnNetCents,
     ...(providerPlanId === undefined ? {} : { providerPlanId }),
@@ -210,6 +214,7 @@ async function openNewCheckout(
         planId: planned.plan.id,
         provider: provider.name,
         providerSubscriptionId: started.providerSubscriptionId,
+        billingInterval: planned.interval,
         referralCodeId: discount?.codeId ?? null,
         discountAmountCents: discount?.amountCents ?? 0,
         discountMonthsLeft: discount?.months ?? null,
@@ -255,7 +260,7 @@ async function openNewCheckout(
  *
  * Returns where to send the customer, or why not.
  */
-export async function startCheckoutFor(customer: GrantedCustomer, now: Date): Promise<CheckoutOutcome> {
+export async function startCheckoutFor(customer: GrantedCustomer, now: Date, interval: BillingInterval = "month"): Promise<CheckoutOutcome> {
   const { tenant } = customer;
   const appDb = getAppDb();
 
@@ -272,7 +277,7 @@ export async function startCheckoutFor(customer: GrantedCustomer, now: Date): Pr
   }
 
   // Already paid (another tab, say): Home, which leads on to whatever setup is left.
-  return openPlanCheckout(customer, now, MEMBER_HOME, null, WEBSITE_ALONE);
+  return openPlanCheckout(customer, now, MEMBER_HOME, null, WEBSITE_ALONE, interval);
 }
 
 /**
@@ -295,6 +300,7 @@ export async function startMembershipCheckoutFor(
   now: Date,
   tier: PlanTier,
   services: readonly MonthlyAddOnId[],
+  interval: BillingInterval = "month",
 ): Promise<CheckoutOutcome> {
   const { tenant } = customer;
   const appDb = getAppDb();
@@ -306,7 +312,7 @@ export async function startMembershipCheckoutFor(
   if (entry?.kind !== "listing") return refused(ALREADY_A_MEMBER);
   if (await billingDetailsMissing(customer)) return refused(BILLING_DETAILS_NEEDED);
 
-  return openPlanCheckout(customer, now, MEMBER_HOME, tier, readBundleSelection(services));
+  return openPlanCheckout(customer, now, MEMBER_HOME, tier, readBundleSelection(services), interval);
 }
 
 /**
@@ -320,21 +326,26 @@ export async function startMembershipCheckoutFor(
  * has lapsed. A paid-up one is sent to Billing, and one that never paid has nothing to restart. Its project is live,
  * so there is no onboarding to check.
  */
-export async function startReactivationFor(customer: GrantedCustomer, now: Date, chosen: readonly MonthlyAddOnId[] = []): Promise<CheckoutOutcome> {
+export async function startReactivationFor(
+  customer: GrantedCustomer,
+  now: Date,
+  chosen: readonly MonthlyAddOnId[] = [],
+  interval: BillingInterval = "month",
+): Promise<CheckoutOutcome> {
   const { tenant, billing } = customer;
   const limit = await consumeRateLimit(getAppDb(), `checkout:business:${tenant.businessId}`, CHECKOUT_RATE_LIMIT);
   if (!limit.allowed) return refused(TOO_MANY_ATTEMPTS);
   if (billing.status === "paid") return { kind: "redirect", url: REACTIVATE_HREF };
   if (billing.status !== "lapsed") return refused(NOTHING_TO_PAY_FOR);
-  return openPlanCheckout(customer, now, REACTIVATE_HREF, null, readBundleSelection(chosen));
+  return openPlanCheckout(customer, now, REACTIVATE_HREF, null, readBundleSelection(chosen), interval);
 }
 
 /**
  * What a checkout was opened for: the services, what they add up to and the ad credit it grants. The same services at another
  * price (the package offer given up since, an ad credit that no longer applies) are another checkout, never the old one reused.
  */
-function basketKey(addOnIds: readonly string[], netCents: number, adCreditCents: number): string {
-  return `${bundleKey(addOnIds)}|${netCents}|${adCreditCents}`;
+function basketKey(addOnIds: readonly string[], netCents: number, adCreditCents: number, interval: BillingInterval): string {
+  return `${bundleKey(addOnIds)}|${netCents}|${adCreditCents}|${interval}`;
 }
 
 /**
@@ -363,13 +374,14 @@ async function openPlanCheckout(
   paidHref: string,
   tier: PlanTier | null,
   chosen: readonly MonthlyAddOnId[],
+  chosenInterval: BillingInterval,
   lookAgain: boolean = true,
 ): Promise<CheckoutOutcome> {
   if (chosen.length === 0 && customer.billing.status !== "lapsed") return refused(NO_SERVICES);
   const { tenant } = customer;
   const provider = getBillingProvider();
   const changedMeanwhile = async (): Promise<CheckoutOutcome> =>
-    lookAgain ? openPlanCheckout(customer, now, paidHref, tier, chosen, false) : refused(CHANGED_MEANWHILE);
+    lookAgain ? openPlanCheckout(customer, now, paidHref, tier, chosen, chosenInterval, false) : refused(CHANGED_MEANWHILE);
   const first = await getStaffDb().transaction(async (tx): Promise<DecisionStep> => {
     await lockBusinessForBilling(tx, tenant.businessId);
     const state = await findBillingState(tx, tenant.businessId);
@@ -395,7 +407,9 @@ async function openPlanCheckout(
     const services = reactivation === null || reactivation.cancelled ? chosen : reactivation.services;
     if (services.length === 0) return { kind: "no-services" };
     const forfeited = reactivation?.forfeited ?? (await isPackageOfferForfeited(tx, tenant.businessId));
-    const bundle: readonly NewBundledAddOn[] = packageLines({ services, forfeited }, plan.currency).map((line) => ({
+    // A lapse comes back on the interval it had; a first checkout, or a client who cancelled and chose again, on the one chosen.
+    const interval = reactivation === null || reactivation.cancelled ? chosenInterval : reactivation.billingInterval;
+    const bundle: readonly NewBundledAddOn[] = packageLines({ services, forfeited }, plan.currency, interval).map((line) => ({
       addOn: line.addOn,
       listAmountCents: line.listCents,
       offerDiscountAmountCents: line.offerCents,
@@ -404,8 +418,9 @@ async function openPlanCheckout(
     }));
     // The code comes off the basket's package net, once: the lines just priced, less their package discount.
     const code = redeemable ?? carried?.code ?? null;
-    const priced = code === null ? null : discountFrom(code, { currency: plan.currency, netCents: bundledNetCents(bundle) });
-    const discount = priced !== null && carried !== null ? { ...priced, months: carried.monthsLeft } : priced;
+    const priced = code === null ? null : discountFrom(code, { currency: plan.currency, netCents: bundledNetCents(bundle), interval });
+    // A yearly basket's code covers its first payment only (discountFrom); a lapse's carried months are a monthly code's.
+    const discount = priced !== null && carried !== null && interval === "month" ? { ...priced, months: carried.monthsLeft } : priced;
     // Ad credit is for services bought together at the first purchase. A reactivation grants none and keeps what the lapsed
     // subscription had.
     const adCreditCents = reactivation?.adCreditCents ?? adCreditCentsAtCheckout({ services, forfeited, hasEverPaid: false }, plan.currency);
@@ -413,17 +428,25 @@ async function openPlanCheckout(
     const decision = decideCheckout(
       state.subscription === null
         ? null
-        : { ...state.subscription, bundleKey: basketKey(latestPending.map((row) => row.addOn), state.subscription.bundledAddOnNetCents, state.subscription.adCreditCents) },
+        : {
+            ...state.subscription,
+            bundleKey: basketKey(
+              latestPending.map((row) => row.addOn),
+              state.subscription.bundledAddOnNetCents,
+              state.subscription.adCreditCents,
+              state.subscription.billingInterval,
+            ),
+          },
       {
         planId: plan.id,
         provider: provider.name,
         referralCodeId: discount?.codeId ?? null,
-        bundleKey: basketKey(bundle.map((item) => item.addOn), bundle.reduce((total, item) => total + item.netAmountCents, 0), adCreditCents),
+        bundleKey: basketKey(bundle.map((item) => item.addOn), bundle.reduce((total, item) => total + item.netAmountCents, 0), adCreditCents, interval),
       },
       now,
       state,
     );
-    return { kind: "planned", planned: { plan, decision, latest: state.subscription, discount, bundle, adCreditCents, reactivation } };
+    return { kind: "planned", planned: { plan, decision, latest: state.subscription, discount, bundle, adCreditCents, reactivation, interval } };
   });
   if (first.kind === "no-plan") return refused(NO_PLAN);
   if (first.kind === "no-services") return refused(NO_SERVICES);

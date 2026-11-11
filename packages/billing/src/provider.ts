@@ -1,10 +1,12 @@
-import type { BillingCurrency, BillingProviderName, PaymentMethodDetails, Plan } from "@brandbasket/db";
+import type { BillingCurrency, BillingInterval, BillingProviderName, PaymentMethodDetails, Plan } from "@brandbasket/db";
 
 export interface StartCheckoutInput {
   readonly businessId: string;
   readonly businessName: string;
   readonly email: string;
   readonly plan: Plan;
+  /** How often the subscription is charged: the provider plan below charges that cycle. Defaults to every month. */
+  readonly billingInterval?: BillingInterval;
   /**
    * An unpaid subscription already opened at this provider for this business. When given, the provider returns a
    * checkout for it instead of opening another one, so a customer who leaves and comes back is not charged twice.
@@ -90,11 +92,13 @@ export interface ConfirmedChargePayment {
   readonly method?: PaymentMethodDetails | null;
 }
 
-/** A new monthly price to put on sale at the provider. */
+/** A new price to put on sale at the provider, charged every month or every year. */
 export interface CreatePlanInput {
   readonly currency: BillingCurrency;
-  /** The monthly price in minor units. Since 2026-10-26 every price includes GST, so this is what the customer pays (the name is older). */
+  /** The price each cycle in minor units. Since 2026-10-26 every price includes GST, so this is what the customer pays (the name is older than both). */
   readonly netMonthlyCents: number;
+  /** The cycle the price is charged for. Defaults to every month. */
+  readonly billingInterval?: BillingInterval;
   /** The GST inside the price, for the provider's own records; it does not change the amount. */
   readonly taxRateBasisPoints: number;
   /** Our plan code for the new version, recorded on the provider's plan for tracing. */

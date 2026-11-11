@@ -376,6 +376,7 @@ export function BillingFacts({
     <Facts
       items={[
         { label: "Payment", value: PAYMENT_LABELS[state.kind] },
+        { label: "Billed", value: subscription === null ? null : subscription.billingInterval === "year" ? "Yearly" : "Monthly" },
         {
           label: "First payment",
           value: hasPaid ? (

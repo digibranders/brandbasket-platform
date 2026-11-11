@@ -1,4 +1,4 @@
-import type { Subscription } from "@brandbasket/db";
+import type { BillingInterval, Subscription } from "@brandbasket/db";
 
 const MS_PER_DAY = 86_400_000;
 
@@ -25,11 +25,11 @@ export interface PeriodProgress {
 }
 
 /**
- * `from` less one calendar month, in UTC, with the day clamped to the end of a shorter month: the start of a monthly
- * period that ends on `from`. The mirror of addMonthsUtc in @brandbasket/billing, which only counts forwards.
+ * `from` less `months` calendar months, in UTC, with the day clamped to the end of a shorter month: the start of a monthly
+ * (1) or yearly (12) period that ends on `from`. The mirror of addMonthsUtc in @brandbasket/billing, which only counts forwards.
  */
-function oneMonthBefore(from: Date): Date {
-  const targetMonthIndex = from.getUTCMonth() - 1;
+function monthsBefore(from: Date, months: number): Date {
+  const targetMonthIndex = from.getUTCMonth() - months;
   const lastDayOfTarget = new Date(Date.UTC(from.getUTCFullYear(), targetMonthIndex + 1, 0)).getUTCDate();
   const result = new Date(from.getTime());
   result.setUTCDate(1);
@@ -48,7 +48,7 @@ function wholeDaysBetween(from: Date, to: Date): number {
  * because a bar with no ends would be a guess.
  */
 export function billingPeriodProgress(
-  subscription: Pick<Subscription, "activatedAt" | "commitmentEndsAt" | "paidThroughAt">,
+  subscription: Pick<Subscription, "activatedAt" | "commitmentEndsAt" | "paidThroughAt"> & { readonly billingInterval?: BillingInterval },
   now: Date,
 ): PeriodProgress | null {
   const { activatedAt } = subscription;
@@ -56,7 +56,8 @@ export function billingPeriodProgress(
   if (activatedAt === null || end === null || end.getTime() <= activatedAt.getTime()) return null;
 
   const inFirstTerm = subscription.commitmentEndsAt !== null && end.getTime() === subscription.commitmentEndsAt.getTime();
-  const monthStart = oneMonthBefore(end);
+  // A yearly subscription's period after its first is the year before its next payment.
+  const monthStart = monthsBefore(end, subscription.billingInterval === "year" ? 12 : 1);
   const start = inFirstTerm || monthStart.getTime() < activatedAt.getTime() ? activatedAt : monthStart;
 
   const totalDays = Math.max(1, wholeDaysBetween(start, end));

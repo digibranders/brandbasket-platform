@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  firstYearDiscountCents,
   discountCentsFor,
   discountForChangedBasket,
   isChargeableDiscount,
@@ -66,6 +67,21 @@ describe("isChargeableDiscount", () => {
   });
 });
 
+
+describe("firstYearDiscountCents", () => {
+  it("takes a percentage off the year's price", () => {
+    expect(firstYearDiscountCents({ kind: "percent", basisPoints: 1500 }, 3_238_900, 3)).toBe(485_835);
+  });
+
+  it("takes an amount once for each month the code runs, up to 12", () => {
+    expect(firstYearDiscountCents({ kind: "amount", amountCents: 50_000 }, 3_238_900, 3)).toBe(150_000);
+    expect(firstYearDiscountCents({ kind: "amount", amountCents: 50_000 }, 3_238_900, 24)).toBe(600_000);
+  });
+
+  it("takes an amount for all 12 months when the code has no limit", () => {
+    expect(firstYearDiscountCents({ kind: "amount", amountCents: 50_000 }, 3_238_900, null)).toBe(600_000);
+  });
+});
 
 describe("discountCentsFor", () => {
   it("returns a flat amount as it stands, whatever the plan costs", () => {

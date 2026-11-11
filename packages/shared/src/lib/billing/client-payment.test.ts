@@ -11,6 +11,7 @@ function subscription(status: ClientSubscription["status"], paidThroughAt: Date 
   return {
     status,
     provider: "fake",
+    billingInterval: "month",
     activatedAt: paidThroughAt === null ? null : PAID_AT,
     paidThroughAt,
     commitmentEndsAt: paidThroughAt,

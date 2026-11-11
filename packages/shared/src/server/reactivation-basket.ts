@@ -30,7 +30,8 @@ export async function loadReactivationBasket(db: Database | ScopedTransaction, b
   // An unpaid checkout opened after the customer cancelled has not been asked to end; the paid one it replaced was.
   const cancelRequestedAt = newest?.cancelRequestedAt ?? billed?.cancelRequestedAt ?? null;
   return reactivationBasketOf({
-    subscription: newest === null ? null : { ...newest, cancelRequestedAt },
+    // A lapse comes back on the interval the business last paid on, not that of a checkout it left unpaid.
+    subscription: newest === null ? null : { ...newest, cancelRequestedAt, billingInterval: billed?.billingInterval ?? newest.billingInterval },
     lines,
     forfeited: await isPackageOfferForfeited(db, businessId),
   });

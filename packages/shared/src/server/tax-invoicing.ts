@@ -76,6 +76,11 @@ export type InvoiceSource =
        */
       readonly monthly: boolean;
       /**
+       * Whether it bought a year: the payment's subscription is billed yearly. Read from the subscription by the invoice itself
+       * (linesFor), so a caller never has to say it.
+       */
+      readonly yearly?: boolean;
+      /**
        * The first instant paid for. A provider renewal passes the provider's own cycle start, so the printed period
        * matches the provider's.
        */
@@ -170,12 +175,13 @@ export function planLineDescription(planName: string): string {
 }
 
 /**
- * "Monthly subscription, 09 Oct to 08 Nov 2026" for a monthly payment (the approved template's words), and
- * "Subscription, ..." for any other, such as a first payment that covers three months. The same for a first payment,
- * a renewal and a restart: the period says what was paid for.
+ * "Monthly subscription, 09 Oct to 08 Nov 2026" for a monthly payment (the approved template's words), "Yearly subscription,
+ * 11 Nov 2026 to 10 Nov 2027" for a yearly one, and "Subscription, ..." for any other, such as a first payment that covers
+ * three months. The same for a first payment, a renewal and a restart: the period says what was paid for.
  */
-export function planLineDetail(monthly: boolean, periodStart: Date, periodEnd: Date): string {
-  return `${monthly ? "Monthly subscription" : "Subscription"}, ${servicePeriod(periodStart, periodEnd)}`;
+export function planLineDetail(monthly: boolean, periodStart: Date, periodEnd: Date, yearly = false): string {
+  const label = yearly ? "Yearly subscription" : monthly ? "Monthly subscription" : "Subscription";
+  return `${label}, ${servicePeriod(periodStart, periodEnd)}`;
 }
 
 /** What a plan line's note is worked out from. */
@@ -297,7 +303,7 @@ function serviceLinesFor(source: Extract<InvoiceSource, { kind: "plan" }>): Invo
     const soldBasisPoints = basisPoints > 0 ? basisPoints : soldPackageBasisPoints(line.listAmountCents, line.offerDiscountAmountCents);
     return {
       description: addOnById(line.service).title,
-      detail: planLineDetail(source.monthly, source.periodStart, source.periodEnd),
+      detail: planLineDetail(source.monthly, source.periodStart, source.periodEnd, source.yearly),
       note: line.offerDiscountAmountCents > 0 ? packageOfferNote(soldBasisPoints) : null,
       sac: BRANDBASKET_SAC,
       quantity: 1,
@@ -354,9 +360,18 @@ async function linesFor(tx: ScopedTransaction, payment: Payment, source: Invoice
     ];
   }
   const coupon = await couponOf(tx, payment, source);
+  if (payment.subscriptionId !== null) {
+    const subscription = await findSubscriptionById(tx, payment.subscriptionId);
+    if (subscription?.billingInterval === "year") return planLinesFor(payment, { ...source, yearly: true }, coupon);
+  }
+  return planLinesFor(payment, source, coupon);
+}
+
+/** The lines of a plan payment: the plan row's own line when it costs something, then a line for each service. */
+function planLinesFor(payment: Payment, source: Extract<InvoiceSource, { kind: "plan" }>, coupon: ReferralCodeForInvoice | null): InvoiceLineInput[] {
   const planLine: InvoiceLineInput = {
     description: planLineDescription(source.plan.name),
-    detail: planLineDetail(source.monthly, source.periodStart, source.periodEnd),
+    detail: planLineDetail(source.monthly, source.periodStart, source.periodEnd, source.yearly),
     note: planLineNote({
       coupon,
       netAmountCents: source.netAmountCents,

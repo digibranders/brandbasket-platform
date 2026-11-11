@@ -25,6 +25,7 @@ import { openTestDatabases, resetTestDatabase, seedPlansFromMigrations, type Tes
 import type { MonthlyAddOnId } from "./lib/billing/add-ons";
 import { bundleLines } from "./lib/billing/bundle";
 import { adCreditCentsFor, packageLines } from "./lib/billing/packages";
+import { readAddOnAssessment } from "./server/basket-change";
 import { activateFirstPayment, activateRenewalPayment } from "./server/billing-activation";
 import { ensureDiscountPlanFor } from "./server/discount-plans";
 
@@ -146,7 +147,7 @@ describe("a first checkout of a package", () => {
 
     expect(bundledAddOnNetCents).toBe(899_700);
     expect(providerPlanId).toBe("plan_test_899700");
-    expect(await findProviderBundlePlan(dbs.staff.db, { planId: plan.id, netMonthlyCents: 899_700, provider: "fake" })).toBe("plan_test_899700");
+    expect(await findProviderBundlePlan(dbs.staff.db, { planId: plan.id, netMonthlyCents: 899_700, billingInterval: "month", provider: "fake" })).toBe("plan_test_899700");
     expect(asked).toBe(899_700);
     expect(subscription).toMatchObject({ bundledAddOnNetCents: 899_700, adCreditCents: 0 });
 
@@ -176,6 +177,93 @@ describe("a first checkout of a package", () => {
 
     expect(asked).toBe(299_900);
     expect(subscription).toMatchObject({ bundledAddOnNetCents: 299_900, adCreditCents: 0 });
+  });
+});
+
+describe("a yearly checkout", () => {
+  const YEAR_LATER = new Date("2027-10-09T09:00:00.000Z");
+  const TWO_YEARS_LATER = new Date("2028-10-09T09:00:00.000Z");
+
+  /** A first checkout paid yearly: each line at its yearly price, on a yearly provider plan for their total. */
+  async function yearlyCheckout(services: readonly MonthlyAddOnId[]) {
+    const provider = namingProvider();
+    const lines = packageLines({ services, forfeited: false }, plan.currency, "year").map((line) => ({
+      addOn: line.addOn,
+      listAmountCents: line.listCents,
+      offerDiscountAmountCents: line.offerCents,
+      netAmountCents: line.netCents,
+      taxRateBasisPoints: plan.taxRateBasisPoints,
+    }));
+    const bundledAddOnNetCents = lines.reduce((total, line) => total + line.netAmountCents, 0);
+    const providerPlanId = await ensureDiscountPlanFor(dbs.staff.db, provider, plan, 0, bundledAddOnNetCents, "year");
+    const subscription = await openCheckoutSubscription(dbs.staff.db, {
+      businessId,
+      planId: plan.id,
+      provider: "fake",
+      providerSubscriptionId: `fake_sub_${"y".repeat(24)}`,
+      billingInterval: "year",
+      bundledAddOns: lines,
+      replacing: null,
+      now: PAID_AT,
+    });
+    return { providerPlanId, subscription };
+  }
+
+  it("charges a year of the website at 10% off on a yearly provider plan, pays through 12 months and invoices the year", async () => {
+    const { providerPlanId, subscription } = await yearlyCheckout(["managed-website"]);
+    expect(subscription).toMatchObject({ billingInterval: "year", bundledAddOnNetCents: 3_238_900 });
+    expect(providerPlanId).toBe("plan_test_3238900");
+    expect(await findProviderBundlePlan(dbs.staff.db, { planId: plan.id, netMonthlyCents: 3_238_900, billingInterval: "year", provider: "fake" })).toBe("plan_test_3238900");
+    expect(await findProviderBundlePlan(dbs.staff.db, { planId: plan.id, netMonthlyCents: 3_238_900, billingInterval: "month", provider: "fake" })).toBeNull();
+
+    const activation = await payFirst(subscription, "fake_pay_yearly");
+    expect(activation.payment.amountCents).toBe(3_238_900);
+    const paid = await findSubscriptionById(dbs.staff.db, subscription.id);
+    expect(paid?.paidThroughAt).toEqual(YEAR_LATER);
+    expect(paid?.commitmentEndsAt).toEqual(YEAR_LATER);
+
+    const invoice = await findTaxInvoiceByPaymentId(dbs.staff.db, activation.payment.id);
+    expect(invoice?.totalCents).toBe(3_238_900);
+    expect(invoice?.lines.map((line) => [line.description, line.detail, line.unitAmountCents])).toEqual([
+      ["Website Management", "Yearly subscription, 09 Oct 2026 to 08 Oct 2027", 3_238_900],
+    ]);
+  });
+
+  it("renews at the yearly amount and invoices the next year", async () => {
+    const { subscription } = await yearlyCheckout(["managed-website"]);
+    await payFirst(subscription, "fake_pay_yearly");
+    const active = (await findBundledAddOnsForSubscription(dbs.staff.db, subscription.id)).filter((row) => row.status === "active");
+
+    const renewal = await dbs.staff.db.transaction((tx) =>
+      activateRenewalPayment(tx, {
+        businessId,
+        subscriptionId: subscription.id,
+        commitmentEndsAt: YEAR_LATER,
+        provider: "fake",
+        providerPaymentId: "fake_pay_yearly_renewal",
+        amountCents: 3_238_900,
+        currency: "INR",
+        paidAt: YEAR_LATER,
+        paidThroughAt: TWO_YEARS_LATER,
+        periodStart: YEAR_LATER,
+        invoicedPrice: { plan, bundledAddOns: active, netAmountCents: plan.recurringAmountCents, discountAmountCents: 0, retentionDiscountCents: 0 },
+      }),
+    );
+    expect(renewal.payment.amountCents).toBe(3_238_900);
+    const invoice = await findTaxInvoiceByPaymentId(dbs.staff.db, renewal.payment.id);
+    expect(invoice?.lines.map((line) => line.detail)).toEqual(["Yearly subscription, 09 Oct 2027 to 08 Oct 2028"]);
+  });
+
+  it("quotes a service added mid-year at its yearly price for the days left in the year", async () => {
+    const { subscription } = await yearlyCheckout(["managed-website"]);
+    await payFirst(subscription, "fake_pay_yearly");
+    const now = new Date(PAID_AT.getTime() + 122 * 86_400_000);
+
+    const assessment = await readAddOnAssessment(dbs.staff.db, { businessId, addOn: "social-media", providerName: "fake", now, forfeited: false, code: null });
+    if (assessment?.kind !== "offer") throw new Error(`Expected an offer, got ${assessment?.kind}`);
+    expect(assessment.line.netCents).toBe(3_238_900);
+    // 243 of the year's 365 days are left: ₹32,389 x 243 / 365, half up.
+    expect(assessment.quote).toMatchObject({ periodDays: 365, daysLeft: 243, netCents: 2_156_309, nextRenewalCents: 6_477_800, periodEnd: YEAR_LATER });
   });
 });
 

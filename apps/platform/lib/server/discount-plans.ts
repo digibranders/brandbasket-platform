@@ -1,6 +1,6 @@
 import "server-only";
 import type { BillingProvider } from "@brandbasket/billing";
-import type { Plan } from "@brandbasket/db";
+import type { BillingInterval, Plan } from "@brandbasket/db";
 import { ensureDiscountPlanFor } from "@brandbasket/shared/server/discount-plans";
 import { getStaffDb } from "./db";
 
@@ -16,6 +16,7 @@ export async function ensureDiscountPlan(
   plan: Plan,
   discountAmountCents: number,
   bundledAddOnNetCents = 0,
+  interval: BillingInterval = "month",
 ): Promise<string | undefined> {
-  return ensureDiscountPlanFor(getStaffDb(), provider, plan, discountAmountCents, bundledAddOnNetCents);
+  return ensureDiscountPlanFor(getStaffDb(), provider, plan, discountAmountCents, bundledAddOnNetCents, interval);
 }

@@ -90,6 +90,43 @@ describe("createRazorpayProvider", () => {
       expect(result).toEqual({ providerSubscriptionId: "sub_new123", checkoutUrl: "/billing/pay" });
     });
 
+    it("asks for 10 yearly cycles on a yearly subscription, inside Razorpay's cap of 100", async () => {
+      const create = vi.fn().mockResolvedValue({ id: "sub_year" });
+      const provider = createRazorpayProvider({
+        resolveChargeOrder: async () => null,
+        keySecret: KEY_SECRET,
+        client: fakeClient({ create }) as never,
+        resolveBusinessId: async () => null,
+      });
+      await provider.startCheckout({
+        businessId: "11111111-1111-7111-8111-111111111111",
+        businessName: "Acme",
+        email: "owner@acme.test",
+        billingInterval: "year",
+        providerPlanId: "plan_yearly",
+        plan: {
+          id: "plan-row-id",
+          code: "managed-inr",
+          name: "Managed Website",
+          currency: "INR",
+          tier: "managed",
+          initialAmountCents: 0,
+          initialTermMonths: 1,
+          recurringAmountCents: 0,
+          includedPublishesPerMonth: 3,
+          extraPublishAmountCents: 300,
+          includedChangeHours: 1,
+          extraHourAmountCents: 1_500,
+          includedBlogPosts: 100,
+          blogPostBlockSize: 100,
+          extraBlogPostsAmountCents: 500,
+          providerPlanId: null,
+          taxRateBasisPoints: 1800,
+        },
+      });
+      expect(create).toHaveBeenCalledWith(expect.objectContaining({ plan_id: "plan_yearly", total_count: 10 }));
+    });
+
     it("reuses an existing provider subscription id without creating a new one", async () => {
       const create = vi.fn();
       const provider = createRazorpayProvider({
@@ -542,6 +579,19 @@ describe("createPlan", () => {
       item: { name: "Subscription plan (INR)", amount: 349_900, currency: "INR" },
       notes: { brandbasketPlanCode: "care-inr-20261002-093000" },
     });
+  });
+
+  it("creates a yearly Razorpay plan for a yearly price", async () => {
+    const createPlan = vi.fn().mockResolvedValue({ id: "plan_year" });
+    const provider = createRazorpayProvider({
+      keySecret: KEY_SECRET,
+      client: fakeClient({ createPlan }) as never,
+      resolveBusinessId: async () => null,
+      resolveChargeOrder: async () => null,
+    });
+
+    await provider.createPlan({ currency: "INR", netMonthlyCents: 3_238_900, billingInterval: "year", taxRateBasisPoints: 1800, code: "managed-inr-with-add-ons-3238900-year" });
+    expect(createPlan).toHaveBeenCalledWith(expect.objectContaining({ period: "yearly", interval: 1, item: expect.objectContaining({ amount: 3_238_900 }) }));
   });
 
   it("uses the given item name instead of the main plan's", async () => {
