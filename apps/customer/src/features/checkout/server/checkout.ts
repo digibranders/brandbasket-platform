@@ -27,7 +27,7 @@ import {
 } from "@brandbasket/db";
 import { isSafeCheckoutUrl } from "../rules/checkout-url";
 import type { MonthlyAddOnId } from "@brandbasket/shared/lib/billing/add-ons";
-import { readBundleSelection, WEBSITE_ALONE, type ReactivationBasket } from "@brandbasket/shared/lib/billing/bundle";
+import { readBundleSelection, readSoldSelection, WEBSITE_ALONE, type ReactivationBasket } from "@brandbasket/shared/lib/billing/bundle";
 import { adCreditCentsAtCheckout, packageLines } from "@brandbasket/shared/lib/billing/packages";
 import { PAYMENT_RECEIVED_MESSAGE, REACTIVATE_HREF } from "@brandbasket/shared/lib/billing/payment-step";
 import { firstMissing, onboardingChecklist } from "@brandbasket/shared/lib/onboarding/checklist";
@@ -392,7 +392,8 @@ async function openPlanCheckout(
     // A lapse (not the client's own cancel) keeps its code with the months it has left, even if the code was retired since.
     const carried = reactivation === null ? null : await loadCarriedCode(tx, tenant.businessId, reactivation);
     // The client's own cancel ended the package: they chose their services again. A lapse comes back as it was.
-    const services = reactivation === null || reactivation.cancelled ? chosen : reactivation.services;
+    // What the customer chooses is bought new, so only what is on sale (readSoldSelection). A lapse restores what it had.
+    const services = reactivation === null || reactivation.cancelled ? readSoldSelection(chosen) : reactivation.services;
     if (services.length === 0) return { kind: "no-services" };
     const forfeited = reactivation?.forfeited ?? (await isPackageOfferForfeited(tx, tenant.businessId));
     const bundle: readonly NewBundledAddOn[] = packageLines({ services, forfeited }, plan.currency).map((line) => ({

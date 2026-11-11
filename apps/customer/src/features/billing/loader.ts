@@ -1,7 +1,7 @@
 import "server-only";
 import { findBillingProfile, withTenantScope } from "@brandbasket/db";
 import type { MonthlyAddOnId } from "@brandbasket/shared/lib/billing/add-ons";
-import { addOnPrice, addOnById, MONTHLY_ADD_ON_IDS } from "@brandbasket/shared/lib/billing/add-ons";
+import { addOnPrice, addOnById, PLAN_ADD_ON_IDS } from "@brandbasket/shared/lib/billing/add-ons";
 import { paymentReturnView, readPaymentReturn, type PaymentReturnView } from "@brandbasket/shared/lib/billing/payment-return";
 import { planLabel } from "@brandbasket/shared/lib/billing/receipt-title";
 import { renewalCharge } from "@brandbasket/shared/lib/billing/terms";
@@ -63,7 +63,8 @@ export type ServiceAction =
 
 export interface ServiceRowView {
   readonly addOn: MonthlyAddOnId;
-  readonly service: ServiceKey;
+  /** The area of the app it is worked in; null for monitoring, which has none. */
+  readonly service: ServiceKey | null;
   readonly name: string;
   readonly status: AddOnStatus;
   /** What it lists at a month. The package discount is not taken off here: This month's bill shows it once. */
@@ -198,7 +199,7 @@ export async function loadReactivationCard(customer: CustomerContext, params: Pa
   const [plan, reactivation] = await Promise.all([findReactivationPlan(customer), findReactivation(customer, readServicesParam(params.services))]);
   if (plan === null || reactivation === null) return null;
   const picker = reactivation.cancelled
-    ? MONTHLY_ADD_ON_IDS.map((addOn) => ({
+    ? PLAN_ADD_ON_IDS.map((addOn) => ({
         addOn,
         name: serviceName(addOn),
         price: formatMoney(addOnPrice(addOnById(addOn), plan.currency).chargedCents, plan.currency),

@@ -7,6 +7,7 @@ import {
   reactivationBasketOf,
   reactivationNetCents,
   readBundleSelection,
+  readSoldSelection,
   websiteAloneNetCents,
   type LapsedLine,
 } from "./bundle";
@@ -17,8 +18,21 @@ describe("readBundleSelection", () => {
   });
 
   it("drops anything that is not a service", () => {
-    expect(readBundleSelection(["press-release", "local-seo", "social-media", "", "local-seo-aeo"])).toEqual(["local-seo-aeo"]);
+    expect(readBundleSelection(["press-release", "local-seo", "social", "", "local-seo-aeo"])).toEqual(["local-seo-aeo"]);
     expect(readBundleSelection([])).toEqual([]);
+  });
+
+  it("drops monitoring beside all three plans, which include it, and when there is no plan for it to watch", () => {
+    expect(readBundleSelection(["managed-website", "social-media", "paid-ads", "expert-monitoring"])).toEqual(["managed-website", "social-media", "paid-ads"]);
+    expect(readBundleSelection(["expert-monitoring"])).toEqual([]);
+    expect(readBundleSelection(["social-media", "expert-monitoring"])).toEqual(["social-media", "expert-monitoring"]);
+  });
+});
+
+describe("readSoldSelection", () => {
+  it("keeps only what is on sale, so an old link cannot buy a plan that is no longer sold", () => {
+    expect(readSoldSelection(["managed-website", "digital-growth", "local-seo-aeo", "paid-ads"])).toEqual(["managed-website", "paid-ads"]);
+    expect(readSoldSelection(["social-media", "paid-ads"])).toEqual(["social-media", "paid-ads"]);
   });
 });
 
@@ -56,9 +70,9 @@ describe("bundleLines", () => {
 
   it("prices a dollar package in cents, in the catalogue's order", () => {
     // 10% of 41,500 cents is 4,150, so the saving is $41 (4,100): 50 cents less than the lines' own 10%, off the dearer line.
-    expect(bundleLines(["local-seo-aeo", "managed-website"], "USD")).toEqual([
-      { addOn: "managed-website", title: "Managed Website", listCents: 6_500, offerCents: 650, netCents: 5_850 },
-      { addOn: "local-seo-aeo", title: "Local SEO + AEO", listCents: 35_000, offerCents: 3_450, netCents: 31_550 },
+    expect(bundleLines(["paid-ads", "managed-website"], "USD")).toEqual([
+      { addOn: "managed-website", title: "Website Management", listCents: 6_500, offerCents: 650, netCents: 5_850 },
+      { addOn: "paid-ads", title: "Paid Ads Management", listCents: 35_000, offerCents: 3_450, netCents: 31_550 },
     ]);
   });
 

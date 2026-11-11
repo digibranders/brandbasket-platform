@@ -1,5 +1,5 @@
 import type { MonthlyAddOnId } from "@brandbasket/shared/lib/billing/add-ons";
-import { readBundleSelection, WEBSITE_ALONE } from "@brandbasket/shared/lib/billing/bundle";
+import { readSoldSelection, WEBSITE_ALONE } from "@brandbasket/shared/lib/billing/bundle";
 import { safeInviteReturn } from "@/features/team/rules";
 import { offersChoice } from "./brand";
 import { readJoinChoice, type JoinChoice } from "./join-form";
@@ -16,17 +16,20 @@ export const SIGN_UP_PATH = "/signup";
 
 /** Opens the old single page on its Create account view. */
 const NEW_PARAM = "new";
-/** The older links' add-ons on top of the website, comma separated: `plan=managed&addons=digital-growth,local-seo-aeo`. */
+/** The older links' add-ons on top of the website, comma separated: `plan=managed&addons=social-media,paid-ads`. */
 const ADDONS_PARAM = "addons";
-/** The services the website's basket chose (`plan=website,growth`), or `managed` on older links. */
+/** The services the website's basket chose (`plan=website,social`), or `managed` on older links. */
 const PLAN_PARAM = "plan";
 /** The ad landing page's sealed details (start-token.ts). */
 const START_PARAM = "start";
 /** What brandbasket-website calls each service in its links (its lib/pricing.ts), and the catalogue id it is here. */
 const WEBSITE_SERVICE_IDS: ReadonlyMap<string, MonthlyAddOnId> = new Map([
   ["website", "managed-website"],
-  ["growth", "digital-growth"],
-  ["search", "local-seo-aeo"],
+  ["social", "social-media"],
+  ["ads", "paid-ads"],
+  // The ids before 2026-11-06, on links shared before then: Social Media and Ads became Social Media Management in its slot,
+  // and Local SEO + AEO is no longer sold, so it names nothing.
+  ["growth", "social-media"],
 ]);
 
 /** The address and form field that carry where to go after sign-in or sign-up. Only an invite accept page is ever honoured. */
@@ -75,9 +78,9 @@ export function readEntryRequest(params: SearchParams): EntryRequest {
   };
 }
 
-/** The services a plan parameter names in the website's words (`website,growth`), or none. Spaces and capitals are ignored. */
+/** The services a plan parameter names in the website's words (`website,social`), or none. Spaces and capitals are ignored. */
 function namedServices(plan: string): readonly MonthlyAddOnId[] {
-  return readBundleSelection(plan.split(",").flatMap((id) => WEBSITE_SERVICE_IDS.get(id.trim().toLowerCase()) ?? []));
+  return readSoldSelection(plan.split(",").flatMap((id) => WEBSITE_SERVICE_IDS.get(id.trim().toLowerCase()) ?? []));
 }
 
 /**
@@ -88,7 +91,7 @@ function readLinkServices(params: SearchParams): readonly MonthlyAddOnId[] {
   const named = namedServices(single(params[PLAN_PARAM]));
   if (named.length > 0) return named;
   const extras = [params[ADDONS_PARAM] ?? ""].flat().join(",").split(",");
-  return readBundleSelection([...WEBSITE_ALONE, ...extras]);
+  return readSoldSelection([...WEBSITE_ALONE, ...extras]);
 }
 
 /** The plan an address names, or null. A list of the website's services is Managed Website: every service is bought on it. */

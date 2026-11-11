@@ -1,11 +1,14 @@
-import { addOnById, MONTHLY_ADD_ON_IDS, type MonthlyAddOnId } from "@brandbasket/shared/lib/billing/add-ons";
+import { addOnById, MONTHLY_ADD_ON_IDS, SOLD_ADD_ON_IDS, type MonthlyAddOnId } from "@brandbasket/shared/lib/billing/add-ons";
 import { PACKAGE_OFFERS } from "@brandbasket/shared/lib/billing/packages";
 import { formatMoney } from "@brandbasket/shared/lib/money";
 
 /** What staff call each service in a list or a line: short, since a package names two or three of them. */
 const SHORT_NAMES: Readonly<Record<MonthlyAddOnId, string>> = {
   "managed-website": "Website",
-  "digital-growth": "Social",
+  "social-media": "Social",
+  "paid-ads": "Ads",
+  "expert-monitoring": "Monitoring",
+  "digital-growth": "Social & Ads",
   "local-seo-aeo": "SEO",
 };
 
@@ -25,7 +28,7 @@ export interface CatalogueRow {
 
 /** The services on sale with their list prices a month, GST included: what the Pricing page shows. */
 export function catalogueRows(): CatalogueRow[] {
-  return MONTHLY_ADD_ON_IDS.map((id) => {
+  return SOLD_ADD_ON_IDS.map((id) => {
     const service = addOnById(id);
     return { id, title: service.title, inr: formatMoney(service.prices.INR, "INR"), usd: formatMoney(service.prices.USD, "USD") };
   });

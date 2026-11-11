@@ -6,25 +6,26 @@ import { publicPricing } from "./public-prices";
 describe("publicPricing", () => {
   const pricing = publicPricing();
 
-  it("lists every service with its list price in each currency, in minor units", () => {
+  it("lists every service on sale with its list price in each currency, in minor units", () => {
     expect(pricing.services).toEqual([
-      { id: "managed-website", title: "Managed Website", prices: { INR: 299_900, USD: 6_500 } },
-      { id: "digital-growth", title: "Social Media and Ads", prices: { INR: 999_900, USD: 15_000 } },
-      { id: "local-seo-aeo", title: "Local SEO + AEO", prices: { INR: 2_499_900, USD: 35_000 } },
+      { id: "managed-website", title: "Website Management", prices: { INR: 299_900, USD: 6_500 } },
+      { id: "social-media", title: "Social Media Management", prices: { INR: 999_900, USD: 15_000 } },
+      { id: "paid-ads", title: "Paid Ads Management", prices: { INR: 2_499_900, USD: 35_000 } },
+      { id: "expert-monitoring", title: "Dedicated Expert Monitoring", prices: { INR: 600_000, USD: 7_500 } },
     ]);
   });
 
   it("lists the four packages with their percentage and ad credit", () => {
     expect(pricing.packages).toEqual([
-      { services: ["managed-website", "digital-growth"], basisPoints: 1_000, adCreditCents: { INR: 150_000, USD: 3_000 } },
-      { services: ["managed-website", "local-seo-aeo"], basisPoints: 1_000, adCreditCents: { INR: 0, USD: 0 } },
-      { services: ["digital-growth", "local-seo-aeo"], basisPoints: 1_000, adCreditCents: { INR: 150_000, USD: 3_000 } },
-      { services: ["managed-website", "digital-growth", "local-seo-aeo"], basisPoints: 2_000, adCreditCents: { INR: 300_000, USD: 6_000 } },
+      { services: ["managed-website", "social-media"], basisPoints: 1_000, adCreditCents: { INR: 150_000, USD: 3_000 } },
+      { services: ["managed-website", "paid-ads"], basisPoints: 1_000, adCreditCents: { INR: 0, USD: 0 } },
+      { services: ["social-media", "paid-ads"], basisPoints: 1_000, adCreditCents: { INR: 150_000, USD: 3_000 } },
+      { services: ["managed-website", "social-media", "paid-ads"], basisPoints: 2_000, adCreditCents: { INR: 300_000, USD: 6_000 } },
     ]);
   });
 
   it("is the catalogue and the package offers, not a copy of them", () => {
-    expect(pricing.services.map((service) => service.id)).toEqual(ADD_ONS.map((addOn) => addOn.id));
+    expect(pricing.services.map((service) => service.id)).toEqual(ADD_ONS.filter((addOn) => addOn.sold).map((addOn) => addOn.id));
     expect(pricing.packages).toHaveLength(PACKAGE_OFFERS.length);
   });
 

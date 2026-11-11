@@ -3,7 +3,7 @@ import { packageLines } from "@brandbasket/shared/lib/billing/packages";
 import type { MoneyCurrency } from "@brandbasket/shared/lib/money";
 import type { CustomerContext, Service } from "@/lib/guards";
 
-const ADD_ON_OF: Readonly<Record<Service, MonthlyAddOnId>> = { website: "managed-website", social: "digital-growth", search: "local-seo-aeo" };
+const ADD_ON_OF: Readonly<Record<Service, MonthlyAddOnId>> = { website: "managed-website", social: "social-media", search: "local-seo-aeo" };
 
 export interface WebsiteOffer {
   readonly title: string;

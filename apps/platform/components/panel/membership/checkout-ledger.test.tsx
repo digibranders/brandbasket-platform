@@ -45,7 +45,7 @@ function billingView(saved: BillingDetailsView["saved"] = null): BillingDetailsV
 }
 
 function render(
-  initialServices: readonly ("managed-website" | "digital-growth" | "local-seo-aeo")[],
+  initialServices: readonly ("managed-website" | "social-media" | "paid-ads")[],
   choosable = true,
   billingDetails: BillingDetailsView | null = null,
   changeServicesHref: string | null = null,
@@ -82,45 +82,45 @@ describe("CheckoutLedger", () => {
     render(["managed-website"]);
     expect(total()).toBe("₹2,999");
     expect(container.textContent).toContain("Includes ₹457.48 of GST at 18%");
-    expect(chip("Managed Website").getAttribute("aria-pressed")).toBe("true");
-    expect(chip("Local SEO + AEO").getAttribute("aria-pressed")).toBe("false");
+    expect(chip("Website Management").getAttribute("aria-pressed")).toBe("true");
+    expect(chip("Paid Ads Management").getAttribute("aria-pressed")).toBe("false");
   });
 
   it("updates the total, the lines and the address as plans are chosen, without a network call", () => {
     render(["managed-website"]);
 
-    click(chip("Social Media and Ads"));
+    click(chip("Social Media Management"));
     expect(total()).toBe("₹11,699");
     expect(container.textContent).toContain("10% off");
-    expect(window.location.search).toBe("?services=managed-website,digital-growth");
-    expect(posted()).toEqual(["managed-website", "digital-growth"]);
+    expect(window.location.search).toBe("?services=managed-website,social-media");
+    expect(posted()).toEqual(["managed-website", "social-media"]);
 
-    click(chip("Local SEO + AEO"));
+    click(chip("Paid Ads Management"));
     expect(total()).toBe("₹30,398");
     expect(container.textContent).toContain("All three plans: 20% off every month.");
 
-    click(chip("Managed Website"));
-    expect(window.location.search).toBe("?services=digital-growth,local-seo-aeo");
+    click(chip("Website Management"));
+    expect(window.location.search).toBe("?services=social-media,paid-ads");
     expect(fetchSpy).not.toHaveBeenCalled();
   });
 
   it("keeps the last plan chosen, so the basket is never empty", () => {
-    render(["digital-growth"]);
-    click(chip("Social Media and Ads"));
-    expect(chip("Social Media and Ads").getAttribute("aria-pressed")).toBe("true");
+    render(["social-media"]);
+    click(chip("Social Media Management"));
+    expect(chip("Social Media Management").getAttribute("aria-pressed")).toBe("true");
     expect(total()).toBe("₹9,999");
   });
 
   it("lists what you get for the chosen plans only", () => {
     render(["managed-website"]);
     expect(container.textContent).toContain("A website of up to 10 pages, mobile-friendly");
-    expect(container.textContent).not.toContain("Keyword research");
-    click(chip("Local SEO + AEO"));
-    expect(container.textContent).toContain("Keyword research");
+    expect(container.textContent).not.toContain("Meta ads on Facebook and Instagram");
+    click(chip("Paid Ads Management"));
+    expect(container.textContent).toContain("Meta ads on Facebook and Instagram");
   });
 
   it("offers no choice when the services are fixed", () => {
-    render(["managed-website", "digital-growth"], false);
+    render(["managed-website", "social-media"], false);
     expect(container.querySelectorAll("button[aria-pressed]")).toHaveLength(0);
     expect(total()).toBe("₹11,699");
   });
@@ -171,10 +171,10 @@ describe("CheckoutLedger", () => {
   });
 
   it("keeps the services as they were chosen and points back to the questions' summary to change them", () => {
-    render(["managed-website", "digital-growth"], false, null, "/personalize?services=managed-website,digital-growth&q=summary");
+    render(["managed-website", "social-media"], false, null, "/personalize?services=managed-website,social-media&q=summary");
     expect(container.querySelector("button[aria-pressed]")).toBeNull();
-    expect(container.querySelector('a[href="/personalize?services=managed-website,digital-growth&q=summary"]')?.textContent).toBe("Change services");
-    expect(posted()).toEqual(["managed-website", "digital-growth"]);
+    expect(container.querySelector('a[href="/personalize?services=managed-website,social-media&q=summary"]')?.textContent).toBe("Change services");
+    expect(posted()).toEqual(["managed-website", "social-media"]);
   });
 
   it("offers no way back when the services cannot be changed anywhere (a plan being bought back)", () => {

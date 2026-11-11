@@ -120,13 +120,13 @@ describe("orderSummary", () => {
 
   // Every basket the page can sell, in both currencies: what Razorpay is asked for, the ad credit frozen and the offer named.
   const BASKETS: readonly (readonly [string, readonly MonthlyAddOnId[], number, number, number, number, string | null])[] = [
-    ["Managed Website", ["managed-website"], 299_900, 0, 6_500, 0, null],
-    ["Social Media and Ads", ["digital-growth"], 999_900, 0, 15_000, 0, null],
-    ["Local SEO + AEO", ["local-seo-aeo"], 2_499_900, 0, 35_000, 0, null],
-    ["website and social", ["managed-website", "digital-growth"], 1_169_900, 150_000, 19_400, 3_000, "Package offer, 10% off"],
-    ["website and SEO", ["managed-website", "local-seo-aeo"], 2_519_900, 0, 37_400, 0, "Package offer, 10% off"],
-    ["social and SEO", ["digital-growth", "local-seo-aeo"], 3_149_900, 150_000, 45_000, 3_000, "Package offer, 10% off"],
-    ["all three", ["managed-website", "digital-growth", "local-seo-aeo"], 3_039_800, 300_000, 45_200, 6_000, "Package offer, 20% off"],
+    ["Website Management", ["managed-website"], 299_900, 0, 6_500, 0, null],
+    ["Social Media Management", ["social-media"], 999_900, 0, 15_000, 0, null],
+    ["Paid Ads Management", ["paid-ads"], 2_499_900, 0, 35_000, 0, null],
+    ["website and social", ["managed-website", "social-media"], 1_169_900, 150_000, 19_400, 3_000, "Package offer, 10% off"],
+    ["website and SEO", ["managed-website", "paid-ads"], 2_519_900, 0, 37_400, 0, "Package offer, 10% off"],
+    ["social and SEO", ["social-media", "paid-ads"], 3_149_900, 150_000, 45_000, 3_000, "Package offer, 10% off"],
+    ["all three", ["managed-website", "social-media", "paid-ads"], 3_039_800, 300_000, 45_200, 6_000, "Package offer, 20% off"],
   ];
 
   it.each(BASKETS)("charges %s what the checkout charges, with its ad credit and offer", (_name, services, inrTotal, inrCredit, usdTotal, usdCredit, offerLabel) => {
@@ -146,23 +146,23 @@ describe("orderSummary", () => {
 
   it("is one line at list for the website alone: no offer, no ad credit, GST inside the price", () => {
     const summary = orderSummary({ ...inr, services: ["managed-website"] }, 0);
-    expect(summary.lines).toEqual([{ addOn: "managed-website", title: "Managed Website", listCents: 299_900, offerCents: 0, netCents: 299_900 }]);
+    expect(summary.lines).toEqual([{ addOn: "managed-website", title: "Website Management", listCents: 299_900, offerCents: 0, netCents: 299_900 }]);
     expect(summary).toMatchObject({ offer: null, adCredit: null, discountCents: 0, netCents: 299_900, gstCents: 45_748, totalCents: 299_900 });
   });
 
   it("lists a line for each service with its list price, then the package offer and the net", () => {
-    const summary = orderSummary({ ...inr, services: ["managed-website", "digital-growth"] }, 0);
+    const summary = orderSummary({ ...inr, services: ["managed-website", "social-media"] }, 0);
     expect(summary.lines.map((line) => [line.addOn, line.title, line.listCents, line.netCents])).toEqual([
-      ["managed-website", "Managed Website", 299_900, 269_910],
-      ["digital-growth", "Social Media and Ads", 999_900, 899_990],
+      ["managed-website", "Website Management", 299_900, 269_910],
+      ["social-media", "Social Media Management", 999_900, 899_990],
     ]);
     expect(summary.offer).toEqual({ label: "Package offer, 10% off", discountCents: 129_900 });
     expect(summary).toMatchObject({ netCents: 1_169_900, gstCents: 178_460, totalCents: 1_169_900 });
   });
 
   it("names 20% off for three services, and the total is the sum of the lines' nets", () => {
-    const summary = orderSummary({ ...inr, services: ["local-seo-aeo", "managed-website", "digital-growth"] }, 0);
-    expect(summary.lines.map((line) => line.addOn)).toEqual(["managed-website", "digital-growth", "local-seo-aeo"]);
+    const summary = orderSummary({ ...inr, services: ["paid-ads", "managed-website", "social-media"] }, 0);
+    expect(summary.lines.map((line) => line.addOn)).toEqual(["managed-website", "social-media", "paid-ads"]);
     expect(summary.offer?.label).toBe("Package offer, 20% off");
     expect(summary.totalCents).toBe(chargedAmountCents(summary.lines.reduce((sum, line) => sum + line.netCents, 0), 0));
     expect(summary.totalCents).toBe(3_039_800);
@@ -170,24 +170,24 @@ describe("orderSummary", () => {
   });
 
   it("shows the ad credit only when the basket earns one and the checkout would freeze it", () => {
-    const all = ["managed-website", "digital-growth", "local-seo-aeo"] as const;
+    const all = ["managed-website", "social-media", "paid-ads"] as const;
     expect(orderSummary({ ...inr, services: all }, 0).adCredit).toEqual({ cents: 300_000, label: "We add ₹3,000 a month to your ads" });
-    expect(orderSummary({ ...inr, services: ["managed-website", "digital-growth"] }, 0).adCredit?.label).toBe("We add ₹1,500 a month to your ads");
-    expect(orderSummary({ ...inr, services: ["managed-website", "local-seo-aeo"] }, 0).adCredit).toBeNull();
-    expect(orderSummary({ ...inr, services: ["digital-growth"] }, 0).adCredit).toBeNull();
+    expect(orderSummary({ ...inr, services: ["managed-website", "social-media"] }, 0).adCredit?.label).toBe("We add ₹1,500 a month to your ads");
+    expect(orderSummary({ ...inr, services: ["managed-website", "paid-ads"] }, 0).adCredit).toBeNull();
+    expect(orderSummary({ ...inr, services: ["social-media"] }, 0).adCredit).toBeNull();
     expect(orderSummary({ ...inr, services: all, hasEverPaid: true }, 0).adCredit).toBeNull();
     expect(orderSummary({ ...inr, services: all, forfeited: true }, 0).adCredit).toBeNull();
   });
 
   it("charges list prices and names no offer once the business has given the package offer up", () => {
-    const summary = orderSummary({ ...inr, services: ["managed-website", "digital-growth"], forfeited: true }, 0);
+    const summary = orderSummary({ ...inr, services: ["managed-website", "social-media"], forfeited: true }, 0);
     expect(summary.offer).toBeNull();
     expect(summary.lines.map((line) => line.netCents)).toEqual([299_900, 999_900]);
     expect(summary.totalCents).toBe(chargedAmountCents(1_299_800, 0));
   });
 
   it("prices dollars the same way, with no GST: $452 for all three", () => {
-    const summary = orderSummary({ ...usd, services: ["managed-website", "digital-growth", "local-seo-aeo"] }, 0);
+    const summary = orderSummary({ ...usd, services: ["managed-website", "social-media", "paid-ads"] }, 0);
     expect(summary.offer).toEqual({ label: "Package offer, 20% off", discountCents: 11_300 });
     expect(summary).toMatchObject({ netCents: 45_200, gstCents: 0, totalCents: 45_200 });
     expect(summary.adCredit?.label).toBe("We add $60 a month to your ads");
@@ -199,9 +199,9 @@ describe("orderSummary", () => {
   });
 
   it("takes a code off a package once, after the package offer, with GST inside what is left", () => {
-    // 10% of the ₹11,699 the website and Social Media and Ads come to at 10% off.
+    // 10% of the ₹11,699 the website and Social Media Management come to at 10% off.
     const codeCents = discountCentsFor({ kind: "percent", basisPoints: 1_000 }, 1_169_900);
-    const summary = orderSummary({ ...inr, services: ["managed-website", "digital-growth"] }, codeCents);
+    const summary = orderSummary({ ...inr, services: ["managed-website", "social-media"] }, codeCents);
     expect(summary.offer).toEqual({ label: "Package offer, 10% off", discountCents: 129_900 });
     expect(summary).toMatchObject({ discountCents: 116_990, netCents: 1_169_900, totalCents: chargedAmountCents(1_169_900, 116_990) });
     expect(summary.totalCents).toBe(1_052_910);
@@ -210,7 +210,7 @@ describe("orderSummary", () => {
   });
 
   it("takes a flat code off any basket, three services included", () => {
-    const summary = orderSummary({ ...inr, services: ["managed-website", "digital-growth", "local-seo-aeo"] }, 50_000);
+    const summary = orderSummary({ ...inr, services: ["managed-website", "social-media", "paid-ads"] }, 50_000);
     expect(summary).toMatchObject({ discountCents: 50_000, netCents: 3_039_800, gstCents: 456_072, totalCents: 2_989_800 });
   });
 
@@ -221,12 +221,12 @@ describe("orderSummary", () => {
 
 describe("servicesAfterToggle", () => {
   it("adds a service that is not in the basket and takes out one that is, in the catalogue's order", () => {
-    expect(servicesAfterToggle(["digital-growth"], "managed-website")).toEqual(["managed-website", "digital-growth"]);
-    expect(servicesAfterToggle(["managed-website", "digital-growth"], "managed-website")).toEqual(["digital-growth"]);
+    expect(servicesAfterToggle(["social-media"], "managed-website")).toEqual(["managed-website", "social-media"]);
+    expect(servicesAfterToggle(["managed-website", "social-media"], "managed-website")).toEqual(["social-media"]);
   });
 
   it("never empties the basket: the last service stays", () => {
-    expect(servicesAfterToggle(["local-seo-aeo"], "local-seo-aeo")).toEqual(["local-seo-aeo"]);
+    expect(servicesAfterToggle(["paid-ads"], "paid-ads")).toEqual(["paid-ads"]);
   });
 });
 
@@ -257,16 +257,16 @@ describe("isWaitingOnPayment", () => {
 describe("membershipHrefWithServices", () => {
   it("is the plan's page, carrying the services chosen on the website when there are any", () => {
     expect(membershipHrefWithServices("managed", [])).toBe("/checkout");
-    expect(membershipHrefWithServices("managed", ["digital-growth", "local-seo-aeo"])).toBe("/checkout?services=digital-growth,local-seo-aeo");
+    expect(membershipHrefWithServices("managed", ["social-media", "paid-ads"])).toBe("/checkout?services=social-media,paid-ads");
   });
 });
 
 describe("servicesPhrase", () => {
   it.each([
-    [["managed-website"], "Managed Website"],
-    [["digital-growth"], "Social Media and Ads"],
-    [["managed-website", "local-seo-aeo"], "Managed Website and Local SEO + AEO"],
-    [["local-seo-aeo", "managed-website", "digital-growth"], "Managed Website, Social Media and Ads and Local SEO + AEO"],
+    [["managed-website"], "Website Management"],
+    [["social-media"], "Social Media Management"],
+    [["managed-website", "paid-ads"], "Website Management and Paid Ads Management"],
+    [["paid-ads", "managed-website", "social-media"], "Website Management, Social Media Management and Paid Ads Management"],
   ] as const)("names %o as %s, in catalogue order", (services, phrase) => {
     expect(servicesPhrase(services)).toBe(phrase);
   });
@@ -275,11 +275,11 @@ describe("servicesPhrase", () => {
 describe("basketNetCents", () => {
   it.each([
     [["managed-website"], "INR", 299_900],
-    [["digital-growth"], "INR", 999_900],
-    [["managed-website", "digital-growth"], "INR", 1_169_900],
-    [["digital-growth", "local-seo-aeo"], "INR", 3_149_900],
-    [["managed-website", "digital-growth", "local-seo-aeo"], "INR", 3_039_800],
-    [["managed-website", "digital-growth", "local-seo-aeo"], "USD", 45_200],
+    [["social-media"], "INR", 999_900],
+    [["managed-website", "social-media"], "INR", 1_169_900],
+    [["social-media", "paid-ads"], "INR", 3_149_900],
+    [["managed-website", "social-media", "paid-ads"], "INR", 3_039_800],
+    [["managed-website", "social-media", "paid-ads"], "USD", 45_200],
   ] as const)("prices %o in %s at %i with GST included, the package price a new sign-up pays", (services, currency, net) => {
     expect(basketNetCents(services, currency)).toBe(net);
   });
@@ -288,7 +288,7 @@ describe("basketNetCents", () => {
 describe("renewalTerms", () => {
   const inr = { planInitialAmountCents: 0, currency: "INR", taxRateBasisPoints: 1800, forfeited: false, hasEverPaid: false } as const;
   const plan = { currency: "INR", taxRateBasisPoints: 1800, initialTermMonths: 1 } as const;
-  const websiteAndSocial = ["managed-website", "digital-growth"] as const;
+  const websiteAndSocial = ["managed-website", "social-media"] as const;
   // 10% of the ₹11,699 package: ₹1,169.90 off, so ₹10,529.10 a month, and ₹11,699 once the code ends.
   const coded = orderSummary({ ...inr, services: websiteAndSocial }, 116_990);
 

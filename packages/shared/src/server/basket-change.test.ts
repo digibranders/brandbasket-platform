@@ -34,7 +34,7 @@ const line = (addOn: string, listAmountCents: number): BundledAddOn =>
 
 describe("assessAddOn", () => {
   it("quotes the service as a line of the basket it joins", () => {
-    const assessment = assessAddOn({ state, live: [line("managed-website", 299_900)], addOn: "digital-growth", forfeited: false, providerName: "fake", now: NOW });
+    const assessment = assessAddOn({ state, live: [line("managed-website", 299_900)], addOn: "social-media", forfeited: false, providerName: "fake", now: NOW });
 
     expect(assessment).toMatchObject({ kind: "offer", line: { listCents: 999_900, discountCents: 99_910, netCents: 899_990 }, quote: { nextRenewalCents: 1_169_900 } });
   });
@@ -48,9 +48,39 @@ describe("assessAddOn", () => {
   });
 
   it("quotes the next renewal at list once the offer is given up", () => {
-    const assessment = assessAddOn({ state, live: [line("managed-website", 299_900)], addOn: "digital-growth", forfeited: true, providerName: "fake", now: NOW });
+    const assessment = assessAddOn({ state, live: [line("managed-website", 299_900)], addOn: "social-media", forfeited: true, providerName: "fake", now: NOW });
 
     expect(assessment).toMatchObject({ kind: "offer", line: { discountCents: 0, netCents: 999_900 }, quote: { nextRenewalCents: 1_299_800 } });
+  });
+
+  it("never sells a plan that is no longer sold, though a business that has it can keep it", () => {
+    expect(assessAddOn({ state, live: [line("managed-website", 299_900)], addOn: "digital-growth", forfeited: false, providerName: "fake", now: NOW })).toEqual({ kind: "blocked", reason: "not-sold" });
+    expect(assessAddOn({ state, live: [line("managed-website", 299_900)], addOn: "local-seo-aeo", forfeited: false, providerName: "fake", now: NOW })).toEqual({ kind: "blocked", reason: "not-sold" });
+  });
+
+  it("prices a new plan joining an old one in the package their slots make, so an old basket keeps its offer", () => {
+    // Social Media and Ads counts as Social: with Paid Ads Management it is Social + Ads, 10% off 34,998, a saving of 3,499.
+    const assessment = assessAddOn({ state, live: [line("digital-growth", 999_900)], addOn: "paid-ads", forfeited: false, providerName: "fake", now: NOW });
+    expect(assessment).toMatchObject({ kind: "offer", line: { listCents: 2_499_900, discountCents: 249_910 }, quote: { nextRenewalCents: 3_149_900 } });
+  });
+
+  it("does not sell monitoring beside all three plans, which include it", () => {
+    const allThree = [line("managed-website", 299_900), line("social-media", 999_900), line("paid-ads", 2_499_900)];
+    expect(assessAddOn({ state, live: allThree, addOn: "expert-monitoring", forfeited: false, providerName: "fake", now: NOW })).toEqual({ kind: "blocked", reason: "included" });
+  });
+
+  it("prices monitoring at list beside one or two plans, outside the package", () => {
+    const two = [{ ...line("managed-website", 299_900), offerDiscountAmountCents: 29_990 }, { ...line("social-media", 999_900), offerDiscountAmountCents: 99_910 }];
+    const assessment = assessAddOn({ state, live: two, addOn: "expert-monitoring", forfeited: false, providerName: "fake", now: NOW });
+    // Website + Social stays 11,699 a month; monitoring adds its 6,000.
+    expect(assessment).toMatchObject({ kind: "offer", line: { listCents: 600_000, discountCents: 0, netCents: 600_000 }, quote: { nextRenewalCents: 1_769_900 } });
+  });
+
+  it("leaves monitoring out of the renewal quoted for the plan that completes all three", () => {
+    const held = [line("managed-website", 299_900), line("social-media", 999_900), line("expert-monitoring", 600_000)];
+    const assessment = assessAddOn({ state, live: held, addOn: "paid-ads", forfeited: false, providerName: "fake", now: NOW });
+    // All three: 37,997 less 20% (7,599) is 30,398 a month, with no monitoring line.
+    expect(assessment).toMatchObject({ kind: "offer", quote: { nextRenewalCents: 3_039_800 } });
   });
 
   describe("with a referral code on the subscription", () => {
@@ -63,7 +93,7 @@ describe("assessAddOn", () => {
       const assessment = assessAddOn({
         state: withCode({ discountAmountCents: 50_000 }),
         live: website,
-        addOn: "digital-growth",
+        addOn: "social-media",
         forfeited: false,
         code: codeOf({ kind: "amount", amountCents: 50_000 }),
         providerName: "fake",
@@ -78,7 +108,7 @@ describe("assessAddOn", () => {
       const assessment = assessAddOn({
         state: withCode({ discountAmountCents: 29_990 }),
         live: website,
-        addOn: "digital-growth",
+        addOn: "social-media",
         forfeited: false,
         code: codeOf({ kind: "percent", basisPoints: 1_000 }),
         providerName: "fake",
@@ -93,7 +123,7 @@ describe("assessAddOn", () => {
       const assessment = assessAddOn({
         state: withCode({ discountAmountCents: 0, discountMonthsLeft: 0 }),
         live: website,
-        addOn: "digital-growth",
+        addOn: "social-media",
         forfeited: false,
         code: codeOf({ kind: "percent", basisPoints: 1_000 }),
         providerName: "fake",
@@ -136,7 +166,7 @@ describe("assessAddOn", () => {
 
   it("stops rather than price a basket that holds a line that is not a service, which would be quoted as no service at all", () => {
     expect(() =>
-      assessAddOn({ state, live: [line("managed-website", 299_900), line("press-release", 100_000)], addOn: "digital-growth", forfeited: false, providerName: "fake", now: NOW }),
+      assessAddOn({ state, live: [line("managed-website", 299_900), line("press-release", 100_000)], addOn: "social-media", forfeited: false, providerName: "fake", now: NOW }),
     ).toThrow(/press-release .* is not a monthly service/);
   });
 });

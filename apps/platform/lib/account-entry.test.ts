@@ -111,23 +111,29 @@ describe("readEntryRequest under Brandbasket, which sells Managed Website only",
 
 describe("the basket the website's link carries", () => {
   it("reads the website's services from the plan the link names, in the catalogue's order", () => {
-    expect(readFor({ plan: "website,growth" }, BRAND).services).toEqual(["managed-website", "digital-growth"]);
-    expect(readFor({ plan: "search,growth" }, BRAND).services).toEqual(["digital-growth", "local-seo-aeo"]);
-    expect(readFor({ plan: "growth,search,website" }, BRAND).services).toEqual(["managed-website", "digital-growth", "local-seo-aeo"]);
+    expect(readFor({ plan: "website,social" }, BRAND).services).toEqual(["managed-website", "social-media"]);
+    expect(readFor({ plan: "ads,social" }, BRAND).services).toEqual(["social-media", "paid-ads"]);
+    expect(readFor({ plan: "ads,social,website" }, BRAND).services).toEqual(["managed-website", "social-media", "paid-ads"]);
+  });
+
+  it("still reads a link shared before the plans changed: growth is Social Media Management, and search names nothing on sale", () => {
+    expect(readFor({ plan: "website,growth" }, BRAND).services).toEqual(["managed-website", "social-media"]);
+    expect(readFor({ plan: "search,growth" }, BRAND).services).toEqual(["social-media"]);
+    expect(readFor({ plan: "search" }, BRAND)).toMatchObject({ view: "create", services: ["managed-website"] });
   });
 
   it("ignores spaces and capitals around each service the link names", () => {
-    expect(readFor({ plan: "website, growth" }, BRAND).services).toEqual(["managed-website", "digital-growth"]);
-    expect(readFor({ plan: " Search ,GROWTH " }, BRAND).services).toEqual(["digital-growth", "local-seo-aeo"]);
-    expect(readFor({ plan: "website, growth" }, BRAND)).toMatchObject({ view: "create", choice: "managed" });
+    expect(readFor({ plan: "website, social" }, BRAND).services).toEqual(["managed-website", "social-media"]);
+    expect(readFor({ plan: " Ads ,SOCIAL " }, BRAND).services).toEqual(["social-media", "paid-ads"]);
+    expect(readFor({ plan: "website, social" }, BRAND)).toMatchObject({ view: "create", choice: "managed" });
   });
 
   it("opens Create account on Managed Website for a link that names services, as it does for plan=managed", () => {
-    expect(readFor({ plan: "growth,search" }, BRAND)).toEqual({
+    expect(readFor({ plan: "social,ads" }, BRAND)).toEqual({
       view: "create",
       choice: "managed",
       preselected: "managed",
-      services: ["digital-growth", "local-seo-aeo"],
+      services: ["social-media", "paid-ads"],
     });
   });
 
@@ -138,13 +144,11 @@ describe("the basket the website's link carries", () => {
   });
 
   it("still reads the older link: the website, plus the add-ons it lists, catalogue ids only", () => {
-    expect(readFor({ plan: "managed", addons: "local-seo-aeo,nonsense,digital-growth" }, BRAND).services).toEqual([
-      "managed-website",
-      "digital-growth",
-      "local-seo-aeo",
-    ]);
-    expect(readFor({ plan: "managed", addons: ["local-seo-aeo"] }, BRAND).services).toEqual(["managed-website", "local-seo-aeo"]);
-    expect(readFor({ plan: "managed", addons: "social-media,advertising" }, BRAND).services).toEqual(["managed-website"]);
+    expect(readFor({ plan: "managed", addons: "paid-ads,nonsense,social-media" }, BRAND).services).toEqual(["managed-website", "social-media", "paid-ads"]);
+    expect(readFor({ plan: "managed", addons: ["paid-ads"] }, BRAND).services).toEqual(["managed-website", "paid-ads"]);
+    expect(readFor({ plan: "managed", addons: "social,advertising" }, BRAND).services).toEqual(["managed-website"]);
+    // A plan no longer sold is never bought from an old link.
+    expect(readFor({ plan: "managed", addons: "local-seo-aeo,digital-growth" }, BRAND).services).toEqual(["managed-website"]);
   });
 
   it("keeps the services in the address when the owner continues with Managed Website", () => {

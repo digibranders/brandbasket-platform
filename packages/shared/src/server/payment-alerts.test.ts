@@ -55,7 +55,7 @@ describe("announcePayment", () => {
     queries.findPaymentAlertBase.mockResolvedValue(base("initial"));
     await announcePayment(DB, SECRET, "pay-1", ORIGIN);
     const card = sent();
-    for (const part of ["New customer paid: ₹2,999", "Asha Rao", "asha@example.com", "Rao Clinic", "Managed Website", "UPI (asha@okhdfc)", "BB/2026-27/0001", "+91 98200 11111", "https://console.example/clients/biz-1"]) {
+    for (const part of ["New customer paid: ₹2,999", "Asha Rao", "asha@example.com", "Rao Clinic", "Website Management", "UPI (asha@okhdfc)", "BB/2026-27/0001", "+91 98200 11111", "https://console.example/clients/biz-1"]) {
       expect(card).toContain(part);
     }
     expect(card).toContain("₹457.48 GST inside");

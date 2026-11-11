@@ -68,7 +68,7 @@ describe("pagePath", () => {
 
 describe("websiteOffer", () => {
   it("is the list price alone, with no package", () => {
-    expect(websiteOffer([], false, "INR")).toMatchObject({ title: "Managed Website", netCents: 299_900, offerCents: 0, unit: "a month" });
+    expect(websiteOffer([], false, "INR")).toMatchObject({ title: "Website Management", netCents: 299_900, offerCents: 0, unit: "a month" });
     expect(websiteOffer([], false, "USD")).toMatchObject({ netCents: 6_500, offerCents: 0 });
   });
 

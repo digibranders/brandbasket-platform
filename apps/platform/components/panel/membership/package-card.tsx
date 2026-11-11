@@ -20,7 +20,14 @@ interface PackageCardProps {
   readonly currency: MoneyCurrency;
 }
 
-const MARKS: Readonly<Record<AddOn["id"], Icon>> = { "managed-website": GlobeSimple, "digital-growth": Megaphone, "local-seo-aeo": MagnifyingGlass };
+const MARKS: Readonly<Record<AddOn["id"], Icon>> = {
+  "managed-website": GlobeSimple,
+  "social-media": Megaphone,
+  "paid-ads": Megaphone,
+  "expert-monitoring": GlobeSimple,
+  "digital-growth": Megaphone,
+  "local-seo-aeo": MagnifyingGlass,
+};
 
 /** A service's icon on a soft round mark, the one the rail uses for it. */
 function ServiceMark({ addOn }: { readonly addOn: AddOn["id"] }): ReactElement {
@@ -104,7 +111,7 @@ export function PackageCard({ selected, lines, hrefFor, currency }: PackageCardP
   return (
     <section aria-label="Services">
       <ul className="divide-y divide-line border-y border-line">
-        {ADD_ONS.map((addOn) => {
+        {ADD_ONS.filter((addOn) => addOn.packageSlot === addOn.id).map((addOn) => {
           const added = selected.includes(addOn.id);
           return (
             <ServiceRow

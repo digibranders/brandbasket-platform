@@ -1,14 +1,14 @@
 "use server";
 
 import { readBundleSelection } from "@brandbasket/shared/lib/billing/bundle";
-import { questionAfter, type IntakeField } from "@brandbasket/shared/lib/intake/questions";
+import { intakeServicesOf, questionAfter, type IntakeField } from "@brandbasket/shared/lib/intake/questions";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { actionFail, type ActionResult } from "@/lib/action-result";
 import { parseForm } from "@/lib/form";
 import { requireCustomer } from "@/lib/guards";
 import { membershipHrefWithServices, readSelectedServices, servicesAfterToggle } from "../checkout/rules/membership";
-import { INTAKE_SUMMARY_STEP, SERVICE_KEY_OF, startHref, VIEWER_MESSAGE } from "./rules";
+import { INTAKE_SUMMARY_STEP, startHref, VIEWER_MESSAGE } from "./rules";
 import { completeIntake, loadIntake, saveIntakeAnswer, saveIntakeServices } from "./server";
 
 /*
@@ -47,7 +47,7 @@ export async function saveAnswerAction(_previous: ActionResult | null, formData:
   });
   if (outcome.kind === "refused") return actionFail(outcome.message);
   const { answers } = await loadIntake(tenant);
-  const next = questionAfter(services.map((id) => SERVICE_KEY_OF[id]), answers, parsed.data.field as IntakeField);
+  const next = questionAfter(intakeServicesOf(services), answers, parsed.data.field as IntakeField);
   redirect(startHref(services, next === null ? INTAKE_SUMMARY_STEP : next.field));
 }
 

@@ -27,7 +27,8 @@ export async function saveServiceSetup(
     });
 }
 
-const SERVICE_OF_ADD_ON: Readonly<Record<string, SetupService>> = { "digital-growth": "social", "local-seo-aeo": "search" };
+// Paid Ads Management is set up in the Social area, which holds the ad accounts and campaigns (as Social Media and Ads did).
+const SERVICE_OF_ADD_ON: Readonly<Record<string, SetupService>> = { "social-media": "social", "paid-ads": "social", "digital-growth": "social", "local-seo-aeo": "search" };
 const SERVICE_ORDER: readonly SetupService[] = ["social", "search"];
 const PAID_SUBSCRIPTION_STATUSES: readonly string[] = ["active", "scheduled", "past_due"];
 

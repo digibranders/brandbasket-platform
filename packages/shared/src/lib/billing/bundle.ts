@@ -2,7 +2,7 @@ import type { BundledAddOn, Subscription } from "@brandbasket/db";
 // The subpath, not the package index: this module reaches client components, and the index pulls in the database.
 import { chargedAmountCents } from "@brandbasket/billing/tax";
 import type { MoneyCurrency } from "../money";
-import { addOnById, MONTHLY_ADD_ON_IDS, type AddOnPrice, type MonthlyAddOnId } from "./add-ons";
+import { addOnById, isSoldAddOnId, MONITORING_ID, MONTHLY_ADD_ON_IDS, monitoringIncludedWith, type AddOnPrice, type MonthlyAddOnId } from "./add-ons";
 import { packageLines } from "./packages";
 
 /**
@@ -25,11 +25,23 @@ export interface BundleLine {
 /**
  * Which services a posted or typed basket names: only catalogue ids, each once, in the catalogue's order. Anything else
  * is dropped, so a tampered form cannot name a service that does not exist or take one twice. The basket is the whole
- * subscription, the website included only when it is named.
+ * subscription, the website included only when it is named. Monitoring is dropped from a basket of all three plans, which
+ * includes it at no cost, and from one with no plan, which it has nothing to watch over.
  */
 export function readBundleSelection(values: readonly string[]): readonly MonthlyAddOnId[] {
   const chosen = new Set(values);
-  return MONTHLY_ADD_ON_IDS.filter((id) => chosen.has(id));
+  const services = MONTHLY_ADD_ON_IDS.filter((id) => chosen.has(id));
+  const plans = services.filter((id) => id !== MONITORING_ID);
+  return plans.length === 0 || monitoringIncludedWith(plans) ? plans : services;
+}
+
+/**
+ * A basket being bought, read like readBundleSelection with only the services on sale: an unsold one (Social Media and Ads,
+ * Local SEO + AEO) is never sold again, whatever an old link or a tampered form names. A lapse restoring the basket it had
+ * reads that basket with readBundleSelection instead.
+ */
+export function readSoldSelection(values: readonly string[]): readonly MonthlyAddOnId[] {
+  return readBundleSelection(values.filter(isSoldAddOnId));
 }
 
 /** The basket a sign-up link or the plan's page sells when it names no service: the website alone. */

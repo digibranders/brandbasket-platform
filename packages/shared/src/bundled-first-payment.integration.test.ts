@@ -155,6 +155,23 @@ describe("a first checkout of a package", () => {
     expect(activation.payment.amountCents).toBe(3_039_800);
   });
 
+  it("charges Social + Ads, the website's ?plan=social,ads, at 10% off with ₹1,500 of ad credit, and invoices a line for each", async () => {
+    const { asked, subscription } = await firstCheckout(["social-media", "paid-ads"]);
+
+    // ₹34,998 less 10% rounded down to the rupee (₹3,499): ₹31,499 a month, GST included.
+    expect(asked).toBe(3_149_900);
+    expect(subscription).toMatchObject({ bundledAddOnNetCents: 3_149_900, adCreditCents: 150_000 });
+
+    const activation = await payFirst(subscription);
+    expect(activation.payment.amountCents).toBe(3_149_900);
+    const invoice = await findTaxInvoiceByPaymentId(dbs.staff.db, activation.payment.id);
+    expect(invoice?.lines.map((line) => [line.description, line.unitAmountCents, line.discountAmountCents])).toEqual([
+      ["Social Media Management", 999_900, 99_990],
+      ["Paid Ads Management", 2_499_900, 249_910],
+    ]);
+    expect(invoice?.totalCents).toBe(3_149_900);
+  });
+
   it("charges Website + SEO at 10% off, which earns no ad credit", async () => {
     const { asked, subscription } = await firstCheckout(["managed-website", "local-seo-aeo"]);
 

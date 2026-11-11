@@ -27,7 +27,7 @@ export interface PublicPricing {
  */
 export function publicPricing(): PublicPricing {
   return {
-    services: ADD_ONS.map((addOn) => ({ id: addOn.id, title: addOn.title, prices: addOn.prices })),
+    services: ADD_ONS.filter((addOn) => addOn.sold).map((addOn) => ({ id: addOn.id, title: addOn.title, prices: addOn.prices })),
     packages: PACKAGE_OFFERS.map((offer) => ({ services: offer.services, basisPoints: offer.basisPoints, adCreditCents: offer.adCreditCents })),
   };
 }

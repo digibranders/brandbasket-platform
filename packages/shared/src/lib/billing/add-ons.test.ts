@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ADD_ONS, addOnById, addOnPrice, isMonthlyAddOnId, MONTHLY_ADD_ON_IDS } from "./add-ons";
+import { ADD_ONS, addOnById, addOnPrice, isMonthlyAddOnId, isSoldAddOnId, monitoringIncludedWith, PLAN_ADD_ON_IDS, SOLD_ADD_ON_IDS } from "./add-ons";
 
 describe("services catalogue", () => {
   it("describes the Managed Website as up to 10 pages and the Local SEO plan as up to 5 pages optimised a month", () => {
@@ -7,25 +7,53 @@ describe("services catalogue", () => {
     expect(addOnById("local-seo-aeo").line).toContain("up to 5 pages optimised a month");
   });
 
-  it("sells Managed Website, Social Media and Ads and Local SEO + AEO, monthly, in the order the website lists them", () => {
-    expect(ADD_ONS.map((addOn) => [addOn.id, addOn.title, addOn.billing])).toEqual([
-      ["managed-website", "Managed Website", "monthly"],
-      ["digital-growth", "Social Media and Ads", "monthly"],
-      ["local-seo-aeo", "Local SEO + AEO", "monthly"],
+  it("sells Website, Social Media and Paid Ads Management and monitoring, monthly, in the order the website lists them, and keeps the old plans unsold", () => {
+    expect(ADD_ONS.map((addOn) => [addOn.id, addOn.title, addOn.billing, addOn.sold])).toEqual([
+      ["managed-website", "Website Management", "monthly", true],
+      ["social-media", "Social Media Management", "monthly", true],
+      ["paid-ads", "Paid Ads Management", "monthly", true],
+      ["expert-monitoring", "Dedicated Expert Monitoring", "monthly", true],
+      ["digital-growth", "Social Media and Ads", "monthly", false],
+      ["local-seo-aeo", "Local SEO + AEO", "monthly", false],
     ]);
-    expect(MONTHLY_ADD_ON_IDS).toEqual(["managed-website", "digital-growth", "local-seo-aeo"]);
+    expect(SOLD_ADD_ON_IDS).toEqual(["managed-website", "social-media", "paid-ads", "expert-monitoring"]);
+    expect(PLAN_ADD_ON_IDS).toEqual(["managed-website", "social-media", "paid-ads"]);
     expect(isMonthlyAddOnId("managed-website")).toBe(true);
-    expect(isMonthlyAddOnId("social-media")).toBe(false);
+    expect(isMonthlyAddOnId("digital-growth")).toBe(true);
+    expect(isSoldAddOnId("digital-growth")).toBe(false);
+    expect(isSoldAddOnId("paid-ads")).toBe(true);
     expect(isMonthlyAddOnId("local-seo")).toBe(false);
     expect(isMonthlyAddOnId("constructor")).toBe(false);
   });
 
-  it("lists in minor units: 2,999, 9,999 and 24,999 rupees (GST included), 65, 150 and 350 dollars", () => {
+  // brandbasket-website lib/pricing.ts: 2,999, 9,999 and 24,999 rupees, 65, 150 and 350 dollars; monitoring 6,000 or 75.
+  it("lists in minor units what the website lists, GST included in rupees", () => {
     expect(ADD_ONS.map((addOn) => [addOn.id, addOn.prices.INR, addOn.prices.USD])).toEqual([
       ["managed-website", 299_900, 6_500],
+      ["social-media", 999_900, 15_000],
+      ["paid-ads", 2_499_900, 35_000],
+      ["expert-monitoring", 600_000, 7_500],
       ["digital-growth", 999_900, 15_000],
       ["local-seo-aeo", 2_499_900, 35_000],
     ]);
+  });
+
+  it("counts each old plan in the slot of the plan that replaced it, and monitoring in no package", () => {
+    expect(ADD_ONS.map((addOn) => [addOn.id, addOn.packageSlot])).toEqual([
+      ["managed-website", "managed-website"],
+      ["social-media", "social-media"],
+      ["paid-ads", "paid-ads"],
+      ["expert-monitoring", null],
+      ["digital-growth", "social-media"],
+      ["local-seo-aeo", "paid-ads"],
+    ]);
+  });
+
+  it("includes monitoring with all three plans only, an old plan counting in its slot", () => {
+    expect(monitoringIncludedWith(["managed-website", "social-media", "paid-ads"])).toBe(true);
+    expect(monitoringIncludedWith(["managed-website", "digital-growth", "paid-ads"])).toBe(true);
+    expect(monitoringIncludedWith(["managed-website", "social-media", "expert-monitoring"])).toBe(false);
+    expect(monitoringIncludedWith(["social-media", "paid-ads"])).toBe(false);
   });
 
   it("says what Social Media and Ads does: posts planned with the client, review replies and Meta ads, with no fixed post counts", () => {
@@ -61,7 +89,9 @@ describe("services catalogue", () => {
     expect(() => addOnPrice(website, "INR", 0.5)).toThrow(RangeError);
   });
 
-  it("says that ad spend is paid to Meta on top of Social Media and Ads, and nothing extra for the others", () => {
+  it("says that ad spend is paid to Meta on top of Paid Ads Management and Social Media and Ads, and nothing extra for the others", () => {
+    expect(addOnById("paid-ads").extra).toBe("+ your ad spend");
+    expect(addOnById("social-media").extra).toBeUndefined();
     expect(addOnById("digital-growth").extra).toBe("+ your ad spend");
     expect(addOnById("managed-website").extra).toBeUndefined();
     expect(addOnById("local-seo-aeo").extra).toBeUndefined();

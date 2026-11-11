@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { basketNetCents, membershipPriceLine, membershipTierForChoice, servicesPhrase } from "./membership";
 
 describe("membershipTierForChoice", () => {
-  it("names Managed Website and nothing else", () => {
+  it("names Website Management and nothing else", () => {
     expect(membershipTierForChoice("managed")).toBe("managed");
     expect(membershipTierForChoice("listing_only")).toBeNull();
     expect(membershipTierForChoice(null)).toBeNull();
@@ -29,10 +29,10 @@ describe("membershipPriceLine on the plan row that costs nothing", () => {
 });
 describe("servicesPhrase", () => {
   it.each([
-    [["managed-website"], "Managed Website"],
-    [["digital-growth"], "Social Media and Ads"],
-    [["managed-website", "local-seo-aeo"], "Managed Website and Local SEO + AEO"],
-    [["local-seo-aeo", "managed-website", "digital-growth"], "Managed Website, Social Media and Ads and Local SEO + AEO"],
+    [["managed-website"], "Website Management"],
+    [["social-media"], "Social Media Management"],
+    [["managed-website", "paid-ads"], "Website Management and Paid Ads Management"],
+    [["paid-ads", "managed-website", "social-media"], "Website Management, Social Media Management and Paid Ads Management"],
   ] as const)("names %o as %s, in catalogue order", (services, phrase) => {
     expect(servicesPhrase(services)).toBe(phrase);
   });
@@ -41,11 +41,11 @@ describe("servicesPhrase", () => {
 describe("basketNetCents", () => {
   it.each([
     [["managed-website"], "INR", 299_900],
-    [["digital-growth"], "INR", 999_900],
-    [["managed-website", "digital-growth"], "INR", 1_169_900],
-    [["digital-growth", "local-seo-aeo"], "INR", 3_149_900],
-    [["managed-website", "digital-growth", "local-seo-aeo"], "INR", 3_039_800],
-    [["managed-website", "digital-growth", "local-seo-aeo"], "USD", 45_200],
+    [["social-media"], "INR", 999_900],
+    [["managed-website", "social-media"], "INR", 1_169_900],
+    [["social-media", "paid-ads"], "INR", 3_149_900],
+    [["managed-website", "social-media", "paid-ads"], "INR", 3_039_800],
+    [["managed-website", "social-media", "paid-ads"], "USD", 45_200],
   ] as const)("prices %o in %s at %i with GST included, the package price a new sign-up pays", (services, currency, net) => {
     expect(basketNetCents(services, currency)).toBe(net);
   });

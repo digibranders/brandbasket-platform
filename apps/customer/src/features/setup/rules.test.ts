@@ -4,7 +4,7 @@ import { notBoughtView, setupAsks, setupCardTitle, setupPageHref } from "./rules
 const NONE = { social: undefined, search: undefined };
 
 describe("setupAsks", () => {
-  it("asks for the accounts and the ad budget for Social & Ads, and the areas for Local SEO + AEO, in the checklist's order", () => {
+  it("asks for the accounts and the ad budget for Social & Ads, and the areas for Paid Ads Management, in the checklist's order", () => {
     expect(setupAsks("social", NONE).map((ask) => ask.key)).toEqual(["accounts", "budget"]);
     expect(setupAsks("search", NONE).map((ask) => ask.key)).toEqual(["areas"]);
   });
@@ -44,7 +44,8 @@ describe("notBoughtView", () => {
   it("prices a service alone at its list price in rupees, with GST named once", () => {
     const view = notBoughtView({ service: "social", held: [], forfeited: false, currency: "INR" });
     expect(view).toMatchObject({ price: "₹9,999 a month", listPrice: null, offer: null, note: "Prices are in rupees and include GST.", addHref: "/billing?add=social" });
-    expect(view.includes).toContain("Your ad spend is paid on top");
+    expect(view.includes).toContain("Automated posting and scheduling");
+    expect(view.includes).not.toContain("Your ad spend is paid on top");
   });
 
   it("takes the package discount the shared rules give once it joins what is held", () => {

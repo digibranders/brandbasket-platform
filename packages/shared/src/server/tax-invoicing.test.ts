@@ -444,7 +444,7 @@ describe("issueTaxInvoice for a payment of services", () => {
     await issueTaxInvoice(tx, payment(3_039_800), source([line("managed-website", WEBSITE, 59_980), line("digital-growth", SOCIAL, 199_980), line("local-seo-aeo", SEO, 499_940)]));
 
     expect(inserted().lines.map((l) => [l.description, l.unitAmountCents, l.discountAmountCents, l.note])).toEqual([
-      ["Managed Website", 299_900, 59_980, "Package offer, 20% off"],
+      ["Website Management", 299_900, 59_980, "Package offer, 20% off"],
       ["Social Media and Ads", 999_900, 199_980, "Package offer, 20% off"],
       ["Local SEO + AEO", 2_499_900, 499_940, "Package offer, 20% off"],
     ]);
@@ -526,7 +526,7 @@ describe("issueTaxInvoice for a payment of services", () => {
       await issueTaxInvoice(tx, paymentOn(chargedAmountCents(1_169_900, 150_000)), source(lines, 150_000));
 
       expect(inserted().lines.map((l) => [l.description, l.discountAmountCents, l.note])).toEqual([
-        ["Managed Website", 29_990 + 34_606, "Package offer, 10% off. Coupon SAVE10 applied"],
+        ["Website Management", 29_990 + 34_606, "Package offer, 10% off. Coupon SAVE10 applied"],
         ["Social Media and Ads", 99_910 + 115_394, "Package offer, 10% off. Coupon SAVE10 applied"],
       ]);
       const codeShares = inserted().lines.map((l, i) => l.discountAmountCents - [29_990, 99_910][i]!);

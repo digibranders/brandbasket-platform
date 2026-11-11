@@ -54,10 +54,11 @@ export function setupCardTitle(count: number): string {
 
 // ---- Not bought ----
 
-const ADD_ON_OF: Readonly<Record<SetupService, MonthlyAddOnId>> = { social: "digital-growth", search: "local-seo-aeo" };
+// Social pitches Social Media Management; Local SEO + AEO is no longer sold, so its Not bought page offers what it was.
+const ADD_ON_OF: Readonly<Record<SetupService, MonthlyAddOnId>> = { social: "social-media", search: "local-seo-aeo" };
 
 const LEAD: Readonly<Record<SetupService, string>> = {
-  social: "We plan and publish your Instagram, Facebook and Google profile posts each month, and run your Meta ads. You approve every post before it goes out.",
+  social: "We plan and publish your posts each month on up to 4 platforms, with captions and images made with AI. You approve every post before it goes out.",
   search: "We improve how you show up on Google, Maps and in AI answers like ChatGPT. Every month you see what we did and how your searches moved.",
 };
 

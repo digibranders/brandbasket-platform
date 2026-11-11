@@ -119,7 +119,7 @@ describe("sendPaymentReceipt", () => {
     const email = sent[0];
     expect(email).toMatchObject({ to: "asha@raodental.example", subject: "Payment received: ₹2,999", template: "payment-received" });
     expect(email?.bodyText).toContain("Hi Asha,");
-    expect(email?.bodyText).toContain("We have received your payment of ₹2,999 for Managed Website.");
+    expect(email?.bodyText).toContain("We have received your payment of ₹2,999 for Website Management.");
     expect(email?.bodyText).toContain("Includes GST at 18%.");
     expect(email?.bodyText).toContain("Your plan is paid up to 9 November 2026.");
     expect(email?.bodyText).toContain("Your next payment of ₹2,999 is taken on 9 November 2026.");
@@ -197,7 +197,7 @@ describe("sendPaymentFailed", () => {
 
     expect(sent).toHaveLength(1);
     expect(sent[0]).toMatchObject({ to: "asha@raodental.example", subject: "Your payment did not go through" });
-    expect(sent[0]?.bodyText).toContain("We could not take your payment of ₹2,999 for Managed Website.");
+    expect(sent[0]?.bodyText).toContain("We could not take your payment of ₹2,999 for Website Management.");
     expect(sent[0]?.bodyText).toContain("Your plan stays active until 9 November 2026. After that it pauses until the payment is made.");
     expect(sent[0]?.bodyText).toContain(`Pay now: ${ORIGIN}/billing`);
   });

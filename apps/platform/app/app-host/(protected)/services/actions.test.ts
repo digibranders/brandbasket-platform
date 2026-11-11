@@ -37,34 +37,34 @@ describe("removeBundledAddOnAction", () => {
     vi.mocked(removeBundledAddOnFor).mockResolvedValue({
       kind: "scheduled",
       endsOn: new Date("2026-11-12T09:00:00.000Z"),
-      message: "Social Media and Ads stays until your next payment date, then it stops.",
+      message: "Social Media Management stays until your next payment date, then it stops.",
     });
-    expect(await removeBundledAddOnAction(IDLE, form({ addOn: "digital-growth" }))).toEqual({ status: "saved" });
+    expect(await removeBundledAddOnAction(IDLE, form({ addOn: "social-media" }))).toEqual({ status: "saved" });
     expect(requireCustomerAccess).toHaveBeenCalledWith({ listingAccount: "allow" });
-    expect(removeBundledAddOnFor).toHaveBeenCalledWith(CUSTOMER, "digital-growth", expect.any(Date));
+    expect(removeBundledAddOnFor).toHaveBeenCalledWith(CUSTOMER, "social-media", expect.any(Date));
     expect(refresh).toHaveBeenCalled();
   });
 
-  it("passes Local SEO + AEO through", async () => {
+  it("passes Paid Ads Management through", async () => {
     vi.mocked(removeBundledAddOnFor).mockResolvedValue({ kind: "scheduled", endsOn: new Date("2026-11-12T09:00:00.000Z"), message: "ok" });
-    await removeBundledAddOnAction(IDLE, form({ addOn: "local-seo-aeo" }));
-    expect(removeBundledAddOnFor).toHaveBeenCalledWith(CUSTOMER, "local-seo-aeo", expect.any(Date));
+    await removeBundledAddOnAction(IDLE, form({ addOn: "paid-ads" }));
+    expect(removeBundledAddOnFor).toHaveBeenCalledWith(CUSTOMER, "paid-ads", expect.any(Date));
   });
 
   it("hands back the server's reason on the form when refused, keeps the values, and still refreshes so the page is current", async () => {
     const message = "That add-on isn't part of your plan payment any more. Reload the page to see where it stands.";
     vi.mocked(removeBundledAddOnFor).mockResolvedValue({ kind: "refused", message });
-    expect(await removeBundledAddOnAction(IDLE, form({ addOn: "digital-growth" }))).toEqual({
+    expect(await removeBundledAddOnAction(IDLE, form({ addOn: "social-media" }))).toEqual({
       status: "error",
       message,
       field: null,
-      values: { addOn: "digital-growth" },
+      values: { addOn: "social-media" },
     });
     expect(refresh).toHaveBeenCalled();
   });
 
   it("takes only a current add-on id from the form: a retired one, an unknown one and none at all are refused untouched", async () => {
-    const badForms: ReadonlyArray<Record<string, string>> = [{ addOn: "social-media" }, { addOn: "toString" }, {}];
+    const badForms: ReadonlyArray<Record<string, string>> = [{ addOn: "local-seo" }, { addOn: "toString" }, {}];
     for (const fields of badForms) {
       const state = await removeBundledAddOnAction(IDLE, form(fields));
       expect(state.status).toBe("error");
@@ -76,7 +76,7 @@ describe("removeBundledAddOnAction", () => {
   it("answers with a plain message, logs without the message, and does not refresh when the work throws", async () => {
     const logged = vi.spyOn(console, "error").mockImplementation(() => undefined);
     vi.mocked(removeBundledAddOnFor).mockRejectedValue(new Error("secret detail"));
-    expect(await removeBundledAddOnAction(IDLE, form({ addOn: "digital-growth" }))).toMatchObject({
+    expect(await removeBundledAddOnAction(IDLE, form({ addOn: "social-media" }))).toMatchObject({
       status: "error",
       message: GENERIC_ERROR_MESSAGE,
     });
@@ -87,7 +87,7 @@ describe("removeBundledAddOnAction", () => {
 
   it("does nothing when the customer may not use the page", async () => {
     vi.mocked(requireCustomerAccess).mockRejectedValueOnce(new Error("NEXT_REDIRECT /login"));
-    await expect(removeBundledAddOnAction(IDLE, form({ addOn: "digital-growth" }))).rejects.toThrow("NEXT_REDIRECT /login");
+    await expect(removeBundledAddOnAction(IDLE, form({ addOn: "social-media" }))).rejects.toThrow("NEXT_REDIRECT /login");
     expect(removeBundledAddOnFor).not.toHaveBeenCalled();
   });
 });
@@ -97,8 +97,8 @@ describe("addBundledAddOnAction", () => {
     vi.mocked(addBundledAddOnFor).mockResolvedValue({ kind: "pay", chargeId: "charge-1" });
     vi.mocked(startCustomerChargePayment).mockResolvedValue({ kind: "redirect", url: "/billing/charges/confirm?token=t" });
 
-    await expect(addBundledAddOnAction(IDLE, form({ addOn: "digital-growth" }))).rejects.toThrow("NEXT_REDIRECT");
-    expect(addBundledAddOnFor).toHaveBeenCalledWith(CUSTOMER, "digital-growth", expect.any(Date));
+    await expect(addBundledAddOnAction(IDLE, form({ addOn: "social-media" }))).rejects.toThrow("NEXT_REDIRECT");
+    expect(addBundledAddOnFor).toHaveBeenCalledWith(CUSTOMER, "social-media", expect.any(Date));
     expect(startCustomerChargePayment).toHaveBeenCalledWith(CUSTOMER, "charge-1");
     expect(redirectForChargePayment).toHaveBeenCalledWith({ kind: "redirect", url: "/billing/charges/confirm?token=t" });
   });
@@ -106,7 +106,7 @@ describe("addBundledAddOnAction", () => {
   it("redraws the page and says it saved when it is on with nothing to pay", async () => {
     vi.mocked(addBundledAddOnFor).mockResolvedValue({ kind: "done" });
 
-    expect(await addBundledAddOnAction(IDLE, form({ addOn: "local-seo-aeo" }))).toEqual({ status: "saved" });
+    expect(await addBundledAddOnAction(IDLE, form({ addOn: "paid-ads" }))).toEqual({ status: "saved" });
     expect(refresh).toHaveBeenCalled();
     expect(startCustomerChargePayment).not.toHaveBeenCalled();
   });
@@ -114,7 +114,7 @@ describe("addBundledAddOnAction", () => {
   it("shows the refusal and redraws the page", async () => {
     vi.mocked(addBundledAddOnFor).mockResolvedValue({ kind: "refused", message: "We couldn't add that just now. Reload the page to see where it stands." });
 
-    expect(await addBundledAddOnAction(IDLE, form({ addOn: "digital-growth" }))).toMatchObject({
+    expect(await addBundledAddOnAction(IDLE, form({ addOn: "social-media" }))).toMatchObject({
       status: "error",
       message: "We couldn't add that just now. Reload the page to see where it stands.",
     });
@@ -122,7 +122,7 @@ describe("addBundledAddOnAction", () => {
   });
 
   it("refuses an add-on id that is not in the catalogue, touching nothing", async () => {
-    expect(await addBundledAddOnAction(IDLE, form({ addOn: "social-media" }))).toMatchObject({ status: "error" });
+    expect(await addBundledAddOnAction(IDLE, form({ addOn: "local-seo" }))).toMatchObject({ status: "error" });
     expect(addBundledAddOnFor).not.toHaveBeenCalled();
   });
 });

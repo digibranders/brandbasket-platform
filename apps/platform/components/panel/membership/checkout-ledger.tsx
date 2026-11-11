@@ -3,7 +3,7 @@
 import { Check } from "@phosphor-icons/react/dist/ssr";
 import Link from "next/link";
 import { useActionState, useEffect, useMemo, useRef, useState, type ReactElement } from "react";
-import { addOnById, MONTHLY_ADD_ON_IDS, type MonthlyAddOnId } from "@brandbasket/shared/lib/billing/add-ons";
+import { addOnById, PLAN_ADD_ON_IDS, type MonthlyAddOnId } from "@brandbasket/shared/lib/billing/add-ons";
 import { bundleLines } from "@brandbasket/shared/lib/billing/bundle";
 import { formatMoney } from "@brandbasket/shared/lib/money";
 import { applyMembershipCode, removeMembershipCode, startMembership, startMembershipWithBilling } from "@/app/app-host/(protected)/plan/actions";
@@ -148,7 +148,7 @@ export function CheckoutLedger({
             <>
               <p className="text-ink-2">{CHECKOUT_COPY.packageNote}</p>
               <div role="group" aria-label="Plans" className="mt-4 grid gap-2">
-                {MONTHLY_ADD_ON_IDS.map((id) => {
+                {PLAN_ADD_ON_IDS.map((id) => {
                   const on = services.includes(id);
                   const addOn = addOnById(id);
                   return (
@@ -187,7 +187,7 @@ export function CheckoutLedger({
                   );
                 })}
               </div>
-              {services.length === MONTHLY_ADD_ON_IDS.length ? (
+              {services.length === PLAN_ADD_ON_IDS.length ? (
                 <p className="mt-3 text-[0.84375rem] font-semibold text-sage-deep">{CHECKOUT_COPY.allThree}</p>
               ) : null}
             </>
