@@ -184,8 +184,8 @@ describe("loadAddOnsPage", () => {
     expect(page.currency).toBe("INR");
     expect(page.addOns).toEqual([
       { kind: "available", addOn: "managed-website", price: expect.objectContaining({ listCents: 299_900, discountCents: 0, netCents: 299_900, chargedCents: 299_900 }), offer: { kind: "write" } },
-      { kind: "available", addOn: "social-media", price: expect.objectContaining({ listCents: 999_900, discountCents: 0, netCents: 999_900, chargedCents: 999_900 }), offer: { kind: "write" } },
-      { kind: "available", addOn: "paid-ads", price: expect.objectContaining({ listCents: 2_499_900, discountCents: 0, netCents: 2_499_900, chargedCents: 2_499_900 }), offer: { kind: "write" } },
+      { kind: "available", addOn: "social-media", price: expect.objectContaining({ listCents: 299_900, discountCents: 0, netCents: 299_900, chargedCents: 299_900 }), offer: { kind: "write" } },
+      { kind: "available", addOn: "paid-ads", price: expect.objectContaining({ listCents: 299_900, discountCents: 0, netCents: 299_900, chargedCents: 299_900 }), offer: { kind: "write" } },
       { kind: "available", addOn: "expert-monitoring", price: expect.objectContaining({ listCents: 600_000, discountCents: 0, netCents: 600_000, chargedCents: 600_000 }), offer: { kind: "write" } },
     ]);
   });
@@ -206,12 +206,12 @@ describe("loadAddOnsPage", () => {
     const page = await loadAddOnsPage(subscribed, NOW);
     expect(page.addOns.find((entry) => entry.addOn === "social-media")).toMatchObject({
       kind: "available",
-      price: { listCents: 999_900, discountCents: 99_910, netCents: 899_990, chargedCents: 899_990 },
+      price: { listCents: 299_900, discountCents: 29_990, netCents: 269_910, chargedCents: 269_910 },
     });
 
     vi.mocked(isPackageOfferForfeited).mockResolvedValue(true);
     const forfeited = await loadAddOnsPage(subscribed, NOW);
-    expect(forfeited.addOns.find((entry) => entry.addOn === "social-media")).toMatchObject({ price: { discountCents: 0, netCents: 999_900 } });
+    expect(forfeited.addOns.find((entry) => entry.addOn === "social-media")).toMatchObject({ price: { discountCents: 0, netCents: 299_900 } });
   });
 
   it("prices a business billed in dollars in dollars, with no tax", async () => {
@@ -221,10 +221,10 @@ describe("loadAddOnsPage", () => {
 
     expect(page.currency).toBe("USD");
     expect(page.addOns.map((entry) => entry.price)).toEqual([
-      expect.objectContaining({ currency: "USD", listCents: 6_500, taxRateBasisPoints: 0, chargedCents: 6_500 }),
-      expect.objectContaining({ currency: "USD", listCents: 15_000, taxRateBasisPoints: 0, chargedCents: 15_000 }),
-      expect.objectContaining({ currency: "USD", listCents: 35_000, taxRateBasisPoints: 0, chargedCents: 35_000 }),
-      expect.objectContaining({ currency: "USD", listCents: 7_500, taxRateBasisPoints: 0, chargedCents: 7_500 }),
+      expect.objectContaining({ currency: "USD", listCents: 5_900, taxRateBasisPoints: 0, chargedCents: 5_900 }),
+      expect.objectContaining({ currency: "USD", listCents: 5_900, taxRateBasisPoints: 0, chargedCents: 5_900 }),
+      expect.objectContaining({ currency: "USD", listCents: 5_900, taxRateBasisPoints: 0, chargedCents: 5_900 }),
+      expect.objectContaining({ currency: "USD", listCents: 9_900, taxRateBasisPoints: 0, chargedCents: 9_900 }),
     ]);
   });
 

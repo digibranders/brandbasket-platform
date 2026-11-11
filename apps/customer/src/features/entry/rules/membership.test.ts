@@ -15,7 +15,7 @@ describe("membershipPriceLine", () => {
   });
 
   it("says nothing about tax for a plan with none", () => {
-    expect(membershipPriceLine({ recurringAmountCents: 6_500, currency: "USD", taxRateBasisPoints: 0 })).toBe("$65 a month");
+    expect(membershipPriceLine({ recurringAmountCents: 5_900, currency: "USD", taxRateBasisPoints: 0 })).toBe("$59 a month");
   });
 });
 
@@ -24,7 +24,7 @@ describe("membershipPriceLine on the plan row that costs nothing", () => {
     const inr = { recurringAmountCents: 0, currency: "INR", taxRateBasisPoints: 1800 } as const;
     const usd = { recurringAmountCents: 0, currency: "USD", taxRateBasisPoints: 0 } as const;
     expect(membershipPriceLine(inr, 299_900)).toBe("₹2,999 a month, GST included");
-    expect(membershipPriceLine(usd, 6_500)).toBe("$65 a month");
+    expect(membershipPriceLine(usd, 5_900)).toBe("$59 a month");
   });
 });
 describe("servicesPhrase", () => {
@@ -41,11 +41,11 @@ describe("servicesPhrase", () => {
 describe("basketNetCents", () => {
   it.each([
     [["managed-website"], "INR", 299_900],
-    [["social-media"], "INR", 999_900],
-    [["managed-website", "social-media"], "INR", 1_169_900],
-    [["social-media", "paid-ads"], "INR", 3_149_900],
-    [["managed-website", "social-media", "paid-ads"], "INR", 3_039_800],
-    [["managed-website", "social-media", "paid-ads"], "USD", 45_200],
+    [["social-media"], "INR", 299_900],
+    [["managed-website", "social-media"], "INR", 539_900],
+    [["social-media", "paid-ads"], "INR", 539_900],
+    [["managed-website", "social-media", "paid-ads"], "INR", 719_800],
+    [["managed-website", "social-media", "paid-ads"], "USD", 14_200],
   ] as const)("prices %o in %s at %i with GST included, the package price a new sign-up pays", (services, currency, net) => {
     expect(basketNetCents(services, currency)).toBe(net);
   });

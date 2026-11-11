@@ -24,8 +24,8 @@ function serverTotalCents(services: readonly MonthlyAddOnId[], discountCents: nu
 describe("ledgerSummary without a code", () => {
   it.each([
     ["one plan", WEBSITE, 299_900],
-    ["two plans", TWO, 1_169_900],
-    ["three plans", THREE, 3_039_800],
+    ["two plans", TWO, 539_900],
+    ["three plans", THREE, 719_800],
   ])("charges %s what the server charges", (_label, services, expected) => {
     const summary = ledgerSummary(PRICING, services, null);
     expect(summary.totalCents).toBe(expected);
@@ -91,8 +91,8 @@ describe("ledgerRows", () => {
     expect(rows(TWO)).toEqual([
       { key: "website", label: "Website", amount: "Free", tone: "free" },
       { key: "maintenance", label: "Maintenance", amount: "₹2,999", tone: "plain" },
-      { key: "social-media", label: "Social Media Management", amount: "₹9,999", tone: "plain" },
-      { key: "offer", label: "10% off", amount: "-₹1,299", tone: "save" },
+      { key: "social-media", label: "Social Media Management", amount: "₹2,999", tone: "plain" },
+      { key: "offer", label: "10% off", amount: "-₹599", tone: "save" },
     ]);
   });
 

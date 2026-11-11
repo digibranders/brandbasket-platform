@@ -8,10 +8,10 @@ describe("publicPricing", () => {
 
   it("lists every service with its list price in each currency, in minor units", () => {
     expect(pricing.services).toEqual([
-      { id: "managed-website", title: "Website Management", prices: { INR: 299_900, USD: 6_500 } },
-      { id: "social-media", title: "Social Media Management", prices: { INR: 999_900, USD: 15_000 } },
-      { id: "paid-ads", title: "Paid Ads Management", prices: { INR: 2_499_900, USD: 35_000 } },
-      { id: "expert-monitoring", title: "Dedicated Expert Monitoring", prices: { INR: 600_000, USD: 7_500 } },
+      { id: "managed-website", title: "Website Management", prices: { INR: 299_900, USD: 5_900 } },
+      { id: "social-media", title: "Social Media Management", prices: { INR: 299_900, USD: 5_900 } },
+      { id: "paid-ads", title: "Paid Ads Management", prices: { INR: 299_900, USD: 5_900 } },
+      { id: "expert-monitoring", title: "Dedicated Expert Monitoring", prices: { INR: 600_000, USD: 9_900 } },
     ]);
   });
 

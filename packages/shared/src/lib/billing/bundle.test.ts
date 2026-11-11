@@ -33,44 +33,44 @@ describe("bundleLines", () => {
   it("prices a package at list once the business has given the offer up", () => {
     expect(bundleLines(["managed-website", "social-media"], "INR", true).map((line) => [line.offerCents, line.netCents])).toEqual([
       [0, 299_900],
-      [0, 999_900],
+      [0, 299_900],
     ]);
   });
 
   it("prices one service at its list price", () => {
     expect(bundleLines(["social-media"], "INR")).toEqual([
-      { addOn: "social-media", title: "Social Media Management", listCents: 999_900, offerCents: 0, netCents: 999_900 },
+      { addOn: "social-media", title: "Social Media Management", listCents: 299_900, offerCents: 0, netCents: 299_900 },
     ]);
   });
 
-  it("takes 10% off two services as a whole-rupee saving, the odd paise on the dearest line", () => {
-    // Worked out on their own: 10% of 3,499,800 paise is 349,980, so the saving is ₹3,499 (349,900). Each line's own 10%
-    // is 99,990 and 249,990, which is 80 paise too much, taken back from the dearer line.
+  it("takes 10% off two services as a whole-rupee saving, the odd paise on the first of two equal lines", () => {
+    // Worked out on their own: 10% of 599,800 paise is 59,980, so the saving is ₹599 (59,900). Each line's own 10%
+    // is 29,990, which is 80 paise too much in all, taken back from the first line of the equal pair.
     expect(bundleLines(["social-media", "paid-ads"], "INR")).toEqual([
-      { addOn: "social-media", title: "Social Media Management", listCents: 999_900, offerCents: 99_990, netCents: 899_910 },
-      { addOn: "paid-ads", title: "Paid Ads Management", listCents: 2_499_900, offerCents: 249_910, netCents: 2_249_990 },
+      { addOn: "social-media", title: "Social Media Management", listCents: 299_900, offerCents: 29_910, netCents: 269_990 },
+      { addOn: "paid-ads", title: "Paid Ads Management", listCents: 299_900, offerCents: 29_990, netCents: 269_910 },
     ]);
   });
 
   it("takes 20% off all three, again as a whole-rupee saving", () => {
-    // 20% of 3,799,700 is 759,940, so the saving is ₹7,599 (759,900): 40 paise less than the lines' own 20%, off the dearest.
+    // 20% of 899,700 is 179,940, so the saving is ₹1,799 (179,900): 40 paise less than the lines' own 20%, off the first line.
     expect(bundleLines(["managed-website", "social-media", "paid-ads"], "INR").map((line) => [line.offerCents, line.netCents])).toEqual([
+      [59_940, 239_960],
       [59_980, 239_920],
-      [199_980, 799_920],
-      [499_940, 1_999_960],
+      [59_980, 239_920],
     ]);
   });
 
   it("prices a dollar package in cents, in the catalogue's order", () => {
-    // 10% of 41,500 cents is 4,150, so the saving is $41 (4,100): 50 cents less than the lines' own 10%, off the dearer line.
+    // 10% of 11,800 cents is 1,180, so the saving is $11 (1,100): 80 cents less than the lines' own 10%, off the first line.
     expect(bundleLines(["paid-ads", "managed-website"], "USD")).toEqual([
-      { addOn: "managed-website", title: "Website Management", listCents: 6_500, offerCents: 650, netCents: 5_850 },
-      { addOn: "paid-ads", title: "Paid Ads Management", listCents: 35_000, offerCents: 3_450, netCents: 31_550 },
+      { addOn: "managed-website", title: "Website Management", listCents: 5_900, offerCents: 510, netCents: 5_390 },
+      { addOn: "paid-ads", title: "Paid Ads Management", listCents: 5_900, offerCents: 590, netCents: 5_310 },
     ]);
   });
 
   it("adds the nets together, and is nothing for no services", () => {
-    expect(bundleNetCents(bundleLines(["managed-website", "social-media", "paid-ads"], "INR"))).toBe(3_039_800);
+    expect(bundleNetCents(bundleLines(["managed-website", "social-media", "paid-ads"], "INR"))).toBe(719_800);
     expect(bundleNetCents(bundleLines([], "INR"))).toBe(0);
   });
 });
@@ -86,7 +86,7 @@ describe("nextBundledNetCents", () => {
 describe("websiteAloneNetCents", () => {
   it("is the website's list price in each currency", () => {
     expect(websiteAloneNetCents("INR")).toBe(299_900);
-    expect(websiteAloneNetCents("USD")).toBe(6_500);
+    expect(websiteAloneNetCents("USD")).toBe(5_900);
   });
 });
 
@@ -104,9 +104,9 @@ describe("reactivationBasketOf", () => {
       adCreditCents: 300_000,
       cancelled: false,
     });
-    expect(reactivationNetCents(basket, "INR")).toBe(3_039_800);
-    // 56,500 cents of list, 20% off is 11,300, exactly $113.
-    expect(reactivationNetCents(basket, "USD")).toBe(45_200);
+    expect(reactivationNetCents(basket, "INR")).toBe(719_800);
+    // 17,700 cents of list, 20% off is 3,540, so the saving is $35 (3,500).
+    expect(reactivationNetCents(basket, "USD")).toBe(14_200);
   });
 
   it("prices the set it restores, not the percentage the lapsed lines were last billed at", () => {
@@ -115,19 +115,19 @@ describe("reactivationBasketOf", () => {
       lines: [line("managed-website"), line("social-media")],
       forfeited: false,
     });
-    expect(reactivationNetCents(basket, "INR")).toBe(1_169_900);
+    expect(reactivationNetCents(basket, "INR")).toBe(539_900);
     expect(basket.adCreditCents).toBe(150_000);
   });
 
   it("restores a single service at its list price", () => {
     const basket = reactivationBasketOf({ subscription: { ...LAPSED, adCreditCents: 0 }, lines: [line("paid-ads")], forfeited: false });
-    expect(reactivationNetCents(basket, "INR")).toBe(2_499_900);
+    expect(reactivationNetCents(basket, "INR")).toBe(299_900);
   });
 
   it("restores a business that gave the offer up at list, with no ad credit", () => {
     const basket = reactivationBasketOf({ subscription: { ...LAPSED, adCreditCents: 0 }, lines: [line("managed-website"), line("paid-ads")], forfeited: true });
     expect(basket).toMatchObject({ services: ["managed-website", "paid-ads"], forfeited: true, adCreditCents: 0, cancelled: false });
-    expect(reactivationNetCents(basket, "INR")).toBe(2_799_800);
+    expect(reactivationNetCents(basket, "INR")).toBe(599_800);
   });
 
   it("leaves out a service on its way out, one that was never paid for, and one that has stopped", () => {
@@ -179,7 +179,7 @@ describe("reactivationBasketOf", () => {
       adCreditCents: 0,
       cancelled: true,
     });
-    expect(reactivationNetCents(basket, "INR")).toBe(3_799_700);
+    expect(reactivationNetCents(basket, "INR")).toBe(899_700);
   });
 
   it("restores a subscription the provider ended without the customer asking (a revoked mandate) as a lapse: package price and ad credit kept", () => {
@@ -190,7 +190,7 @@ describe("reactivationBasketOf", () => {
       adCreditCents: 300_000,
       cancelled: false,
     });
-    expect(reactivationNetCents(basket, "INR")).toBe(3_039_800);
+    expect(reactivationNetCents(basket, "INR")).toBe(719_800);
   });
 
   it("falls back to the website alone, which earns no ad credit, when no service is left to restore", () => {

@@ -36,7 +36,7 @@ describe("assessAddOn", () => {
   it("quotes the service as a line of the basket it joins", () => {
     const assessment = assessAddOn({ state, live: [line("managed-website", 299_900)], addOn: "social-media", forfeited: false, providerName: "fake", now: NOW });
 
-    expect(assessment).toMatchObject({ kind: "offer", line: { listCents: 999_900, discountCents: 99_910, netCents: 899_990 }, quote: { nextRenewalCents: 1_169_900 } });
+    expect(assessment).toMatchObject({ kind: "offer", line: { listCents: 299_900, discountCents: 29_990, netCents: 269_910 }, quote: { nextRenewalCents: 539_900 } });
   });
 
   it("quotes the next renewal of the whole package when the leftover lands on a line already there", () => {
@@ -50,7 +50,7 @@ describe("assessAddOn", () => {
   it("quotes the next renewal at list once the offer is given up", () => {
     const assessment = assessAddOn({ state, live: [line("managed-website", 299_900)], addOn: "social-media", forfeited: true, providerName: "fake", now: NOW });
 
-    expect(assessment).toMatchObject({ kind: "offer", line: { discountCents: 0, netCents: 999_900 }, quote: { nextRenewalCents: 1_299_800 } });
+    expect(assessment).toMatchObject({ kind: "offer", line: { discountCents: 0, netCents: 299_900 }, quote: { nextRenewalCents: 599_800 } });
   });
 
   it("does not sell monitoring beside all three plans, which include it", () => {
@@ -66,10 +66,10 @@ describe("assessAddOn", () => {
   });
 
   it("leaves monitoring out of the renewal quoted for the plan that completes all three", () => {
-    const held = [line("managed-website", 299_900), line("social-media", 999_900), line("expert-monitoring", 600_000)];
+    const held = [line("managed-website", 299_900), line("social-media", 299_900), line("expert-monitoring", 600_000)];
     const assessment = assessAddOn({ state, live: held, addOn: "paid-ads", forfeited: false, providerName: "fake", now: NOW });
-    // All three: 37,997 less 20% (7,599) is 30,398 a month, with no monitoring line.
-    expect(assessment).toMatchObject({ kind: "offer", quote: { nextRenewalCents: 3_039_800 } });
+    // All three: 8,997 less 20% (1,799) is 7,198 a month, with no monitoring line.
+    expect(assessment).toMatchObject({ kind: "offer", quote: { nextRenewalCents: 719_800 } });
   });
 
   describe("with a referral code on the subscription", () => {
@@ -89,8 +89,8 @@ describe("assessAddOn", () => {
         now: NOW,
       });
 
-      // The pair costs 11,699 at the package price; less the 500.
-      expect(assessment).toMatchObject({ kind: "offer", quote: { nextRenewalCents: 1_119_900 } });
+      // The pair costs 5,399 at the package price; less the 500.
+      expect(assessment).toMatchObject({ kind: "offer", quote: { nextRenewalCents: 489_900 } });
     });
 
     it("reprices a percentage code on the new basket's price", () => {
@@ -104,8 +104,8 @@ describe("assessAddOn", () => {
         now: NOW,
       });
 
-      // 10% of the 11,699 the pair costs is 1,169.90, not the 299.90 it took off the website alone: 10,529.10 is left.
-      expect(assessment).toMatchObject({ kind: "offer", quote: { nextRenewalCents: 1_052_910 } });
+      // 10% of the 5,399 the pair costs is 539.90, not the 299.90 it took off the website alone: 4,859.10 is left.
+      expect(assessment).toMatchObject({ kind: "offer", quote: { nextRenewalCents: 485_910 } });
     });
 
     it("takes nothing once the code's months have run out", () => {
@@ -119,7 +119,7 @@ describe("assessAddOn", () => {
         now: NOW,
       });
 
-      expect(assessment).toMatchObject({ kind: "offer", quote: { nextRenewalCents: 1_169_900 } });
+      expect(assessment).toMatchObject({ kind: "offer", quote: { nextRenewalCents: 539_900 } });
     });
   });
 

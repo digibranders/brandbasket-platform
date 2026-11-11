@@ -81,8 +81,8 @@ describe("the new checkout charges what the old one did, to the rupee", () => {
   }
 
   it("lands on the published prices, GST included in rupees and none in dollars", () => {
-    expect([WEBSITE, TWO, THREE].map((services) => newCheckout(services, "INR", null).totalCents)).toEqual([299_900, 1_169_900, 3_039_800]);
-    expect([WEBSITE, TWO, THREE].map((services) => newCheckout(services, "USD", null).totalCents)).toEqual([6_500, 19_400, 45_200]);
+    expect([WEBSITE, TWO, THREE].map((services) => newCheckout(services, "INR", null).totalCents)).toEqual([299_900, 539_900, 719_800]);
+    expect([WEBSITE, TWO, THREE].map((services) => newCheckout(services, "USD", null).totalCents)).toEqual([5_900, 10_700, 14_200]);
     expect(newCheckout(THREE, "USD", null).gstCents).toBe(0);
   });
 

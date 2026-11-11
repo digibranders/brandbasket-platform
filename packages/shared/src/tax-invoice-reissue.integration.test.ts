@@ -246,19 +246,19 @@ describe("issueMissingTaxInvoice", () => {
 
     const invoice = await issue(payment.id);
 
-    expect(payment.amountCents).toBe(3_039_800);
+    expect(payment.amountCents).toBe(719_800);
     expect(invoice).toMatchObject({
       number: "FY/26-27/000001",
       issuedOn: "2026-11-15",
       paidOn: "2026-10-09",
       paymentId: payment.id,
-      taxableCents: 2_576_102,
-      totalCents: 3_039_800,
+      taxableCents: 610_000,
+      totalCents: 719_800,
     });
     expect(invoice.lines.map((line) => [line.description, line.unitAmountCents, line.discountAmountCents, line.note, line.detail])).toEqual([
-      ["Website Management", 299_900, 59_980, "Package offer, 20% off", "Monthly subscription, 09 Oct to 08 Nov 2026"],
-      ["Social Media Management", 999_900, 199_980, "Package offer, 20% off", "Monthly subscription, 09 Oct to 08 Nov 2026"],
-      ["Paid Ads Management", 2_499_900, 499_940, "Package offer, 20% off", "Monthly subscription, 09 Oct to 08 Nov 2026"],
+      ["Website Management", 299_900, 59_940, "Package offer, 20% off", "Monthly subscription, 09 Oct to 08 Nov 2026"],
+      ["Social Media Management", 299_900, 59_980, "Package offer, 20% off", "Monthly subscription, 09 Oct to 08 Nov 2026"],
+      ["Paid Ads Management", 299_900, 59_980, "Package offer, 20% off", "Monthly subscription, 09 Oct to 08 Nov 2026"],
     ]);
   });
 
@@ -278,11 +278,11 @@ describe("issueMissingTaxInvoice", () => {
 
     const invoice = await issue(payment.id);
 
-    expect(invoice.totalCents).toBe(3_039_800);
+    expect(invoice.totalCents).toBe(719_800);
     expect(invoice.lines.map((line) => [line.description, line.discountAmountCents, line.note])).toEqual([
-      ["Website Management", 59_980, "Package offer, 20% off"],
-      ["Social Media Management", 199_980, "Package offer, 20% off"],
-      ["Paid Ads Management", 499_940, "Package offer, 20% off"],
+      ["Website Management", 59_940, "Package offer, 20% off"],
+      ["Social Media Management", 59_980, "Package offer, 20% off"],
+      ["Paid Ads Management", 59_980, "Package offer, 20% off"],
     ]);
   });
 
@@ -293,7 +293,7 @@ describe("issueMissingTaxInvoice", () => {
 
     const invoice = await issue(payment.id);
 
-    expect(invoice.totalCents).toBe(999_900);
+    expect(invoice.totalCents).toBe(299_900);
     expect(invoice.lines).toHaveLength(1);
     expect(invoice.lines[0]).toMatchObject({ description: "Social Media Management", discountAmountCents: 0, note: null });
   });
@@ -325,8 +325,8 @@ describe("issueMissingTaxInvoice", () => {
 
   it.each([
     // [name, services, what the member pays (the package net less 10%), the taxable value of that: the payment less the GST inside it]
-    ["two services", ["managed-website", "social-media"] as const, 1_052_910, 892_296],
-    ["three services", ["managed-website", "social-media", "paid-ads"] as const, 2_735_820, 2_318_492],
+    ["two services", ["managed-website", "social-media"] as const, 485_910, 411_788],
+    ["three services", ["managed-website", "social-media", "paid-ads"] as const, 647_820, 549_000],
   ])("reissues the invoice for a code taken once off %s, shared over the lines to the paisa", async (_name, services_, paidCents, taxableCents) => {
     const discount = { kind: "percent", basisPoints: 1_000 } as const;
     const created = await createReferralCode(dbs.staff.db, {
@@ -387,8 +387,8 @@ describe("issueMissingTaxInvoice", () => {
     const renewed = await issue(renewal.payment.id);
 
     expect(renewed.lines.map((line) => [line.description, line.discountAmountCents, line.note, line.detail])).toEqual([
-      ["Website Management", 29_990, "Package offer, 10% off", "Monthly subscription, 09 Nov to 08 Dec 2026"],
-      ["Social Media Management", 99_910, "Package offer, 10% off", "Monthly subscription, 09 Nov to 08 Dec 2026"],
+      ["Website Management", 29_910, "Package offer, 10% off", "Monthly subscription, 09 Nov to 08 Dec 2026"],
+      ["Social Media Management", 29_990, "Package offer, 10% off", "Monthly subscription, 09 Nov to 08 Dec 2026"],
     ]);
     expect(renewed.totalCents).toBe(renewal.payment.amountCents);
   });
@@ -405,10 +405,10 @@ describe("issueMissingTaxInvoice", () => {
 
     const restarted = await issue(restart.payment.id, new Date("2026-12-15T05:30:00.000Z"));
 
-    expect(restart.payment.amountCents).toBe(3_149_900);
+    expect(restart.payment.amountCents).toBe(539_900);
     expect(restarted.lines.map((line) => [line.description, line.discountAmountCents, line.note])).toEqual([
-      ["Social Media Management", 99_990, "Package offer, 10% off"],
-      ["Paid Ads Management", 249_910, "Package offer, 10% off"],
+      ["Social Media Management", 29_910, "Package offer, 10% off"],
+      ["Paid Ads Management", 29_990, "Package offer, 10% off"],
     ]);
     expect(restarted.lines[0]?.detail).toBe("Monthly subscription, 09 Dec 2026 to 08 Jan 2027");
     expect(restarted.totalCents).toBe(restart.payment.amountCents);

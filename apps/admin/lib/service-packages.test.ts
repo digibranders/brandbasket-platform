@@ -16,10 +16,10 @@ describe("packageLabel", () => {
 describe("catalogueRows", () => {
   it("lists each service on sale with its list price in rupees and dollars, from the catalogue", () => {
     expect(catalogueRows()).toEqual([
-      { id: "managed-website", title: "Website Management", inr: "₹2,999", usd: "$65" },
-      { id: "social-media", title: "Social Media Management", inr: "₹9,999", usd: "$150" },
-      { id: "paid-ads", title: "Paid Ads Management", inr: "₹24,999", usd: "$350" },
-      { id: "expert-monitoring", title: "Dedicated Expert Monitoring", inr: "₹6,000", usd: "$75" },
+      { id: "managed-website", title: "Website Management", inr: "₹2,999", usd: "$59" },
+      { id: "social-media", title: "Social Media Management", inr: "₹2,999", usd: "$59" },
+      { id: "paid-ads", title: "Paid Ads Management", inr: "₹2,999", usd: "$59" },
+      { id: "expert-monitoring", title: "Dedicated Expert Monitoring", inr: "₹6,000", usd: "$99" },
     ]);
   });
 });

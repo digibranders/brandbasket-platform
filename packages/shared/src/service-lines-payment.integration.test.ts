@@ -83,12 +83,12 @@ describe("a payment for service lines on the services plan", () => {
       activateFirstPayment(tx, { businessId, subscriptionId: subscription.id, plan, provider: "fake", providerPaymentId: "fake_pay_lines", paidAt: PAID_AT }),
     );
 
-    expect(activation.payment.amountCents).toBe(1_169_900);
+    expect(activation.payment.amountCents).toBe(539_900);
     const invoice = await findTaxInvoiceByPaymentId(dbs.staff.db, activation.payment.id);
-    expect(invoice?.totalCents).toBe(1_169_900);
+    expect(invoice?.totalCents).toBe(539_900);
     expect(invoice?.lines.map((line) => [line.description, line.unitAmountCents, line.discountAmountCents])).toEqual([
-      ["Website Management", 299_900, 29_990],
-      ["Social Media Management", 999_900, 99_910],
+      ["Website Management", 299_900, 29_910],
+      ["Social Media Management", 299_900, 29_990],
     ]);
   });
 

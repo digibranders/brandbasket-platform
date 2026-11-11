@@ -90,13 +90,13 @@ describe("CheckoutLedger", () => {
     render(["managed-website"]);
 
     click(chip("Social Media Management"));
-    expect(total()).toBe("₹11,699");
+    expect(total()).toBe("₹5,399");
     expect(container.textContent).toContain("10% off");
     expect(window.location.search).toBe("?services=managed-website,social-media");
     expect(posted()).toEqual(["managed-website", "social-media"]);
 
     click(chip("Paid Ads Management"));
-    expect(total()).toBe("₹30,398");
+    expect(total()).toBe("₹7,198");
     expect(container.textContent).toContain("All three plans: 20% off every month.");
 
     click(chip("Website Management"));
@@ -108,7 +108,7 @@ describe("CheckoutLedger", () => {
     render(["social-media"]);
     click(chip("Social Media Management"));
     expect(chip("Social Media Management").getAttribute("aria-pressed")).toBe("true");
-    expect(total()).toBe("₹9,999");
+    expect(total()).toBe("₹2,999");
   });
 
   it("lists what you get for the chosen plans only", () => {
@@ -122,7 +122,7 @@ describe("CheckoutLedger", () => {
   it("offers no choice when the services are fixed", () => {
     render(["managed-website", "social-media"], false);
     expect(container.querySelectorAll("button[aria-pressed]")).toHaveLength(0);
-    expect(total()).toBe("₹11,699");
+    expect(total()).toBe("₹5,399");
   });
 
   describe("billing details", () => {

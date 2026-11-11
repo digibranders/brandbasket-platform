@@ -50,25 +50,27 @@ describe("package offers", () => {
 
   it("prices a service joining a basket as part of the enlarged set, and at list once the offer is given up", () => {
     const website = [{ addOn: "managed-website", listCents: 299900 }] as const;
-    expect(packageLineWith(website, false, "social-media", "INR")).toMatchObject({ addOn: "social-media", discountCents: 99910, netCents: 899990 });
+    expect(packageLineWith(website, false, "social-media", "INR")).toMatchObject({ addOn: "social-media", discountCents: 29990, netCents: 269910 });
     const dollars = [
       { addOn: "managed-website", listCents: 6500 },
       { addOn: "social-media", listCents: 15000 },
     ] as const;
-    expect(packageLineWith(dollars, false, "paid-ads", "USD")).toMatchObject({ discountCents: 7000, netCents: 28000 });
-    expect(packageLineWith(dollars.slice(1), false, "paid-ads", "USD")).toMatchObject({ discountCents: 3500, netCents: 31500 });
-    expect(packageLineWith(website, true, "social-media", "INR")).toMatchObject({ discountCents: 0, netCents: 999900 });
+    // Held lines keep their earlier list prices; the new line joins at the catalogue's $59. The leftover lands on the dearer held line.
+    expect(packageLineWith(dollars, false, "paid-ads", "USD")).toMatchObject({ discountCents: 1180, netCents: 4720 });
+    expect(packageLineWith(dollars.slice(1), false, "paid-ads", "USD")).toMatchObject({ discountCents: 590, netCents: 5310 });
+    expect(packageLineWith(website, true, "social-media", "INR")).toMatchObject({ discountCents: 0, netCents: 299900 });
     expect(packageLineWith([], false, "managed-website", "INR")).toMatchObject({ discountCents: 0, netCents: 299900 });
   });
 
   it("takes the new line's price from the enlarged set, so the leftover can land on a line already there", () => {
     const held = [
       { addOn: "managed-website", listCents: 299900 },
-      { addOn: "social-media", listCents: 999900 },
+      { addOn: "social-media", listCents: 299900 },
     ] as const;
-    expect(packageLineWith(held, false, "paid-ads", "INR")).toMatchObject({ discountCents: 499940, netCents: 1999960 });
-    expect(packageDiscountsFor([...held, { addOn: "paid-ads", listCents: 2499900 }], 2000)).toEqual([59980, 199980, 499940]);
-    expect(packageDiscountsFor(held, 1000)).toEqual([29990, 99910]);
+    // 20% of 899,700 is 179,940, so the saving is 179,900 and the 40 paise of leftover lands on the first line (the website).
+    expect(packageLineWith(held, false, "paid-ads", "INR")).toMatchObject({ discountCents: 59980, netCents: 239920 });
+    expect(packageDiscountsFor([...held, { addOn: "paid-ads", listCents: 299900 }], 2000)).toEqual([59940, 59980, 59980]);
+    expect(packageDiscountsFor(held, 1000)).toEqual([29910, 29990]);
   });
 
   it("keeps the list price a held line was sold at", () => {
@@ -85,7 +87,7 @@ type Basket = readonly MonthlyAddOnId[];
 /**
  * Every set of two or three services at the new package percentages (10% for two, 20% for all three), worked out on their own:
  * each line takes its percentage of its list, half a minor unit up, and the whole package saving is then rounded DOWN to a whole
- * rupee or dollar, the difference landing on the dearest line. The customer pays the list price less that saving.
+ * rupee or dollar, the difference landing on the first of the equally priced lines (the dearest if prices differ). The customer pays the list price less that saving.
  */
 const PACKAGES: readonly {
   readonly services: Basket;
@@ -93,15 +95,15 @@ const PACKAGES: readonly {
   readonly savingsCents: Record<"INR" | "USD", number>;
   readonly lines: Record<"INR" | "USD", readonly number[]>;
 }[] = [
-  { services: ["managed-website", "social-media"], netCents: { INR: 1169900, USD: 19400 }, savingsCents: { INR: 129900, USD: 2100 }, lines: { INR: [269910, 899990], USD: [5850, 13550] } },
-  { services: ["managed-website", "paid-ads"], netCents: { INR: 2519900, USD: 37400 }, savingsCents: { INR: 279900, USD: 4100 }, lines: { INR: [269910, 2249990], USD: [5850, 31550] } },
-  { services: ["social-media", "paid-ads"], netCents: { INR: 3149900, USD: 45000 }, savingsCents: { INR: 349900, USD: 5000 }, lines: { INR: [899910, 2249990], USD: [13500, 31500] } },
-  { services: ["managed-website", "social-media", "paid-ads"], netCents: { INR: 3039800, USD: 45200 }, savingsCents: { INR: 759900, USD: 11300 }, lines: { INR: [239920, 799920, 1999960], USD: [5200, 12000, 28000] } },
+  { services: ["managed-website", "social-media"], netCents: { INR: 539900, USD: 10700 }, savingsCents: { INR: 59900, USD: 1100 }, lines: { INR: [269990, 269910], USD: [5390, 5310] } },
+  { services: ["managed-website", "paid-ads"], netCents: { INR: 539900, USD: 10700 }, savingsCents: { INR: 59900, USD: 1100 }, lines: { INR: [269990, 269910], USD: [5390, 5310] } },
+  { services: ["social-media", "paid-ads"], netCents: { INR: 539900, USD: 10700 }, savingsCents: { INR: 59900, USD: 1100 }, lines: { INR: [269990, 269910], USD: [5390, 5310] } },
+  { services: ["managed-website", "social-media", "paid-ads"], netCents: { INR: 719800, USD: 14200 }, savingsCents: { INR: 179900, USD: 3500 }, lines: { INR: [239960, 239920, 239920], USD: [4760, 4720, 4720] } },
 ];
 
 describe("package prices", () => {
   it.each(PACKAGES.flatMap((p) => (["INR", "USD"] as const).map((currency) => [p.services, currency, p] as const)))(
-    "prices %o in %s with the saving rounded down to the whole rupee or dollar, the difference on the dearest line",
+    "prices %o in %s with the saving rounded down to the whole rupee or dollar, the difference on the first of the equal lines",
     (services, currency, expected) => {
       const lines = packageLines({ services, forfeited: false }, currency);
       const net = lines.reduce((sum, line) => sum + line.netCents, 0);
@@ -146,8 +148,8 @@ describe("package prices", () => {
 
   it.each([
     ["managed-website", 299900, 299900],
-    ["social-media", 999900, 999900],
-    ["paid-ads", 2499900, 2499900],
+    ["social-media", 299900, 299900],
+    ["paid-ads", 299900, 299900],
   ] as const)("keeps %s at list, with no rounding, when it is bought alone or the offer is given up", (service, list, charged) => {
     const [alone] = packageLines({ services: [service], forfeited: false }, "INR");
     expect(alone).toMatchObject({ listCents: list, discountCents: 0, netCents: list, chargedCents: charged });

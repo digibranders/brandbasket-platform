@@ -70,8 +70,8 @@ describe("loadCheckout", () => {
     const result = await loadCheckout(customer(), { services: "managed-website,social-media,paid-ads" });
     expect(result.kind).toBe("pay");
     if (result.kind !== "pay") return;
-    expect(result.ledger.total).toBe("₹30,398");
-    expect(result.ledger.gstLine).toBe("Includes ₹4,636.98 of GST at 18%");
+    expect(result.ledger.total).toBe("₹7,198");
+    expect(result.ledger.gstLine).toBe("Includes ₹1,098 of GST at 18%");
     expect(result.ledger.adCredit).toBe("We add ₹3,000 a month to your ads");
     expect(result.ledger.changeServicesHref).toBe("/start?services=managed-website,social-media,paid-ads&q=summary");
   });

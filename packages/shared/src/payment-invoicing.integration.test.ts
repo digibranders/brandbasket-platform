@@ -487,13 +487,13 @@ describe("what the invoice describes", () => {
 
     const invoice = await findTaxInvoiceByPaymentId(dbs.staff.db, activation.payment.id);
     expect(invoice?.lines.map((line) => [line.description, line.unitAmountCents, line.discountAmountCents, line.note])).toEqual([
-      ["Website Management", 299_900, 59_980, "Package offer, 20% off"],
-      ["Social Media Management", 999_900, 199_980, "Package offer, 20% off"],
-      ["Paid Ads Management", 2_499_900, 499_940, "Package offer, 20% off"],
+      ["Website Management", 299_900, 59_940, "Package offer, 20% off"],
+      ["Social Media Management", 299_900, 59_980, "Package offer, 20% off"],
+      ["Paid Ads Management", 299_900, 59_980, "Package offer, 20% off"],
     ]);
-    // ₹30,398 holds ₹4,636.98 of GST: ₹2,318.49 each of CGST and SGST.
-    expect(invoice).toMatchObject({ taxableCents: 2_576_102, cgstCents: 231_849, sgstCents: 231_849, roundOffCents: 0, totalCents: 3_039_800 });
-    expect(activation.payment.amountCents).toBe(3_039_800);
+    // ₹7,198 holds ₹1,098 of GST: ₹549 each of CGST and SGST.
+    expect(invoice).toMatchObject({ taxableCents: 610_000, cgstCents: 54_900, sgstCents: 54_900, roundOffCents: 0, totalCents: 719_800 });
+    expect(activation.payment.amountCents).toBe(719_800);
     expect(JSON.stringify(invoice?.lines)).not.toMatch(/credit/i);
   });
 
@@ -504,10 +504,10 @@ describe("what the invoice describes", () => {
 
     const invoice = await findTaxInvoiceByPaymentId(dbs.staff.db, activation.payment.id);
     expect(invoice?.lines.map((line) => [line.description, line.discountAmountCents, line.note])).toEqual([
-      ["Website Management", 29_990, "Package offer, 10% off"],
-      ["Social Media Management", 99_910, "Package offer, 10% off"],
+      ["Website Management", 29_910, "Package offer, 10% off"],
+      ["Social Media Management", 29_990, "Package offer, 10% off"],
     ]);
-    expect(invoice?.totalCents).toBe(1_169_900);
+    expect(invoice?.totalCents).toBe(539_900);
   });
 
   it("describes a first payment of one service with no discount and no note", async () => {
@@ -518,7 +518,7 @@ describe("what the invoice describes", () => {
     const invoice = await findTaxInvoiceByPaymentId(dbs.staff.db, activation.payment.id);
     expect(invoice?.lines).toHaveLength(1);
     expect(invoice?.lines[0]).toMatchObject({ description: "Paid Ads Management", discountAmountCents: 0, note: null });
-    expect(invoice?.totalCents).toBe(2_499_900);
+    expect(invoice?.totalCents).toBe(299_900);
   });
 
   it("calls a first payment that covers three months a subscription, not a monthly one", async () => {

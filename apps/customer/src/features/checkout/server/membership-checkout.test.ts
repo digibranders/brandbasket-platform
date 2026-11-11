@@ -80,6 +80,6 @@ describe("loadMembershipCheckout", () => {
 
     await loadMembershipCheckout(customer, "managed", ["managed-website", "social-media"], NOW);
 
-    expect(resolveAppliedDiscount).toHaveBeenCalledWith(BUSINESS_ID, { currency: "INR", netCents: 1_169_900 }, NOW);
+    expect(resolveAppliedDiscount).toHaveBeenCalledWith(BUSINESS_ID, { currency: "INR", netCents: 539_900 }, NOW);
   });
 });

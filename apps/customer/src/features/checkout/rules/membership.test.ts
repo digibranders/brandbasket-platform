@@ -29,7 +29,7 @@ describe("membershipPriceLine", () => {
   });
 
   it("says nothing about tax for a plan with none", () => {
-    expect(membershipPriceLine({ recurringAmountCents: 6_500, currency: "USD", taxRateBasisPoints: 0 })).toBe("$65 a month");
+    expect(membershipPriceLine({ recurringAmountCents: 5_900, currency: "USD", taxRateBasisPoints: 0 })).toBe("$59 a month");
   });
 });
 
@@ -38,7 +38,7 @@ describe("membershipPriceLine on the plan row that costs nothing", () => {
     const inr = { recurringAmountCents: 0, currency: "INR", taxRateBasisPoints: 1800 } as const;
     const usd = { recurringAmountCents: 0, currency: "USD", taxRateBasisPoints: 0 } as const;
     expect(membershipPriceLine(inr, 299_900)).toBe("₹2,999 a month, GST included");
-    expect(membershipPriceLine(usd, 6_500)).toBe("$65 a month");
+    expect(membershipPriceLine(usd, 5_900)).toBe("$59 a month");
     expect(membershipPriceParts(inr, 30_000, 299_900)).toEqual({ amount: "₹2,699", terms: "a month, GST included", was: "₹2,999" });
   });
 });
@@ -101,9 +101,9 @@ describe("the plan's page", () => {
 
 describe("membershipPriceParts", () => {
   it("splits the price into the figure and what follows it, and the line is the two together", () => {
-    const plan = { recurringAmountCents: 999_900, currency: "INR", taxRateBasisPoints: 1800 } as const;
-    expect(membershipPriceParts(plan)).toEqual({ amount: "₹9,999", terms: "a month, GST included", was: null });
-    expect(membershipPriceLine(plan)).toBe("₹9,999 a month, GST included");
+    const plan = { recurringAmountCents: 299_900, currency: "INR", taxRateBasisPoints: 1800 } as const;
+    expect(membershipPriceParts(plan)).toEqual({ amount: "₹2,999", terms: "a month, GST included", was: null });
+    expect(membershipPriceLine(plan)).toBe("₹2,999 a month, GST included");
     expect(membershipPriceParts({ ...plan, taxRateBasisPoints: 0 }).terms).toBe("a month");
   });
 
@@ -120,13 +120,13 @@ describe("orderSummary", () => {
 
   // Every basket the page can sell, in both currencies: what Razorpay is asked for, the ad credit frozen and the offer named.
   const BASKETS: readonly (readonly [string, readonly MonthlyAddOnId[], number, number, number, number, string | null])[] = [
-    ["Website Management", ["managed-website"], 299_900, 0, 6_500, 0, null],
-    ["Social Media Management", ["social-media"], 999_900, 0, 15_000, 0, null],
-    ["Paid Ads Management", ["paid-ads"], 2_499_900, 0, 35_000, 0, null],
-    ["website and social", ["managed-website", "social-media"], 1_169_900, 150_000, 19_400, 3_000, "Package offer, 10% off"],
-    ["website and SEO", ["managed-website", "paid-ads"], 2_519_900, 0, 37_400, 0, "Package offer, 10% off"],
-    ["social and SEO", ["social-media", "paid-ads"], 3_149_900, 150_000, 45_000, 3_000, "Package offer, 10% off"],
-    ["all three", ["managed-website", "social-media", "paid-ads"], 3_039_800, 300_000, 45_200, 6_000, "Package offer, 20% off"],
+    ["Website Management", ["managed-website"], 299_900, 0, 5_900, 0, null],
+    ["Social Media Management", ["social-media"], 299_900, 0, 5_900, 0, null],
+    ["Paid Ads Management", ["paid-ads"], 299_900, 0, 5_900, 0, null],
+    ["website and social", ["managed-website", "social-media"], 539_900, 150_000, 10_700, 3_000, "Package offer, 10% off"],
+    ["website and SEO", ["managed-website", "paid-ads"], 539_900, 0, 10_700, 0, "Package offer, 10% off"],
+    ["social and SEO", ["social-media", "paid-ads"], 539_900, 150_000, 10_700, 3_000, "Package offer, 10% off"],
+    ["all three", ["managed-website", "social-media", "paid-ads"], 719_800, 300_000, 14_200, 6_000, "Package offer, 20% off"],
   ];
 
   it.each(BASKETS)("charges %s what the checkout charges, with its ad credit and offer", (_name, services, inrTotal, inrCredit, usdTotal, usdCredit, offerLabel) => {
@@ -153,11 +153,11 @@ describe("orderSummary", () => {
   it("lists a line for each service with its list price, then the package offer and the net", () => {
     const summary = orderSummary({ ...inr, services: ["managed-website", "social-media"] }, 0);
     expect(summary.lines.map((line) => [line.addOn, line.title, line.listCents, line.netCents])).toEqual([
-      ["managed-website", "Website Management", 299_900, 269_910],
-      ["social-media", "Social Media Management", 999_900, 899_990],
+      ["managed-website", "Website Management", 299_900, 269_990],
+      ["social-media", "Social Media Management", 299_900, 269_910],
     ]);
-    expect(summary.offer).toEqual({ label: "Package offer, 10% off", discountCents: 129_900 });
-    expect(summary).toMatchObject({ netCents: 1_169_900, gstCents: 178_460, totalCents: 1_169_900 });
+    expect(summary.offer).toEqual({ label: "Package offer, 10% off", discountCents: 59_900 });
+    expect(summary).toMatchObject({ netCents: 539_900, gstCents: 82_358, totalCents: 539_900 });
   });
 
   it("names 20% off for three services, and the total is the sum of the lines' nets", () => {
@@ -165,8 +165,8 @@ describe("orderSummary", () => {
     expect(summary.lines.map((line) => line.addOn)).toEqual(["managed-website", "social-media", "paid-ads"]);
     expect(summary.offer?.label).toBe("Package offer, 20% off");
     expect(summary.totalCents).toBe(chargedAmountCents(summary.lines.reduce((sum, line) => sum + line.netCents, 0), 0));
-    expect(summary.totalCents).toBe(3_039_800);
-    expect(summary.lines.map((line) => line.netCents)).toEqual([239_920, 799_920, 1_999_960]);
+    expect(summary.totalCents).toBe(719_800);
+    expect(summary.lines.map((line) => line.netCents)).toEqual([239_960, 239_920, 239_920]);
   });
 
   it("shows the ad credit only when the basket earns one and the checkout would freeze it", () => {
@@ -182,14 +182,14 @@ describe("orderSummary", () => {
   it("charges list prices and names no offer once the business has given the package offer up", () => {
     const summary = orderSummary({ ...inr, services: ["managed-website", "social-media"], forfeited: true }, 0);
     expect(summary.offer).toBeNull();
-    expect(summary.lines.map((line) => line.netCents)).toEqual([299_900, 999_900]);
-    expect(summary.totalCents).toBe(chargedAmountCents(1_299_800, 0));
+    expect(summary.lines.map((line) => line.netCents)).toEqual([299_900, 299_900]);
+    expect(summary.totalCents).toBe(chargedAmountCents(599_800, 0));
   });
 
-  it("prices dollars the same way, with no GST: $452 for all three", () => {
+  it("prices dollars the same way, with no GST: $142 for all three", () => {
     const summary = orderSummary({ ...usd, services: ["managed-website", "social-media", "paid-ads"] }, 0);
-    expect(summary.offer).toEqual({ label: "Package offer, 20% off", discountCents: 11_300 });
-    expect(summary).toMatchObject({ netCents: 45_200, gstCents: 0, totalCents: 45_200 });
+    expect(summary.offer).toEqual({ label: "Package offer, 20% off", discountCents: 3_500 });
+    expect(summary).toMatchObject({ netCents: 14_200, gstCents: 0, totalCents: 14_200 });
     expect(summary.adCredit?.label).toBe("We add $60 a month to your ads");
   });
 
@@ -199,19 +199,19 @@ describe("orderSummary", () => {
   });
 
   it("takes a code off a package once, after the package offer, with GST inside what is left", () => {
-    // 10% of the ₹11,699 the website and Social Media Management come to at 10% off.
-    const codeCents = discountCentsFor({ kind: "percent", basisPoints: 1_000 }, 1_169_900);
+    // 10% of the ₹5,399 the website and Social Media Management come to at 10% off.
+    const codeCents = discountCentsFor({ kind: "percent", basisPoints: 1_000 }, 539_900);
     const summary = orderSummary({ ...inr, services: ["managed-website", "social-media"] }, codeCents);
-    expect(summary.offer).toEqual({ label: "Package offer, 10% off", discountCents: 129_900 });
-    expect(summary).toMatchObject({ discountCents: 116_990, netCents: 1_169_900, totalCents: chargedAmountCents(1_169_900, 116_990) });
-    expect(summary.totalCents).toBe(1_052_910);
-    expect(summary.gstCents).toBe(160_614);
+    expect(summary.offer).toEqual({ label: "Package offer, 10% off", discountCents: 59_900 });
+    expect(summary).toMatchObject({ discountCents: 53_990, netCents: 539_900, totalCents: chargedAmountCents(539_900, 53_990) });
+    expect(summary.totalCents).toBe(485_910);
+    expect(summary.gstCents).toBe(74_122);
     expect(summary.adCredit?.cents).toBe(150_000);
   });
 
   it("takes a flat code off any basket, three services included", () => {
     const summary = orderSummary({ ...inr, services: ["managed-website", "social-media", "paid-ads"] }, 50_000);
-    expect(summary).toMatchObject({ discountCents: 50_000, netCents: 3_039_800, gstCents: 456_072, totalCents: 2_989_800 });
+    expect(summary).toMatchObject({ discountCents: 50_000, netCents: 719_800, gstCents: 102_172, totalCents: 669_800 });
   });
 
   it("refuses a basket of no service", () => {
@@ -275,11 +275,11 @@ describe("servicesPhrase", () => {
 describe("basketNetCents", () => {
   it.each([
     [["managed-website"], "INR", 299_900],
-    [["social-media"], "INR", 999_900],
-    [["managed-website", "social-media"], "INR", 1_169_900],
-    [["social-media", "paid-ads"], "INR", 3_149_900],
-    [["managed-website", "social-media", "paid-ads"], "INR", 3_039_800],
-    [["managed-website", "social-media", "paid-ads"], "USD", 45_200],
+    [["social-media"], "INR", 299_900],
+    [["managed-website", "social-media"], "INR", 539_900],
+    [["social-media", "paid-ads"], "INR", 539_900],
+    [["managed-website", "social-media", "paid-ads"], "INR", 719_800],
+    [["managed-website", "social-media", "paid-ads"], "USD", 14_200],
   ] as const)("prices %o in %s at %i with GST included, the package price a new sign-up pays", (services, currency, net) => {
     expect(basketNetCents(services, currency)).toBe(net);
   });
@@ -289,22 +289,22 @@ describe("renewalTerms", () => {
   const inr = { planInitialAmountCents: 0, currency: "INR", taxRateBasisPoints: 1800, forfeited: false, hasEverPaid: false } as const;
   const plan = { currency: "INR", taxRateBasisPoints: 1800, initialTermMonths: 1 } as const;
   const websiteAndSocial = ["managed-website", "social-media"] as const;
-  // 10% of the ₹11,699 package: ₹1,169.90 off, so ₹10,529.10 a month, and ₹11,699 once the code ends.
-  const coded = orderSummary({ ...inr, services: websiteAndSocial }, 116_990);
+  // 10% of the ₹5,399 package: ₹539.90 off, so ₹4,859.10 a month, and ₹5,399 once the code ends.
+  const coded = orderSummary({ ...inr, services: websiteAndSocial }, 53_990);
 
   it("names the months a code has left after the first payment, and the price after it ends", () => {
     expect(renewalTerms(coded, plan, 3)).toBe(
-      "Your first payment covers your first month, then ₹10,529.10 (GST included) is taken each month for 2 more months, and ₹11,699 a month after that.",
+      "Your first payment covers your first month, then ₹4,859.10 (GST included) is taken each month for 2 more months, and ₹5,399 a month after that.",
     );
-    expect(renewalTerms(coded, plan, 2)).toContain("for 1 more month, and ₹11,699 a month after that.");
+    expect(renewalTerms(coded, plan, 2)).toContain("for 1 more month, and ₹5,399 a month after that.");
   });
 
   it("goes straight to the price without the code when the first payment uses the code's only month", () => {
-    expect(renewalTerms(coded, plan, 1)).toBe("Your first payment covers your first month, then ₹11,699 (GST included) is taken each month for your services.");
+    expect(renewalTerms(coded, plan, 1)).toBe("Your first payment covers your first month, then ₹5,399 (GST included) is taken each month for your services.");
   });
 
   it("keeps the discounted amount each month for a code with no limit, and the plain amount with no code", () => {
-    expect(renewalTerms(coded, plan, null)).toBe("Your first payment covers your first month, then ₹10,529.10 (GST included) is taken each month for your services.");
+    expect(renewalTerms(coded, plan, null)).toBe("Your first payment covers your first month, then ₹4,859.10 (GST included) is taken each month for your services.");
     const plain = orderSummary({ ...inr, services: ["managed-website"] }, 0);
     expect(renewalTerms(plain, plan, 3)).toBe("Your first payment covers your first month, then ₹2,999 (GST included) is taken each month for your service.");
   });

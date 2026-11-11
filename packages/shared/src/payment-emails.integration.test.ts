@@ -174,7 +174,7 @@ describe("sendPaymentReceipt", () => {
 
     await sendPaymentReceipt(dbs.staff.db, deps(), payment.id, PAID_AT);
 
-    expect(sent[0]?.subject).toBe("Payment received: $65");
+    expect(sent[0]?.subject).toBe("Payment received: $59");
     expect(sent[0]?.bodyText).not.toMatch(/GST/i);
   });
 

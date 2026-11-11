@@ -121,8 +121,8 @@ function subscriptionFor(services: readonly MonthlyAddOnId[]) {
 describe("billView", () => {
   it.each([
     [["managed-website"], 299_900, null],
-    [["managed-website", "social-media"], 1_169_900, "Package discount, 10%"],
-    [["managed-website", "social-media", "paid-ads"], 3_039_800, "Package discount, 20%"],
+    [["managed-website", "social-media"], 539_900, "Package discount, 10%"],
+    [["managed-website", "social-media", "paid-ads"], 719_800, "Package discount, 20%"],
   ] as const)("bills %j at the checkout's own total, %i", (services, expectedCents, discountLabel) => {
     const bill = billView({ lines: linesFor(services), subscription: subscriptionFor(services), plan: INR_PLAN });
     const checkout = orderSummary({ planInitialAmountCents: 0, services, currency: "INR", taxRateBasisPoints: 1_800, forfeited: false, hasEverPaid: false }, 0);
@@ -132,15 +132,15 @@ describe("billView", () => {
     expect(bill.rows.find((row) => row.discount)?.label ?? null).toBe(discountLabel);
   });
 
-  it("matches the mock for all three: ₹37,997 list, ₹7,599 off, ₹30,398 a month with ₹4,636.98 GST (to the paisa) and ₹3,000 ad money", () => {
+  it("bills all three at ₹8,997 list, ₹1,799 off, ₹7,198 a month with ₹1,098 GST (to the paisa) and ₹3,000 ad money", () => {
     const services = ["managed-website", "social-media", "paid-ads"] as const;
     const bill = billView({ lines: linesFor(services), subscription: subscriptionFor(services), plan: INR_PLAN });
     expect(bill.rows).toEqual([
-      { label: "List price, 3 services", amount: "₹37,997", discount: false },
-      { label: "Package discount, 20%", amount: "−₹7,599", discount: true },
+      { label: "List price, 3 services", amount: "₹8,997", discount: false },
+      { label: "Package discount, 20%", amount: "−₹1,799", discount: true },
     ]);
-    expect(bill.total).toBe("₹30,398");
-    expect(bill.gstLine).toBe("Includes ₹4,636.98 GST.");
+    expect(bill.total).toBe("₹7,198");
+    expect(bill.gstLine).toBe("Includes ₹1,098 GST.");
     expect(bill.adMoneyLine).toBe("Monthly ad money of ₹3,000 is added to your ads.");
   });
 
@@ -156,8 +156,8 @@ describe("billView", () => {
       plan: INR_PLAN,
     });
     expect(bill.totalCents).toBe(preview?.newMonthlyCents);
-    expect(bill.total).toBe("₹12,998");
-    expect(bill.rows).toEqual([{ label: "List price, 2 services", amount: "₹12,998", discount: false }]);
+    expect(bill.total).toBe("₹5,998");
+    expect(bill.rows).toEqual([{ label: "List price, 2 services", amount: "₹5,998", discount: false }]);
     expect(bill.adMoneyLine).toBeNull();
   });
 
