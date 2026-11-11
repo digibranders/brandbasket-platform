@@ -1,14 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { loadActiveServices } from "@/lib/server/active-services";
 import { getCustomerTenant } from "@/lib/server/customer-tenant";
-import { socialAiEnabled } from "@/lib/server/social-ai-flag";
 import { fetchPosterImage, socialAutoSettings } from "@/lib/server/social-auto";
 import { GET } from "./route";
 
 vi.mock("server-only", () => ({}));
 vi.mock("@/lib/server/customer-tenant", () => ({ getCustomerTenant: vi.fn() }));
 vi.mock("@/lib/server/active-services", () => ({ loadActiveServices: vi.fn() }));
-vi.mock("@/lib/server/social-ai-flag", () => ({ socialAiEnabled: vi.fn() }));
 vi.mock("@/lib/server/social-auto", () => ({ socialAutoSettings: vi.fn(), fetchPosterImage: vi.fn() }));
 vi.mock("@/lib/server/social-brand", () => ({ socialBrand: async (tenant: { businessId: string; businessName: string }) => ({ externalId: tenant.businessId, name: tenant.businessName, view: null }) }));
 
@@ -19,7 +17,6 @@ beforeEach(() => {
   vi.spyOn(console, "error").mockImplementation(() => undefined);
   vi.mocked(getCustomerTenant).mockResolvedValue({ userId: "user-1", businessId: "business-1", businessName: "Om Sweets", role: "owner" } as never);
   vi.mocked(loadActiveServices).mockResolvedValue(["social"] as never);
-  vi.mocked(socialAiEnabled).mockReturnValue(true);
   vi.mocked(socialAutoSettings).mockReturnValue({ baseUrl: "https://social.example", key: "key-1234567890abcdef", returnUrl: "https://app.example/social" });
   vi.mocked(fetchPosterImage).mockResolvedValue(new Uint8Array([0xff, 0xd8, 0xff, 0xd9]));
 });
@@ -44,9 +41,6 @@ describe("GET /api/social-posters/image", () => {
     expect((await get("v1")).status).toBe(401);
     vi.mocked(getCustomerTenant).mockResolvedValue({ userId: "u", businessId: "b", businessName: "n", role: "owner" } as never);
     vi.mocked(loadActiveServices).mockResolvedValue([] as never);
-    expect((await get("v1")).status).toBe(403);
-    vi.mocked(loadActiveServices).mockResolvedValue(["social"] as never);
-    vi.mocked(socialAiEnabled).mockReturnValue(false);
     expect((await get("v1")).status).toBe(403);
     expect(fetchPosterImage).not.toHaveBeenCalled();
   });

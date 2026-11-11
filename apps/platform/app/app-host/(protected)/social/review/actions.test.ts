@@ -3,7 +3,6 @@ import { revalidatePath } from "next/cache";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { requireBillingAccess } from "@/lib/server/billing";
 import { addNetwork, decideBatch, decidePoster, drawBatch, loadTopics, SocialAutoError, socialAutoSettings } from "@/lib/server/social-auto";
-import { socialAiEnabled } from "@/lib/server/social-ai-flag";
 import { addNetworkAction, decideBatchAction, decidePosterAction, drawBatchAction } from "./actions";
 
 vi.mock("server-only", () => ({}));
@@ -17,7 +16,6 @@ vi.mock("next/navigation", () => ({
 vi.mock("@/lib/server/db", () => ({ getAppDb: vi.fn(() => ({ kind: "app-db" })) }));
 vi.mock("@/lib/server/billing", () => ({ requireBillingAccess: vi.fn() }));
 vi.mock("@brandbasket/db", async (importOriginal) => ({ ...(await importOriginal<typeof import("@brandbasket/db")>()), listBoughtSetupServices: vi.fn(), withTenantScope: vi.fn() }));
-vi.mock("@/lib/server/social-ai-flag", () => ({ socialAiEnabled: vi.fn() }));
 vi.mock("@/lib/server/social-auto", async (importOriginal) => ({ ...(await importOriginal<typeof import("@/lib/server/social-auto")>()), socialAutoSettings: vi.fn(), decideBatch: vi.fn(), drawBatch: vi.fn(), decidePoster: vi.fn(), addNetwork: vi.fn(), loadTopics: vi.fn() }));
 vi.mock("@/lib/server/social-brand", () => ({ socialBrand: async (tenant: { businessId: string; businessName: string }) => ({ externalId: tenant.businessId, name: tenant.businessName, view: null }) }));
 
@@ -36,7 +34,6 @@ beforeEach(() => {
   vi.mocked(requireBillingAccess).mockResolvedValue({ user: { id: "user-1" }, tenant, billing: { hasAccess: true } } as never);
   vi.mocked(withTenantScope).mockImplementation(async (_db, _scope, work) => work({ kind: "tx" } as never));
   vi.mocked(listBoughtSetupServices).mockResolvedValue(["social"] as never);
-  vi.mocked(socialAiEnabled).mockReturnValue(true);
   vi.mocked(socialAutoSettings).mockReturnValue({ baseUrl: "https://social.example", key: "key-1234567890abcdef", returnUrl: "https://app.example/social" });
   vi.mocked(decideBatch).mockResolvedValue({ id: "week-05", createdAt: "x", networks: [], posts: [], rules: {} });
   vi.mocked(drawBatch).mockResolvedValue({ job: { id: "j", kind: "draw", state: "queued", createdAt: "x" }, created: true });
@@ -48,11 +45,8 @@ describe("every action of the review page", () => {
     ["decideBatchAction", () => decideBatchAction(form({ batchId: "week-05", postId: "p1", action: "keep" }))],
     ["drawBatchAction", () => drawBatchAction(form({ batchId: "week-05" }))],
     ["decidePosterAction", () => decidePosterAction(form({ action: "approve", id: "v1" }))],
-  ])("%s is not found without the social service or while the AI side is off, and calls nothing", async (_name, act) => {
+  ])("%s is not found without the social service, and calls nothing", async (_name, act) => {
     vi.mocked(listBoughtSetupServices).mockResolvedValue([] as never);
-    await expect(act()).rejects.toThrow("notFound");
-    vi.mocked(listBoughtSetupServices).mockResolvedValue(["social"] as never);
-    vi.mocked(socialAiEnabled).mockReturnValue(false);
     await expect(act()).rejects.toThrow("notFound");
     for (const call of [decideBatch, drawBatch, decidePoster]) expect(call).not.toHaveBeenCalled();
   });

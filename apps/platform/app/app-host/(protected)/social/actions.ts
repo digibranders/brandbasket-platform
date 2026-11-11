@@ -9,7 +9,6 @@ import { requireBillingAccess } from "@/lib/server/billing";
 import { socialBrand } from "@/lib/server/social-brand";
 import { getAppDb } from "@/lib/server/db";
 import { actorOf, connectLink, createPost, deletePost, ensureWorkspace, loadChannels, movePost, sendPostNow, SocialAutoError, socialAutoSettings, startSiteJob, updatePost } from "@/lib/server/social-auto";
-import { socialAiEnabled } from "@/lib/server/social-ai-flag";
 import { wordsForCode } from "@/lib/social/ai";
 import { CHANNEL_PLATFORMS, type ChannelPlatform } from "@/lib/social/auto";
 import { canAddOn, checkNewPost, checkPostEdit, wordsForPostRefusal, isChangeablePostId, isTime, isWrittenPostId, momentHasPassed, type NewPostState } from "@/lib/social/new-post";
@@ -264,7 +263,7 @@ const siteSchema = z.object({ site: z.string().trim().min(1, "Write your website
 export async function startSiteJobAction(formData: FormData): Promise<NewPostState> {
   const { tenant } = await requireBillingAccess();
   const bought = await withTenantScope(getAppDb(), tenant, (tx) => listBoughtSetupServices(tx, tenant.businessId));
-  if (!bought.includes("social") || !socialAiEnabled()) notFound();
+  if (!bought.includes("social")) notFound();
   const parsed = siteSchema.safeParse({ site: formData.get("site"), page: formData.get("mode") === "page", networks: formData.getAll("network") });
   if (!parsed.success) return { status: "error", message: parsed.error.issues[0]?.message ?? "Check the address and try again." };
   if (parsed.data.networks.length === 0) return { status: "error", message: wordsForCode("INVALID_NETWORKS") };

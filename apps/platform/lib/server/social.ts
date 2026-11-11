@@ -11,7 +11,6 @@ import { socialBrand, type SocialBrand } from "./social-brand";
 import { quietly } from "./quietly";
 import type { SiteJob } from "@/lib/social/ai";
 import { loadBatches, loadChannels, loadPosters, loadPosts, loadSiteJobs, loadWorkspaceFacts, socialAutoSettings, type SocialAutoSettings } from "./social-auto";
-import { socialAiEnabled } from "./social-ai-flag";
 
 /** What social-auto knows about the business: its connected channels and the posts it writes and publishes. */
 export interface SocialConnect {
@@ -51,8 +50,7 @@ export interface SocialData {
 /** Asks social-auto for the channels and the posts. Each is its own failure: what could be read is shown and the page says the rest could not be. */
 async function loadConnect(settings: SocialAutoSettings, business: { readonly id: string; readonly name: string }, now: Date): Promise<SocialConnect> {
   const today = localDateIn(BRAND_TIME_ZONE, now);
-  const ai = socialAiEnabled();
-  const [channels, posts, jobs, facts, written, expiredPictures] = await Promise.allSettled([loadChannels(settings, business.id), loadPosts(settings, business.id, loadWindow(today)), ai ? loadSiteJobs(settings, business.id) : Promise.resolve([] as SiteJob[]), loadWorkspaceFacts(settings, business.id), ai ? loadBatches(settings, business.id) : Promise.resolve(null), ai ? loadPosters(settings, business.id, "expired") : Promise.resolve(null)]);
+  const [channels, posts, jobs, facts, written, expiredPictures] = await Promise.allSettled([loadChannels(settings, business.id), loadPosts(settings, business.id, loadWindow(today)), loadSiteJobs(settings, business.id), loadWorkspaceFacts(settings, business.id), loadBatches(settings, business.id), loadPosters(settings, business.id, "expired")]);
   for (const outcome of [channels, posts, jobs, facts, written, expiredPictures]) if (outcome.status === "rejected") console.error("[social] could not read social-auto", errorLogInfo(outcome.reason));
   return {
     businessName: business.name,
@@ -62,7 +60,7 @@ async function loadConnect(settings: SocialAutoSettings, business: { readonly id
     today,
     unavailable: channels.status === "rejected" || posts.status === "rejected",
     // A failed read of the jobs shows as none yet: the page still draws, and the log says why.
-    ai: ai ? { jobs: jobs.status === "fulfilled" ? jobs.value : [], website: facts.status === "fulfilled" ? facts.value.website : null, jobsUnavailable: jobs.status === "rejected", expired: { batches: written.status === "fulfilled" ? (written.value?.expired.length ?? 0) : 0, pictures: expiredPictures.status === "fulfilled" ? (expiredPictures.value?.posters.length ?? 0) : 0 } } : null,
+    ai: { jobs: jobs.status === "fulfilled" ? jobs.value : [], website: facts.status === "fulfilled" ? facts.value.website : null, jobsUnavailable: jobs.status === "rejected", expired: { batches: written.status === "fulfilled" ? written.value.expired.length : 0, pictures: expiredPictures.status === "fulfilled" ? expiredPictures.value.posters.length : 0 } },
   };
 }
 

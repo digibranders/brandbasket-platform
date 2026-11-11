@@ -3,7 +3,6 @@ import { revalidatePath } from "next/cache";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { requireBillingAccess } from "@/lib/server/billing";
 import { connectLink, createPost, deletePost, ensureWorkspace, loadChannels, movePost, sendPostNow, SocialAutoError, socialAutoSettings, startSiteJob, updatePost } from "@/lib/server/social-auto";
-import { socialAiEnabled } from "@/lib/server/social-ai-flag";
 import { approvePostsAction, changeWrittenPostTimeAction, connectChannelAction, createPostAction, deletePostAction, movePostAction, sendPostNowAction, startSiteJobAction, updatePostAction } from "./actions";
 
 vi.mock("server-only", () => ({}));
@@ -21,7 +20,6 @@ vi.mock("@/lib/server/db", () => ({ getAppDb: vi.fn(() => ({ kind: "app-db" })) 
 vi.mock("@/lib/server/billing", () => ({ requireBillingAccess: vi.fn() }));
 vi.mock("@brandbasket/db", async (importOriginal) => ({ ...(await importOriginal<typeof import("@brandbasket/db")>()), approveDeliverables: vi.fn(), listBoughtSetupServices: vi.fn(), withTenantScope: vi.fn() }));
 vi.mock("@/lib/server/social-auto", async (importOriginal) => ({ ...(await importOriginal<typeof import("@/lib/server/social-auto")>()), socialAutoSettings: vi.fn(), ensureWorkspace: vi.fn(), connectLink: vi.fn(), loadChannels: vi.fn(), createPost: vi.fn(), updatePost: vi.fn(), deletePost: vi.fn(), sendPostNow: vi.fn(), movePost: vi.fn(), startSiteJob: vi.fn() }));
-vi.mock("@/lib/server/social-ai-flag", () => ({ socialAiEnabled: vi.fn() }));
 vi.mock("@/lib/server/social-brand", () => ({ socialBrand: async (tenant: { businessId: string; businessName: string }) => ({ externalId: tenant.businessId, name: tenant.businessName, view: null }) }));
 
 const A = "0192f3c4-0000-7000-8000-00000000000a";
@@ -50,7 +48,6 @@ beforeEach(() => {
   vi.mocked(connectLink).mockResolvedValue("https://dash.example/api/instagram-start?invite=abc");
   vi.mocked(loadChannels).mockResolvedValue([{ id: "instagram:1", platform: "instagram", account: "acme", connectedAt: "2026-10-30T09:00:00Z" }, { id: "linkedin:3", platform: "linkedin", account: "Meera", connectedAt: "2026-10-30T09:00:00Z" }]);
   vi.mocked(createPost).mockResolvedValue({} as never);
-  vi.mocked(socialAiEnabled).mockReturnValue(true);
   vi.mocked(startSiteJob).mockResolvedValue({ job: { id: "job_1", kind: "write", state: "queued", createdAt: "2026-11-11T10:00:00Z" }, created: true });
 });
 
@@ -386,11 +383,8 @@ describe("startSiteJobAction", () => {
     expect(startSiteJob).toHaveBeenLastCalledWith(expect.anything(), "business-1", { site: "omsweets.in/diwali", page: true, networks: ["facebook"] }, "brandbasket:user-1");
   });
 
-  it("is not found for a business that has not bought Social media, or while the AI side is off", async () => {
+  it("is not found for a business that has not bought Social media", async () => {
     vi.mocked(listBoughtSetupServices).mockResolvedValue([] as never);
-    await expect(startSiteJobAction(site({ site: "omsweets.in", network: "instagram" }))).rejects.toThrow("notFound");
-    vi.mocked(listBoughtSetupServices).mockResolvedValue(["social"] as never);
-    vi.mocked(socialAiEnabled).mockReturnValue(false);
     await expect(startSiteJobAction(site({ site: "omsweets.in", network: "instagram" }))).rejects.toThrow("notFound");
     expect(startSiteJob).not.toHaveBeenCalled();
   });

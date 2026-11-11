@@ -9,7 +9,6 @@ import { z } from "zod";
 import { requireBillingAccess } from "@/lib/server/billing";
 import { getAppDb } from "@/lib/server/db";
 import { actorOf, addNetwork, decideBatch, decidePoster, drawBatch, loadTopics, SocialAutoError, socialAutoSettings, type SocialAutoSettings } from "@/lib/server/social-auto";
-import { socialAiEnabled } from "@/lib/server/social-ai-flag";
 import { socialBrand, type SocialBrand } from "@/lib/server/social-brand";
 import { wordsForCode } from "@/lib/social/ai";
 import { CHANNEL_PLATFORMS, PLATFORM_NAMES } from "@/lib/social/auto";
@@ -30,7 +29,7 @@ type Guard = { readonly ok: true; readonly tenant: TenantContext; /** The brand 
 async function guard(): Promise<Guard> {
   const { tenant } = await requireBillingAccess();
   const bought = await withTenantScope(getAppDb(), tenant, (tx) => listBoughtSetupServices(tx, tenant.businessId));
-  if (!bought.includes("social") || !socialAiEnabled()) notFound();
+  if (!bought.includes("social")) notFound();
   const settings = socialAutoSettings();
   if (settings === null) return { ok: false, state: { status: "error", message: "Posting is not available just now. Try again later." } };
   return { ok: true, tenant, brand: await socialBrand(tenant), settings, actor: actorOf(tenant) };
