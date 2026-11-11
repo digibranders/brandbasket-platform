@@ -6,13 +6,13 @@ const SOCIAL = { addOn: "social-media", listAmountCents: 999_900, taxRateBasisPo
 const SEO = { addOn: "paid-ads", listAmountCents: 2_499_900, taxRateBasisPoints: 1_800 } as const;
 
 describe("dropPreview", () => {
-  it("dropping Paid Ads Management from all three keeps the other two at list, ₹12,998 a month with GST included, and says the package ends", () => {
+  it("dropping Paid Ads Management from all three keeps the other two at list, ₹12,998 a month with GST included, and ends no package", () => {
     expect(dropPreview({ staying: [WEBSITE, SOCIAL, SEO], dropping: "paid-ads", forfeited: false, currency: "INR" })).toEqual({
       keeps: ["managed-website", "social-media"],
       newMonthlyCents: 1_299_800,
       currency: "INR",
       taxRateBasisPoints: 1_800,
-      endsPackage: true,
+      endsPackage: false,
       endsWebsite: false,
     });
   });
@@ -21,7 +21,7 @@ describe("dropPreview", () => {
     expect(dropPreview({ staying: [WEBSITE, SOCIAL], dropping: "social-media", forfeited: false, currency: "INR" })).toMatchObject({
       keeps: ["managed-website"],
       newMonthlyCents: 299_900,
-      endsPackage: true,
+      endsPackage: false,
     });
   });
 
@@ -55,7 +55,7 @@ describe("dropPreview", () => {
 });
 
 describe("dropCopy", () => {
-  it("says what stays, the new monthly payment with GST, and that the package ends, for the case of dropping SEO from all three", () => {
+  it("says what stays and the new monthly payment with GST, and nothing about a package, for the case of dropping SEO from all three", () => {
     const preview = dropPreview({ staying: [WEBSITE, SOCIAL, SEO], dropping: "paid-ads", forfeited: false, currency: "INR" });
     if (preview === null) throw new Error("Expected a preview");
 
@@ -63,9 +63,9 @@ describe("dropCopy", () => {
       keeps: "You keep Website Management and Social Media Management.",
       monthly: "From 12 November 2026 you pay ₹12,998 a month, GST included.",
       websiteOffline: null,
-      packageEnds: "Your package price and ad credit end for good. Adding a service again later will be at its own price.",
+      packageEnds: null,
     });
-    expect(PACKAGE_ENDS).toBe(dropCopy(preview, "12 November 2026").packageEnds);
+    expect(dropCopy({ ...preview, endsPackage: true }, "12 November 2026").packageEnds).toBe(PACKAGE_ENDS);
   });
 
   it("names one service kept, says nothing about a package already given up, and adds no GST in dollars", () => {

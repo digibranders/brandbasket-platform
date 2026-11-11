@@ -22,13 +22,13 @@ describe("services catalogue", () => {
     expect(isMonthlyAddOnId("constructor")).toBe(false);
   });
 
-  // brandbasket-website lib/pricing.ts: 2,999, 9,999 and 24,999 rupees, 65, 150 and 350 dollars; monitoring 6,000 or 75.
+  // brandbasket-website lib/pricing.ts: 2,999 rupees and 59 dollars for each plan; monitoring 6,000 or 99.
   it("lists in minor units what the website lists, GST included in rupees", () => {
     expect(ADD_ONS.map((addOn) => [addOn.id, addOn.prices.INR, addOn.prices.USD])).toEqual([
-      ["managed-website", 299_900, 6_500],
-      ["social-media", 999_900, 15_000],
-      ["paid-ads", 2_499_900, 35_000],
-      ["expert-monitoring", 600_000, 7_500],
+      ["managed-website", 299_900, 5_900],
+      ["social-media", 299_900, 5_900],
+      ["paid-ads", 299_900, 5_900],
+      ["expert-monitoring", 600_000, 9_900],
     ]);
   });
 
@@ -55,17 +55,17 @@ describe("services catalogue", () => {
     expect(addOnPrice(addOnById("managed-website"), "INR")).toEqual({
       currency: "INR", listCents: 299_900, discountCents: 0, offerCents: 0, netCents: 299_900, taxRateBasisPoints: 1_800, chargedCents: 299_900,
     });
-    expect(addOnPrice(addOnById("paid-ads"), "INR").chargedCents).toBe(2_499_900);
+    expect(addOnPrice(addOnById("paid-ads"), "INR").chargedCents).toBe(299_900);
   });
 
   it("prices in dollars with no tax", () => {
-    expect(addOnPrice(addOnById("social-media"), "USD")).toMatchObject({ listCents: 15_000, taxRateBasisPoints: 0, chargedCents: 15_000 });
-    expect(addOnPrice(addOnById("expert-monitoring"), "USD")).toMatchObject({ listCents: 7_500, taxRateBasisPoints: 0, chargedCents: 7_500 });
+    expect(addOnPrice(addOnById("social-media"), "USD")).toMatchObject({ listCents: 5_900, taxRateBasisPoints: 0, chargedCents: 5_900 });
+    expect(addOnPrice(addOnById("expert-monitoring"), "USD")).toMatchObject({ listCents: 9_900, taxRateBasisPoints: 0, chargedCents: 9_900 });
   });
 
   it("takes the package discount it is given off the list price the customer pays", () => {
-    expect(addOnPrice(addOnById("social-media"), "INR", 299_970)).toEqual({
-      currency: "INR", listCents: 999_900, discountCents: 299_970, offerCents: 299_970, netCents: 699_930, taxRateBasisPoints: 1_800, chargedCents: 699_930,
+    expect(addOnPrice(addOnById("social-media"), "INR", 29_970)).toEqual({
+      currency: "INR", listCents: 299_900, discountCents: 29_970, offerCents: 29_970, netCents: 269_930, taxRateBasisPoints: 1_800, chargedCents: 269_930,
     });
   });
 

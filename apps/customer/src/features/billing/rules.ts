@@ -102,7 +102,7 @@ export interface DropPreview {
   readonly newMonthlyCents: number;
   readonly currency: MoneyCurrency;
   readonly taxRateBasisPoints: number;
-  /** Dropping ends a package price and ad credit the business still has: false once the offer is already given up. */
+  /** Dropping ends a package price and ad credit the business still has: false with no package, or once the offer is given up. */
   readonly endsPackage: boolean;
   /** The service being dropped is Managed Website: the site goes offline when its paid month ends. */
   readonly endsWebsite: boolean;
@@ -127,7 +127,8 @@ export function dropPreview(input: {
     newMonthlyCents: chargedAmountCents(listTotalCents(kept), 0),
     currency: input.currency,
     taxRateBasisPoints,
-    endsPackage: !input.forfeited,
+    // Only a basket on a package offer has one to lose; none is on sale since 2026-11-11.
+    endsPackage: packageBasisPointsFor({ services: MONTHLY_ADD_ON_IDS.filter((id) => input.staying.some((line) => line.addOn === id)), forfeited: input.forfeited }) > 0,
     endsWebsite: input.dropping === "managed-website",
   };
 }

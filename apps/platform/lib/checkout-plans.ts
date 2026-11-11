@@ -1,5 +1,4 @@
-import { PLAN_ADD_ON_IDS, type MonthlyAddOnId } from "@brandbasket/shared/lib/billing/add-ons";
-import { PACKAGE_OFFERS, percentOf } from "@brandbasket/shared/lib/billing/packages";
+import type { MonthlyAddOnId } from "@brandbasket/shared/lib/billing/add-ons";
 import type { MoneyCurrency } from "@brandbasket/shared/lib/money";
 import { pricesNote } from "@/lib/currency-words";
 
@@ -64,13 +63,6 @@ export function checkoutSteps(services: readonly MonthlyAddOnId[]): readonly Che
   return services.includes("managed-website") ? WEBSITE_STEPS : NO_WEBSITE_STEPS;
 }
 
-/** What the package offers are worth for two and for three plans, as whole-number percentages: "10" and "20". */
-function offerPercent(planCount: number): string {
-  const offer = PACKAGE_OFFERS.find((candidate) => candidate.services.length === planCount);
-  if (offer === undefined) throw new Error(`No package offer for ${planCount} plans`);
-  return percentOf(offer.basisPoints);
-}
-
 /** The line under the page title: what to do, then what the prices are in (and whether they carry GST). */
 export function checkoutLead(currency: MoneyCurrency, taxRateBasisPoints: number): string {
   return `Choose the services you want. ${pricesNote(currency, taxRateBasisPoints > 0)}`;
@@ -79,8 +71,8 @@ export function checkoutLead(currency: MoneyCurrency, taxRateBasisPoints: number
 /** The page's own words. */
 export const CHECKOUT_COPY = {
   title: "Your plan",
-  packageNote: `Two plans are ${offerPercent(2)}% off, all three are ${offerPercent(3)}% off.`,
-  allThree: `All three plans: ${offerPercent(PLAN_ADD_ON_IDS.length)}% off every month.`,
+  packageNote: "Take all three plans and Dedicated Expert Monitoring is free.",
+  allThree: "All three plans: Dedicated Expert Monitoring free every month.",
   getHeading: "What you get",
   nextHeading: "What happens next",
   websiteBadge: "Website free",

@@ -8,20 +8,15 @@ describe("publicPricing", () => {
 
   it("lists every service with its list price in each currency, in minor units", () => {
     expect(pricing.services).toEqual([
-      { id: "managed-website", title: "Website Management", prices: { INR: 299_900, USD: 6_500 } },
-      { id: "social-media", title: "Social Media Management", prices: { INR: 999_900, USD: 15_000 } },
-      { id: "paid-ads", title: "Paid Ads Management", prices: { INR: 2_499_900, USD: 35_000 } },
-      { id: "expert-monitoring", title: "Dedicated Expert Monitoring", prices: { INR: 600_000, USD: 7_500 } },
+      { id: "managed-website", title: "Website Management", prices: { INR: 299_900, USD: 5_900 } },
+      { id: "social-media", title: "Social Media Management", prices: { INR: 299_900, USD: 5_900 } },
+      { id: "paid-ads", title: "Paid Ads Management", prices: { INR: 299_900, USD: 5_900 } },
+      { id: "expert-monitoring", title: "Dedicated Expert Monitoring", prices: { INR: 600_000, USD: 9_900 } },
     ]);
   });
 
-  it("lists the four packages with their percentage and ad credit", () => {
-    expect(pricing.packages).toEqual([
-      { services: ["managed-website", "social-media"], basisPoints: 1_000, adCreditCents: { INR: 150_000, USD: 3_000 } },
-      { services: ["managed-website", "paid-ads"], basisPoints: 1_000, adCreditCents: { INR: 0, USD: 0 } },
-      { services: ["social-media", "paid-ads"], basisPoints: 1_000, adCreditCents: { INR: 150_000, USD: 3_000 } },
-      { services: ["managed-website", "social-media", "paid-ads"], basisPoints: 2_000, adCreditCents: { INR: 300_000, USD: 6_000 } },
-    ]);
+  it("lists no packages, as none is on sale", () => {
+    expect(pricing.packages).toEqual([]);
   });
 
   it("is the catalogue and the package offers, not a copy of them", () => {

@@ -20,7 +20,7 @@ const INR = {
   initialTermMonths: 1,
   recurringAmountCents: 0,
 } as Plan;
-const USD_TERMS = "$65 a month. Your first payment covers your first month, then it renews monthly.";
+const USD_TERMS = "$59 a month. Your first payment covers your first month, then it renews monthly.";
 const MISSING: ChecklistItem = { key: "domain", label: "Your domain, confirmed as yours", step: "domain", passed: false };
 
 const OPEN_UNPAID: PaymentStepInput = {
@@ -37,7 +37,7 @@ describe("paymentStep", () => {
   it("offers to pay and send, priced from the plan", () => {
     expect(paymentStep(OPEN_UNPAID)).toEqual({
       kind: "pay-and-send",
-      amount: "$65",
+      amount: "$59",
       terms: USD_TERMS,
       ready: true,
     });
@@ -54,7 +54,7 @@ describe("paymentStep", () => {
   it("offers payment alone when the answers were sent before payment was required", () => {
     expect(paymentStep({ ...OPEN_UNPAID, locked: true })).toEqual({
       kind: "pay",
-      amount: "$65",
+      amount: "$59",
       terms: USD_TERMS,
     });
   });
@@ -103,7 +103,7 @@ describe("billingBanner", () => {
     renewalFailingUntil: null,
   };
   const TITLE = "Make your payment to continue";
-  const USD_PRICE = { amount: "$65", term: "First month" };
+  const USD_PRICE = { amount: "$59", term: "First month" };
 
   it("shows the price but sends the customer to finish setup first", () => {
     expect(billingBanner(base)).toEqual({
@@ -234,6 +234,6 @@ describe("a referral discount", () => {
   });
 
   it("changes nothing for a customer with no code applied", () => {
-    expect(paymentStep({ ...OPEN_UNPAID, discount: null })).toMatchObject({ amount: "$65", terms: USD_TERMS });
+    expect(paymentStep({ ...OPEN_UNPAID, discount: null })).toMatchObject({ amount: "$59", terms: USD_TERMS });
   });
 });

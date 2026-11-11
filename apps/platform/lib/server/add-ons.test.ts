@@ -182,24 +182,20 @@ describe("loadAddOnsPage", () => {
     expect(page.currency).toBe("INR");
     expect(page.addOns).toEqual([
       { kind: "available", addOn: "managed-website", price: expect.objectContaining({ listCents: 299_900, discountCents: 0, netCents: 299_900, chargedCents: 299_900 }), offer: { kind: "write" } },
-      { kind: "available", addOn: "social-media", price: expect.objectContaining({ listCents: 999_900, discountCents: 0, netCents: 999_900, chargedCents: 999_900 }), offer: { kind: "write" } },
-      { kind: "available", addOn: "paid-ads", price: expect.objectContaining({ listCents: 2_499_900, discountCents: 0, netCents: 2_499_900, chargedCents: 2_499_900 }), offer: { kind: "write" } },
+      { kind: "available", addOn: "social-media", price: expect.objectContaining({ listCents: 299_900, discountCents: 0, netCents: 299_900, chargedCents: 299_900 }), offer: { kind: "write" } },
+      { kind: "available", addOn: "paid-ads", price: expect.objectContaining({ listCents: 299_900, discountCents: 0, netCents: 299_900, chargedCents: 299_900 }), offer: { kind: "write" } },
       { kind: "available", addOn: "expert-monitoring", price: expect.objectContaining({ listCents: 600_000, discountCents: 0, netCents: 600_000, chargedCents: 600_000 }), offer: { kind: "write" } },
     ]);
   });
 
-  it("shows a service not yet added at the package price it would have, and at list once the offer is given up", async () => {
+  it("shows a service not yet added at its list price, with no package discount", async () => {
     vi.mocked(findLiveBundledAddOns).mockResolvedValue([includedRow({ addOn: "managed-website", listAmountCents: 299_900, offerDiscountAmountCents: 0, netAmountCents: 299_900 })]);
 
     const page = await loadAddOnsPage(subscribed, NOW);
     expect(page.addOns.find((entry) => entry.addOn === "social-media")).toMatchObject({
       kind: "available",
-      price: { listCents: 999_900, discountCents: 99_910, netCents: 899_990, chargedCents: 899_990 },
+      price: { listCents: 299_900, discountCents: 0, netCents: 299_900, chargedCents: 299_900 },
     });
-
-    vi.mocked(isPackageOfferForfeited).mockResolvedValue(true);
-    const forfeited = await loadAddOnsPage(subscribed, NOW);
-    expect(forfeited.addOns.find((entry) => entry.addOn === "social-media")).toMatchObject({ price: { discountCents: 0, netCents: 999_900 } });
   });
 
   it("prices a business billed in dollars in dollars, with no tax", async () => {
@@ -209,10 +205,10 @@ describe("loadAddOnsPage", () => {
 
     expect(page.currency).toBe("USD");
     expect(page.addOns.map((entry) => entry.price)).toEqual([
-      expect.objectContaining({ currency: "USD", listCents: 6_500, taxRateBasisPoints: 0, chargedCents: 6_500 }),
-      expect.objectContaining({ currency: "USD", listCents: 15_000, taxRateBasisPoints: 0, chargedCents: 15_000 }),
-      expect.objectContaining({ currency: "USD", listCents: 35_000, taxRateBasisPoints: 0, chargedCents: 35_000 }),
-      expect.objectContaining({ currency: "USD", listCents: 7_500, taxRateBasisPoints: 0, chargedCents: 7_500 }),
+      expect.objectContaining({ currency: "USD", listCents: 5_900, taxRateBasisPoints: 0, chargedCents: 5_900 }),
+      expect.objectContaining({ currency: "USD", listCents: 5_900, taxRateBasisPoints: 0, chargedCents: 5_900 }),
+      expect.objectContaining({ currency: "USD", listCents: 5_900, taxRateBasisPoints: 0, chargedCents: 5_900 }),
+      expect.objectContaining({ currency: "USD", listCents: 9_900, taxRateBasisPoints: 0, chargedCents: 9_900 }),
     ]);
   });
 
@@ -239,15 +235,15 @@ describe("loadAddOnsPage", () => {
       includedRow({ addOn, listAmountCents, offerDiscountAmountCents: PACKAGE_DISCOUNTS[addOn] ?? 0, netAmountCents: listAmountCents - (PACKAGE_DISCOUNTS[addOn] ?? 0), ...overrides });
     const all = () => [line("managed-website", 299_900), line("social-media", 999_900), line("paid-ads", 2_499_900)];
 
-    it("shows, for each of three services, the others at list: dropping Paid Ads Management leaves ₹12,998 a month, GST included, and ends the package", async () => {
+    it("shows, for each of three services, the others at list: dropping Paid Ads Management leaves ₹12,998 a month, GST included, and ends no package", async () => {
       vi.mocked(findLiveBundledAddOns).mockResolvedValue(all());
 
       const { addOns } = await loadAddOnsPage(subscribed, NOW);
 
       expect(addOns.map((entry) => (entry.kind === "included" ? [entry.addOn, entry.drop?.keeps, entry.drop?.newMonthlyCents, entry.drop?.endsPackage] : null))).toEqual([
-        ["managed-website", ["social-media", "paid-ads"], 3_499_800, true],
-        ["social-media", ["managed-website", "paid-ads"], 2_799_800, true],
-        ["paid-ads", ["managed-website", "social-media"], 1_299_800, true],
+        ["managed-website", ["social-media", "paid-ads"], 3_499_800, false],
+        ["social-media", ["managed-website", "paid-ads"], 2_799_800, false],
+        ["paid-ads", ["managed-website", "social-media"], 1_299_800, false],
       ]);
     });
 

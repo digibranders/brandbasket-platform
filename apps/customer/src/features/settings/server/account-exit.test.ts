@@ -373,38 +373,10 @@ describe("loadPackageEndsFor", () => {
     vi.mocked(findBusinessCurrency).mockResolvedValue("INR");
   });
 
-  it("reads the client's own basket, forfeit and ad credit, and says what cancelling ends", async () => {
-    await expect(loadPackageEndsFor(withCredit(300_000))).resolves.toEqual([
-      "Your package price (20% off)",
-      "\u20B93,000 a month of ad credit",
-      "If you come back, every service is at its own price",
-    ]);
+  it("reads the client's own basket, forfeit and ad credit, and lists nothing, since no package offer is on sale", async () => {
+    await expect(loadPackageEndsFor(withCredit(300_000))).resolves.toEqual([]);
     expect(withTenantScope).toHaveBeenCalledWith(expect.anything(), { userId: USER_ID, businessId: BUSINESS_ID }, expect.any(Function));
     expect(findLiveBundledAddOns).toHaveBeenCalledWith(tenantTx, BUSINESS_ID);
-  });
-
-  it("does not count a service that is already ending", async () => {
-    vi.mocked(findLiveBundledAddOns).mockResolvedValue([line("managed-website"), line("social-media", { endRequestedAt: NOW }), line("paid-ads")]);
-
-    await expect(loadPackageEndsFor(withCredit(0))).resolves.toEqual([
-      "Your package price (10% off)",
-      "If you come back, every service is at its own price",
-    ]);
-  });
-
-  it("lists the lines for a plan the team collects by hand and for one whose renewal is failing", async () => {
-    const lines = ["Your package price (20% off)", "\u20B93,000 a month of ad credit", "If you come back, every service is at its own price"];
-    await expect(loadPackageEndsFor(withCredit(300_000, { provider: "manual" }))).resolves.toEqual(lines);
-    await expect(loadPackageEndsFor(withCredit(300_000, { status: "past_due" }))).resolves.toEqual(lines);
-  });
-
-  it("does not count a service that is not yet paid for", async () => {
-    vi.mocked(findLiveBundledAddOns).mockResolvedValue([line("managed-website"), line("social-media"), line("paid-ads", { status: "pending" })]);
-
-    await expect(loadPackageEndsFor(withCredit(0))).resolves.toEqual([
-      "Your package price (10% off)",
-      "If you come back, every service is at its own price",
-    ]);
   });
 
   it("lists nothing for a forfeited business or a single service", async () => {

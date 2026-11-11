@@ -8,7 +8,7 @@ vi.mock("./db", () => ({ getStaffDb: vi.fn() }));
 describe("priceBases", () => {
   it("measures a code against the cheapest service, since the plan row costs nothing", () => {
     expect(priceBases()).toEqual({
-      USD: { netAmountCents: 6_500, taxRateBasisPoints: 0 },
+      USD: { netAmountCents: 5_900, taxRateBasisPoints: 0 },
       INR: { netAmountCents: 299_900, taxRateBasisPoints: 1_800 },
     });
   });

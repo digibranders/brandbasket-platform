@@ -3,7 +3,7 @@ import type { MoneyCurrency } from "../money";
 
 /**
  * The services Brandbasket sells, and what each lists at in each currency a business is billed in: Website Management,
- * Social Media Management and Paid Ads Management (owner, 2026-11-06), each on its own or two or more together as a package
+ * Social Media Management and Paid Ads Management (owner, 2026-11-06), all three at one price (owner, 2026-11-11), each on its own or two or more together as a package
  * priced in packages.ts, plus Dedicated Expert Monitoring, a monthly add-on that comes at no cost with all three plans.
  * Social Media and Ads and Local SEO + AEO were retired with no customers on them (migration 0222). Every price
  * includes GST (owner, 2026-10-26; docs/plans/25-money-gst-and-offers.md): rupee prices are in paise with 18% GST inside
@@ -50,7 +50,7 @@ export const ADD_ONS: readonly AddOn[] = [
     title: "Website Management",
     line: "A professionally designed website of up to 10 pages, mobile-friendly, with enquiry forms, click-to-call, a local SEO foundation and the OyeChats professional chatbot.",
     billing: "monthly",
-    prices: { INR: 2_999 * MINOR_UNITS_PER_MAJOR, USD: 65 * MINOR_UNITS_PER_MAJOR },
+    prices: { INR: 2_999 * MINOR_UNITS_PER_MAJOR, USD: 59 * MINOR_UNITS_PER_MAJOR },
     unit: "a month",
   },
   {
@@ -58,7 +58,7 @@ export const ADD_ONS: readonly AddOn[] = [
     title: "Social Media Management",
     line: "AI posts, captions and scheduling on up to 4 platforms, with a monthly performance report.",
     billing: "monthly",
-    prices: { INR: 9_999 * MINOR_UNITS_PER_MAJOR, USD: 150 * MINOR_UNITS_PER_MAJOR },
+    prices: { INR: 2_999 * MINOR_UNITS_PER_MAJOR, USD: 59 * MINOR_UNITS_PER_MAJOR },
     unit: "a month",
     platforms: ["Instagram", "Facebook", "Google Business Profile"],
   },
@@ -67,7 +67,7 @@ export const ADD_ONS: readonly AddOn[] = [
     title: "Paid Ads Management",
     line: "Meta ads with AI creatives, set up and optimised, for up to ₹10,000 a month of your budget.",
     billing: "monthly",
-    prices: { INR: 24_999 * MINOR_UNITS_PER_MAJOR, USD: 350 * MINOR_UNITS_PER_MAJOR },
+    prices: { INR: 2_999 * MINOR_UNITS_PER_MAJOR, USD: 59 * MINOR_UNITS_PER_MAJOR },
     unit: "a month",
     extra: "+ your ad spend",
     platforms: ["Facebook Ads", "Instagram Ads"],
@@ -77,7 +77,7 @@ export const ADD_ONS: readonly AddOn[] = [
     title: "Dedicated Expert Monitoring",
     line: "Our experts watch your website, social media and ads, fix what slips and help you grow. Free with all three plans.",
     billing: "monthly",
-    prices: { INR: 6_000 * MINOR_UNITS_PER_MAJOR, USD: 75 * MINOR_UNITS_PER_MAJOR },
+    prices: { INR: 6_000 * MINOR_UNITS_PER_MAJOR, USD: 99 * MINOR_UNITS_PER_MAJOR },
     unit: "a month",
   },
 ];
