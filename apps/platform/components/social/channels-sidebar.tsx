@@ -1,6 +1,6 @@
 "use client";
 
-import { Lock, Warning } from "@phosphor-icons/react/dist/ssr";
+import { Warning } from "@phosphor-icons/react/dist/ssr";
 import type { ReactElement } from "react";
 import { cn } from "@brandbasket/shared/lib/cn";
 import { SOFT_BUTTON } from "@/components/v2/classes";
@@ -30,9 +30,9 @@ function ConnectButton({ platform, label, className, logo = false }: { readonly 
   return (
     <form action={connectChannelAction}>
       <input type="hidden" name="channel" value={platform} />
-      <button type="submit" className={cn(SOFT_BUTTON, "w-full", logo && "h-9 justify-start gap-2 whitespace-nowrap px-2.5 text-[0.84375rem]", className)}>
+      <button type="submit" className={cn(SOFT_BUTTON, "w-full", logo && "h-auto min-h-9 justify-start gap-2 px-2.5 py-1.5 text-left text-[0.84375rem] leading-tight", className)}>
         {logo ? <ChannelLogo platform={platform} small /> : null}
-        {label}
+        <span className="min-w-0">{label}</span>
       </button>
     </form>
   );
@@ -111,10 +111,6 @@ export function ChannelsSidebar({ rows, bookedLine }: ChannelsSidebarProps): Rea
       )}
 
       <p className="mt-4 px-1 text-[0.84375rem] text-ink-2">{bookedLine}</p>
-      <p className="mt-2 flex gap-1.5 px-1 text-xs leading-snug text-ink-3">
-        <Lock size={13} aria-hidden="true" className="mt-px shrink-0" />
-        <span>You approve on each network&rsquo;s own page. We never see your password.</span>
-      </p>
     </aside>
   );
 }

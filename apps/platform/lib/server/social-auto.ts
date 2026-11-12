@@ -1,5 +1,6 @@
 import "server-only";
 import { z } from "zod";
+import { readAnalytics, type Analytics } from "@/lib/social/analytics";
 import { brandIdFor, readBrands, type BrandsView } from "@/lib/social/brands";
 import { readBatches, readExpiredBatches, readFacts, readJob, readJobs, readPosters, readTopics, type ExpiredBatch, type FactsView, type Poster, type SiteJob, type Topic, type WrittenBatch } from "@/lib/social/ai";
 import { readChannels, readConnectLink, readNotices, readPosts, readWebsite, type AutoChannel, type AutoPost, type ChannelPlatform, type WorkspaceNotice } from "@/lib/social/auto";
@@ -108,6 +109,18 @@ export async function ensureWorkspace(settings: SocialAutoSettings, business: { 
   const answer = await call(settings, "/api/v1/workspaces", { method: "POST", body: { externalId: business.id, name: business.name, ...(business.group === undefined ? {} : { group: business.group }) } }, send);
   if (answer.status !== 200 && answer.status !== 201) throw refusal(answer, "the workspace");
   return readChannels(answer.body);
+}
+
+/**
+ * How the brand's posts and accounts did from `from` to `to` (`YYYY-MM-DD`, India time). Null when the posting service has no analytics to
+ * give (an older one, or no workspace yet), so the page can say so instead of showing a made-up zero.
+ */
+export async function loadAnalytics(settings: SocialAutoSettings, externalId: string, window: { readonly from: string; readonly to: string }, send: typeof fetch = fetch): Promise<Analytics | null> {
+  const answer = await call(settings, `/api/v1/analytics?${new URLSearchParams({ externalId, from: window.from, to: window.to })}`, { method: "GET" }, send);
+  // 404: no workspace yet. 503: analytics is not switched on in the posting service yet. Either way there is nothing to show yet.
+  if (answer.status === 404 || answer.status === 503) return null;
+  if (answer.status !== 200) throw refusal(answer, "the numbers");
+  return readAnalytics(answer.body);
 }
 
 /** The business's brands and how many it may have, or null when the posting service does not answer for brands (an older one) or has no workspace for it yet. */
