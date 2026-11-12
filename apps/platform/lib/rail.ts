@@ -8,7 +8,7 @@ import { sectionTabPaths } from "@/lib/section-tabs";
 import { WEBSITE_PATH, WEBSITE_TABS } from "@/lib/website/tabs";
 
 /** The sidebar's icons by name; components/v2/rail-icon.tsx draws them. */
-export type RailIcon = "home" | "requests" | "website" | "blog" | "social" | "search" | "business" | "plan" | "settings" | "affiliate";
+export type RailIcon = "home" | "requests" | "website" | "blog" | "social" | "ads" | "search" | "business" | "plan" | "settings" | "affiliate";
 
 export interface RailTarget {
   readonly href: string;
@@ -42,7 +42,7 @@ export interface RailInput {
   readonly hasWebsite: boolean;
   /** The website is live. False hides Enquiries, which has nothing to show before launch. Left out, it is shown. */
   readonly websiteLive?: boolean;
-  /** Social & Ads and Local SEO + AEO bought (lib/server/active-services.ts). Left out, the link is not shown. */
+  /** Social media and Local SEO + AEO bought (lib/server/active-services.ts). Left out, the link is not shown. */
   readonly hasSocial?: boolean;
   readonly hasSearch?: boolean;
   /** Quotes to answer, changes to check and questions from the team (lib/server/requests.ts loadRequestsBadge). Left out, there is no number. */
@@ -55,7 +55,9 @@ export const HOME_HREF = "/";
 export const BUSINESS_HREF = "/details";
 
 const HOME: RailLink = { href: HOME_HREF, label: "Home", icon: "home" };
-const SOCIAL: RailLink = { href: "/social", label: "Social & Ads", icon: "social", mark: "social" };
+const SOCIAL: RailLink = { href: "/social", label: "Social media", icon: "social", mark: "social" };
+/** Paid Ads is its own menu, apart from Social media. Until it has its own service key it is shown with Social media, as the page behind it is. */
+const ADS: RailLink = { href: "/ads", label: "Paid Ads", icon: "ads" };
 // The URL stays /search so old links keep working; only the name is new.
 const SEARCH: RailLink = { href: "/search", label: "Local SEO + AEO", icon: "search", mark: "search" };
 const BUSINESS: RailLink = { href: BUSINESS_HREF, label: "Business", icon: "business" };
@@ -110,7 +112,7 @@ const PLAN: RailLink = {
 };
 
 export function railSections(input: RailInput): readonly RailSection[] {
-  const services = [...(input.hasWebsite ? [websiteLink(input.websiteLive !== false), BLOG] : []), ...(input.hasSocial === true ? [SOCIAL] : []), ...(input.hasSearch === true ? [SEARCH] : [])];
+  const services = [...(input.hasWebsite ? [websiteLink(input.websiteLive !== false), BLOG] : []), ...(input.hasSocial === true ? [SOCIAL, ADS] : []), ...(input.hasSearch === true ? [SEARCH] : [])];
   return [
     { label: null, links: [HOME] },
     ...(services.length > 0 ? [{ label: "Services", links: services }] : []),
