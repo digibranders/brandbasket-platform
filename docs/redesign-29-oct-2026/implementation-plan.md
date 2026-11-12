@@ -50,6 +50,10 @@ The logo, rattan and Red Hat stay from the brand. The console keeps its look unt
 - Codex would keep Red Hat and a 16px body size. The owner agreed on 29 October, and the canvas now uses them.
 - Codex would ask the sign-up questions after payment to protect conversion. The spec and the onboarding reference put them before checkout; the canvas keeps them there with "Skip for now".
 
+**Kickoff time picker (owner, 29 October):** one flat list of start times, 15 minutes apart, with no Morning and Afternoon split. Build notes:
+- Remove the Morning and Afternoon grouping in `apps/platform/components/calls/slot-picker.tsx` (`splitDayTimes`). The same picker serves later calls on the Calls page, so they change too.
+- The 15 minute spacing is the slot interval on the Cal.com kickoff event, not portal code. The call itself stays 30 minutes unless the owner says otherwise.
+
 **Still open:** D7 (the Pages list), D8 (a launch date column), D9 (live customer count), and the owner's yes on all new copy.
 
 Inputs: `brandbasket-client-portal-revamp-implementation-spec.md` (the spec), the two HTML references in this folder, and the repository at `origin/development` (90c4443). The local `development` checkout is two commits behind (it lacks the Affiliate rail link from PR #68); Phase 0 syncs it.
