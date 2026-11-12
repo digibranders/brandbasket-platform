@@ -27,7 +27,7 @@ export function AnalyticsChannels({ rows, allHref, selected }: AnalyticsChannels
     <aside
       id="channels"
       aria-labelledby="channels-title"
-      className="border-t border-line bg-surface p-4 pb-28 md:px-8 lg:sticky lg:top-0 lg:h-dvh lg:w-[13rem] lg:shrink-0 lg:overflow-y-auto lg:border-t-0 lg:border-r lg:px-4 lg:py-8 lg:pb-8"
+      className="hidden border-t border-line bg-surface p-4 pb-28 md:px-8 lg:sticky lg:block lg:top-0 lg:h-dvh lg:w-[13rem] lg:shrink-0 lg:overflow-y-auto lg:border-t-0 lg:border-r lg:px-4 lg:py-8 lg:pb-8"
     >
       <h2 id="channels-title" className="px-1 font-display text-[1.0625rem] font-semibold text-ink">
         Channels

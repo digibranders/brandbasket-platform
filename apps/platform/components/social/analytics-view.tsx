@@ -43,7 +43,7 @@ function standingOf(analytics: Analytics | null, connected: readonly ChannelPlat
 const STANDING_WORDS: Readonly<Record<Standing, string>> = { ok: "Numbers on", waiting: "Waiting for the first check", reconnect: "Reconnect to see numbers", unsupported: "No numbers for this network", not_connected: "Not connected" };
 
 function Delta({ change }: { readonly change: number | null }): ReactElement {
-  if (change === null) return <span className="text-xs font-semibold text-ink-3">No earlier period to compare</span>;
+  if (change === null) return <span className="text-xs font-semibold text-ink-3">Nothing to compare yet</span>;
   return <span className={cn("text-xs font-semibold", change > 1 ? "text-ok" : change < -1 ? "text-error" : "text-ink-3")}>{change > 1 || change < -1 ? `${change > 0 ? "+" : ""}${change}% on the period before` : "About the same as the period before"}</span>;
 }
 
@@ -104,7 +104,7 @@ function Waiting({ unavailable }: { readonly unavailable: boolean }): ReactEleme
           <p className="mt-1 text-[0.84375rem] leading-relaxed text-ink-2">{unavailable ? "We could not reach the posting service. Try again in a few minutes." : "We ask each network once a day how your posts did. Your first numbers show here after the first daily check."}</p>
         </div>
       </div>
-      <div className="grid grid-cols-[repeat(auto-fit,minmax(150px,1fr))] gap-3" aria-hidden="true">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-[repeat(auto-fit,minmax(150px,1fr))]" aria-hidden="true">
         {GHOST_TILES.map((label) => (
           <div key={label} className="grid gap-1 rounded-2xl border border-dashed border-line bg-surface/60 p-4">
             <span className="text-xs font-semibold text-ink-3">{label}</span>
@@ -243,7 +243,7 @@ function Overview({ social, scope, standings }: { readonly social: SocialAnalyti
       {nothing ? <Waiting unavailable={false} /> : null}
       {social2.length === 0 ? null : (
         <>
-          <div className="grid grid-cols-[repeat(auto-fit,minmax(180px,1fr))] gap-3">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-[repeat(auto-fit,minmax(180px,1fr))]">
             <Kpi label="Reach" value={reach} change={changeOf(reach, reachBefore)} note="People who saw your posts" />
             <Kpi label="Views" value={views} change={changeOf(views, viewsBefore)} note="Instagram gives views" />
             <Kpi label="Likes and comments" value={talk} change={changeOf(talk, talkBefore)} />
@@ -271,7 +271,7 @@ function Overview({ social, scope, standings }: { readonly social: SocialAnalyti
             <h2 className={SECTION_TITLE}>Your Google listing</h2>
             <span className="text-xs text-ink-3">Numbers for the whole listing. Google does not give numbers for each post or about who looks.</span>
           </div>
-          <div className="grid grid-cols-[repeat(auto-fit,minmax(180px,1fr))] gap-3">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-[repeat(auto-fit,minmax(180px,1fr))]">
             <Kpi label="Views on Maps and Search" value={gViews} change={changeOf(gViews, gSum((day) => day.views, previous))} />
             <Kpi label="Calls" value={gSum((day) => day.calls, days)} change={changeOf(gSum((day) => day.calls, days), gSum((day) => day.calls, previous))} />
             <Kpi label="Directions asked" value={gSum((day) => day.directions, days)} change={changeOf(gSum((day) => day.directions, days), gSum((day) => day.directions, previous))} />
@@ -327,6 +327,30 @@ const METRICS = [
   ["clicks", "Clicks"],
 ] as const satisfies ReadonlyArray<readonly [keyof PostTotals, string]>;
 
+/** A post's logo, its first line, and where and when it went out, with a link to it. */
+function PostTitle({ post }: { readonly post: Analytics["posts"][number] }): ReactElement {
+  return (
+    <div className="flex items-center gap-2.5">
+      <ChannelLogo platform={post.platform} small />
+      <span className="min-w-0">
+        <span className="block break-words font-semibold text-ink">{headlineOf(post.caption)}</span>
+        <span className="block text-xs text-ink-3">
+          {PLATFORM_NAMES[post.platform]}
+          {post.postedAt === undefined || post.postedAt === null ? "" : `, ${dayLabel(post.postedAt.slice(0, 10), { day: "numeric", month: "short" })}`}
+          {post.permalink === undefined || post.permalink === null || !post.permalink.startsWith("https://") ? null : (
+            <>
+              {", "}
+              <a href={post.permalink} target="_blank" rel="noopener noreferrer" className="underline">
+                View post
+              </a>
+            </>
+          )}
+        </span>
+      </span>
+    </div>
+  );
+}
+
 function Posts({ social, scope, standings }: { readonly social: SocialAnalytics; readonly scope: readonly AnalyticsChannel[]; readonly standings: Readonly<Record<AnalyticsChannel, Standing>> }): ReactElement {
   const analytics = social.analytics;
   if (analytics === null) return <Placeholder icon={Images} title="" unavailable>{null}</Placeholder>;
@@ -345,7 +369,7 @@ function Posts({ social, scope, standings }: { readonly social: SocialAnalytics;
             <h2 className={SECTION_TITLE}>How each post did</h2>
             <span className="text-xs text-ink-3">Numbers since each post went out. Instagram gives views and saves, Facebook gives clicks.</span>
           </div>
-          <div className="overflow-x-auto">
+          <div className="hidden overflow-x-auto sm:block">
             <table className="w-full min-w-[40rem] border-collapse text-[0.8125rem]">
               <thead>
                 <tr className="text-[0.6875rem] uppercase tracking-wide text-ink-3">
@@ -361,24 +385,7 @@ function Posts({ social, scope, standings }: { readonly social: SocialAnalytics;
                 {rows.map(({ post, totals }) => (
                   <tr key={`${post.channel}:${post.postId}`} className="border-t border-line">
                     <td className="px-2 py-2.5 text-left">
-                      <div className="flex items-center gap-2.5">
-                        <ChannelLogo platform={post.platform} small />
-                        <span className="min-w-0">
-                          <span className="block break-words font-semibold text-ink">{headlineOf(post.caption)}</span>
-                          <span className="block text-xs text-ink-3">
-                            {PLATFORM_NAMES[post.platform]}
-                            {post.postedAt === undefined || post.postedAt === null ? "" : `, ${dayLabel(post.postedAt.slice(0, 10), { day: "numeric", month: "short" })}`}
-                            {post.permalink === undefined || post.permalink === null || !post.permalink.startsWith("https://") ? null : (
-                              <>
-                                {", "}
-                                <a href={post.permalink} target="_blank" rel="noopener noreferrer" className="underline">
-                                  View post
-                                </a>
-                              </>
-                            )}
-                          </span>
-                        </span>
-                      </div>
+                      <PostTitle post={post} />
                     </td>
                     {METRICS.map(([key]) => (
                       <td key={key} className="px-2 py-2.5 text-right tabular-nums">
@@ -390,6 +397,29 @@ function Posts({ social, scope, standings }: { readonly social: SocialAnalytics;
               </tbody>
             </table>
           </div>
+          {/* On a phone each post is a card with the numbers it has, since a seven-column table does not fit. */}
+          <ul className="grid gap-3 sm:hidden">
+            {rows.map(({ post, totals }) => {
+              const given = METRICS.flatMap(([key, name]) => (totals[key] === undefined ? [] : [[name, totals[key] ?? 0] as const]));
+              return (
+                <li key={`${post.channel}:${post.postId}`} className="grid gap-3 rounded-xl border border-line p-3.5">
+                  <PostTitle post={post} />
+                  {given.length === 0 ? (
+                    <p className="text-xs text-ink-3">No numbers given yet.</p>
+                  ) : (
+                    <dl className="grid grid-cols-3 gap-x-3 gap-y-2">
+                      {given.map(([name, value]) => (
+                        <div key={name}>
+                          <dt className="text-[0.6875rem] font-semibold uppercase tracking-wide text-ink-3">{name}</dt>
+                          <dd className="text-[0.9375rem] font-semibold tabular-nums text-ink">{fmt(value)}</dd>
+                        </div>
+                      ))}
+                    </dl>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
         </div>
       )}
     </div>
@@ -594,24 +624,45 @@ export function AnalyticsView({ social, connected, report, accounts, channel, ta
       }
     >
       <SocialTabs current="analytics" hasNumbers />
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <nav aria-label="Analytics" className="flex flex-wrap gap-1.5">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        {/* On a phone the pills scroll sideways on one line, out to the screen's edge, instead of wrapping. */}
+        <nav aria-label="Analytics" className="-mx-4 flex gap-1.5 overflow-x-auto px-4 pb-1 [scrollbar-width:none] sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0 sm:pb-0 [&::-webkit-scrollbar]:hidden">
           {ANALYTICS_TABS.map((one) => (
-            <Link key={one} href={href(params, { tab: one })} aria-current={tab === one ? "page" : undefined} className={cn("rounded-full px-3.5 py-1.5 text-[0.8125rem] font-semibold", tab === one ? "bg-ink text-surface" : "bg-sunken text-ink-2")}>
+            <Link key={one} href={href(params, { tab: one })} aria-current={tab === one ? "page" : undefined} className={cn("shrink-0 rounded-full px-3.5 py-1.5 text-[0.8125rem] font-semibold", tab === one ? "bg-ink text-surface" : "bg-sunken text-ink-2")}>
               {TAB_NAMES[one]}
             </Link>
           ))}
         </nav>
         {!showTools ? null : (
-          <div className="inline-flex rounded-full bg-sunken p-0.5" role="group" aria-label="Date range, in days">
+          <div className="grid grid-cols-3 rounded-full bg-sunken p-0.5 sm:inline-grid" role="group" aria-label="Date range, in days">
             {RANGES.map((one) => (
-              <Link key={one} href={href(params, { range: one })} aria-current={social.range === one ? "true" : undefined} className={cn("rounded-full px-3 py-1 text-[0.8125rem] font-semibold", social.range === one ? "bg-surface text-ink shadow-sm" : "text-ink-2")}>
+              <Link key={one} href={href(params, { range: one })} aria-current={social.range === one ? "true" : undefined} className={cn("rounded-full px-3 py-1 text-center text-[0.8125rem] font-semibold", social.range === one ? "bg-surface text-ink shadow-sm" : "text-ink-2")}>
                 {one} days
               </Link>
             ))}
           </div>
         )}
       </div>
+      {/* The channels column is a sidebar on a wide screen; on a phone the same choice is a row of chips here, so it is not left at the foot of the page. */}
+      {rows.length === 0 ? null : (
+        <ul aria-label="Channels" className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] lg:hidden [&::-webkit-scrollbar]:hidden">
+          <li className="shrink-0">
+            <Link href={href(params, { channel: "all" })} aria-current={channel === "all" ? "true" : undefined} className={cn("block rounded-full bg-surface px-3 py-1.5 text-[0.8125rem] font-semibold shadow-sm", channel === "all" && "ring-2 ring-ok")}>
+              All channels
+            </Link>
+          </li>
+          {rows.map((row) =>
+            row.href === null ? null : (
+              <li key={row.id} className="shrink-0">
+                <Link href={row.href} aria-current={channel === row.platform ? "true" : undefined} className={cn("flex items-center gap-2 rounded-full bg-surface px-3 py-1.5 text-[0.8125rem] font-semibold shadow-sm", channel === row.platform && "ring-2 ring-ok")}>
+                  <ChannelLogo platform={row.platform} small />
+                  {PLATFORM_NAMES[row.platform]}
+                </Link>
+              </li>
+            ),
+          )}
+        </ul>
+      )}
       {tab === "overview" ? <Overview social={social} scope={scope} standings={standings} /> : null}
       {tab === "posts" ? <Posts social={social} scope={scope} standings={standings} /> : null}
       {tab === "hashtags" ? <Hashtags social={social} /> : null}
