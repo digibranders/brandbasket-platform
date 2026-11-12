@@ -1,7 +1,8 @@
-import { and, asc, eq, gt, inArray, isNotNull, isNull, sql } from "drizzle-orm";
+import { and, asc, eq, gt, inArray, isNotNull, isNull, or, sql } from "drizzle-orm";
 import type { Database } from "../client";
 import type { ScopedTransaction } from "../scope";
 import {
+  addOnSubscriptions,
   bundledAddOns,
   businesses,
   charges,
@@ -185,6 +186,33 @@ export async function listBundledAddOnsForBusiness(db: Runner, businessId: strin
     .from(bundledAddOns)
     .where(eq(bundledAddOns.businessId, businessId))
     .orderBy(asc(bundledAddOns.createdAt), asc(bundledAddOns.id));
+}
+
+/**
+ * Whether a business has ever had a service, which rules out its first-month offer (docs/plans/63-one-rupee-trial.md in
+ * the BrandBasket workspace): a line that was paid for or ran a trial, on any subscription, or an older add-on
+ * subscription that was activated. A checkout opened and never paid does not count.
+ */
+export async function businessHasHadService(db: Runner, businessId: string, addOn: string): Promise<boolean> {
+  if (!isUuid(businessId)) return false;
+  const [line] = await db
+    .select({ id: bundledAddOns.id })
+    .from(bundledAddOns)
+    .where(
+      and(
+        eq(bundledAddOns.businessId, businessId),
+        eq(bundledAddOns.addOn, addOn),
+        or(isNotNull(bundledAddOns.activatedAt), isNotNull(bundledAddOns.trialEndsAt)),
+      ),
+    )
+    .limit(1);
+  if (line !== undefined) return true;
+  const [older] = await db
+    .select({ id: addOnSubscriptions.id })
+    .from(addOnSubscriptions)
+    .where(and(eq(addOnSubscriptions.businessId, businessId), eq(addOnSubscriptions.addOn, addOn), isNotNull(addOnSubscriptions.activatedAt)))
+    .limit(1);
+  return older !== undefined;
 }
 
 /**

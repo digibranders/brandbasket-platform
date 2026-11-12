@@ -1012,6 +1012,7 @@ export {
   openBundledAddOn,
   recordBundledAddOnRemoval,
   bundledNetCents,
+  businessHasHadService,
   findBundledAddOnsForSubscription,
   findLiveBundledAddOns,
   findProviderBundlePlan,

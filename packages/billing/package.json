@@ -12,6 +12,7 @@
     ".": "./src/index.ts",
     "./referral": "./src/referral.ts",
     "./tax": "./src/tax.ts",
+    "./term": "./src/term.ts",
     "./gst": "./src/gst.ts",
     "./gst-states": "./src/gst-states.ts",
     "./gstin": "./src/gstin.ts",

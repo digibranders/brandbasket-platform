@@ -92,7 +92,7 @@ const MS_PER_DAY = 86_400_000;
  * `amount * share / divisor`, rounded half up. Whole numbers throughout: amounts are paise and the share is a count of
  * days, so the product is far inside what a number holds exactly (checked), and no float ever rounds money.
  */
-function shareOf(amount: number, share: number, divisor: number): number {
+export function shareOf(amount: number, share: number, divisor: number): number {
   const product = amount * share;
   if (!Number.isSafeInteger(product * 2 + divisor)) throw new RangeError("An add-on's share is too large to work out exactly");
   return Math.floor((product * 2 + divisor) / (divisor * 2));
