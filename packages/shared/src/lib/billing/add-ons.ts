@@ -1,4 +1,5 @@
 import { chargedAmountCents, GST_BASIS_POINTS } from "@brandbasket/billing/tax";
+import type { BillingInterval } from "@brandbasket/db";
 import type { MoneyCurrency } from "../money";
 
 /**
@@ -117,6 +118,38 @@ export function servicesToList(active: readonly string[], staying: readonly Mont
   return MONTHLY_ADD_ON_IDS.filter((id) => id !== MONITORING_ID || active.includes(id) || !monitoringIncludedWith(staying));
 }
 
+/** Paying for a year takes this much off twelve months of the monthly price (owner, 2026-11-11). */
+export const ANNUAL_DISCOUNT_BASIS_POINTS = 1_000;
+
+const MONTHS_A_YEAR = 12;
+const BASIS_POINTS_WHOLE = 10_000;
+
+/**
+ * A year of a monthly price, less ANNUAL_DISCOUNT_BASIS_POINTS, rounded down to a whole rupee or dollar: ₹2,999 a month is
+ * ₹32,389 a year (₹35,988 less ₹3,599), $59 is $637. In minor units, GST inside a rupee price as in the monthly one.
+ */
+export function annualPriceCents(monthlyCents: number): number {
+  if (!Number.isSafeInteger(monthlyCents) || monthlyCents < 0) throw new RangeError(`A monthly price must be whole, non-negative minor units, received ${monthlyCents}`);
+  const discounted = (monthlyCents * MONTHS_A_YEAR * (BASIS_POINTS_WHOLE - ANNUAL_DISCOUNT_BASIS_POINTS)) / BASIS_POINTS_WHOLE;
+  return Math.floor(discounted / MINOR_UNITS_PER_MAJOR) * MINOR_UNITS_PER_MAJOR;
+}
+
+/** Twelve months at the monthly price: what a year would cost with no annual discount, the "usually" beside a yearly price. */
+export function annualListCents(monthlyCents: number): number {
+  return monthlyCents * MONTHS_A_YEAR;
+}
+
+/** What a service costs each cycle in a currency: its monthly price, or its yearly price on a yearly subscription. */
+export function cyclePriceCents(addOn: AddOn, currency: MoneyCurrency, interval: BillingInterval): number {
+  const monthly = addOn.prices[currency];
+  return interval === "year" ? annualPriceCents(monthly) : monthly;
+}
+
+/** How a price on this interval is said: "a month" or "a year". */
+export function perCycle(interval: BillingInterval): string {
+  return interval === "year" ? "a year" : "a month";
+}
+
 /** What one purchase costs, worked out once and stored on it. All amounts in minor units of the purchase's currency. */
 export interface AddOnPrice {
   readonly currency: MoneyCurrency;
@@ -137,9 +170,12 @@ export function addOnTaxRateBasisPoints(currency: MoneyCurrency): number {
   return currency === "INR" ? GST_BASIS_POINTS : 0;
 }
 
-/** What one purchase costs: the list price, less the package discount worked out for it (packageDiscountsFor), if any. */
-export function addOnPrice(addOn: AddOn, currency: MoneyCurrency, discountCents = 0): AddOnPrice {
-  const listCents = addOn.prices[currency];
+/**
+ * What one purchase costs each cycle: the list price, less the package discount worked out for it (packageDiscountsFor), if
+ * any. On a yearly subscription the list price is the yearly one (cyclePriceCents), the annual discount already inside it.
+ */
+export function addOnPrice(addOn: AddOn, currency: MoneyCurrency, discountCents = 0, interval: BillingInterval = "month"): AddOnPrice {
+  const listCents = cyclePriceCents(addOn, currency, interval);
   if (!Number.isSafeInteger(discountCents) || discountCents < 0 || discountCents > listCents) {
     throw new RangeError(`A discount on ${addOn.title} must be whole minor units from 0 to ${listCents}, received ${discountCents}`);
   }

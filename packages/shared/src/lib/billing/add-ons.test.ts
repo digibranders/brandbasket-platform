@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ADD_ONS, addOnById, addOnPrice, isMonthlyAddOnId, monitoringIncludedWith, MONTHLY_ADD_ON_IDS, PLAN_ADD_ON_IDS, servicesToList } from "./add-ons";
+import { ADD_ONS, addOnById, addOnPrice, annualListCents, annualPriceCents, cyclePriceCents, isMonthlyAddOnId, monitoringIncludedWith, MONTHLY_ADD_ON_IDS, PLAN_ADD_ON_IDS, servicesToList } from "./add-ons";
 
 describe("services catalogue", () => {
   it("describes the website as up to 10 pages", () => {
@@ -81,5 +81,21 @@ describe("services catalogue", () => {
     expect(addOnById("social-media").extra).toBeUndefined();
     expect(addOnById("managed-website").extra).toBeUndefined();
     expect(addOnById("expert-monitoring").extra).toBeUndefined();
+  });
+});
+
+describe("annual prices", () => {
+  it("takes 10% off twelve months and rounds down to a whole rupee or dollar", () => {
+    expect(annualPriceCents(299_900)).toBe(3_238_900);
+    expect(annualPriceCents(600_000)).toBe(6_480_000);
+    expect(annualPriceCents(5_900)).toBe(63_700);
+    expect(annualPriceCents(9_900)).toBe(106_900);
+    expect(annualListCents(299_900)).toBe(3_598_800);
+  });
+
+  it("prices a line for a year on a yearly subscription, the annual discount inside the list price", () => {
+    const website = addOnById("managed-website");
+    expect(cyclePriceCents(website, "INR", "month")).toBe(299_900);
+    expect(addOnPrice(website, "INR", 0, "year")).toMatchObject({ listCents: 3_238_900, discountCents: 0, netCents: 3_238_900, chargedCents: 3_238_900 });
   });
 });

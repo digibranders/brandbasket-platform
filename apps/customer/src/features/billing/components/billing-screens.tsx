@@ -47,7 +47,7 @@ function Notices({ notices }: { readonly notices: NoticesView }) {
 
 function BillPanel({ bill }: { readonly bill: BillView }) {
   return (
-    <Panel title="This month's bill">
+    <Panel title={bill.period === "year" ? "This year's bill" : "This month's bill"}>
       <dl className="flex flex-col gap-2">
         {bill.rows.map((row) => (
           <div key={row.label} className="flex justify-between gap-4">
@@ -56,7 +56,7 @@ function BillPanel({ bill }: { readonly bill: BillView }) {
           </div>
         ))}
         <div className="flex items-baseline justify-between gap-4">
-          <dt className="type-sub text-ink">Total per month</dt>
+          <dt className="type-sub text-ink">{bill.period === "year" ? "Total per year" : "Total per month"}</dt>
           <dd className="type-metric-sm tabular-nums">{bill.total}</dd>
         </div>
       </dl>

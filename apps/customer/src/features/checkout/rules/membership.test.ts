@@ -18,6 +18,9 @@ import {
   membershipPriceLine,
   membershipReceivedHref,
   membershipTierForChoice,
+  billingParamValue,
+  billingSwitchHrefs,
+  readBillingInterval,
   readMembershipCallbackTier,
   readMembershipPaymentNotice,
   unsettledCheckout,
@@ -307,5 +310,31 @@ describe("renewalTerms", () => {
     expect(renewalTerms(coded, plan, null)).toBe("Your first payment covers your first month, then ₹5,458.10 (GST included) is taken each month for your services.");
     const plain = orderSummary({ ...inr, services: ["managed-website"] }, 0);
     expect(renewalTerms(plain, plan, 3)).toBe("Your first payment covers your first month, then ₹2,999 (GST included) is taken each month for your service.");
+  });
+});
+
+describe("paying yearly", () => {
+  it("reads yearly from the address, and anything else as monthly", () => {
+    expect(readBillingInterval({ billing: "yearly" })).toBe("year");
+    expect(readBillingInterval({ billing: "monthly" })).toBe("month");
+    expect(readBillingInterval({})).toBe("month");
+    expect(billingParamValue("year")).toBe("yearly");
+  });
+
+  it("links the switch to the same basket monthly and yearly", () => {
+    expect(billingSwitchHrefs("/checkout", { services: "managed-website,social-media", billing: "yearly" })).toEqual({
+      monthlyHref: "/checkout?services=managed-website%2Csocial-media",
+      yearlyHref: "/checkout?services=managed-website%2Csocial-media&billing=yearly",
+    });
+    expect(billingSwitchHrefs("/checkout", {})).toEqual({ monthlyHref: "/checkout", yearlyHref: "/checkout?billing=yearly" });
+  });
+
+  it("says the year the payment covers, and that each year after takes the price without a code", () => {
+    const inr = { planInitialAmountCents: 0, currency: "INR", taxRateBasisPoints: 1800, forfeited: false, hasEverPaid: false, interval: "year" } as const;
+    const coded = orderSummary({ ...inr, services: ["managed-website"] }, 647_780);
+    expect(coded.totalCents).toBe(2_591_120);
+    expect(renewalTerms(coded, { currency: "INR", taxRateBasisPoints: 1800, initialTermMonths: 1, interval: "year" }, 1, "Thu 11 Nov 2027")).toBe(
+      "Your payment covers 12 months, to Thu 11 Nov 2027. Then ₹32,389 (GST included) is taken each year for your service.",
+    );
   });
 });

@@ -50,6 +50,14 @@ describe("billingPeriodProgress", () => {
     expect(progress).toEqual({ start: utc("2026-10-01"), end: utc("2026-11-01"), elapsedDays: 15, totalDays: 31 });
   });
 
+  it("measures a later year from one calendar year before the paid-through date on a yearly subscription", () => {
+    const progress = billingPeriodProgress(
+      { activatedAt: utc("2026-11-11"), commitmentEndsAt: utc("2027-11-11"), paidThroughAt: utc("2028-11-11"), billingInterval: "year" },
+      utc("2028-03-11"),
+    );
+    expect(progress).toEqual({ start: utc("2027-11-11"), end: utc("2028-11-11"), elapsedDays: 121, totalDays: 366 });
+  });
+
   it("clamps the start to the end of a shorter month", () => {
     const progress = billingPeriodProgress(
       { activatedAt: utc("2026-01-31"), commitmentEndsAt: utc("2026-02-28"), paidThroughAt: utc("2026-03-31") },

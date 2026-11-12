@@ -14,12 +14,14 @@ export {
   discountCentsFor,
   discountForChangedBasket,
   discountPlanCode,
+  firstYearDiscountCents,
   isChargeableDiscount,
   MAX_DISCOUNT_BASIS_POINTS,
   MAX_REFERRAL_CODE_LENGTH,
   MAX_REWARD_BASIS_POINTS,
   MIN_DISCOUNT_AMOUNT_CENTS,
   MIN_REFERRAL_CODE_LENGTH,
+  MONTHS_IN_A_YEAR,
   normaliseReferralCode,
   rewardCentsFor,
 } from "./referral";
@@ -70,7 +72,7 @@ export { mapRazorpayStatus } from "./status";
 export { chargedAmountCents, GST_BASIS_POINTS, gstInsideCents, NO_TAX, taxableCents } from "./tax";
 export { deriveSiteStatus, type SiteStatus, type SiteStatusInput } from "./site-status";
 export { planHostingActions, type HostedSiteState, type HostingAction, type HostingHold, type HostingPlan } from "./hosting-plan";
-export { addMonthsUtc } from "./term";
+export { addMonthsUtc, monthsPerCycle } from "./term";
 export { BillingRangeError } from "./billing-range-error";
 export { amountInWords } from "./amount-in-words";
 export { splitGstInside, supplyTypeOf, type GstAmounts, type PaidLine, type SupplyType } from "./gst";

@@ -1,6 +1,6 @@
-import { discountCentsFor, isChargeableDiscount } from "@brandbasket/billing/referral";
-import type { ReferralDiscount } from "@brandbasket/db";
-import type { MonthlyAddOnId } from "@brandbasket/shared/lib/billing/add-ons";
+import { discountCentsFor, firstYearDiscountCents, isChargeableDiscount } from "@brandbasket/billing/referral";
+import type { BillingInterval, ReferralDiscount } from "@brandbasket/db";
+import { addOnById, ANNUAL_DISCOUNT_BASIS_POINTS, annualListCents, type MonthlyAddOnId } from "@brandbasket/shared/lib/billing/add-ons";
 import { packageBasisPointsFor, percentOf } from "@brandbasket/shared/lib/billing/packages";
 import { formatMoney, type MoneyCurrency } from "@brandbasket/shared/lib/money";
 import { basketNetCents, orderSummary, type OrderSummary, type OrderSummaryInput } from "./membership";
@@ -22,19 +22,20 @@ export interface LedgerCode {
 export type LedgerPricing = Omit<OrderSummaryInput, "services">;
 
 /**
- * What a code takes off a basket, worked out as the server does (discountFrom in lib/server/referrals.ts): a flat amount whole,
- * a percentage of the basket's package net, and nothing when the result would leave nothing to charge.
+ * What a code takes off a basket, worked out as the server does (discountFrom in server/referrals.ts): a flat amount whole,
+ * a percentage of the basket's package net, and nothing when the result would leave nothing to charge. Paid yearly, the code
+ * comes off the year's payment (firstYearDiscountCents).
  */
-export function codeDiscountCents(code: LedgerCode | null, services: readonly MonthlyAddOnId[], currency: MoneyCurrency): number {
+export function codeDiscountCents(code: LedgerCode | null, services: readonly MonthlyAddOnId[], currency: MoneyCurrency, interval: BillingInterval = "month"): number {
   if (code === null || code.stated === null) return 0;
-  const netCents = basketNetCents(services, currency);
-  const amountCents = discountCentsFor(code.stated, netCents);
+  const netCents = basketNetCents(services, currency, interval);
+  const amountCents = interval === "year" ? firstYearDiscountCents(code.stated, netCents, code.months) : discountCentsFor(code.stated, netCents);
   return isChargeableDiscount(netCents, amountCents) ? amountCents : 0;
 }
 
 /** Today's payment for a basket and the code in force. */
 export function ledgerSummary(pricing: LedgerPricing, services: readonly MonthlyAddOnId[], code: LedgerCode | null): OrderSummary {
-  return orderSummary({ ...pricing, services }, codeDiscountCents(code, services, pricing.currency));
+  return orderSummary({ ...pricing, services }, codeDiscountCents(code, services, pricing.currency, pricing.interval));
 }
 
 export interface LedgerRow {
@@ -46,25 +47,32 @@ export interface LedgerRow {
 
 /**
  * The summary's lines: the website as a free build and its monthly maintenance, every other plan at its list price, then the
- * package saving and the code, each as one line.
+ * package saving and the code, each as one line. Paid yearly, each plan is twelve months at its monthly price and the annual
+ * saving is a line of its own, so the lines still add up to the total.
  */
 export function ledgerRows(summary: OrderSummary, currency: MoneyCurrency, code: LedgerCode | null): readonly LedgerRow[] {
   const money = (cents: number): string => formatMoney(cents, currency);
+  const yearly = summary.annual !== null;
+  const months = yearly ? ", 12 months" : "";
+  const listOf = (line: OrderSummary["lines"][number]): string => money(yearly ? annualListCents(addOnById(line.addOn).prices[currency]) : line.listCents);
   const rows: LedgerRow[] = summary.lines.flatMap((line): LedgerRow[] =>
     line.addOn === "managed-website"
       ? [
           { key: "website", label: "Website", amount: "Free", tone: "free" },
-          { key: "maintenance", label: "Maintenance", amount: money(line.listCents), tone: "plain" },
+          { key: "maintenance", label: `Maintenance${months}`, amount: listOf(line), tone: "plain" },
         ]
-      : [{ key: line.addOn, label: line.title, amount: money(line.listCents), tone: "plain" }],
+      : [{ key: line.addOn, label: `${line.title}${months}`, amount: listOf(line), tone: "plain" }],
   );
+  if (summary.annual !== null) {
+    rows.push({ key: "annual", label: `Paid yearly, ${percentOf(ANNUAL_DISCOUNT_BASIS_POINTS)}% off`, amount: `-${money(summary.annual.savingCents)}`, tone: "save" });
+  }
   if (summary.offer !== null) {
     // An offer on the summary means the business has not given it up, so the percentage is the basket's own.
     const basisPoints = packageBasisPointsFor({ services: summary.lines.map((line) => line.addOn), forfeited: false });
     rows.push({ key: "offer", label: `${percentOf(basisPoints)}% off`, amount: `-${money(summary.offer.discountCents)}`, tone: "save" });
   }
   if (code !== null && summary.discountCents > 0) {
-    rows.push({ key: "code", label: `Code ${code.code}`, amount: `-${money(summary.discountCents)}`, tone: "save" });
+    rows.push({ key: "code", label: `Code ${code.code}${yearly ? ", first year" : ""}`, amount: `-${money(summary.discountCents)}`, tone: "save" });
   }
   return rows;
 }

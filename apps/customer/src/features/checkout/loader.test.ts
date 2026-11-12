@@ -89,7 +89,7 @@ describe("loadCheckout", () => {
     vi.mocked(loadIntake).mockResolvedValue({ answers: {} as never, completedAt: null });
     vi.mocked(loadMembershipCheckout).mockResolvedValue(view({ services: ["managed-website"] }));
     const result = await loadCheckout(customer(), { services: "paid-ads" });
-    expect(loadMembershipCheckout).toHaveBeenCalledWith(expect.anything(), "managed", ["managed-website"], expect.any(Date));
+    expect(loadMembershipCheckout).toHaveBeenCalledWith(expect.anything(), "managed", ["managed-website"], expect.any(Date), "month");
     if (result.kind !== "pay") throw new Error("expected the pay view");
     expect(result.ledger.changeServicesHref).toBeNull();
   });

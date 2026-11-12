@@ -1,17 +1,29 @@
 import "server-only";
+import { addMonthsUtc, monthsPerCycle } from "@brandbasket/billing";
+import type { BillingInterval } from "@brandbasket/db";
 import { addOnById, type MonthlyAddOnId } from "@brandbasket/shared/lib/billing/add-ons";
 import { WEBSITE_ALONE } from "@brandbasket/shared/lib/billing/bundle";
 import { PAYMENT_RECEIVED_MESSAGE } from "@brandbasket/shared/lib/billing/payment-step";
 import { describeDiscount } from "@brandbasket/shared/lib/billing/terms";
 import { redirect } from "next/navigation";
-import { formatMoney, formatPercent } from "@/lib/format";
+import { formatDate, formatMoney, formatPercent } from "@/lib/format";
 import type { CustomerContext } from "@/lib/guards";
 import { INTAKE_SUMMARY_STEP, startHref } from "../start/rules";
 import { loadIntake } from "../start/server";
 import type { BillingDetailsView } from "./rules/billing-details-view";
 import { MEMBER_WELCOME_HREF } from "./rules/confirm-href";
 import { ledgerRows, ledgerSummary, type LedgerRow } from "./rules/ledger";
-import { isWaitingOnPayment, readMembershipPaymentNotice, readSelectedServices, renewalTerms, unsettledCheckout } from "./rules/membership";
+import {
+  billingParamValue,
+  billingSwitchHrefs,
+  isWaitingOnPayment,
+  MEMBERSHIP_PATH,
+  readBillingInterval,
+  readMembershipPaymentNotice,
+  readSelectedServices,
+  renewalTerms,
+  unsettledCheckout,
+} from "./rules/membership";
 import { CHECKOUT_COPY, CHECKOUT_PLAN_COPY, checkoutLead, checkoutSteps, type CheckoutStep } from "./rules/plans";
 import { loadBusinessEntry } from "./server/entry";
 import { loadMembershipCheckout } from "./server/membership-checkout";
@@ -26,6 +38,8 @@ import { loadMembershipCheckout } from "./server/membership-checkout";
 /** What the price card shows and the Pay form posts. */
 export interface CheckoutLedgerView {
   readonly services: readonly MonthlyAddOnId[];
+  /** How often this basket is paid for, and where each choice of the Monthly | Yearly switch goes. */
+  readonly billing: { readonly interval: BillingInterval; readonly value: string; readonly monthlyHref: string; readonly yearlyHref: string };
   readonly rows: readonly LedgerRow[];
   readonly total: string;
   /** "Includes ₹4,637 of GST at 18%", or null for a plan with no GST (USD never mentions it). */
@@ -78,7 +92,8 @@ export async function loadCheckout(customer: CustomerContext, params: Params, no
   const entry = await loadBusinessEntry(customer);
   const signUp = entry.kind === "listing";
   // A website client invited by staff pays for the website alone (the old Check and send); a sign-up account for its basket.
-  const view = await loadMembershipCheckout(customer, "managed", signUp ? readSelectedServices(params) : WEBSITE_ALONE, now);
+  const interval = readBillingInterval(params);
+  const view = await loadMembershipCheckout(customer, "managed", signUp ? readSelectedServices(params) : WEBSITE_ALONE, now, interval);
   const waiting = isWaitingOnPayment(billing.subscription, notice);
 
   // A new account answers the short questions first. A payment on its way, or under review, is never sent away from the page
@@ -93,7 +108,14 @@ export async function loadCheckout(customer: CustomerContext, params: Params, no
   const { plan } = view;
   if (plan === null) return { kind: "no-plan" };
 
-  const pricing = { planInitialAmountCents: plan.initialAmountCents, currency: plan.currency, taxRateBasisPoints: plan.taxRateBasisPoints, forfeited: view.forfeited, hasEverPaid: view.hasEverPaid };
+  const pricing = {
+    planInitialAmountCents: plan.initialAmountCents,
+    currency: plan.currency,
+    taxRateBasisPoints: plan.taxRateBasisPoints,
+    forfeited: view.forfeited,
+    hasEverPaid: view.hasEverPaid,
+    interval,
+  };
   const code = view.discount === null ? null : { code: view.discount.code, stated: view.discount.stated, months: view.discount.months };
   const summary = ledgerSummary(pricing, view.services, code);
   const taxed = plan.taxRateBasisPoints > 0;
@@ -103,11 +125,17 @@ export async function loadCheckout(customer: CustomerContext, params: Params, no
     lead: checkoutLead(plan.currency, plan.taxRateBasisPoints),
     ledger: {
       services: view.services,
+      billing: { interval, value: billingParamValue(interval), ...billingSwitchHrefs(MEMBERSHIP_PATH, params) },
       rows: ledgerRows(summary, plan.currency, code),
       total: formatMoney(summary.totalCents, plan.currency),
       gstLine: taxed ? `Includes ${formatMoney(summary.gstCents, plan.currency)} of GST at ${formatPercent(plan.taxRateBasisPoints / 100)}` : null,
       adCredit: summary.adCredit?.label ?? null,
-      renewal: renewalTerms(summary, { ...pricing, initialTermMonths: plan.initialTermMonths }, code?.months ?? null),
+      renewal: renewalTerms(
+        summary,
+        { ...pricing, initialTermMonths: plan.initialTermMonths },
+        code?.months ?? null,
+        interval === "year" ? formatDate(addMonthsUtc(now, monthsPerCycle("year")), now) : null,
+      ),
       code:
         view.discount === null
           ? null
@@ -123,3 +151,4 @@ export async function loadCheckout(customer: CustomerContext, params: Params, no
     },
   };
 }
+

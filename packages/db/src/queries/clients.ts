@@ -19,6 +19,7 @@ import {
   UNAPPLIED_PAYMENT_REASONS,
   users,
   type BillingCurrency,
+  type BillingInterval,
   type BillingProviderName,
   type DomainStatus,
   type MediaAssetPurpose,
@@ -66,6 +67,8 @@ export interface ClientProject {
 export interface ClientSubscription {
   readonly status: SubscriptionStatus;
   readonly provider: BillingProviderName;
+  /** How often it is charged: a yearly client's service amounts are for a year. */
+  readonly billingInterval: BillingInterval;
   readonly activatedAt: Date | null;
   readonly paidThroughAt: Date | null;
   readonly commitmentEndsAt: Date | null;
@@ -169,6 +172,7 @@ async function billingByBusiness(db: Database, businessIds: readonly string[]): 
         businessId: subscriptions.businessId,
         status: subscriptions.status,
         provider: subscriptions.provider,
+        billingInterval: subscriptions.billingInterval,
         activatedAt: subscriptions.activatedAt,
         paidThroughAt: subscriptions.paidThroughAt,
         commitmentEndsAt: subscriptions.commitmentEndsAt,

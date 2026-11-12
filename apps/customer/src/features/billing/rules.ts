@@ -1,7 +1,7 @@
 import { chargedAmountCents, gstInsideCents } from "@brandbasket/billing/tax";
-import type { BundledAddOn, Charge, CurrentPaymentMethod, Plan, Receipt, Subscription } from "@brandbasket/db";
+import type { BillingInterval, BundledAddOn, Charge, CurrentPaymentMethod, Plan, Receipt, Subscription } from "@brandbasket/db";
 import { isUnappliedReason } from "@brandbasket/db/unapplied-reasons";
-import { MONTHLY_ADD_ON_IDS, type MonthlyAddOnId } from "@brandbasket/shared/lib/billing/add-ons";
+import { MONTHLY_ADD_ON_IDS, perCycle, type MonthlyAddOnId } from "@brandbasket/shared/lib/billing/add-ons";
 import { bundledLinePrice, nextBundledNetCents, nextDiscountCents } from "@brandbasket/shared/lib/billing/bundle";
 import { chargeLabel } from "@brandbasket/shared/lib/billing/charges";
 import { listTotalCents, packageBasisPointsFor, percentOf } from "@brandbasket/shared/lib/billing/packages";
@@ -147,12 +147,12 @@ export interface DropCopy {
 }
 
 /** "You keep Managed Website and Social & Ads." / "From Fri 27 Nov you pay ₹12,998 a month, GST included." */
-export function dropCopy(preview: DropPreview, nextBillingOn: string): DropCopy {
+export function dropCopy(preview: DropPreview, nextBillingOn: string, interval: BillingInterval = "month"): DropCopy {
   const titles = preview.keeps.map(serviceName);
   const tax = preview.taxRateBasisPoints > 0 ? ", GST included" : "";
   return {
     keeps: `You keep ${titles.join(" and ")}.`,
-    monthly: `From ${nextBillingOn} you pay ${formatMoney(preview.newMonthlyCents, preview.currency)} a month${tax}.`,
+    monthly: `From ${nextBillingOn} you pay ${formatMoney(preview.newMonthlyCents, preview.currency)} ${perCycle(interval)}${tax}.`,
     websiteOffline: preview.endsWebsite ? `Your website goes offline on ${nextBillingOn}.` : null,
     packageEnds: preview.endsPackage ? PACKAGE_ENDS : null,
   };
@@ -218,6 +218,8 @@ export interface BillRow {
 
 /** The monthly bill: the services that bill at the next payment, the money off, and what the next payment takes. */
 export interface BillView {
+  /** The period one payment covers: "month", or "year" paid yearly. */
+  readonly period: "month" | "year";
   readonly rows: readonly BillRow[];
   readonly totalCents: number;
   readonly total: string;
@@ -228,7 +230,9 @@ export interface BillView {
 }
 
 type BillLine = Pick<BundledAddOn, "addOn" | "listAmountCents" | "offerDiscountAmountCents" | "pendingOfferDiscountAmountCents" | "taxRateBasisPoints">;
-type BillSubscription = Pick<Subscription, "bundledAddOnNetCents" | "pendingBundledAddOnNetCents" | "discountAmountCents" | "nextDiscountAmountCents" | "adCreditCents">;
+type BillSubscription = Pick<Subscription, "bundledAddOnNetCents" | "pendingBundledAddOnNetCents" | "discountAmountCents" | "nextDiscountAmountCents" | "adCreditCents"> & {
+  readonly billingInterval?: BillingInterval;
+};
 
 /** A live line that bills at the next payment: active and not asked to stop. */
 export function billsNext(row: Pick<BundledAddOn, "status" | "endRequestedAt">): boolean {
@@ -256,6 +260,7 @@ export function billView(input: { readonly lines: readonly BillLine[]; readonly 
   if (codeCents > 0) rows.push({ label: "Code discount", amount: `−${money(codeCents)}`, discount: true });
   const gstCents = gstInsideCents(totalCents, plan.taxRateBasisPoints);
   return {
+    period: subscription.billingInterval === "year" ? "year" : "month",
     rows,
     totalCents,
     total: money(totalCents),
@@ -266,7 +271,7 @@ export function billView(input: { readonly lines: readonly BillLine[]; readonly 
 
 /** The line under the page title: the next payment and its date, and that prices include GST (never said in dollars). */
 export function nextPaymentLine(input: {
-  readonly subscription: Pick<Subscription, "provider" | "cancelRequestedAt" | "commitmentEndsAt" | "paidThroughAt">;
+  readonly subscription: Pick<Subscription, "provider" | "cancelRequestedAt" | "commitmentEndsAt" | "paidThroughAt"> & { readonly billingInterval?: BillingInterval };
   readonly totalCents: number;
   readonly plan: Pick<Plan, "currency" | "taxRateBasisPoints">;
   readonly now: Date;
@@ -277,7 +282,8 @@ export function nextPaymentLine(input: {
   if (on === null) return gst.trim();
   if (subscription.cancelRequestedAt !== null) return `No more payments. Your plan ends on ${formatDate(on, now)}.`;
   if (subscription.provider === "manual") return `We arrange your next payment with you directly.${gst}`;
-  return `Next payment ${formatMoney(totalCents, plan.currency)} on ${formatDate(on, now)}.${gst}`;
+  const yearly = subscription.billingInterval === "year" ? ", paid yearly" : "";
+  return `Next payment ${formatMoney(totalCents, plan.currency)} on ${formatDate(on, now)}${yearly}.${gst}`;
 }
 
 // ---- Payment method ----

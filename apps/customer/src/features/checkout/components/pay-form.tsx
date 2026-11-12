@@ -17,11 +17,13 @@ import { BillingFieldset } from "./billing-fieldset";
 
 interface PayFormProps {
   readonly services: readonly string[];
+  /** How often the basket is paid for, as the address says it: "monthly" or "yearly". */
+  readonly billing: string;
   readonly total: string;
   readonly billingDetails: BillingDetailsView | null;
 }
 
-export function PayForm({ services, total, billingDetails }: PayFormProps) {
+export function PayForm({ services, billing, total, billingDetails }: PayFormProps) {
   const [state, action, pending] = useActionState(startPaymentAction, null);
   const opening = useOpeningPayment(pending, state);
   const [changing, setChanging] = useState(false);
@@ -32,6 +34,7 @@ export function PayForm({ services, total, billingDetails }: PayFormProps) {
   return (
     <form action={action} noValidate className="flex flex-col gap-4">
       <input type="hidden" name="tier" value="managed" />
+      <input type="hidden" name="billing" value={billing} />
       {services.map((service) => (
         <input key={service} type="hidden" name="service" value={service} />
       ))}

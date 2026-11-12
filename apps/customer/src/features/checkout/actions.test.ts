@@ -87,15 +87,23 @@ describe("startPaymentAction", () => {
   it("opens a sign-up account's checkout on the catalogue services named, dropping anything else", async () => {
     vi.mocked(startMembershipCheckoutFor).mockResolvedValue({ kind: "redirect", url: "/checkout/pay" });
     await expect(startPaymentAction(null, form({ tier: "managed", service: ["social-media", "nonsense", "managed-website"] }))).rejects.toThrow("redirect:/checkout/pay");
-    expect(startMembershipCheckoutFor).toHaveBeenCalledWith(CUSTOMER, expect.any(Date), "managed", ["managed-website", "social-media"]);
+    expect(startMembershipCheckoutFor).toHaveBeenCalledWith(CUSTOMER, expect.any(Date), "managed", ["managed-website", "social-media"], "month");
     expect(startCheckoutFor).not.toHaveBeenCalled();
+  });
+
+  it("opens a yearly checkout when the form says yearly, and a monthly one for anything else", async () => {
+    vi.mocked(startMembershipCheckoutFor).mockResolvedValue({ kind: "redirect", url: "/checkout/pay" });
+    await expect(startPaymentAction(null, form({ tier: "managed", service: "managed-website", billing: "yearly" }))).rejects.toThrow("redirect:/checkout/pay");
+    expect(startMembershipCheckoutFor).toHaveBeenLastCalledWith(CUSTOMER, expect.any(Date), "managed", ["managed-website"], "year");
+    await expect(startPaymentAction(null, form({ tier: "managed", service: "managed-website", billing: "weekly" }))).rejects.toThrow("redirect:/checkout/pay");
+    expect(startMembershipCheckoutFor).toHaveBeenLastCalledWith(CUSTOMER, expect.any(Date), "managed", ["managed-website"], "month");
   });
 
   it("opens a website client's checkout for the website alone, whatever the form says", async () => {
     vi.mocked(loadBusinessEntry).mockResolvedValue({ kind: "website", signupChoice: null });
     vi.mocked(startCheckoutFor).mockResolvedValue({ kind: "redirect", url: "/checkout/pay" });
     await expect(startPaymentAction(null, form({ tier: "managed", service: "paid-ads" }))).rejects.toThrow("redirect:/checkout/pay");
-    expect(startCheckoutFor).toHaveBeenCalledWith(CUSTOMER, expect.any(Date));
+    expect(startCheckoutFor).toHaveBeenCalledWith(CUSTOMER, expect.any(Date), "month");
     expect(startMembershipCheckoutFor).not.toHaveBeenCalled();
   });
 

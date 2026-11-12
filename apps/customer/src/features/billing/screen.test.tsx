@@ -39,7 +39,7 @@ const SERVICES: ServicesPanelView = {
     endsOn: "Fri 27 Nov",
     options: [{ addOn: "social-media", name: "Social & Ads", copy: { keeps: "You keep Website Management.", monthly: "From Fri 27 Nov you pay ₹2,999 a month, GST included.", websiteOffline: null, packageEnds: null } }],
   },
-  bill: { rows: [{ label: "List price, 2 services", amount: "₹12,998", discount: false }, { label: "Package discount, 10%", amount: "−₹1,299", discount: true }], totalCents: 1_169_900, total: "₹11,699", gstLine: "Includes ₹1,784.59 GST.", adMoneyLine: null },
+  bill: { period: "month", rows: [{ label: "List price, 2 services", amount: "₹12,998", discount: false }, { label: "Package discount, 10%", amount: "−₹1,299", discount: true }], totalCents: 1_169_900, total: "₹11,699", gstLine: "Includes ₹1,784.59 GST.", adMoneyLine: null },
   headerLine: "Next payment ₹11,699 on Fri 27 Nov. All prices include 18% GST.",
 };
 
@@ -110,7 +110,7 @@ describe("each plan state has its one action", () => {
   });
 
   it("lapsed: reactivate for the month's price, through the checkout's reactivation", async () => {
-    const reactivation = { ok: true, data: { planName: "Brandbasket services plan", monthlyAmount: "₹11,699", chosen: null, picker: null } } as const;
+    const reactivation = { ok: true, data: { planName: "Brandbasket services plan", monthlyAmount: "₹11,699", per: "a month", chosen: null, picker: null } } as const;
     vi.mocked(loadBillingOverview).mockResolvedValue(overview({ state: { kind: "lapsed" }, services: null, reactivation }));
     wrap(await BillingScreen({ customer, params: {} }));
     expect(screen.getByRole("button", { name: "Reactivate for ₹11,699" })).toBeTruthy();
