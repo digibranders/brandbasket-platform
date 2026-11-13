@@ -3,8 +3,10 @@
 #
 # Run from the repository root, by the production deploy (brandbasket-platform-release on the VPS, from the release
 # being deployed; see docs/deployment/brandbasket-vps.md) and by CI's database job. It reads
-# DATABASE_URL_PAYLOAD and PAYLOAD_SECRET from apps/platform/.env.local, as `pnpm cms:migrate` always does; the
-# connection there belongs to the role that owns the Payload database, so no sudo or owner password is involved.
+# DATABASE_URL_PAYLOAD and PAYLOAD_SECRET from the first env file that exists: apps/platform/.env.local, apps/customer/.env.local
+# or apps/customer/.env.production (the last is how a release without apps/platform gets them). `pnpm cms:migrate` runs Payload's
+# CLI from apps/customer, which reads only its own env files, so the two values are passed in the environment. The connection
+# belongs to the role that owns the Payload database, so no sudo or owner password is involved.
 #
 # Two guards, because `payload migrate` cannot be trusted to fail loudly on its own:
 #   - When it finds a database that was schema-pushed in development (a batch -1 row) it asks for confirmation.
@@ -28,6 +30,17 @@ else
   echo "This script needs GNU 'timeout' (coreutils) or perl. Run 'pnpm cms:migrate' directly instead." >&2
   exit 1
 fi
+
+# Values are unquoted in these files (packages/db/src/local-env-template.ts); a variable already set in the environment wins.
+for env_file in apps/platform/.env.local apps/customer/.env.local apps/customer/.env.production; do
+  [[ -r "$env_file" ]] || continue
+  for name in DATABASE_URL_PAYLOAD PAYLOAD_SECRET; do
+    value="$({ grep -E "^$name=" "$env_file" || true; } | head -n 1 | cut -d= -f2-)"
+    value="${value#\"}"; value="${value%\"}"
+    [[ -n "${!name:-}" || -z "$value" ]] || export "$name=$value"
+  done
+  break
+done
 
 if ! run_limited pnpm cms:migrate </dev/null; then
   echo "payload migrate failed or waited on a prompt for $MIGRATE_TIME_LIMIT. If it reported a database pushed in" >&2

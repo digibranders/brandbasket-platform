@@ -2,18 +2,18 @@
 # bearer token from the environment file. It pauses the hosting project of a client whose website has ended and unpauses it
 # when they pay. Installed by deploy/vps/install.sh backups but NOT enabled: it takes websites offline, so starting the timer is
 # the owner's call, after VERCEL_API_TOKEN is set and a dry run has been read. SITE_HOSTING_SYNC_TOKEN is in
-# /srv/brandbasket/shared/platform.env.local (make-env-files.sh generates it). brandbasket-site-hosting-job keeps the token out
+# /srv/brandbasket/shared/customer.env.production (make-env-files.sh generates it). brandbasket-site-hosting-job keeps the token out
 # of the process list. It writes nothing itself (the app does the pausing), so this unit has no writable paths. Dry run by hand:
-#   runuser -u brandbasket -- /usr/local/sbin/brandbasket-site-hosting-job --env-file /srv/brandbasket/shared/platform.env.local --dry-run
+#   runuser -u brandbasket -- /usr/local/sbin/brandbasket-site-hosting-job --env-file /srv/brandbasket/shared/customer.env.production --dry-run
 [Unit]
 Description=Brandbasket hourly hosting sync for lapsed websites
-After=brandbasket-app.service
+After=brandbasket-customer.service
 
 [Service]
 Type=oneshot
 User=brandbasket
 Group=brandbasket
-ExecStart=/usr/local/sbin/brandbasket-site-hosting-job --env-file /srv/brandbasket/shared/platform.env.local
+ExecStart=/usr/local/sbin/brandbasket-site-hosting-job --env-file /srv/brandbasket/shared/customer.env.production
 TimeoutStartSec=10min
 SyslogIdentifier=brandbasket-site-hosting
 # Sandbox (Firstfold's app hardening): read-only system, writable only where this unit writes, no privileges, no unneeded

@@ -14,7 +14,7 @@ import { isOnboardingLocked } from "@/lib/onboarding/snapshot";
 import { isFakeBillingProvider } from "@/lib/server/billing";
 import { getCustomerBusinessKind, requireCustomerAccess, type CustomerAccessOptions } from "@/lib/server/customer-access";
 import { getProjectOverview } from "@/lib/server/onboarding";
-import { confirmFirstPayment, verifyCheckoutFor } from "@/lib/server/payment-confirmation";
+import { confirmFirstPayment, isCombinedCheckoutFor, verifyCheckoutFor } from "@/lib/server/payment-confirmation";
 
 export const metadata: Metadata = {
   title: "Test payment",
@@ -27,6 +27,9 @@ export const metadata: Metadata = {
  * has to be its own business's.
  */
 const PAYING: CustomerAccessOptions = { listingAccount: "allow", membershipCheckout: "allow" };
+
+/** Where an added service's checkout goes back to, paid or cancelled. */
+const SERVICES_HREF = "/services";
 
 interface ConfirmPageProps {
   readonly searchParams: Promise<Record<string, string | string[] | undefined>>;
@@ -49,15 +52,17 @@ async function redirectIfPaid(hasAccess: boolean): Promise<void> {
  */
 export default async function TestCheckoutPage({ searchParams }: ConfirmPageProps): Promise<ReactElement> {
   if (!isFakeBillingProvider()) notFound();
-  const { tenant, billing } = await requireCustomerAccess(PAYING);
-  await redirectIfPaid(billing.hasAccess);
+  const { tenant, billing } = await requireCustomerAccess({ ...PAYING, access: "owner" });
+  const { token } = await searchParams;
+  const confirmed = typeof token === "string" ? await verifyCheckoutFor(tenant, { token }) : null;
+  // A customer with a plan pays here only for a service they added (a combined subscription, plan 63); it goes back to Your services.
+  const addingService = confirmed !== null && (await isCombinedCheckoutFor(tenant, confirmed));
+  if (!addingService) await redirectIfPaid(billing.hasAccess);
   // The plan a free listing account is buying; null for a website client, which pays on Check and send.
   const membership: MembershipTier | null =
     (await getCustomerBusinessKind(tenant.userId, tenant.businessId)) === "listing" ? billing.tier : null;
-  const backHref = membership === null ? PAYMENT_STEP_HREF : membershipPathFor(membership);
+  const backHref = addingService ? SERVICES_HREF : membership === null ? PAYMENT_STEP_HREF : membershipPathFor(membership);
 
-  const { token } = await searchParams;
-  const confirmed = typeof token === "string" ? await verifyCheckoutFor(tenant, { token }) : null;
   if (typeof token !== "string" || confirmed === null) {
     return (
       <BrandedAuthScreen
@@ -84,7 +89,7 @@ export default async function TestCheckoutPage({ searchParams }: ConfirmPageProp
   async function pay(): Promise<void> {
     "use server";
     if (!isFakeBillingProvider()) notFound();
-    const customer = await requireCustomerAccess(PAYING);
+    const customer = await requireCustomerAccess({ ...PAYING, access: "owner" });
     // Read before the payment: confirming it is what turns a free listing account into a client.
     const buyingMembership: MembershipTier | null =
       (await getCustomerBusinessKind(customer.tenant.userId, customer.tenant.businessId)) === "listing" ? customer.billing.tier : null;
@@ -136,7 +141,7 @@ export default async function TestCheckoutPage({ searchParams }: ConfirmPageProp
       {terms === null ? null : <p className="mt-4 text-sm leading-relaxed text-ink-soft">{terms}</p>}
       <p className="mt-4 text-sm leading-relaxed text-ink-soft">
         This page stands in for the payment provider while payments are simulated. Pay records the payment and{" "}
-        {membership === null ? "sends your answers to us" : `takes you back to ${MEMBERSHIP_NAMES[membership]}`}; Cancel takes you back with nothing recorded.
+        {addingService ? "takes you back to Your services" : membership === null ? "sends your answers to us" : `takes you back to ${MEMBERSHIP_NAMES[membership]}`}; Cancel takes you back with nothing recorded.
       </p>
       <div className="mt-6">
         <TestCheckoutForm action={pay} amount={amount} cancelHref={backHref} />

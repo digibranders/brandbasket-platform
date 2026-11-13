@@ -16,10 +16,10 @@ import {
   type ListedReferralCode,
 } from "@brandbasket/db";
 import { monthsWindowStart } from "@/lib/affiliate-dashboard";
+import { countMembers } from "@/lib/affiliate-members";
 import { getStaffDb } from "./db";
 
 const CODE_LIMIT = 50;
-const MEMBER_LIMIT = 500;
 const EARNING_LIMIT = 100;
 const PAYOUT_LIMIT = 50;
 /** How many months the monthly strip shows, the current one included. */
@@ -50,7 +50,7 @@ export async function loadAffiliateDashboard(affiliate: Affiliate, now: Date = n
   const [codes, usage, members, earnings, payouts, cashOut, monthly] = await Promise.all([
     listReferralCodes(db, { affiliateId: affiliate.id }, CODE_LIMIT),
     listAffiliateCodeUsage(db, affiliate.id),
-    listAffiliateMembers(db, affiliate.id, MEMBER_LIMIT),
+    countMembers((limit) => listAffiliateMembers(db, affiliate.id, limit)),
     listAffiliateEarnings(db, affiliate.id, EARNING_LIMIT),
     listAffiliatePayouts(db, affiliate.id, PAYOUT_LIMIT),
     findAffiliateCashOut(db, affiliate.id),
@@ -59,7 +59,7 @@ export async function loadAffiliateDashboard(affiliate: Affiliate, now: Date = n
   return {
     codes,
     usage: new Map(usage.map((row) => [row.codeId, row])),
-    members: { total: members.length, paying: members.filter((member) => member.status === "active").length },
+    members,
     cashOut,
     monthly,
     earnings,

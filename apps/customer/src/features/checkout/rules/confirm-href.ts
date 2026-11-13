@@ -10,6 +10,9 @@ import { membershipFailedHref, membershipReceivedHref, type MembershipTier } fro
 /** Where an account lands the moment its payment has opened its plan: Home, with the welcome switched on (lib/celebration.ts). */
 export const MEMBER_WELCOME_HREF = "/?welcome=1";
 
+/** Where a paid combined subscription lands: Plan & billing, which shows the new service and billing date. */
+export const SERVICE_ADDED_HREF = "/billing";
+
 /** Where a confirmed payment lands: the Website once the setup is sent, otherwise the checklist to finish it. */
 export function afterPaymentHref(projectStillOpen: boolean): string {
   return projectStillOpen ? "/checklist" : "/website";
@@ -31,6 +34,8 @@ export function hrefAfter(result: PaymentConfirmation, membership: MembershipTie
       return MEMBER_WELCOME_HREF;
     case "reactivated":
       return reactivationReturnHref("received");
+    case "service-added":
+      return SERVICE_ADDED_HREF;
     case "paid":
     case "already-recorded":
       return afterPaymentHref(result.projectStillOpen);

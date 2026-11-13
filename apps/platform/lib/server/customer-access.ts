@@ -6,6 +6,7 @@ import type { SessionUser, TenantContext } from "@brandbasket/shared/lib/access"
 import { summariseBilling, type CustomerBilling } from "@brandbasket/shared/lib/billing/status";
 import { RESTORE_ACCOUNT_PATH } from "@/lib/account-settings-form";
 import { membershipPathFor, membershipTierForChoice, type MembershipTier } from "@/lib/membership";
+import { roleRefusal, type MemberAccess } from "@/lib/team/rules";
 import { getCustomerAccess } from "./customer-tenant";
 import { getAppDb } from "./db";
 
@@ -76,7 +77,24 @@ export function isAwaitingMembership(entry: BusinessEntry): boolean {
   return awaitedMembershipTier(entry) !== null;
 }
 
+/** A viewer tried to change something. Carries no customer-facing copy: the pages hide what a viewer cannot do. */
+export class ReadOnlyMemberError extends Error {
+  readonly businessId: string;
+
+  constructor(businessId: string) {
+    super(`A viewer of business ${businessId} cannot change anything, so this action is not available.`);
+    this.name = "ReadOnlyMemberError";
+    this.businessId = businessId;
+  }
+}
+
 export interface CustomerAccessOptions {
+  /**
+   * The role the page or action needs (lib/team/rules.ts). `owner` sends anyone but the owner Home: checkout, billing,
+   * the plan, the team. `write` refuses a viewer with a ReadOnlyMemberError: every other action that changes the business.
+   * Left out, any member passes, which is right for reading.
+   */
+  readonly access?: MemberAccess;
   /**
    * `allow` opens the page to free listing accounts (businesses of kind `listing`). Closed by default: every other
    * page is about a website client's plan, project or site, so a listing account is sent to LISTING_ACCOUNT_HOME.
@@ -98,6 +116,13 @@ function accessRedirect(entry: BusinessEntry, options: CustomerAccessOptions): s
   return null;
 }
 
+/** Applies the role a page or action asked for, before anything about the business is read. */
+export function enforceRole(tenant: TenantContext, access: MemberAccess | undefined): void {
+  const refusal = roleRefusal(tenant.role, access);
+  if (refusal === "owner-only") redirect("/");
+  if (refusal === "read-only") throw new ReadOnlyMemberError(tenant.businessId);
+}
+
 /**
  * Call in every customer page and layout: layouts and pages render independently, so a layout check alone
  * does not protect a page. Anyone without access is sent to /login, which explains why.
@@ -106,6 +131,7 @@ export async function requireCustomerAccess(options: CustomerAccessOptions = {})
   const access = await getCustomerAccess();
   if (access.kind === "closing") redirect(RESTORE_ACCOUNT_PATH);
   if (access.kind !== "granted") redirect("/login");
+  enforceRole(access.tenant, options.access);
   const entry = await getCustomerBusinessEntry(access.tenant.userId, access.tenant.businessId);
   // Nothing about money is read for an account that is sent away.
   const elsewhere = accessRedirect(entry, options);
@@ -119,8 +145,8 @@ export async function requireCustomerAccess(options: CustomerAccessOptions = {})
  * client without the Managed Website service (Social-only, SEO-only, or a dropped website whose month has ended) is sent
  * Home. An unpaid client passes, because the first payment is taken on these pages, and so does a lapsed one.
  */
-export async function requireWebsiteClient(): Promise<GrantedCustomer> {
-  const customer = await requireCustomerAccess();
+export async function requireWebsiteClient(access?: MemberAccess): Promise<GrantedCustomer> {
+  const customer = await requireCustomerAccess({ access });
   if (customer.billing.hasAccess && !customer.billing.hasWebsite) redirect("/");
   return customer;
 }

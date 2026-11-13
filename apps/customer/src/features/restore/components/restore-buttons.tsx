@@ -1,6 +1,8 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useId } from "react";
+import { ConfirmPaymentDialog, useConfirmPayment } from "@/features/checkout/components/confirm-payment";
+import type { PaymentSummary } from "@/features/checkout/rules/payment-summary";
 import { Button } from "@/ui";
 import { keepPlanAction, restoreAccountAction } from "../actions";
 
@@ -16,14 +18,26 @@ export function RestoreButton() {
   );
 }
 
-/** Keep my plan: opens the payment window for a new mandate. */
-export function KeepPlanButton() {
-  const [, action, pending] = useActionState(keepPlanAction, null);
+/** Keep my plan: shows what the plan goes on costing, then opens the payment window for a new mandate. */
+export function KeepPlanButton({ summary }: { readonly summary: PaymentSummary }) {
+  const formId = useId();
+  const [state, action, pending] = useActionState(keepPlanAction, null);
+  const confirm = useConfirmPayment(state, pending);
   return (
-    <form action={action}>
-      <Button type="submit" pending={pending}>
-        {pending ? "Opening…" : "Keep my plan"}
+    <form id={formId} action={action}>
+      <Button pending={pending} onClick={confirm.ask}>
+        Keep my plan
       </Button>
+      <ConfirmPaymentDialog
+        summary={summary}
+        open={confirm.open}
+        onClose={confirm.close}
+        confirm={
+          <Button type="submit" form={formId} variant="primary" pending={pending}>
+            {pending ? "Opening…" : "Keep my plan"}
+          </Button>
+        }
+      />
     </form>
   );
 }

@@ -1,4 +1,5 @@
 import { refresh } from "next/cache";
+import { redirect } from "next/navigation";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { requireCustomerAccess } from "@/lib/server/customer-access";
 import { addBundledAddOnFor, removeBundledAddOnFor } from "@/lib/server/add-ons";
@@ -9,6 +10,11 @@ import { addBundledAddOnAction, removeBundledAddOnAction } from "./actions";
 
 vi.mock("server-only", () => ({}));
 vi.mock("next/cache", () => ({ refresh: vi.fn() }));
+vi.mock("next/navigation", () => ({
+  redirect: vi.fn((url: string) => {
+    throw new Error(`NEXT_REDIRECT ${url}`);
+  }),
+}));
 vi.mock("@/lib/server/customer-access", () => ({ requireCustomerAccess: vi.fn() }));
 vi.mock("@/lib/server/add-ons", () => ({ addBundledAddOnFor: vi.fn(), removeBundledAddOnFor: vi.fn() }));
 vi.mock("@/lib/server/charges", () => ({ startCustomerChargePayment: vi.fn() }));
@@ -40,7 +46,7 @@ describe("removeBundledAddOnAction", () => {
       message: "Social Media Management stays until your next payment date, then it stops.",
     });
     expect(await removeBundledAddOnAction(IDLE, form({ addOn: "social-media" }))).toEqual({ status: "saved" });
-    expect(requireCustomerAccess).toHaveBeenCalledWith({ listingAccount: "allow" });
+    expect(requireCustomerAccess).toHaveBeenCalledWith({ listingAccount: "allow", access: "owner" });
     expect(removeBundledAddOnFor).toHaveBeenCalledWith(CUSTOMER, "social-media", expect.any(Date));
     expect(refresh).toHaveBeenCalled();
   });
@@ -101,6 +107,15 @@ describe("addBundledAddOnAction", () => {
     expect(addBundledAddOnFor).toHaveBeenCalledWith(CUSTOMER, "social-media", expect.any(Date));
     expect(startCustomerChargePayment).toHaveBeenCalledWith(CUSTOMER, "charge-1");
     expect(redirectForChargePayment).toHaveBeenCalledWith({ kind: "redirect", url: "/billing/charges/confirm?token=t" });
+  });
+
+  it("sends the customer to approve the combined subscription, without opening a charge", async () => {
+    vi.mocked(addBundledAddOnFor).mockResolvedValue({ kind: "approve", url: "/billing/services/pay" });
+
+    await expect(addBundledAddOnAction(IDLE, form({ addOn: "social-media" }))).rejects.toThrow("NEXT_REDIRECT /billing/services/pay");
+    expect(redirect).toHaveBeenCalledWith("/billing/services/pay");
+    expect(startCustomerChargePayment).not.toHaveBeenCalled();
+    expect(redirectForChargePayment).not.toHaveBeenCalled();
   });
 
   it("redraws the page and says it saved when it is on with nothing to pay", async () => {

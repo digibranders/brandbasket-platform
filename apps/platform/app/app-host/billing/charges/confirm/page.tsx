@@ -45,7 +45,7 @@ interface ChargeConfirmPageProps {
  */
 export default async function ChargeTestCheckoutPage({ searchParams }: ChargeConfirmPageProps): Promise<ReactElement> {
   if (!isFakeBillingProvider()) notFound();
-  const { tenant } = await requireCustomerAccess({ listingAccount: "allow" });
+  const { tenant } = await requireCustomerAccess({ listingAccount: "allow", access: "owner" });
 
   const { token } = await searchParams;
   const confirmed = typeof token === "string" ? await verifyChargePaymentFor(tenant, { token }) : null;
@@ -76,7 +76,7 @@ export default async function ChargeTestCheckoutPage({ searchParams }: ChargeCon
   async function pay(): Promise<void> {
     "use server";
     if (!isFakeBillingProvider()) notFound();
-    const customer = await requireCustomerAccess({ listingAccount: "allow" });
+    const customer = await requireCustomerAccess({ listingAccount: "allow", access: "owner" });
     const result = await confirmFakeChargePayment(customer.tenant, { token: paymentToken }, new Date());
     redirect(chargeReturnHref(chargeKind, NOTICE_AFTER[result], ticketId));
   }

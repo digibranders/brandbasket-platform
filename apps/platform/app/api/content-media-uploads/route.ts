@@ -3,8 +3,12 @@ import { getPayload } from "payload";
 import config from "@/payload.config";
 import { getCustomerBilling } from "@/lib/server/customer-access";
 import { getCustomerTenant } from "@/lib/server/customer-tenant";
+import { getAppDb } from "@/lib/server/db";
 import { serverEnv } from "@/lib/server/env";
+import { consumeUploadAllowance } from "@/lib/server/onboarding-media";
+import { detectImageType } from "@brandbasket/shared/server/media-upload";
 import { BodyTooLargeError, readLimitedBody } from "@brandbasket/shared/server/read-limited-body";
+import { refuseViewer } from "@/lib/server/upload-request";
 import { allowsAnyLocalHost, isAppOrigin, resolveSurface, type SurfaceOrigins } from "@/lib/surfaces";
 import { parseUploadFileName } from "@brandbasket/shared/lib/uploads/file-name";
 import {
@@ -74,6 +78,9 @@ export async function POST(request: Request): Promise<Response> {
     return Response.json({ error: "Your session has ended. Sign in again, then try the upload." }, { status: 401 });
   }
 
+  const viewer = refuseViewer(tenant);
+  if (viewer !== null) return viewer;
+
   const billing = await getCustomerBilling(tenant.userId, tenant.businessId);
   if (!billing.hasAccess || !billing.hasWebsite) {
     return Response.json({ error: "This needs an active plan. Check Billing, then try again." }, { status: 402 });
@@ -82,6 +89,15 @@ export async function POST(request: Request): Promise<Response> {
   const contentType = request.headers.get("content-type") ?? "";
   if (!isAcceptedUploadType(contentType)) {
     return Response.json({ error: "Choose a JPEG, PNG or WEBP image." }, { status: 415 });
+  }
+
+  // Spent before the body is read, so a refused business never makes the server buffer a file. Same budget as /api/uploads.
+  const allowance = await consumeUploadAllowance(getAppDb(), tenant);
+  if (!allowance.allowed) {
+    return Response.json(
+      { error: allowance.message },
+      { status: 429, headers: { "Retry-After": String(allowance.retryAfterSeconds) } },
+    );
   }
 
   let bytes: Uint8Array;
@@ -95,6 +111,12 @@ export async function POST(request: Request): Promise<Response> {
     return Response.json({ error: "That file is empty." }, { status: 422 });
   }
 
+  // The file's own first bytes decide its type; the declared one was only an early refusal.
+  const detectedType = detectImageType(bytes.subarray(0, 12));
+  if (detectedType === null) {
+    return Response.json({ error: "Choose a JPEG, PNG or WEBP image." }, { status: 415 });
+  }
+
   const filename = parseUploadFileName(request.headers.get(UPLOAD_FILE_NAME_HEADER));
 
   const payload = await getPayload({ config });
@@ -103,7 +125,7 @@ export async function POST(request: Request): Promise<Response> {
     media = await payload.create({
       collection: "media",
       data: { businessId: tenant.businessId },
-      file: { data: Buffer.from(bytes), mimetype: contentType, name: filename, size: bytes.byteLength },
+      file: { data: Buffer.from(bytes), mimetype: detectedType, name: filename, size: bytes.byteLength },
       overrideAccess: true,
     });
   } catch {

@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { saveBillingDetailsAction } from "@/app/app-host/(protected)/billing/actions";
 import { panelFormErrorState, type PanelFormState } from "@/lib/panel-form-state";
-import { MEMBER_HOME, MEMBERSHIP_PATH, readMembershipCallbackTier, type MembershipFormState } from "@/lib/membership";
+import { MEMBER_HOME, MEMBERSHIP_BILLING_PARAM, MEMBERSHIP_PATH, readBillingInterval, readMembershipCallbackTier, type MembershipFormState } from "@/lib/membership";
 import { offersChoice, sellsFreeListing } from "@/lib/brand";
 import { refusedStepState, type StepFormState } from "@/lib/onboarding/form-state";
 import { readBundleSelection } from "@brandbasket/shared/lib/billing/bundle";
@@ -35,11 +35,14 @@ async function openMembershipPayment(formData: FormData): Promise<string> {
   const tier = readMembershipCallbackTier(typeof formData.get("tier") === "string" ? String(formData.get("tier")) : null);
   if (tier === null) return UNKNOWN_PLAN_MESSAGE;
   if (!offersChoice(await requestBrand(), tier)) return UNKNOWN_PLAN_MESSAGE;
-  const customer = await requireCustomerAccess(MEMBERSHIP_PAGE);
+  const customer = await requireCustomerAccess({ ...MEMBERSHIP_PAGE, access: "owner" });
   // The services on the page are the whole subscription. Only catalogue ids survive the read; what each costs, and whether
   // they are a package, is decided on the server in startMembershipCheckoutFor.
   const services = readBundleSelection(formData.getAll("service").filter((value): value is string => typeof value === "string"));
-  const outcome = await startMembershipCheckoutFor(customer, new Date(), tier, services);
+  // Like the services, how often is only a choice here: the server prices it and checks it again when the checkout opens.
+  const billingValue = formData.get(MEMBERSHIP_BILLING_PARAM);
+  const interval = readBillingInterval({ [MEMBERSHIP_BILLING_PARAM]: typeof billingValue === "string" ? billingValue : undefined });
+  const outcome = await startMembershipCheckoutFor(customer, new Date(), tier, services, interval);
   if (outcome.kind === "refused") return outcome.problem.message;
   redirect(outcome.url);
 }
@@ -73,7 +76,7 @@ const BoundServices = z.array(z.string().max(40)).max(10).catch([]);
  * everything is checked again in applyReferralCodeFor, and again under the lock when the checkout opens.
  */
 export async function applyMembershipCode(services: readonly string[], _previous: StepFormState, formData: FormData): Promise<StepFormState> {
-  const customer = await requireCustomerAccess(MEMBERSHIP_PAGE);
+  const customer = await requireCustomerAccess({ ...MEMBERSHIP_PAGE, access: "owner" });
   const typed = formData.get("referralCode");
   const outcome = await applyReferralCodeFor(customer, typeof typed === "string" ? typed : "", readBundleSelection(BoundServices.parse(services)), new Date());
   if (outcome.kind === "refused") return refusedStepState(outcome.problem, formData);
@@ -83,7 +86,7 @@ export async function applyMembershipCode(services: readonly string[], _previous
 
 /** Takes an applied code off again, before paying. */
 export async function removeMembershipCode(_previous: StepFormState, formData: FormData): Promise<StepFormState> {
-  const customer = await requireCustomerAccess(MEMBERSHIP_PAGE);
+  const customer = await requireCustomerAccess({ ...MEMBERSHIP_PAGE, access: "owner" });
   const outcome = await removeReferralCodeFor(customer);
   if (outcome.kind === "refused") return refusedStepState(outcome.problem, formData);
   revalidatePlanPages();
@@ -97,7 +100,7 @@ export async function removeMembershipCode(_previous: StepFormState, formData: F
 export async function chooseFreeListing(): Promise<void> {
   // The Brandbasket host sells no free listing: its page has no such button, and a form posted without one is sent back to the plan.
   if (!sellsFreeListing(await requestBrand())) redirect(MEMBER_HOME);
-  const customer = await requireCustomerAccess(MEMBERSHIP_PAGE);
+  const customer = await requireCustomerAccess({ ...MEMBERSHIP_PAGE, access: "owner" });
   const free = await continueWithFreeListing(customer);
   // The layout drew this account without a dashboard; it has one now, so the layout is drawn again, not reused.
   revalidatePath("/", "layout");

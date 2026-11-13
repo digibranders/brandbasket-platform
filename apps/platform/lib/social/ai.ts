@@ -13,13 +13,15 @@ const platformSchema = z.enum(CHANNEL_PLATFORMS);
 export const jobSchema = z.object({
   id: z.string().min(1),
   /** `write` is a batch of written posts; `draw` is the pictures for the posts that were kept; `network` is the same posts written for one more network. */
-  kind: z.enum(["write", "draw", "network"]),
+  kind: z.enum(["write", "draw", "network", "carousel"]),
   state: z.enum(["queued", "running", "done", "failed"]),
   /** 1 to 4 while it runs: reading the website, writing, drawing, putting the results in review. */
   step: z.number().int().optional(),
   batchId: z.string().optional(),
   createdAt: z.string(),
   finishedAt: z.string().optional(),
+  /** Why a job failed, as the posting service's stable code (such as `PAGE_MODE_UNAVAILABLE`), when it says. */
+  failure: z.string().optional(),
 });
 export type SiteJob = z.output<typeof jobSchema>;
 
@@ -59,6 +61,10 @@ const writtenPostSchema = z.object({
   state: postStateSchema,
   edited: z.boolean().optional(),
   advice: z.string().optional(),
+  /** The day the post goes out, `YYYY-MM-DD` (batches written before days were recorded have none). */
+  date: z.string().optional(),
+  /** Why a kept topic got no picture in a finished draw, in the posting service's own sentence; the topic is open again. */
+  notDrawn: z.object({ code: z.string(), message: z.string() }).optional(),
   signoff: z.object({ brandName: z.string().optional(), domain: z.string().optional() }).partial().optional(),
 });
 
@@ -71,6 +77,23 @@ export interface WrittenPost {
   readonly state: z.output<typeof postStateSchema>;
   readonly edited: boolean;
   readonly advice: string | null;
+  /** The day the post goes out, `YYYY-MM-DD`, or null when the batch has no days. */
+  readonly date: string | null;
+  /** Set when this kept topic got no picture in a finished draw: the reason in plain words. The topic is open again to keep, drop and edit. */
+  readonly notDrawn: { readonly code: string; readonly message: string } | null;
+}
+
+/** One week of a plan: the Monday it starts, the Sunday it ends, where its pictures stand, and which posts are in it. */
+export interface BatchWeek {
+  readonly from: string;
+  readonly to: string;
+  /** waiting: choices open; drawing: pictures being made; drawn: final; not_drawn: the draw ran but no kept topic got a picture; lapsed: the week passed before its pictures were drawn. */
+  readonly state: "waiting" | "drawing" | "drawn" | "not_drawn" | "lapsed" | "empty";
+  readonly postIds: readonly string[];
+  /** The kept topics of a drawn week that have no picture, each with its reason; empty when every kept topic has one. */
+  readonly notDrawn: readonly { readonly postId: string; readonly code: string; readonly message: string }[];
+  /** Days of this week with no post, `YYYY-MM-DD`; empty when none is missing. */
+  readonly missingDays: readonly string[];
 }
 
 /** How long a network's caption may be, and what reads best there. */
@@ -88,6 +111,8 @@ export interface WrittenBatch {
   readonly posts: readonly WrittenPost[];
   /** The length each network allows, as social-auto sends it with the batches. */
   readonly rules: Readonly<Partial<Record<ChannelPlatform, NetworkRule>>>;
+  /** The weeks of the plan, or null for a batch drawn in one piece (or when the weeks could not be read, so it is shown as one). */
+  readonly weeks: readonly BatchWeek[] | null;
 }
 
 const batchSchema = z.object({
@@ -95,6 +120,17 @@ const batchSchema = z.object({
   createdAt: z.string(),
   networks: z.array(z.string()),
   posts: z.array(z.unknown()),
+  /** The weeks of a plan that runs over several weeks; absent on a batch that is drawn in one piece. */
+  weeks: z.array(z.unknown()).optional(),
+});
+const batchWeekSchema = z.object({
+  from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  to: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  state: z.enum(["waiting", "drawing", "drawn", "not_drawn", "lapsed", "empty"]),
+  postIds: z.array(z.string()),
+  notDrawn: z.array(z.object({ postId: z.string(), code: z.string(), message: z.string() })).optional(),
+  /** Days of the week that were asked for but have no post (the writer could not make one). */
+  missingDays: z.array(z.string()).optional(),
 });
 
 export const posterSchema = z.object({
@@ -187,10 +223,31 @@ export function readBatches(body: unknown): WrittenBatch[] {
       if (!post.success) return [];
       const captions: Partial<Record<ChannelPlatform, string>> = {};
       for (const network of networks) captions[network] = captionText(post.data.captions?.[network]) ?? post.data.caption;
-      return [{ id: post.data.id, headline: post.data.headline, caption: post.data.caption, captions, state: post.data.state, edited: post.data.edited === true, advice: post.data.advice ?? null }];
+      return [{ id: post.data.id, headline: post.data.headline, caption: post.data.caption, captions, state: post.data.state, edited: post.data.edited === true, advice: post.data.advice ?? null, date: post.data.date?.slice(0, 10) ?? null, notDrawn: post.data.notDrawn ?? null }];
     });
-    return [{ id: batch.data.id, createdAt: batch.data.createdAt, networks, posts, rules }];
+    // Weeks are shown only when every one of them can be read: one unreadable week would hide posts, so the batch is shown as one piece.
+    const weeks = batch.data.weeks?.map((entry) => batchWeekSchema.safeParse(entry));
+    const readable = weeks !== undefined && weeks.length > 0 && weeks.every((week) => week.success) ? weeks.flatMap((week) => (week.success ? [{ ...week.data, notDrawn: week.data.notDrawn ?? [], missingDays: week.data.missingDays ?? [] }] : [])) : null;
+    return [{ id: batch.data.id, createdAt: batch.data.createdAt, networks, posts, rules, weeks: readable }];
   });
+}
+
+/** Where the customer's month stands: when the plan starts and ends, and whether the next month can be written now. */
+export interface BatchPlan {
+  readonly startsOn: string | null;
+  readonly endsOn: string | null;
+  readonly canStartNext: boolean;
+  /** The Monday the next month would start, `YYYY-MM-DD`; null when social-auto does not say. */
+  readonly nextStartDate: string | null;
+}
+
+const dayOnly = z.string().regex(/^\d{4}-\d{2}-\d{2}/).transform((value) => value.slice(0, 10));
+const batchPlanSchema = z.object({ startsOn: dayOnly.nullish(), endsOn: dayOnly.nullish(), canStartNext: z.boolean(), nextStartDate: dayOnly.nullish() });
+
+/** The plan of a batches answer (`{ plan: {...} }`); null when the posting service does not send one (an older one) or it cannot be read. */
+export function readBatchPlan(body: unknown): BatchPlan | null {
+  const parsed = batchPlanSchema.safeParse((body as { plan?: unknown } | null)?.plan);
+  return parsed.success ? { startsOn: parsed.data.startsOn ?? null, endsOn: parsed.data.endsOn ?? null, canStartNext: parsed.data.canStartNext, nextStartDate: parsed.data.nextStartDate ?? null } : null;
 }
 
 /** A batch of written posts that was put away because nobody decided within 14 days. */
@@ -228,15 +285,34 @@ export interface Topic {
   readonly batchId: string;
   readonly postId: string;
   readonly headline: string;
-  readonly networks: ReadonlyArray<{ readonly network: ChannelPlatform; readonly status: string }>;
+  readonly networks: ReadonlyArray<TopicNetwork>;
   readonly missing: readonly ChannelPlatform[];
+}
+
+/** One channel of a topic: its picture's status, and where drawing it stands when it has no picture yet. */
+export interface TopicNetwork {
+  readonly network: ChannelPlatform;
+  readonly status: string;
+  readonly pictureState?: string;
+  readonly drawsOn?: string;
+  readonly notDrawn?: { readonly code: string; readonly message: string };
 }
 
 const topicSchema = z.object({
   batchId: z.string().min(1),
   postId: z.string().min(1),
   headline: z.string(),
-  networks: z.array(z.object({ network: platformSchema, status: z.string() })),
+  networks: z.array(
+    z.object({
+      network: platformSchema,
+      status: z.string(),
+      /** Where this channel's picture of the topic stands (ready, approved, needs_connection, waiting, drawing, limit_reached, not_drawn, ...). Absent from an older posting service. */
+      pictureState: z.string().optional(),
+      /** For `waiting`: the day the system draws it (`YYYY-MM-DD`); absent for the first week, which is the customer's button. */
+      drawsOn: z.string().optional(),
+      notDrawn: z.object({ code: z.string(), message: z.string() }).optional(),
+    }),
+  ),
   missing: z.array(platformSchema),
 });
 
@@ -257,6 +333,7 @@ const STEP_WORDS: Readonly<Record<number, string>> = { 1: "Reading your website"
 
 /** What to tell the customer about a job, in plain words. */
 export function jobLine(job: Pick<SiteJob, "kind" | "state" | "step">): string {
+  if (job.kind === "carousel") return job.state === "failed" ? "We could not make your carousel. You can try again." : job.state === "done" ? "Your carousel is ready to look at." : job.state === "queued" ? "Waiting to start." : "Making your carousel";
   if (job.state === "failed") return job.kind === "draw" ? "The pictures could not be drawn. You can try again." : job.kind === "network" ? "We could not write your posts for the new network. You can try again." : "We could not write your posts. You can try again.";
   if (job.state === "done") return job.kind === "draw" ? "Your pictures are ready to look at." : job.kind === "network" ? "Your posts for the new network are ready to look at." : "Your posts are written and ready to look at.";
   if (job.state === "queued") return "Waiting to start.";
@@ -268,6 +345,7 @@ export function jobLine(job: Pick<SiteJob, "kind" | "state" | "step">): string {
  * product, so the page shows these and keeps the code for the log. A code not listed here gets the general sentence.
  */
 const CODE_WORDS: Readonly<Record<string, string>> = {
+  PAGE_MODE_UNAVAILABLE: "That page could not be read on its own. Use the whole website address instead.",
   INVALID_SITE: "That does not look like a website address. Check it and try again.",
   SITE_MISMATCH: "Your posts are written from the website you gave us first. If your website has changed, ask us and we will update it.",
   INVALID_NETWORKS: "Choose at least one network to write for.",
@@ -277,6 +355,10 @@ const CODE_WORDS: Readonly<Record<string, string>> = {
   WORKSPACE_ARCHIVED: "This brand is archived. Bring it back to use it again.",
   CHANNEL_NOT_CONNECTED: "Connect an account for that network first, then try again.",
   NETWORK_ALREADY_THERE: "Your posts are already written for that network.",
+  CONFLICT: "Start from your website first. The carousel is made from what it says.",
+  CAROUSEL_LIMIT_REACHED: "You have made this week's carousel already. You can make another next week.",
+  CONNECTED_UNKNOWN: "We could not check which of your accounts are connected just now. Try again in a minute.",
+  PICTURE_LIMIT_REACHED: "You have used this week's pictures for one of your networks. You can draw more from Monday.",
   JOB_LIMIT_REACHED: "You have started as many batches as you can for now. Try again tomorrow.",
   DRAW_LIMIT_REACHED: "You have asked for as many pictures as you can for now. Try again tomorrow.",
   NOTHING_KEPT: "Keep at least one post first, then ask for the pictures.",
@@ -297,6 +379,9 @@ const CODE_WORDS: Readonly<Record<string, string>> = {
 };
 
 export const GENERAL_AI_ERROR = "That did not work. Try again in a few minutes.";
+
+/** The customer's words for a code the page has words for, or null for any other (so the caller can say something more fitting than the general sentence). */
+export const knownWordsForCode = (code: string | undefined): string | null => (code === undefined ? null : (CODE_WORDS[code] ?? null));
 
 /** The customer's words for an error code. */
 export const wordsForCode = (code: string | null): string => (code === null ? GENERAL_AI_ERROR : (CODE_WORDS[code] ?? GENERAL_AI_ERROR));

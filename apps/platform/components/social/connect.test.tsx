@@ -183,7 +183,7 @@ describe("adding a post from the calendar", () => {
   });
 
   it("puts Look over your posts beside New post once posts were written, and not before", () => {
-    const ai = (jobs: SocialConnect["ai"] extends infer T ? (T extends { jobs: infer J } ? J : never) : never) => ({ jobs, website: null, jobsUnavailable: false, expired: { batches: 0, pictures: 0 } });
+    const ai = (jobs: SocialConnect["ai"] extends infer T ? (T extends { jobs: infer J } ? J : never) : never) => ({ jobs, website: null, jobsUnavailable: false, expired: { batches: 0, pictures: 0 }, plan: null });
     const done = { id: "j", kind: "write" as const, state: "done" as const, createdAt: "2026-11-01T10:00:00Z" };
     const withJob = view(connect({ ai: ai([done]) }));
     expect(withJob).toContain("Look over your posts");

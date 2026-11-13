@@ -1,7 +1,7 @@
 import "server-only";
 import { findActivePlan, findCurrentPaymentMethod, withTenantScope, type BillingInterval, type CurrentPaymentMethod, type Plan } from "@brandbasket/db";
 import type { MonthlyAddOnId } from "@brandbasket/shared/lib/billing/add-ons";
-import { reactivationNetCents, readBundleSelection } from "@brandbasket/shared/lib/billing/bundle";
+import { bundleLines, bundleNetCents, readBundleSelection, type BundleLine } from "@brandbasket/shared/lib/billing/bundle";
 import { loadCarriedCode, loadReactivationBasket } from "@brandbasket/shared/server/reactivation-basket";
 import { getAppDb, getStaffDb } from "@/lib/db";
 import type { CustomerContext } from "@/lib/guards";
@@ -40,6 +40,8 @@ export interface ReactivationView {
   readonly cancelled: boolean;
   /** The services the payment is for: the ones chosen when `cancelled` (the lapsed ones until they choose), else the lapsed basket. */
   readonly services: readonly MonthlyAddOnId[];
+  /** Each service at what a month of it costs, in the catalogue's order. */
+  readonly lines: readonly BundleLine[];
   /** What a month of them costs, GST included. */
   readonly netCents: number;
   /** What the code a lapse keeps takes off that; 0 for a customer who cancelled themselves or whose code has no months left. */
@@ -61,8 +63,9 @@ export async function findReactivation(customer: Customer, requested: readonly s
   const chosen = basket.cancelled ? readBundleSelection(requested) : [];
   const priced = chosen.length === 0 ? basket : { ...basket, services: chosen };
   const { currency } = billing.plan;
-  const netCents = reactivationNetCents(priced, currency);
+  const lines = bundleLines(priced.services, currency, priced.forfeited, priced.billingInterval);
+  const netCents = bundleNetCents(lines);
   const carried = await loadCarriedCode(getStaffDb(), tenant.businessId, basket);
   const discountCents = carried === null ? 0 : (discountFrom(carried.code, { currency, netCents })?.amountCents ?? 0);
-  return { cancelled: basket.cancelled, services: priced.services, netCents, discountCents, billingInterval: basket.billingInterval };
+  return { cancelled: basket.cancelled, services: priced.services, lines, netCents, discountCents, billingInterval: basket.billingInterval };
 }

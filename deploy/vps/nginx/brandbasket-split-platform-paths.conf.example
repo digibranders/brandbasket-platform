@@ -1,4 +1,5 @@
-# The public endpoints that stay in apps/platform while apps/customer serves the dashboard (plan 61, assumption A3). Included by
+# SUPERSEDED by brandbasket-public-paths.conf.example (same paths, sent to apps/customer); kept as the rollback until the switch has
+# held. The public endpoints that stay in apps/platform while apps/customer serves the dashboard (plan 61, assumption A3). Included by
 # both brandbasket-next.conf.example (next.brandbasket.in) and brandbasket-cutover.conf.example (app.brandbasket.in), so the list
 # exists once. NOT APPLIED by install.sh. Install by hand as /etc/nginx/snippets/brandbasket-split-platform-paths.conf.
 #

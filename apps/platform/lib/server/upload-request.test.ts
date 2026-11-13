@@ -219,6 +219,13 @@ describe("handleUploadRequest", () => {
     }
   });
 
+  it("refuses a viewer with 403 before anything else runs or the body is read", async () => {
+    deps.getTenant.mockResolvedValue({ ...tenant, role: "viewer" });
+    const body = trackedBody([new Uint8Array([1, 2, 3])]);
+    await expectRefused(await handleUploadRequest(uploadRequest({ body }), deps), 403, "Only owners and editors can change this.");
+    expectNoWorkAfterSession(body);
+  });
+
   it("answers 401 without a customer session, once the cheap checks pass, and does nothing more", async () => {
     deps.getTenant.mockResolvedValue(null);
     const body = trackedBody([new Uint8Array([1])]);

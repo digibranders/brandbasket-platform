@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { PanelData, PanelError } from "@/components";
+import { gstNote, type PaymentSummary } from "@/features/checkout/rules/payment-summary";
 import { formatDate, formatMoney, formatOutOf, formatQuantity } from "@/lib/format";
 import type { Loaded } from "@/lib/loaded";
 import { LinkButton, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/ui";
@@ -27,11 +28,24 @@ function usageLine(usage: BlogUsage | null): string | null {
   return isAtBlogLimit(usage) ? `${used} Unlock ${posts} more for ${formatMoney(amountCents, currency)} to keep writing.` : used;
 }
 
+/** What Unlock more posts confirms before its payment opens. */
+function unlockSummary(usage: BlogUsage): PaymentSummary {
+  const { posts, amountCents, currency } = usage.nextBlock;
+  const amount = formatMoney(amountCents, currency);
+  return {
+    title: "Unlock more posts",
+    rows: [{ key: "posts", label: formatQuantity(posts, "more blog post"), amount, tone: "plain" }],
+    totalLabel: "Due today",
+    total: amount,
+    notes: ["A one-off payment. The posts unlock as soon as it is confirmed.", ...gstNote(currency)],
+  };
+}
+
 /** The blog's posts, newest edited first, with what the plan allows. At the limit the way to unlock more replaces New post. */
 export function PostsScreen({ posts, usage, canWrite, hasPages, now }: PostsScreenProps) {
   const atLimit = usage.ok && isAtBlogLimit(usage.data);
-  const action = !canWrite ? undefined : atLimit ? (
-    <UnlockPostsButton />
+  const action = !canWrite ? undefined : atLimit && usage.ok && usage.data !== null ? (
+    <UnlockPostsButton summary={unlockSummary(usage.data)} />
   ) : (
     <LinkButton href={BLOG_NEW_PATH} variant="primary" icon="Plus">
       New post

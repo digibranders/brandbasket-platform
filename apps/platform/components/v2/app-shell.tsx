@@ -40,6 +40,7 @@ export async function AppShell({ userName, userEmail, isAffiliate = false, child
     hasSearch: services.includes("search"),
     requestsCount,
     affiliate: isAffiliate,
+    owner: tenant.role === "owner",
   });
   const logo = logoOf(brand);
   const menu: AccountMenu = {

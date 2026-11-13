@@ -1,7 +1,8 @@
 import "server-only";
-import { findBillingState, isPackageOfferForfeited, type Plan } from "@brandbasket/db";
+import { businessHasHadService, findBillingState, isPackageOfferForfeited, type BillingInterval, type Plan } from "@brandbasket/db";
 import type { BillingDetailsView } from "@/lib/billing/billing-details-view";
 import type { MonthlyAddOnId } from "@brandbasket/shared/lib/billing/add-ons";
+import { TRIAL_ADD_ON_IDS } from "@brandbasket/shared/lib/billing/trial";
 import type { MembershipTier } from "@/lib/membership";
 import { loadReactivationBasket } from "@brandbasket/shared/server/reactivation-basket";
 import { loadBillingDetailsView } from "./billing-details";
@@ -25,6 +26,8 @@ export interface MembershipCheckoutView {
   readonly lapsedCode: string | null;
   /** The business has given the package offer up for good: every line is at list, with no ad credit. */
   readonly forfeited: boolean;
+  /** The plans whose first month is on the offer (plan 63): ones the business has never had, none for a business that has paid before. */
+  readonly neverHad: readonly MonthlyAddOnId[];
   /** The business has paid before: it earns no ad credit. */
   readonly hasEverPaid: boolean;
   /** The invoice details form's state: an account buying its membership cannot open Billing, so the form is offered here. */
@@ -50,6 +53,7 @@ export async function loadMembershipCheckout(
   tier: MembershipTier,
   requested: readonly MonthlyAddOnId[],
   now: Date,
+  interval: BillingInterval = "month",
 ): Promise<MembershipCheckoutView> {
   const { businessId } = customer.tenant;
   const staffDb = getStaffDb();
@@ -60,14 +64,19 @@ export async function loadMembershipCheckout(
   const reactivation = hasEverPaid ? await loadReactivationBasket(staffDb, businessId) : null;
   const services = reactivation?.services ?? requested;
   // A reactivation takes no code, so none is looked for against its basket.
-  const basis = plan === null || hasEverPaid ? null : codeBasisFor(services, plan.currency);
+  const basis = plan === null || hasEverPaid ? null : codeBasisFor(services, plan.currency, interval);
   const [discount, lapsedCode, forfeited, billingDetails] = await Promise.all([
     basis === null ? null : resolveAppliedDiscount(businessId, basis, now),
     basis === null ? null : findLapsedAppliedCode(businessId, basis, now),
     reactivation?.forfeited ?? isPackageOfferForfeited(staffDb, businessId),
     loadBillingDetailsView(customer),
   ]);
+  // As the checkout decides it, under its lock: a business that has paid before is reactivating and takes no offer.
+  const neverHad: MonthlyAddOnId[] = [];
+  if (!hasEverPaid) {
+    for (const id of TRIAL_ADD_ON_IDS) if (!(await businessHasHadService(staffDb, businessId, id))) neverHad.push(id);
+  }
   const offer: MembershipOffer = !hasEverPaid && plan !== null ? { kind: "available" } : { kind: "none" };
   // A code that still works is not lapsed, whatever the second read says.
-  return { plan, services, discount, lapsedCode: discount === null ? lapsedCode : null, forfeited, hasEverPaid, billingDetails, offer };
+  return { plan, services, discount, lapsedCode: discount === null ? lapsedCode : null, forfeited, neverHad, hasEverPaid, billingDetails, offer };
 }

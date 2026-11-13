@@ -52,7 +52,7 @@ describe("reportFirstPayment", () => {
   });
 
   it("sends nothing, and writes nothing, for a payment that is not a customer's first applied one", async () => {
-    for (const payment of [{ ...PAYMENT, kind: "renewal" }, { ...PAYMENT, captured: 2 }, { ...PAYMENT, attentionReason: "amount_mismatch" }]) {
+    for (const payment of [{ ...PAYMENT, kind: "renewal" }, { ...PAYMENT, kind: "add_on" }, { ...PAYMENT, captured: 2 }, { ...PAYMENT, attentionReason: "amount_mismatch" }]) {
       const d = deps({}, payment);
       await reportFirstPayment("p-1", d);
       expect(d.claim).not.toHaveBeenCalled();

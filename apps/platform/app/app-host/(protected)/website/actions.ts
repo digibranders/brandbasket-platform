@@ -1,6 +1,6 @@
 "use server";
 
-import { createSupportTicketWithOutcome, findLatestProject, linkFeedbackTicket, ProjectNotAwaitingResponseError, RevisionRoundsUsedUpError, SupportQueryError, withTenantScope } from "@brandbasket/db";
+import { createSupportTicketWithOutcome, findLatestProject, linkFeedbackTicket, ProjectNotAwaitingResponseError, requestProjectRevisions, RevisionRoundsUsedUpError, SupportQueryError, withCustomerRole, withTenantScope } from "@brandbasket/db";
 import { errorLogInfo } from "@brandbasket/shared/server/error-log-info";
 import { revalidatePath } from "next/cache";
 import { redirect, unstable_rethrow } from "next/navigation";
@@ -8,7 +8,7 @@ import { requireCustomerAccess } from "@/lib/server/customer-access";
 import { getAppDb, getStaffDb } from "@/lib/server/db";
 import { reportServerError } from "@/lib/server/error-report";
 import { sendPreviewChangesReceived } from "@/lib/server/preview-changes-email";
-import { respondToPreview, type PreviewResponse } from "@/lib/server/project-response";
+import { notifyTeamPreviewResponse, respondToPreview, type PreviewResponse } from "@/lib/server/project-response";
 import { sendSupportTicketAlert } from "@/lib/server/support-alerts";
 import { supportRateLimit } from "@/lib/server/support-limits";
 import { canCreateSupportRequest } from "@/lib/server/support-rollout";
@@ -23,7 +23,7 @@ import { websiteNoticeHref } from "@/lib/website/notices";
  * is the business's own. The business comes only from the session; nothing in the form is read.
  */
 async function respond(response: PreviewResponse): Promise<void> {
-  const { tenant, billing } = await requireCustomerAccess();
+  const { tenant, billing } = await requireCustomerAccess({ access: "write" });
   // A page opened before access lapsed must not answer; Home explains what to do.
   if (!billing.hasAccess) redirect("/");
   try {
@@ -42,12 +42,12 @@ export async function approvePreviewAction(): Promise<void> {
 /**
  * Sends the customer's feedback on a preview. It is project work, not a maintenance change, so it opens a plain ticket for
  * the team (its subject says it is preview feedback and which round) and never a change request: it does not count against the month's included
- * edits. The ticket is saved first, and a retry with the same form key finds it again, so a failure after it only repeats
- * the move to Revisions. The business and the person come from the session, never from the form. Once every included round
+ * edits. The round is counted, the ticket saved and the two linked in one transaction, so a press that loses a race (or comes
+ * after another tab's) rolls back with no ticket and no alert; a retry with the same form key finds the ticket again. The business and the person come from the session, never from the form. Once every included round
  * is used it sends nothing and says further changes are quoted first; staff granting a round lets the next send through.
  */
 export async function sendPreviewFeedbackAction(_previous: SupportFormState, formData: FormData): Promise<SupportFormState> {
-  const { user, tenant, billing } = await requireCustomerAccess();
+  const { user, tenant, billing } = await requireCustomerAccess({ access: "write" });
   if (!billing.hasAccess) redirect("/");
   if (!canCreateSupportRequest(user.id)) return supportFormError("New requests are temporarily unavailable. Please try again later.");
   const parsed = parsePreviewFeedback(formData);
@@ -60,35 +60,43 @@ export async function sendPreviewFeedbackAction(_previous: SupportFormState, for
   // Checked before the ticket is written; requestProjectRevisions checks again so two sends cannot both take the last round.
   if (roundsUsedUp(project.revisionRoundsIncluded, project.revisionRoundsGranted)) return supportFormError(ROUNDS_USED_UP);
 
-  const subject = feedbackSubject(body, project.revisionRoundsGranted + 1);
+  const now = new Date();
   try {
-    const { ticket, created } = await createSupportTicketWithOutcome(getAppDb(), {
-      userId: user.id,
-      businessId: tenant.businessId,
-      category: "website_change",
-      subject,
-      description: body,
-      attachmentIds,
-      submissionKey,
+    // One transaction on the staff connection, the ticket written as the customer. The round's UPDATE comes first and takes the
+    // project row lock, so of two racing sends the loser finds no preview waiting (or no round left) and rolls back with no ticket.
+    const saved = await getStaffDb().transaction(async (tx) => {
+      const moved = await requestProjectRevisions(tx, { businessId: tenant.businessId, now });
+      const round = moved.revisionRoundsGranted;
+      const subject = feedbackSubject(body, round);
+      const { ticket, created } = await withCustomerRole(tx, { userId: user.id, businessId: tenant.businessId }, (customerTx) =>
+        createSupportTicketWithOutcome(customerTx, {
+          userId: user.id,
+          businessId: tenant.businessId,
+          category: "website_change",
+          subject,
+          description: body,
+          attachmentIds,
+          submissionKey,
+        }),
+      );
+      await linkFeedbackTicket(tx, { ticketId: ticket.id, projectId: moved.id, businessId: tenant.businessId, round });
+      return { ticket, created, round, rounds: moved.revisionRoundsIncluded, subject };
     });
-    if (created) {
+    // Alerts go only after the commit, and only for a ticket created now; a double press with the same key is one ticket.
+    if (saved.created) {
       void sendSupportTicketAlert(
-        ticket,
-        { category: "website_change", subject, description: body, attachmentIds },
+        saved.ticket,
+        { category: "website_change", subject: saved.subject, description: body, attachmentIds },
         { user, businessId: tenant.businessId, businessName: tenant.businessName },
       ).catch((error: unknown) => console.error("[support-alert]", error));
-      await sendPreviewChangesReceived({
-        user,
-        body,
-        round: project.revisionRoundsGranted + 1,
-        rounds: project.revisionRoundsIncluded,
-        now: new Date(),
-      });
+      await sendPreviewChangesReceived({ user, body, round: saved.round, rounds: saved.rounds, now }).catch((error: unknown) =>
+        console.error("[website] preview feedback confirmation failed", errorLogInfo(error)),
+      );
     }
-    await linkFeedbackTicket(getStaffDb(), { ticketId: ticket.id, projectId: project.id, businessId: tenant.businessId, round: project.revisionRoundsGranted + 1 });
-    await respond({ kind: "revisions" });
+    await notifyTeamPreviewResponse(getStaffDb(), { businessId: tenant.businessId, businessName: tenant.businessName, response: { kind: "revisions" } });
   } catch (error) {
     unstable_rethrow(error);
+    if (error instanceof ProjectNotAwaitingResponseError) redirect(websiteNoticeHref("not-ready"));
     console.error("[website] could not send preview feedback", errorLogInfo(error));
     if (error instanceof RevisionRoundsUsedUpError) return supportFormError(ROUNDS_USED_UP);
     if (error instanceof SupportQueryError) return supportFormError("Check what you wrote and your screenshots, then try again.");

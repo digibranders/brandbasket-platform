@@ -62,6 +62,10 @@ if [[ "${1:-}" == --prebuilt ]]; then PREBUILT=1; shift; fi
 # shellcheck source=heavy-lock.sh
 source /usr/local/lib/brandbasket/heavy-lock.sh
 
+# TODO after switch: drop `platform` here, from units_of/host_of/env_link_of/env_source_of and from check_env's --platform file, once
+# apps/platform is deleted and brandbasket-app is removed (docs/deployment/brandbasket-vps.md, "Switching the platform paths to
+# apps/customer"). Migrations already need nothing from apps/platform: db:migrate and scripts/cms-migrate.sh read apps/customer's
+# env file when apps/platform has none.
 readonly APPS=(platform admin customer)
 valid_app() { [[ " ${APPS[*]} " == *" $1 "* ]] || die "not an app: $1 (${APPS[*]})"; }
 valid_release() { [[ "$1" =~ ^[0-9a-f]{40}(\+[0-9]+)?$ ]] || die "not a release name: $1"; }

@@ -1,4 +1,4 @@
-import { findBillingState, isPackageOfferForfeited, type BillingState, type Database, type Plan } from "@brandbasket/db";
+import { businessHasHadService, findBillingState, isPackageOfferForfeited, type BillingState, type Database, type Plan } from "@brandbasket/db";
 import type { ReactivationBasket } from "@brandbasket/shared/lib/billing/bundle";
 import { loadReactivationBasket } from "@brandbasket/shared/server/reactivation-basket";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -9,7 +9,7 @@ import { getMembershipPlan } from "./membership";
 import { findLapsedAppliedCode, resolveAppliedDiscount } from "./referrals";
 
 vi.mock("server-only", () => ({}));
-vi.mock("@brandbasket/db", () => ({ findBillingState: vi.fn(), isPackageOfferForfeited: vi.fn() }));
+vi.mock("@brandbasket/db", () => ({ businessHasHadService: vi.fn(), findBillingState: vi.fn(), isPackageOfferForfeited: vi.fn() }));
 vi.mock("@brandbasket/shared/server/reactivation-basket", () => ({ loadReactivationBasket: vi.fn() }));
 vi.mock("./billing-details", () => ({ loadBillingDetailsView: vi.fn() }));
 vi.mock("./db", () => ({ getStaffDb: vi.fn() }));
@@ -38,6 +38,7 @@ beforeEach(() => {
   vi.mocked(getStaffDb).mockReturnValue(staffDb);
   vi.mocked(getMembershipPlan).mockResolvedValue(PLAN);
   vi.mocked(isPackageOfferForfeited).mockResolvedValue(false);
+  vi.mocked(businessHasHadService).mockResolvedValue(true);
   vi.mocked(resolveAppliedDiscount).mockResolvedValue(null);
   vi.mocked(findLapsedAppliedCode).mockResolvedValue(null);
   vi.mocked(loadBillingDetailsView).mockResolvedValue(null);
@@ -81,5 +82,37 @@ describe("loadMembershipCheckout", () => {
     await loadMembershipCheckout(customer, "managed", ["managed-website", "social-media"], NOW);
 
     expect(resolveAppliedDiscount).toHaveBeenCalledWith(BUSINESS_ID, { currency: "INR", netCents: 599_800 }, NOW);
+  });
+});
+
+describe("loadMembershipCheckout, paying yearly", () => {
+  it("looks for a code against the year's price", async () => {
+    vi.mocked(findBillingState).mockResolvedValue(stateWith(false));
+
+    await loadMembershipCheckout(customer, "managed", ["managed-website"], NOW, "year");
+
+    expect(resolveAppliedDiscount).toHaveBeenCalledWith(BUSINESS_ID, { currency: "INR", netCents: 3_238_900, interval: "year" }, NOW);
+  });
+});
+
+describe("loadMembershipCheckout, the first-month offer (plan 63)", () => {
+  it("names the plans the business has never had, and asks about no one else", async () => {
+    vi.mocked(findBillingState).mockResolvedValue(stateWith(false));
+    vi.mocked(businessHasHadService).mockImplementation(async (_db, _businessId, addOn) => addOn === "paid-ads");
+
+    const view = await loadMembershipCheckout(customer, "managed", ["managed-website", "social-media"], NOW);
+
+    expect(view.neverHad).toEqual(["social-media"]);
+  });
+
+  it("offers nothing to a business that has paid before", async () => {
+    vi.mocked(findBillingState).mockResolvedValue(stateWith(true));
+    vi.mocked(loadReactivationBasket).mockResolvedValue({ services: ["social-media"], forfeited: false, adCreditCents: 0, cancelled: false, billingInterval: "month" });
+    vi.mocked(businessHasHadService).mockResolvedValue(false);
+
+    const view = await loadMembershipCheckout(customer, "managed", [], NOW);
+
+    expect(view.neverHad).toEqual([]);
+    expect(businessHasHadService).not.toHaveBeenCalled();
   });
 });

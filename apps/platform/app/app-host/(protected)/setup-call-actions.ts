@@ -10,7 +10,7 @@ import { bookSetupCall, loadSetupCallSlots, markSetupCallBooked, type BookSetupC
  * call and says the call is booked. The argument is Calendly's link for the booking; anything else is ignored.
  */
 export async function recordSetupCallBooked(inviteeUri: unknown): Promise<void> {
-  const { tenant } = await requireCustomerAccess();
+  const { tenant } = await requireCustomerAccess({ access: "write" });
   await markSetupCallBooked(tenant, inviteeUri, new Date());
   revalidatePath("/");
 }
@@ -23,7 +23,7 @@ export async function loadCallSlots(): Promise<SetupCallSlots> {
 
 /** Books the picked time for the signed-in customer. An account with no real email address cannot be sent the invitation. */
 export async function bookCallSlot(startIso: unknown, timeZone: unknown): Promise<BookSetupCallResult> {
-  const { user, tenant } = await requireCustomerAccess();
+  const { user, tenant } = await requireCustomerAccess({ access: "write" });
   if (isPhoneAccountEmail(user.email)) return { ok: false, reason: "failed" };
   const result = await bookSetupCall(tenant, { name: user.name, email: user.email }, startIso, timeZone, new Date());
   if (result.ok) revalidatePath("/");

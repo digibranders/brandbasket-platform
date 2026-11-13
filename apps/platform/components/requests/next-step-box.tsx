@@ -2,7 +2,9 @@ import type { ReactElement } from "react";
 import { payChargeAction } from "@/app/app-host/(protected)/billing/actions";
 import { approveChangeAction, declineQuoteAction, reopenRequestAction } from "@/app/app-host/(protected)/requests/move-actions";
 import { acceptQuoteAction } from "@/app/app-host/(protected)/requests/pay-actions";
+import { NextStepPayButton } from "@/components/requests/next-step-pay-button";
 import { DARK_BUTTON, SOFT_BUTTON } from "@/components/v2/classes";
+import { quoteSummary } from "@/lib/billing/payment-summaries";
 import type { NextStep } from "@/lib/requests/status";
 
 interface NextStepBoxProps {
@@ -27,6 +29,7 @@ function Ids({ requestId, ticketId }: Pick<NextStepBoxProps, "requestId" | "tick
  */
 export function NextStepBox({ step, requestId, ticketId }: NextStepBoxProps): ReactElement {
   const { action, secondary, quote } = step;
+  const summary = quote === null ? null : quoteSummary(quote);
   return (
     <section aria-labelledby="next-step-title" className="mx-5 mt-4 grid gap-2.5 rounded-[0.625rem] bg-rattan-wash px-3.5 py-3">
       <div>
@@ -43,21 +46,11 @@ export function NextStepBox({ step, requestId, ticketId }: NextStepBoxProps): Re
       )}
       {action === null && secondary === null ? null : (
         <div className="flex flex-wrap gap-2">
-          {action?.kind === "accept" ? (
-            <form action={acceptQuoteAction}>
-              <Ids requestId={requestId} ticketId={ticketId} />
-              <button type="submit" className={DARK_BUTTON}>
-                {action.label}
-              </button>
-            </form>
+          {action?.kind === "accept" && summary !== null ? (
+            <NextStepPayButton action={acceptQuoteAction} fields={[{ name: "requestId", value: requestId }, { name: "ticketId", value: ticketId }]} label={action.label} summary={summary} />
           ) : null}
-          {action?.kind === "pay" ? (
-            <form action={payChargeAction}>
-              <input type="hidden" name="chargeId" value={action.chargeId} />
-              <button type="submit" className={DARK_BUTTON}>
-                {action.label}
-              </button>
-            </form>
+          {action?.kind === "pay" && summary !== null ? (
+            <NextStepPayButton action={payChargeAction} fields={[{ name: "chargeId", value: action.chargeId }]} label={action.label} summary={summary} />
           ) : null}
           {action?.kind === "approve" ? (
             <form action={approveChangeAction}>

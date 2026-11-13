@@ -81,7 +81,7 @@ config=(
   etc/letsencrypt/archive/brandbasket etc/letsencrypt/renewal/brandbasket.conf
   usr/local/bin/brandbasket-* usr/local/sbin/brandbasket-* usr/local/lib/brandbasket
   home/brandbasket/.ssh
-  root/brandbasket-secrets.env srv/brandbasket/shared/platform.env.local srv/brandbasket/shared/admin.env.local
+  root/brandbasket-secrets.env srv/brandbasket/shared/platform.env.local srv/brandbasket/shared/customer.env.production srv/brandbasket/shared/admin.env.local
 )
 shopt -u nullglob
 tar -czf "$DEST/server-config.tar.gz" --ignore-failed-read -C / "${config[@]}" 2>/dev/null

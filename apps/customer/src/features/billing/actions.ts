@@ -43,6 +43,7 @@ export async function addServiceAction(_previous: ActionResult | null, formData:
   if (result.kind === "refused") return actionFail(result.message);
   if (result.kind === "done") return actionOk();
   // Outside the try: a redirect is thrown, and must not be caught as a failure.
+  if (result.kind === "approve") redirect(result.url);
   const started = await startCustomerChargePayment(customer, result.chargeId);
   switch (started.kind) {
     case "not-found":

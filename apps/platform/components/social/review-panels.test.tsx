@@ -21,9 +21,10 @@ const batch = (over: Partial<WrittenBatch> = {}): WrittenBatch => ({
   networks: ["instagram", "linkedin"],
   rules: { instagram: { maxCaption: 600, recommendedMin: 100, recommendedMax: 300, maxHashtags: 5 } },
   posts: [
-    { id: "p1", headline: "Diwali boxes", caption: "Main", captions: { instagram: "Short words", linkedin: "Longer words" }, state: "kept", edited: false, advice: "A short headline reads better" },
-    { id: "p2", headline: "Delivery", caption: "Main two", captions: { instagram: "Two", linkedin: "Two long" }, state: "dropped", edited: true, advice: null },
+    { id: "p1", headline: "Diwali boxes", caption: "Main", captions: { instagram: "Short words", linkedin: "Longer words" }, state: "kept", edited: false, advice: "A short headline reads better", date: null, notDrawn: null },
+    { id: "p2", headline: "Delivery", caption: "Main two", captions: { instagram: "Two", linkedin: "Two long" }, state: "dropped", edited: true, advice: null, date: null, notDrawn: null },
   ],
+  weeks: null,
   ...over,
 });
 
@@ -52,7 +53,7 @@ describe("PostsPanel, the words of each post", () => {
   });
 
   it("offers the pictures only once something is kept, as the one dark button of a batch", () => {
-    const none = panel([batch({ posts: [{ id: "p2", headline: "Delivery", caption: "x", captions: {}, state: "dropped", edited: false, advice: null }] })]);
+    const none = panel([batch({ posts: [{ id: "p2", headline: "Delivery", caption: "x", captions: {}, state: "dropped", edited: false, advice: null, date: null, notDrawn: null }] })]);
     expect(none).toMatch(/<button[^>]*disabled=""[^>]*>Draw my pictures/);
     expect(panel([batch()])).not.toMatch(/<button[^>]*disabled=""[^>]*>Draw my pictures/);
   });
@@ -162,7 +163,7 @@ describe("a picture, opened", () => {
 });
 
 describe("the review page when the posting service cannot be reached", () => {
-  const empty = { jobs: [], batches: [], waiting: [], approved: [], expired: { batches: [], pictures: [] }, missingNetworks: [], reasons: [], unavailable: true };
+  const empty = { jobs: [], batches: [], waiting: [], approved: [], expired: { batches: [], pictures: [] }, missingNetworks: [], reasons: [], topics: [], limits: null, carousels: [], carousel: null, weeklyCarousel: false, canMakeCarousel: false, unavailable: true };
 
   it("says so once and does not also claim that nothing is waiting", () => {
     const html = render(createElement(ReviewView, { review: empty }));
@@ -193,7 +194,7 @@ describe("the review page when the posting service cannot be reached", () => {
 });
 
 describe("more networks", () => {
-  const empty = { jobs: [], batches: [], waiting: [], approved: [], expired: { batches: [], pictures: [] }, reasons: [], unavailable: false };
+  const empty = { jobs: [], batches: [], waiting: [], approved: [], expired: { batches: [], pictures: [] }, reasons: [], topics: [], limits: null, carousels: [], carousel: null, weeklyCarousel: false, canMakeCarousel: false, unavailable: false };
 
   it("offers to write the same posts for a network connected later, and says nothing when none is missing", () => {
     const html = render(createElement(ReviewView, { review: { ...empty, missingNetworks: ["facebook", "google"] } }));
@@ -213,3 +214,25 @@ describe("more networks", () => {
     expect(html).toContain("Writing your posts for the new network");
   });
 });
+
+describe("the weekly picture limits and the carousel on the review page", () => {
+  const empty = { jobs: [], batches: [], waiting: [], approved: [], expired: { batches: [], pictures: [] }, missingNetworks: [], reasons: [], topics: [], limits: null, carousels: [], carousel: null, weeklyCarousel: false, canMakeCarousel: false, unavailable: false };
+
+  it("says how many pictures each channel has left this week and when the count starts again", () => {
+    const limits = { restart: "2026-11-16", channels: [{ network: "instagram" as const, limit: 5, used: 2, left: 3 }, { network: "linkedin" as const, limit: 5, used: 5, left: 0 }] };
+    const html = render(createElement(ReviewView, { review: { ...empty, limits } })).replaceAll("<!-- -->", "").replace(/<[^>]+>/g, "");
+    expect(html).toContain("Pictures left this week: Instagram 3 of 5, LinkedIn 0 of 5.");
+    expect(html).toContain("the count starts again on 16 November");
+    noDash(html);
+  });
+
+  it("says nothing about limits when the posting service reports none", () => {
+    expect(render(createElement(ReviewView, { review: empty }))).not.toContain("Pictures left this week");
+  });
+
+  it("offers the carousel only when one exists or can be made", () => {
+    expect(render(createElement(ReviewView, { review: empty }))).not.toContain("Carousel of the week");
+    expect(render(createElement(ReviewView, { review: { ...empty, canMakeCarousel: true } }))).toContain("Carousel of the week");
+  });
+});
+

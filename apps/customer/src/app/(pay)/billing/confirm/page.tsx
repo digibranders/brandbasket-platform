@@ -5,11 +5,11 @@ import { notFound, redirect } from "next/navigation";
 import { connection } from "next/server";
 import { LinkButton } from "@/ui";
 import { TestCheckout, TestCheckoutRefused } from "@/features/checkout/components/test-checkout";
-import { afterPaymentHref, hrefAfter } from "@/features/checkout/rules/confirm-href";
+import { afterPaymentHref, hrefAfter, SERVICE_ADDED_HREF } from "@/features/checkout/rules/confirm-href";
 import { MEMBERSHIP_PATH } from "@/features/checkout/rules/membership";
 import { isFakeBillingProvider } from "@/features/checkout/server/billing";
 import { loadBusinessEntry } from "@/features/checkout/server/entry";
-import { confirmFirstPayment, projectIsOpen, verifyCheckoutFor } from "@/features/checkout/server/payment-confirmation";
+import { confirmFirstPayment, isCombinedCheckoutFor, projectIsOpen, verifyCheckoutFor } from "@/features/checkout/server/payment-confirmation";
 import { formatMoney } from "@/lib/format";
 import { requireOwner } from "@/lib/guards";
 
@@ -32,11 +32,12 @@ export default async function TestCheckoutPage({ searchParams }: { readonly sear
   // Paying is the owner's, as in startPaymentAction; anyone else is sent Home, which holds an unpaid sign-up on /checkout.
   const customer = await requireOwner();
   const { tenant, billing } = customer;
-  // A refreshed confirm page after paying records nothing and just moves on.
-  if (billing.hasAccess) redirect(afterPaymentHref(await projectIsOpen(tenant)));
-
   const { token } = await searchParams;
   const confirmed = typeof token === "string" ? await verifyCheckoutFor(tenant, { token }) : null;
+  // A customer with a plan pays here only for a service they added (a combined subscription, plan 63); it goes back to Plan & billing.
+  const addingService = confirmed !== null && (await isCombinedCheckoutFor(tenant, confirmed));
+  // A refreshed confirm page after paying records nothing and just moves on.
+  if (billing.hasAccess && !addingService) redirect(afterPaymentHref(await projectIsOpen(tenant)));
   if (typeof token !== "string" || confirmed === null) {
     return (
       <TestCheckoutRefused lede="This checkout link has expired or isn’t for your account, so nothing has been recorded.">
@@ -65,7 +66,7 @@ export default async function TestCheckoutPage({ searchParams }: { readonly sear
   const netCents = plan === null ? 0 : plan.initialAmountCents + bundledAddOnNetCents;
   const expected = plan === null || discountAmountCents >= netCents ? null : chargedAmountCents(netCents, discountAmountCents);
   const terms =
-    plan !== null && expected === confirmed.amountCents && plan.currency === confirmed.currency
+    !addingService && plan !== null && expected === confirmed.amountCents && plan.currency === confirmed.currency
       ? describeDiscountedPlanTerms(
           plan,
           discountAmountCents === 0 ? null : { amountCents: discountAmountCents, months: billing.subscription?.discountMonthsLeft ?? null },
@@ -86,7 +87,7 @@ export default async function TestCheckoutPage({ searchParams }: { readonly sear
         </>
       }
       action={pay}
-      cancelHref={MEMBERSHIP_PATH}
+      cancelHref={addingService ? SERVICE_ADDED_HREF : MEMBERSHIP_PATH}
       submitLabel={`Pay ${amount}`}
     />
   );

@@ -45,7 +45,7 @@ export async function revokeOtherSessionsAction(): Promise<RevokeOtherSessionsSt
 export async function deleteAccountAction(_previous: DeleteAccountState, formData: FormData): Promise<DeleteAccountState> {
   const parsed = parseDeleteForm(formData);
   if (!parsed.success) return { status: "error", message: parsed.message, field: null };
-  const customer = await requireCustomerAccess(ANY_ACCOUNT);
+  const customer = await requireCustomerAccess({ ...ANY_ACCOUNT, access: "owner" });
   const outcome = await closeAccountFor(customer, { ...parsed.details, password: parsed.password }, new Date());
   if (outcome.kind === "refused") return { status: "error", message: outcome.message, field: outcome.field };
   // The closure now locks the account on its own; ending every session as well means no device is left looking at it.

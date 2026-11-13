@@ -1,4 +1,5 @@
 import "server-only";
+import { addMonthsUtc, monthsPerCycle } from "@brandbasket/billing";
 import { findBillingProfile, withTenantScope } from "@brandbasket/db";
 import type { BillingInterval } from "@brandbasket/db";
 import type { MonthlyAddOnId } from "@brandbasket/shared/lib/billing/add-ons";
@@ -7,7 +8,7 @@ import { paymentReturnView, readPaymentReturn, type PaymentReturnView } from "@b
 import { planLabel } from "@brandbasket/shared/lib/billing/receipt-title";
 import { renewalCharge } from "@brandbasket/shared/lib/billing/terms";
 import { getAppDb } from "@/lib/db";
-import { formatDate, formatMoney } from "@/lib/format";
+import { formatDate, formatMoney, formatQuantity } from "@/lib/format";
 import type { CustomerContext } from "@/lib/guards";
 import { load, type Loaded } from "@/lib/loaded";
 import { listCustomerReceipts } from "../checkout/server/billing";
@@ -15,6 +16,7 @@ import { loadBillingDetailsView } from "../checkout/server/billing-details";
 import { listOpenCustomerCharges } from "../checkout/server/charges";
 import type { BillingDetailsView } from "../checkout/rules/billing-details-view";
 import { readChargeNotice, type ChargeNotice } from "../checkout/rules/charge-notices";
+import { gstNote, type PaymentSummary, type PaymentSummaryRow } from "../checkout/rules/payment-summary";
 import { servicesAfterToggle } from "../checkout/rules/membership";
 import { receiptDocument, type ReceiptLine } from "../checkout/rules/receipt-document";
 import {
@@ -25,6 +27,7 @@ import {
   invoiceRows,
   nextPaymentLine,
   paymentMethodView,
+  planChangesFirst,
   planStartsAgain,
   planStateOf,
   readAddParam,
@@ -52,8 +55,8 @@ type Params = Readonly<Record<string, string | string[] | undefined>>;
 
 /** What a service's row offers, already worded. */
 export type ServiceAction =
-  /** Add it now, paying `quote` first. */
-  | { readonly kind: "add"; readonly quote: string }
+  /** Add it now, after the confirm dialog shows `summary`: what is paid today and what follows. */
+  | { readonly kind: "add"; readonly summary: PaymentSummary }
   /** It is ending: keep it at no charge. */
   | { readonly kind: "keep" }
   /** It can be cancelled from the next billing date. */
@@ -71,6 +74,8 @@ export interface ServiceRowView {
   /** What it lists at a month. The package discount is not taken off here: This month's bill shows it once. */
   readonly price: string;
   readonly line: string;
+  /** What its first month costs on the first-month offer ("₹1"), when Add would give it; null otherwise. */
+  readonly offerPrice: string | null;
   readonly action: ServiceAction;
 }
 
@@ -88,6 +93,8 @@ export interface ServicesPanelView {
   /** The next payment's bill, or null when there is no live plan to bill. */
   readonly bill: BillView | null;
   readonly headerLine: string | null;
+  /** The strip above the services: the next payment and its date, and how many of the three plans are on. */
+  readonly glance: { readonly nextAmount: string; readonly nextOn: string; readonly plansHeld: number; readonly plansTotal: number } | null;
 }
 
 export interface ReactivationCardView {
@@ -100,6 +107,8 @@ export interface ReactivationCardView {
   readonly chosen: readonly MonthlyAddOnId[] | null;
   /** The picker's rows for a customer who cancelled themselves: each service at its own price, and the link that ticks it. */
   readonly picker: readonly { readonly addOn: MonthlyAddOnId; readonly name: string; readonly price: string; readonly selected: boolean; readonly href: string }[] | null;
+  /** What the confirm dialog shows before the payment opens. */
+  readonly summary: PaymentSummary;
 }
 
 export interface NoticesView {
@@ -121,15 +130,40 @@ export interface BillingOverview {
   readonly reactivation: Loaded<ReactivationCardView | null> | null;
 }
 
+/** Add on a yearly plan, or one not billed by a combined subscription: the charge for the days left, then the new payment. */
+function quoteSummary(offer: Extract<AddOnOffer, { kind: "quote" }>, entry: AddOnPageEntry, interval: BillingInterval, now: Date): PaymentSummary {
+  const { currency } = entry.price;
+  const days = formatQuantity(offer.daysLeft, "day");
+  return {
+    title: `Add ${serviceName(entry.addOn)}`,
+    rows: [{ key: "rest", label: `${serviceName(entry.addOn)}, ${days} left ${interval === "year" ? "in your year" : "this month"}`, amount: formatMoney(offer.chargeCents, currency), tone: "plain" }],
+    totalLabel: "Due today",
+    total: formatMoney(offer.chargeCents, currency),
+    notes: [`Then ${formatMoney(offer.nextRenewalCents, currency)} ${perCycle(interval)} from ${formatDate(offer.renewsOn, now)}.`, ...gstNote(currency)],
+  };
+}
+
 /**
- * "₹3,730 today for the 14 days left this month, then ₹11,799 a month from Thu 19 Nov, GST included." Paid yearly: "₹21,563
- * today for the 243 days left in your year, then ₹64,778 a year from Thu 11 Nov 2027, GST included."
+ * Add as one combined subscription (plan 63, Option Y): the service up to the new billing date (₹1 on the first-month offer), the
+ * plan's days from its paid-through date to then, and every service at its price a month from then.
  */
-function quoteLine(offer: Extract<AddOnOffer, { kind: "quote" }>, entry: AddOnPageEntry, interval: BillingInterval, now: Date): string {
-  const days = offer.daysLeft === 1 ? "the 1 day left" : `the ${offer.daysLeft} days left`;
-  const tax = entry.price.taxRateBasisPoints > 0 ? ", GST included" : "";
-  const period = interval === "year" ? "in your year" : "this month";
-  return `${formatMoney(offer.chargeCents, entry.price.currency)} today for ${days} ${period}, then ${formatMoney(offer.nextRenewalCents, entry.price.currency)} ${perCycle(interval)} from ${formatDate(offer.renewsOn, now)}${tax}.`;
+function combinedSummary(offer: Extract<AddOnOffer, { kind: "combined" }>, entry: AddOnPageEntry, now: Date): PaymentSummary {
+  const { currency } = entry.price;
+  const name = serviceName(entry.addOn);
+  const until = formatDate(offer.newBillingDate, now);
+  const rows: PaymentSummaryRow[] = [
+    { key: "service", label: offer.offer ? `${name}, first month` : `${name}, until ${until}`, amount: formatMoney(offer.serviceCents, currency), tone: "plain" },
+  ];
+  if (offer.extensionCents > 0) {
+    rows.push({ key: "plan", label: `Your plan, ${formatDate(offer.paidThroughAt, now)} to ${until}`, amount: formatMoney(offer.extensionCents, currency), tone: "plain" });
+  }
+  return {
+    title: `Add ${name}`,
+    rows,
+    totalLabel: "Due today",
+    total: formatMoney(offer.upfrontCents, currency),
+    notes: [`From ${until}, you pay ${formatMoney(offer.monthlyCents, currency)} a month for all your services.`, ...gstNote(currency)],
+  };
 }
 
 const ASK_THE_TEAM = "Ask the team and we'll add it for you.";
@@ -137,7 +171,11 @@ const ASK_THE_TEAM = "Ask the team and we'll add it for you.";
 function availableAction(offer: AddOnOffer, entry: AddOnPageEntry, canAdd: boolean, interval: BillingInterval, now: Date): ServiceAction {
   switch (offer.kind) {
     case "quote":
-      return canAdd ? { kind: "add", quote: quoteLine(offer, entry, interval, now) } : { kind: "none" };
+      return canAdd ? { kind: "add", summary: quoteSummary(offer, entry, interval, now) } : { kind: "none" };
+    case "combined":
+      return canAdd ? { kind: "add", summary: combinedSummary(offer, entry, now) } : { kind: "none" };
+    case "change-pending":
+      return { kind: "note", text: planChangesFirst(offer.changesOn, now), ask: false };
     case "renewal-due":
       return offer.renewsOn === null ? { kind: "note", text: ASK_THE_TEAM, ask: true } : { kind: "note", text: `Your payment is due within the hour. Add it after ${formatDate(offer.renewsOn, now)}.`, ask: false };
     case "manual":
@@ -157,7 +195,8 @@ function serviceRow(entry: AddOnPageEntry, canManage: boolean, canAdd: boolean, 
   const payment = interval === "year" ? "yearly" : "monthly";
   const base = { addOn: entry.addOn, service: SERVICE_KEY_OF[entry.addOn], name: serviceName(entry.addOn), status: addOnStatus(entry), price: formatMoney(entry.price.listCents, entry.price.currency) };
   if (entry.kind === "available") {
-    return { ...base, line: addOnById(entry.addOn).line, action: canManage ? availableAction(entry.offer, entry, canAdd, interval, now) : { kind: "none" } };
+    const offerPrice = entry.offer.kind === "combined" && entry.offer.offer ? formatMoney(entry.offer.serviceCents, entry.price.currency) : null;
+    return { ...base, line: addOnById(entry.addOn).line, offerPrice, action: canManage ? availableAction(entry.offer, entry, canAdd, interval, now) : { kind: "none" } };
   }
   const line =
     entry.endsOn !== null
@@ -176,7 +215,7 @@ function serviceRow(entry: AddOnPageEntry, canManage: boolean, canAdd: boolean, 
       : entry.drop !== null && entry.nextBillingOn !== null
         ? { kind: "cancel" }
         : { kind: "none" };
-  return { ...base, line, action };
+  return { ...base, line, offerPrice: null, action };
 }
 
 /** The services, the cancel dialog and the bill, for a business with a live plan. */
@@ -201,6 +240,15 @@ export async function loadServicesPanel(customer: CustomerContext, canAdd: boole
     cancel: canManage && options.length > 0 && nextBillingOn !== null ? { endsOn: formatDate(nextBillingOn, now), options } : null,
     bill,
     headerLine: subscription === null || plan === null || bill === null ? null : nextPaymentLine({ subscription, totalCents: bill.totalCents, plan, now }),
+    glance:
+      bill === null || nextBillingOn === null
+        ? null
+        : {
+            nextAmount: bill.total,
+            nextOn: formatDate(nextBillingOn, now),
+            plansHeld: PLAN_ADD_ON_IDS.filter((addOn) => page.addOns.some((entry) => entry.kind === "included" && entry.addOn === addOn)).length,
+            plansTotal: PLAN_ADD_ON_IDS.length,
+          },
   };
 }
 
@@ -221,12 +269,23 @@ export async function loadReactivationCard(customer: CustomerContext, params: Pa
   // before this too (chargedAmountCents threw); the panel shows its error state rather than a price nobody is charged.
   const monthlyAmount = renewalCharge(plan, reactivation.discountCents, reactivation.netCents);
   if (monthlyAmount === null) throw new RangeError(`The reactivation discount leaves nothing to charge for business ${customer.businessId}.`);
+  const per = perCycle(reactivation.billingInterval);
+  const now = new Date();
+  const rows: PaymentSummaryRow[] = reactivation.lines.map((line) => ({ key: line.addOn, label: line.title, amount: formatMoney(line.netCents, plan.currency), tone: "plain" }));
+  if (reactivation.discountCents > 0) rows.push({ key: "code", label: "Your code", amount: `-${formatMoney(reactivation.discountCents, plan.currency)}`, tone: "save" });
   return {
     planName: planLabel(plan.name),
     monthlyAmount,
-    per: perCycle(reactivation.billingInterval),
+    per,
     chosen: reactivation.cancelled ? reactivation.services : null,
     picker,
+    summary: {
+      title: "Reactivate your plan",
+      rows,
+      totalLabel: "Due today",
+      total: monthlyAmount,
+      notes: [`It renews ${per} from ${formatDate(addMonthsUtc(now, monthsPerCycle(reactivation.billingInterval)), now)}.`, ...gstNote(plan.currency)],
+    },
   };
 }
 

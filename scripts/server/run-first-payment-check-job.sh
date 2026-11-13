@@ -5,16 +5,16 @@
 # arrived (docs/plans/63 in the BrandBasket workspace). Installed on the server as /usr/local/sbin/brandbasket-first-payment-check-job
 # (root-owned) and run by brandbasket-first-payment-check.service as the app user.
 #
-# Assumes: the dashboard is up on 127.0.0.1:3201 and PAYMENT_RECONCILE_TOKEN is set in the env file.
+# Assumes: the customer app is up on 127.0.0.1:3202 and PAYMENT_RECONCILE_TOKEN is set in the env file.
 # The token is passed to curl on its standard input, so it never appears in the process list. Fails (exit 1) on any answer but
 # 2xx and still prints the report, so systemd and journalctl show a failed run: 502 means Razorpay could not be asked about a
 # checkout. Takes no action in the database itself; it only records a payment Razorpay already holds.
 #
-#   run-first-payment-check-job.sh --env-file /srv/brandbasket/shared/platform.env.local [--url URL]
+#   run-first-payment-check-job.sh --env-file /srv/brandbasket/shared/customer.env.production [--url URL]
 set -euo pipefail
 
 ENV_FILE=""
-URL="http://127.0.0.1:3201/api/internal/check-first-payments"
+URL="http://127.0.0.1:3202/api/internal/check-first-payments"
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --env-file) ENV_FILE="${2:?--env-file needs a path}"; shift 2 ;;

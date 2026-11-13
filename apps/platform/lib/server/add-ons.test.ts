@@ -8,6 +8,7 @@ import {
   findPlanById,
   findReferralCodeById,
   findSubscriptionById,
+  findWaitingAddedServiceSuccessor,
   findWaitingSuccessor,
   isPackageOfferForfeited,
   recordBundledAddOnRemoval,
@@ -23,7 +24,8 @@ import type { GrantedCustomer } from "./customer-access";
 import { getAppDb, getStaffDb } from "./db";
 import { ensureDiscountPlan } from "./discount-plans";
 import { readAddOnAssessment, startAddOn } from "@brandbasket/shared/server/basket-change";
-import { ADD_ON_CHECKOUT_RATE_LIMIT, addBundledAddOnFor, loadAddOnsPage, removeBundledAddOnFor } from "./add-ons";
+import { planCombinedAddOn, startCombinedAddOn } from "@brandbasket/shared/server/added-service";
+import { ADD_ON_CHECKOUT_RATE_LIMIT, addBundledAddOnFor, hasAddedServiceAwaitingPayment, loadAddOnsPage, removeBundledAddOnFor } from "./add-ons";
 
 // Database doubles; the bundled add-on queries are proven in packages/db and the pure prices in packages/shared/lib/billing.
 // What is checked here is what the page is shown, the order of the gates, that the provider is only ever called with no
@@ -38,6 +40,8 @@ vi.mock("@brandbasket/shared/server/basket-change", async (importOriginal) => ({
   readAddOnAssessment: vi.fn(),
   startAddOn: vi.fn(),
 }));
+// The combined subscription's rules are proven against a database in packages/shared; what is checked here is what the page makes of them.
+vi.mock("@brandbasket/shared/server/added-service", () => ({ planCombinedAddOn: vi.fn(), startCombinedAddOn: vi.fn() }));
 vi.mock("@brandbasket/db", () => {
   return {
     consumeRateLimit: vi.fn(),
@@ -48,6 +52,7 @@ vi.mock("@brandbasket/db", () => {
     findPlanById: vi.fn(),
     findReferralCodeById: vi.fn(),
     findSubscriptionById: vi.fn(),
+    findWaitingAddedServiceSuccessor: vi.fn(),
     findWaitingSuccessor: vi.fn(),
     flagSubscriptionForAttention: vi.fn(),
     isPackageOfferForfeited: vi.fn(),
@@ -129,6 +134,8 @@ beforeEach(() => {
   vi.mocked(consumeRateLimit).mockResolvedValue({ allowed: true, remaining: 9, retryAfterSeconds: 0 });
   vi.mocked(withTenantScope).mockImplementation(async (_db, _scope, work) => work(appTx));
   vi.mocked(readAddOnAssessment).mockResolvedValue(null);
+  vi.mocked(planCombinedAddOn).mockResolvedValue({ kind: "not-combined" });
+  vi.mocked(startCombinedAddOn).mockResolvedValue({ kind: "not-combined" });
 });
 
 afterEach(() => {
@@ -319,6 +326,78 @@ describe("loadAddOnsPage", () => {
     vi.mocked(readAddOnAssessment).mockResolvedValue(assessment as never);
 
     expect((await loadAddOnsPage(subscribed, NOW)).addOns[1]).toMatchObject({ kind: "available", offer });
+  });
+
+  describe("the offer for a service that can be added", () => {
+    const QUOTE = {
+      kind: "offer",
+      quote: { kind: "quote", netCents: 316_129, chargeCents: 373_032, free: false, nextRenewalCents: 1_179_882, periodEnd: PAID_THROUGH, daysLeft: 14, periodDays: 31 },
+    } as never;
+    const NEW_DATE = new Date("2026-11-22T09:00:00.000Z");
+    const planned = (overrides: Record<string, unknown> = {}) =>
+      ({
+        kind: "planned",
+        planned: {
+          subscription: { paidThroughAt: PAID_THROUGH },
+          upfrontCents: 96_842,
+          serviceCents: 100,
+          extensionCents: 96_742,
+          trialPriceCents: 100,
+          monthlyCents: 599_800,
+          newBillingDate: NEW_DATE,
+          ...overrides,
+        },
+      }) as never;
+
+    it("is the combined subscription on a monthly plan, with the first-month offer marked and read as staff", async () => {
+      vi.mocked(readAddOnAssessment).mockResolvedValue(QUOTE);
+      vi.mocked(planCombinedAddOn).mockResolvedValue(planned());
+
+      expect((await loadAddOnsPage(subscribed, NOW)).addOns[1]).toMatchObject({
+        kind: "available",
+        offer: { kind: "combined", upfrontCents: 96_842, serviceCents: 100, extensionCents: 96_742, paidThroughAt: PAID_THROUGH, newBillingDate: NEW_DATE, monthlyCents: 599_800, offer: true },
+      });
+      expect(planCombinedAddOn).toHaveBeenCalledWith(staffDb, { businessId: BUSINESS_ID, addOn: "social-media", providerName: "fake", now: NOW });
+    });
+
+    it("is not marked as an offer when the service is taken at its price", async () => {
+      vi.mocked(readAddOnAssessment).mockResolvedValue(QUOTE);
+      vi.mocked(planCombinedAddOn).mockResolvedValue(planned({ trialPriceCents: null, serviceCents: 250_000 }));
+
+      expect((await loadAddOnsPage(subscribed, NOW)).addOns[1]).toMatchObject({ offer: { kind: "combined", offer: false, serviceCents: 250_000 } });
+    });
+
+    it("stays the charge for the rest of the month when the plan is not one a combined subscription can replace", async () => {
+      vi.mocked(readAddOnAssessment).mockResolvedValue(QUOTE);
+
+      expect((await loadAddOnsPage(subscribed, NOW)).addOns[1]).toMatchObject({ offer: { kind: "quote", chargeCents: 373_032 } });
+    });
+
+    it("waits, and says when, while a service is stopping or the plan is changing", async () => {
+      vi.mocked(readAddOnAssessment).mockResolvedValue(QUOTE);
+      vi.mocked(planCombinedAddOn).mockResolvedValue({ kind: "change-pending", changesOn: PAID_THROUGH });
+
+      expect((await loadAddOnsPage(subscribed, NOW)).addOns[1]).toMatchObject({ offer: { kind: "change-pending", changesOn: PAID_THROUGH } });
+    });
+
+    it.each([
+      [{ kind: "refused", assessment: { kind: "unavailable", reason: "renewal-due" } }, { kind: "renewal-due", renewsOn: PAID_THROUGH }],
+      [{ kind: "refused", assessment: { kind: "blocked", reason: "unpaid" } }, { kind: "write" }],
+      [{ kind: "changed" }, { kind: "write" }],
+      [planned({ subscription: { paidThroughAt: null } }), { kind: "write" }],
+    ])("turns the plan %o into the offer %o", async (plan, offer) => {
+      vi.mocked(readAddOnAssessment).mockResolvedValue(QUOTE);
+      vi.mocked(planCombinedAddOn).mockResolvedValue(plan as never);
+
+      expect((await loadAddOnsPage(subscribed, NOW)).addOns[1]).toMatchObject({ kind: "available", offer });
+    });
+
+    it("does not plan a combined subscription for an offer that is not a charge to pay", async () => {
+      vi.mocked(readAddOnAssessment).mockResolvedValue({ kind: "blocked", reason: "manual-billing" } as never);
+
+      expect((await loadAddOnsPage(subscribed, NOW)).addOns[1]).toMatchObject({ offer: { kind: "manual" } });
+      expect(planCombinedAddOn).not.toHaveBeenCalled();
+    });
   });
 
   it("says when an add-on added this month joins the monthly payment", async () => {
@@ -567,6 +646,72 @@ describe("removeBundledAddOnFor", () => {
 });
 
 describe("addBundledAddOnFor", () => {
+  const COMBINED_INPUT = { businessId: BUSINESS_ID, businessName: "Riverside Dental", email: "ana@example.com", addOn: "social-media", now: NOW };
+
+  it("opens the combined subscription first and sends a Razorpay customer to approve it on the pay page", async () => {
+    vi.mocked(startCombinedAddOn).mockResolvedValue({ kind: "approve", subscriptionId: "sub-2", providerSubscriptionId: "rzp-2", checkoutUrl: "https://rzp.example/pay" });
+    vi.mocked(getBillingProvider).mockReturnValue({ ...provider, name: "razorpay" });
+
+    expect(await addBundledAddOnFor(customer, "social-media", NOW)).toEqual({ kind: "approve", url: "/billing/services/pay" });
+    expect(startCombinedAddOn).toHaveBeenCalledWith(expect.objectContaining({ staffDb, provider: expect.objectContaining({ name: "razorpay" }) }), COMBINED_INPUT);
+    expect(startAddOn).not.toHaveBeenCalled();
+  });
+
+  it("sends a customer on the test provider to the checkout address it gave", async () => {
+    vi.mocked(startCombinedAddOn).mockResolvedValue({ kind: "approve", subscriptionId: "sub-2", providerSubscriptionId: "fake-2", checkoutUrl: "/billing/confirm?token=t" });
+
+    expect(await addBundledAddOnFor(customer, "social-media", NOW)).toEqual({ kind: "approve", url: "/billing/confirm?token=t" });
+  });
+
+  it("refuses a provider checkout address that is not safe to follow", async () => {
+    vi.mocked(startCombinedAddOn).mockResolvedValue({ kind: "approve", subscriptionId: "sub-2", providerSubscriptionId: "fake-2", checkoutUrl: "//evil.example/pay" });
+
+    expect(await addBundledAddOnFor(customer, "social-media", NOW)).toMatchObject({ kind: "refused", message: expect.stringContaining("Reload the page") });
+  });
+
+  it("tells a customer whose last payment is still being confirmed to wait, and opens nothing else", async () => {
+    vi.mocked(startCombinedAddOn).mockResolvedValue({ kind: "payment-pending" });
+
+    expect(await addBundledAddOnFor(customer, "social-media", NOW)).toEqual({
+      kind: "refused",
+      message: "Your last payment is still being confirmed. Please wait a minute and reload the page.",
+    });
+    expect(startAddOn).not.toHaveBeenCalled();
+  });
+
+  it("falls back to the charge for the rest of the month when it is not a case for a combined subscription", async () => {
+    vi.mocked(startCombinedAddOn).mockResolvedValue({ kind: "not-combined" });
+    vi.mocked(startAddOn).mockResolvedValue({ kind: "pay", chargeId: "charge-1" });
+
+    expect(await addBundledAddOnFor(customer, "social-media", NOW)).toEqual({ kind: "pay", chargeId: "charge-1" });
+  });
+
+  it("says the plan changes first, and when, and opens no charge", async () => {
+    vi.mocked(startCombinedAddOn).mockResolvedValue({ kind: "change-pending", changesOn: new Date("2026-11-12T09:00:00.000Z") });
+
+    expect(await addBundledAddOnFor(customer, "social-media", NOW)).toEqual({
+      kind: "refused",
+      message: "Your plan changes on 12 November 2026. You can add a new service after that.",
+    });
+    expect(startAddOn).not.toHaveBeenCalled();
+  });
+
+  it("says when the plan starts again while a kept plan waits, on the combined path too", async () => {
+    vi.mocked(startCombinedAddOn).mockResolvedValue({ kind: "refused", assessment: { kind: "plan-kept", startsOn: new Date("2026-11-19T00:00:00.000Z") } });
+
+    expect(await addBundledAddOnFor(customer, "social-media", NOW)).toEqual({
+      kind: "refused",
+      message: "Your plan starts again on 19 November 2026. You can change your services from then.",
+    });
+  });
+
+  it("says to reload when the business changed while the subscription was opened", async () => {
+    vi.mocked(startCombinedAddOn).mockResolvedValue({ kind: "changed" });
+
+    expect(await addBundledAddOnFor(customer, "social-media", NOW)).toMatchObject({ kind: "refused", message: expect.stringContaining("Reload the page") });
+    expect(startAddOn).not.toHaveBeenCalled();
+  });
+
   it("sends the customer to pay the charge for the rest of the month", async () => {
     vi.mocked(startAddOn).mockResolvedValue({ kind: "pay", chargeId: "charge-1" });
 
@@ -601,5 +746,28 @@ describe("addBundledAddOnFor", () => {
     expect(await addBundledAddOnFor(customer, "social-media", NOW)).toMatchObject({ kind: "refused" });
     expect(consumeRateLimit).toHaveBeenCalledWith(appDb, `add-on-checkout:business:${BUSINESS_ID}`, ADD_ON_CHECKOUT_RATE_LIMIT);
     expect(startAddOn).not.toHaveBeenCalled();
+    expect(startCombinedAddOn).not.toHaveBeenCalled();
+  });
+});
+
+describe("hasAddedServiceAwaitingPayment", () => {
+  const withSubscription = { ...customer, billing: { ...customer.billing, subscription: { id: "sub-1" } as never } };
+
+  it("is false without a subscription, and does not ask", async () => {
+    expect(await hasAddedServiceAwaitingPayment(customer)).toBe(false);
+    expect(findWaitingAddedServiceSuccessor).not.toHaveBeenCalled();
+  });
+
+  it("is true while a combined subscription of this business waits for its upfront payment", async () => {
+    vi.mocked(findWaitingAddedServiceSuccessor).mockResolvedValue({ id: "sub-2", businessId: BUSINESS_ID } as never);
+    expect(await hasAddedServiceAwaitingPayment(withSubscription)).toBe(true);
+    expect(findWaitingAddedServiceSuccessor).toHaveBeenCalledWith(staffDb, "sub-1");
+  });
+
+  it("is false when none waits, or it belongs to another business", async () => {
+    vi.mocked(findWaitingAddedServiceSuccessor).mockResolvedValue(null);
+    expect(await hasAddedServiceAwaitingPayment(withSubscription)).toBe(false);
+    vi.mocked(findWaitingAddedServiceSuccessor).mockResolvedValue({ id: "sub-2", businessId: "other" } as never);
+    expect(await hasAddedServiceAwaitingPayment(withSubscription)).toBe(false);
   });
 });

@@ -8,6 +8,7 @@ import { isUuid } from "./tenant";
 import {
   addOnPayments,
   addOnSubscriptions,
+  bundledAddOns,
   businesses,
   charges,
   payments,
@@ -692,13 +693,16 @@ export async function openCheckoutSubscription(db: Runner, input: CheckoutSubscr
   });
 }
 
-/** The unpaid or authorised-but-uncharged successor of a kept plan, or null. At most one exists (subscriptions_one_successor_idx). */
+/**
+ * The unpaid or authorised-but-uncharged successor of a kept plan, or null. At most one exists (subscriptions_one_successor_idx). A
+ * combined subscription for an added service (plan 63, Option Y) also continues one but froze an upfront payment, and is not a kept plan.
+ */
 export async function findWaitingSuccessor(db: Runner, subscriptionId: string): Promise<Subscription | null> {
   if (!isUuid(subscriptionId)) return null;
   const rows = await db
     .select(SUBSCRIPTION_COLUMNS)
     .from(subscriptions)
-    .where(and(eq(subscriptions.continuesId, subscriptionId), ne(subscriptions.status, "cancelled"), subscriptionWaitingToStart()))
+    .where(and(eq(subscriptions.continuesId, subscriptionId), ne(subscriptions.status, "cancelled"), subscriptionWaitingToStart(), isNull(subscriptions.firstPaymentCents)))
     .limit(1);
   return rows[0] ?? null;
 }
@@ -730,6 +734,9 @@ export async function openKeptSubscription(db: Runner, input: KeptSubscription):
     if (input.replacing !== null) {
       await cancelStaleSubscription(tx, { subscriptionId: input.replacing, businessId: continues.businessId, now: input.now });
     }
+    // A combined subscription for an added service left unpaid is dropped: only one successor may wait (subscriptions_one_successor_idx).
+    const unpaidAdd = await findWaitingAddedServiceSuccessor(tx, continues.id);
+    if (unpaidAdd !== null) await cancelStaleSubscription(tx, { subscriptionId: unpaidAdd.id, businessId: continues.businessId, now: input.now });
     const subscription = await insertSubscription(tx, {
       businessId: continues.businessId,
       planId: continues.planId,
@@ -751,6 +758,162 @@ export async function openKeptSubscription(db: Runner, input: KeptSubscription):
     await insertBundledAddOns(tx, { businessId: continues.businessId, subscriptionId: subscription.id, items: input.bundledAddOns });
     return subscription;
   });
+}
+
+/**
+ * A service added after sign-up as one combined subscription (plan 63, Option Y): the successor the customer approves, for every
+ * service they will have, starting on the new billing date, with what falls before that taken upfront as an add-on charge.
+ */
+export interface AddedServiceSuccessor {
+  /** The business's current, paid subscription. Its plan, discount months, commitment and ad credit carry over. */
+  readonly continues: Subscription;
+  readonly provider: BillingProviderName;
+  readonly providerSubscriptionId: string;
+  /** Every service the combined subscription bills, the new one included, each at its price from the new billing date. */
+  readonly bundledAddOns: readonly NewBundledAddOn[];
+  /** The service being added: the only line that keeps its first-month price when it is on the offer. */
+  readonly addOn: string;
+  /** What the code takes off each month of the combined subscription. */
+  readonly discountAmountCents: number;
+  /** What the customer pays upfront when they approve it, GST included: the added service and the plan up to the new billing date. */
+  readonly upfrontCents: number;
+  /** The combined subscription's first full charge: the new billing date. */
+  readonly newBillingDate: Date;
+  /** An earlier combined subscription for this business that was never paid, ended here so only one waits. */
+  readonly replacing: string | null;
+  readonly now: Date;
+}
+
+/**
+ * Opens the combined subscription a service added after sign-up is paid with (plan 63, Option Y): an add-on charge for the upfront
+ * amount, and an `incomplete` successor of the current subscription that starts on the new billing date, with its lines pending and
+ * the added one linked to the charge. The current subscription stays the business's own until the upfront amount is paid. An earlier
+ * unpaid one is ended first and its charge let go. Staff connection, under the business's billing lock. Returns the successor and the
+ * charge's id.
+ */
+export async function openAddedServiceSuccessor(db: Runner, input: AddedServiceSuccessor): Promise<Subscription> {
+  const { continues } = input;
+  if (continues.paidThroughAt === null || continues.activatedAt === null) throw new Error(`Subscription ${continues.id} has no paid month to add a service to`);
+  if (continues.billingInterval !== "month") throw new Error(`Subscription ${continues.id} is not billed monthly`);
+  if (input.newBillingDate.getTime() < continues.paidThroughAt.getTime()) throw new RangeError("The new billing date cannot be before the end of the paid month");
+  if (!input.bundledAddOns.some((line) => line.addOn === input.addOn)) throw new Error(`The combined subscription does not bill ${input.addOn}`);
+  return db.transaction(async (tx) => {
+    if (input.replacing !== null) await cancelStaleSubscription(tx, { subscriptionId: input.replacing, businessId: continues.businessId, now: input.now });
+    const subscription = await insertSubscription(tx, {
+      businessId: continues.businessId,
+      planId: continues.planId,
+      provider: input.provider,
+      providerSubscriptionId: input.providerSubscriptionId,
+      billingInterval: "month",
+      referralCodeId: continues.referralCodeId,
+      discountAmountCents: input.discountAmountCents,
+      discountMonthsLeft: continues.discountMonthsLeft,
+      nextDiscountAmountCents: null,
+      retentionDiscountCents: Math.min(continues.retentionDiscountCents, input.discountAmountCents),
+      commitmentEndsAt: continues.commitmentEndsAt,
+      bundledAddOnNetCents: bundledNetCents(input.bundledAddOns),
+      adCreditCents: continues.adCreditCents,
+      continuesId: continues.id,
+      startAt: input.newBillingDate,
+      firstPaymentCents: input.upfrontCents,
+      firstChargeAt: input.newBillingDate,
+    });
+    await insertBundledAddOns(tx, {
+      businessId: continues.businessId,
+      subscriptionId: subscription.id,
+      // Only the added service can be on the first-month offer: the others carry on at their price.
+      items: input.bundledAddOns.map((line) => (line.addOn === input.addOn ? line : { ...line, trialPriceCents: null })),
+    });
+    return subscription;
+  });
+}
+
+/**
+ * The upfront payment of a combined subscription as a paid add-on charge on the added service's line, for its tax invoice. Written only
+ * once the payment is recorded, so there is never an open charge for it to pay or waive another way. Staff connection, in the
+ * transaction that records the payment.
+ */
+export async function recordAddedServiceCharge(
+  db: Runner,
+  input: {
+    readonly businessId: string;
+    readonly bundledAddOnId: string;
+    readonly description: string;
+    readonly amountCents: number;
+    readonly taxRateBasisPoints: number;
+    readonly currency: BillingCurrency;
+    readonly paymentId: string;
+    readonly paidAt: Date;
+  },
+): Promise<string> {
+  const [charge] = await db
+    .insert(charges)
+    .values({
+      businessId: input.businessId,
+      kind: "add_on",
+      description: input.description,
+      quantity: 1,
+      unitAmountCents: input.amountCents,
+      taxRateBasisPoints: input.taxRateBasisPoints,
+      amountCents: input.amountCents,
+      currency: input.currency,
+      status: "paid",
+      paymentId: input.paymentId,
+      paidAt: input.paidAt,
+      createdByStaffId: null,
+    })
+    .returning({ id: charges.id });
+  if (charge === undefined) throw new Error("The add-on charge was not saved");
+  const lines = await db
+    .update(bundledAddOns)
+    .set({ chargeId: charge.id })
+    .where(and(eq(bundledAddOns.id, input.bundledAddOnId), eq(bundledAddOns.businessId, input.businessId)))
+    .returning({ id: bundledAddOns.id });
+  if (lines.length !== 1) throw new Error(`No line ${input.bundledAddOnId} of business ${input.businessId} to put the add-on charge on`);
+  return charge.id;
+}
+
+/** The business's combined subscription for an added service that is waiting for its upfront payment, or null. Staff connection. */
+export async function findWaitingAddedServiceSuccessor(db: Runner, subscriptionId: string): Promise<Subscription | null> {
+  if (!isUuid(subscriptionId)) return null;
+  const [row] = await db
+    .select(SUBSCRIPTION_COLUMNS)
+    .from(subscriptions)
+    .where(
+      and(
+        eq(subscriptions.continuesId, subscriptionId),
+        ne(subscriptions.status, "cancelled"),
+        isNull(subscriptions.activatedAt),
+        isNotNull(subscriptions.firstPaymentCents),
+      ),
+    )
+    .limit(1);
+  return row ?? null;
+}
+
+/** A subscription that has taken over from this one (a combined subscription paid for, or a kept plan charged), or null. */
+export async function findActivatedSuccessor(db: Runner, subscriptionId: string): Promise<Subscription | null> {
+  if (!isUuid(subscriptionId)) return null;
+  const [row] = await db
+    .select(SUBSCRIPTION_COLUMNS)
+    .from(subscriptions)
+    .where(and(eq(subscriptions.continuesId, subscriptionId), ne(subscriptions.status, "cancelled"), isNotNull(subscriptions.activatedAt)))
+    .limit(1);
+  return row ?? null;
+}
+
+/**
+ * The subscription a combined one has replaced (plan 63, Option Y): its lines end, since the combined subscription bills them now,
+ * and it carries a cancel request, since it is cancelled at the provider at the end of the month it is paid for. Its paid period is
+ * left as it is. Staff connection, under the billing lock.
+ */
+export async function markReplacedBySuccessor(db: Runner, input: { readonly subscriptionId: string; readonly now: Date }): Promise<void> {
+  if (!isUuid(input.subscriptionId)) return;
+  await db
+    .update(subscriptions)
+    .set({ cancelRequestedAt: input.now, updatedAt: input.now })
+    .where(and(eq(subscriptions.id, input.subscriptionId), isNull(subscriptions.cancelRequestedAt)));
+  await removeBundledAddOnsOf(db, { subscriptionId: input.subscriptionId, now: input.now });
 }
 
 export interface ConfirmedKeep {

@@ -3,7 +3,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
-vi.mock("@/app/app-host/(protected)/social/actions", () => ({ startSiteJobAction: vi.fn() }));
+vi.mock("@/app/app-host/(protected)/social/actions", () => ({ startSiteJobAction: vi.fn(), startNextMonthAction: vi.fn() }));
 
 import { AiStartCard, StartDialog } from "@/components/social/ai-start-card";
 import type { SiteJob } from "@/lib/social/ai";

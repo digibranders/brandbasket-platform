@@ -16,14 +16,16 @@ import {
   listReceiptsForBusiness,
   listTaxInvoicesForPayments,
   withTenantScope,
+  type BillingInterval,
   type CurrentPaymentMethod,
   type Plan,
   type Receipt,
   type TaxInvoice,
 } from "@brandbasket/db";
 import type { MonthlyAddOnId } from "@brandbasket/shared/lib/billing/add-ons";
-import { reactivationNetCents, readBundleSelection } from "@brandbasket/shared/lib/billing/bundle";
+import { bundleLines, bundleNetCents, readBundleSelection, type BundleLine } from "@brandbasket/shared/lib/billing/bundle";
 import { loadCarriedCode, loadReactivationBasket } from "@brandbasket/shared/server/reactivation-basket";
+import type { MemberAccess } from "@/lib/team/rules";
 import { requireCustomerAccess, type GrantedCustomer } from "./customer-access";
 import { getAppDb, getStaffDb } from "./db";
 import { discountFrom } from "./referrals";
@@ -65,15 +67,15 @@ export class WebsiteRequiredError extends Error {
  * it, waits for the first payment. A disabled button in the browser is a courtesy, not a control: a server action
  * can be called directly, so the action itself must call this.
  */
-export async function requireBillingAccess(): Promise<GrantedCustomer> {
-  const access = await requireCustomerAccess();
+export async function requireBillingAccess(role: MemberAccess = "write"): Promise<GrantedCustomer> {
+  const access = await requireCustomerAccess({ access: role });
   if (!access.billing.hasAccess) throw new BillingRequiredError(access.tenant.businessId);
   return access;
 }
 
 /** requireBillingAccess, and the business must hold the Managed Website service: the guard for everything the website owns. */
-export async function requireWebsiteAccess(): Promise<GrantedCustomer> {
-  const access = await requireBillingAccess();
+export async function requireWebsiteAccess(role: MemberAccess = "write"): Promise<GrantedCustomer> {
+  const access = await requireBillingAccess(role);
   if (!access.billing.hasWebsite) throw new WebsiteRequiredError(access.tenant.businessId);
   return access;
 }
@@ -228,10 +230,14 @@ export interface ReactivationView {
   readonly cancelled: boolean;
   /** The services the payment is for: the ones chosen when `cancelled` (the lapsed ones until they choose), else the lapsed basket. */
   readonly services: readonly MonthlyAddOnId[];
-  /** What a month of them costs, GST included. */
+  /** Each service at what a cycle of it costs, in the catalogue's order. */
+  readonly lines: readonly BundleLine[];
+  /** What a cycle of them costs, GST included. */
   readonly netCents: number;
   /** What the code a lapse keeps takes off that; 0 for a customer who cancelled themselves or whose code has no months left. */
   readonly discountCents: number;
+  /** How often it is charged when it comes back. */
+  readonly billingInterval: BillingInterval;
 }
 
 /**
@@ -251,10 +257,11 @@ export async function findReactivation(
   const chosen = basket.cancelled ? readBundleSelection(requested) : [];
   const priced = chosen.length === 0 ? basket : { ...basket, services: chosen };
   const { currency } = billing.plan;
-  const netCents = reactivationNetCents(priced, currency);
+  const lines = bundleLines(priced.services, currency, priced.forfeited, priced.billingInterval);
+  const netCents = bundleNetCents(lines);
   const carried = await loadCarriedCode(getStaffDb(), tenant.businessId, basket);
   const discountCents = carried === null ? 0 : (discountFrom(carried.code, { currency, netCents })?.amountCents ?? 0);
-  return { cancelled: basket.cancelled, services: priced.services, netCents, discountCents };
+  return { cancelled: basket.cancelled, services: priced.services, lines, netCents, discountCents, billingInterval: basket.billingInterval };
 }
 
 /** What a month of the lapsed customer's reactivation costs, GST included (findReactivation), or null. */

@@ -60,6 +60,17 @@ describe("POST /api/social-posts/picture", () => {
     expect(deps.store).not.toHaveBeenCalled();
   });
 
+  it("refuses a viewer with 403 before reading the body", async () => {
+    deps.getTenant.mockResolvedValue({ ...tenant, role: "viewer" });
+    const req = request();
+    const response = await handleSocialPictureRequest(req, deps);
+    expect(response.status).toBe(403);
+    expect(await response.json()).toEqual({ error: "Only owners and editors can change this." });
+    expect(req.bodyUsed).toBe(false);
+    expect(deps.hasSocial).not.toHaveBeenCalled();
+    expect(deps.store).not.toHaveBeenCalled();
+  });
+
   it("refuses bytes that are not a JPG, and a body over 4 MB", async () => {
     expect((await handleSocialPictureRequest(request({ body: new Uint8Array([0x89, 0x50, 0x4e, 0x47, 1]) }), deps)).status).toBe(415);
     const big = new Uint8Array(4 * 1024 * 1024 + 1);

@@ -55,7 +55,7 @@ vi.mock("./billing", () => ({
 vi.mock("./payload-tenant-sync", () => ({ syncTenantForBusiness: vi.fn() }));
 vi.mock("./charges", () => ({ recordRazorpayChargePayment: vi.fn() }));
 
-import { loadKeepPlanOffered, startKeepPlanFor, confirmKeptPlan, verifyKeepCheckoutFor } from "./keep-plan";
+import { loadKeepPlanOffer, startKeepPlanFor, confirmKeptPlan, verifyKeepCheckoutFor } from "./keep-plan";
 import { handleRazorpayWebhookEvent } from "./razorpay-webhook-handler";
 
 const USER_ID = "keeper";
@@ -224,23 +224,23 @@ afterEach(() => {
 describe("when Keep my plan is offered", () => {
   it("is offered for the client's own cancel inside the paid month, and only then", async () => {
     const old = await paidPlan("fake");
-    expect(await loadKeepPlanOffered(USER_ID, NOW)).toBe(false); // not closing
+    expect(await loadKeepPlanOffer(USER_ID, NOW)).toBeNull(); // not closing
 
     await dbs().staff.db.transaction((tx) => openAccountClosure(tx, { userId: USER_ID, businessId, now: NOW, eraseAfter: NEXT_RENEWAL }));
-    expect(await loadKeepPlanOffered(USER_ID, NOW)).toBe(false); // closing, but the plan was never cancelled: nothing to keep
+    expect(await loadKeepPlanOffer(USER_ID, NOW)).toBeNull(); // closing, but the plan was never cancelled: nothing to keep
 
     await dbs().staff.db.transaction((tx) => markCancelRequested(tx, { subscriptionId: old.id, businessId, now: NOW }));
-    expect(await loadKeepPlanOffered(USER_ID, NOW)).toBe(true);
-    expect(await loadKeepPlanOffered(USER_ID, RENEWS_AT)).toBe(false); // the paid month is over
+    expect(await loadKeepPlanOffer(USER_ID, NOW)).not.toBeNull();
+    expect(await loadKeepPlanOffer(USER_ID, RENEWS_AT)).toBeNull(); // the paid month is over
   });
 
   it("is not offered for a plan the provider ended, or for a lapse the client did not ask for", async () => {
     await paidPlan("fake");
     await dbs().staff.db.transaction((tx) => openAccountClosure(tx, { userId: USER_ID, businessId, now: NOW, eraseAfter: NEXT_RENEWAL }));
     await dbs().owner.db.update(subscriptions).set({ status: "inactive" });
-    expect(await loadKeepPlanOffered(USER_ID, NOW)).toBe(false);
+    expect(await loadKeepPlanOffer(USER_ID, NOW)).toBeNull();
     await dbs().owner.db.update(subscriptions).set({ status: "cancelled", cancelRequestedAt: NOW });
-    expect(await loadKeepPlanOffered(USER_ID, NOW)).toBe(false);
+    expect(await loadKeepPlanOffer(USER_ID, NOW)).toBeNull();
   });
 
   it("is not offered once a new mandate is authorised, because the account is open again", async () => {
@@ -250,7 +250,7 @@ describe("when Keep my plan is offered", () => {
     await confirmKeptPlan((await kept()).id, NOW);
 
     expect(await findOpenClosureForUser(dbs().staff.db, USER_ID)).toBeNull();
-    expect(await loadKeepPlanOffered(USER_ID, NOW)).toBe(false);
+    expect(await loadKeepPlanOffer(USER_ID, NOW)).toBeNull();
   });
 });
 
@@ -294,7 +294,7 @@ describe("the checkout Keep my plan opens", () => {
     const latest = await findLatestSubscriptionForBusiness(dbs().staff.db, businessId);
     expect(latest).toMatchObject({ id: old.id, cancelRequestedAt: NOW, paidThroughAt: RENEWS_AT });
     // Still offered, and the services are still the old plan's alone.
-    expect(await loadKeepPlanOffered(USER_ID, NOW)).toBe(true);
+    expect(await loadKeepPlanOffer(USER_ID, NOW)).not.toBeNull();
     const state = await findBillingState(dbs().staff.db, businessId);
     expect(state?.addOns.map((line) => line.subscriptionId)).toEqual([old.id, old.id]);
   });

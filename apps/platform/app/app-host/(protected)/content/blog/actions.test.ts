@@ -182,7 +182,7 @@ beforeEach(() => {
   });
 });
 
-const USAGE_AT_LIMIT = { used: 100, allowance: 100, nextBlock: { posts: 100, price: "₹560.50" } };
+const USAGE_AT_LIMIT = { used: 100, allowance: 100, nextBlock: { posts: 100, price: "₹560.50", currency: "INR" as const } };
 
 describe("the blog post limit", () => {
   it("refuses a new post once every allowed post is used, creating nothing", async () => {

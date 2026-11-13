@@ -13,7 +13,9 @@ import { ChangePasswordForm } from "@/components/panel/change-password-form";
 import { SOFT_BUTTON } from "@/components/v2/classes";
 import { ActionRow, FactRows, PageFrame, PageSection } from "@/components/v2/page";
 import { DELETE_ACCOUNT_PATH } from "@/lib/account-settings-form";
+import { NOTIFICATIONS_SETTINGS_PATH } from "@/lib/settings/notifications";
 import { PRIVACY_SETTINGS_PATH } from "@/lib/privacy-settings-form";
+import { TEAM_PATH } from "@/lib/team/rules";
 import { accountLabel } from "@/lib/server/account-label";
 import { findReactivationNetCents } from "@/lib/server/billing";
 import { getCustomerBusinessKind, requireCustomerAccess } from "@/lib/server/customer-access";
@@ -47,6 +49,7 @@ function pastFirstTerm(status: CustomerBillingStatus, subscription: Subscription
 /** The customer's account at a glance, with the password, signing out and deleting the account. Sections on the page, one dark button (Change password). */
 export default async function SettingsPage(): Promise<ReactElement> {
   const { user, tenant, billing } = await requireCustomerAccess({ listingAccount: "allow" });
+  const isOwner = tenant.role === "owner";
   const listingAccount = (await getCustomerBusinessKind(tenant.userId, tenant.businessId)) === "listing";
   const reactivationNetCents = await findReactivationNetCents({ tenant, billing });
 
@@ -93,6 +96,30 @@ export default async function SettingsPage(): Promise<ReactElement> {
           To change the {user.phone === null ? "email" : "mobile number"} you sign in with, email us at <EmailUs />.
         </p>
       </PageSection>
+
+      <PageSection id="notifications" title="Email notifications">
+        <ActionRow
+          text="Choose which emails we send you, such as new enquiries, requests, invoices and your monthly report."
+          action={
+            <Link href={NOTIFICATIONS_SETTINGS_PATH} className={SOFT_BUTTON}>
+              Email notifications
+            </Link>
+          }
+        />
+      </PageSection>
+
+      {isOwner ? (
+        <PageSection id="team" title="Team">
+          <ActionRow
+            text="Invite people to see or help with your dashboard, and take their access away."
+            action={
+              <Link href={TEAM_PATH} className={SOFT_BUTTON}>
+                Manage team
+              </Link>
+            }
+          />
+        </PageSection>
+      ) : null}
 
       <PageSection id="privacy" title="Your privacy">
         <ActionRow

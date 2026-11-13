@@ -1,4 +1,5 @@
-import type { CurrentPaymentMethod } from "@brandbasket/db";
+import { addMonthsUtc, monthsPerCycle } from "@brandbasket/billing";
+import type { CurrentPaymentMethod, Plan } from "@brandbasket/db";
 import { supportEmailOf } from "@/lib/brand";
 import { requestBrand } from "@/lib/server/request-brand";
 import { EmailUs } from "@/components/panel/email-us";
@@ -30,7 +31,10 @@ import { paymentMethodView, renewsAutomatically } from "@/lib/billing/payment-me
 import { CHARGE_NOTICES, readChargeNotice } from "@/lib/billing/charge-notices";
 import { billingMonths } from "@/lib/billing/billing-months";
 import { listOpenCustomerCharges } from "@/lib/server/charges";
-import { findCustomerPaymentMethod, findReactivation, findReactivationPlan, listCustomerReceipts } from "@/lib/server/billing";
+import { formatPaymentDay } from "@/lib/billing/payment-day";
+import { reactivationSummary } from "@/lib/billing/payment-summaries";
+import type { PaymentSummary } from "@/lib/billing/payment-summary";
+import { findCustomerPaymentMethod, findReactivation, type ReactivationView, findReactivationPlan, listCustomerReceipts } from "@/lib/server/billing";
 import { loadBillingDetailsView } from "@/lib/server/billing-details";
 import { MEMBERSHIP_SERVICES_PARAM } from "@/lib/membership";
 import { reactivateAction } from "./actions";
@@ -117,6 +121,18 @@ function RenewalFailingCard({ until }: { readonly until: Date }): ReactElement {
   );
 }
 
+/** What Reactivate confirms: each service at its price, the code, what is taken today and when it renews. */
+function reactivationSummaryOf(plan: Plan, reactivation: ReactivationView, now: Date): PaymentSummary {
+  return reactivationSummary({
+    services: reactivation.lines.map((line) => ({ key: line.addOn, title: line.title, netCents: line.netCents })),
+    discountCents: reactivation.discountCents,
+    total: monthlyPaymentAmount(plan, reactivation.netCents - reactivation.discountCents),
+    currency: plan.currency,
+    interval: reactivation.billingInterval,
+    renewsOn: formatPaymentDay(addMonthsUtc(now, monthsPerCycle(reactivation.billingInterval)), now),
+  });
+}
+
 /** The services the address names (`?services=managed-website,social-media`), as raw text: findReactivation keeps the catalogue ids. */
 function readServicesParam(raw: string | string[] | undefined): string[] {
   return (Array.isArray(raw) ? raw.join(",") : (raw ?? "")).split(",");
@@ -127,7 +143,7 @@ interface BillingPageProps {
 }
 
 export default async function BillingPage({ searchParams }: BillingPageProps): Promise<ReactElement> {
-  const customer = await requireCustomerAccess({ listingAccount: "allow" });
+  const customer = await requireCustomerAccess({ listingAccount: "allow", access: "owner" });
   const { billing, tenant } = customer;
   const brand = await requestBrand();
   const [receipts, billingDetails] = await Promise.all([listCustomerReceipts(customer), loadBillingDetailsView(customer)]);
@@ -264,6 +280,7 @@ export default async function BillingPage({ searchParams }: BillingPageProps): P
                 planName={planLabel(reactivationPlan.name)}
                 monthlyAmount={monthlyPaymentAmount(reactivationPlan, reactivation.netCents - reactivation.discountCents)}
                 priceNote={priceNote(reactivationPlan, reactivation.discountCents, reactivation.netCents)}
+                summary={reactivationSummaryOf(reactivationPlan, reactivation, new Date())}
                 action={reactivateAction}
                 services={reactivation.cancelled ? reactivation.services : null}
               >

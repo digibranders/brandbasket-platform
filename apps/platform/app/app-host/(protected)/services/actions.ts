@@ -2,6 +2,7 @@
 
 import { errorLogInfo } from "@brandbasket/shared/server/error-log-info";
 import { refresh } from "next/cache";
+import { redirect } from "next/navigation";
 import { z } from "zod";
 import { MONTHLY_ADD_ON_IDS } from "@brandbasket/shared/lib/billing/add-ons";
 import { panelFormErrorState, panelFormSavedState, type PanelFormState } from "@/lib/panel-form-state";
@@ -21,7 +22,7 @@ const addOnSchema = z.object({ addOn: z.enum(MONTHLY_ADD_ON_IDS) });
  * is refreshed whether or not it worked, because a refusal usually means it changed under the customer's feet.
  */
 export async function removeBundledAddOnAction(_previous: PanelFormState, formData: FormData): Promise<PanelFormState> {
-  const customer = await requireCustomerAccess({ listingAccount: "allow" });
+  const customer = await requireCustomerAccess({ listingAccount: "allow", access: "owner" });
   const parsed = addOnSchema.safeParse({ addOn: formData.get("addOn") });
   if (!parsed.success) return panelFormErrorState({ message: UNREADABLE_FORM, field: null }, formData);
   let result: BundledRemovalResult;
@@ -36,12 +37,13 @@ export async function removeBundledAddOnAction(_previous: PanelFormState, formDa
 }
 
 /**
- * Add on an add-on that is not in the plan's payment, or one that is ending. Adding opens a charge for the rest of the paid
- * month and sends the customer straight to pay it; keeping one that is ending costs nothing and redraws the page. The form
- * carries only which add-on; the price is worked out again on the server (addBundledAddOnFor).
+ * Add on an add-on that is not in the plan's payment, or one that is ending. On a monthly plan adding opens one combined
+ * subscription and sends the customer to approve and pay it; otherwise it opens a charge for the rest of the paid month and sends
+ * them to pay that. Keeping one that is ending costs nothing and redraws the page. The form carries only which add-on; the price
+ * is worked out again on the server (addBundledAddOnFor).
  */
 export async function addBundledAddOnAction(_previous: PanelFormState, formData: FormData): Promise<PanelFormState> {
-  const customer = await requireCustomerAccess({ listingAccount: "allow" });
+  const customer = await requireCustomerAccess({ listingAccount: "allow", access: "owner" });
   const parsed = addOnSchema.safeParse({ addOn: formData.get("addOn") });
   if (!parsed.success) return panelFormErrorState({ message: UNREADABLE_FORM, field: null }, formData);
   let result: AddOnAddResult;
@@ -52,6 +54,7 @@ export async function addBundledAddOnAction(_previous: PanelFormState, formData:
     return unexpectedErrorState(error, formData);
   }
   // Outside the try: a redirect is thrown, and must not be caught as a failure.
+  if (result.kind === "approve") redirect(result.url);
   if (result.kind === "pay") redirectForChargePayment(await startCustomerChargePayment(customer, result.chargeId));
   refresh();
   return result.kind === "done" ? panelFormSavedState : panelFormErrorState({ message: result.message, field: null }, formData);

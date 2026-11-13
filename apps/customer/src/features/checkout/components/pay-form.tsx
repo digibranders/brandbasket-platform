@@ -1,16 +1,19 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useId, useState } from "react";
 import { Banner, Button } from "@/ui";
 import { startPaymentAction } from "../actions";
 import type { BillingDetailsView } from "../rules/billing-details-view";
 import { useOpeningPayment } from "../rules/opening-payment";
+import type { PaymentSummary } from "../rules/payment-summary";
 import { BillingFieldset } from "./billing-fieldset";
+import { ConfirmPaymentDialog, useConfirmPayment } from "./confirm-payment";
 
 /*
  * The Pay form, ported from apps/platform components/panel/membership/checkout-ledger.tsx and checkout-billing.tsx. A business
  * billed in rupees pays through the form that also takes its billing details: with none saved the fields are open and Pay saves
- * them; with details saved a line says who the invoice goes to, and Change opens the fields again. The button is held from
+ * them; with details saved a line says who the invoice goes to, and Change opens the fields again. Pay first shows what is
+ * paid for and what follows (the confirm dialog), and its own button sends the form. The button is held from
  * the press until a refusal comes back, so a second press cannot open a second payment. A refused billing field
  * is shown under its input, and the message above the button.
  */
@@ -21,18 +24,22 @@ interface PayFormProps {
   readonly billing: string;
   readonly total: string;
   readonly billingDetails: BillingDetailsView | null;
+  /** What the confirm dialog shows before the payment opens. */
+  readonly summary: PaymentSummary;
 }
 
-export function PayForm({ services, billing, total, billingDetails }: PayFormProps) {
+export function PayForm({ services, billing, total, billingDetails, summary }: PayFormProps) {
+  const formId = useId();
   const [state, action, pending] = useActionState(startPaymentAction, null);
   const opening = useOpeningPayment(pending, state);
+  const confirm = useConfirmPayment(state, pending);
   const [changing, setChanging] = useState(false);
   const failure = state !== null && !state.ok && !pending ? state : null;
   const saved = billingDetails?.saved ?? null;
   const showFields = billingDetails !== null && (saved === null || changing);
 
   return (
-    <form action={action} noValidate className="flex flex-col gap-4">
+    <form id={formId} action={action} noValidate className="flex flex-col gap-4">
       <input type="hidden" name="tier" value="managed" />
       <input type="hidden" name="billing" value={billing} />
       {services.map((service) => (
@@ -62,9 +69,19 @@ export function PayForm({ services, billing, total, billingDetails }: PayFormPro
         </section>
       )}
       {failure === null ? null : <Banner tone="neg">{failure.message}</Banner>}
-      <Button type="submit" variant="primary" size="lg" pending={opening}>
-        {opening ? "Opening payment…" : `Pay ${total}`}
+      <Button variant="primary" size="lg" pending={opening} onClick={confirm.ask}>
+        {`Pay ${total}`}
       </Button>
+      <ConfirmPaymentDialog
+        summary={summary}
+        open={confirm.open}
+        onClose={confirm.close}
+        confirm={
+          <Button type="submit" form={formId} variant="primary" pending={opening}>
+            {opening ? "Opening payment…" : `Pay ${total}`}
+          </Button>
+        }
+      />
     </form>
   );
 }

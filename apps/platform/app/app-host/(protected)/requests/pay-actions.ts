@@ -18,7 +18,7 @@ import { loadTicketIdOfRequest } from "@/lib/server/requests";
  * The id of the quote comes from the form, but the business it must belong to comes from the session.
  */
 export async function acceptQuoteAction(formData: FormData): Promise<void> {
-  const customer = await requireBillingAccess();
+  const customer = await requireBillingAccess("owner");
   const { requestId } = readRequestIds(formData);
   // The ticket to go back to comes from the request, not the form, so the two cannot disagree.
   const ticketId = await loadTicketIdOfRequest(customer.tenant, requestId);

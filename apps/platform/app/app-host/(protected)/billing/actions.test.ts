@@ -60,7 +60,7 @@ const REGISTERED = { hasGstin: "on", gstin: "27AAPFU0939F1ZV", legalName: "River
 describe("saveBillingDetailsAction", () => {
   it("lets a listing account and one still buying its membership save its own details", async () => {
     await saveBillingDetailsAction({ status: "idle" }, form({}));
-    expect(requireCustomerAccess).toHaveBeenCalledWith({ listingAccount: "allow", membershipCheckout: "allow" });
+    expect(requireCustomerAccess).toHaveBeenCalledWith({ listingAccount: "allow", membershipCheckout: "allow", access: "owner" });
   });
 
   it("saves the details for the signed-in business, through its tenant scope, and refreshes the page", async () => {

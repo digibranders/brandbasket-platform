@@ -102,7 +102,19 @@ function PayScreen({ view }: { readonly view: Extract<CheckoutView, { kind: "pay
                 <CodeForm services={ledger.services} code={ledger.code} lapsedCode={ledger.lapsedCode} />
               </div>
             </details>
-            <PayForm services={ledger.services} billing={ledger.billing.value} total={ledger.total} billingDetails={ledger.billingDetails} />
+            <PayForm
+              services={ledger.services}
+              billing={ledger.billing.value}
+              total={ledger.total}
+              billingDetails={ledger.billingDetails}
+              summary={{
+                title: "Confirm your plan",
+                rows: ledger.rows,
+                totalLabel: "Due today",
+                total: ledger.total,
+                notes: [ledger.renewal, ...(ledger.gstLine === null ? [] : [ledger.gstLine]), ...(ledger.adCredit === null ? [] : [ledger.adCredit])],
+              }}
+            />
             <p className="type-meta">{ledger.renewal}</p>
           </div>
         </Panel>

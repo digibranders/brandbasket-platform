@@ -1,11 +1,14 @@
 "use client";
 
 import { receiptDownloadHref } from "@brandbasket/shared/lib/billing/receipt-download";
+import { useActionState, useId } from "react";
 import { DataTable, type DataTableColumn } from "@/components";
 import { formatDate, formatQuantity } from "@/lib/format";
-import { Badge, LinkButton } from "@/ui";
-import { PendingSubmit } from "../../checkout/components/pending-submit";
+import { Badge, Banner, Button, LinkButton } from "@/ui";
+import { ConfirmPaymentDialog, useConfirmPayment } from "../../checkout/components/confirm-payment";
 import { payChargeAction } from "../../checkout/actions";
+import { useOpeningPayment } from "../../checkout/rules/opening-payment";
+import type { PaymentSummary } from "../../checkout/rules/payment-summary";
 import type { InvoiceView } from "../loader";
 
 /*
@@ -21,15 +24,30 @@ interface InvoicesTableProps {
   readonly canPay: boolean;
 }
 
-/** Pay posts the charge id; the action checks it is the customer's own open charge. */
-function PayForm({ chargeId }: { readonly chargeId: string }) {
-  const action = async (formData: FormData) => {
-    await payChargeAction(null, formData);
-  };
+/** Pay shows what is paid, then posts the charge id; the action checks it is the customer's own open charge. */
+function PayForm({ chargeId, summary }: { readonly chargeId: string; readonly summary: PaymentSummary }) {
+  const formId = useId();
+  const [state, action, pending] = useActionState(payChargeAction, null);
+  const opening = useOpeningPayment(pending, state);
+  const confirm = useConfirmPayment(state, pending);
+  const failure = state !== null && !state.ok && !pending ? state.message : null;
   return (
-    <form action={action}>
+    <form id={formId} action={action} className="flex flex-col items-end gap-1">
       <input type="hidden" name="chargeId" value={chargeId} />
-      <PendingSubmit variant="secondary">Pay</PendingSubmit>
+      <Button pending={opening} onClick={confirm.ask}>
+        Pay
+      </Button>
+      {failure === null ? null : <Banner tone="neg">{failure}</Banner>}
+      <ConfirmPaymentDialog
+        summary={summary}
+        open={confirm.open}
+        onClose={confirm.close}
+        confirm={
+          <Button type="submit" form={formId} variant="primary" pending={opening}>
+            {`Pay ${summary.total}`}
+          </Button>
+        }
+      />
     </form>
   );
 }
@@ -46,7 +64,7 @@ export function InvoicesTable({ invoices, billedTo, canDownload, canPay }: Invoi
       align: "end",
       cell: (view) =>
         view.row.kind === "due" ? (
-          canPay ? <PayForm chargeId={view.row.id} /> : null
+          canPay ? <PayForm chargeId={view.row.id} summary={view.row.summary} /> : null
         ) : canDownload && view.row.downloadable ? (
           <LinkButton href={receiptDownloadHref([view.row.id])} prefetch={false} size="sm" icon="DownloadSimple">
             PDF
@@ -86,7 +104,7 @@ export function InvoicesTable({ invoices, billedTo, canDownload, canPay }: Invoi
         ),
         footer:
           view.row.kind === "due" ? (
-            canPay ? <PayForm chargeId={view.row.id} /> : undefined
+            canPay ? <PayForm chargeId={view.row.id} summary={view.row.summary} /> : undefined
           ) : canDownload && view.row.downloadable ? (
             <LinkButton href={receiptDownloadHref([view.row.id])} prefetch={false} variant="primary" icon="DownloadSimple">
               Download PDF

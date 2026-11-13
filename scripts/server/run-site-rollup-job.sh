@@ -3,18 +3,18 @@
 # machine, with the bearer token from the dashboard's environment file, and prints the report it answers. Installed on the VPS as
 # /usr/local/sbin/brandbasket-site-rollup-job (root-owned) and run by brandbasket-site-rollup.service as the brandbasket user.
 #
-# Assumes: the dashboard is up on 127.0.0.1:3201 and SITE_ANALYTICS_TOKEN is set in the env file (docs/site-analytics.md).
+# Assumes: the customer app is up on 127.0.0.1:3202 and SITE_ANALYTICS_TOKEN is set in the env file (docs/site-analytics.md).
 # The token is passed to curl on its standard input, so it never appears in the process list. Fails (exit 1) on any answer but
 # 2xx, so systemd and journalctl show a failed run. After the roll-up it also asks /api/internal/retry-conversions to send any
 # first payment to GA4 and Meta again that failed (plan 59).
 #
-#   run-site-rollup-job.sh --env-file /srv/brandbasket/shared/platform.env.local [--dry-run] [--url URL]
+#   run-site-rollup-job.sh --env-file /srv/brandbasket/shared/customer.env.production [--dry-run] [--url URL]
 # --dry-run asks the endpoint to report what it WOULD write without writing or deleting (?dryRun=1). Safe to run any time.
 set -euo pipefail
 
 ENV_FILE=""
 DRY=0
-URL="http://127.0.0.1:3201/api/internal/roll-up-site-analytics"
+URL="http://127.0.0.1:3202/api/internal/roll-up-site-analytics"
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --env-file) ENV_FILE="${2:?--env-file needs a path}"; shift 2 ;;

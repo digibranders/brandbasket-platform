@@ -1,12 +1,15 @@
 "use server";
 
-import { getConnectingDomain, recordDomainDnsCheck, withTenantScope } from "@brandbasket/db";
+import { consumeRateLimit, getConnectingDomain, recordDomainDnsCheck, withTenantScope, type RateLimitRule } from "@brandbasket/db";
 import { isTemporarySubdomain } from "@brandbasket/shared/lib/onboarding/domain-form";
-import { CHECK_FAILED_MESSAGE, type ConnectDomainState } from "@/lib/connect-domain-state";
+import { CHECK_FAILED_MESSAGE, TOO_MANY_CHECKS_MESSAGE, type ConnectDomainState } from "@/lib/connect-domain-state";
 import { requireCustomerAccess } from "@/lib/server/customer-access";
 import { getAppDb, getStaffDb } from "@/lib/server/db";
 import { notifyTeamDomainConnected } from "@/lib/server/domain-alert";
 import { checkDomainDns } from "@/lib/server/domain-check";
+
+/** Someone waiting on DNS presses Check every few minutes at most; a loop is not that. Every lookup is a DNS query and a staff write. */
+const DOMAIN_CHECKS_PER_BUSINESS: RateLimitRule = { limit: 20, windowSeconds: 60 * 60 };
 
 /**
  * "Check my domain": looks up the DNS of the business's own stored domain and reports whether it now points at the
@@ -16,7 +19,7 @@ import { checkDomainDns } from "@/lib/server/domain-check";
  * domain's status, and the sign-in above is what proves this is the business's own.
  */
 export async function checkDomainAction(): Promise<ConnectDomainState> {
-  const { tenant } = await requireCustomerAccess();
+  const { tenant } = await requireCustomerAccess({ access: "write" });
   const domain = await withTenantScope(getAppDb(), tenant, getConnectingDomain);
   if (domain === null || isTemporarySubdomain(domain.hostname)) {
     return { status: "error", message: "There’s no domain of your own to check yet." };
@@ -26,6 +29,8 @@ export async function checkDomainAction(): Promise<ConnectDomainState> {
   }
 
   try {
+    const budget = await consumeRateLimit(getAppDb(), `domain-check:business:${tenant.businessId}`, DOMAIN_CHECKS_PER_BUSINESS);
+    if (!budget.allowed) return { status: "error", message: TOO_MANY_CHECKS_MESSAGE };
     const check = await checkDomainDns(domain.hostname);
     const recorded = await recordDomainDnsCheck(getStaffDb(), { businessId: tenant.businessId, hostname: domain.hostname, result: check.overall });
     if (recorded.becameConnected) await notifyTeamDomainConnected(tenant.businessId, tenant.businessName, domain.hostname);

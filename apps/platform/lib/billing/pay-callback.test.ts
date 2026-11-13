@@ -17,6 +17,11 @@ describe("payCallbackDestination", () => {
     expect(payCallbackDestination({ failed: true, membership: null, returnTo: RETURN_TO_BILLING })).toBe("/billing?payment=failed");
   });
 
+  it("returns an added service to Your services, with the failed notice when it did not go through", () => {
+    expect(payCallbackDestination({ failed: false, membership: null, returnTo: "services" })).toBe("/services?charge=processing");
+    expect(payCallbackDestination({ failed: true, membership: null, returnTo: "services" })).toBe("/services?charge=failed");
+  });
+
   it("ignores any other return value", () => {
     expect(payCallbackDestination({ failed: false, membership: null, returnTo: "https://evil.example" })).toBe(
       "/onboarding/review?payment=received",

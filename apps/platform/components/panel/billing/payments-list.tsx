@@ -1,14 +1,17 @@
 "use client";
 
 import { ArrowLeft, ArrowRight, Check, DownloadSimple, Receipt } from "@phosphor-icons/react/dist/ssr";
-import { Fragment, useState, type ReactElement } from "react";
+import { Fragment, useId, useState, type ReactElement } from "react";
 import { cn } from "@brandbasket/shared/lib/cn";
+import { Button } from "@brandbasket/shared/ui/panel/button";
 import { LocalDate } from "@brandbasket/shared/ui/panel/local-date-time";
-import { SubmitButton } from "@brandbasket/shared/ui/panel/submit-button";
 import { payChargeAction } from "@/app/app-host/(protected)/billing/actions";
+import { ConfirmPaymentDialog } from "@/components/panel/confirm-payment";
+import { PaymentConfirmButton, usePaymentForm } from "@/components/panel/payment-form";
 import { LIFT, SOFT_BUTTON } from "@/components/v2/classes";
 import { EmptyState, PageSection } from "@/components/v2/page";
 import type { BillingMonth, BillLine } from "@/lib/billing/billing-months";
+import type { PaymentSummary } from "@/lib/billing/payment-summary";
 import { splitInvoiceNumber } from "@/lib/billing/invoice-title";
 import { BILLING_MONTHS_PER_PAGE, pageWindow } from "@/lib/billing/pagination";
 import { receiptDownloadHref } from "@/lib/billing/receipt-download";
@@ -63,14 +66,23 @@ function ReceiptLink({ row }: { readonly row: ReceiptRow }): ReactElement | null
   );
 }
 
-/** Pay for an extra: a form post, so a payment is only ever opened on purpose. */
-function PayButton({ chargeId, title }: { readonly chargeId: string; readonly title: string }): ReactElement {
+/** Pay for an extra: Pay shows what is paid, and the dialog's button posts the form, so a payment is only ever opened on purpose. */
+function PayButton({ chargeId, title, summary }: { readonly chargeId: string; readonly title: string; readonly summary: PaymentSummary }): ReactElement {
+  const formId = useId();
+  const { action, confirm, opening } = usePaymentForm(payChargeAction);
   return (
-    <form action={payChargeAction} className="inline-block">
+    <form id={formId} action={action} className="inline-block">
       <input type="hidden" name="chargeId" value={chargeId} />
-      <SubmitButton size="sm" pendingLabel="Opening…" className="h-8! rounded-lg! px-4! py-0! text-[0.8125rem]! hover:bg-ink-raised!">
-        Pay<span className="sr-only"> for {title}</span>
-      </SubmitButton>
+      <Button type="button" size="sm" onClick={confirm.ask} disabled={opening} aria-busy={opening} className="h-8! rounded-lg! px-4! py-0! text-[0.8125rem]! hover:bg-ink-raised!">
+        {opening ? "Opening…" : <>Pay<span className="sr-only"> for {title}</span></>}
+      </Button>
+      <ConfirmPaymentDialog
+        summary={summary}
+        open={confirm.open}
+        onClose={confirm.close}
+        busy={opening}
+        confirm={<PaymentConfirmButton formId={formId} opening={opening} label={`Pay ${summary.total}`} />}
+      />
     </form>
   );
 }
@@ -104,7 +116,7 @@ function PaymentRow({ line }: { readonly line: BillLine }): ReactElement {
           <StatusPill tone="due" label="To pay" detail={null} />
         </td>
         <td role="cell" className={cn(CELL, "col-start-2 row-start-4 mt-1.5 justify-self-end text-right @3xl:mt-0")}>
-          <PayButton chargeId={line.chargeId} title={line.title} />
+          <PayButton chargeId={line.chargeId} title={line.title} summary={line.summary} />
         </td>
       </tr>
     );

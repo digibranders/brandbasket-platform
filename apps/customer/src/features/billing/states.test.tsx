@@ -27,10 +27,11 @@ const customer = { businessName: "Apex Diagnostics", businessId: "b1", tenant: {
 const wrap = (node: ReactNode) => render(<NuqsTestingAdapter><ToastProvider>{node}</ToastProvider></NuqsTestingAdapter>);
 
 const SERVICES: ServicesPanelView = {
-  rows: [{ addOn: "managed-website", service: "website", name: "Managed Website", status: { word: "Active", tone: "pos" }, price: "₹2,999", line: "Since Thu 27 Aug.", action: { kind: "none" } }],
+  rows: [{ addOn: "managed-website", service: "website", name: "Managed Website", status: { word: "Active", tone: "pos" }, price: "₹2,999", line: "Since Thu 27 Aug.", offerPrice: null, action: { kind: "none" } }],
   cancel: null,
   bill: { period: "month", rows: [{ label: "Managed Website", amount: "₹2,999", discount: false }], totalCents: 299_900, total: "₹2,999", gstLine: null, adMoneyLine: null },
   headerLine: null,
+  glance: null,
 };
 const NOTICES = { ok: true, data: { charge: null, chargeWaiting: false, paymentReturn: "none" } } as const;
 const overview = (over: Partial<BillingOverview> = {}): BillingOverview => ({ state: { kind: "paid" }, canManage: true, preselect: null, notices: NOTICES, services: { ok: true, data: SERVICES }, reactivation: null, ...over });

@@ -88,7 +88,7 @@ describe("the Billing page", () => {
   it("offers a lapsed plan's one way back, and no plan summary", async () => {
     vi.mocked(requireCustomerAccess).mockResolvedValue({ user: { id: "user-1" }, tenant, billing: { ...paid, status: "lapsed", hasAccess: false } } as never);
     vi.mocked(findReactivationPlan).mockResolvedValue({ name: "Services", currency: "INR" } as never);
-    vi.mocked(findReactivation).mockResolvedValue({ netCents: 299900, discountCents: 0, cancelled: false, services: [] } as never);
+    vi.mocked(findReactivation).mockResolvedValue({ netCents: 299900, discountCents: 0, cancelled: false, services: [], lines: [], billingInterval: "month" } as never);
     const html = await render();
     expect(html).toContain("[reactivate]");
     expect(html).not.toContain("[plan summary]");

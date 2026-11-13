@@ -3,7 +3,7 @@
 # row per site per run; a site that goes from up to down for two checks in a row emails the team mailbox once
 # (SUPPORT_ALERT_EMAIL). Installed by deploy/vps/install.sh backups but NOT enabled: enabling it is the owner's call
 # (docs/deployment/brandbasket-vps.md, "Site health"). It reads the dashboard's environment through the release's
-# apps/platform/.env.local link, as the maintenance job does, so it needs a deployed release. It writes only to the database.
+# apps/customer/.env.production link, as the maintenance job does, so it needs a deployed release. It writes only to the database.
 # pnpm needs a writable home for its own cache, so HOME is the unit's cache directory. By hand:
 #   systemctl start brandbasket-site-health.service && journalctl -u brandbasket-site-health -n 20
 # (a good run prints a line starting "Site health:").
@@ -16,13 +16,13 @@ Wants=network-online.target
 Type=oneshot
 User=brandbasket
 Group=brandbasket
-WorkingDirectory=/srv/brandbasket/current-platform
+WorkingDirectory=/srv/brandbasket/current-customer
 CacheDirectory=brandbasket-site-health
 Environment=HOME=/var/cache/brandbasket-site-health
 Environment=PATH=/usr/local/bin:/usr/bin:/bin
 Environment=NODE_ENV=production
 Environment=COREPACK_ENABLE_DOWNLOAD_PROMPT=0
-ExecStart=/usr/bin/env pnpm site-health:run
+ExecStart=/usr/bin/env pnpm --filter @brandbasket/customer site-health:run
 Nice=10
 IOWeight=20
 TimeoutStartSec=9min

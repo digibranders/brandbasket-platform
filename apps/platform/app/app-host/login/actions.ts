@@ -14,15 +14,31 @@ import { createListingAccount, requestJoinCode } from "@/lib/server/listing-acco
 import { landingForSignedInUser } from "@/lib/server/affiliate-access";
 import { requestBrand } from "@/lib/server/request-brand";
 import { leadsApiToken } from "@/lib/server/website-api-auth";
+import { safeInviteReturn } from "@/lib/team/rules";
 import { signInWithPassword } from "@/lib/server/sign-in";
 import { checkHuman } from "@brandbasket/shared/server/turnstile-request";
 
-export async function signInCustomer(_previous: SignInFormState, formData: FormData): Promise<SignInFormState> {
+export async function signInCustomer(previous: SignInFormState, formData: FormData): Promise<SignInFormState> {
+  return signIn(null, previous, formData);
+}
+
+/**
+ * signInCustomer for someone who came from an invitation link: bound to the page's `next` address, which is checked again
+ * here (a bound argument is still input from the browser) and is only ever an invite accept page.
+ */
+export async function signInToInvite(next: string, previous: SignInFormState, formData: FormData): Promise<SignInFormState> {
+  return signIn(safeInviteReturn(next), previous, formData);
+}
+
+async function signIn(next: string | null, _previous: SignInFormState, formData: FormData): Promise<SignInFormState> {
   const human = await checkHuman(formData, "sign_in");
   if (!human.ok) return { status: "error", message: human.message, email: typedSignInIdentifier(formData) };
   const outcome = await signInWithPassword(formData);
-  // An affiliate with no business has no customer dashboard: they land on their own page.
-  if (outcome.status === "signed-in") redirect(await landingForSignedInUser(outcome.userId));
+  if (outcome.status === "signed-in") {
+    if (next !== null) redirect(next);
+    // An affiliate with no business has no customer dashboard: they land on their own page.
+    redirect(await landingForSignedInUser(outcome.userId));
+  }
   return outcome;
 }
 
