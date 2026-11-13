@@ -4,7 +4,7 @@ import { reportError } from "@/lib/report";
 import { brandOf, type SocialBrand } from "@/features/social/brand";
 import type { BatchPlan, ExpiredBatch, Poster, SiteJob, Topic, WrittenBatch } from "@/legacy-social/lib/social/ai";
 import type { CarouselDetail, CarouselSummary } from "@/legacy-social/lib/social/carousel";
-import type { ChannelPlatform } from "@/legacy-social/lib/social/auto";
+import { CHANNEL_PLATFORMS, type ChannelPlatform } from "@/legacy-social/lib/social/auto";
 import { loadBatches, loadCarousel, loadCarouselList, loadChannels, loadPictureLimits, loadPosters, loadSiteJobs, loadTopics, loadWorkspaceFacts, socialAutoSettings, type PictureLimits } from "./social-auto";
 
 /** Everything the review page shows: the customer's batches of written posts and where they stand, and the pictures. */
@@ -23,6 +23,8 @@ export interface SocialReview {
   readonly reasons: readonly string[];
   /** How many pictures each channel has left this week; null when the posting service does not report it. */
   readonly limits: PictureLimits | null;
+  /** The connected accounts, one for each network, for the channels down the side of the page. */
+  readonly channels: readonly { readonly platform: ChannelPlatform; readonly account: string }[];
   /** The customer's carousels, newest first, and the newest one in full (its slides and the words for each channel); empty and null when there is none. */
   readonly carousels: readonly CarouselSummary[];
   readonly carousel: CarouselDetail | null;
@@ -36,7 +38,7 @@ export interface SocialReview {
   readonly unavailable: boolean;
 }
 
-const EMPTY: SocialReview = { jobs: [], batches: [], waiting: [], approved: [], expired: { batches: [], pictures: [] }, missingNetworks: [], topics: [], reasons: [], limits: null, carousels: [], carousel: null, weeklyCarousel: false, canMakeCarousel: false, unavailable: true };
+const EMPTY: SocialReview = { jobs: [], batches: [], waiting: [], approved: [], channels: [], expired: { batches: [], pictures: [] }, missingNetworks: [], topics: [], reasons: [], limits: null, carousels: [], carousel: null, weeklyCarousel: false, canMakeCarousel: false, unavailable: true };
 
 /** Asks social-auto for each part. Each is its own failure: what could be read is shown, and the page says the rest could not be. */
 export async function loadSocialReview(customer: Pick<CustomerContext, "businessId" | "businessName">): Promise<SocialReview> {
@@ -76,6 +78,10 @@ export async function loadSocialReview(customer: Pick<CustomerContext, "business
     approved: pictures.posters.filter((poster) => poster.status === "approved"),
     expired: { batches: written.expired, pictures: pictures.posters.filter((poster) => poster.status === "expired") },
     brand,
+    channels: CHANNEL_PLATFORMS.flatMap((platform) => {
+      const found = channels.find((channel) => channel.platform === platform);
+      return found === undefined ? [] : [{ platform, account: found.account }];
+    }),
     missingNetworks: [...new Set(topics.flatMap((topic) => topic.missing))],
     topics,
     reasons: pictures.reasons,

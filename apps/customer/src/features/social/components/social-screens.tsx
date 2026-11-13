@@ -75,7 +75,7 @@ export async function SocialOverview({ customer, now = new Date(), notice = null
   const line = allPosts.ok ? monthLine(allPosts.data.posts, now) : null;
   return (
     <SocialLayout
-      column={<ChannelsColumn data={column} hint="Tap a channel to see only its posts." selected={channel} hrefFor={(next) => (next === "all" ? SOCIAL_PATH : `${SOCIAL_PATH}?channel=${next}`)} canChange={customer.role !== "viewer"} />}
+      column={<ChannelsColumn data={column} selected={channel} hrefFor={(next) => (next === "all" ? SOCIAL_PATH : `${SOCIAL_PATH}?channel=${next}`)} canChange={customer.role !== "viewer"} />}
     >
       <SocialHeader customer={customer} current={SOCIAL_PATH} waiting={waitingIn(allPosts)} description={line ?? DEFAULT_DESCRIPTION} reportHref={report.ok ? report.data : null} />
       <Stack>

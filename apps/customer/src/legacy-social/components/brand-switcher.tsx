@@ -3,7 +3,7 @@
 import { X } from "@phosphor-icons/react/dist/ssr";
 import { Select } from "@/ui";
 import { useEffect, useRef, useState, type FormEvent, type ReactElement } from "react";
-import { addBrandAction, archiveBrandAction, selectBrandAction } from "@/legacy-social/brand-actions";
+import { addBrandAction, archiveBrandAction, renameBrandAction, renameFirstBrandAction, selectBrandAction } from "@/legacy-social/brand-actions";
 import type { BrandsView } from "@/features/social/brands";
 import { SMALL_DARK, SMALL_SOFT } from "./small-buttons";
 import { useReviewAction } from "./use-review-action";
@@ -21,7 +21,10 @@ export function ManageBrands({ view, current, onClose }: BrandSwitcherProps & { 
   const dialog = useRef<HTMLDialogElement>(null);
   const add = useReviewAction();
   const archive = useReviewAction();
+  const rename = useReviewAction();
   const [name, setName] = useState("");
+  /** The brand being renamed, and the name being written for it. */
+  const [renaming, setRenaming] = useState<{ readonly id: string; readonly draft: string } | null>(null);
   const canAdd = view.used < view.allowed;
   const live = view.brands.filter((brand) => !brand.archived).length;
 
@@ -69,26 +72,57 @@ export function ManageBrands({ view, current, onClose }: BrandSwitcherProps & { 
 
         <ul className="grid gap-2">
           {view.brands.map((brand) => (
-            <li key={brand.externalId} className="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-sunken px-3 py-2">
-              <span className="min-w-0">
-                <span className="block break-words text-[0.875rem] font-semibold text-ink">{brand.name}</span>
-                <span className="block text-xs text-ink-2">{brand.archived ? "Archived, nothing is sent for it" : brand.externalId === current ? "Looking at this one" : (brand.website ?? "No website yet")}</span>
-              </span>
-              {brand.archived ? (
-                <button type="button" disabled={archive.pending || !canAdd} onClick={() => archive.run(archiveBrandAction, { brand: brand.externalId, archived: "false" })} className={SMALL_SOFT}>
-                  Bring back
-                </button>
-              ) : live > 1 ? (
-                <button type="button" disabled={archive.pending} onClick={() => archive.run(archiveBrandAction, { brand: brand.externalId, archived: "true" })} className={SMALL_SOFT}>
-                  Archive
-                </button>
+            <li key={brand.externalId} className="grid gap-2 rounded-xl bg-sunken px-3 py-2">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <span className="min-w-0">
+                  <span className="block break-words text-[0.875rem] font-semibold text-ink">{brand.name}</span>
+                  <span className="block text-xs text-ink-2">{brand.archived ? "Archived, nothing is sent for it" : brand.externalId === current ? "Looking at this one" : (brand.website ?? "No website yet")}</span>
+                </span>
+                <span className="flex flex-wrap gap-2">
+                  <button type="button" disabled={rename.pending} onClick={() => setRenaming({ id: brand.externalId, draft: brand.name })} className={SMALL_SOFT}>
+                    Rename
+                  </button>
+                  {brand.archived ? (
+                    <button type="button" disabled={archive.pending || !canAdd} onClick={() => archive.run(archiveBrandAction, { brand: brand.externalId, archived: "false" })} className={SMALL_SOFT}>
+                      Bring back
+                    </button>
+                  ) : live > 1 ? (
+                    <button type="button" disabled={archive.pending} onClick={() => archive.run(archiveBrandAction, { brand: brand.externalId, archived: "true" })} className={SMALL_SOFT}>
+                      Archive
+                    </button>
+                  ) : null}
+                </span>
+              </div>
+              {renaming?.id === brand.externalId ? (
+                <form
+                  onSubmit={(event) => {
+                    event.preventDefault();
+                    if (rename.pending || renaming.draft.trim() === "") return;
+                    rename.run(renameBrandAction, { brand: brand.externalId, name: renaming.draft }, () => setRenaming(null));
+                  }}
+                  className="grid gap-2"
+                >
+                  <label htmlFor={`rename-${brand.externalId}`} className="text-xs font-semibold text-ink-2">
+                    New name
+                  </label>
+                  <div className="flex flex-wrap gap-2">
+                    <input id={`rename-${brand.externalId}`} type="text" value={renaming.draft} onChange={(event) => setRenaming({ id: brand.externalId, draft: event.target.value })} maxLength={80} className={`${FIELD} min-w-0 flex-1`} />
+                    <button type="submit" disabled={rename.pending || renaming.draft.trim() === ""} className={SMALL_DARK}>
+                      {rename.pending ? "Saving" : "Save"}
+                    </button>
+                    <button type="button" disabled={rename.pending} onClick={() => setRenaming(null)} className={SMALL_SOFT}>
+                      Cancel
+                    </button>
+                  </div>
+                  <p className="text-xs text-ink-3">The name shows here and to our team. Pictures and captions keep the name written on your website.</p>
+                </form>
               ) : null}
             </li>
           ))}
         </ul>
-        {archive.error === null ? null : (
+        {(rename.error ?? archive.error) === null ? null : (
           <p role="alert" className="text-[0.84375rem] font-semibold text-error">
-            {archive.error}
+            {rename.error ?? archive.error}
           </p>
         )}
 
@@ -119,15 +153,25 @@ export function ManageBrands({ view, current, onClose }: BrandSwitcherProps & { 
 }
 
 /**
- * Which brand the customer is looking at, and where she manages them. Shown only when the business may have more than one, or has more than
- * one that is live: with one live brand and no more allowed, nothing changes for her.
+ * Which brand the customer is looking at, and where she manages them. With one live brand and no more allowed, it is the brand's name and
+ * a way to rename it; with room for more, a choice of brand and the window to add, rename and archive.
  */
 export function BrandSwitcher({ view, current }: BrandSwitcherProps): ReactElement | null {
   const select = useReviewAction();
   const [managing, setManaging] = useState(false);
   const live = view.brands.filter((brand) => !brand.archived);
-  // One live brand and no room for another: nothing to choose, and an archived one cannot come back, so nothing is shown.
-  if (view.allowed <= 1 && live.length <= 1) return null;
+  // One live brand and no room for another: nothing to choose, so the brand's name is shown with the way to rename it.
+  if (view.allowed <= 1 && live.length <= 1) {
+    return (
+      <>
+        <span className="max-w-52 truncate text-[0.875rem] font-semibold text-ink">{live[0]?.name}</span>
+        <button type="button" onClick={() => setManaging(true)} className={SMALL_SOFT}>
+          Rename
+        </button>
+        {managing ? <ManageBrands view={view} current={current} onClose={() => setManaging(false)} /> : null}
+      </>
+    );
+  }
   return (
     <>
       <Select
@@ -146,4 +190,52 @@ export function BrandSwitcher({ view, current }: BrandSwitcherProps): ReactEleme
       {managing ? <ManageBrands view={view} current={current} onClose={() => setManaging(false)} /> : null}
     </>
   );
+}
+
+/**
+ * The brand's name before the posting service has a workspace for it: the business's own name, with a way to write another. The first
+ * save opens the brand there. Once it exists the page shows it through BrandSwitcher instead.
+ */
+function FirstBrandName({ name }: { readonly name: string }): ReactElement {
+  const save = useReviewAction();
+  const [draft, setDraft] = useState<string | null>(null);
+  if (draft === null) {
+    return (
+      <>
+        <span className="max-w-52 truncate text-[0.875rem] font-semibold text-ink">{name}</span>
+        <button type="button" onClick={() => setDraft(name)} className={SMALL_SOFT}>
+          Rename
+        </button>
+      </>
+    );
+  }
+  return (
+    <form
+      onSubmit={(event) => {
+        event.preventDefault();
+        if (save.pending || draft.trim() === "") return;
+        save.run(renameFirstBrandAction, { name: draft }, () => setDraft(null));
+      }}
+      className="flex flex-wrap items-center gap-2"
+    >
+      <input aria-label="Brand name" type="text" value={draft} onChange={(event) => setDraft(event.target.value)} maxLength={80} className={`${FIELD} w-52`} />
+      <button type="submit" disabled={save.pending || draft.trim() === ""} className={SMALL_DARK}>
+        {save.pending ? "Saving" : "Save"}
+      </button>
+      <button type="button" disabled={save.pending} onClick={() => setDraft(null)} className={SMALL_SOFT}>
+        Cancel
+      </button>
+      {save.error === null ? null : (
+        <p role="alert" className="w-full text-[0.84375rem] font-semibold text-error">
+          {save.error}
+        </p>
+      )}
+    </form>
+  );
+}
+
+/** The brand control of the Social screens: the choice of brand when the posting service lists them, else the business's name to rename (also when the service has no brand of it yet). */
+export function BrandControl({ view, current, name }: { readonly view: BrandsView | null; readonly current: string; readonly name: string }): ReactElement {
+  // A business the posting service has not met, or one it knows with no brand yet, shows its own name until the first save.
+  return view === null || view.brands.length === 0 ? <FirstBrandName name={name} /> : <BrandSwitcher view={view} current={current} />;
 }

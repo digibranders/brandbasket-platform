@@ -12,10 +12,21 @@ describe("readBatches: the weeks of a plan", () => {
       batches: [batch({ weeks: [{ from: "2026-11-16", to: "2026-11-22", state: "waiting", postIds: ["p1"] }, { from: "2026-11-23", to: "2026-11-29", state: "drawn", postIds: ["p2"] }] })],
     });
     expect(read?.weeks).toEqual([
-      { from: "2026-11-16", to: "2026-11-22", state: "waiting", postIds: ["p1"], notDrawn: [], missingDays: [] },
-      { from: "2026-11-23", to: "2026-11-29", state: "drawn", postIds: ["p2"], notDrawn: [], missingDays: [] },
+      { from: "2026-11-16", to: "2026-11-22", state: "waiting", postIds: ["p1"], notDrawn: [], missingDays: [], replacementsLeft: null },
+      { from: "2026-11-23", to: "2026-11-29", state: "drawn", postIds: ["p2"], notDrawn: [], missingDays: [], replacementsLeft: null },
     ]);
     expect(read?.posts.map((one) => one.date)).toEqual(["2026-11-16", "2026-11-23"]);
+  });
+
+  it("reads which dropped post a new topic replaces, and how many new topics a week still allows", () => {
+    const [read] = readBatches({
+      batches: [batch({ posts: [post("p1", { date: "2026-11-16", state: "dropped", replacedBy: "p1-r1" }), post("p1-r1", { date: "2026-11-16", replaces: "p1" })], weeks: [{ from: "2026-11-16", to: "2026-11-22", state: "waiting", postIds: ["p1", "p1-r1"], replacementsLeft: 2 }] })],
+    });
+    expect(read?.posts.map((one) => [one.id, one.replaces, one.replacedBy])).toEqual([
+      ["p1", null, "p1-r1"],
+      ["p1-r1", "p1", null],
+    ]);
+    expect(read?.weeks?.[0]?.replacementsLeft).toBe(2);
   });
 
   it("reads the topics that got no picture, per week and per post, with the service's sentence", () => {
