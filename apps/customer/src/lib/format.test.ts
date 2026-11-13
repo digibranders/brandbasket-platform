@@ -3,6 +3,7 @@ import {
   formatBytes,
   formatChange,
   formatDate,
+  formatList,
   formatDateTime,
   formatMoney,
   formatNumber,
@@ -97,5 +98,13 @@ describe("numbers and units", () => {
     expect(formatBytes(512)).toBe("512 bytes");
     expect(formatBytes(4 * 1024 * 1024)).toBe("4 MB");
     expect(formatBytes(1.5 * 1024 ** 3)).toBe("1.5 GB");
+  });
+});
+
+describe("formatList", () => {
+  it("joins names for a sentence, with no comma before the last", () => {
+    expect(formatList(["Website Management"])).toBe("Website Management");
+    expect(formatList(["Website Management", "Social Media Management"])).toBe("Website Management and Social Media Management");
+    expect(formatList(["A", "B", "C"])).toBe("A, B and C");
   });
 });

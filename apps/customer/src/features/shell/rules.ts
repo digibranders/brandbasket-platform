@@ -5,8 +5,8 @@ import type { IconName } from "@/ui";
 
 /*
  * The shell's decisions as pure functions: which links the sidebar, the phone tabs and search show, which one is current,
- * the billing banner and the notifications bell. Ported from apps/platform lib/rail.ts (with its tests), lib/home/state.ts
- * (kickoffIsOver), lib/server/requests.ts (the Requests count), packages/shared lib/account-panel.ts (bell lines) and
+ * the billing banner and the notifications bell. Ported from apps/platform lib/rail.ts (with its tests),
+ * lib/server/requests.ts (the Requests count), packages/shared lib/account-panel.ts (bell lines) and
  * lib/billing/payment-step.ts (banner kinds), moved to the navigation of plan 60 section 9 and the approved mock. Client
  * safe: no server imports.
  */
@@ -63,8 +63,6 @@ export interface NavModel {
 export interface NavInput {
   /** The services on the plan (guards' `services`). */
   readonly services: readonly Service[];
-  /** The kickoff call is over: before it the sidebar is reduced (plan 60, section 9). */
-  readonly kickoffOver: boolean;
   /** New enquiries; undefined when not known. */
   readonly enquiries?: number;
   /** Requests waiting on the customer; undefined when not known. */
@@ -107,15 +105,12 @@ const FOOT: readonly NavLink[] = [
 
 /**
  * The sidebar (plan 60, section 9, and the mock): Home, Enquiries, Requests; then Services; then Business; the foot always.
- * Before the kickoff call: Home, Requests, Business profile and the foot. Every service shows after kickoff: one not on the
- * plan is marked `bought: false` and still links to its page. A count that could not be read hides only the number. Reports
+ * Shown whole from the first day, before the kickoff call too (owner, 2026-11-13). Every service shows: one not on the plan is
+ * marked `bought: false` and still links to its page. A count that could not be read hides only the number. Reports
  * waits for the first sent report; when that could not be read it shows, so a failed read never hides the link.
  */
 export function navModel(input: NavInput): NavModel {
   const requests = withCount(REQUESTS, input.requests);
-  if (!input.kickoffOver) {
-    return { sections: [{ label: null, links: [HOME, requests] }, { label: "Business", links: [BUSINESS] }], foot: FOOT };
-  }
   // Local SEO + AEO is no longer sold, so its link shows only to a business that has it.
   const services = SERVICES_IN_ORDER.filter((service) => service !== "search" || input.services.includes(service)).map((service): NavLink => {
     const bought = input.services.includes(service);
@@ -157,10 +152,10 @@ export type PhoneTab =
   | { readonly kind: "menu"; readonly id: "services" | "more"; readonly label: string; readonly icon: IconName; readonly links: readonly NavLink[] };
 
 /**
- * The phone's five tabs (plan 60, section 9): Home, Enquiries, Services (a menu of the services), Requests, More. Before
- * the kickoff call: Home, Requests, Business, Billing, More. More holds every other link.
+ * The phone's five tabs (plan 60, section 9): Home, Enquiries, Services (a menu of the services), Requests, More. More holds
+ * every other link.
  */
-export function phoneTabs(model: NavModel, kickoffOver: boolean): readonly PhoneTab[] {
+export function phoneTabs(model: NavModel): readonly PhoneTab[] {
   const links = allLinks(model);
   const find = (href: string): NavLink | undefined => links.find((link) => link.href === href);
   const tab = (href: string, label?: string): PhoneTab[] => {
@@ -168,14 +163,12 @@ export function phoneTabs(model: NavModel, kickoffOver: boolean): readonly Phone
     return link === undefined ? [] : [{ kind: "link", link, label: label ?? link.label }];
   };
   const services = links.filter((link) => link.service !== undefined);
-  const head: PhoneTab[] = kickoffOver
-    ? [
-        ...tab(SHELL_PATHS.home),
-        ...tab(SHELL_PATHS.enquiries),
-        { kind: "menu", id: "services", label: "Services", icon: "Browser", links: services },
-        ...tab(SHELL_PATHS.requests),
-      ]
-    : [...tab(SHELL_PATHS.home), ...tab(SHELL_PATHS.requests), ...tab(SHELL_PATHS.business, "Business"), ...tab(SHELL_PATHS.billing, "Billing")];
+  const head: PhoneTab[] = [
+    ...tab(SHELL_PATHS.home),
+    ...tab(SHELL_PATHS.enquiries),
+    { kind: "menu", id: "services", label: "Services", icon: "Browser", links: services },
+    ...tab(SHELL_PATHS.requests),
+  ];
   const shown = new Set(head.flatMap((slot) => (slot.kind === "link" ? [slot.link.href] : slot.links.map((link) => link.href))));
   return [...head, { kind: "menu", id: "more", label: "More", icon: "List", links: links.filter((link) => !shown.has(link.href)) }];
 }
@@ -203,26 +196,6 @@ export function searchNav(targets: readonly NavTarget[], query: string): readonl
 /** Command K on a Mac, Control K elsewhere: the app's only global shortcut (plan 60, section 15). */
 export function isSearchShortcut(event: Pick<KeyboardEvent, "metaKey" | "ctrlKey" | "key">): boolean {
   return (event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k";
-}
-
-/** The kickoff booking as the shell reads it. */
-export interface KickoffBooking {
-  readonly endsAt: Date | null;
-  readonly heldAt: Date | null;
-}
-
-/**
- * A kickoff is over once staff marked it held, or its end time has passed. No booking means it has not happened. Ported
- * from apps/platform lib/home/state.ts kickoffIsOver.
- */
-export function kickoffIsOver(kickoff: KickoffBooking | null, now: Date): boolean {
-  if (kickoff === null) return false;
-  return kickoff.heldAt !== null || (kickoff.endsAt !== null && kickoff.endsAt.getTime() <= now.getTime());
-}
-
-/** The shell's reading of the kickoff. When it could not be read the full sidebar shows, so no link is hidden by a failure. */
-export function kickoffOverOrAssumed(kickoff: Loaded<KickoffBooking | null>, now: Date): boolean {
-  return kickoff.ok ? kickoffIsOver(kickoff.data, now) : true;
 }
 
 /** A loaded count, or undefined when it failed: the link stays and only its number is left out. */
