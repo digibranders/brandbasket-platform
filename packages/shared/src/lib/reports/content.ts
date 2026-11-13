@@ -1,7 +1,8 @@
 import { z } from "zod";
 
 /**
- * What a stored report document holds, version 1. compose.test.ts checks the composers' output against this schema.
+ * What a stored report document holds, version 1. The customer app reads it with a schema of its own
+ * (apps/customer/src/features/reports/rules.ts); the two must keep the same limits, and compose.test.ts checks the composers' output against these.
  * Every figure is already worded and formatted when the report is frozen, with its unit and its month or date in the label or the value.
  */
 export const REPORT_CONTENT_VERSION = 1;

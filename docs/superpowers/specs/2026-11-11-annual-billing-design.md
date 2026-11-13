@@ -38,7 +38,7 @@ same day; the checkout mock is `docs/design/annual-billing-options.html` in the 
 
 ## Surfaces
 
-- Checkout (apps/platform's /plan): a Monthly | Yearly switch with
+- Checkout (apps/customer, and apps/platform's /plan, which shares the server code): a Monthly | Yearly switch with
   "Save 10%" above the lines; yearly lines read "Maintenance, 12 months", then "Paid yearly, 10% off" and, with a code,
   "Code X, first year". The line under Pay: "Your payment covers 12 months, to <date>. Then <amount> (GST included) is
   taken each year for your service."

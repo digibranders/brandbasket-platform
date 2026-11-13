@@ -1,5 +1,9 @@
 # Builds main on a GitHub runner and ships it to the VPS, which only installs, migrates and switches the apps.
 #
+# The customer app v4 (apps/customer, port 3202) is built and shipped only while the repository variable CUSTOMER_APP_ENABLED is 1
+# (Settings, Secrets and variables, Actions, Variables). Unset or anything else: exactly the two apps this workflow has always
+# deployed. Turn it on only after the steps in docs/deployment/brandbasket-vps.md, "Customer app v4".
+#
 # Why: building both apps on the VPS needs more memory than its deploy unit may use, and the build starved the machine for
 # every project that lives there. The runner has the memory; the VPS keeps the database, the env files and the switch.
 #
@@ -35,6 +39,7 @@ jobs:
 
     env:
       SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
+      CUSTOMER_APP_ENABLED: ${{ vars.CUSTOMER_APP_ENABLED }}
 
     steps:
       - uses: actions/checkout@v5
@@ -67,7 +72,9 @@ jobs:
           source deploy/vps/brandbasket-platform-build.env
           set +a
           export CI=1 NEXT_TELEMETRY_DISABLED=1
-          pnpm --workspace-concurrency=2 --filter @brandbasket/platform --filter @brandbasket/admin build
+          filters=(--filter @brandbasket/platform --filter @brandbasket/admin)
+          if [[ "$CUSTOMER_APP_ENABLED" == 1 ]]; then filters+=(--filter @brandbasket/customer); fi
+          pnpm --workspace-concurrency=2 "${filters[@]}" build
 
       # Every node_modules is left out (the VPS installs its own) except the ones inside .next: the build writes the packages it
       # loads at run time there (the Sentry hook's hashed module, for one), and the app will not start without them.
@@ -90,5 +97,7 @@ jobs:
           install -m 700 -d ~/.ssh
           printf '%s\n' "$DEPLOY_KEY" > ~/.ssh/deploy_key && chmod 600 ~/.ssh/deploy_key
           printf '%s\n' "$KNOWN_HOSTS" > ~/.ssh/known_hosts
+          request="deploy $SHA"
+          if [[ "$CUSTOMER_APP_ENABLED" == 1 ]]; then request+=" customer"; fi
           ssh -i ~/.ssh/deploy_key -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes -o ServerAliveInterval=30 \
-            "root@$DEPLOY_HOST" "deploy $SHA" < "$RUNNER_TEMP/release.tgz"
+            "root@$DEPLOY_HOST" "$request" < "$RUNNER_TEMP/release.tgz"

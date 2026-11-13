@@ -78,18 +78,22 @@ footer says so. Treat these as a floor, and as one definition used for every cus
 | The job fails with 401 | The token in the file differs from the one the running app loaded; restart the app |
 | A business shows in `failures` | `report_source_runs` has a failed `own` row for it with the error class; run the dry run for that night again |
 
-## The switch
+## What the customer sees, and the switches
 
-A read policy on `metric_daily` and `metric_breakdowns` (migration 0219) lets a customer read their own rolled-up numbers, and
-`packages/db/src/queries/site-visits.ts` has the queries. apps/platform does not show them yet.
+The customer app reads these numbers (and, where the customer has connected it, their Google Analytics, see "Google Analytics" in
+`docs/deployment/brandbasket-vps.md`) through a read policy on `metric_daily` and `metric_breakdowns` for the business's own rows
+(migration 0219). The Website screen shows Visits by day, Most visited pages and Where visitors come from; Home's last 30 days strip
+shows Visits. Each panel is drawn only when its numbers exist, says when they were updated, counts measured days only (a day that was
+not measured is never a zero), and shows a change against the 30 days before only when both windows were measured in full.
 
-One switch keeps an unfinished decision off. It is off unless set to `1`, `true`, `on` or `yes`:
+Two switches keep unfinished decisions off. Both are off unless set to `1`, `true`, `on` or `yes`:
 
 | Switch | Where | Gate | What it controls |
 |---|---|---|---|
+| `CUSTOMER_VISITS_ENABLED` | the customer app's environment | G1: counsel's answer on first-party analytics and the approved privacy wording (the section "What is collected" above) | Whether the Website screen and Home show visits at all. Off, nothing is read or drawn |
 | `ENQUIRY_FORM_CONTENTS_ENABLED` | the environment of whatever calls `acceptEnquiryContents` | G2: the privacy review of storing enquirers' personal data (retention, processor wording, DPDP notice on client sites) | Whether `acceptEnquiryContents` (`packages/shared/src/server/enquiry-contents.ts`) stores a form's or an ad lead's name, phone, email and message. No endpoint calls it yet |
 
-Form sends without personal details are already counted as enquiries (kind `form`, no name, phone or email). When the switch is
+Form sends without personal details are already counted as enquiries (kind `form`, no name, phone or email). When the second switch is
 on, contents are kept with `retain_until` (the approved enquiry period, 12 months, from `RETENTION_PERIODS`). The nightly retention run
 erases the details of rows past that date and keeps the rows as counts (`eraseExpiredEnquiryDetails`); one enquirer's details can be
 erased on request by email address or phone number (`eraseEnquirerDetails`, both in `packages/db/src/queries/account-erasure.ts`).

@@ -160,7 +160,7 @@ describe("findLatestProjectEventAt", () => {
 });
 
 /**
- * The customer app's preview feedback: the round, the ticket written as the
+ * The customer app's preview feedback (apps/customer features/website/actions.ts): the round, the ticket written as the
  * customer, and the link commit together in one staff transaction, so a send that loses the race leaves no ticket behind.
  */
 describe("preview feedback in one transaction", () => {
