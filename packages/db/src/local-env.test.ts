@@ -2,7 +2,7 @@ import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from "nod
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { findWorkspaceRoot, requireEnv } from "./local-env";
+import { findWorkspaceRoot, requireEnv, resolveLocalEnvPath } from "./local-env";
 
 const tempDirs: string[] = [];
 
@@ -67,5 +67,30 @@ describe("requireEnv", () => {
     expect(() => requireEnv(NAME)).toThrow(`${NAME} is not set`);
     process.env[NAME] = "   ";
     expect(() => requireEnv(NAME)).toThrow(`${NAME} is not set`);
+  });
+});
+
+describe("resolveLocalEnvPath", () => {
+  function workspaceWith(...files: string[]): string {
+    const root = makeTempDir("brandbasket-env-root-");
+    for (const file of files) {
+      mkdirSync(join(root, file, ".."), { recursive: true });
+      writeFileSync(join(root, file), "A=1\n");
+    }
+    return root;
+  }
+
+  it("prefers apps/platform/.env.local", () => {
+    const root = workspaceWith("apps/platform/.env.local", "apps/customer/.env.production");
+    expect(resolveLocalEnvPath(root)).toBe(join(root, "apps", "platform", ".env.local"));
+  });
+
+  it("falls back to apps/customer when apps/platform has no file", () => {
+    const root = workspaceWith("apps/customer/.env.production");
+    expect(resolveLocalEnvPath(root)).toBe(join(root, "apps", "customer", ".env.production"));
+  });
+
+  it("is null when no file exists", () => {
+    expect(resolveLocalEnvPath(workspaceWith())).toBeNull();
   });
 });

@@ -4,7 +4,7 @@
 # address never gets a property. Installed by deploy/vps/install.sh but NOT enabled: enabling it is the owner's call, after the
 # Google steps in docs/deployment/brandbasket-vps.md ("Google") and a read of `pnpm google:provision -- --dry-run`. Needs the
 # Setting up sites sign-in connected in the console, VERCEL_API_TOKEN, GOOGLE_ACCOUNT_EMAIL and GOOGLE_OAUTH_CLIENT_ID and
-# GOOGLE_OAUTH_CLIENT_SECRET in the dashboard's environment (read through the release's apps/platform/.env.local link).
+# GOOGLE_OAUTH_CLIENT_SECRET in the dashboard's environment (read through the release's apps/customer/.env.production link).
 # By hand:
 #   systemctl start brandbasket-google-provision.service && journalctl -u brandbasket-google-provision -n 20
 # (a good run prints a line starting "Google go live:").
@@ -17,13 +17,13 @@ Wants=network-online.target
 Type=oneshot
 User=brandbasket
 Group=brandbasket
-WorkingDirectory=/srv/brandbasket/current-platform
+WorkingDirectory=/srv/brandbasket/current-customer
 CacheDirectory=brandbasket-google-provision
 Environment=HOME=/var/cache/brandbasket-google-provision
 Environment=PATH=/usr/local/bin:/usr/bin:/bin
 Environment=NODE_ENV=production
 Environment=COREPACK_ENABLE_DOWNLOAD_PROMPT=0
-ExecStart=/usr/bin/env pnpm google:provision
+ExecStart=/usr/bin/env pnpm --filter @brandbasket/customer google:provision
 Nice=10
 IOWeight=20
 TimeoutStartSec=14min

@@ -72,6 +72,7 @@ jobs:
           source deploy/vps/brandbasket-platform-build.env
           set +a
           export CI=1 NEXT_TELEMETRY_DISABLED=1
+          # TODO after switch: platform is still built and shipped; drop it (and the customer flag) once apps/platform is deleted.
           filters=(--filter @brandbasket/platform --filter @brandbasket/admin)
           if [[ "$CUSTOMER_APP_ENABLED" == 1 ]]; then filters+=(--filter @brandbasket/customer); fi
           pnpm --workspace-concurrency=2 "${filters[@]}" build

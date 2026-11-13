@@ -42,6 +42,12 @@ export function getAppDb(): Database {
  * - src/app/api/error-reports/route.ts, writing a sanitized browser error report and its hashed rate-limit counters (both
  *   tables are staff-only). No customer data is read; the session user, when there is one, is only the report's author.
  *
+ * Moved with the public API routes (src/platform and the routes beside it), the same uses apps/platform lib/server/db.ts documents,
+ * each unchanged: the Teams alert address, the Razorpay, OyeChats and Cal.com webhooks, the site token routes (/api/site/info,
+ * /api/site/events), /api/t, the internal jobs (kickoff builds, first payments, site hosting, analytics roll-up, erasure,
+ * conversions), account erasure, billing and checkout reads and writes, and product photos. In each, the business comes from
+ * a verified token, signature or session, never from the request body.
+ *
  * Ported from the old app with the same uses it made (apps/platform lib/server/db.ts). In each, the user and business come
  * only from the session guard, never from the request:
  * - src/features/entry/server/*: sign-up, email code, setup link and security event rows, written before a workspace exists.

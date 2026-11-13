@@ -165,6 +165,51 @@ beside each), `nginx -t && systemctl reload nginx`. Platform never stopped, and 
 (plan 61 phase 13), so data written by either app is readable by both. Leave `brandbasket-customer` running. To switch the customer app
 itself off afterwards: `systemctl disable --now brandbasket-customer`, then unset the variable.
 
+## Switching the platform paths to apps/customer
+
+State before: `app.brandbasket.in` already serves `apps/customer` (`brandbasket_customer`, 3202), but the sites-enabled file includes
+`snippets/brandbasket-split-platform-paths.conf`, which sends `/api/(site|t|leads|pricing|webhooks|internal|privacy-requests|content-media-uploads)`,
+`/t/` and `/content-media/` to `brandbasket_app` (3201). The code for all of them now lives in `apps/customer` (`src/app/api`,
+`src/platform/lib`), and its job scripts are in `apps/customer/scripts`. The switch moves those paths and the timer jobs to 3202. Nothing
+here is applied by a merge or a deploy: only `install.sh` and the nginx edit change the server.
+
+**Before.** All on the VPS, as root.
+
+1. Deploy this commit to `main` first, with `CUSTOMER_APP_ENABLED=1`. Platform and the console still deploy as before; `brandbasket-customer` now has the routes.
+   Check the routes exist (any answer except 404 or 502 is fine, the token is wrong on purpose):
+   `curl -s -o /dev/null -w '%{http_code}\n' -X POST -H 'Authorization: Bearer x' http://127.0.0.1:3202/api/internal/sync-site-hosting`
+2. Copy what the moved code needs from `platform.env.local` into `customer.env.production`. Names only, no values:
+   `comm -23 <(grep -E '^[A-Z0-9_]+=.' shared/platform.env.local | cut -d= -f1 | sort -u) <(grep -E '^[A-Z0-9_]+=.' shared/customer.env.production | cut -d= -f1 | sort -u)`
+   lists what the customer file lacks. Append the ones that belong (the list is in `apps/customer/.env.production.example`):
+   `for n in PAGESPEED_API_KEY GOOGLE_OAUTH_CLIENT_ID GOOGLE_OAUTH_CLIENT_SECRET GOOGLE_ACCOUNT_EMAIL GOOGLE_SECOND_OWNER_EMAIL GOOGLE_ANALYTICS_TAG_ENABLED GOOGLE_ANALYTICS_ACCOUNT_NAME GA4_SERVICE_ACCOUNT_JSON ACCOUNT_ERASE_TOKEN PAYMENT_RECONCILE_TOKEN KICKOFF_SYNC_TOKEN SITE_HOSTING_SYNC_TOKEN SITE_ANALYTICS_TOKEN; do grep -q "^$n=." shared/customer.env.production || grep -E "^$n=." shared/platform.env.local >> shared/customer.env.production || true; done`
+   Then `restart brandbasket-customer`. The webhook secrets, `LEADS_API_TOKEN`, `BETTER_AUTH_SECRET`, `PAYLOAD_SECRET`, `BRANDBASKET_MEDIA_ROOT` and `BRANDBASKET_SUPPORT_ROOT` must be equal in both files.
+3. Copy the repository's `deploy/` and `scripts/server/` to the server as for any install.
+
+**Switch.**
+
+1. `install -m 644 deploy/vps/nginx/brandbasket-public-paths.conf.example /etc/nginx/snippets/brandbasket-public-paths.conf`. Leave the old snippet where it is.
+2. In `/etc/nginx/sites-available/brandbasket` (and `brandbasket-next`, if installed) change the include from
+   `snippets/brandbasket-split-platform-paths.conf` to `snippets/brandbasket-public-paths.conf` (`sed -i.bak`, keeps the old file as `.bak`).
+   The new snippet sends the same paths to `brandbasket_customer`.
+3. `nginx -t && systemctl reload nginx`.
+4. Move the timer jobs: `deploy/vps/install.sh backups --apply`. It puts the changed units and `/usr/local/sbin/brandbasket-*-job` scripts in place:
+   maintenance, site health, monthly reports and the two Google jobs now run `pnpm --filter @brandbasket/customer <job>` in `current-customer`;
+   erase, kickoff builds, site hosting, site rollup and first payment check call `127.0.0.1:3202` with the token from `customer.env.production`.
+5. Check, in this order: `journalctl -u brandbasket-customer -f` while a Razorpay test webhook or the Cal.com test arrives; `curl -sI https://app.brandbasket.in/t/v1.js`
+   answers 200; a blog image from `/content-media/` loads; the dry runs
+   `runuser -u brandbasket -- /usr/local/sbin/brandbasket-erase-job --env-file /srv/brandbasket/shared/customer.env.production --dry-run` and
+   `cd /srv/brandbasket/current-customer && runuser -u brandbasket -- pnpm --filter @brandbasket/customer reports:run -- --dry-run`;
+   then `systemctl start brandbasket-maintenance.service` and read its journal (a good run prints a line starting `Support maintenance:`).
+6. Watch Sentry and the webhook log for a day before the last step (deleting `apps/platform` and `brandbasket-app`).
+
+**Roll back.** Point the include in the sites-enabled file back at `snippets/brandbasket-split-platform-paths.conf` (or restore the `.bak`),
+`nginx -t && systemctl reload nginx`. For the jobs: from the previous commit's `deploy/` run `install.sh backups --apply` again, which
+restores the units that use `current-platform` and port 3201. Platform keeps running the whole time, so nothing else has to move.
+
+**After it has held.** Delete `apps/platform` and the `brandbasket-app` unit, and do the `# TODO after switch` items in
+`deploy/vps/brandbasket-platform-release`, `deploy/vps/brandbasket-gha-deploy` and `.github/workflows/deploy.yml`. The new snippet is then
+redundant (it goes to the same upstream as `location /`): remove it and its include.
+
 ## One heavy job at a time
 
 Four CPUs, and a build takes most of them. Every Brandbasket build, deploy or CI run holds four flock files for its whole run, and

@@ -27,11 +27,26 @@ export function findWorkspaceRoot(startDir: string = process.cwd()): string {
   }
 }
 
-/** Loads apps/platform/.env.local into process.env. Variables already set in the environment win. */
+/**
+ * Where scripts look when apps/platform has no env file (its folder is gone, or this is a release without it): apps/customer's
+ * file for development, then its production file, which on the server is a link to shared/customer.env.production.
+ */
+const FALLBACK_ENV_RELATIVE_PATHS = [join("apps", "customer", ".env.local"), join("apps", "customer", ".env.production")];
+
+/** The env file scripts load: apps/platform/.env.local when it exists, otherwise the first fallback that does. */
+export function resolveLocalEnvPath(root: string = findWorkspaceRoot()): string | null {
+  for (const relative of [LOCAL_ENV_RELATIVE_PATH, ...FALLBACK_ENV_RELATIVE_PATHS]) {
+    const path = join(root, relative);
+    if (existsSync(path)) return path;
+  }
+  return null;
+}
+
+/** Loads apps/platform/.env.local (or the apps/customer file when it is missing) into process.env. Variables already set in the environment win. */
 export function loadLocalEnv(): void {
-  const path = join(findWorkspaceRoot(), LOCAL_ENV_RELATIVE_PATH);
-  if (!existsSync(path)) {
-    throw new Error(`${path} does not exist. Run "pnpm env:init" to create it.`);
+  const path = resolveLocalEnvPath();
+  if (path === null) {
+    throw new Error(`${join(findWorkspaceRoot(), LOCAL_ENV_RELATIVE_PATH)} does not exist. Run "pnpm env:init" to create it.`);
   }
   config({ path, quiet: true });
 }

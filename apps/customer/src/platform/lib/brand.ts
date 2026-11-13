@@ -1,0 +1,64 @@
+import type { BrandLogo } from "@brandbasket/shared/ui/logo";
+import type { JoinChoice } from "@/platform/lib/join-form";
+
+/*
+ * The name and look of this dashboard: Brandbasket. One product, one brand, so there is one constant. It says the name and
+ * logo shown and which plan is offered at sign-up (Managed Website). An account is opened with an email
+ * address and the code emailed to it.
+ * Browser-safe and pure.
+ */
+export interface Brand {
+  /** The company's name in full: titles, sign-in copy. */
+  readonly name: string;
+  /** What copy calls the product: "Your Brandbasket dashboard". */
+  readonly shortName: string;
+  /** What copy calls the public directory the business's page appears on, in the middle of a sentence ("live on ..."). */
+  readonly directory: string;
+  /** Where a person writes to for help. */
+  readonly contactEmail: string;
+  /** Where a privacy request goes when there is no request form. */
+  readonly privacyEmail: string;
+  /** Where the logo's name links to on the sign-in screens. */
+  readonly siteUrl: string;
+  /** The logo for light and for dark backgrounds, with its size. */
+  readonly logo: { readonly onLight: string; readonly onDark: string; readonly width: number; readonly height: number };
+  /** The plans offered at sign-up, in the order they are shown. */
+  readonly joinChoices: readonly JoinChoice[];
+  /** What the product is, in a sentence or two: said by the logo on the checkout page when it is pressed. */
+  readonly about: string;
+}
+
+export const BRAND: Brand = {
+  name: "Brandbasket",
+  shortName: "Brandbasket",
+  directory: "the local directory",
+  contactEmail: "support@brandbasket.in",
+  privacyEmail: "support@brandbasket.in",
+  siteUrl: "https://brandbasket.in",
+  logo: { onLight: "/brand/brandbasket-logo-light.svg", onDark: "/brand/brandbasket-logo-dark.svg", width: 190, height: 32 },
+  joinChoices: ["managed"],
+  about: "We build your business website and look after it every month: design, hosting and care, with marketing services you can add as you grow.",
+};
+
+/** The plan a sign-up opens with when its address names none, or names one it does not sell (`free`, a typo). */
+export const BRANDBASKET_DEFAULT_CHOICE: JoinChoice = "managed";
+
+/** Where a person writes for help. */
+export function supportEmailOf(brand: Brand): string {
+  return brand.contactEmail;
+}
+
+/** The logo to hand to the shared screens. */
+export function logoOf(brand: Brand): BrandLogo {
+  return { name: brand.name, siteUrl: brand.siteUrl, email: brand.contactEmail, ...brand.logo };
+}
+
+/** Whether this brand sells the free listing. */
+export function sellsFreeListing(brand: Brand): boolean {
+  return brand.joinChoices.includes("listing_only");
+}
+
+/** Whether a sign-up choice may be made. The server refuses any other, whatever the form sent. */
+export function offersChoice(brand: Brand, choice: JoinChoice): boolean {
+  return brand.joinChoices.includes(choice);
+}
