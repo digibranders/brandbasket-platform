@@ -18,7 +18,7 @@ import { getLiveWebsite } from "@/lib/server/onboarding";
  * after it is saved, and a failed email never undoes the request.
  */
 export async function requestOwnDomainAction(_previous: MoveDomainState, formData: FormData): Promise<MoveDomainState> {
-  const { tenant } = await requireCustomerAccess();
+  const { tenant } = await requireCustomerAccess({ access: "write" });
 
   const [primary, live] = await Promise.all([withTenantScope(getAppDb(), tenant, getPrimaryDomain), getLiveWebsite()]);
   if (live === null || primary === null || !isTemporarySubdomain(primary.hostname)) {

@@ -1,6 +1,8 @@
 import { chargedAmountCents, gstInsideCents } from "@brandbasket/billing/tax";
-import { MONTHLY_ADD_ON_IDS, type MonthlyAddOnId } from "@brandbasket/shared/lib/billing/add-ons";
+import type { BillingInterval } from "@brandbasket/db";
+import { annualListCents, MONTHLY_ADD_ON_IDS, type MonthlyAddOnId } from "@brandbasket/shared/lib/billing/add-ons";
 import { bundleLines, bundleNetCents, readBundleSelection, WEBSITE_ALONE, type BundleLine } from "@brandbasket/shared/lib/billing/bundle";
+import { planFirstPayment } from "@brandbasket/shared/lib/billing/first-payment";
 import { adCreditCentsAtCheckout, packageBasisPointsFor } from "@brandbasket/shared/lib/billing/packages";
 import { initialTermPhrase } from "@brandbasket/shared/lib/billing/terms";
 import { formatMoney, type MoneyCurrency } from "@brandbasket/shared/lib/money";
@@ -53,6 +55,36 @@ export function membershipHrefWithServices(tier: MembershipTier, services: reado
 export function servicesAfterToggle(selected: readonly MonthlyAddOnId[], service: MonthlyAddOnId): readonly MonthlyAddOnId[] {
   const next = MONTHLY_ADD_ON_IDS.filter((id) => (id === service ? !selected.includes(id) : selected.includes(id)));
   return next.length === 0 ? selected : next;
+}
+
+/** The plan page's parameter for paying yearly: `?billing=yearly`. Absent, or anything else, is monthly. */
+export const MEMBERSHIP_BILLING_PARAM = "billing";
+const YEARLY_VALUE = "yearly";
+
+/** How often the page's basket is paid for, as its address says. */
+export function readBillingInterval(params: Readonly<Record<string, string | string[] | undefined>>): BillingInterval {
+  const raw = params[MEMBERSHIP_BILLING_PARAM];
+  return (Array.isArray(raw) ? raw[0] : raw) === YEARLY_VALUE ? "year" : "month";
+}
+
+/** `path` with monthly, and with yearly, billing: every other parameter (the basket) kept as it is. */
+export function billingSwitchHrefs(
+  path: string,
+  params: Readonly<Record<string, string | string[] | undefined>>,
+): { readonly monthlyHref: string; readonly yearlyHref: string } {
+  const query = new URLSearchParams();
+  for (const [key, value] of Object.entries(params)) {
+    if (key === MEMBERSHIP_BILLING_PARAM || value === undefined) continue;
+    for (const item of Array.isArray(value) ? value : [value]) query.append(key, item);
+  }
+  const monthly = query.toString();
+  query.set(MEMBERSHIP_BILLING_PARAM, YEARLY_VALUE);
+  return { monthlyHref: monthly === "" ? path : `${path}?${monthly}`, yearlyHref: `${path}?${query.toString()}` };
+}
+
+/** The form value a Pay or code form posts for the interval, read back by readBillingInterval. */
+export function billingParamValue(interval: BillingInterval): string {
+  return interval === "year" ? YEARLY_VALUE : "monthly";
 }
 
 /** The plan's page. */
@@ -123,9 +155,9 @@ export function servicesPhrase(services: readonly MonthlyAddOnId[]): string {
   return titles.length < 2 ? (titles[0] ?? "") : `${titles.slice(0, -1).join(", ")} and ${titles[titles.length - 1]}`;
 }
 
-/** What the services cost a month for a new sign-up, GST included, at the package price (a new account has given up nothing). */
-export function basketNetCents(services: readonly MonthlyAddOnId[], currency: MoneyCurrency): number {
-  return bundleNetCents(bundleLines(services, currency));
+/** What the services cost a month (or a year, paid yearly) for a new sign-up, GST included, at the package price (a new account has given up nothing). */
+export function basketNetCents(services: readonly MonthlyAddOnId[], currency: MoneyCurrency, interval: BillingInterval = "month"): number {
+  return bundleNetCents(bundleLines(services, currency, false, interval));
 }
 
 /**
@@ -178,7 +210,28 @@ export interface OrderSummary {
   readonly totalWithoutCodeCents: number;
   /** The monthly ad credit this checkout would freeze, or null when it freezes none. */
   readonly adCredit: AdCreditRow | null;
+  /**
+   * What the first payment takes today: `totalCents`, or less when services are on the first-month offer (plan 63), where it is
+   * what the server freezes (planFirstPayment). `totalCents` stays the full monthly amount, charged from a month on.
+   */
+  readonly dueTodayCents: number;
+  /** What each service on the first-month offer costs this month, by service; empty when none is on it. */
+  readonly firstMonthCents: Readonly<Record<string, number>>;
+  /**
+   * Paid yearly: what twelve months of the lines' monthly prices come to, and what paying for the year saves on that (the lines'
+   * yearly prices already have it taken off). Null when paid monthly.
+   */
+  readonly annual: { readonly listCents: number; readonly savingCents: number } | null;
+  /**
+   * The code asked for was refused: the basket is only first-month offer services, so the code has nothing to take off (the
+   * server's rule, planFirstPayment). The summary then prices the basket without it, and the page shows CODE_NEEDS_A_PAID_SERVICE.
+   */
+  readonly codeRefused: boolean;
 }
+
+/** Why a code cannot be used on a basket of first-month offer services only. New wording (plan 63, decision D4): the owner approves it before release. */
+export const CODE_NEEDS_A_PAID_SERVICE =
+  "Your referral code can’t be used on a basket of first-month offer services only. Add a service that pays full price to use it.";
 
 /** The basket and the business facts the checkout prices it with: the same inputs, so the page quotes what Razorpay will charge. */
 export interface OrderSummaryInput {
@@ -191,6 +244,13 @@ export interface OrderSummaryInput {
   readonly forfeited: boolean;
   /** The business has paid before: it earns no ad credit. */
   readonly hasEverPaid: boolean;
+  /**
+   * The services the business has never had, so their first month is on the offer (plan 63). Empty or absent for a reactivation and
+   * for anything but monthly billing, which have no offer. The server reads it (businessHasHadService); the page only applies it.
+   */
+  readonly neverHad?: readonly MonthlyAddOnId[];
+  /** How often it is paid for: every amount is for a year when `year`. Absent is every month. */
+  readonly interval?: BillingInterval;
 }
 
 /**
@@ -200,25 +260,56 @@ export interface OrderSummaryInput {
  * too; on the services plan that is 0 and the lines are the whole charge. The code comes off once, after the package offer.
  * Throws on an empty basket.
  */
-export function orderSummary(input: OrderSummaryInput, discountCents: number): OrderSummary {
-  const { planInitialAmountCents, services, currency, taxRateBasisPoints, forfeited, hasEverPaid } = input;
-  const lines = bundleLines(services, currency, forfeited);
+export function orderSummary(input: OrderSummaryInput, requestedDiscountCents: number): OrderSummary {
+  const { planInitialAmountCents, services, currency, taxRateBasisPoints, forfeited, hasEverPaid, neverHad = [] } = input;
+  const interval = input.interval ?? "month";
+  const lines = bundleLines(services, currency, forfeited, interval);
   if (lines.length === 0) throw new RangeError("An order needs at least one service");
   const chargeableCents = planInitialAmountCents + lines.reduce((total, line) => total + line.netCents, 0);
-  const totalCents = chargedAmountCents(chargeableCents, discountCents);
-  const netCents = chargeableCents;
   const basisPoints = packageBasisPointsFor({ services, forfeited });
   const adCreditCents = adCreditCentsAtCheckout({ services, forfeited, hasEverPaid }, currency);
+  // The same rule the server freezes at checkout. A code with nothing to take off the full-price services is refused there, so the
+  // summary prices the basket as if no code were applied (the offer stays, the code row and its discount go) and says so.
+  const firstPaymentWith = (discountCents: number): ReturnType<typeof planFirstPayment> =>
+    planFirstPayment({
+      lines: lines.map((line) => ({ addOn: line.addOn, netCents: line.netCents, hadService: !neverHad.includes(line.addOn) })),
+      interval,
+      provider: "razorpay",
+      currency,
+      discountCents,
+    });
+  const requested = firstPaymentWith(requestedDiscountCents);
+  const codeRefused = requested.kind === "code-refused";
+  const firstPayment = codeRefused ? firstPaymentWith(0) : requested;
+  const discountCents = codeRefused ? 0 : requestedDiscountCents;
+  const totalCents = chargedAmountCents(chargeableCents, discountCents);
+  const netCents = chargeableCents;
+  const dueTodayCents = firstPayment.kind === "offer" ? firstPayment.firstPaymentCents : totalCents;
   return {
     lines,
     offer: basisPoints === 0 ? null : { label: `Package offer, ${basisPoints / 100}% off`, discountCents: lines.reduce((total, line) => total + line.offerCents, 0) },
     discountCents,
     netCents,
-    gstCents: gstInsideCents(totalCents, taxRateBasisPoints),
+    gstCents: gstInsideCents(dueTodayCents, taxRateBasisPoints),
     totalCents,
     totalWithoutCodeCents: chargedAmountCents(chargeableCents, 0),
     adCredit: adCreditCents === 0 ? null : { cents: adCreditCents, label: `We add ${formatMoney(adCreditCents, currency)} a month to your ads` },
+    dueTodayCents,
+    firstMonthCents: firstPayment.kind === "offer" ? firstPayment.trialPriceByAddOn : {},
+    annual: interval === "year" ? annualParts(services, currency, forfeited, lines) : null,
+    codeRefused,
   };
+}
+
+/** Twelve months of the lines at their monthly prices, and what paying for the year takes off that. */
+function annualParts(
+  services: readonly MonthlyAddOnId[],
+  currency: MoneyCurrency,
+  forfeited: boolean,
+  yearly: readonly BundleLine[],
+): { readonly listCents: number; readonly savingCents: number } {
+  const listCents = bundleLines(services, currency, forfeited).reduce((total, line) => total + annualListCents(line.netCents), 0);
+  return { listCents, savingCents: listCents - yearly.reduce((total, line) => total + line.netCents, 0) };
 }
 
 /** The plan facts the line under the Pay button is worded from. */
@@ -226,6 +317,8 @@ export interface RenewalTermsPlan {
   readonly currency: MoneyCurrency;
   readonly taxRateBasisPoints: number;
   readonly initialTermMonths: number;
+  /** Absent is every month. */
+  readonly interval?: BillingInterval;
 }
 
 /**
@@ -237,9 +330,16 @@ export function renewalTerms(
   parts: Pick<OrderSummary, "totalCents" | "totalWithoutCodeCents" | "discountCents" | "lines">,
   plan: RenewalTermsPlan,
   codeMonths: number | null,
+  /** Paid yearly: the day the year paid for ends, already worded ("Thu 11 Nov 2027"). */
+  paidThrough: string | null = null,
 ): string {
   const money = (cents: number): string => formatMoney(cents, plan.currency);
   const gst = plan.taxRateBasisPoints > 0 ? " (GST included)" : "";
+  if (plan.interval === "year") {
+    // A code on a yearly payment covers that payment only, so every renewal is at the price without it.
+    const until = paidThrough === null ? "" : `, to ${paidThrough}`;
+    return `Your payment covers 12 months${until}. Then ${money(parts.totalWithoutCodeCents)}${gst} is taken each year for your ${parts.lines.length === 1 ? "service" : "services"}.`;
+  }
   const first = `Your first payment covers ${initialTermPhrase(plan.initialTermMonths)}, then`;
   const services = parts.lines.length === 1 ? "service" : "services";
   if (parts.discountCents === 0 || codeMonths === null) return `${first} ${money(parts.totalCents)}${gst} is taken each month for your ${services}.`;

@@ -31,7 +31,8 @@ import { openStart, START_PARAM, type StartPrefill } from "@/lib/start-token";
 import { legalLinksFor } from "@/lib/legal-links";
 import { getMembershipPlan } from "@/lib/server/membership";
 import { signOut } from "@/lib/server/sign-out";
-import { joinForListing, signInCustomer } from "./actions";
+import { safeInviteReturn } from "@/lib/team/rules";
+import { joinForListing, signInCustomer, signInToInvite } from "./actions";
 
 export const metadata: Metadata = { title: "Sign in or create your account" };
 
@@ -55,7 +56,12 @@ export default async function AppLoginPage({ searchParams }: AppLoginPageProps):
   const entry = readEntryRequest(params, brand);
   const legalLinks = legalLinksFor(brand);
 
+  // Only an invitation's accept page may be returned to after signing in; anything else in `next` is dropped.
+  const next = safeInviteReturn(typeof params.next === "string" ? params.next : null);
+
   const access = await getCustomerAccess();
+  // Someone already signed in who followed an invitation goes straight back to it.
+  if (next !== null && (access.kind === "granted" || access.kind === "no-business")) redirect(next);
   // A plan's page sends a business that is already a member on to its dashboard.
   if (access.kind === "granted") {
     const wanted = membershipTierForChoice(entry.choice);
@@ -100,7 +106,7 @@ export default async function AppLoginPage({ searchParams }: AppLoginPageProps):
       >
         <TurnstileScope>
           <SignInForm
-            action={signInCustomer}
+            action={next === null ? signInCustomer : signInToInvite.bind(null, next)}
             turnstileAction="sign_in"
             submitLabel="Sign in"
             identifier="phone-or-email"

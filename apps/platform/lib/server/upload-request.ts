@@ -81,6 +81,13 @@ export function refuseUpload(status: number, error: string, headers: Record<stri
   return json(status, { error }, headers);
 }
 
+export const READ_ONLY_UPLOAD_MESSAGE = "Only owners and editors can change this.";
+
+/** A viewer may look but not change anything: the 403 to answer with before the body is read, or null for owners and editors. */
+export function refuseViewer(tenant: TenantContext): Response | null {
+  return tenant.role === "viewer" ? refuseUpload(403, READ_ONLY_UPLOAD_MESSAGE) : null;
+}
+
 /** The most bytes a route takes in one body, and what the owner is told when a body is over it. Images are 4 MB; a video is 50 MB. */
 export interface UploadLimit {
   readonly bytes: number;
@@ -135,6 +142,8 @@ export async function handleUploadRequest(request: Request, deps: UploadRequestD
 
   const tenant = await deps.getTenant();
   if (tenant === null) return refuseUpload(401, UPLOAD_SIGNED_OUT_MESSAGE);
+  const viewer = refuseViewer(tenant);
+  if (viewer !== null) return viewer;
 
   if (!(await deps.isOnboardingOpen(tenant))) return refuseUpload(409, ONBOARDING_LOCKED_MESSAGE);
 

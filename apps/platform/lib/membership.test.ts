@@ -3,8 +3,12 @@ import { chargedAmountCents } from "@brandbasket/billing/tax";
 import type { MonthlyAddOnId } from "@brandbasket/shared/lib/billing/add-ons";
 import { describe, expect, it } from "vitest";
 import {
+  CODE_NEEDS_A_PAID_SERVICE,
   MEMBERSHIP_NAMES,
   basketNetCents,
+  billingParamValue,
+  billingSwitchHrefs,
+  readBillingInterval,
   servicesPhrase,
   MEMBERSHIP_PATH,
   isWaitingOnPayment,
@@ -304,5 +308,64 @@ describe("renewalTerms", () => {
     expect(renewalTerms(coded, plan, null)).toBe("Your first payment covers your first month, then ₹5,398.20 (GST included) is taken each month for your services.");
     const plain = orderSummary({ ...inr, services: ["managed-website"] }, 0);
     expect(renewalTerms(plain, plan, 3)).toBe("Your first payment covers your first month, then ₹2,999 (GST included) is taken each month for your service.");
+  });
+});
+
+describe("paying yearly", () => {
+  const YEARLY_INR = { planInitialAmountCents: 0, currency: "INR", taxRateBasisPoints: 1800, forfeited: false, hasEverPaid: false, interval: "year" } as const;
+
+  it("reads yearly from the address, and anything else as monthly", () => {
+    expect(readBillingInterval({ billing: "yearly" })).toBe("year");
+    expect(readBillingInterval({ billing: ["yearly", "monthly"] })).toBe("year");
+    expect(readBillingInterval({ billing: "weekly" })).toBe("month");
+    expect(readBillingInterval({})).toBe("month");
+    expect(billingParamValue("year")).toBe("yearly");
+    expect(billingParamValue("month")).toBe("monthly");
+  });
+
+  it("links the switch to the same basket monthly and yearly", () => {
+    expect(billingSwitchHrefs("/plan", { services: "managed-website,social-media", billing: "yearly" })).toEqual({
+      monthlyHref: "/plan?services=managed-website%2Csocial-media",
+      yearlyHref: "/plan?services=managed-website%2Csocial-media&billing=yearly",
+    });
+    expect(billingSwitchHrefs("/plan", {})).toEqual({ monthlyHref: "/plan", yearlyHref: "/plan?billing=yearly" });
+  });
+
+  it("prices the basket for the year, with the saving, and takes no first-month offer", () => {
+    const summary = orderSummary({ ...YEARLY_INR, services: ["managed-website", "social-media"], neverHad: ["social-media"] }, 0);
+    expect(summary.totalCents).toBe(2 * 3_238_900);
+    expect(summary.dueTodayCents).toBe(summary.totalCents);
+    expect(summary.firstMonthCents).toEqual({});
+    expect(summary.annual).toEqual({ listCents: 2 * 3_598_800, savingCents: 2 * 359_900 });
+    expect(basketNetCents(["managed-website"], "INR", "year")).toBe(3_238_900);
+  });
+
+  it("says the year the payment covers, and that each year after takes the price without a code", () => {
+    const coded = orderSummary({ ...YEARLY_INR, services: ["managed-website"] }, 323_890);
+    expect(renewalTerms(coded, { currency: "INR", taxRateBasisPoints: 1800, initialTermMonths: 1, interval: "year" }, 1, "Thu 11 Nov 2027")).toBe(
+      "Your payment covers 12 months, to Thu 11 Nov 2027. Then ₹32,389 (GST included) is taken each year for your service.",
+    );
+  });
+});
+
+describe("a code on a basket of first-month offer services only", () => {
+  const INR = { planInitialAmountCents: 0, currency: "INR", taxRateBasisPoints: 1800, forfeited: false, hasEverPaid: false, neverHad: ["social-media", "paid-ads"] } as const;
+
+  it("is not applied: the summary prices the basket as without it and flags the refusal", () => {
+    const refused = orderSummary({ ...INR, services: ["social-media"] }, 50_000);
+    const without = orderSummary({ ...INR, services: ["social-media"] }, 0);
+    expect(refused).toEqual({ ...without, codeRefused: true });
+    expect(refused.dueTodayCents).toBe(100);
+  });
+
+  it("words the server's refusal", () => {
+    expect(CODE_NEEDS_A_PAID_SERVICE).toMatch(/referral code/);
+  });
+
+  it("is applied when a service pays full price", () => {
+    const summary = orderSummary({ ...INR, services: ["managed-website", "social-media"] }, 50_000);
+    expect(summary.codeRefused).toBe(false);
+    expect(summary.discountCents).toBe(50_000);
+    expect(summary.dueTodayCents).toBe(299_900 + 100 - 50_000);
   });
 });

@@ -31,32 +31,27 @@ export interface SetupCallBookingView {
 }
 
 /**
- * The call link and the business's booking, for the home screen. Neither is allowed to break the page: a failure to read
- * the booking is logged and treated as "not booked yet", and the link has its own guard (getSetupCallUrl).
+ * The call link and the business's booking, for the home screen. A failed read throws, so the page shows its error state: a
+ * failure treated as "not booked yet" asked a customer who had booked to book again.
  * Read once per request, keyed on the tenant object (requireCustomerAccess hands every caller the same one), so the
  * shell and the page agree on `readAtMs` and on whether the first look has ended.
  */
 export const getSetupCallState = cache(async (tenant: TenantContext): Promise<SetupCallState> => {
   const url = await getSetupCallUrl();
   const readAtMs = Date.now();
-  try {
-    const row = await withTenantScope(getAppDb(), tenant, (tx) => findSetupCallBooking(tx, tenant.businessId));
-    if (row === null) return { url, booking: null, readAtMs };
-    return {
-      url,
-      readAtMs,
-      booking: {
-        bookedAtIso: row.bookedAt.toISOString(),
-        startsAtIso: row.startsAt?.toISOString() ?? null,
-        endsAtIso: row.endsAt?.toISOString() ?? null,
-        heldAtIso: row.heldAt?.toISOString() ?? null,
-        summary: row.summary,
-      },
-    };
-  } catch (error) {
-    console.error("[setup-call] could not read the booking", errorLogInfo(error));
-    return { url, booking: null, readAtMs };
-  }
+  const row = await withTenantScope(getAppDb(), tenant, (tx) => findSetupCallBooking(tx, tenant.businessId));
+  if (row === null) return { url, booking: null, readAtMs };
+  return {
+    url,
+    readAtMs,
+    booking: {
+      bookedAtIso: row.bookedAt.toISOString(),
+      startsAtIso: row.startsAt?.toISOString() ?? null,
+      endsAtIso: row.endsAt?.toISOString() ?? null,
+      heldAtIso: row.heldAt?.toISOString() ?? null,
+      summary: row.summary,
+    },
+  };
 });
 
 /**

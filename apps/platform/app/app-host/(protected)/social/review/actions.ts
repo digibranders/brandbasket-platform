@@ -8,7 +8,7 @@ import { notFound, unstable_rethrow } from "next/navigation";
 import { z } from "zod";
 import { requireBillingAccess } from "@/lib/server/billing";
 import { getAppDb } from "@/lib/server/db";
-import { actorOf, addNetwork, decideBatch, decidePoster, drawBatch, loadTopics, SocialAutoError, socialAutoSettings, type SocialAutoSettings } from "@/lib/server/social-auto";
+import { actorOf, addNetwork, decideBatch, decideCarousel, decidePoster, drawBatch, loadTopics, makeCarousel, setCarouselWeekly, SocialAutoError, socialAutoSettings, type SocialAutoSettings } from "@/lib/server/social-auto";
 import { socialBrand, type SocialBrand } from "@/lib/server/social-brand";
 import { wordsForCode } from "@/lib/social/ai";
 import { CHANNEL_PLATFORMS, PLATFORM_NAMES } from "@/lib/social/auto";
@@ -44,6 +44,8 @@ async function run(what: string, work: (g: Extract<Guard, { ok: true }>) => Prom
     notice = await work(g);
   } catch (error) {
     unstable_rethrow(error);
+    // The posting service words this refusal itself (which channel, and the Monday it starts again), so that sentence is shown as it is.
+    if (error instanceof SocialAutoError && (error.code === "PICTURE_LIMIT_REACHED" || error.code === "CAROUSEL_LIMIT_REACHED") && error.detail !== null) return { status: "error", message: error.detail };
     if (error instanceof SocialAutoError && error.code !== null) return { status: "error", message: wordsForCode(error.code) };
     console.error(`[social] could not ${what}`, errorLogInfo(error));
     return { status: "error", message: wordsForCode(null) };
@@ -62,11 +64,17 @@ export async function decideBatchAction(formData: FormData): Promise<NewPostStat
   const parsed = z
     .discriminatedUnion("action", [
       z.object({ ...shared, action: z.enum(["keep", "drop"]) }),
+      // The headline alone: it is printed on the picture, so it can only change before the picture is drawn.
+      z.object({ ...shared, action: z.literal("edit-headline"), headline: z.string().trim().min(1, "Write a headline.").max(120, "Keep the headline under 120 characters.") }),
       z.object({ ...shared, action: z.literal("edit"), network: z.enum(CHANNEL_PLATFORMS).optional(), caption: z.string().trim().min(1, "Write what the post should say.").max(2200), headline: z.string().trim().min(1).max(120).optional() }),
     ])
     .safeParse({ batchId: formData.get("batchId"), postId: formData.get("postId"), action: formData.get("action"), network: formData.get("network") ?? undefined, caption: formData.get("caption") ?? undefined, headline: formData.get("headline") ?? undefined });
-  if (!parsed.success) return parsed.error.issues[0]?.message === "Write what the post should say." ? { status: "error", message: "Write what the post should say." } : badForm();
+  if (!parsed.success) {
+    const said = parsed.error.issues[0]?.message;
+    return said === "Write what the post should say." || said === "Write a headline." || said === "Keep the headline under 120 characters." ? { status: "error", message: said } : badForm();
+  }
   const d = parsed.data;
+  if (d.action === "edit-headline") return run("change a headline", async ({ settings, brand, actor }) => void (await decideBatch(settings, brand.externalId, d.batchId, { action: "edit", postId: d.postId, headline: d.headline }, actor)));
   return run("change a written post", async ({ settings, brand, actor }) => {
     await decideBatch(settings, brand.externalId, d.batchId, d.action === "edit" ? { action: "edit", postId: d.postId, caption: d.caption, ...(d.network === undefined ? {} : { network: d.network }), ...(d.headline === undefined ? {} : { headline: d.headline }) } : { action: d.action, postId: d.postId }, actor);
   });
@@ -74,9 +82,10 @@ export async function decideBatchAction(formData: FormData): Promise<NewPostStat
 
 /** "Draw my pictures": asks for pictures for the posts the customer kept. This is what costs money, so social-auto limits it. */
 export async function drawBatchAction(formData: FormData): Promise<NewPostState> {
-  const parsed = z.object({ batchId: ID }).safeParse({ batchId: formData.get("batchId") });
+  // `week` is the Monday of one week of a plan; a batch drawn in one piece has none.
+  const parsed = z.object({ batchId: ID, week: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(), retry: z.literal("1").optional() }).safeParse({ batchId: formData.get("batchId"), week: formData.get("week") || undefined, retry: formData.get("retry") || undefined });
   if (!parsed.success) return badForm();
-  return run("draw the pictures", async ({ settings, brand, actor }) => void (await drawBatch(settings, brand.externalId, parsed.data.batchId, actor)));
+  return run("draw the pictures", async ({ settings, brand, actor }) => void (await drawBatch(settings, brand.externalId, parsed.data.batchId, actor, parsed.data.week, parsed.data.retry === "1")));
 }
 
 /** The customer's decision on a picture: approve it, send it back with a reason, take an approval back, ask for one more, or approve every network's picture of one topic. */
@@ -121,5 +130,36 @@ export async function addNetworkAction(formData: FormData): Promise<NewPostState
       }
     }
     return `We are writing your posts for ${PLATFORM_NAMES[network]}. They will appear here for you to approve.`;
+  });
+}
+
+/** Asks for this week's carousel. The posting service makes it for the connected accounts from the website it already read. */
+export async function makeCarouselAction(): Promise<NewPostState> {
+  return run("make the carousel", async ({ settings, brand, actor }) => void (await makeCarousel(settings, brand.externalId, {}, actor)));
+}
+
+/** Switches the weekly carousel on or off. While on, the posting service makes one each week and waits for the customer's approval. */
+export async function setWeeklyCarouselAction(formData: FormData): Promise<NewPostState> {
+  const parsed = z.enum(["on", "off"]).safeParse(formData.get("enabled"));
+  if (!parsed.success) return badForm();
+  const enabled = parsed.data === "on";
+  return run("switch the weekly carousel", async ({ settings, brand, actor }) => {
+    await setCarouselWeekly(settings, brand.externalId, enabled, actor);
+  });
+}
+
+/** The customer's decision on the whole carousel: approve it, or send it back with a reason. Never one slide. */
+export async function decideCarouselAction(formData: FormData): Promise<NewPostState> {
+  const parsed = z
+    .discriminatedUnion("action", [
+      z.object({ id: ID, action: z.literal("approve") }),
+      z.object({ id: ID, action: z.literal("reject"), reason: z.string().trim().min(1).max(40), comment: z.string().trim().max(500).optional() }),
+    ])
+    .safeParse({ id: formData.get("id"), action: formData.get("action"), reason: formData.get("reason") ?? undefined, comment: formData.get("comment") || undefined });
+  if (!parsed.success) return badForm();
+  const d = parsed.data;
+  return run("decide the carousel", async ({ settings, brand, actor }) => {
+    await decideCarousel(settings, brand.externalId, d.action === "approve" ? { action: "approve", id: d.id } : { action: "reject", id: d.id, reason: d.reason, ...(d.comment === undefined ? {} : { comment: d.comment }) }, actor);
+    if (d.action === "approve") return "Approved. It goes out on its day.";
   });
 }

@@ -1,9 +1,10 @@
 import "server-only";
 import { z } from "zod";
 import { readAnalytics, type Analytics } from "@/lib/social/analytics";
+import { readCarousel, readCarouselWeekly, readCarousels, type CarouselDetail, type CarouselSummary } from "@/lib/social/carousel";
 import { brandIdFor, readBrands, type BrandsView } from "@/lib/social/brands";
-import { readBatches, readExpiredBatches, readFacts, readJob, readJobs, readPosters, readTopics, type ExpiredBatch, type FactsView, type Poster, type SiteJob, type Topic, type WrittenBatch } from "@/lib/social/ai";
-import { readChannels, readConnectLink, readNotices, readPosts, readWebsite, type AutoChannel, type AutoPost, type ChannelPlatform, type WorkspaceNotice } from "@/lib/social/auto";
+import { readBatches, readBatchPlan, readExpiredBatches, readFacts, readJob, readJobs, readPosters, readTopics, type BatchPlan, type ExpiredBatch, type FactsView, type Poster, type SiteJob, type Topic, type WrittenBatch } from "@/lib/social/ai";
+import { isChannelPlatform, readChannels, readConnectLink, readNotices, readPosts, readWebsite, type AutoChannel, type AutoPost, type ChannelPlatform, type WorkspaceNotice } from "@/lib/social/auto";
 
 /**
  * The server-side client for social-auto, the service that writes and publishes the posts. Every call carries the product
@@ -278,11 +279,11 @@ export const actorOf = (tenant: { readonly businessId: string; readonly userId: 
 export async function startSiteJob(
   settings: SocialAutoSettings,
   businessId: string,
-  request: { readonly site: string; readonly page: boolean; readonly networks?: readonly ChannelPlatform[] },
+  request: { readonly site: string; readonly page: boolean; readonly networks?: readonly ChannelPlatform[]; /** The Monday a further month starts, `YYYY-MM-DD`. */ readonly startDate?: string },
   actor: string,
   send: typeof fetch = fetch,
 ): Promise<{ readonly job: SiteJob; readonly created: boolean }> {
-  const body = { externalId: businessId, site: request.site, ...(request.page ? { page: true } : {}), ...(request.networks === undefined || request.networks.length === 0 ? {} : { networks: request.networks }) };
+  const body = { externalId: businessId, site: request.site, ...(request.page ? { page: true } : {}), ...(request.networks === undefined || request.networks.length === 0 ? {} : { networks: request.networks }), ...(request.startDate === undefined ? {} : { startDate: request.startDate }) };
   const answer = await call(settings, "/api/v1/site-jobs", { method: "POST", body, actor }, send);
   if (answer.status !== 200 && answer.status !== 202) throw refusal(answer, "the website job");
   const started = readJob(answer.body);
@@ -316,11 +317,11 @@ export async function decideFact(settings: SocialAutoSettings, businessId: strin
 }
 
 /** The written posts still waiting for the customer's choice. */
-export async function loadBatches(settings: SocialAutoSettings, businessId: string, send: typeof fetch = fetch): Promise<{ readonly batches: WrittenBatch[]; readonly expired: ExpiredBatch[] }> {
+export async function loadBatches(settings: SocialAutoSettings, businessId: string, send: typeof fetch = fetch): Promise<{ readonly batches: WrittenBatch[]; readonly expired: ExpiredBatch[]; readonly plan: BatchPlan | null }> {
   const answer = await call(settings, `/api/v1/batches?${new URLSearchParams({ externalId: businessId })}`, { method: "GET" }, send);
-  if (answer.status === 404) return { batches: [], expired: [] };
+  if (answer.status === 404) return { batches: [], expired: [], plan: null };
   if (answer.status !== 200) throw refusal(answer, "the written posts");
-  return { batches: readBatches(answer.body), expired: readExpiredBatches(answer.body) };
+  return { batches: readBatches(answer.body), expired: readExpiredBatches(answer.body), plan: readBatchPlan(answer.body) };
 }
 
 /** Each post idea and which of the customer's connected networks it lacks. A business with no workspace has none. */
@@ -354,9 +355,12 @@ export async function decideBatch(settings: SocialAutoSettings, businessId: stri
   return batch;
 }
 
-/** Asks for pictures for the kept posts of a batch. This is what costs money, so social-auto limits it; once per batch. */
-export async function drawBatch(settings: SocialAutoSettings, businessId: string, batchId: string, actor: string, send: typeof fetch = fetch): Promise<{ readonly job: SiteJob; readonly created: boolean }> {
-  const answer = await call(settings, "/api/v1/batches", { method: "POST", body: { externalId: businessId, batchId, action: "draw" }, actor }, send);
+/**
+ * Asks for pictures for the kept posts of a batch, or of one week of it (`week` is that week's Monday, `YYYY-MM-DD`). This is what costs
+ * money, so social-auto limits it; once per batch, or once per week of a plan.
+ */
+export async function drawBatch(settings: SocialAutoSettings, businessId: string, batchId: string, actor: string, week?: string, retry = false, send: typeof fetch = fetch): Promise<{ readonly job: SiteJob; readonly created: boolean }> {
+  const answer = await call(settings, "/api/v1/batches", { method: "POST", body: { externalId: businessId, batchId, action: "draw", ...(week === undefined ? {} : { week }), ...(retry ? { retry: true } : {}) }, actor }, send);
   if (answer.status !== 200 && answer.status !== 202) throw refusal(answer, "the pictures");
   const started = readJob(answer.body);
   if (started === null) throw new SocialAutoError("social-auto answered with a job that could not be read");
@@ -402,5 +406,107 @@ export async function fetchPosterImage(settings: SocialAutoSettings, businessId:
   }
   if (response.status === 404) return null;
   if (!response.ok || !(response.headers.get("content-type") ?? "").startsWith("image/")) throw new SocialAutoError(`social-auto refused the picture (${response.status})`, response.status);
+  return new Uint8Array(await response.arrayBuffer());
+}
+
+/** One channel's pictures this week: the limit, how many were drawn, how many are left. */
+export interface ChannelPictureLimit {
+  readonly network: ChannelPlatform;
+  readonly limit: number;
+  readonly used: number;
+  readonly left: number;
+}
+
+/** The pictures each channel may still have drawn this week (Monday to Sunday, India time), and when the week starts again. */
+export interface PictureLimits {
+  /** The Monday the count starts again, `YYYY-MM-DD`. */
+  readonly restart: string;
+  readonly channels: readonly ChannelPictureLimit[];
+}
+
+const PictureLimitsBody = z.object({
+  week: z.object({ restart: z.string().regex(/^\d{4}-\d{2}-\d{2}$/) }),
+  channels: z.array(z.object({ network: z.string(), limit: z.number().int().nonnegative(), used: z.number().int().nonnegative(), left: z.number().int().nonnegative() })),
+});
+
+/**
+ * How many pictures each channel has left this week. Null when the posting service has no weekly limit to report (an older one, or no
+ * workspace yet), so the page shows nothing instead of a made-up number.
+ */
+export async function loadPictureLimits(settings: SocialAutoSettings, externalId: string, send: typeof fetch = fetch): Promise<PictureLimits | null> {
+  const answer = await call(settings, `/api/v1/limits?${new URLSearchParams({ externalId })}`, { method: "GET" }, send);
+  // 503: the ledger the count comes from was not found, so no number is better than a wrong one.
+  if (answer.status === 404 || answer.status === 501 || answer.status === 503) return null;
+  if (answer.status !== 200) throw refusal(answer, "the picture limits");
+  const parsed = PictureLimitsBody.safeParse(answer.body);
+  if (!parsed.success) throw new SocialAutoError("social-auto answered the picture limits in a shape this page cannot read");
+  return {
+    restart: parsed.data.week.restart,
+    channels: parsed.data.channels.flatMap((channel) => (isChannelPlatform(channel.network) ? [{ network: channel.network, limit: channel.limit, used: channel.used, left: channel.left }] : [])),
+  };
+}
+
+/** The customer's carousels, newest first, and whether the weekly carousel is on. A business with no workspace, or a posting service that has no carousels yet, has none. */
+export async function loadCarouselList(settings: SocialAutoSettings, businessId: string, send: typeof fetch = fetch): Promise<{ readonly carousels: CarouselSummary[]; readonly weekly: boolean }> {
+  const answer = await call(settings, `/api/v1/carousels?${new URLSearchParams({ externalId: businessId })}`, { method: "GET" }, send);
+  if (answer.status === 404 || answer.status === 501) return { carousels: [], weekly: false };
+  if (answer.status !== 200) throw refusal(answer, "the carousels");
+  return { carousels: readCarousels(answer.body), weekly: readCarouselWeekly(answer.body) };
+}
+
+/** The customer's carousels, newest first. */
+export async function loadCarousels(settings: SocialAutoSettings, businessId: string, send: typeof fetch = fetch): Promise<CarouselSummary[]> {
+  return (await loadCarouselList(settings, businessId, send)).carousels;
+}
+
+/** Switches the weekly carousel on or off: while on, one is made each week for the customer to approve. Answers the new state. */
+export async function setCarouselWeekly(settings: SocialAutoSettings, businessId: string, enabled: boolean, actor: string, send: typeof fetch = fetch): Promise<boolean> {
+  const answer = await call(settings, "/api/v1/carousels", { method: "POST", body: { externalId: businessId, action: "weekly", enabled }, actor }, send);
+  if (answer.status !== 200) throw refusal(answer, "the weekly carousel");
+  return readCarouselWeekly(answer.body);
+}
+
+/** One carousel with its slides and the words for each channel; null when it is not there (or the posting service does not know carousels). */
+export async function loadCarousel(settings: SocialAutoSettings, businessId: string, carouselId: string, send: typeof fetch = fetch): Promise<CarouselDetail | null> {
+  const answer = await call(settings, `/api/v1/carousels?${new URLSearchParams({ externalId: businessId, id: carouselId })}`, { method: "GET" }, send);
+  if (answer.status === 404 || answer.status === 501) return null;
+  if (answer.status !== 200) throw refusal(answer, "the carousel");
+  return readCarousel(answer.body);
+}
+
+/** Asks for this week's carousel: for the channels that are connected, from the website already read. A second ask while one is being made answers the same job. */
+export async function makeCarousel(settings: SocialAutoSettings, businessId: string, request: { readonly networks?: readonly ChannelPlatform[]; readonly startDate?: string }, actor: string, send: typeof fetch = fetch): Promise<{ readonly job: SiteJob; readonly created: boolean }> {
+  const body = { externalId: businessId, action: "make", ...(request.networks === undefined || request.networks.length === 0 ? {} : { networks: request.networks }), ...(request.startDate === undefined ? {} : { startDate: request.startDate }) };
+  const answer = await call(settings, "/api/v1/carousels", { method: "POST", body, actor }, send);
+  if (answer.status !== 200 && answer.status !== 202) throw refusal(answer, "the carousel");
+  const started = readJob(answer.body);
+  if (started === null) throw new SocialAutoError("social-auto answered with a job that could not be read");
+  return started;
+}
+
+export type CarouselDecision = { readonly action: "approve"; readonly id: string } | { readonly action: "reject"; readonly id: string; readonly reason: string; readonly comment?: string };
+
+/** The customer's decision on the whole carousel: every slide and every channel's words, exactly as they are now. */
+export async function decideCarousel(settings: SocialAutoSettings, businessId: string, decision: CarouselDecision, actor: string, send: typeof fetch = fetch): Promise<void> {
+  const answer = await call(settings, "/api/v1/carousels", { method: "POST", body: { externalId: businessId, ...decision }, actor }, send);
+  if (answer.status !== 200) throw refusal(answer, "the carousel decision");
+}
+
+/** One slide of a carousel as a JPEG; null when it is not there. Asked for with the customer's own brand, so a customer sees only their own slides. */
+export async function fetchCarouselSlide(settings: SocialAutoSettings, businessId: string, carouselId: string, position: number, send: typeof fetch = fetch): Promise<Uint8Array | null> {
+  let response: Response;
+  try {
+    response = await send(`${settings.baseUrl}/api/v1/carousels?${new URLSearchParams({ externalId: businessId, id: carouselId, slide: String(position), image: "1" })}`, {
+      method: "GET",
+      headers: { Authorization: `Bearer ${settings.key}` },
+      redirect: "error",
+      cache: "no-store",
+      signal: AbortSignal.timeout(TIMEOUT_MS),
+    });
+  } catch (error) {
+    throw new SocialAutoError(`social-auto could not be reached: ${error instanceof Error ? error.message : String(error)}`);
+  }
+  if (response.status === 404) return null;
+  if (!response.ok || !(response.headers.get("content-type") ?? "").startsWith("image/")) throw new SocialAutoError(`social-auto refused the slide (${response.status})`, response.status);
   return new Uint8Array(await response.arrayBuffer());
 }

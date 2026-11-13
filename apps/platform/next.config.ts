@@ -49,7 +49,10 @@ const nextConfig: NextConfig = {
     return [
       {
         source: "/:path*",
-        headers: securityHeaders({
+        headers: [
+          // Every response, API routes and files included (the proxy marks only the pages it rewrites): nothing here may be indexed.
+          { key: "X-Robots-Tag", value: "noindex, nofollow" },
+          ...securityHeaders({
           development: process.env.NODE_ENV === "development",
           https: servedOverHttps,
           // The live preview on the Listing and Your details pages frames the marketing website (components/panel/live-preview).
@@ -62,7 +65,8 @@ const nextConfig: NextConfig = {
           tagManager: GTM_ID !== null,
           // The Social media page shows the pictures of posts, which social-auto serves.
           ...(socialAutoOrigin === null ? {} : { pictureOrigin: socialAutoOrigin }),
-        }),
+          }),
+        ],
       },
       // The site tracking script (public/t/v1.js): customers' pages load it from here, so it may be cached for an hour and
       // served stale for a day while a fresh copy is fetched. A new version gets a new file name (v2.js).

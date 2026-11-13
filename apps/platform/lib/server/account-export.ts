@@ -50,7 +50,8 @@ export const ACCOUNT_EXPORT_NOT_INCLUDED = [
 
 export interface AccountExportInput {
   readonly userId: string;
-  readonly businessId: string;
+  /** The business whose records go in the file, or null for the person's own account data only (an editor, a viewer, nobody). */
+  readonly businessId: string | null;
   readonly now: Date;
 }
 
@@ -66,7 +67,7 @@ export async function buildAccountExport(dbs: AccountExportDatabases, input: Acc
   const [account, sessions, businessRecords, emailChoices, consents, ticketIds] = await Promise.all([
     readExportedAccount(dbs.staff, userId),
     listExportedSessions(dbs.staff, userId),
-    readExportedBusiness(dbs.staff, businessId),
+    businessId === null ? null : readExportedBusiness(dbs.staff, businessId),
     readExportedNotificationPreferences(dbs.staff, userId),
     listConsents(dbs.staff, { type: "user", ref: userId }),
     listSupportTicketIds(dbs.app, userId),

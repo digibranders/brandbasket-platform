@@ -22,7 +22,7 @@ import { businessMembers, users } from "../src/schema";
  */
 
 /** The shared dev database and the throwaway preview copy. Never a database with any other name. */
-const SEEDABLE_DATABASES: readonly string[] = ["brandbasket_platform", "brandbasket_platform_preview", "brandbasket_platform_v4"];
+const SEEDABLE_DATABASES: readonly string[] = ["brandbasket_platform", "brandbasket_platform_preview"];
 const LOCAL_HOSTS: ReadonlySet<string> = new Set(["localhost", "127.0.0.1", "[::1]"]);
 const HOUR_MS = 3_600_000;
 const MINUTE_MS = 60_000;
@@ -156,7 +156,7 @@ async function seedCustomer(
     businessId,
     planId: plan.id,
     provider: "fake",
-    // An id the fake provider accepts; seed-v4-states.ts renames older seed_<slug> ids to the same value.
+    // An id the fake provider accepts.
     providerSubscriptionId: `fake_sub_${createHash("sha1").update(`seed_${slug}`).digest("hex").slice(0, 24)}`,
     replacing: null,
     now,

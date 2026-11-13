@@ -20,7 +20,7 @@ const PAYMENT_NEEDED = "Make your payment to send this to us. Use the Pay button
  * read. On success the customer is sent to the provider's checkout; the payment's confirmation sends onboarding.
  */
 export async function startCheckout(_previous: StepFormState, formData: FormData): Promise<StepFormState> {
-  const customer = await requireCustomerAccess();
+  const customer = await requireCustomerAccess({ access: "owner" });
   const outcome = await startCheckoutFor(customer, new Date());
   if (outcome.kind === "refused") return refusedStepState(outcome.problem, formData);
   redirect(outcome.url);
@@ -52,7 +52,7 @@ export async function submitOnboarding(_previous: StepFormState, formData: FormD
  * same server-side computation. Everything is checked again in applyReferralCodeFor, which never trusts the form.
  */
 export async function applyReferralCode(_previous: StepFormState, formData: FormData): Promise<StepFormState> {
-  const customer = await requireCustomerAccess();
+  const customer = await requireCustomerAccess({ access: "owner" });
   const typed = formData.get("referralCode");
   // Check and send pays for the website alone (startCheckoutFor), so the code is priced against it.
   const outcome = await applyReferralCodeFor(customer, typeof typed === "string" ? typed : "", WEBSITE_ALONE, new Date());
@@ -63,7 +63,7 @@ export async function applyReferralCode(_previous: StepFormState, formData: Form
 
 /** Takes an applied code off again, before payment. */
 export async function removeReferralCode(_previous: StepFormState, formData: FormData): Promise<StepFormState> {
-  const customer = await requireCustomerAccess();
+  const customer = await requireCustomerAccess({ access: "owner" });
   const outcome = await removeReferralCodeFor(customer);
   if (outcome.kind === "refused") return refusedStepState(outcome.problem, formData);
   revalidatePath(PAYMENT_STEP_HREF);

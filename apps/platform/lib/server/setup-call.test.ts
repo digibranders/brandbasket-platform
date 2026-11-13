@@ -2,7 +2,7 @@ import { findSetupCallBooking, recordSetupCallBooking, withTenantScope } from "@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { announceCallBooked } from "./call-alert";
 import { bookCallSlot, cancelCallBooking } from "./call-scheduling";
-import { bookSetupCall } from "./setup-call";
+import { bookSetupCall, getSetupCallState } from "./setup-call";
 import { getSetupCallUrl } from "./setup-call-link";
 
 vi.mock("server-only", () => ({}));
@@ -68,5 +68,19 @@ describe("bookSetupCall and the Teams alert", () => {
     vi.mocked(bookCallSlot).mockResolvedValue({ ok: false, reason: "taken" });
     await bookSetupCall(tenant, invitee, START, "Asia/Kolkata", NOW);
     expect(announceCallBooked).not.toHaveBeenCalled();
+  });
+});
+
+describe("getSetupCallState", () => {
+  it("throws when the booking cannot be read, instead of saying nothing is booked", async () => {
+    vi.mocked(getSetupCallUrl).mockResolvedValue("https://cal.com/x");
+    vi.mocked(findSetupCallBooking).mockRejectedValue(new Error("database down"));
+    await expect(getSetupCallState(tenant)).rejects.toThrow("database down");
+  });
+
+  it("says no booking when there is none", async () => {
+    vi.mocked(getSetupCallUrl).mockResolvedValue("https://cal.com/x");
+    vi.mocked(findSetupCallBooking).mockResolvedValue(null);
+    expect(await getSetupCallState(tenant)).toMatchObject({ url: "https://cal.com/x", booking: null });
   });
 });

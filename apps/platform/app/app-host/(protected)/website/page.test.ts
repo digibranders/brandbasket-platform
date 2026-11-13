@@ -2,6 +2,8 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { requireWebsiteClient } from "@/lib/server/customer-access";
 import { loadRequests } from "@/lib/server/requests";
+import { loadSiteHealth } from "@/lib/server/site-health";
+import { loadVisits } from "@/lib/server/site-visits";
 import { loadWebsite, type WebsiteData } from "@/lib/server/website";
 import type { RequestListItem } from "@brandbasket/db";
 import { progressView, type ProgressInput } from "@/lib/website/progress-view";
@@ -18,6 +20,8 @@ vi.mock("next/navigation", () => ({
 vi.mock("@/lib/server/customer-access", () => ({ requireWebsiteClient: vi.fn() }));
 vi.mock("@/lib/server/website", () => ({ loadWebsite: vi.fn() }));
 vi.mock("@/lib/server/requests", () => ({ loadRequests: vi.fn() }));
+vi.mock("@/lib/server/site-health", () => ({ loadSiteHealth: vi.fn() }));
+vi.mock("@/lib/server/site-visits", () => ({ loadVisits: vi.fn() }));
 vi.mock("./actions", () => ({ approvePreviewAction: vi.fn(), sendPreviewFeedbackAction: vi.fn() }));
 
 // En and em dash, written as escapes so this file holds none itself.
@@ -81,6 +85,8 @@ beforeEach(() => {
   vi.resetAllMocks();
   vi.mocked(requireWebsiteClient).mockResolvedValue({ tenant: { businessName: "Riverside Plumbing" }, billing: { status: "active", hasAccess: true, hasWebsite: true } } as never);
   vi.mocked(loadRequests).mockResolvedValue({ items: [], includedUsed: 0, includedAllowed: 2 });
+  vi.mocked(loadSiteHealth).mockResolvedValue({ latest: null, firstCheckedAt: null, up: 0, down: 0, certificate: null, phoneSpeed: null });
+  vi.mocked(loadVisits).mockResolvedValue(null);
 });
 
 /** A row of the Requests list: a website change unless said otherwise. */
@@ -320,5 +326,47 @@ describe("what the page no longer shows", () => {
       const html = await render({ status, live: status === "live", versions: [V2, V1], changes: [ASKED], granted: 1, previewDue: "2026-11-04", plannedLaunch: "2026-11-09" });
       expect(html, status).not.toMatch(DASHES);
     }
+  });
+});
+
+describe("the live Overview's site health and visits", () => {
+  const NOW_ISH = new Date();
+  const live = { status: "live", live: true, versions: [V1] } as const;
+
+  it("shows the health checks when they exist and an honest empty line when none ran yet", async () => {
+    expect(await render(live)).toContain("No checks yet");
+    vi.mocked(loadSiteHealth).mockResolvedValue({
+      latest: { status: "up", checkedAt: NOW_ISH },
+      firstCheckedAt: NOW_ISH,
+      up: 3,
+      down: 0,
+      certificate: null,
+      phoneSpeed: { score: 82, checkedAt: NOW_ISH },
+    });
+    const html = await render(live);
+    expect(html).toContain("Your website is up");
+    expect(html).toContain("Speed on phones: 82 out of 100");
+  });
+
+  it("leaves the card out when the checks cannot be read, and shows neither card before launch", async () => {
+    vi.mocked(loadSiteHealth).mockRejectedValue(new Error("db down"));
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+    expect(await render(live)).not.toContain("Site health");
+    vi.mocked(loadVisits).mockClear();
+    expect(await render({ status: "building" })).not.toContain("Site health");
+    expect(loadVisits).not.toHaveBeenCalled();
+  });
+
+  it("draws nothing about visits when the loader gives null, and the figures when it gives them", async () => {
+    expect(await render(live)).not.toContain("Visits to your website");
+    vi.mocked(loadVisits).mockResolvedValue({
+      summary: { source: "own", total: 1240, change: 12, period: "Last 30 days", days: [], updatedAt: NOW_ISH },
+      lists: null,
+    });
+    const html = await render(live);
+    expect(html).toContain("Visits to your website");
+    expect(html).toContain("1,240");
+    expect(html).toContain("+12%");
+    expect(html).not.toMatch(DASHES);
   });
 });

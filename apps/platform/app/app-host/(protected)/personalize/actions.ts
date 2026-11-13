@@ -28,7 +28,7 @@ function basketOf(formData: FormData): ReturnType<typeof readSelectedServices> {
  * as a message beside the question and writes nothing.
  */
 export async function saveAnswerAction(_previous: IntakeFormState, formData: FormData): Promise<IntakeFormState> {
-  const { tenant } = await requireCustomerAccess(ACCESS);
+  const { tenant } = await requireCustomerAccess({ ...ACCESS, access: "write" });
   const services = basketOf(formData);
   const field = text(formData.get("field"));
   const outcome = await saveIntakeAnswer(tenant, {
@@ -45,7 +45,7 @@ export async function saveAnswerAction(_previous: IntakeFormState, formData: For
 
 /** Adds a service to the basket, or takes it out (never the last one), and stays on the summary: new questions appear there. */
 export async function toggleServiceAction(formData: FormData): Promise<void> {
-  const { tenant } = await requireCustomerAccess(ACCESS);
+  const { tenant } = await requireCustomerAccess({ ...ACCESS, access: "write" });
   const services = basketOf(formData);
   const [toggled] = readBundleSelection([text(formData.get("toggle"))]);
   const next = toggled === undefined ? services : servicesAfterToggle(services, toggled);
@@ -55,7 +55,7 @@ export async function toggleServiceAction(formData: FormData): Promise<void> {
 
 /** Continue to checkout from the summary: the questions are done, answered or not, and the plan's page opens on this basket. */
 export async function continueToCheckoutAction(formData: FormData): Promise<void> {
-  const { tenant } = await requireCustomerAccess(ACCESS);
+  const { tenant } = await requireCustomerAccess({ ...ACCESS, access: "write" });
   const services = basketOf(formData);
   await saveIntakeServices(tenant, services, new Date());
   await completeIntake(tenant, new Date());

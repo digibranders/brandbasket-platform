@@ -50,7 +50,8 @@ function render(detail: Partial<RequestDetailData>, notice: { ok: boolean; text:
   return renderToStaticMarkup(createElement(RequestDetail, { detail: full, now: NOW, submissionKey: "reply-key-12345678", notice, calls })).replaceAll("<!-- -->", "");
 }
 
-const dark = (html: string): number => html.split(DARK_BUTTON).length - 1;
+// The payment dialog's own button is not on the page: it is counted apart from the page's one dark button.
+const dark = (html: string): number => html.replace(/<dialog[\s\S]*?<\/dialog>/g, "").split(DARK_BUTTON).length - 1;
 const plain = (html: string): string => html.replace(/<[^>]+>/g, "");
 
 it("draws a quoted request: title, 'Website, Home', the stepper, the box with the one dark button, the thread and a Send button", () => {

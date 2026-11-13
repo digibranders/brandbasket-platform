@@ -49,6 +49,8 @@ export interface RailInput {
   readonly requestsCount?: number;
   /** The signed-in person is also an affiliate: their coupon page sits in the Account section. */
   readonly affiliate?: boolean;
+  /** False for an editor or a viewer: Plan & billing is the owner's, so the link is left out. Left out, it is shown. */
+  readonly owner?: boolean;
 }
 
 export const HOME_HREF = "/";
@@ -118,7 +120,7 @@ export function railSections(input: RailInput): readonly RailSection[] {
     ...(services.length > 0 ? [{ label: "Services", links: services }] : []),
     // Business is the website's details until it is rebuilt for every customer (plan phase 7): a plan without the website has no page behind it.
     { label: "Manage", links: [requestsLink(input.requestsCount, input.hasAccess), BUSINESS] },
-    { label: "Account", links: [PLAN, ...(input.affiliate === true ? [AFFILIATE] : []), SETTINGS] },
+    { label: "Account", links: [...(input.owner === false ? [] : [PLAN]), ...(input.affiliate === true ? [AFFILIATE] : []), SETTINGS] },
   ];
 }
 

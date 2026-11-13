@@ -274,6 +274,21 @@ describe("adding a service from the Billing page", () => {
     expect((await findSubscriptionById(dbs.staff.db, second.subscriptionId))?.status).toBe("incomplete");
   });
 
+  it("opens nothing and cancels nothing when the earlier one's upfront payment already exists at the provider", async () => {
+    await websiteSubscription();
+    const first = await add();
+    if (first.kind !== "approve") throw new Error("The first press should open a combined subscription");
+    const paidAtProvider = { ...provider, findUpfrontPayment: async () => ({ providerPaymentId: "pay_late", amountCents: UPFRONT, currency: "INR" as const, paidAt: NOV_11 }) };
+
+    const second = await startCombinedAddOn(
+      { staffDb: dbs.staff.db, provider: paidAtProvider, ensureDiscountPlan: async () => undefined },
+      { businessId, businessName: "Harbour Bakery", email: "owner@bakery.test", addOn: "social-media", now: new Date(NOV_11.getTime() + 60_000) },
+    );
+
+    expect(second).toEqual({ kind: "payment-pending" });
+    expect((await findSubscriptionById(dbs.staff.db, first.subscriptionId))?.status).toBe("incomplete");
+  });
+
   it("waits while another service is set to end, rather than end it early", async () => {
     const current = await websiteSubscription();
     const [website] = await findBundledAddOnsForSubscription(dbs.staff.db, current.id);

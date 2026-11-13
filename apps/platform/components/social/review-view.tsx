@@ -8,6 +8,7 @@ import { jobIsActive, jobLine } from "@/lib/social/ai";
 import { dayLabel, PLATFORM_NAMES } from "@/lib/social/auto";
 import { groupReview } from "@/lib/social/review-cards";
 import { BrandSwitcher } from "./brand-switcher";
+import { CarouselCard } from "./carousel-card";
 import { DismissibleNotice } from "./dismissible-notice";
 import { NetworksPanel } from "./networks-panel";
 import { SMALL_SOFT } from "./small-buttons";
@@ -35,6 +36,18 @@ export function ReviewView({ review }: { readonly review: SocialReview }): React
           We could not reach the posting service just now, so some of this may be missing. Try again in a few minutes.
         </p>
       ) : null}
+      {review.limits === null || review.limits.channels.length === 0 ? null : (
+        <p className="text-[0.8125rem] text-ink-2">
+          Pictures left this week:{" "}
+          {review.limits.channels.map((channel, index) => (
+            <span key={channel.network}>
+              {index === 0 ? "" : ", "}
+              {PLATFORM_NAMES[channel.network]} {channel.left} of {channel.limit}
+            </span>
+          ))}
+          . Each network gets its own picture, and the count starts again on {dayLabel(review.limits.restart, { day: "numeric", month: "long" })}.
+        </p>
+      )}
       {review.expired.batches.length === 0 && review.expired.pictures.length === 0 ? null : (
         <DismissibleNotice id={`expired:${review.expired.batches.length}:${review.expired.pictures.length}`}>
           <p>Some of your posts were put away because nobody decided within 14 days.</p>
@@ -59,8 +72,9 @@ export function ReviewView({ review }: { readonly review: SocialReview }): React
       {/* Nothing could be read: say so once, above, and do not also say that nothing is waiting, which would not be true. */}
       {review.unavailable && review.batches.length === 0 && review.waiting.length === 0 && review.approved.length === 0 ? null : (
         <>
+          <CarouselCard summary={review.carousels[0]} detail={review.carousel} canMake={review.canMakeCarousel} making={review.jobs.some((job) => job.kind === "carousel" && jobIsActive(job))} weekly={review.weeklyCarousel} />
           <NetworksPanel missing={review.missingNetworks} busy={review.jobs.some((job) => job.kind === "network" && jobIsActive(job))} />
-          <PostsPanel groups={groupReview(review.batches, [...review.waiting, ...review.approved])} drawing={review.jobs.filter((job) => job.kind === "draw" && jobIsActive(job) && job.batchId !== undefined).map((job) => job.batchId ?? "")} reasons={review.reasons} />
+          <PostsPanel groups={groupReview(review.batches, [...review.waiting, ...review.approved], review.topics)} drawing={review.jobs.filter((job) => job.kind === "draw" && jobIsActive(job) && job.batchId !== undefined).map((job) => job.batchId ?? "")} reasons={review.reasons} />
         </>
       )}
     </PageFrame>

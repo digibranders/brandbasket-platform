@@ -3,6 +3,8 @@ import { MEMBER_WELCOME_HREF } from "@/lib/celebration";
 import { membershipFailedHref, membershipReceivedHref, type MembershipTier } from "@/lib/membership";
 import type { PaymentConfirmation } from "@/lib/server/payment-confirmation";
 
+/** Where a paid added service returns: Plan & billing, on Your services. */
+const SERVICE_ADDED_HREF = "/services";
 const FAILED_HREF = `${PAYMENT_STEP_HREF}?payment=failed`;
 
 /**
@@ -21,6 +23,8 @@ export function hrefAfter(result: PaymentConfirmation, membership: MembershipTie
       return MEMBER_WELCOME_HREF;
     case "reactivated":
       return reactivationReturnHref("received");
+    case "service-added":
+      return SERVICE_ADDED_HREF;
     case "paid":
     case "already-recorded":
       return afterPaymentHref(result.projectStillOpen);

@@ -50,7 +50,7 @@ export default async function PersonalizePage({ searchParams }: PersonalizePageP
   if (step !== INTAKE_SUMMARY_STEP && !asked) redirect(personalizeHref(services, INTAKE_SUMMARY_STEP));
 
   const plan = view.plan;
-  const summary = plan === null ? null : ledgerSummary({ planInitialAmountCents: plan.initialAmountCents, currency: plan.currency, taxRateBasisPoints: plan.taxRateBasisPoints, forfeited: view.forfeited, hasEverPaid: view.hasEverPaid }, view.services, null);
+  const summary = plan === null ? null : ledgerSummary({ planInitialAmountCents: plan.initialAmountCents, currency: plan.currency, taxRateBasisPoints: plan.taxRateBasisPoints, forfeited: view.forfeited, hasEverPaid: view.hasEverPaid, neverHad: view.neverHad }, view.services, null);
   const prices = Object.fromEntries(MONTHLY_ADD_ON_IDS.map((id) => [id, formatMoney(bundleLines([id], plan?.currency ?? "INR")[0]?.listCents ?? 0, plan?.currency ?? "INR")])) as Record<MonthlyAddOnId, string>;
   const aside =
     plan === null || summary === null ? null : (

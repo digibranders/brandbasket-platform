@@ -288,8 +288,10 @@ describe("findReactivationNetCents", () => {
       await expect(findReactivation(lapsedWith({ currency: "INR" }))).resolves.toEqual({
         cancelled: true,
         services: ["managed-website", "social-media", "paid-ads"],
+        lines: expect.arrayContaining([expect.objectContaining({ addOn: "managed-website", title: "Website Management", netCents: 299_900 })]),
         netCents: 899_700,
         discountCents: 0,
+        billingInterval: "month",
       });
     });
 
@@ -297,8 +299,10 @@ describe("findReactivationNetCents", () => {
       await expect(findReactivation(lapsedWith({ currency: "INR" }), ["managed-website", "x", "paid-ads"])).resolves.toEqual({
         cancelled: true,
         services: ["managed-website", "paid-ads"],
+        lines: expect.arrayContaining([expect.objectContaining({ addOn: "paid-ads", netCents: 299_900 })]),
         netCents: 599_800,
         discountCents: 0,
+        billingInterval: "month",
       });
       await expect(findReactivationNetCents(lapsedWith({ currency: "INR" }), ["social-media"])).resolves.toBe(299_900);
     });
@@ -310,8 +314,10 @@ describe("findReactivationNetCents", () => {
     await expect(findReactivation(lapsedWith({ currency: "INR" }), ["managed-website"])).resolves.toEqual({
       cancelled: false,
       services: ["managed-website", "social-media", "paid-ads"],
+      lines: expect.arrayContaining([expect.objectContaining({ addOn: "social-media" })]),
       netCents: 899_700,
       discountCents: 0,
+      billingInterval: "month",
     });
   });
 

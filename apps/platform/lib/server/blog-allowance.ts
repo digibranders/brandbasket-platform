@@ -12,7 +12,7 @@ export interface BlogUsage {
   readonly used: number;
   readonly allowance: number;
   /** Posts in the next block, and its price with tax: "₹560.50". */
-  readonly nextBlock: { readonly posts: number; readonly price: string };
+  readonly nextBlock: { readonly posts: number; readonly price: string; readonly currency: Plan["currency"] };
 }
 
 /** Every post of the business counts, drafts included; a deleted post frees its slot. */
@@ -39,6 +39,7 @@ export async function getBlogUsage(customer: Pick<GrantedCustomer, "tenant">, pl
     nextBlock: {
       posts: plan.blogPostBlockSize,
       price: formatMoney(chargeAmountCents(plan.extraBlogPostsAmountCents, 1), plan.currency),
+      currency: plan.currency,
     },
   };
 }

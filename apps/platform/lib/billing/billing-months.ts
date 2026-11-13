@@ -2,6 +2,8 @@ import { isUnappliedReason, type BillingCurrency, type Charge, type Receipt } fr
 import { BRAND, type Brand } from "@/lib/brand";
 import { chargeLabel } from "@brandbasket/shared/lib/billing/charges";
 import { formatMoney } from "@brandbasket/shared/lib/money";
+import { chargeSummary } from "./payment-summaries";
+import type { PaymentSummary } from "./payment-summary";
 import { receiptRows, type ReceiptRow } from "./receipt-rows";
 
 /** One line of a month's bill: a payment with its receipt, or an extra still to pay. */
@@ -16,6 +18,8 @@ export type BillLine =
       readonly amount: string;
       /** "includes 18% GST", or null for an untaxed charge. */
       readonly taxNote: string | null;
+      /** What Pay confirms before the payment opens. */
+      readonly summary: PaymentSummary;
     };
 
 /** Everything billed in one calendar month (UTC), oldest first, with what it comes to. */
@@ -87,15 +91,18 @@ export function billingMonths(receipts: readonly Receipt[], openCharges: readonl
   });
   for (const charge of openCharges) {
     if (charge.status !== "open") continue;
+    const title = chargeLabel(charge);
+    const amount = formatMoney(charge.amountCents, charge.currency);
     entries.push({
       at: charge.createdAt,
       line: {
         kind: "due",
         chargeId: charge.id,
-        title: chargeLabel(charge),
+        title,
         addedIso: charge.createdAt.toISOString(),
-        amount: formatMoney(charge.amountCents, charge.currency),
+        amount,
         taxNote: charge.taxRateBasisPoints > 0 ? `includes ${charge.taxRateBasisPoints / 100}% GST` : null,
+        summary: chargeSummary(title, amount, charge.currency, charge.taxRateBasisPoints),
       },
       amountCents: charge.amountCents,
       currency: charge.currency,

@@ -13,7 +13,7 @@ import { saveOnboardingStep } from "@/lib/server/onboarding";
 
 /** Step 01: saves the profile and the opening hours together, marks the step done and moves on. */
 export async function saveBusinessStep(_previous: StepFormState, formData: FormData): Promise<StepFormState> {
-  const { tenant } = await requireCustomerAccess();
+  const { tenant } = await requireCustomerAccess({ access: "write" });
 
   const parsed = parseBusinessForm(formData);
   if (!parsed.success) return refusedStepState(parsed, formData);

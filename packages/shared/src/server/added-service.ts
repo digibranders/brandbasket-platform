@@ -199,6 +199,8 @@ export type CombinedAddOnStart =
   /** A service is set to stop, or a plan change is waiting, on `changesOn`: replacing the subscription now would undo it, so the add waits. */
   | { readonly kind: "change-pending"; readonly changesOn: Date }
   | { readonly kind: "refused"; readonly assessment: AddOnAssessment }
+  /** The earlier combined subscription's upfront payment exists at the provider but is not recorded yet: nothing was opened, so it is not replaced and paid twice. */
+  | { readonly kind: "payment-pending" }
   /** The business changed while the provider was asked: nothing was opened. */
   | { readonly kind: "changed" };
 
@@ -229,7 +231,7 @@ function combinable(subscription: Subscription): boolean {
 }
 
 /** What adding a service as a combined subscription would come to, or why it cannot. */
-export type CombinedAddOnPlan = { readonly kind: "planned"; readonly planned: PlannedCombined } | Exclude<CombinedAddOnStart, { kind: "approve" }>;
+export type CombinedAddOnPlan = { readonly kind: "planned"; readonly planned: PlannedCombined } | Exclude<CombinedAddOnStart, { kind: "approve" | "payment-pending" }>;
 
 /**
  * Works out a combined subscription for an added service without opening anything: the lines, the new billing date and what is
@@ -324,6 +326,12 @@ export async function startCombinedAddOn(
   });
   if (decided.kind !== "planned") return decided;
   const { planned } = decided;
+
+  // An earlier combined subscription may have been paid while its webhook is still on its way: replacing it now would cancel what was
+  // just paid and take the money a second time. Asked with no transaction open, like every provider call here.
+  if (planned.replacing !== null && (await provider.findUpfrontPayment(planned.replacing.providerSubscriptionId)) !== null) {
+    return { kind: "payment-pending" };
+  }
 
   // The provider is asked with no transaction open: the plan for the new total, then the subscription that starts on the new date.
   const providerPlanId = await deps.ensureDiscountPlan(provider, planned.plan, planned.discountCents, planned.netCents, "month");

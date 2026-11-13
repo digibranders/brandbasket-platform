@@ -32,7 +32,7 @@ async function failure(error: unknown): Promise<SupportFormState> {
  * team is told once, however often the form is sent.
  */
 export async function askForChangeAction(_previous: SupportFormState, formData: FormData): Promise<SupportFormState> {
-  const { user, tenant, billing } = await requireCustomerAccess();
+  const { user, tenant, billing } = await requireCustomerAccess({ access: "write" });
   // A form opened before access lapsed must not send; Home explains what to do.
   if (!billing.hasAccess) redirect("/");
   if (!canCreateSupportRequest(user.id)) return supportFormError("New requests are temporarily unavailable. Please try again later.");

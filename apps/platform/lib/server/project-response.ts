@@ -23,6 +23,11 @@ export async function respondToPreview(db: Database, input: RespondToPreviewInpu
     await requestProjectRevisions(db, { businessId: input.businessId, now });
   }
 
+  await notifyTeamPreviewResponse(db, input);
+}
+
+/** The best-effort team email for a preview response that has already committed. Never throws. */
+export async function notifyTeamPreviewResponse(db: Database, input: RespondToPreviewInput): Promise<void> {
   const teamInbox = process.env.BRANDBASKET_TEAM_EMAIL;
   if (teamInbox === undefined || teamInbox.trim() === "") {
     console.error("BRANDBASKET_TEAM_EMAIL is not set, so nobody was told about a preview response.", {

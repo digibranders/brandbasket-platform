@@ -3,9 +3,9 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("server-only", () => ({}));
 vi.mock("./quietly", () => ({ quietly: async <T>(_scope: string, _label: string, fallback: T, work: () => Promise<T>): Promise<T> => work().catch(() => fallback) }));
 vi.mock("./social-brand", () => ({ socialBrand: async (tenant: { businessId: string; businessName: string }) => ({ externalId: tenant.businessId, name: tenant.businessName, view: null }) }));
-vi.mock("./social-auto", () => ({ socialAutoSettings: vi.fn(), loadSiteJobs: vi.fn(), loadBatches: vi.fn(), loadPosters: vi.fn(), loadTopics: vi.fn() }));
+vi.mock("./social-auto", () => ({ socialAutoSettings: vi.fn(), loadSiteJobs: vi.fn(), loadBatches: vi.fn(), loadPosters: vi.fn(), loadTopics: vi.fn(), loadPictureLimits: vi.fn(), loadCarouselList: vi.fn(), loadCarousel: vi.fn(), loadWorkspaceFacts: vi.fn(), loadChannels: vi.fn() }));
 
-import { loadBatches, loadPosters, loadSiteJobs, loadTopics, socialAutoSettings } from "./social-auto";
+import { loadBatches, loadCarousel, loadCarouselList, loadChannels, loadPictureLimits, loadPosters, loadSiteJobs, loadTopics, loadWorkspaceFacts, socialAutoSettings } from "./social-auto";
 import { loadSocialReview } from "./social-review";
 
 const tenant = { userId: "u", businessId: "business-1", businessName: "Om Sweets", role: "owner" } as never;
@@ -15,8 +15,13 @@ beforeEach(() => {
   vi.resetAllMocks();
   vi.mocked(socialAutoSettings).mockReturnValue({ baseUrl: "https://social.example", key: "key-1234567890abcdef", returnUrl: "https://app.example/social" });
   vi.mocked(loadSiteJobs).mockResolvedValue([]);
-  vi.mocked(loadBatches).mockResolvedValue({ batches: [], expired: [] });
+  vi.mocked(loadBatches).mockResolvedValue({ batches: [], expired: [], plan: null });
   vi.mocked(loadTopics).mockResolvedValue([]);
+  vi.mocked(loadPictureLimits).mockResolvedValue(null);
+  vi.mocked(loadCarouselList).mockResolvedValue({ carousels: [], weekly: false });
+  vi.mocked(loadWorkspaceFacts).mockResolvedValue({ website: null, notices: [] });
+  vi.mocked(loadChannels).mockResolvedValue([]);
+  vi.mocked(loadPosters).mockResolvedValue({ posters: [], reasons: [] });
 });
 
 describe("loadSocialReview", () => {
@@ -42,7 +47,7 @@ describe("loadSocialReview", () => {
     vi.mocked(socialAutoSettings).mockReturnValue({ baseUrl: "https://social.example", key: "key-1234567890abcdef", returnUrl: "https://app.example/social" });
     vi.mocked(loadPosters).mockResolvedValue({ posters: [], reasons: [] });
     vi.mocked(loadSiteJobs).mockRejectedValue(new Error("down"));
-    vi.mocked(loadBatches).mockResolvedValue({ batches: [{ id: "week-01", createdAt: "x", networks: [], posts: [], rules: {} }], expired: [] });
+    vi.mocked(loadBatches).mockResolvedValue({ batches: [{ id: "week-01", createdAt: "x", networks: [], posts: [], rules: {}, weeks: null }], expired: [], plan: null });
     const review = await loadSocialReview(tenant);
     expect(review.unavailable).toBe(true);
     expect(review.batches).toHaveLength(1);
@@ -50,7 +55,7 @@ describe("loadSocialReview", () => {
   });
 
   it("tells what was put away because nobody decided, and keeps an expired picture that can be drawn again among those waiting", async () => {
-    vi.mocked(loadBatches).mockResolvedValue({ batches: [], expired: [{ id: "week-00.json", expiredAt: "2026-11-19T09:00:00.000Z" }] });
+    vi.mocked(loadBatches).mockResolvedValue({ batches: [], expired: [{ id: "week-00.json", expiredAt: "2026-11-19T09:00:00.000Z" }], plan: null });
     const picture = (over: object): never => ({ id: "v1", batchId: "week-01", postId: "p1", network: "instagram", shape: "square", width: 1, height: 1, headline: "H", caption: "C", versionNumber: 1, status: "expired", canRedraw: true, redrawsLeft: 1, createdAt: "x", ...over }) as never;
     vi.mocked(loadPosters).mockResolvedValue({ posters: [picture({}), picture({ id: "v2", canRedraw: false })], reasons: [] });
     const review = await loadSocialReview(tenant);
@@ -64,5 +69,54 @@ describe("loadSocialReview", () => {
     vi.mocked(loadPosters).mockResolvedValue({ posters: [], reasons: [] });
     vi.mocked(loadTopics).mockResolvedValue([topic(["facebook", "google"]), topic(["facebook"])]);
     expect((await loadSocialReview(tenant)).missingNetworks).toEqual(["facebook", "google"]);
+  });
+});
+
+describe("loadSocialReview: the weekly limits and the carousel", () => {
+  const limits = { restart: "2026-11-16", channels: [{ network: "instagram", limit: 5, used: 2, left: 3 }] } as const;
+  const summary = { id: "c1", topic: "Diwali", date: "2026-11-18", count: 3, status: "pending" } as const;
+  const detail = { id: "c1", count: 3, status: "pending", slides: [], captions: [], reasons: [] } as const;
+
+  it("carries the picture limits, and nothing when the posting service reports none", async () => {
+    vi.mocked(loadPictureLimits).mockResolvedValue(limits as never);
+    expect((await loadSocialReview(tenant)).limits).toEqual(limits);
+    expect(vi.mocked(loadPictureLimits).mock.calls[0]?.[1]).toBe("business-1");
+    vi.mocked(loadPictureLimits).mockResolvedValue(null);
+    expect((await loadSocialReview(tenant)).limits).toBeNull();
+  });
+
+  it("reads the newest carousel in full, and whether the weekly one is on", async () => {
+    vi.mocked(loadCarouselList).mockResolvedValue({ carousels: [summary, { ...summary, id: "c0" }] as never, weekly: true });
+    vi.mocked(loadCarousel).mockResolvedValue(detail as never);
+    const review = await loadSocialReview(tenant);
+    expect(vi.mocked(loadCarousel).mock.calls[0]?.[2]).toBe("c1");
+    expect(review.carousels.map((one) => one.id)).toEqual(["c1", "c0"]);
+    expect(review.carousel).toEqual(detail);
+    expect(review.weeklyCarousel).toBe(true);
+  });
+
+  it("does not ask for a carousel's detail when there is none", async () => {
+    const review = await loadSocialReview(tenant);
+    expect(loadCarousel).not.toHaveBeenCalled();
+    expect(review.carousel).toBeNull();
+    expect(review.weeklyCarousel).toBe(false);
+  });
+
+  it("can make a carousel only once the website was read and an account is connected", async () => {
+    const channel = { id: "instagram:1", platform: "instagram", account: "acme", connectedAt: "x" } as never;
+    expect((await loadSocialReview(tenant)).canMakeCarousel).toBe(false);
+    vi.mocked(loadWorkspaceFacts).mockResolvedValue({ website: "https://omsweets.in", notices: [] });
+    expect((await loadSocialReview(tenant)).canMakeCarousel).toBe(false);
+    vi.mocked(loadChannels).mockResolvedValue([channel]);
+    expect((await loadSocialReview(tenant)).canMakeCarousel).toBe(true);
+  });
+
+  it("says the page is incomplete when the limits or the carousels cannot be read, and keeps the rest", async () => {
+    vi.mocked(loadPictureLimits).mockRejectedValue(new Error("down"));
+    vi.mocked(loadCarouselList).mockRejectedValue(new Error("down"));
+    const review = await loadSocialReview(tenant);
+    expect(review.unavailable).toBe(true);
+    expect(review.limits).toBeNull();
+    expect(review.carousels).toEqual([]);
   });
 });

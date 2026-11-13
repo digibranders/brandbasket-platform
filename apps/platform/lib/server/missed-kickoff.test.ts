@@ -49,9 +49,8 @@ describe("loadMissedKickoffAt", () => {
     expect(await loadMissedKickoffAt(tenant)).toBeNull();
   });
 
-  it("logs a failed read and gives null, so Home still draws", async () => {
+  it("throws on a failed read, so Home shows its error state", async () => {
     vi.mocked(findLatestKickoffOutcome).mockRejectedValue(new Error("database down"));
-    expect(await loadMissedKickoffAt(tenant)).toBeNull();
-    expect(console.error).toHaveBeenCalled();
+    await expect(loadMissedKickoffAt(tenant)).rejects.toThrow("database down");
   });
 });

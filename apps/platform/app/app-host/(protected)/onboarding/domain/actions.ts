@@ -32,7 +32,7 @@ function describeDomainError(error: unknown): StepProblem | null {
 
 /** Step 04: saves the domain and the ownership confirmation, marks the step done and moves on to the review. */
 export async function saveDomainStep(_previous: StepFormState, formData: FormData): Promise<StepFormState> {
-  const { tenant } = await requireCustomerAccess();
+  const { tenant } = await requireCustomerAccess({ access: "write" });
 
   const env = serverEnv();
   const baseDomain = clientSiteBaseDomain();
@@ -69,7 +69,7 @@ export async function saveDomainStep(_previous: StepFormState, formData: FormDat
  * form's own-domain box replaces it whenever they have registered one.
  */
 export async function useTemporarySubdomainAction(_previous: StepFormState, formData: FormData): Promise<StepFormState> {
-  const { tenant } = await requireCustomerAccess();
+  const { tenant } = await requireCustomerAccess({ access: "write" });
   // Not offered until the deployment says which domain the addresses are made on (CLIENT_SITE_BASE_DOMAIN).
   const baseDomain = clientSiteBaseDomain();
   if (baseDomain === null) return refusedStepState({ message: "We can’t set up a free address. Enter your own domain instead.", field: "domain" }, formData);

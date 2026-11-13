@@ -126,6 +126,22 @@ describe("codeBasisFor", () => {
   });
 });
 
+describe("a yearly basket's code", () => {
+  const YEARLY_WEBSITE = { currency: "INR", netCents: 3_238_900, interval: "year" } as const;
+
+  it("takes a percentage of the year's price, frozen for the one payment", () => {
+    expect(discountFrom(code({ discount: { kind: "percent", basisPoints: 1_000 } }), YEARLY_WEBSITE)).toMatchObject({ amountCents: 323_890, months: 1, codeMonths: null });
+  });
+
+  it("takes an amount code once for each month it runs", () => {
+    expect(discountFrom(code({ discount: { kind: "amount", amountCents: 50_000 }, discountMonths: 3 }), YEARLY_WEBSITE)).toMatchObject({ amountCents: 150_000, months: 1, codeMonths: 3 });
+  });
+
+  it("bases the code on the year's net", () => {
+    expect(codeBasisFor(["managed-website"], "INR", "year")).toEqual(YEARLY_WEBSITE);
+  });
+});
+
 describe("discountFrom", () => {
   it("takes the code's own amount, with nothing to compute", () => {
     expect(discountFrom(code(), WEBSITE)).toEqual({

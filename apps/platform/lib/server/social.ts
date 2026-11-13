@@ -9,7 +9,7 @@ import { errorLogInfo } from "@brandbasket/shared/server/error-log-info";
 import { getAppDb } from "./db";
 import { socialBrand, type SocialBrand } from "./social-brand";
 import { quietly } from "./quietly";
-import type { SiteJob } from "@/lib/social/ai";
+import type { BatchPlan, SiteJob } from "@/lib/social/ai";
 import { loadBatches, loadChannels, loadPosters, loadPosts, loadSiteJobs, loadWorkspaceFacts, socialAutoSettings, type SocialAutoSettings } from "./social-auto";
 
 /** What social-auto knows about the business: its connected channels and the posts it writes and publishes. */
@@ -33,6 +33,8 @@ export interface SocialConnect {
     readonly jobsUnavailable: boolean;
     /** How many written batches and pictures were put away because nobody decided in time, so the customer is told. */
     readonly expired: { readonly batches: number; readonly pictures: number };
+    /** Where the customer's month stands, or null when social-auto does not say. */
+    readonly plan: BatchPlan | null;
   } | null;
 }
 
@@ -60,7 +62,7 @@ async function loadConnect(settings: SocialAutoSettings, business: { readonly id
     today,
     unavailable: channels.status === "rejected" || posts.status === "rejected",
     // A failed read of the jobs shows as none yet: the page still draws, and the log says why.
-    ai: { jobs: jobs.status === "fulfilled" ? jobs.value : [], website: facts.status === "fulfilled" ? facts.value.website : null, jobsUnavailable: jobs.status === "rejected", expired: { batches: written.status === "fulfilled" ? written.value.expired.length : 0, pictures: expiredPictures.status === "fulfilled" ? expiredPictures.value.posters.length : 0 } },
+    ai: { jobs: jobs.status === "fulfilled" ? jobs.value : [], website: facts.status === "fulfilled" ? facts.value.website : null, jobsUnavailable: jobs.status === "rejected", expired: { batches: written.status === "fulfilled" ? written.value.expired.length : 0, pictures: expiredPictures.status === "fulfilled" ? expiredPictures.value.posters.length : 0 }, plan: written.status === "fulfilled" ? written.value.plan : null },
   };
 }
 

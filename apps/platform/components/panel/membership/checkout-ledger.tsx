@@ -2,11 +2,13 @@
 
 import { Check } from "@phosphor-icons/react/dist/ssr";
 import Link from "next/link";
-import { useActionState, useEffect, useMemo, useRef, useState, type ReactElement } from "react";
+import { useActionState, useEffect, useMemo, useRef, useState, type FormEvent, type ReactElement } from "react";
 import { addOnById, PLAN_ADD_ON_IDS, type MonthlyAddOnId } from "@brandbasket/shared/lib/billing/add-ons";
 import { bundleLines } from "@brandbasket/shared/lib/billing/bundle";
 import { formatMoney } from "@brandbasket/shared/lib/money";
 import { applyMembershipCode, removeMembershipCode, startMembership, startMembershipWithBilling } from "@/app/app-host/(protected)/plan/actions";
+import { ConfirmPaymentDialog, useConfirmPayment } from "@/components/panel/confirm-payment";
+import { BillingSwitch } from "@/components/panel/membership/billing-switch";
 import { CheckoutBilling } from "@/components/panel/membership/checkout-billing";
 import { usePanelForm } from "@/components/panel/form/panel-form";
 import { cn } from "@brandbasket/shared/lib/cn";
@@ -16,8 +18,18 @@ import { ReferralCodeForm } from "@/components/panel/referral-code-form";
 import { CHECKOUT_COPY, CHECKOUT_PLAN_COPY, checkoutLead, checkoutSteps } from "@/lib/checkout-plans";
 import { ledgerRows, ledgerSummary, type LedgerCode, type LedgerPricing, type LedgerRow } from "@/lib/checkout-ledger";
 import type { BillingDetailsView } from "@/lib/billing/billing-details-view";
+import type { PaymentSummary } from "@/lib/billing/payment-summary";
 import { useOpeningPayment } from "@/lib/billing/opening-payment";
-import { initialMembershipFormState, membershipHrefWithServices, renewalTerms, servicesAfterToggle, type MembershipTier } from "@/lib/membership";
+import {
+  billingParamValue,
+  CODE_NEEDS_A_PAID_SERVICE,
+  initialMembershipFormState,
+  MEMBERSHIP_BILLING_PARAM,
+  membershipHrefWithServices,
+  renewalTerms,
+  servicesAfterToggle,
+  type MembershipTier,
+} from "@/lib/membership";
 
 interface CheckoutLedgerProps {
   readonly tier: MembershipTier;
@@ -36,6 +48,10 @@ interface CheckoutLedgerProps {
   readonly billingDetails: BillingDetailsView | null;
   /** The provider sent the customer back from a payment that did not go through. */
   readonly paymentFailed: boolean;
+  /** Where each choice of the Monthly | Yearly switch goes (the address carries the choice, so the server prices it). */
+  readonly billingHrefs: { readonly monthlyHref: string; readonly yearlyHref: string };
+  /** Paid yearly: the day the year paid for ends, already worded, for the line under Pay. */
+  readonly paidThrough: string | null;
 }
 
 const CHIP_BASE =
@@ -68,12 +84,14 @@ export function CheckoutLedger({
   lapsedCode,
   billingDetails,
   paymentFailed,
+  billingHrefs,
+  paidThrough,
 }: CheckoutLedgerProps): ReactElement {
   const [services, setServices] = useState(initialServices);
   const summary = useMemo(() => ledgerSummary(pricing, services, code), [pricing, services, code]);
   const rows = ledgerRows(summary, pricing.currency, code);
   const money = (cents: number): string => formatMoney(cents, pricing.currency);
-  const total = money(summary.totalCents);
+  const total = money(summary.dueTodayCents);
   const onlyOne = services.length === 1;
   const monthlyOf = (id: MonthlyAddOnId): string => money(bundleLines([id], pricing.currency)[0]?.listCents ?? 0);
 
@@ -81,7 +99,10 @@ export function CheckoutLedger({
   const billed = billingDetails !== null;
   const [usdState, usdAction, usdPending] = useActionState(startMembership, initialMembershipFormState);
   const { formRef: gstFormRef, statusRef: gstStatusRef, formAction: gstFormAction, controls: gstControls } = usePanelForm(startMembershipWithBilling);
-  const opening = useOpeningPayment(billed ? gstControls.isPending : usdPending, billed ? gstControls.state : usdState);
+  const payPending = billed ? gstControls.isPending : usdPending;
+  const payResult = billed ? gstControls.state : usdState;
+  const opening = useOpeningPayment(payPending, payResult);
+  const confirm = useConfirmPayment(payResult, payPending);
   // A problem with a billing field is shown under that field; anything else about paying is shown above the button.
   const payError = billed
     ? gstControls.invalidField === null
@@ -104,6 +125,23 @@ export function CheckoutLedger({
     window.history.replaceState(null, "", membershipHrefWithServices(tier, next));
   }
 
+  const gstLine = pricing.taxRateBasisPoints > 0 ? `Includes ${money(summary.gstCents)} of GST at ${pricing.taxRateBasisPoints / 100}%` : null;
+  const renewal = renewalTerms(summary, { ...pricing, initialTermMonths }, code?.months ?? null, paidThrough);
+  // What the confirmation shows: the page's own lines and total, the renewal and the GST, so the dialog works nothing out itself.
+  const confirmation: PaymentSummary = {
+    title: "Confirm your plan",
+    rows,
+    totalLabel: "Due today",
+    total,
+    notes: [renewal, ...(gstLine === null ? [] : [gstLine]), ...(summary.adCredit === null ? [] : [summary.adCredit.label])],
+  };
+  // Enter in a billing field would send the form from the dialog's button without the dialog: it asks instead.
+  function askFirst(event: FormEvent<HTMLFormElement>): void {
+    if (confirm.open) return;
+    event.preventDefault();
+    confirm.ask();
+  }
+
   const payLabel = opening ? "Opening payment…" : `Pay ${total}`;
   const payClasses =
     "rounded-[0.625rem] bg-ink font-display font-semibold text-white transition-colors duration-200 hover:bg-ink-raised active:translate-y-px disabled:cursor-not-allowed disabled:opacity-45 motion-reduce:transition-none";
@@ -111,12 +149,14 @@ export function CheckoutLedger({
   const payFields = (
     <>
       <input type="hidden" name="tier" value={tier} />
+      <input type="hidden" name={MEMBERSHIP_BILLING_PARAM} value={billingParamValue(pricing.interval ?? "month")} />
       {services.map((service) => (
         <input key={service} type="hidden" name="service" value={service} />
       ))}
       {billed ? <CheckoutBilling view={billingDetails} controls={gstControls} /> : null}
       <button
-        type="submit"
+        type="button"
+        onClick={confirm.ask}
         disabled={opening}
         aria-busy={opening}
         aria-describedby={payError === null ? undefined : "membership-error"}
@@ -144,6 +184,7 @@ export function CheckoutLedger({
 
       <div className="grid items-start gap-8 min-[861px]:grid-cols-[minmax(0,1.12fr)_minmax(0,1fr)] min-[861px]:gap-12">
         <section aria-label="Choose your plans" className="rounded-lift bg-surface p-6 shadow-lift sm:p-[1.625rem]">
+          <BillingSwitch interval={pricing.interval ?? "month"} monthlyHref={billingHrefs.monthlyHref} yearlyHref={billingHrefs.yearlyHref} />
           {choosable ? (
             <>
               <p className="text-ink-2">{CHECKOUT_COPY.packageNote}</p>
@@ -216,11 +257,7 @@ export function CheckoutLedger({
                 {total}
               </span>
             </div>
-            {pricing.taxRateBasisPoints > 0 ? (
-              <p className="mt-1 text-right text-xs text-ink-2">
-                Includes {money(summary.gstCents)} of GST at {pricing.taxRateBasisPoints / 100}%
-              </p>
-            ) : null}
+            {gstLine === null ? null : <p className="mt-1 text-right text-xs text-ink-2">{gstLine}</p>}
             {summary.adCredit === null ? null : <p className="mt-1 text-right text-[0.8125rem] font-semibold text-sage-deep">{summary.adCredit.label}</p>}
           </div>
 
@@ -228,6 +265,11 @@ export function CheckoutLedger({
             <details className="min-w-0 open:basis-full" open={code !== null || lapsedCode !== null}>
               <summary className={DETAILS_SUMMARY}>Have a code? (optional)</summary>
               <div className="mt-2.5">
+                {summary.codeRefused ? (
+                  <p role="alert" className="mb-3 rounded-control bg-accent-pale px-4 py-3 text-sm text-accent-deep">
+                    {CODE_NEEDS_A_PAID_SERVICE}
+                  </p>
+                ) : null}
                 <ReferralCodeForm
                   applyAction={applyMembershipCode.bind(null, services)}
                   removeAction={removeMembershipCode}
@@ -243,15 +285,15 @@ export function CheckoutLedger({
           </div>
 
           {billed ? (
-            <form id="checkout-pay" ref={gstFormRef} action={gstFormAction} noValidate>
+            <form id="checkout-pay" ref={gstFormRef} action={gstFormAction} onSubmit={askFirst} noValidate>
               {payFields}
             </form>
           ) : (
-            <form id="checkout-pay" action={usdAction}>
+            <form id="checkout-pay" action={usdAction} onSubmit={askFirst}>
               {payFields}
             </form>
           )}
-          <p className="mt-3 text-[0.8125rem] text-ink-2">{renewalTerms(summary, { ...pricing, initialTermMonths }, code?.months ?? null)}</p>
+          <p className="mt-3 text-[0.8125rem] text-ink-2">{renewal}</p>
         </section>
 
         <aside aria-label="About your plan">
@@ -303,10 +345,22 @@ export function CheckoutLedger({
           <span className="block text-xs text-ink-2">Due today</span>
           <span className="font-figure text-[1.375rem] font-medium tracking-[-0.04em]">{total}</span>
         </div>
-        <button type="submit" form="checkout-pay" disabled={opening} aria-busy={opening} className={`px-6 py-3.5 text-base ${payClasses}`}>
+        <button type="button" onClick={confirm.ask} disabled={opening} aria-busy={opening} className={`px-6 py-3.5 text-base ${payClasses}`}>
           {payLabel}
         </button>
       </div>
+
+      <ConfirmPaymentDialog
+        summary={confirmation}
+        open={confirm.open}
+        onClose={confirm.close}
+        busy={opening}
+        confirm={
+          <button type="submit" form="checkout-pay" disabled={opening} aria-busy={opening} className={`px-6 py-3.5 text-base ${payClasses}`}>
+            {payLabel}
+          </button>
+        }
+      />
     </div>
   );
 }

@@ -32,7 +32,7 @@ async function render(): Promise<string> {
 describe("the Settings page", () => {
   it("is sections on the page, not boxes, with one dark button's form in it", async () => {
     const html = await render();
-    for (const title of ["Your account", "Your business", "Password", "Your privacy", "Delete account", "Session"]) expect(html).toContain(`>${title}</h2>`);
+    for (const title of ["Your account", "Your business", "Password", "Email notifications", "Your privacy", "Delete account", "Session"]) expect(html).toContain(`>${title}</h2>`);
     expect(html).toContain("[password form]");
     expect(html).not.toContain("shadow");
     expect(html).not.toContain("rounded-card");
@@ -64,6 +64,7 @@ describe("the Settings page", () => {
 
   it("sends the person to the privacy and delete pages with soft buttons, and offers Sign out", async () => {
     const html = await render();
+    expect(html).toContain('href="/settings/notifications"');
     expect(html).toContain('href="/settings/privacy"');
     expect(html).toContain('href="/settings/delete"');
     expect(html).toContain(">Sign out</button>");

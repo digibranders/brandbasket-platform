@@ -2,8 +2,8 @@ import { approveDeliverables, DeliverableError, listBoughtSetupServices, withTen
 import { revalidatePath } from "next/cache";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { requireBillingAccess } from "@/lib/server/billing";
-import { connectLink, createPost, deletePost, ensureWorkspace, loadChannels, movePost, sendPostNow, SocialAutoError, socialAutoSettings, startSiteJob, updatePost } from "@/lib/server/social-auto";
-import { approvePostsAction, changeWrittenPostTimeAction, connectChannelAction, createPostAction, deletePostAction, movePostAction, sendPostNowAction, startSiteJobAction, updatePostAction } from "./actions";
+import { connectLink, createPost, deletePost, ensureWorkspace, loadChannels, loadWorkspaceFacts, movePost, sendPostNow, SocialAutoError, socialAutoSettings, startSiteJob, updatePost } from "@/lib/server/social-auto";
+import { approvePostsAction, changeWrittenPostTimeAction, connectChannelAction, createPostAction, deletePostAction, movePostAction, sendPostNowAction, startNextMonthAction, startSiteJobAction, updatePostAction } from "./actions";
 
 vi.mock("server-only", () => ({}));
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
@@ -19,7 +19,7 @@ vi.mock("next/navigation", () => ({
 vi.mock("@/lib/server/db", () => ({ getAppDb: vi.fn(() => ({ kind: "app-db" })) }));
 vi.mock("@/lib/server/billing", () => ({ requireBillingAccess: vi.fn() }));
 vi.mock("@brandbasket/db", async (importOriginal) => ({ ...(await importOriginal<typeof import("@brandbasket/db")>()), approveDeliverables: vi.fn(), listBoughtSetupServices: vi.fn(), withTenantScope: vi.fn() }));
-vi.mock("@/lib/server/social-auto", async (importOriginal) => ({ ...(await importOriginal<typeof import("@/lib/server/social-auto")>()), socialAutoSettings: vi.fn(), ensureWorkspace: vi.fn(), connectLink: vi.fn(), loadChannels: vi.fn(), createPost: vi.fn(), updatePost: vi.fn(), deletePost: vi.fn(), sendPostNow: vi.fn(), movePost: vi.fn(), startSiteJob: vi.fn() }));
+vi.mock("@/lib/server/social-auto", async (importOriginal) => ({ ...(await importOriginal<typeof import("@/lib/server/social-auto")>()), socialAutoSettings: vi.fn(), ensureWorkspace: vi.fn(), connectLink: vi.fn(), loadChannels: vi.fn(), loadWorkspaceFacts: vi.fn(), createPost: vi.fn(), updatePost: vi.fn(), deletePost: vi.fn(), sendPostNow: vi.fn(), movePost: vi.fn(), startSiteJob: vi.fn() }));
 vi.mock("@/lib/server/social-brand", () => ({ socialBrand: async (tenant: { businessId: string; businessName: string }) => ({ externalId: tenant.businessId, name: tenant.businessName, view: null }) }));
 
 const A = "0192f3c4-0000-7000-8000-00000000000a";
@@ -405,5 +405,46 @@ describe("startSiteJobAction", () => {
     expect(await startSiteJobAction(site({ site: "omsweets.in", network: "instagram" }))).toMatchObject({ message: expect.stringMatching(/tomorrow/) });
     vi.mocked(startSiteJob).mockRejectedValue(new Error("boom"));
     expect(await startSiteJobAction(site({ site: "omsweets.in", network: "instagram" }))).toMatchObject({ status: "error", message: "That did not work. Try again in a few minutes." });
+  });
+});
+
+describe("startNextMonthAction", () => {
+  const next = (startDate: string): FormData => {
+    const data = new FormData();
+    data.set("startDate", startDate);
+    return data;
+  };
+
+  beforeEach(() => {
+    vi.mocked(loadWorkspaceFacts).mockResolvedValue({ website: "https://omsweets.in", notices: [] });
+  });
+
+  it("writes the next month from the website social-auto holds, for the networks connected now, from the Monday it named", async () => {
+    expect(await startNextMonthAction(next("2026-12-14"))).toEqual({ status: "saved" });
+    expect(startSiteJob).toHaveBeenCalledWith(expect.anything(), "business-1", { site: "https://omsweets.in", page: false, networks: ["instagram", "linkedin"], startDate: "2026-12-14" }, "brandbasket:user-1");
+    expect(revalidatePath).toHaveBeenCalledWith("/social");
+    expect(revalidatePath).toHaveBeenCalledWith("/social/review");
+  });
+
+  it("is not found without the social service, and refuses a start date that is not a date", async () => {
+    expect(await startNextMonthAction(next("December"))).toMatchObject({ status: "error" });
+    expect(startSiteJob).not.toHaveBeenCalled();
+    vi.mocked(listBoughtSetupServices).mockResolvedValue([] as never);
+    await expect(startNextMonthAction(next("2026-12-14"))).rejects.toThrow("notFound");
+    expect(startSiteJob).not.toHaveBeenCalled();
+  });
+
+  it("says to start from the website first, and asks for a connected account first", async () => {
+    vi.mocked(loadWorkspaceFacts).mockResolvedValue({ website: null, notices: [] });
+    expect(await startNextMonthAction(next("2026-12-14"))).toEqual({ status: "error", message: "Start from your website first, then the next month can follow." });
+    vi.mocked(loadWorkspaceFacts).mockResolvedValue({ website: "https://omsweets.in", notices: [] });
+    vi.mocked(loadChannels).mockResolvedValue([]);
+    expect(await startNextMonthAction(next("2026-12-14"))).toMatchObject({ status: "error" });
+    expect(startSiteJob).not.toHaveBeenCalled();
+  });
+
+  it("explains a refusal with the words for its code", async () => {
+    vi.mocked(startSiteJob).mockRejectedValue(new SocialAutoError("refused", 409, "x", "CONFLICT"));
+    expect(await startNextMonthAction(next("2026-12-14"))).toMatchObject({ status: "error" });
   });
 });

@@ -1,4 +1,5 @@
 import { isPhoneAccountEmail } from "@brandbasket/db";
+import { errorLogInfo } from "@brandbasket/shared/server/error-log-info";
 import type { ReactElement } from "react";
 import { BookCallButton } from "@/components/calls/book-call-button";
 import { kindOptions } from "@/lib/requests/form";
@@ -16,7 +17,13 @@ export async function SetupCallLine(): Promise<ReactElement | null> {
   const { user, tenant } = await requireWebsiteClient();
   const snapshot = await getOnboardingSnapshot();
   if (snapshot.project === null || snapshot.locked) return null;
-  const [callState, services] = await Promise.all([getSetupCallState(tenant), loadSetupServices(tenant)]);
+  // An optional line: a failed read leaves it out rather than taking the setup page down.
+  const read = await Promise.all([getSetupCallState(tenant), loadSetupServices(tenant)]).catch((error: unknown) => {
+    console.error("[setup-call-line] could not read the call state", errorLogInfo(error));
+    return null;
+  });
+  if (read === null) return null;
+  const [callState, services] = read;
   if (callState.url === null) return null;
   return (
     <div className="flex flex-wrap items-baseline gap-x-1.5 text-[0.8125rem] text-ink-2">

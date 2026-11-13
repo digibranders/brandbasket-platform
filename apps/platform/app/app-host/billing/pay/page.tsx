@@ -30,7 +30,7 @@ export default async function RazorpayPayPage(): Promise<ReactElement> {
   const provider = getBillingProvider();
   if (provider.name !== "razorpay") notFound();
 
-  const { tenant, user, billing } = await requireCustomerAccess({ listingAccount: "allow", membershipCheckout: "allow" });
+  const { tenant, user, billing } = await requireCustomerAccess({ listingAccount: "allow", membershipCheckout: "allow", access: "owner" });
   const membership: MembershipTier | null =
     (await getCustomerBusinessKind(tenant.userId, tenant.businessId)) === "listing" ? billing.tier : null;
   // A customer who paid before and lapsed is reactivating from Billing, and goes back there.
