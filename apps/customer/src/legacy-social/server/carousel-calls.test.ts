@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 
 vi.mock("server-only", () => ({}));
 
-import { decideCarousel, fetchCarouselSlide, loadCarousel, loadCarouselList, loadCarousels, makeCarousel, setCarouselWeekly, SocialAutoError, type SocialAutoSettings } from "./social-auto";
+import { decideCarousel, fetchCarouselSlide, loadCarousel, loadCarouselList, loadCarousels, makeCarousel, renameBrand, replaceTopic, setCarouselWeekly, SocialAutoError, type SocialAutoSettings } from "./social-auto";
 
 const settings: SocialAutoSettings = { baseUrl: "http://127.0.0.1:4020", key: "secret", returnUrl: "https://app.example.com/social" };
 const json = (status: number, body: unknown = {}) => vi.fn(async () => new Response(JSON.stringify(body), { status })) as unknown as typeof fetch;
@@ -70,5 +70,26 @@ describe("the carousel calls", () => {
     expect(sentUrl(send)).toBe("http://127.0.0.1:4020/api/v1/carousels?externalId=b1&id=c1&slide=2&image=1");
     expect(await fetchCarouselSlide(settings, "b1", "c1", 2, vi.fn(async () => new Response(null, { status: 404 })) as unknown as typeof fetch)).toBeNull();
     await expect(fetchCarouselSlide(settings, "b1", "c1", 2, vi.fn(async () => new Response("nope", { status: 200, headers: { "content-type": "text/html" } })) as unknown as typeof fetch)).rejects.toBeInstanceOf(SocialAutoError);
+  });
+
+  it("renames a brand with a PATCH, and says so when the posting service refuses", async () => {
+    const send = json(200, { workspace: { externalId: "b1", name: "Om Cafe" } });
+    await renameBrand(settings, "b1", "Om Cafe", send);
+    const call = vi.mocked(send).mock.calls[0];
+    expect(String(call?.[0])).toBe("http://127.0.0.1:4020/api/v1/workspaces");
+    expect(call?.[1]?.method).toBe("PATCH");
+    expect(JSON.parse(String(call?.[1]?.body))).toEqual({ externalId: "b1", name: "Om Cafe" });
+    await expect(renameBrand(settings, "b1", "Om Cafe", json(404, { error: "WORKSPACE_NOT_FOUND" }))).rejects.toBeInstanceOf(SocialAutoError);
+  });
+
+  it("asks for a new topic in place of a dropped post, as the posting service's replace action", async () => {
+    const send = json(202, { job: { id: "job-1", kind: "replace", state: "queued", batchId: "b1", postId: "p1", createdAt: "2026-11-13T10:00:00Z" }, created: true });
+    const started = await replaceTopic(settings, "biz-1", "b1", "p1", "actor-1", send);
+    expect(started.job.kind).toBe("replace");
+    expect(started.created).toBe(true);
+    const call = vi.mocked(send).mock.calls[0];
+    expect(String(call?.[0])).toBe("http://127.0.0.1:4020/api/v1/batches");
+    expect(JSON.parse(String(call?.[1]?.body))).toEqual({ externalId: "biz-1", batchId: "b1", action: "replace", postId: "p1" });
+    await expect(replaceTopic(settings, "biz-1", "b1", "p1", "actor-1", json(429, { code: "REPLACE_LIMIT_REACHED", error: "limit" }))).rejects.toBeInstanceOf(SocialAutoError);
   });
 });

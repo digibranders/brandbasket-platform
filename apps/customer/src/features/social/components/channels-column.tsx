@@ -12,8 +12,6 @@ import type { ChannelsColumnData } from "../loader";
 
 export interface ChannelsColumnProps {
   readonly data: Loaded<ChannelsColumnData>;
-  /** What tapping a channel does on this page: "Tap a channel to see only its posts." */
-  readonly hint: string;
   /** The channel being looked at, or all. */
   readonly selected: "all" | Platform;
   /** The address that shows one channel (or all) on this page. */
@@ -26,15 +24,12 @@ export interface ChannelsColumnProps {
  * connection is ending and Connect for each network with no account yet. On a phone it is a row at the top. A failed read says so, and
  * never "nothing connected".
  */
-export function ChannelsColumn({ data, hint, selected, hrefFor, canChange }: ChannelsColumnProps) {
+export function ChannelsColumn({ data, selected, hrefFor, canChange }: ChannelsColumnProps) {
   return (
     <aside aria-labelledby="channels-title" className="flex min-w-0 flex-col gap-3 border-t border-line bg-surface p-4 md:px-8 lg:sticky lg:top-0 lg:h-dvh lg:w-52 lg:shrink-0 lg:self-start lg:overflow-y-auto lg:border-t-0 lg:border-r lg:px-4 lg:py-8">
-      <div>
-        <h2 id="channels-title" className="type-section">
-          Channels
-        </h2>
-        <p className="mt-0.5 type-meta">{hint}</p>
-      </div>
+      <h2 id="channels-title" className="type-section">
+        Channels
+      </h2>
       {!data.ok ? (
         <Panel>
           <PanelError failure={data.error} what="your channels" />
@@ -46,17 +41,22 @@ export function ChannelsColumn({ data, hint, selected, hrefFor, canChange }: Cha
   );
 }
 
-function Body({ data, selected, hrefFor, canChange }: Omit<ChannelsColumnProps, "data" | "hint"> & { readonly data: ChannelsColumnData }) {
+function Body({ data, selected, hrefFor, canChange }: Omit<ChannelsColumnProps, "data"> & { readonly data: ChannelsColumnData }) {
   const { rows, missing, live } = data;
   return (
     <>
-      {selected === "all" ? null : (
-        <Link href={hrefFor("all")} className="type-meta underline hover:text-ink">
-          Show all channels
-        </Link>
-      )}
       {rows.length === 0 ? null : (
         <ul className="m-0 flex list-none gap-1 overflow-x-auto p-0 lg:flex-col lg:overflow-visible">
+          <li className="shrink-0 lg:shrink">
+            <Link href={hrefFor("all")} aria-current={selected === "all" ? "true" : undefined} className={cx("flex items-center gap-2.5 rounded-control px-2 py-1.5 no-underline hover:bg-neutral-wash", selected === "all" && "bg-neutral-wash")}>
+              <span className="grid size-7 shrink-0 place-items-center rounded-md bg-ink text-xs font-bold text-on-primary" aria-hidden="true">
+                All
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block truncate type-body font-medium text-ink">All channels</span>
+              </span>
+            </Link>
+          </li>
           {rows.map((row) => (
             <li key={row.id} className="shrink-0 lg:shrink">
               <Link
@@ -65,8 +65,10 @@ function Body({ data, selected, hrefFor, canChange }: Omit<ChannelsColumnProps, 
                 className={cx("flex items-center gap-2.5 rounded-control px-2 py-1.5 no-underline hover:bg-neutral-wash", selected === row.platform && "bg-neutral-wash")}
               >
                 <ChannelLogo platform={row.platform} medium />
-                <span className="min-w-0">
-                  <span className="block truncate type-body font-medium text-ink">{row.account}</span>
+                <span className="min-w-0 flex-1">
+                  <span title={row.account} className="block truncate type-body font-medium text-ink">
+                    {row.account}
+                  </span>
                   <span className="sr-only">{CHANNEL_NAMES[row.platform]}</span>
                   {row.paused ? <span className="type-meta">Paused</span> : null}
                 </span>

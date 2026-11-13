@@ -26,7 +26,7 @@ interface ChannelsSidebarProps {
 }
 
 /** A button that sends the customer to a network's own Allow page. The business comes from the session on the server. */
-function ConnectButton({ platform, label, className, logo = false }: { readonly platform: ChannelPlatform; readonly label: string; readonly className?: string; readonly logo?: boolean }): ReactElement {
+export function ConnectButton({ platform, label, className, logo = false }: { readonly platform: ChannelPlatform; readonly label: string; readonly className?: string; readonly logo?: boolean }): ReactElement {
   return (
     <form action={connectChannelAction} className="min-w-0">
       <input type="hidden" name="channel" value={platform} />
@@ -54,15 +54,23 @@ export function ChannelsSidebar({ rows, bookedLine }: ChannelsSidebarProps): Rea
       <h2 id="channels-title" className="px-1 type-section text-ink">
         Channels
       </h2>
-      <p className="mt-1 px-1 text-[0.84375rem] leading-snug text-ink-2">Tap a channel to see only its posts.</p>
-
-      {filtering ? (
-        <button type="button" onClick={showAll} className="mt-2 px-1 text-[0.84375rem] font-semibold text-ink-2 underline">
-          Show all channels
-        </button>
-      ) : null}
 
       <ul className="mt-3 grid gap-0.5">
+        {rows.length === 0 ? null : (
+          <li>
+            <button
+              type="button"
+              aria-pressed={!filtering}
+              onClick={showAll}
+              className={cn("grid w-full grid-cols-[1.75rem_minmax(0,1fr)] items-center gap-2.5 rounded-lg px-1.5 py-1.5 text-left transition-colors hover:bg-sunken", !filtering && "bg-sunken")}
+            >
+              <span className="grid size-7 place-items-center rounded-md bg-ink text-[0.6875rem] font-bold text-on-primary" aria-hidden="true">
+                All
+              </span>
+              <span className="min-w-0 text-[0.84375rem] font-semibold leading-tight text-ink">All channels</span>
+            </button>
+          </li>
+        )}
         {rows.map((row) => {
           const selected = filtering && shown.has(row.platform);
           return (
@@ -75,7 +83,7 @@ export function ChannelsSidebar({ rows, bookedLine }: ChannelsSidebarProps): Rea
               >
                 <ChannelLogo platform={row.platform} medium />
                 <span className={cn("min-w-0", filtering && !selected && "opacity-60")}>
-                  <span className="block break-words text-[0.84375rem] font-semibold leading-tight text-ink">
+                  <span title={row.account} className="block truncate text-[0.84375rem] font-semibold leading-tight text-ink">
                     {row.account}
                     <span className="sr-only">, {PLATFORM_NAMES[row.platform]}</span>
                   </span>

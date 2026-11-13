@@ -5,7 +5,7 @@ import { allPaused, bookedUntil, connectStatus, dayLabel, daysUntilEnd, endingSo
 import type { LegacySocialData } from "@/legacy-social/server/load";
 import Link from "next/link";
 import { AiStartCard } from "./ai-start-card";
-import { BrandSwitcher } from "./brand-switcher";
+import { BrandControl } from "./brand-switcher";
 import { ChannelFilterProvider } from "./channel-filter";
 import { ChannelsSidebar, type ChannelRow } from "./channels-sidebar";
 import { ConnectStatusCard } from "./connect-status";
@@ -68,7 +68,7 @@ export function LegacySocialView({ data, notice, now, approvals, hasNumbers, can
                   <p className="mt-1 type-meta">Your posts, and what they have brought in.</p>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
-                  {data.brand.view === null ? null : <BrandSwitcher view={data.brand.view} current={data.brand.externalId} />}
+                  <BrandControl view={data.brand.view} current={data.brand.externalId} name={data.brand.name} />
                   {reportHref === null ? null : (
                     <Link href={reportHref} className={SMALL_SOFT}>
                       <FileText size={14} aria-hidden="true" />
@@ -83,7 +83,7 @@ export function LegacySocialView({ data, notice, now, approvals, hasNumbers, can
                   {canPost ? <NewPostButton disabled={!hasAccounts} /> : null}
                 </div>
               </header>
-              <SocialTabs current="posts" hasNumbers={hasNumbers} />
+              <SocialTabs current="posts" hasNumbers={hasNumbers} onlyWithoutNumbers={!hasNumbers && data.channels.length > 0} />
               {notice === null ? null : (
                 <p role={notice.ok ? "status" : "alert"} className={cn("text-[0.8125rem] font-semibold", notice.ok ? "text-sage-deep" : "text-error")}>
                   {notice.text}
@@ -112,7 +112,7 @@ export function LegacySocialView({ data, notice, now, approvals, hasNumbers, can
                 today={data.today}
                 businessName={data.businessName}
                 channels={data.channels}
-                lede={data.posts.length === 0 ? "Your first posts appear here once your accounts are connected." : "Every post we write for you, and where it stands."}
+                lede={data.posts.length > 0 ? "Every post we write for you, and where it stands." : data.channels.length === 0 ? "Your first posts appear here once your accounts are connected." : "Your first posts appear here once you start them from your website or write one."}
               />
             </div>
           </div>
