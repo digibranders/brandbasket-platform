@@ -1,9 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState } from "react";
+import { useActionState, useId } from "react";
 import { Panel } from "@/components";
 import { Banner, Button, Icon } from "@/ui";
+import { ConfirmPaymentDialog, useConfirmPayment } from "../../checkout/components/confirm-payment";
 import { useOpeningPayment } from "../../checkout/rules/opening-payment";
 import { reactivateAction } from "../actions";
 import type { ReactivationCardView } from "../loader";
@@ -15,8 +16,10 @@ import type { ReactivationCardView } from "../loader";
  * button is held from the press until the payment opens, so a double press opens one payment.
  */
 export function ReactivateCard({ view, canManage }: { readonly view: ReactivationCardView; readonly canManage: boolean }) {
+  const formId = useId();
   const [state, action, pending] = useActionState(reactivateAction, null);
   const opening = useOpeningPayment(pending, state);
+  const confirm = useConfirmPayment(state, pending);
   const failure = state !== null && !state.ok && !pending ? state : null;
   return (
     <Panel title="Your plan has ended">
@@ -46,11 +49,21 @@ export function ReactivateCard({ view, canManage }: { readonly view: Reactivatio
         </p>
         {failure === null ? null : <Banner tone="neg">{failure.message}</Banner>}
         {canManage ? (
-          <form action={action}>
+          <form id={formId} action={action}>
             {view.chosen?.map((service) => <input key={service} type="hidden" name="service" value={service} />)}
-            <Button type="submit" variant="primary" pending={opening}>
+            <Button variant="primary" pending={opening} onClick={confirm.ask}>
               {`Reactivate for ${view.monthlyAmount}`}
             </Button>
+            <ConfirmPaymentDialog
+              summary={view.summary}
+              open={confirm.open}
+              onClose={confirm.close}
+              confirm={
+                <Button type="submit" form={formId} variant="primary" pending={opening}>
+                  {`Pay ${view.monthlyAmount}`}
+                </Button>
+              }
+            />
           </form>
         ) : null}
       </div>

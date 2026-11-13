@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { EntryScreen } from "@/features/entry/components/entry-screen";
 import { SignOutButton } from "@/features/entry/components/sign-out-button";
 import { KEEP_PLAN_NOTE, keepPlanRefusal } from "@/features/checkout/rules/keep-plan-copy";
-import { loadKeepPlanOffered } from "@/features/checkout/server/keep-plan";
+import { loadKeepPlanOffer } from "@/features/checkout/server/keep-plan";
 import { KeepPlanButton, RestoreButton } from "@/features/restore/components/restore-buttons";
 import { findClosingAccount } from "@/features/restore/server";
 import { formatDate } from "@/lib/format";
@@ -21,7 +21,8 @@ export default async function RestoreAccountPage({ searchParams }: { readonly se
   await requireSignedIn();
   const closing = await findClosingAccount();
   if (closing === null) redirect("/");
-  const keepOffered = await loadKeepPlanOffered(closing.user.id, new Date());
+  const keepOffer = await loadKeepPlanOffer(closing.user.id, new Date());
+  const keepOffered = keepOffer !== null;
   const refusal = keepPlanRefusal((await searchParams).keep);
 
   return (
@@ -33,7 +34,7 @@ export default async function RestoreAccountPage({ searchParams }: { readonly se
       {refusal === null ? null : <Banner tone="neg">{refusal}</Banner>}
       <div className="flex flex-wrap items-center gap-3">
         <RestoreButton />
-        {keepOffered ? <KeepPlanButton /> : null}
+        {keepOffer === null ? null : <KeepPlanButton summary={keepOffer} />}
         <SignOutButton />
       </div>
       {keepOffered ? <p className="type-meta">{KEEP_PLAN_NOTE}</p> : null}

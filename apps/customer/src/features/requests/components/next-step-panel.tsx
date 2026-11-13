@@ -3,6 +3,8 @@
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { NextStep } from "@/components";
+import { ConfirmPaymentDialog, useConfirmPayment } from "@/features/checkout/components/confirm-payment";
+import type { PaymentSummary } from "@/features/checkout/rules/payment-summary";
 import type { ActionResult } from "@/lib/action-result";
 import { Banner, Button, LinkButton } from "@/ui";
 import { acceptQuoteAction, approveChangeAction, declineQuoteAction, reopenRequestAction } from "../actions";
@@ -22,6 +24,12 @@ export function NextStepPanel({ step, requestId, canAct }: NextStepPanelProps) {
   const [pending, start] = useTransition();
   const [message, setMessage] = useState<string | null>(null);
   const { action, secondary, quote } = step;
+  // Accepting a quote, or paying one, first shows what is paid: the quote's line and total, and its GST.
+  const summary: PaymentSummary | null =
+    quote === null
+      ? null
+      : { title: "Pay for this change", rows: [{ key: "quote", label: quote.line, amount: quote.total, tone: "plain" }], totalLabel: "Due today", total: quote.total, notes: step.note === null ? [] : [step.note] };
+  const confirm = useConfirmPayment(message, pending);
 
   const run = (work: (formData: FormData) => Promise<ActionResult<{ href: string } | undefined>>) => {
     if (requestId === null) return;
@@ -42,14 +50,20 @@ export function NextStepPanel({ step, requestId, canAct }: NextStepPanelProps) {
   const buttons = !canAct ? null : (
     <>
       {action?.kind === "accept" ? (
-        <Button variant="primary" pending={pending} onClick={() => run(acceptQuoteAction)}>
+        <Button variant="primary" pending={pending} onClick={summary === null ? () => run(acceptQuoteAction) : confirm.ask}>
           {action.label}
         </Button>
       ) : null}
       {action?.kind === "pay" ? (
-        <LinkButton href={chargePath(action.chargeId)} variant="primary">
-          {action.label}
-        </LinkButton>
+        summary === null ? (
+          <LinkButton href={chargePath(action.chargeId)} variant="primary">
+            {action.label}
+          </LinkButton>
+        ) : (
+          <Button variant="primary" onClick={confirm.ask}>
+            {action.label}
+          </Button>
+        )
       ) : null}
       {action?.kind === "approve" ? (
         <Button variant="primary" pending={pending} onClick={() => run(approveChangeAction)}>
@@ -64,9 +78,21 @@ export function NextStepPanel({ step, requestId, canAct }: NextStepPanelProps) {
     </>
   );
 
+  const confirmButton =
+    action?.kind === "accept" ? (
+      <Button variant="primary" pending={pending} onClick={() => run(acceptQuoteAction)}>
+        {action.label}
+      </Button>
+    ) : action?.kind === "pay" ? (
+      <LinkButton href={chargePath(action.chargeId)} variant="primary">
+        {action.label}
+      </LinkButton>
+    ) : null;
+
   return (
     <div className="flex flex-col gap-3">
       {message === null ? null : <Banner tone="neg">{message}</Banner>}
+      {summary === null || confirmButton === null ? null : <ConfirmPaymentDialog summary={summary} open={confirm.open} onClose={confirm.close} confirm={confirmButton} />}
       <NextStep
         title={step.title}
         icon={quote === null ? undefined : "Receipt"}

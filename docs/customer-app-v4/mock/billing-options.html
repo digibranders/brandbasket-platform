@@ -1,0 +1,283 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Plan and billing options</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+/* Tokens copied from apps/customer/src/styles/tokens.css (plan 60). Light only, cobalt the one accent, no gradients, no resting shadows. */
+:root{
+  --canvas:#F6F7F9;--surface:#FFFFFF;--surface-subtle:#F6F7F9;--surface-hover:#EFF1F4;--surface-selected:#EAF1FE;
+  --ink:#111418;--ink-2:#3F4650;--ink-3:#5B6370;--ink-muted:#8B93A0;--on-primary:#FFFFFF;
+  --border:#E3E6EB;--border-subtle:#ECEEF2;--border-button:#D6DAE1;
+  --primary:#1E65E3;--primary-hover:#1A56C4;--accent-text:#175AD0;--accent-wash:#EAF1FE;--accent-border:#B5CCF6;
+  --pos-text:#17703F;--pos-wash:#E6F4EC;--pos-border:#B9DFC8;--warn-text:#8A5300;--warn-wash:#FDF1DC;--neutral-text:#434B57;--neutral-wash:#EEF0F3;
+  --svc-site:#B87F3D;--svc-social:#1F7A74;--svc-search:#3558A0;
+  --scrim:rgb(17 20 24 / .36);
+  --r-panel:12px;--r-overlay:14px;--r-control:8px;--r-badge:6px;--r-mark:2px;
+  --sh-button:0 1px 1px rgb(16 24 40 / .04);--sh-primary:inset 0 1px 0 rgb(255 255 255 / .18),0 1px 2px rgb(30 101 227 / .28);
+  --sh-dialog:0 2px 4px rgb(17 20 24 / .06),0 16px 40px rgb(17 20 24 / .16);
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--canvas);color:var(--ink);font:400 14px/1.5 Geist,system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+.wrap{max-width:1200px;margin:0 auto;padding:32px 28px 96px}
+.num{font-variant-numeric:tabular-nums}
+h1{font-size:24px;font-weight:600;letter-spacing:-.01em;margin:0}
+h2{font-size:15px;font-weight:600;margin:0}
+.meta{font-size:12.5px;color:var(--ink-3)}
+.muted{color:var(--ink-3)}
+.option{margin-top:56px}
+.option-head{display:flex;align-items:baseline;gap:12px;margin-bottom:6px}
+.option-head .tag{font:500 12px/1 Geist Mono,monospace;color:var(--accent-text);background:var(--accent-wash);border:1px solid var(--accent-border);border-radius:var(--r-badge);padding:5px 7px}
+.option-note{max-width:70ch;color:var(--ink-3);margin:0 0 18px}
+.frame{background:var(--canvas);border:1px solid var(--border);border-radius:var(--r-overlay);padding:28px}
+.page-head{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;margin-bottom:16px}
+.tabs{display:flex;gap:20px;border-bottom:1px solid var(--border);margin:14px 0 20px}
+.tabs span{padding:10px 0;color:var(--ink-3);font-weight:500}
+.tabs span.on{color:var(--ink);box-shadow:inset 0 -2px 0 var(--primary)}
+.panel{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-panel)}
+.panel-h{display:flex;justify-content:space-between;align-items:center;padding:12px 16px;border-bottom:1px solid var(--border-subtle)}
+.panel-b{padding:16px}
+.btn{display:inline-flex;align-items:center;gap:6px;height:36px;padding:0 14px;border-radius:var(--r-control);border:1px solid var(--border-button);background:var(--surface);color:var(--ink);font:500 13.5px/1 Geist,sans-serif;box-shadow:var(--sh-button);cursor:pointer;transition:background .2s,transform .1s;white-space:nowrap}
+.btn:hover{background:var(--surface-hover)}
+.btn:active{transform:translateY(1px)}
+.btn.primary{background:var(--primary);border-color:var(--primary);color:var(--on-primary);box-shadow:var(--sh-primary)}
+.btn.primary:hover{background:var(--primary-hover)}
+.btn.sm{height:30px;padding:0 11px;font-size:13px}
+.btn.ghost{border-color:transparent;box-shadow:none;background:transparent;color:var(--accent-text)}
+.badge{display:inline-flex;align-items:center;height:22px;padding:0 8px;border-radius:var(--r-badge);font-size:12px;font-weight:500;white-space:nowrap}
+.badge.pos{background:var(--pos-wash);color:var(--pos-text)}
+.badge.acc{background:var(--accent-wash);color:var(--accent-text)}
+.badge.neu{background:var(--neutral-wash);color:var(--neutral-text)}
+.badge.warn{background:var(--warn-wash);color:var(--warn-text)}
+.mark{width:10px;height:10px;border-radius:var(--r-mark);flex:none}
+.row{display:flex;justify-content:space-between;gap:16px;padding:5px 0}
+.rule{border-top:1px solid var(--border-subtle);margin:10px 0}
+.metric{font-size:30px;font-weight:600;letter-spacing:-.02em;line-height:1.1}
+.metric-sm{font-size:20px;font-weight:600;letter-spacing:-.01em}
+
+/* ---- A: Plan at a glance ---- */
+.a-strip{display:grid;grid-template-columns:1.3fr 1fr 1fr;background:var(--surface);border:1px solid var(--border);border-radius:var(--r-panel);margin-bottom:16px}
+.a-strip>div{padding:18px 20px}
+.a-strip>div+div{border-left:1px solid var(--border-subtle)}
+.a-strip .label{font-size:12.5px;color:var(--ink-3);margin-bottom:6px}
+.a-grid{display:grid;grid-template-columns:2fr 1fr;gap:16px;align-items:start}
+.a-tiles{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.tile{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-panel);padding:16px;display:flex;flex-direction:column;gap:10px;min-height:178px}
+.tile.on{border-color:var(--pos-border)}
+.tile.offer{border-color:var(--accent-border);background:var(--accent-wash)}
+.tile .top{display:flex;align-items:center;gap:8px}
+.tile .name{font-weight:600}
+.tile .what{color:var(--ink-3);font-size:13px;flex:1}
+.tile .foot{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.tile .price{font-weight:600}
+.tile .price s{color:var(--ink-3);font-weight:400;margin-left:6px}
+.segs{display:flex;gap:4px;margin-top:2px}
+.segs i{flex:1;height:6px;border-radius:2px;background:var(--neutral-wash)}
+.segs i.f{background:var(--primary)}
+.receipt .row span:first-child{color:var(--ink-3)}
+
+/* ---- B: The bill is the page ---- */
+.b-grid{display:grid;grid-template-columns:1.5fr 1fr;gap:16px;align-items:start}
+.bill-line{display:grid;grid-template-columns:auto 1fr auto auto;gap:12px;align-items:center;padding:12px 16px;border-top:1px solid var(--border-subtle)}
+.bill-line:first-child{border-top:0}
+.bill-line.add{background:var(--surface-subtle)}
+.bill-line.add .nm{color:var(--ink-2)}
+.bill-line .sub{display:block;font-size:12.5px;color:var(--ink-3)}
+.bill-total{display:flex;justify-content:space-between;align-items:baseline;padding:16px;border-top:1px solid var(--border)}
+.cal{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;text-align:center;font-size:12.5px}
+.cal b{font-weight:500;color:var(--ink-3);font-size:11.5px;padding-bottom:4px}
+.cal span{height:30px;display:grid;place-items:center;border-radius:6px;color:var(--ink-2)}
+.cal span.today{border:1px solid var(--border-button)}
+.cal span.pay{background:var(--primary);color:var(--on-primary);font-weight:600}
+.cal span.next{border:1px dashed var(--accent-border);color:var(--accent-text);font-weight:600}
+.cal span.dim{color:var(--ink-3);opacity:1}
+
+/* ---- C: Timeline ---- */
+.c-time{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-panel);padding:20px;margin-bottom:16px}
+.track{position:relative;height:96px;margin-top:14px}
+.axis{position:absolute;left:0;right:0;top:64px;border-top:1px solid var(--border)}
+.tick{position:absolute;top:58px;width:1px;height:12px;background:var(--border-button)}
+.tlabel{position:absolute;top:74px;font-size:12px;color:var(--ink-3);transform:translateX(-50%);white-space:nowrap}
+.bar{position:absolute;height:22px;border-radius:5px;font-size:12px;font-weight:500;display:flex;align-items:center;padding:0 8px;white-space:nowrap}
+.bar.site{background:color-mix(in srgb,var(--svc-site) 16%,white);color:#6d4a20;top:4px}
+.bar.social{background:var(--accent-wash);color:var(--accent-text);border:1px dashed var(--accent-border);top:32px}
+.pin{position:absolute;top:0;bottom:30px;width:2px;background:var(--primary)}
+.pin em{position:absolute;top:-18px;left:-20px;font:500 11.5px Geist;color:var(--accent-text);font-style:normal;white-space:nowrap}
+.c-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start}
+.li{display:flex;align-items:center;gap:12px;padding:12px 16px;border-top:1px solid var(--border-subtle)}
+.li:first-child{border-top:0}
+.li .tx{flex:1;min-width:0}
+.li .tx span{display:block;font-size:12.5px;color:var(--ink-3)}
+
+/* ---- Dialog ---- */
+.dlg-stage{position:relative;background:var(--scrim);border-radius:var(--r-overlay);padding:48px 16px;display:grid;place-items:center}
+.dlg{width:min(560px,100%);background:var(--surface);border-radius:var(--r-overlay);box-shadow:var(--sh-dialog);overflow:hidden}
+.dlg-h{display:flex;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--border-subtle)}
+.dlg-b{padding:20px}
+.dlg-f{display:flex;justify-content:flex-end;gap:8px;padding:12px 20px;border-top:1px solid var(--border);background:var(--surface-subtle)}
+.x{width:30px;height:30px;border-radius:8px;display:grid;place-items:center;color:var(--ink-3)}
+
+@media (max-width:860px){
+  .a-strip,.a-grid,.a-tiles,.b-grid,.c-grid{grid-template-columns:1fr}
+  .a-strip>div+div{border-left:0;border-top:1px solid var(--border-subtle)}
+  .frame{padding:16px}
+  .wrap{padding:20px 16px 64px}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<main class="wrap">
+  <h1>Plan &amp; billing: three directions</h1>
+  <p class="option-note" style="margin-top:8px">Example customer: Apex Diagnostics, Website Management since 1 Nov, next payment Tue 1 Dec. All three keep the app's tokens, Geist, the cobalt accent and the service colours. Pick one, or mix parts, and I'll build it. The confirm dialog at the bottom is already built.</p>
+
+  <!-- ================= A ================= -->
+  <section class="option" aria-labelledby="a-title">
+    <div class="option-head"><span class="tag">A</span><h2 id="a-title">Plan at a glance</h2></div>
+    <p class="option-note">A strip with the three facts people come here for, then every service as a tile you can act on. Monitoring shows how close it is to being free. The bill sits beside it.</p>
+    <div class="frame">
+      <div class="page-head"><div><h1>Plan &amp; billing</h1></div></div>
+      <div class="tabs"><span class="on">Your services</span><span>Invoices</span><span>Payment method</span><span>Billing details</span></div>
+      <div class="a-strip">
+        <div><div class="label">Next payment</div><div class="metric num">₹2,999</div><div class="meta">Tue 1 Dec</div></div>
+        <div><div class="label">Your plans</div><div class="metric-sm">1 of 3</div><div class="meta">Website Management</div></div>
+        <div><div class="label">Paid up to</div><div class="metric-sm">Tue 1 Dec</div><div class="meta">Since Sun 1 Nov</div></div>
+      </div>
+      <div class="a-grid">
+        <div class="a-tiles">
+          <article class="tile on">
+            <div class="top"><span class="mark" style="background:var(--svc-site)"></span><span class="name">Website Management</span><span style="margin-left:auto" class="badge pos">Active</span></div>
+            <p class="what">Hosting, updates, changes and your blog.</p>
+            <div class="foot"><span class="price num">₹2,999 <span class="meta">a month</span></span><button class="btn sm ghost">Manage</button></div>
+          </article>
+          <article class="tile offer">
+            <div class="top"><span class="mark" style="background:var(--svc-social)"></span><span class="name">Social Media Management</span><span style="margin-left:auto" class="badge acc">₹1 first month</span></div>
+            <p class="what">Posts planned, designed and published for you.</p>
+            <div class="foot"><span class="price num">₹1<s>₹2,999</s></span><button class="btn sm primary">Add</button></div>
+          </article>
+          <article class="tile">
+            <div class="top"><span class="mark" style="background:var(--svc-search)"></span><span class="name">Paid Ads Management</span><span style="margin-left:auto" class="badge acc">₹1 first month</span></div>
+            <p class="what">Google and Meta ads run and reported for you.</p>
+            <div class="foot"><span class="price num">₹1<s>₹2,999</s></span><button class="btn sm">Add</button></div>
+          </article>
+          <article class="tile">
+            <div class="top"><span class="mark" style="background:var(--ink-muted)"></span><span class="name">Dedicated Expert Monitoring</span><span style="margin-left:auto" class="badge neu">Not added</span></div>
+            <p class="what">Free with all three plans. You have 1 of 3.</p>
+            <div class="segs" aria-label="1 of 3 plans"><i class="f"></i><i></i><i></i></div>
+            <div class="foot"><span class="price num">₹6,000 <span class="meta">a month</span></span><button class="btn sm">Add</button></div>
+          </article>
+        </div>
+        <aside class="panel receipt">
+          <div class="panel-h"><h2>This month's bill</h2></div>
+          <div class="panel-b">
+            <div class="row"><span>Website Management</span><span class="num">₹2,999</span></div>
+            <div class="rule"></div>
+            <div class="row"><b>Total per month</b><b class="num metric-sm">₹2,999</b></div>
+            <p class="meta" style="margin:8px 0 0">All prices include 18% GST.</p>
+          </div>
+        </aside>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= B ================= -->
+  <section class="option" aria-labelledby="b-title">
+    <div class="option-head"><span class="tag">B</span><h2 id="b-title">The bill is the page</h2></div>
+    <p class="option-note">One running bill. What you pay for are its lines; what you could add sits under them as lighter lines with an Add button. Beside it, a month calendar marks your billing date, so a date that moves is easy to see.</p>
+    <div class="frame">
+      <div class="page-head"><h1>Plan &amp; billing</h1></div>
+      <div class="tabs"><span class="on">Your services</span><span>Invoices</span><span>Payment method</span><span>Billing details</span></div>
+      <div class="b-grid">
+        <div class="panel">
+          <div class="panel-h"><h2>Your monthly bill</h2><span class="meta">Next payment Tue 1 Dec</span></div>
+          <div class="bill-line"><span class="mark" style="background:var(--svc-site)"></span><span class="nm"><b>Website Management</b><span class="sub">Since Sun 1 Nov</span></span><span class="badge pos">Active</span><span class="num">₹2,999</span></div>
+          <div class="bill-line add"><span class="mark" style="background:var(--svc-social)"></span><span class="nm">Social Media Management<span class="sub">₹1 for the first month, then ₹2,999</span></span><span class="badge acc">Offer</span><button class="btn sm primary">Add</button></div>
+          <div class="bill-line add"><span class="mark" style="background:var(--svc-search)"></span><span class="nm">Paid Ads Management<span class="sub">₹1 for the first month, then ₹2,999</span></span><span class="badge acc">Offer</span><button class="btn sm">Add</button></div>
+          <div class="bill-line add"><span class="mark" style="background:var(--ink-muted)"></span><span class="nm">Dedicated Expert Monitoring<span class="sub">₹6,000 a month, free with all three plans</span></span><span></span><button class="btn sm">Add</button></div>
+          <div class="bill-total"><span><b>Total per month</b><span class="meta" style="display:block">All prices include 18% GST.</span></span><span class="metric num">₹2,999</span></div>
+        </div>
+        <div class="panel">
+          <div class="panel-h"><h2>Your billing date</h2><span class="meta">December</span></div>
+          <div class="panel-b">
+            <div class="cal">
+              <b>M</b><b>T</b><b>W</b><b>T</b><b>F</b><b>S</b><b>S</b>
+              <span class="dim">30</span><span class="pay">1</span><span>2</span><span>3</span><span>4</span><span>5</span><span>6</span>
+              <span>7</span><span>8</span><span>9</span><span>10</span><span class="next">11</span><span>12</span><span>13</span>
+              <span>14</span><span>15</span><span>16</span><span>17</span><span>18</span><span>19</span><span>20</span>
+              <span>21</span><span>22</span><span>23</span><span>24</span><span>25</span><span>26</span><span>27</span>
+              <span>28</span><span>29</span><span>30</span><span>31</span><span class="dim">1</span><span class="dim">2</span><span class="dim">3</span>
+            </div>
+            <div class="rule"></div>
+            <div class="row"><span class="muted">Paid on</span><span>the 1st of each month</span></div>
+            <p class="meta" style="margin:6px 0 0">Add a service on 11 Nov and your billing date moves to the 11th, the dashed day. The dialog shows the exact amount first.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= C ================= -->
+  <section class="option" aria-labelledby="c-title">
+    <div class="option-head"><span class="tag">C</span><h2 id="c-title">What you've paid for, on a timeline</h2></div>
+    <p class="option-note">A strip shows each service as the stretch of time it is paid for, with today pinned (11 Nov in this example). Hovering Add draws the new service on it, dashed, before you commit. Services and the bill sit below.</p>
+    <div class="frame">
+      <div class="page-head"><h1>Plan &amp; billing</h1></div>
+      <div class="tabs"><span class="on">Your services</span><span>Invoices</span><span>Payment method</span><span>Billing details</span></div>
+      <div class="c-time">
+        <div class="row" style="padding:0"><h2>Paid up to</h2><span class="meta">Next payment ₹2,999 on Tue 1 Dec</span></div>
+        <div class="track" aria-hidden="true">
+          <div class="bar site" style="left:0;width:56%">Website Management</div>
+          <div class="bar social" style="left:19%;width:56%">Social Media Management, if added on 11 Nov</div>
+          <div class="pin" style="left:19%"><em>11 Nov</em></div>
+          <div class="axis"></div>
+          <div class="tick" style="left:0"></div><div class="tlabel" style="left:2%">1 Nov</div>
+          <div class="tick" style="left:56%"></div><div class="tlabel" style="left:56%">1 Dec</div>
+          <div class="tick" style="left:75%"></div><div class="tlabel" style="left:75%">11 Dec</div>
+        </div>
+      </div>
+      <div class="c-grid">
+        <div class="panel">
+          <div class="panel-h"><h2>Your services</h2></div>
+          <div class="li"><span class="mark" style="background:var(--svc-site)"></span><div class="tx"><b>Website Management</b><span>Since Sun 1 Nov</span></div><span class="badge pos">Active</span><span class="num">₹2,999</span></div>
+          <div class="li"><span class="mark" style="background:var(--svc-social)"></span><div class="tx"><b>Social Media Management</b><span>₹1 first month, then ₹2,999</span></div><button class="btn sm primary">Add</button></div>
+          <div class="li"><span class="mark" style="background:var(--svc-search)"></span><div class="tx"><b>Paid Ads Management</b><span>₹1 first month, then ₹2,999</span></div><button class="btn sm">Add</button></div>
+          <div class="li"><span class="mark" style="background:var(--ink-muted)"></span><div class="tx"><b>Dedicated Expert Monitoring</b><span>Free with all three plans</span></div><button class="btn sm">Add</button></div>
+        </div>
+        <div class="panel receipt">
+          <div class="panel-h"><h2>This month's bill</h2></div>
+          <div class="panel-b">
+            <div class="row"><span>Website Management</span><span class="num">₹2,999</span></div>
+            <div class="rule"></div>
+            <div class="row"><b>Total per month</b><b class="num metric-sm">₹2,999</b></div>
+            <p class="meta" style="margin:8px 0 0">All prices include 18% GST.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= Dialog ================= -->
+  <section class="option" aria-labelledby="d-title">
+    <div class="option-head"><span class="tag">Built</span><h2 id="d-title">The confirm dialog, after Add</h2></div>
+    <p class="option-note">Every payment button now opens this first, with its own lines. This is the Add case from the owner's example: Social Media Management added on 11 Nov.</p>
+    <div class="dlg-stage">
+      <div class="dlg" role="dialog" aria-labelledby="dlg-t">
+        <div class="dlg-h"><h2 id="dlg-t" style="font-size:17px">Add Social Media Management</h2><span class="x">✕</span></div>
+        <div class="dlg-b">
+          <div class="row"><span class="muted">Social Media Management, first month</span><span class="num">₹1</span></div>
+          <div class="row"><span class="muted">Your plan, Tue 1 Dec to Fri 11 Dec</span><span class="num">₹967.42</span></div>
+          <div class="rule"></div>
+          <div class="row" style="align-items:baseline"><b>Due today</b><span class="metric num">₹968.42</span></div>
+          <p class="meta" style="margin:8px 0 0">From Fri 11 Dec, you pay ₹5,998 a month for all your services.</p>
+          <p class="meta" style="margin:4px 0 0">All prices include GST.</p>
+        </div>
+        <div class="dlg-f"><button class="btn">Go back</button><button class="btn primary">Pay ₹968.42</button></div>
+      </div>
+    </div>
+  </section>
+</main>
+</body>
+</html>

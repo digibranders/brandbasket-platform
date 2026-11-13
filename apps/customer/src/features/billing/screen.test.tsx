@@ -31,9 +31,9 @@ const wrap = (node: ReactNode) =>
 
 const SERVICES: ServicesPanelView = {
   rows: [
-    { addOn: "managed-website", service: "website", name: "Website Management", status: { word: "Active", tone: "pos" }, price: "₹2,399", line: "Since Thu 27 Aug.", action: { kind: "cancel" } },
-    { addOn: "social-media", service: "social", name: "Social & Ads", status: { word: "Active", tone: "pos" }, price: "₹7,999", line: "Since Thu 27 Aug.", action: { kind: "cancel" } },
-    { addOn: "paid-ads", service: "search", name: "Local SEO + AEO", status: { word: "Not added", tone: "neutral" }, price: "₹22,499", line: "Local search.", action: { kind: "add", quote: "₹18,000 today for the 24 days left this month, then ₹30,398 a month from Fri 27 Nov, GST included." } },
+    { addOn: "managed-website", service: "website", name: "Website Management", status: { word: "Active", tone: "pos" }, price: "₹2,399", line: "Since Thu 27 Aug.", offerPrice: null, action: { kind: "cancel" } },
+    { addOn: "social-media", service: "social", name: "Social & Ads", status: { word: "Active", tone: "pos" }, price: "₹7,999", line: "Since Thu 27 Aug.", offerPrice: null, action: { kind: "cancel" } },
+    { addOn: "paid-ads", service: "search", name: "Local SEO + AEO", status: { word: "Not added", tone: "neutral" }, price: "₹22,499", line: "Local search.", offerPrice: "₹1", action: { kind: "add", summary: { title: "Add Local SEO + AEO", rows: [{ key: "service", label: "Local SEO + AEO, until Fri 27 Nov", amount: "₹18,000", tone: "plain" }], totalLabel: "Due today", total: "₹18,000", notes: ["From Fri 27 Nov, you pay ₹30,398 a month for all your services."] } } },
   ],
   cancel: {
     endsOn: "Fri 27 Nov",
@@ -41,6 +41,7 @@ const SERVICES: ServicesPanelView = {
   },
   bill: { period: "month", rows: [{ label: "List price, 2 services", amount: "₹12,998", discount: false }, { label: "Package discount, 10%", amount: "−₹1,299", discount: true }], totalCents: 1_169_900, total: "₹11,699", gstLine: "Includes ₹1,784.59 GST.", adMoneyLine: null },
   headerLine: "Next payment ₹11,699 on Fri 27 Nov. All prices include 18% GST.",
+  glance: null,
 };
 
 const NOTICES = { ok: true, data: { charge: null, chargeWaiting: false, paymentReturn: "none" } } as const;
@@ -63,12 +64,29 @@ describe("Plan & billing, Your services", () => {
     expect(screen.queryByRole("link", { name: "Refer a business" })).toBeNull();
   });
 
+  it("shows the plan at a glance instead of the header line, and a service on the first-month offer at its ₹1 price", async () => {
+    const glance = { nextAmount: "₹11,699", nextOn: "Fri 27 Nov", plansHeld: 2, plansTotal: 3 };
+    vi.mocked(loadBillingOverview).mockResolvedValue(overview({ services: { ok: true, data: { ...SERVICES, glance } } }));
+    wrap(await BillingScreen({ customer, params: {} }));
+
+    const strip = document.querySelector('dl[aria-label="Your plan at a glance"]');
+    expect(strip?.textContent).toContain("Next payment");
+    expect(strip?.textContent).toContain("Fri 27 Nov");
+    expect(strip?.textContent).toContain("of 3");
+    expect(screen.queryByText(SERVICES.headerLine ?? "")).toBeNull();
+
+    const offerTile = screen.getByText("Local SEO + AEO").closest("li");
+    expect(offerTile?.textContent).toContain("₹1 first month");
+    expect(offerTile?.querySelector("s")?.textContent).toBe("₹22,499");
+  });
+
   it("opens the add straight away for the service ?add= names, with what it costs", async () => {
     vi.mocked(loadBillingOverview).mockResolvedValue(overview({ preselect: "paid-ads" }));
     wrap(await BillingScreen({ customer, params: { add: "search" } }));
     const dialog = await screen.findByRole("dialog");
-    expect(within(dialog).getByText(/₹18,000 today for the 24 days left/)).toBeTruthy();
-    expect(within(dialog).getByRole("button", { name: "Add and pay" })).toBeTruthy();
+    expect(within(dialog).getByText("Local SEO + AEO, until Fri 27 Nov")).toBeTruthy();
+    expect(within(dialog).getByText("From Fri 27 Nov, you pay ₹30,398 a month for all your services.")).toBeTruthy();
+    expect(within(dialog).getByRole("button", { name: "Pay ₹18,000" })).toBeTruthy();
   });
 
   it("is read only for an editor or viewer", async () => {
@@ -110,7 +128,8 @@ describe("each plan state has its one action", () => {
   });
 
   it("lapsed: reactivate for the month's price, through the checkout's reactivation", async () => {
-    const reactivation = { ok: true, data: { planName: "Brandbasket services plan", monthlyAmount: "₹11,699", per: "a month", chosen: null, picker: null } } as const;
+    const summary = { title: "Reactivate your plan", rows: [], totalLabel: "Due today", total: "₹11,699", notes: [] };
+    const reactivation = { ok: true, data: { planName: "Brandbasket services plan", monthlyAmount: "₹11,699", per: "a month", chosen: null, picker: null, summary } } as const;
     vi.mocked(loadBillingOverview).mockResolvedValue(overview({ state: { kind: "lapsed" }, services: null, reactivation }));
     wrap(await BillingScreen({ customer, params: {} }));
     expect(screen.getByRole("button", { name: "Reactivate for ₹11,699" })).toBeTruthy();
@@ -141,7 +160,7 @@ describe("Invoices", () => {
   });
 
   it("offers Pay on an open charge to the owner only (payChargeAction is owner only)", async () => {
-    const due = { kind: "due", id: "c1", number: "Extra blog posts", date: new Date("2026-10-27T06:00:00Z"), amountCents: 99_900, amount: "₹999", status: "To pay", tone: "warn" } as const;
+    const due = { kind: "due", id: "c1", number: "Extra blog posts", date: new Date("2026-10-27T06:00:00Z"), amountCents: 99_900, amount: "₹999", status: "To pay", tone: "warn", summary: { title: "Pay this charge", rows: [], totalLabel: "Due today", total: "₹999", notes: [] } } as const;
     vi.mocked(loadInvoices).mockResolvedValue({ invoices: [{ row: due, lines: [], total: "₹999" }], billedTo: null, canDownload: false });
     wrap(await InvoicesScreen({ customer }));
     expect(screen.getByRole("button", { name: "Pay" })).toBeTruthy();

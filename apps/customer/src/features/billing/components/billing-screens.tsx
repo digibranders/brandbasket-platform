@@ -1,6 +1,6 @@
 import { PAYMENT_RECEIVED_MESSAGE } from "@brandbasket/shared/lib/billing/payment-step";
 import type { ReactNode } from "react";
-import { PageHeader, Panel, PanelEmpty, PanelError } from "@/components";
+import { MetricStrip, PageHeader, Panel, PanelEmpty, PanelError } from "@/components";
 import type { CustomerContext } from "@/lib/guards";
 import { load, type Loaded } from "@/lib/loaded";
 import { formatDate } from "@/lib/format";
@@ -8,7 +8,7 @@ import { Banner, Icon, LinkButton, TabLinks } from "@/ui";
 import { PaymentWaiting } from "../../checkout/components/payment-waiting";
 import { BRAND } from "../../checkout/rules/brand";
 import { CHARGE_NOTICES } from "../../checkout/rules/charge-notices";
-import { loadBillingOverview, loadInvoices, loadPaymentPage, type BillingOverview, type NoticesView, type PaymentView } from "../loader";
+import { loadBillingOverview, loadInvoices, loadPaymentPage, type BillingOverview, type NoticesView, type PaymentView, type ServicesPanelView } from "../loader";
 import { BILLING_REQUEST_HREF, BILLING_TABS, PAYMENT_PATH, type BillView, type PlanState } from "../rules";
 import { BillingDetailsForm } from "./billing-details-form";
 import { InvoicesTable } from "./invoices-table";
@@ -42,6 +42,19 @@ function Notices({ notices }: { readonly notices: NoticesView }) {
       {notices.paymentReturn === "confirmed" ? <Banner tone="pos">Payment confirmed. Your website is back online.</Banner> : null}
       {notices.paymentReturn === "failed" ? <Banner tone="neg">That payment didn’t go through, and nothing was taken. You can try again.</Banner> : null}
     </>
+  );
+}
+
+/** The plan at a glance: what the next payment takes and when, and how many of the three plans are on. */
+function Glance({ glance }: { readonly glance: NonNullable<ServicesPanelView["glance"]> }) {
+  return (
+    <MetricStrip
+      label="Your plan at a glance"
+      metrics={[
+        { label: "Next payment", value: glance.nextAmount, period: glance.nextOn },
+        { label: "Your plans", value: String(glance.plansHeld), unit: `of ${glance.plansTotal}`, period: "Dedicated Expert Monitoring is free with all three" },
+      ]}
+    />
   );
 }
 
@@ -138,17 +151,24 @@ export async function BillingScreen({ customer, params }: { readonly customer: C
   const overview = await loadBillingOverview(customer, params);
   const services = overview.services;
   const headerLine = services !== null && services.ok ? services.data.headerLine : null;
+  const glance = services !== null && services.ok ? services.data.glance : null;
   return (
     <>
-      <BillingHeader current={BILLING_TABS[0].href} description={headerLine} />
+      {/* The strip says the next payment, so the header does not repeat it. */}
+      <BillingHeader current={BILLING_TABS[0].href} description={glance === null ? headerLine : null} />
       <div className="flex flex-col gap-4">
         {overview.notices.ok ? <Notices notices={overview.notices.data} /> : <PanelError failure={overview.notices.error} what="the result of your payment" />}
         <StatePanel state={overview.state} overview={overview} />
         {services === null ? null : services.ok ? (
-          <div className="grid items-start gap-4 lg:grid-cols-2">
-            <ServicesPanel view={services.data} preselect={overview.preselect} />
-            {services.data.bill === null ? null : <BillPanel bill={services.data.bill} />}
-          </div>
+          <>
+            {services.data.glance === null ? null : <Glance glance={services.data.glance} />}
+            <div className="grid items-start gap-4 lg:grid-cols-3">
+              <div className="lg:col-span-2">
+                <ServicesPanel view={services.data} preselect={overview.preselect} />
+              </div>
+              {services.data.bill === null ? null : <BillPanel bill={services.data.bill} />}
+            </div>
+          </>
         ) : (
           <Panel title="Your services">
             <PanelError failure={services.error} what="your services" />

@@ -59,6 +59,17 @@ describe("planAddedService", () => {
     expect(plan).toMatchObject({ newBillingDate: DEC_1, extensionCents: 0, extensionDays: 0, upfrontCents: 100 });
   });
 
+  it("moves nothing for a service added minutes after the plan was bought: no day of the plan is charged twice", () => {
+    const boughtAt = new Date("2026-11-13T07:00:00.000Z");
+    const plan = planAddedService(input({ now: new Date("2026-11-13T07:20:00.000Z"), period: { start: boughtAt, end: new Date("2026-12-13T07:00:00.000Z") } }));
+    expect(plan).toMatchObject({ newBillingDate: new Date("2026-12-13T07:00:00.000Z"), extensionDays: 0, extensionCents: 0, upfrontCents: 100 });
+  });
+
+  it("charges whole days at the paid-through date's time of day, however late in the day the service is added", () => {
+    const plan = planAddedService(input({ now: new Date("2026-11-11T15:30:00.000Z") }));
+    expect(plan).toMatchObject({ newBillingDate: new Date("2026-12-11T06:00:00.000Z"), extensionDays: 10, extensionCents: 96_742 });
+  });
+
   it("refuses within the last hour of the paid month, as an add always has", () => {
     expect(planAddedService(input({ now: new Date(DEC_1.getTime() - 30 * 60_000) }))).toEqual({ kind: "refused", reason: "renewal-due" });
   });

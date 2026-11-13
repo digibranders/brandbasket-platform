@@ -67,7 +67,8 @@ describe("loadBillingOverview", () => {
   it("gives the owner each service's action, the cancel dialog with the new total, and the bill with the next payment", async () => {
     const view = await loadBillingOverview(customerWith("owner"), {}, NOW);
     if (view.services === null || !view.services.ok) throw new Error("Expected services");
-    const { rows, cancel, bill, headerLine } = view.services.data;
+    const { rows, cancel, bill, headerLine, glance } = view.services.data;
+    expect(glance).toEqual({ nextAmount: "₹11,699", nextOn: "Fri 27 Nov", plansHeld: 2, plansTotal: 3 });
     expect(rows.map((row) => [row.name, row.status.word, row.action.kind])).toEqual([
       ["Website Management", "Active", "cancel"],
       ["Social Media Management", "Active", "cancel"],
@@ -75,10 +76,40 @@ describe("loadBillingOverview", () => {
     ]);
     // Each service at its list price: the package discount shows once, in the bill.
     expect(rows.map((row) => row.price)).toEqual(["₹2,999", "₹9,999", "₹24,999"]);
-    expect(rows[2]?.action).toEqual({ kind: "add", quote: "₹15,999.36 today for the 24 days left this month, then ₹30,398 a month from Fri 27 Nov, GST included." });
+    expect(rows[2]?.action).toEqual({
+      kind: "add",
+      summary: {
+        title: "Add Paid Ads Management",
+        rows: [{ key: "rest", label: "Paid Ads Management, 24 days left this month", amount: "₹15,999.36", tone: "plain" }],
+        totalLabel: "Due today",
+        total: "₹15,999.36",
+        notes: ["Then ₹30,398 a month from Fri 27 Nov.", "All prices include GST."],
+      },
+    });
     expect(cancel?.options.find((option) => option.addOn === "social-media")?.copy.monthly).toBe("From Fri 27 Nov you pay ₹2,999 a month, GST included.");
     expect(bill?.total).toBe("₹11,699");
     expect(headerLine).toBe("Next payment ₹11,699 on Fri 27 Nov. All prices include 18% GST.");
+  });
+
+  it("shows a combined subscription's add as the service, the plan's extra days and the new monthly payment", async () => {
+    const DEC_11 = new Date("2026-12-11T06:00:00.000Z");
+    const combined = { kind: "combined", upfrontCents: 96_842, serviceCents: 100, extensionCents: 96_742, paidThroughAt: NEXT, newBillingDate: DEC_11, monthlyCents: 3_039_800, offer: true } as const;
+    vi.mocked(loadAddOnsPage).mockResolvedValue({ ...PAGE, addOns: PAGE.addOns.map((entry) => (entry.kind === "available" ? { ...entry, offer: combined } : entry)) });
+    const view = await loadBillingOverview(customerWith("owner"), {}, NOW);
+    if (view.services === null || !view.services.ok) throw new Error("Expected services");
+    expect(view.services.data.rows[2]?.action).toEqual({
+      kind: "add",
+      summary: {
+        title: "Add Paid Ads Management",
+        rows: [
+          { key: "service", label: "Paid Ads Management, first month", amount: "₹1", tone: "plain" },
+          { key: "plan", label: "Your plan, Fri 27 Nov to Fri 11 Dec", amount: "₹967.42", tone: "plain" },
+        ],
+        totalLabel: "Due today",
+        total: "₹968.42",
+        notes: ["From Fri 11 Dec, you pay ₹30,398 a month for all your services.", "All prices include GST."],
+      },
+    });
   });
 
   it("gives an editor the same figures and no action", async () => {
@@ -110,18 +141,37 @@ describe("loadBillingOverview", () => {
     expect(loadAddOnsPage).not.toHaveBeenCalled();
 
     vi.mocked(findReactivationPlan).mockResolvedValue(PLAN as never);
-    vi.mocked(findReactivation).mockResolvedValue({ cancelled: false, services: ["managed-website"], netCents: 299_900, discountCents: 0, billingInterval: "month" });
+    vi.mocked(findReactivation).mockResolvedValue({ cancelled: false, services: ["managed-website"], lines: [{ addOn: "managed-website", title: "Website Management", listCents: 299_900, offerCents: 0, netCents: 299_900 }], netCents: 299_900, discountCents: 0, billingInterval: "month" });
     const lapsed = await loadBillingOverview(customerWith("owner", { status: "lapsed", hasAccess: false }), {}, NOW);
     expect(lapsed.services).toBeNull();
-    expect(lapsed.reactivation).toEqual({ ok: true, data: { planName: expect.any(String), monthlyAmount: "₹2,999", per: "a month", chosen: null, picker: null } });
+    expect(lapsed.reactivation).toEqual({
+      ok: true,
+      data: {
+        planName: expect.any(String),
+        monthlyAmount: "₹2,999",
+        per: "a month",
+        chosen: null,
+        picker: null,
+        summary: {
+          title: "Reactivate your plan",
+          rows: [{ key: "managed-website", label: "Website Management", amount: "₹2,999", tone: "plain" }],
+          totalLabel: "Due today",
+          total: "₹2,999",
+          notes: [expect.stringMatching(/^It renews a month from /), "All prices include GST."],
+        },
+      },
+    });
   });
 
   it("prices a reactivation less the kept code through the shared renewal figure, and refuses one that leaves nothing", async () => {
     const lapsedOwner = customerWith("owner", { status: "lapsed", hasAccess: false });
     vi.mocked(findReactivationPlan).mockResolvedValue(PLAN as never);
-    vi.mocked(findReactivation).mockResolvedValue({ cancelled: false, services: ["managed-website"], netCents: 299_900, discountCents: 30_000, billingInterval: "month" });
-    expect((await loadBillingOverview(lapsedOwner, {}, NOW)).reactivation).toMatchObject({ ok: true, data: { monthlyAmount: "₹2,699" } });
-    vi.mocked(findReactivation).mockResolvedValue({ cancelled: false, services: ["managed-website"], netCents: 299_900, discountCents: 299_900, billingInterval: "month" });
+    vi.mocked(findReactivation).mockResolvedValue({ cancelled: false, services: ["managed-website"], lines: [{ addOn: "managed-website", title: "Website Management", listCents: 299_900, offerCents: 0, netCents: 299_900 }], netCents: 299_900, discountCents: 30_000, billingInterval: "month" });
+    expect((await loadBillingOverview(lapsedOwner, {}, NOW)).reactivation).toMatchObject({
+      ok: true,
+      data: { monthlyAmount: "₹2,699", summary: { rows: [{ label: "Website Management" }, { label: "Your code", amount: "-₹300", tone: "save" }], total: "₹2,699" } },
+    });
+    vi.mocked(findReactivation).mockResolvedValue({ cancelled: false, services: ["managed-website"], lines: [{ addOn: "managed-website", title: "Website Management", listCents: 299_900, offerCents: 0, netCents: 299_900 }], netCents: 299_900, discountCents: 299_900, billingInterval: "month" });
     expect((await loadBillingOverview(lapsedOwner, {}, NOW)).reactivation).toMatchObject({ ok: false });
   });
 

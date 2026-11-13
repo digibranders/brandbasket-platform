@@ -73,10 +73,11 @@ export function planAddedService(input: AddedServiceInput): AddedServicePlan {
   }
 
   // The offer runs one month from today, and the combined subscription starts when it ends.
+  // The billing date moves in whole days from the paid-through date, at its time of day: a gap of hours (a plan bought and a service
+  // added on the same day) moves nothing and charges nothing, and the offer then ends those hours early.
   const offerEnds = trialEndsAt(now);
-  const newBillingDate = offerEnds.getTime() > period.end.getTime() ? offerEnds : period.end;
-  const gapMs = newBillingDate.getTime() - period.end.getTime();
-  const extensionDays = gapMs > 0 ? Math.ceil(gapMs / MS_PER_DAY) : 0;
+  const extensionDays = offerEnds.getTime() > period.end.getTime() ? Math.round((offerEnds.getTime() - period.end.getTime()) / MS_PER_DAY) : 0;
+  const newBillingDate = new Date(period.end.getTime() + extensionDays * MS_PER_DAY);
   const monthDays = Math.max(1, Math.round((addMonthsUtc(period.end, 1).getTime() - period.end.getTime()) / MS_PER_DAY));
   const extensionCents = extensionDays === 0 ? 0 : shareOf(input.currentRenewalCents, Math.min(extensionDays, monthDays), monthDays);
   const serviceCents = trialPriceCents(input.currency);
