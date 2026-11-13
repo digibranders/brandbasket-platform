@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache";
 import { unstable_rethrow } from "next/navigation";
 import { z } from "zod";
 import { requireService, type CustomerContext } from "@/lib/guards";
-import { actorOf, addNetwork, decideBatch, decideCarousel, decidePoster, drawBatch, loadTopics, makeCarousel, SocialAutoError, socialAutoSettings, type SocialAutoSettings } from "@/legacy-social/server/social-auto";
+import { actorOf, addNetwork, decideBatch, decideCarousel, decidePoster, drawBatch, loadTopics, makeCarousel, setCarouselWeekly, SocialAutoError, socialAutoSettings, type SocialAutoSettings } from "@/legacy-social/server/social-auto";
 import { brandOf, type SocialBrand } from "@/features/social/brand";
 import { wordsForCode } from "@/legacy-social/lib/social/ai";
 import { CHANNEL_PLATFORMS, PLATFORM_NAMES } from "@/legacy-social/lib/social/auto";
@@ -132,6 +132,16 @@ export async function addNetworkAction(formData: FormData): Promise<NewPostState
 /** Asks for this week's carousel. The posting service makes it for the connected accounts from the website it already read. */
 export async function makeCarouselAction(_formData: FormData): Promise<NewPostState> {
   return run("make the carousel", async ({ settings, brand, actor }) => void (await makeCarousel(settings, brand.externalId, {}, actor)));
+}
+
+/** Switches the weekly carousel on or off. While on, the posting service makes one each week and waits for the customer's approval. */
+export async function setWeeklyCarouselAction(formData: FormData): Promise<NewPostState> {
+  const parsed = z.enum(["on", "off"]).safeParse(formData.get("enabled"));
+  if (!parsed.success) return badForm();
+  const enabled = parsed.data === "on";
+  return run("switch the weekly carousel", async ({ settings, brand, actor }) => {
+    await setCarouselWeekly(settings, brand.externalId, enabled, actor);
+  });
 }
 
 /** The customer's decision on the whole carousel: approve it, or send it back with a reason. Never one slide. */

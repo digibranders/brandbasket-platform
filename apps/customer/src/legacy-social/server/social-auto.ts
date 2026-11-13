@@ -1,7 +1,7 @@
 import "server-only";
 import { z } from "zod";
 import { readAnalytics, type Analytics } from "@/legacy-social/lib/social/analytics";
-import { readCarousel, readCarousels, type CarouselDetail, type CarouselSummary } from "@/legacy-social/lib/social/carousel";
+import { readCarousel, readCarouselWeekly, readCarousels, type CarouselDetail, type CarouselSummary } from "@/legacy-social/lib/social/carousel";
 import { brandIdFor, readBrands, type BrandsView } from "@/features/social/brands";
 import { readBatches, readBatchPlan, readExpiredBatches, readFacts, readJob, readJobs, readPosters, readTopics, type BatchPlan, type ExpiredBatch, type FactsView, type Poster, type SiteJob, type Topic, type WrittenBatch } from "@/legacy-social/lib/social/ai";
 import { isChannelPlatform, readChannels, readConnectLink, readNotices, readPosts, readWebsite, type AutoChannel, type AutoPost, type ChannelPlatform, type WorkspaceNotice } from "@/legacy-social/lib/social/auto";
@@ -447,12 +447,24 @@ export async function loadPictureLimits(settings: SocialAutoSettings, externalId
   };
 }
 
-/** The customer's carousels, newest first. A business with no workspace, or a posting service that has no carousels yet, has none. */
-export async function loadCarousels(settings: SocialAutoSettings, businessId: string, send: typeof fetch = fetch): Promise<CarouselSummary[]> {
+/** The customer's carousels, newest first, and whether the weekly carousel is on. A business with no workspace, or a posting service that has no carousels yet, has none. */
+export async function loadCarouselList(settings: SocialAutoSettings, businessId: string, send: typeof fetch = fetch): Promise<{ readonly carousels: CarouselSummary[]; readonly weekly: boolean }> {
   const answer = await call(settings, `/api/v1/carousels?${new URLSearchParams({ externalId: businessId })}`, { method: "GET" }, send);
-  if (answer.status === 404 || answer.status === 501) return [];
+  if (answer.status === 404 || answer.status === 501) return { carousels: [], weekly: false };
   if (answer.status !== 200) throw refusal(answer, "the carousels");
-  return readCarousels(answer.body);
+  return { carousels: readCarousels(answer.body), weekly: readCarouselWeekly(answer.body) };
+}
+
+/** The customer's carousels, newest first. */
+export async function loadCarousels(settings: SocialAutoSettings, businessId: string, send: typeof fetch = fetch): Promise<CarouselSummary[]> {
+  return (await loadCarouselList(settings, businessId, send)).carousels;
+}
+
+/** Switches the weekly carousel on or off: while on, one is made each week for the customer to approve. Answers the new state. */
+export async function setCarouselWeekly(settings: SocialAutoSettings, businessId: string, enabled: boolean, actor: string, send: typeof fetch = fetch): Promise<boolean> {
+  const answer = await call(settings, "/api/v1/carousels", { method: "POST", body: { externalId: businessId, action: "weekly", enabled }, actor }, send);
+  if (answer.status !== 200) throw refusal(answer, "the weekly carousel");
+  return readCarouselWeekly(answer.body);
 }
 
 /** One carousel with its slides and the words for each channel; null when it is not there (or the posting service does not know carousels). */

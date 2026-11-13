@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 
 vi.mock("server-only", () => ({}));
 
-import { decideCarousel, fetchCarouselSlide, loadCarousel, loadCarousels, makeCarousel, SocialAutoError, type SocialAutoSettings } from "./social-auto";
+import { decideCarousel, fetchCarouselSlide, loadCarousel, loadCarouselList, loadCarousels, makeCarousel, setCarouselWeekly, SocialAutoError, type SocialAutoSettings } from "./social-auto";
 
 const settings: SocialAutoSettings = { baseUrl: "http://127.0.0.1:4020", key: "secret", returnUrl: "https://app.example.com/social" };
 const json = (status: number, body: unknown = {}) => vi.fn(async () => new Response(JSON.stringify(body), { status })) as unknown as typeof fetch;
@@ -17,6 +17,18 @@ describe("the carousel calls", () => {
     expect(await loadCarousels(settings, "b1", json(404))).toEqual([]);
     expect(await loadCarousels(settings, "b1", json(501))).toEqual([]);
     await expect(loadCarousels(settings, "b1", json(500))).rejects.toBeInstanceOf(SocialAutoError);
+  });
+
+  it("reads whether the weekly carousel is on, and switches it", async () => {
+    expect((await loadCarouselList(settings, "b1", json(200, { carousels: [], weekly: true }))).weekly).toBe(true);
+    expect((await loadCarouselList(settings, "b1", json(200, { carousels: [] }))).weekly).toBe(false);
+    expect(await loadCarouselList(settings, "b1", json(404))).toEqual({ carousels: [], weekly: false });
+    const send = json(200, { weekly: true });
+    expect(await setCarouselWeekly(settings, "b1", true, "actor-1", send)).toBe(true);
+    const call = vi.mocked(send).mock.calls[0];
+    expect(String(call?.[0])).toBe("http://127.0.0.1:4020/api/v1/carousels");
+    expect(JSON.parse(String(call?.[1]?.body))).toEqual({ externalId: "b1", action: "weekly", enabled: true });
+    await expect(setCarouselWeekly(settings, "b1", false, "actor-1", json(500))).rejects.toBeInstanceOf(SocialAutoError);
   });
 
   it("reads one carousel by its id, and null when it is not there", async () => {

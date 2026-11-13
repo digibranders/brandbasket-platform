@@ -54,6 +54,11 @@ export function readCarousels(body: unknown): CarouselSummary[] {
   });
 }
 
+/** Whether the weekly carousel is switched on, from a list answer (`{ weekly }`); off when the posting service does not say. */
+export function readCarouselWeekly(body: unknown): boolean {
+  return (body as { weekly?: unknown } | null)?.weekly === true;
+}
+
 const detailSchema = z.object({
   id: z.string().min(1),
   count: z.number().int().nonnegative(),

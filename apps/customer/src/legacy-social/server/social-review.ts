@@ -5,7 +5,7 @@ import { brandOf, type SocialBrand } from "@/features/social/brand";
 import type { BatchPlan, ExpiredBatch, Poster, SiteJob, Topic, WrittenBatch } from "@/legacy-social/lib/social/ai";
 import type { CarouselDetail, CarouselSummary } from "@/legacy-social/lib/social/carousel";
 import type { ChannelPlatform } from "@/legacy-social/lib/social/auto";
-import { loadBatches, loadCarousel, loadCarousels, loadChannels, loadPictureLimits, loadPosters, loadSiteJobs, loadTopics, loadWorkspaceFacts, socialAutoSettings, type PictureLimits } from "./social-auto";
+import { loadBatches, loadCarousel, loadCarouselList, loadChannels, loadPictureLimits, loadPosters, loadSiteJobs, loadTopics, loadWorkspaceFacts, socialAutoSettings, type PictureLimits } from "./social-auto";
 
 /** Everything the review page shows: the customer's batches of written posts and where they stand, and the pictures. */
 export interface SocialReview {
@@ -26,6 +26,8 @@ export interface SocialReview {
   /** The customer's carousels, newest first, and the newest one in full (its slides and the words for each channel); empty and null when there is none. */
   readonly carousels: readonly CarouselSummary[];
   readonly carousel: CarouselDetail | null;
+  /** Whether a carousel is made for the customer every week, by itself. */
+  readonly weeklyCarousel: boolean;
   /** Whether a carousel can be asked for now: the website was read, and at least one account is connected. */
   readonly canMakeCarousel: boolean;
   /** The brand being looked at and all the business's brands, for the switcher. */
@@ -34,7 +36,7 @@ export interface SocialReview {
   readonly unavailable: boolean;
 }
 
-const EMPTY: SocialReview = { jobs: [], batches: [], waiting: [], approved: [], expired: { batches: [], pictures: [] }, missingNetworks: [], topics: [], reasons: [], limits: null, carousels: [], carousel: null, canMakeCarousel: false, unavailable: true };
+const EMPTY: SocialReview = { jobs: [], batches: [], waiting: [], approved: [], expired: { batches: [], pictures: [] }, missingNetworks: [], topics: [], reasons: [], limits: null, carousels: [], carousel: null, weeklyCarousel: false, canMakeCarousel: false, unavailable: true };
 
 /** Asks social-auto for each part. Each is its own failure: what could be read is shown, and the page says the rest could not be. */
 export async function loadSocialReview(customer: Pick<CustomerContext, "businessId" | "businessName">): Promise<SocialReview> {
@@ -53,16 +55,17 @@ export async function loadSocialReview(customer: Pick<CustomerContext, "business
     }
   };
   // One read of every picture: the "open" filter leaves out one that did not pass the checks, which the customer must still see.
-  const [jobs, written, pictures, topics, limits, carousels, facts, channels] = await Promise.all([
+  const [jobs, written, pictures, topics, limits, carouselList, facts, channels] = await Promise.all([
     read("the jobs", [] as SiteJob[], () => loadSiteJobs(settings, id)),
     read("the written posts", { batches: [] as WrittenBatch[], expired: [] as ExpiredBatch[], plan: null as BatchPlan | null }, () => loadBatches(settings, id)),
     read("the pictures", { posters: [] as Poster[], reasons: [] as string[] }, () => loadPosters(settings, id, "all")),
     read("the topics", [] as Topic[], () => loadTopics(settings, id)),
     read("the picture limits", null as PictureLimits | null, () => loadPictureLimits(settings, id)),
-    read("the carousels", [] as CarouselSummary[], () => loadCarousels(settings, id)),
+    read("the carousels", { carousels: [] as CarouselSummary[], weekly: false }, () => loadCarouselList(settings, id)),
     read("the website", { website: null as string | null, notices: [] }, () => loadWorkspaceFacts(settings, id)),
     read("the channels", [] as Awaited<ReturnType<typeof loadChannels>>, () => loadChannels(settings, id)),
   ]);
+  const carousels = carouselList.carousels;
   const newest = carousels[0];
   const carousel = newest === undefined ? null : await read("the carousel", null as CarouselDetail | null, () => loadCarousel(settings, id, newest.id));
   return {
@@ -79,6 +82,7 @@ export async function loadSocialReview(customer: Pick<CustomerContext, "business
     limits,
     carousels,
     carousel,
+    weeklyCarousel: carouselList.weekly,
     canMakeCarousel: facts.website !== null && channels.length > 0,
     unavailable: failed,
   };

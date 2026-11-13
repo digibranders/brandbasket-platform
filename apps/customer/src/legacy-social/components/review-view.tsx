@@ -72,7 +72,7 @@ export function ReviewView({ review, canChange = true }: { readonly review: Soci
       {/* Nothing could be read: say so once, above, and do not also say that nothing is waiting, which would not be true. */}
       {review.unavailable && review.batches.length === 0 && review.waiting.length === 0 && review.approved.length === 0 ? null : (
         <>
-          <CarouselCard summary={review.carousels[0]} detail={review.carousel} canMake={review.canMakeCarousel} canChange={canChange} making={review.jobs.some((job) => job.kind === "carousel" && jobIsActive(job))} />
+          <CarouselCard summary={review.carousels[0]} detail={review.carousel} canMake={review.canMakeCarousel} canChange={canChange} making={review.jobs.some((job) => job.kind === "carousel" && jobIsActive(job))} weekly={review.weeklyCarousel} />
           <NetworksPanel missing={review.missingNetworks} busy={review.jobs.some((job) => job.kind === "network" && jobIsActive(job))} />
           <PostsPanel groups={groupReview(review.batches, [...review.waiting, ...review.approved], review.topics)} drawing={review.jobs.filter((job) => job.kind === "draw" && jobIsActive(job) && job.batchId !== undefined).map((job) => job.batchId ?? "")} reasons={review.reasons} />
         </>

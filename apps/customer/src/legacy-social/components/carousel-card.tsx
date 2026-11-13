@@ -6,7 +6,7 @@ import { LIFT, SECTION_TITLE } from "@/legacy-social/classes";
 import { REJECT_REASON_WORDS } from "@/legacy-social/lib/social/ai";
 import { dayLabel, PLATFORM_NAMES } from "@/legacy-social/lib/social/auto";
 import { CAROUSEL_STATUS_WORDS, carouselSlideUrl, type CarouselDetail, type CarouselSummary } from "@/legacy-social/lib/social/carousel";
-import { decideCarouselAction, makeCarouselAction } from "@/legacy-social/review-actions";
+import { decideCarouselAction, makeCarouselAction, setWeeklyCarouselAction } from "@/legacy-social/review-actions";
 import { ChannelLogo } from "./channel-logo";
 import { SMALL_DARK, SMALL_WHITE } from "./small-buttons";
 import { useReviewAction } from "./use-review-action";
@@ -22,15 +22,18 @@ export interface CarouselCardProps {
   readonly canChange: boolean;
   /** A carousel is being made right now. */
   readonly making: boolean;
+  /** A carousel is made for the customer every week, by itself. */
+  readonly weekly: boolean;
 }
 
 /**
  * The carousel of the week: one post of 3 to 5 slides, the same slides on every connected account and the words written for each. The
  * customer decides the whole carousel at once, never one slide. Nothing goes out until it is approved.
  */
-export function CarouselCard({ summary, detail, canMake, canChange, making }: CarouselCardProps): ReactElement | null {
+export function CarouselCard({ summary, detail, canMake, canChange, making, weekly }: CarouselCardProps): ReactElement | null {
   const make = useReviewAction();
   const decide = useReviewAction();
+  const switchWeekly = useReviewAction();
   const [sendingBack, setSendingBack] = useState(false);
   const [reason, setReason] = useState("");
   const [comment, setComment] = useState("");
@@ -52,6 +55,23 @@ export function CarouselCard({ summary, detail, canMake, canChange, making }: Ca
           One post of 3 to 5 slides, the same slides on every connected account, with the words written for each. It replaces one of this week&apos;s posts. Nothing goes out until you approve it.
         </p>
       </div>
+
+      {canMake && canChange ? (
+        <label className="flex items-center gap-3 text-[0.84375rem] font-semibold text-ink">
+          <input
+            type="checkbox"
+            checked={weekly}
+            disabled={switchWeekly.pending}
+            onChange={(event) => switchWeekly.run(setWeeklyCarouselAction, { enabled: event.target.checked ? "on" : "off" })}
+          />
+          Make a carousel for me every week
+        </label>
+      ) : null}
+      {switchWeekly.error === null ? null : (
+        <p role="alert" className="text-[0.84375rem] font-semibold text-error">
+          {switchWeekly.error}
+        </p>
+      )}
 
       {asking ? (
         <p role="status" className="rounded-xl bg-warn-wash px-4 py-3 text-[0.84375rem] font-semibold text-warn">
