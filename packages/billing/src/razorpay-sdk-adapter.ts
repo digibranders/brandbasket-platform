@@ -13,7 +13,9 @@ import type { RazorpaySdkClient } from "./razorpay-provider";
 export function wrapRazorpaySdkClient(client: Razorpay): RazorpaySdkClient {
   return {
     subscriptions: {
-      create: (input) => client.subscriptions.create(input),
+      // The SDK types addons as a mutable array; ours is readonly, so it is copied.
+      create: ({ addons, ...rest }) =>
+        client.subscriptions.create({ ...rest, ...(addons === undefined ? {} : { addons: addons.map((addon) => ({ item: { ...addon.item } })) }) }),
       cancel: (id, options) => client.subscriptions.cancel(id, options.cancel_at_cycle_end),
       update: (id, input) => client.subscriptions.update(id, input),
       fetch: async (id) => {

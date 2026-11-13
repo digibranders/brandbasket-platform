@@ -156,6 +156,7 @@ describe("handleRazorpayWebhookEvent", () => {
       retentionDiscountCents: 0,
       pendingPlanId: null,
       pendingDiscountAmountCents: 0,
+      firstPaymentCents: null,
       bundledAddOnNetCents: 0,
       pendingBundledAddOnNetCents: null,
       nextDiscountAmountCents: null,
@@ -204,6 +205,7 @@ describe("handleRazorpayWebhookEvent", () => {
       retentionDiscountCents: 1_500,
       pendingPlanId: null,
       pendingDiscountAmountCents: 0,
+      firstPaymentCents: null,
       bundledAddOnNetCents: 0,
       pendingBundledAddOnNetCents: null,
       nextDiscountAmountCents: null,
@@ -245,6 +247,7 @@ describe("handleRazorpayWebhookEvent", () => {
       retentionDiscountCents: 0,
       pendingPlanId: "plan_2",
       pendingDiscountAmountCents: 0,
+      firstPaymentCents: null,
       bundledAddOnNetCents: 0,
       pendingBundledAddOnNetCents: null,
       nextDiscountAmountCents: null,
@@ -299,6 +302,7 @@ describe("handleRazorpayWebhookEvent", () => {
       retentionDiscountCents: 0,
       pendingPlanId: null,
       pendingDiscountAmountCents: 0,
+      firstPaymentCents: null,
       bundledAddOnNetCents: 0,
       pendingBundledAddOnNetCents: null,
       nextDiscountAmountCents: null,
@@ -330,6 +334,7 @@ describe("handleRazorpayWebhookEvent", () => {
       retentionDiscountCents: 0,
       pendingPlanId: null,
       pendingDiscountAmountCents: 0,
+      firstPaymentCents: null,
       bundledAddOnNetCents: 0,
       pendingBundledAddOnNetCents: null,
       nextDiscountAmountCents: null,
@@ -370,6 +375,7 @@ describe("handleRazorpayWebhookEvent", () => {
       retentionDiscountCents: 0,
       pendingPlanId: null,
       pendingDiscountAmountCents: 0,
+      firstPaymentCents: null,
       bundledAddOnNetCents: 0,
       pendingBundledAddOnNetCents: null,
     } as never;
@@ -440,6 +446,7 @@ describe("handleRazorpayWebhookEvent", () => {
       retentionDiscountCents: 0,
       pendingPlanId: null,
       pendingDiscountAmountCents: 0,
+      firstPaymentCents: null,
       bundledAddOnNetCents: 0,
       pendingBundledAddOnNetCents: null,
       nextDiscountAmountCents: null,
@@ -471,6 +478,7 @@ describe("handleRazorpayWebhookEvent", () => {
         retentionDiscountCents: 0,
         pendingPlanId: null,
         pendingDiscountAmountCents: 0,
+        firstPaymentCents: null,
         bundledAddOnNetCents: ALL_THREE_NET_CENTS,
         pendingBundledAddOnNetCents: null,
         nextDiscountAmountCents: null,
@@ -594,6 +602,104 @@ describe("handleRazorpayWebhookEvent", () => {
     errorSpy.mockRestore();
   });
 
+  describe("the first-month payment of a subscription that starts a month on (plan 63)", () => {
+    const OFFER_PLAN = { ...PLAN, currency: "INR", recurringAmountCents: 0, initialAmountCents: 0 };
+    const offerSubscription = (overrides: Record<string, unknown> = {}) =>
+      ({
+        id: "sub_row_offer",
+        businessId: "biz_offer",
+        planId: "plan_1",
+        status: "incomplete",
+        commitmentEndsAt: null,
+        activatedAt: null,
+        continuesId: null,
+        discountAmountCents: 0,
+        retentionDiscountCents: 0,
+        pendingPlanId: null,
+        pendingDiscountAmountCents: 0,
+        firstPaymentCents: 100,
+        bundledAddOnNetCents: 299_900,
+        pendingBundledAddOnNetCents: null,
+        nextDiscountAmountCents: null,
+        discountMonthsLeft: null,
+        ...overrides,
+      }) as never;
+    const upfront = (amountCents: number) =>
+      ({
+        kind: "charged",
+        currentStart: null,
+        method: null,
+        subscriptionId: "sub_rzp_offer",
+        currentEnd: new Date("2026-11-13T07:00:00.000Z"),
+        paidAt: new Date("2026-11-13T07:00:00.000Z"),
+        paymentId: "pay_upfront",
+        amountCents,
+        currency: "INR",
+        upfront: true,
+      }) as const;
+
+    it("records the upfront payment as the first payment when it is the amount frozen at checkout, though it is far below the monthly amount", async () => {
+      vi.mocked(findSubscriptionByProviderId).mockResolvedValue(offerSubscription());
+      vi.mocked(findPlanById).mockResolvedValue(OFFER_PLAN as never);
+
+      await handleRazorpayWebhookEvent(upfront(100));
+
+      expect(activateFirstPayment).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ subscriptionId: "sub_row_offer", providerPaymentId: "pay_upfront" }));
+      expect(recordUnappliedPayment).not.toHaveBeenCalled();
+    });
+
+    it("keeps a payment of any other amount for staff instead of activating on it", async () => {
+      vi.mocked(findSubscriptionByProviderId).mockResolvedValue(offerSubscription());
+      vi.mocked(findPlanById).mockResolvedValue(OFFER_PLAN as never);
+
+      await handleRazorpayWebhookEvent(upfront(299_900));
+
+      expect(activateFirstPayment).not.toHaveBeenCalled();
+      expect(recordUnappliedPayment).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ reason: "amount_mismatch", amountCents: 299_900 }));
+    });
+
+    it("does nothing for the same payment delivered again after the first payment was recorded", async () => {
+      vi.mocked(findSubscriptionByProviderId).mockResolvedValue(offerSubscription({ activatedAt: new Date("2026-11-13T07:00:00.000Z"), status: "active" }));
+
+      await handleRazorpayWebhookEvent(upfront(100));
+
+      expect(activateFirstPayment).not.toHaveBeenCalled();
+      expect(activateRenewalPayment).not.toHaveBeenCalled();
+      expect(recordUnappliedPayment).not.toHaveBeenCalled();
+    });
+
+    it("does nothing for a paid add-on invoice on a subscription that was not opened with a first-month offer", async () => {
+      vi.mocked(findSubscriptionByProviderId).mockResolvedValue(offerSubscription({ firstPaymentCents: null }));
+
+      await handleRazorpayWebhookEvent(upfront(100));
+
+      expect(activateFirstPayment).not.toHaveBeenCalled();
+      expect(recordUnappliedPayment).not.toHaveBeenCalled();
+    });
+
+    it("treats the first full charge a month later as an ordinary renewal at the monthly amount", async () => {
+      vi.mocked(findSubscriptionByProviderId).mockResolvedValue(
+        offerSubscription({ activatedAt: new Date("2026-11-13T07:00:00.000Z"), status: "active", commitmentEndsAt: new Date("2026-12-13T07:00:00.000Z") }),
+      );
+      vi.mocked(findPlanById).mockResolvedValue(OFFER_PLAN as never);
+
+      await handleRazorpayWebhookEvent({
+        kind: "charged",
+        currentStart: new Date("2026-12-13T07:00:00.000Z"),
+        method: null,
+        subscriptionId: "sub_rzp_offer",
+        currentEnd: new Date("2027-01-12T18:30:00.000Z"),
+        paidAt: new Date("2026-12-13T07:00:05.000Z"),
+        paymentId: "pay_first_full",
+        amountCents: 299_900,
+        currency: "INR",
+      });
+
+      expect(activateRenewalPayment).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ amountCents: 299_900, providerPaymentId: "pay_first_full" }));
+      expect(activateFirstPayment).not.toHaveBeenCalled();
+    });
+  });
+
   it("activates a first payment when the subscription has no activatedAt yet", async () => {
     vi.mocked(findSubscriptionByProviderId).mockResolvedValue({
       id: "sub_row_2",
@@ -606,6 +712,7 @@ describe("handleRazorpayWebhookEvent", () => {
       retentionDiscountCents: 0,
       pendingPlanId: null,
       pendingDiscountAmountCents: 0,
+      firstPaymentCents: null,
       bundledAddOnNetCents: 0,
       pendingBundledAddOnNetCents: null,
       nextDiscountAmountCents: null,
@@ -659,6 +766,7 @@ describe("handleRazorpayWebhookEvent", () => {
       retentionDiscountCents: 0,
       pendingPlanId: null,
       pendingDiscountAmountCents: 0,
+      firstPaymentCents: null,
       bundledAddOnNetCents: 0,
       pendingBundledAddOnNetCents: null,
       nextDiscountAmountCents: null,
@@ -694,6 +802,7 @@ describe("handleRazorpayWebhookEvent", () => {
       retentionDiscountCents: 0,
       pendingPlanId: null,
       pendingDiscountAmountCents: 0,
+      firstPaymentCents: null,
       bundledAddOnNetCents: 0,
       pendingBundledAddOnNetCents: null,
       nextDiscountAmountCents: null,
@@ -746,6 +855,7 @@ describe("handleRazorpayWebhookEvent", () => {
         continuesId: null,
         discountAmountCents: 0,
         retentionDiscountCents: 0,
+        firstPaymentCents: null,
         bundledAddOnNetCents: 0,
         pendingBundledAddOnNetCents: null,
         nextDiscountAmountCents: null,
@@ -760,6 +870,7 @@ describe("handleRazorpayWebhookEvent", () => {
         continuesId: null,
         discountAmountCents: 0,
         retentionDiscountCents: 0,
+        firstPaymentCents: null,
         bundledAddOnNetCents: 0,
         pendingBundledAddOnNetCents: null,
         nextDiscountAmountCents: null,
@@ -803,6 +914,7 @@ describe("a subscription carrying a referral discount", () => {
     // 15% of the INR plan's 350,000 paise, frozen when the checkout opened.
     discountAmountCents: 52_500,
     retentionDiscountCents: 0,
+    firstPaymentCents: null,
     bundledAddOnNetCents: 0,
     pendingBundledAddOnNetCents: null,
     nextDiscountAmountCents: null,
@@ -886,6 +998,7 @@ describe("a subscription with add-ons billed in the plan's charge", () => {
     continuesId: null,
     discountAmountCents: 0,
     retentionDiscountCents: 0,
+    firstPaymentCents: null,
     bundledAddOnNetCents: 189_905,
     pendingBundledAddOnNetCents: null,
     nextDiscountAmountCents: null,
@@ -1115,6 +1228,7 @@ describe("a code with a length in months", () => {
     nextDiscountAmountCents: null,
     pendingPlanId: null,
     pendingDiscountAmountCents: 0,
+    firstPaymentCents: null,
     bundledAddOnNetCents: 1_000_000,
     pendingBundledAddOnNetCents: null,
     ...overrides,
@@ -1227,6 +1341,7 @@ describe("a package on the services plan, which costs nothing itself", () => {
       continuesId: null,
       discountAmountCents: 0,
       retentionDiscountCents: 0,
+      firstPaymentCents: null,
       bundledAddOnNetCents: 3_039_800,
       pendingBundledAddOnNetCents: null,
       nextDiscountAmountCents: null,
@@ -1300,6 +1415,7 @@ describe("the renewal after a service was added to a package", () => {
     continuesId: null,
     discountAmountCents: 0,
     retentionDiscountCents: 0,
+    firstPaymentCents: null,
     bundledAddOnNetCents: 299_900,
     pendingBundledAddOnNetCents: 1_169_900,
     nextDiscountAmountCents: null,
@@ -1392,6 +1508,7 @@ describe("a plan with GST inside its price", () => {
       continuesId: null,
       discountAmountCents,
       retentionDiscountCents: 0,
+      firstPaymentCents: null,
       bundledAddOnNetCents: 0,
       pendingBundledAddOnNetCents: null,
       nextDiscountAmountCents: null,
@@ -1492,6 +1609,7 @@ describe("a plan with GST inside its price", () => {
         retentionDiscountCents: 0,
         pendingPlanId: "plan_premium",
         pendingDiscountAmountCents: 0,
+        firstPaymentCents: null,
         bundledAddOnNetCents: 0,
         pendingBundledAddOnNetCents: null,
         nextDiscountAmountCents: null,
@@ -2044,6 +2162,7 @@ describe("telling Teams about a payment", () => {
     retentionDiscountCents: 0,
     pendingPlanId: null,
     pendingDiscountAmountCents: 0,
+    firstPaymentCents: null,
     bundledAddOnNetCents: 0,
     pendingBundledAddOnNetCents: null,
     nextDiscountAmountCents: null,

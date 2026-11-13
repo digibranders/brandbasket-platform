@@ -10,6 +10,7 @@ import {
   findBillingState,
   findBusinessEntry,
   bundledNetCents,
+  businessHasHadService,
   findBundledAddOnsForSubscription,
   findBusinessReferralCode,
   findLatestSubscriptionForBusiness,
@@ -29,7 +30,9 @@ import {
 import { isSafeCheckoutUrl } from "../rules/checkout-url";
 import type { MonthlyAddOnId } from "@brandbasket/shared/lib/billing/add-ons";
 import { readBundleSelection, WEBSITE_ALONE, type ReactivationBasket } from "@brandbasket/shared/lib/billing/bundle";
+import { planFirstPayment } from "@brandbasket/shared/lib/billing/first-payment";
 import { adCreditCentsAtCheckout, packageLines } from "@brandbasket/shared/lib/billing/packages";
+import { trialEndsAt } from "@brandbasket/shared/lib/billing/trial";
 import { PAYMENT_RECEIVED_MESSAGE, REACTIVATE_HREF } from "@brandbasket/shared/lib/billing/payment-step";
 import { firstMissing, onboardingChecklist } from "@brandbasket/shared/lib/onboarding/checklist";
 import { MEMBER_HOME } from "../rules/membership";
@@ -80,6 +83,8 @@ const CHANGED_MEANWHILE = "Something changed while we were setting up your payme
 const ALREADY_A_MEMBER = "You’ve already paid for Managed Website. Open your dashboard to carry on.";
 const PAYMENT_UNAVAILABLE = "We couldn’t open your payment just now. Please try again in a minute.";
 const NO_SERVICES = "Choose at least one service to continue.";
+// New wording (plan 63, decision D4): the owner approves it before release.
+const CODE_NEEDS_A_PAID_SERVICE = "Your referral code can’t be used on a basket of first-month offer services only. Add a service that pays full price to use it.";
 const BILLING_DETAILS_NEEDED = "Add your billing details to pay. Your GST invoice is made out from them and cannot be changed once it is issued.";
 
 /** What was decided under the lock, carried past its commit. */
@@ -112,10 +117,16 @@ interface PlannedCheckout {
   readonly reactivation: ReactivationBasket | null;
   /** How often the new subscription is charged: the one chosen, or the one a lapse comes back on. Every amount above is for one cycle of it. */
   readonly interval: BillingInterval;
+  /**
+   * The first-month offer in this basket (plan 63), or null. The subscription is for the full monthly amount and starts on
+   * `firstChargeAt`, a month from now; `firstPaymentCents` is taken upfront when the customer approves it.
+   */
+  readonly offer: { readonly firstPaymentCents: number; readonly firstChargeAt: Date } | null;
 }
 
 type DecisionStep =
   | { readonly kind: "planned"; readonly planned: PlannedCheckout }
+  | { readonly kind: "code-refused" }
   | { readonly kind: "no-plan" }
   | { readonly kind: "no-services" };
 
@@ -183,6 +194,7 @@ async function openNewCheckout(
     discountAmountCents,
     bundledAddOnNetCents,
     ...(providerPlanId === undefined ? {} : { providerPlanId }),
+    ...(planned.offer === null ? {} : { firstPayment: { amountCents: planned.offer.firstPaymentCents, startAt: planned.offer.firstChargeAt } }),
   });
   const orphan = {
     businessId: tenant.businessId,
@@ -220,6 +232,7 @@ async function openNewCheckout(
         discountMonthsLeft: discount?.months ?? null,
         bundledAddOns: planned.bundle,
         adCreditCents: planned.adCreditCents,
+        ...(planned.offer === null ? {} : { firstPaymentCents: planned.offer.firstPaymentCents, firstChargeAt: planned.offer.firstChargeAt }),
         replacing: replacing?.id ?? null,
         now,
       });
@@ -344,8 +357,8 @@ export async function startReactivationFor(
  * What a checkout was opened for: the services, what they add up to and the ad credit it grants. The same services at another
  * price (the package offer given up since, an ad credit that no longer applies) are another checkout, never the old one reused.
  */
-function basketKey(addOnIds: readonly string[], netCents: number, adCreditCents: number, interval: BillingInterval): string {
-  return `${bundleKey(addOnIds)}|${netCents}|${adCreditCents}|${interval}`;
+function basketKey(addOnIds: readonly string[], netCents: number, adCreditCents: number, interval: BillingInterval, firstPaymentCents: number | null): string {
+  return `${bundleKey(addOnIds)}|${netCents}|${adCreditCents}|${interval}|${firstPaymentCents ?? ""}`;
 }
 
 /**
@@ -409,7 +422,8 @@ async function openPlanCheckout(
     const forfeited = reactivation?.forfeited ?? (await isPackageOfferForfeited(tx, tenant.businessId));
     // A lapse comes back on the interval it had; a first checkout, or a client who cancelled and chose again, on the one chosen.
     const interval = reactivation === null || reactivation.cancelled ? chosenInterval : reactivation.billingInterval;
-    const bundle: readonly NewBundledAddOn[] = packageLines({ services, forfeited }, plan.currency, interval).map((line) => ({
+    const pricedLines = packageLines({ services, forfeited }, plan.currency, interval);
+    const fullBundle: readonly NewBundledAddOn[] = pricedLines.map((line) => ({
       addOn: line.addOn,
       listAmountCents: line.listCents,
       offerDiscountAmountCents: line.offerCents,
@@ -418,9 +432,24 @@ async function openPlanCheckout(
     }));
     // The code comes off the basket's package net, once: the lines just priced, less their package discount.
     const code = redeemable ?? carried?.code ?? null;
-    const priced = code === null ? null : discountFrom(code, { currency: plan.currency, netCents: bundledNetCents(bundle), interval });
+    const priced = code === null ? null : discountFrom(code, { currency: plan.currency, netCents: bundledNetCents(fullBundle), interval });
     // A yearly basket's code covers its first payment only (discountFrom); a lapse's carried months are a monthly code's.
     const discount = priced !== null && carried !== null && interval === "month" ? { ...priced, months: carried.monthsLeft } : priced;
+    // The first-month offer (plan 63): Social Media and Paid Ads for a business that never had them. Under the lock, so two presses
+    // cannot both take it. A business that has paid for a service before, on any subscription, takes it at its price.
+    const hadService = new Map<string, boolean>();
+    for (const line of pricedLines) hadService.set(line.addOn, await businessHasHadService(tx, tenant.businessId, line.addOn));
+    const firstPayment = planFirstPayment({
+      lines: pricedLines.map((line) => ({ addOn: line.addOn, netCents: line.netCents, hadService: hadService.get(line.addOn) ?? true })),
+      interval,
+      provider: provider.name,
+      currency: plan.currency,
+      discountCents: discount?.amountCents ?? 0,
+    });
+    if (firstPayment.kind === "code-refused") return { kind: "code-refused" };
+    const offer = firstPayment.kind === "offer" ? { firstPaymentCents: firstPayment.firstPaymentCents, firstChargeAt: trialEndsAt(now) } : null;
+    const bundle: readonly NewBundledAddOn[] =
+      firstPayment.kind === "offer" ? fullBundle.map((line) => ({ ...line, trialPriceCents: firstPayment.trialPriceByAddOn[line.addOn] ?? null })) : fullBundle;
     // Ad credit is for services bought together at the first purchase. A reactivation grants none and keeps what the lapsed
     // subscription had.
     const adCreditCents = reactivation?.adCreditCents ?? adCreditCentsAtCheckout({ services, forfeited, hasEverPaid: false }, plan.currency);
@@ -435,21 +464,23 @@ async function openPlanCheckout(
               state.subscription.bundledAddOnNetCents,
               state.subscription.adCreditCents,
               state.subscription.billingInterval,
+              state.subscription.firstPaymentCents,
             ),
           },
       {
         planId: plan.id,
         provider: provider.name,
         referralCodeId: discount?.codeId ?? null,
-        bundleKey: basketKey(bundle.map((item) => item.addOn), bundle.reduce((total, item) => total + item.netAmountCents, 0), adCreditCents, interval),
+        bundleKey: basketKey(bundle.map((item) => item.addOn), bundle.reduce((total, item) => total + item.netAmountCents, 0), adCreditCents, interval, offer?.firstPaymentCents ?? null),
       },
       now,
       state,
     );
-    return { kind: "planned", planned: { plan, decision, latest: state.subscription, discount, bundle, adCreditCents, reactivation, interval } };
+    return { kind: "planned", planned: { plan, decision, latest: state.subscription, discount, bundle, adCreditCents, reactivation, interval, offer } };
   });
   if (first.kind === "no-plan") return refused(NO_PLAN);
   if (first.kind === "no-services") return refused(NO_SERVICES);
+  if (first.kind === "code-refused") return refused(CODE_NEEDS_A_PAID_SERVICE);
 
   const { planned } = first;
   const { decision } = planned;
@@ -470,6 +501,9 @@ async function openPlanCheckout(
         // ask for full price.
         discountAmountCents: planned.latest?.discountAmountCents ?? 0,
         bundledAddOnNetCents: planned.latest?.bundledAddOnNetCents ?? 0,
+        ...(planned.latest?.firstPaymentCents != null && planned.latest.firstChargeAt !== null
+          ? { firstPayment: { amountCents: planned.latest.firstPaymentCents, startAt: planned.latest.firstChargeAt } }
+          : {}),
       });
       if (started.providerSubscriptionId !== decision.providerSubscriptionId) throw new CheckoutMismatchError();
       return { kind: "redirect", url: checkedUrl(started) };

@@ -35,6 +35,12 @@ export interface StartCheckoutInput {
    * The customer authorises the mandate now and nothing is taken until then. Absent starts the subscription at once.
    */
   readonly startAt?: Date;
+  /**
+   * A first-month offer in the basket (plan 63): the subscription is for the full recurring amount and starts on `startAt`, a month
+   * from now, and the first payment, `amountCents`, is taken upfront when the customer approves. Never with `startAt` (Keep my plan).
+   * Razorpay takes it as an add-on on the new subscription (a real payment, kept); the fake provider simply charges it.
+   */
+  readonly firstPayment?: { readonly amountCents: number; readonly startAt: Date };
 }
 
 export interface StartedCheckout {

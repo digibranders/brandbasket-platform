@@ -1011,6 +1011,7 @@ export {
   nextBundledNetCents,
   openBundledAddOn,
   recordBundledAddOnRemoval,
+  startBundledTrials,
   bundledNetCents,
   businessHasHadService,
   findBundledAddOnsForSubscription,

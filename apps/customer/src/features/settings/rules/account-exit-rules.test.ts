@@ -32,6 +32,8 @@ function subscription(overrides: Partial<Subscription> = {}): Subscription {
     cancelledAt: null,
     continuesId: null,
     startAt: null,
+    firstPaymentCents: null,
+    firstChargeAt: null,
     createdAt: new Date("2026-09-20T09:00:00Z"),
     ...overrides,
   };

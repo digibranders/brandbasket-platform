@@ -145,6 +145,7 @@ function unpaidSubscription(providerSubscriptionId: string, overrides: Partial<S
     discountAmountCents: 0,
     bundledAddOnNetCents: 0,
     pendingBundledAddOnNetCents: null,
+    firstPaymentCents: null,
     ...overrides,
   } as Subscription;
 }
@@ -587,6 +588,40 @@ describe("confirmFirstPayment", () => {
 
     await expect(confirmFirstPayment(tenant, { token }, NOW)).resolves.toMatchObject({ kind: "paid" });
     expect(recordUnappliedPayment).not.toHaveBeenCalled();
+  });
+
+  it("activates a first payment of a first-month offer: the amount frozen at checkout, not the monthly amount", async () => {
+    const services = { ...PLAN, currency: "INR" as const, initialAmountCents: 0, recurringAmountCents: 0, taxRateBasisPoints: 1_800 };
+    vi.mocked(findPlanById).mockResolvedValue(services);
+    const started = await provider.startCheckout({
+      businessId: BUSINESS_ID,
+      businessName: "Riverside",
+      email: "ana@example.com",
+      plan: services,
+      bundledAddOnNetCents: 299_900,
+      firstPayment: { amountCents: 100, startAt: new Date(NOW.getTime() + 30 * 86_400_000) },
+    });
+    const token = new URL(started.checkoutUrl, "http://app.localhost").searchParams.get("token");
+    vi.mocked(findSubscriptionByProviderId).mockResolvedValue(
+      unpaidSubscription(started.providerSubscriptionId, { bundledAddOnNetCents: 299_900, firstPaymentCents: 100, firstChargeAt: new Date(NOW.getTime() + 30 * 86_400_000) }),
+    );
+
+    await expect(confirmFirstPayment(tenant, { token }, NOW)).resolves.toMatchObject({ kind: "paid" });
+    expect(recordUnappliedPayment).not.toHaveBeenCalled();
+  });
+
+  it("sets aside a payment of the monthly amount for a subscription that was opened with a first-month offer", async () => {
+    const services = { ...PLAN, currency: "INR" as const, initialAmountCents: 0, recurringAmountCents: 0, taxRateBasisPoints: 1_800 };
+    vi.mocked(findPlanById).mockResolvedValue(services);
+    const started = await provider.startCheckout({ businessId: BUSINESS_ID, businessName: "Riverside", email: "ana@example.com", plan: services, bundledAddOnNetCents: 299_900 });
+    const token = new URL(started.checkoutUrl, "http://app.localhost").searchParams.get("token");
+    vi.mocked(findSubscriptionByProviderId).mockResolvedValue(
+      unpaidSubscription(started.providerSubscriptionId, { bundledAddOnNetCents: 299_900, firstPaymentCents: 100, firstChargeAt: new Date(NOW.getTime() + 30 * 86_400_000) }),
+    );
+
+    await confirmFirstPayment(tenant, { token }, NOW);
+
+    expect(recordUnappliedPayment).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ reason: "amount_mismatch", amountCents: 299_900 }));
   });
 
   it("activates a first payment that had a referral discount taken off", async () => {

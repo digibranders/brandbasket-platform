@@ -194,7 +194,11 @@ async function applicability(
   const plan = await findPlanById(tx, subscription.planId);
   if (plan === null || plan.currency !== confirmed.currency) return { kind: "unapplied", reason: "amount_mismatch" };
   const reactivating = state?.hasEverPaid === true;
-  const expected = expectedFirstPaymentCents(plan, subscription.discountAmountCents, reactivating, subscription.bundledAddOnNetCents);
+  // A checkout with a first-month offer froze what its first payment takes (plan 63); any other is the plan's first payment.
+  const expected =
+    subscription.firstPaymentCents !== null && !reactivating
+      ? subscription.firstPaymentCents
+      : expectedFirstPaymentCents(plan, subscription.discountAmountCents, reactivating, subscription.bundledAddOnNetCents);
   if (expected !== confirmed.amountCents) return { kind: "unapplied", reason: "amount_mismatch" };
   return { kind: "applies", plan, reactivating };
 }

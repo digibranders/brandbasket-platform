@@ -187,6 +187,9 @@ export interface Subscription {
   readonly continuesId: string | null;
   /** Keep my plan: the day this one is first charged, or null. */
   readonly startAt: Date | null;
+  /** A first-month offer in the basket (plan 63): what the first payment takes, and the day the first full charge falls. Both null otherwise. */
+  readonly firstPaymentCents: number | null;
+  readonly firstChargeAt: Date | null;
   readonly createdAt: Date;
 }
 
@@ -217,6 +220,8 @@ const SUBSCRIPTION_COLUMNS = {
   cancelledAt: subscriptions.cancelledAt,
   continuesId: subscriptions.continuesId,
   startAt: subscriptions.startAt,
+  firstPaymentCents: subscriptions.firstPaymentCents,
+  firstChargeAt: subscriptions.firstChargeAt,
   createdAt: subscriptions.createdAt,
 } as const;
 
@@ -427,6 +432,9 @@ export interface NewSubscription {
   /** Keep my plan only: the subscription this one carries on from and the day it is first charged. Both or neither. */
   readonly continuesId?: string | null;
   readonly startAt?: Date | null;
+  /** A first-month offer in the basket: what the first payment takes and the day the first full charge falls. Both or neither. */
+  readonly firstPaymentCents?: number | null;
+  readonly firstChargeAt?: Date | null;
 }
 
 /**
@@ -453,6 +461,8 @@ export async function insertSubscription(db: Runner, input: NewSubscription): Pr
       commitmentEndsAt: input.commitmentEndsAt ?? null,
       continuesId: input.continuesId ?? null,
       startAt: input.startAt ?? null,
+      firstPaymentCents: input.firstPaymentCents ?? null,
+      firstChargeAt: input.firstChargeAt ?? null,
       status: "incomplete",
     })
     .returning(SUBSCRIPTION_COLUMNS);

@@ -184,6 +184,11 @@ export async function handleRazorpayWebhookEvent(event: RazorpayWebhookEvent): P
         throw new Error(`Subscription for razorpay providerSubscriptionId ${event.subscriptionId} disappeared between the unlocked read and the post-lock re-read`);
       }
 
+      // The first-month payment of a subscription opened to start a month on (plan 63) arrives as its own event, not as a charge.
+      // It means something only for a subscription that carries a first payment and has not recorded it; a redelivery after it was
+      // recorded, or the paid invoice of a subscription that was not opened with an offer, is nothing to do.
+      if (event.upfront === true && (subscription.activatedAt !== null || subscription.firstPaymentCents === null)) return null;
+
       // A cancelled subscription is final: a checkout we replaced, or a lapsed plan a reactivation ended. Money that lands
       // on one buys nothing, and activating it would also collide with the business's live subscription, so it is kept
       // for staff to refund, as the test checkout does.
@@ -228,10 +233,15 @@ export async function handleRazorpayWebhookEvent(event: RazorpayWebhookEvent): P
       // The services are billed as lines, every month: their frozen total is the price (the plan row costs nothing). A
       // reactivation is a fresh subscription with its own lines, frozen when its checkout opened.
       const bundledNetCents = subscription.bundledAddOnNetCents;
+      // A first payment with a first-month offer in it is the amount frozen when the checkout opened, less than the monthly amount.
+      const firstOfferCents =
+        subscription.activatedAt === null && !reactivating && !kept && subscription.firstPaymentCents !== null ? subscription.firstPaymentCents : null;
       const expectedAmount =
-        plan === null || plan === undefined || basePrice === undefined || subscription.discountAmountCents >= basePrice + bundledNetCents
-          ? undefined
-          : chargedAmountCents(basePrice + bundledNetCents, subscription.discountAmountCents);
+        firstOfferCents !== null
+          ? firstOfferCents
+          : plan === null || plan === undefined || basePrice === undefined || subscription.discountAmountCents >= basePrice + bundledNetCents
+            ? undefined
+            : chargedAmountCents(basePrice + bundledNetCents, subscription.discountAmountCents);
       // A customer who paid to move up to Premium is billed Premium from the next renewal: the provider was told to move
       // the subscription at the cycle end, so that renewal arrives at the new plan's price. It is recognised here, and
       // is the renewal that completes the move (below). `pendingPlanId` is the only thing that makes this price
