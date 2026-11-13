@@ -14,7 +14,7 @@ import { removeOnboardingImage, type MediaActionResult } from "@/lib/server/onbo
 
 /** Removes one logo or photo. Uploads go to the /api/uploads route handler instead, to keep actions' 1 MB body limit. */
 export async function removeBrandImage(mediaId: string): Promise<MediaActionResult> {
-  const { tenant } = await requireCustomerAccess();
+  const { tenant } = await requireCustomerAccess({ access: "write" });
   if (typeof mediaId !== "string") return { ok: false, message: "Reload the page and try again." };
 
   const result = await removeOnboardingImage({ appDb: getAppDb(), storage: getMediaStorage() }, tenant, mediaId);
@@ -27,7 +27,7 @@ export async function removeBrandImage(mediaId: string): Promise<MediaActionResu
  * transaction, so the descriptions are checked against what is really stored, not against what the page showed.
  */
 export async function saveBrandStep(_previous: StepFormState, formData: FormData): Promise<StepFormState> {
-  const { tenant } = await requireCustomerAccess();
+  const { tenant } = await requireCustomerAccess({ access: "write" });
 
   const problem = await saveOnboardingStep(getAppDb(), tenant, "brand", async (tx) => {
     const photos = await listMediaAssets(tx, "photo");

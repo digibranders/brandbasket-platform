@@ -2,27 +2,16 @@ import { Article } from "@phosphor-icons/react/dist/ssr";
 import type { Metadata } from "next";
 import Link from "next/link";
 import type { ReactElement } from "react";
-import { SubmitButton } from "@brandbasket/shared/ui/panel/submit-button";
+import { UnlockMorePosts } from "@/components/panel/blog-editor/unlock-more-posts";
 import { BlogPostsTable } from "@/components/panel/blog-editor/blog-posts-table";
-import { DARK_BUTTON, DARK_BUTTON_SHAPE } from "@/components/v2/classes";
+import { DARK_BUTTON } from "@/components/v2/classes";
 import { ActionRow, EmptyState, PageSection } from "@/components/v2/page";
+import { unlockPostsSummary } from "@/lib/billing/payment-summaries";
 import { getBlogPosts } from "@/lib/server/blog";
-import { getBlogUsage, isAtBlogLimit, type BlogUsage } from "@/lib/server/blog-allowance";
+import { getBlogUsage, isAtBlogLimit } from "@/lib/server/blog-allowance";
 import { requireWebsiteClient } from "@/lib/server/customer-access";
-import { unlockBlogPostsAction } from "./actions";
 
 export const metadata: Metadata = { title: "Blog" };
-
-/** "12 of 100 posts", and at the limit, the way to unlock the next block instead of a New post button. */
-function UnlockMorePosts({ usage }: { readonly usage: BlogUsage }): ReactElement {
-  return (
-    <form action={unlockBlogPostsAction}>
-      <SubmitButton className={DARK_BUTTON_SHAPE} pendingLabel="Opening payment…">
-        {`Unlock ${usage.nextBlock.posts} more posts · ${usage.nextBlock.price}`}
-      </SubmitButton>
-    </form>
-  );
-}
 
 export default async function BlogListPage(): Promise<ReactElement> {
   const customer = await requireWebsiteClient();
@@ -59,7 +48,7 @@ export default async function BlogListPage(): Promise<ReactElement> {
         }
         action={
           usage !== null && atLimit ? (
-            <UnlockMorePosts usage={usage} />
+            <UnlockMorePosts posts={usage.nextBlock.posts} price={usage.nextBlock.price} summary={unlockPostsSummary(usage.nextBlock)} />
           ) : (
             <Link href="/content/blog/new" className={DARK_BUTTON}>
               New post

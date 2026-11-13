@@ -5,6 +5,7 @@ import {
   findOpenProject,
   findPaymentByProviderId,
   findPlanById,
+  findSubscriptionById,
   findSubscriptionByProviderId,
   flagPaymentForAttention,
   isUnappliedReason,
@@ -24,6 +25,8 @@ import { isOnboardingLocked } from "@/lib/onboarding/snapshot";
 import { basketDeps } from "./add-ons";
 import { getBillingProvider } from "./billing";
 import { moveProviderAfterDiscountEnds } from "@brandbasket/shared/server/basket-change";
+import { recordAddedServicePayment } from "@brandbasket/shared/server/added-service";
+import { cancelAtProvider } from "@brandbasket/shared/server/provider-cancellation";
 import { activateFirstPayment, activateReactivationPayment } from "@brandbasket/shared/server/billing-activation";
 import { describeError, logBillingEvent } from "@brandbasket/shared/server/billing-log";
 import { getStaffDb } from "./db";
@@ -57,6 +60,8 @@ export type PaymentConfirmation =
   | { readonly kind: "membership-opened" }
   /** Recorded now, and it brought back a plan that had lapsed (a reactivation). There is no setup to send. */
   | { readonly kind: "reactivated" }
+  /** Recorded now, or already: the upfront payment of a combined subscription for a service added after sign-up (plan 63). */
+  | { readonly kind: "service-added" }
   /** This payment had already been recorded (a refresh or a second click). Nothing was written. */
   | { readonly kind: "already-recorded"; readonly projectStillOpen: boolean }
   /**
@@ -193,7 +198,11 @@ async function applicability(
   const plan = await findPlanById(tx, subscription.planId);
   if (plan === null || plan.currency !== confirmed.currency) return { kind: "unapplied", reason: "amount_mismatch" };
   const reactivating = state?.hasEverPaid === true;
-  const expected = expectedFirstPaymentCents(plan, subscription.discountAmountCents, reactivating, subscription.bundledAddOnNetCents);
+  // A checkout with a first-month offer froze what its first payment takes (plan 63); any other is the plan's first payment.
+  const expected =
+    subscription.firstPaymentCents !== null && !reactivating
+      ? subscription.firstPaymentCents
+      : expectedFirstPaymentCents(plan, subscription.discountAmountCents, reactivating, subscription.bundledAddOnNetCents);
   if (expected !== confirmed.amountCents) return { kind: "unapplied", reason: "amount_mismatch" };
   return { kind: "applies", plan, reactivating };
 }
@@ -269,6 +278,8 @@ export async function confirmFirstPayment(
   const announce: string[] = [];
   // The applied payments among them: the customer is emailed a receipt for each, never for one kept for staff to refund.
   const receipts: string[] = [];
+  // A subscription a combined one replaced, or a combined one that can buy nothing: cancelled at the provider after the commit.
+  const toCancel: { readonly provider: BillingProviderName; readonly providerSubscriptionId: string; readonly subscriptionId: string }[] = [];
   const confirmation = await getStaffDb().transaction(async (tx): Promise<PaymentConfirmation> => {
     await lockBusinessForBilling(tx, tenant.businessId);
 
@@ -279,6 +290,9 @@ export async function confirmFirstPayment(
         return INVALID;
       }
       if (isUnappliedReason(existing.attentionReason)) return NEEDS_ATTENTION;
+      // A refresh or a second click on an added service's payment goes back to Your services, not to Check and send.
+      const paidFor = existing.subscriptionId === null ? null : await findSubscriptionById(tx, existing.subscriptionId);
+      if (paidFor !== null && isCombinedSubscription(paidFor)) return { kind: "service-added" };
       return { kind: "already-recorded", projectStillOpen: await projectStillOpen(tx, tenant) };
     }
 
@@ -291,6 +305,37 @@ export async function confirmFirstPayment(
     if (subscription.businessId !== tenant.businessId) {
       logRefusal(withSubscription, "other-business-subscription");
       return INVALID;
+    }
+
+    if (isCombinedSubscription(subscription)) {
+      const recorded = await recordAddedServicePayment(tx, {
+        subscriptionId: subscription.id,
+        provider: provider.name,
+        providerPaymentId: confirmed.providerPaymentId,
+        amountCents: confirmed.amountCents,
+        currency: confirmed.currency,
+        paidAt: confirmed.paidAt,
+        ...(confirmed.method === undefined ? {} : { method: confirmed.method }),
+      });
+      switch (recorded.kind) {
+        case "recorded":
+          announce.push(recorded.paymentId);
+          receipts.push(recorded.paymentId);
+          if (recorded.replaced !== null) toCancel.push(recorded.replaced);
+          return { kind: "service-added" };
+        case "already-recorded":
+          return { kind: "service-added" };
+        case "unapplied":
+          if (recorded.newlyRecorded) announce.push(recorded.paymentId);
+          // It can buy nothing, so it must not go on to take its monthly charges.
+          toCancel.push({ provider: subscription.provider, providerSubscriptionId: subscription.providerSubscriptionId, subscriptionId: subscription.id });
+          logRefusal(withSubscription, recorded.reason);
+          return NEEDS_ATTENTION;
+        default: {
+          const unhandled: never = recorded;
+          throw new Error(`Unhandled added service payment: ${JSON.stringify(unhandled)}`);
+        }
+      }
     }
 
     const verdict = await applicability(tx, tenant.businessId, subscription, confirmed, now);
@@ -368,6 +413,8 @@ export async function confirmFirstPayment(
     void reportFirstPaymentToAds(paymentId);
   }
   for (const paymentId of receipts) void sendPaymentReceipt(paymentId);
+  // cancelAtProvider never throws: a failure is logged, and the webhook keeps any charge that still lands on it for staff to refund.
+  for (const target of toCancel) await cancelAtProvider(provider, { businessId: tenant.businessId, ...target });
   // After the commit, as for a setup link: Payload's database is not ours, and the sync logs rather than throws.
   if (confirmation.kind === "membership-opened") {
     await syncTenantForBusiness({ businessId: tenant.businessId, name: tenant.businessName });
@@ -379,4 +426,18 @@ export async function confirmFirstPayment(
     await notifyTeamOnboardingSent(tenant.businessId, tenant.businessName);
   }
   return confirmation;
+}
+
+/** A combined subscription for a service added after sign-up (plan 63, Option Y): it continues another and froze an upfront payment. */
+function isCombinedSubscription(subscription: Subscription): boolean {
+  return subscription.continuesId !== null && subscription.firstPaymentCents !== null;
+}
+
+/**
+ * Whether a verified checkout pays for this business's unpaid combined subscription, which a customer with a plan pays while they have
+ * access: the test checkout page shows it instead of moving them on. Read as staff, as the confirmation is; the business is checked.
+ */
+export async function isCombinedCheckoutFor(tenant: TenantContext, confirmed: ConfirmedPayment): Promise<boolean> {
+  const subscription = await findSubscriptionByProviderId(getStaffDb(), getBillingProvider().name, confirmed.providerSubscriptionId);
+  return subscription !== null && subscription.businessId === tenant.businessId && subscription.activatedAt === null && isCombinedSubscription(subscription);
 }

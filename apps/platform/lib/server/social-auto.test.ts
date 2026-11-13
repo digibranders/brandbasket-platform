@@ -292,7 +292,7 @@ describe("the AI side", () => {
     await decideBatch(SETTINGS, "business-1", "week-05", { action: "edit", postId: "p1", network: "linkedin", caption: "New words" }, "brandbasket:u", edit.send);
     expect(JSON.parse(String(edit.calls[0]?.init.body))).toMatchObject({ action: "edit", network: "linkedin", caption: "New words" });
     const drawn = sender(json(202, { job: { ...job, kind: "draw" }, created: true }));
-    expect((await drawBatch(SETTINGS, "business-1", "week-05", "brandbasket:u", drawn.send)).job.kind).toBe("draw");
+    expect((await drawBatch(SETTINGS, "business-1", "week-05", "brandbasket:u", undefined, false, drawn.send)).job.kind).toBe("draw");
     expect(JSON.parse(String(drawn.calls[0]?.init.body))).toEqual({ externalId: "business-1", batchId: "week-05", action: "draw" });
     expect((await loadBatches(SETTINGS, "b", sender(json(200, { batches: [batch], expired: [{ id: "week-00.json", expiredAt: "2026-11-19T09:00:00.000Z" }] })).send)).batches).toHaveLength(1);
     expect((await loadBatches(SETTINGS, "b", sender(json(200, { batches: [batch], expired: [{ id: "week-00.json", expiredAt: "2026-11-19T09:00:00.000Z" }] })).send)).expired).toEqual([{ id: "week-00.json", expiredAt: "2026-11-19T09:00:00.000Z" }]);

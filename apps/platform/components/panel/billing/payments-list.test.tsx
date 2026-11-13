@@ -2,6 +2,7 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import type { BillingMonth } from "@/lib/billing/billing-months";
+import { chargeSummary } from "@/lib/billing/payment-summaries";
 import { PaymentsList } from "./payments-list";
 
 vi.mock("@/app/app-host/(protected)/billing/actions", () => ({ payChargeAction: vi.fn() }));
@@ -25,7 +26,7 @@ const months: BillingMonth[] = [
     total: "₹2,999",
     lines: [
       { kind: "receipt", row },
-      { kind: "due", chargeId: "c1", title: "Extra page: Gallery", addedIso: "2026-10-27T06:00:00.000Z", amount: "₹1,500", taxNote: "includes 18% GST" },
+      { kind: "due", chargeId: "c1", title: "Extra page: Gallery", addedIso: "2026-10-27T06:00:00.000Z", amount: "₹1,500", taxNote: "includes 18% GST", summary: chargeSummary("Extra page: Gallery", "₹1,500", "INR") },
     ],
   },
 ];

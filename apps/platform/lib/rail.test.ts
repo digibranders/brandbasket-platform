@@ -32,6 +32,11 @@ describe("railSections", () => {
     expect(link("Affiliate", { ...FULL, affiliate: true })).toMatchObject({ href: "/affiliate", icon: "affiliate" });
   });
 
+  it("leaves Plan & billing out for an editor or a viewer, and keeps it for the owner", () => {
+    expect(shape({ ...FULL, owner: false })[3]).toEqual(["Account", ["Settings"]]);
+    expect(shape({ ...FULL, owner: true })[3]).toEqual(["Account", ["Plan & billing", "Settings"]]);
+  });
+
   it("has no Services section for a plan without the website, but still has Business, which holds every customer's contact details", () => {
     expect(shape({ ...FULL, hasWebsite: false }).map(([label]) => label)).toEqual([null, "Manage", "Account"]);
     expect(link("Business", { ...FULL, hasWebsite: false })).toMatchObject({ href: "/details", icon: "business" });

@@ -39,7 +39,7 @@ class ClosureInPastError extends Error {}
  * facts, so any paying customer may keep them current, on any plan. The business comes from the session.
  */
 export async function saveContactAction(_previous: PanelFormState, formData: FormData): Promise<PanelFormState> {
-  const { user, tenant, billing } = await requireCustomerAccess();
+  const { user, tenant, billing } = await requireCustomerAccess({ access: "write" });
   if (!billing.hasAccess) return paymentRequiredState(formData);
 
   const parsed = parseContactForm(formData);

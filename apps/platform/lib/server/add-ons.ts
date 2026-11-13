@@ -4,14 +4,17 @@ import {
   findBusinessCurrency,
   findLiveBundledAddOns,
   findReferralCodeById,
+  findWaitingAddedServiceSuccessor,
   isPackageOfferForfeited,
   withTenantScope,
+  type BillingProviderName,
   type RateLimitRule,
   type ScopedTransaction,
 } from "@brandbasket/db";
 import { addOnById, isMonthlyAddOnId, MONTHLY_ADD_ON_IDS, servicesToList, type AddOnPrice, type MonthlyAddOnId } from "@brandbasket/shared/lib/billing/add-ons";
 import { bundledLinePrice } from "@brandbasket/shared/lib/billing/bundle";
 import { packageLineWith } from "@brandbasket/shared/lib/billing/packages";
+import { planCombinedAddOn, startCombinedAddOn } from "@brandbasket/shared/server/added-service";
 import {
   findKeptPlanStart,
   readAddOnAssessment,
@@ -20,7 +23,9 @@ import {
   type AddOnAssessment,
   type BasketDeps,
 } from "@brandbasket/shared/server/basket-change";
+import { isSafeCheckoutUrl } from "@/lib/billing/checkout-url";
 import { planStartsAgain } from "@/lib/billing/add-on-copy";
+import { ADDED_SERVICE_PAY_PATH, planChangesFirst } from "@/lib/billing/added-service";
 import { dropPreview, type DropPreview } from "@/lib/billing/drop-service";
 import { getBillingProvider } from "./billing";
 import type { GrantedCustomer } from "./customer-access";
@@ -54,6 +59,23 @@ async function billedCurrencyOf(tx: ScopedTransaction, businessId: string): Prom
 export type AddOnOffer =
   /** Add it now: the charge for the rest of the paid month, then the new monthly payment from `renewsOn`, both with tax. */
   | { readonly kind: "quote"; readonly chargeCents: number; readonly daysLeft: number; readonly nextRenewalCents: number; readonly renewsOn: Date }
+  /**
+   * Add it now as one combined subscription (plan 63, Option Y): `upfrontCents` today, which is `serviceCents` for the service up to
+   * `newBillingDate` and `extensionCents` for the plan from `paidThroughAt` to then, and `monthlyCents` a month from then.
+   */
+  | {
+      readonly kind: "combined";
+      readonly upfrontCents: number;
+      readonly serviceCents: number;
+      readonly extensionCents: number;
+      readonly paidThroughAt: Date;
+      readonly newBillingDate: Date;
+      readonly monthlyCents: number;
+      /** On the first-month offer. */
+      readonly offer: boolean;
+    }
+  /** A service is stopping or the plan changes on `changesOn`: add it after that. */
+  | { readonly kind: "change-pending"; readonly changesOn: Date }
   /** The month renews within the hour: add it after `renewsOn`. */
   | { readonly kind: "renewal-due"; readonly renewsOn: Date | null }
   /** Paid by bank transfer: staff add it. */
@@ -87,6 +109,31 @@ export interface AddOnsPage {
   readonly addOns: readonly AddOnPageEntry[];
   /** What the business is billed in. */
   readonly currency: AddOnPrice["currency"];
+}
+
+/** What Add would open for a service that can be added: a combined subscription on a monthly plan, else the charge for the month. */
+async function combinedOfferOf(businessId: string, addOn: MonthlyAddOnId, providerName: BillingProviderName, quote: AddOnOffer, renewsOn: Date | null, now: Date): Promise<AddOnOffer> {
+  // Read as staff, as the add itself is: the code on the subscription is staff-only. It only reads.
+  const planned = await planCombinedAddOn(getStaffDb(), { businessId, addOn, providerName, now });
+  switch (planned.kind) {
+    case "planned": {
+      const { upfrontCents, serviceCents, extensionCents, newBillingDate, monthlyCents, trialPriceCents, subscription } = planned.planned;
+      if (subscription.paidThroughAt === null) return { kind: "write" };
+      return { kind: "combined", upfrontCents, serviceCents, extensionCents, paidThroughAt: subscription.paidThroughAt, newBillingDate, monthlyCents, offer: trialPriceCents !== null };
+    }
+    case "not-combined":
+      return quote;
+    case "change-pending":
+      return { kind: "change-pending", changesOn: planned.changesOn };
+    case "refused":
+      return offerOf(planned.assessment, renewsOn);
+    case "changed":
+      return { kind: "write" };
+    default: {
+      const unhandled: never = planned;
+      throw new Error(`Unhandled combined add-on plan: ${JSON.stringify(unhandled)}`);
+    }
+  }
 }
 
 function offerOf(assessment: AddOnAssessment | null, renewsOn: Date | null): AddOnOffer {
@@ -144,11 +191,19 @@ export async function loadAddOnsPage(customer: GrantedCustomer, now: Date): Prom
     bundled.filter((row) => row.status === "active").map((row) => row.addOn),
     listedLines.map((line) => line.addOn),
   );
-  const addOns = listed.map((addOn): AddOnPageEntry => {
+  const addOns = await Promise.all(listed.map(async (addOn): Promise<AddOnPageEntry> => {
     const assessment = assessments.get(addOn) ?? null;
     const included = bundled.find((row) => row.addOn === addOn && row.status === "active");
     // What it costs once added: the package price the basket would earn, which is list for a service on its own.
-    if (included === undefined) return { kind: "available", addOn, price: packageLineWith(listedLines, forfeited, addOn, currency), offer: offerOf(assessment, nextBillingOn) };
+    if (included === undefined) {
+      const offer = offerOf(assessment, nextBillingOn);
+      return {
+        kind: "available",
+        addOn,
+        price: packageLineWith(listedLines, forfeited, addOn, currency),
+        offer: offer.kind === "quote" ? await combinedOfferOf(tenant.businessId, addOn, providerName, offer, nextBillingOn, now) : offer,
+      };
+    }
     return {
       kind: "included",
       addOn,
@@ -159,30 +214,72 @@ export async function loadAddOnsPage(customer: GrantedCustomer, now: Date): Prom
       keepable: assessment?.kind === "keep",
       drop: included.endRequestedAt === null && !closing && keptStartsOn === null ? dropPreview({ staying: stayingLines, dropping: addOn, forfeited, currency }) : null,
     };
-  });
+  }));
   return { addOns, currency };
+}
+
+/**
+ * Whether the business's current subscription has a combined subscription waiting for its upfront payment: the customer has approved
+ * it, and until the webhook records it the page must wait and offer no Add. Read as staff, as the add is; only a boolean leaves.
+ */
+export async function hasAddedServiceAwaitingPayment(customer: Pick<GrantedCustomer, "tenant" | "billing">): Promise<boolean> {
+  const current = customer.billing.subscription;
+  if (current === null) return false;
+  const waiting = await findWaitingAddedServiceSuccessor(getStaffDb(), current.id);
+  return waiting !== null && waiting.businessId === customer.tenant.businessId;
 }
 
 /** What asking to add an add-on came to, for the page. */
 export type AddOnAddResult =
   /** A charge for the rest of the month to pay: the page sends the customer to pay it. */
   | { readonly kind: "pay"; readonly chargeId: string }
+  /** A combined subscription to approve and pay upfront (plan 63, Option Y): the page sends the customer to `url`. */
+  | { readonly kind: "approve"; readonly url: string }
   /** It is on (kept, or added with nothing to take): the page redraws. */
   | { readonly kind: "done" }
   | { readonly kind: "refused"; readonly message: string };
 
 const CANNOT_ADD_NOW = "We couldn't add that just now. Reload the page to see where it stands.";
+const PAYMENT_BEING_CONFIRMED = "Your last payment is still being confirmed. Please wait a minute and reload the page.";
+
+function refusalFor(assessment: AddOnAssessment): { readonly kind: "refused"; readonly message: string } {
+  return refused(assessment.kind === "plan-kept" ? planStartsAgain(assessment.startsOn) : CANNOT_ADD_NOW);
+}
 
 /**
- * Add on the Services page: a charge for the rest of the paid month, or keeping an add-on that is ending
- * (startAddOn in @brandbasket/shared/server/basket-change). The form carries only the add-on; whether it can be added, and
- * at what price, is worked out again on the server under the business's lock.
+ * Add on the Services page. A monthly plan gets one combined subscription that takes the new service and moves the billing date
+ * (startCombinedAddOn, plan 63 Option Y); anything else, and keeping an add-on that is ending, takes the older path of a charge for
+ * the rest of the paid month (startAddOn in @brandbasket/shared/server/basket-change). The form carries only the add-on; whether
+ * it can be added, and at what price, is worked out again on the server under the business's lock. A second press replaces the
+ * first unpaid subscription, or finds the same open charge.
  */
-export async function addBundledAddOnFor(customer: Pick<GrantedCustomer, "tenant">, addOn: MonthlyAddOnId, now: Date): Promise<AddOnAddResult> {
-  const { businessId } = customer.tenant;
+export async function addBundledAddOnFor(customer: Pick<GrantedCustomer, "tenant" | "user">, addOn: MonthlyAddOnId, now: Date): Promise<AddOnAddResult> {
+  const { businessId, businessName } = customer.tenant;
   const limit = await consumeRateLimit(getAppDb(), `add-on-checkout:business:${businessId}`, ADD_ON_CHECKOUT_RATE_LIMIT);
   if (!limit.allowed) return refused(TOO_MANY_ATTEMPTS);
 
+  const combined = await startCombinedAddOn(basketDeps(), { businessId, businessName, email: customer.user.email, addOn, now });
+  switch (combined.kind) {
+    case "approve": {
+      if (getBillingProvider().name === "razorpay") return { kind: "approve", url: ADDED_SERVICE_PAY_PATH };
+      // The provider's address is followed only if it is safe, as checkout.ts does.
+      return isSafeCheckoutUrl(combined.checkoutUrl) ? { kind: "approve", url: combined.checkoutUrl } : refused(CANNOT_ADD_NOW);
+    }
+    case "payment-pending":
+      return refused(PAYMENT_BEING_CONFIRMED);
+    case "change-pending":
+      return refused(planChangesFirst(combined.changesOn));
+    case "refused":
+      return refusalFor(combined.assessment);
+    case "changed":
+      return refused(CANNOT_ADD_NOW);
+    case "not-combined":
+      break;
+    default: {
+      const unhandled: never = combined;
+      throw new Error(`Unhandled combined add-on start: ${JSON.stringify(unhandled)}`);
+    }
+  }
   const started = await startAddOn(basketDeps(), { businessId, addOn, staffId: null, now });
   switch (started.kind) {
     case "pay":
@@ -191,7 +288,7 @@ export async function addBundledAddOnFor(customer: Pick<GrantedCustomer, "tenant
     case "kept":
       return { kind: "done" };
     case "refused":
-      return refused(started.assessment.kind === "plan-kept" ? planStartsAgain(started.assessment.startsOn) : CANNOT_ADD_NOW);
+      return refusalFor(started.assessment);
     case "changed":
       return refused(CANNOT_ADD_NOW);
     default: {

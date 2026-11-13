@@ -8,7 +8,7 @@ import { z } from "zod";
 import { requireBillingAccess } from "@/lib/server/billing";
 import { socialBrand } from "@/lib/server/social-brand";
 import { getAppDb } from "@/lib/server/db";
-import { actorOf, connectLink, createPost, deletePost, ensureWorkspace, loadChannels, movePost, sendPostNow, SocialAutoError, socialAutoSettings, startSiteJob, updatePost } from "@/lib/server/social-auto";
+import { actorOf, connectLink, createPost, deletePost, ensureWorkspace, loadChannels, loadWorkspaceFacts, movePost, sendPostNow, SocialAutoError, socialAutoSettings, startSiteJob, updatePost } from "@/lib/server/social-auto";
 import { wordsForCode } from "@/lib/social/ai";
 import { CHANNEL_PLATFORMS, type ChannelPlatform } from "@/lib/social/auto";
 import { canAddOn, checkNewPost, checkPostEdit, wordsForPostRefusal, isChangeablePostId, isTime, isWrittenPostId, momentHasPassed, type NewPostState } from "@/lib/social/new-post";
@@ -254,6 +254,36 @@ export async function changeWrittenPostTimeAction(formData: FormData): Promise<N
 }
 
 const siteSchema = z.object({ site: z.string().trim().min(1, "Write your website address.").max(300, "That address is too long."), page: z.boolean(), networks: z.array(z.enum(CHANNEL_PLATFORMS)).max(CHANNEL_PLATFORMS.length) });
+
+/**
+ * Writes the customer's next month of posts: from the website social-auto already holds for this brand, for the networks that are
+ * connected now, starting on the Monday social-auto named. Nothing is asked of the customer but the press of a button.
+ */
+export async function startNextMonthAction(formData: FormData): Promise<NewPostState> {
+  const { tenant } = await requireBillingAccess();
+  const bought = await withTenantScope(getAppDb(), tenant, (tx) => listBoughtSetupServices(tx, tenant.businessId));
+  if (!bought.includes("social")) notFound();
+  const parsed = z.object({ startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/) }).safeParse({ startDate: formData.get("startDate") });
+  if (!parsed.success) return { status: "error", message: "That could not be read. Reload the page and try again." };
+  try {
+    const settings = socialAutoSettings();
+    if (settings === null) return { status: "error", message: "Posting is not available just now. Try again later." };
+    const brand = await socialBrand(tenant);
+    const [facts, channels] = await Promise.all([loadWorkspaceFacts(settings, brand.externalId), loadChannels(settings, brand.externalId)]);
+    if (facts.website === null) return { status: "error", message: "Start from your website first, then the next month can follow." };
+    const networks = [...new Set(channels.map((channel) => channel.platform))];
+    if (networks.length === 0) return { status: "error", message: wordsForCode("INVALID_NETWORKS") };
+    await startSiteJob(settings, brand.externalId, { site: facts.website, page: false, networks, startDate: parsed.data.startDate }, actorOf(tenant));
+  } catch (error) {
+    unstable_rethrow(error);
+    if (error instanceof SocialAutoError && error.code !== null) return { status: "error", message: wordsForCode(error.code) };
+    console.error("[social] could not start the next month", errorLogInfo(error));
+    return { status: "error", message: wordsForCode(null) };
+  }
+  revalidatePath("/social");
+  revalidatePath("/social/review");
+  return { status: "saved" };
+}
 
 /**
  * "Read my website" (or "Read this page"): starts a batch of written posts for the business. Nothing is drawn or paid for yet. The

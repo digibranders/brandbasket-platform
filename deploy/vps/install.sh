@@ -18,7 +18,7 @@
 #   nginx-http  port 80 only, for the certificate challenge
 #   tls         certbot certificate "brandbasket" for app. and console.brandbasket.in (needs --email)
 #   nginx-https the full site for both names
-#   services    the app units (the customer app's is installed, not enabled), Brandbasket's own failure alert handler, brandbasket-migrate and the sudoers rule
+#   services    the app units, Brandbasket's own failure alert handler, brandbasket-migrate and the sudoers rule
 #   autodeploy  the release and autodeploy scripts, the shared lock library and the minute timer (first deploy of main); it
 #               refuses to enable the timer unless GitHub accepts the deploy key (git ls-remote as brandbasket)
 #   ci          user bbci, the 8 GB sandbox disk, the sandbox, its ufw loopback rule, and the CI timer (ci/install-ci.sh)
@@ -73,7 +73,7 @@ verify_units() {
   for f in "$@"; do cp "$f" "$tmp/$(basename "$f")"; done
   out="$(cd "$tmp" && systemd-analyze verify ./* 2>&1 || true)"
   rm -rf "${tmp:?}"
-  out="$(grep -v -E 'current-(platform|admin|customer)|is not executable|No such file or directory' <<<"$out" || true)"
+  out="$(grep -v -E 'current-(platform|admin)|is not executable|No such file or directory' <<<"$out" || true)"
   [[ -z "$out" ]] || { printf '%s\n' "$out" >&2; die "systemd-analyze verify found problems in the units above; nothing was installed"; }
   say "  systemd-analyze verify: ok ($(printf '%s ' "${@##*/}"))"
 }
@@ -305,26 +305,23 @@ step_services() {
   need_root
   need_user
   say "== checking the units before installing anything"
-  verify_units "$HERE/systemd/brandbasket-app.service" "$HERE/systemd/brandbasket-admin.service" "$HERE/systemd/brandbasket-customer.service" "$HERE/systemd/brandbasket-notify-failure@.service"
+  verify_units "$HERE/systemd/brandbasket-app.service" "$HERE/systemd/brandbasket-admin.service" "$HERE/systemd/brandbasket-notify-failure@.service"
   say "== units (run as brandbasket, sandboxed; Firstfold's folders are invisible to them)"
   put 0644 "$HERE/systemd/brandbasket-app.service" "$UNIT_DIR/brandbasket-app.service"
   put 0644 "$HERE/systemd/brandbasket-admin.service" "$UNIT_DIR/brandbasket-admin.service"
-  # Installed, not enabled: the customer app v4 has no release until the owner sets CUSTOMER_APP_ENABLED (see the runbook).
-  put 0644 "$HERE/systemd/brandbasket-customer.service" "$UNIT_DIR/brandbasket-customer.service"
   say "== failure alerts: Brandbasket's own handler (not Firstfold's); logs only while BREVO_API_KEY is blank"
   put 0700 "$HERE/brandbasket-notify-failure" /usr/local/sbin/brandbasket-notify-failure
   put 0644 "$HERE/systemd/brandbasket-notify-failure@.service" "$UNIT_DIR/brandbasket-notify-failure@.service"
-  install_failure_alerts brandbasket-app brandbasket-admin brandbasket-customer
+  install_failure_alerts brandbasket-app brandbasket-admin
   say "== migration wrapper (reads the database owner's password from a root-only file; takes no arguments)"
   put 0755 "$REPO/scripts/server/brandbasket-migrate" /usr/local/sbin/brandbasket-migrate
-  say "== sudo: brandbasket may run the wrapper, restart/stop the three units, and the CI sandbox, nothing else"
+  say "== sudo: brandbasket may run the wrapper, restart/stop the two units, and the CI sandbox, nothing else"
   visudo -cf "$HERE/sudoers-brandbasket" >/dev/null || die "the sudoers file does not parse"
   say "  visudo -cf: ok"
   put_checked 0440 "$HERE/sudoers-brandbasket" /etc/sudoers.d/brandbasket visudo -c
   act "systemctl daemon-reload" systemctl daemon-reload
   enable_units brandbasket-app brandbasket-admin
-  say "  brandbasket-customer is installed and NOT enabled: enable it when turning the customer app on (runbook, \"Customer app v4\")"
-  say "  ports 3201, 3202 and 3203 stay closed: ufw admits only 22, and 80/443 from Cloudflare"
+  say "  ports 3201 and 3203 stay closed: ufw admits only 22, and 80/443 from Cloudflare"
 }
 
 # install_failure_alerts <service name>...: OnFailure drop-ins that use Brandbasket's own alert handler.

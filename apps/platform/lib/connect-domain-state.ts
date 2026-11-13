@@ -8,4 +8,5 @@ export type ConnectDomainState =
 
 export const initialConnectDomainState: ConnectDomainState = { status: "idle" };
 
+export const TOO_MANY_CHECKS_MESSAGE = "That’s a lot of checks in a short time. Please wait a while and try again.";
 export const CHECK_FAILED_MESSAGE = "We couldn’t look that up just now. Try again in a minute.";

@@ -39,7 +39,7 @@ export function IntakeAside({
         ))}
         <li className="flex items-baseline justify-between gap-4 py-3">
           <span className="font-display text-base font-semibold text-ink">Due today</span>
-          <span className="font-figure text-2xl font-medium tabular-nums text-ink">{formatMoney(summary.totalCents, currency)}</span>
+          <span className="font-figure text-2xl font-medium tabular-nums text-ink">{formatMoney(summary.dueTodayCents, currency)}</span>
         </li>
       </ul>
       {gstBasisPoints > 0 ? <p className="text-[0.8125rem] text-ink-3">GST is included in every price.</p> : null}

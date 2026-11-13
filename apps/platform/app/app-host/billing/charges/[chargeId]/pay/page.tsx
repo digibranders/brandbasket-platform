@@ -41,7 +41,7 @@ export default async function ChargePayPage({ params }: ChargePayPageProps): Pro
   const { chargeId } = await params;
   if (!z.uuid().safeParse(chargeId).success) notFound();
 
-  const { tenant, user } = await requireCustomerAccess({ listingAccount: "allow" });
+  const { tenant, user } = await requireCustomerAccess({ listingAccount: "allow", access: "owner" });
   const charge = await withTenantScope(getAppDb(), tenant, (tx) => findChargeForBusiness(tx, tenant.businessId, chargeId));
   if (charge === null) notFound();
   // Only a press release has its own page to say so on; the other kinds keep saying it on Billing.

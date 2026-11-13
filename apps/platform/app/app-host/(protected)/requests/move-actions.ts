@@ -12,7 +12,7 @@ import { loadTicketIdOfRequest } from "@/lib/server/requests";
 
 /** Runs one of the customer's own moves through the database function that checks the business, the state and the 14 days. */
 async function moveAsCustomer(formData: FormData, move: CustomerMove): Promise<never> {
-  const { tenant } = await requireCustomerAccess();
+  const { tenant } = await requireCustomerAccess({ access: "write" });
   const { requestId } = readRequestIds(formData);
   // The ticket to go back to comes from the request, not the form, so the two cannot disagree.
   const ticketId = await loadTicketIdOfRequest(tenant, requestId);

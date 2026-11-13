@@ -1,10 +1,13 @@
 "use client";
 
-import { useActionState, type ReactElement, type ReactNode } from "react";
+import { useActionState, useId, type ReactElement, type ReactNode } from "react";
 import type { MonthlyAddOnId } from "@brandbasket/shared/lib/billing/add-ons";
 import { cn } from "@brandbasket/shared/lib/cn";
+import { ConfirmPaymentDialog, useConfirmPayment } from "@/components/panel/confirm-payment";
+import { PaymentConfirmButton } from "@/components/panel/payment-form";
 import { DARK_BUTTON, LIFT } from "@/components/v2/classes";
 import { useOpeningPayment } from "@/lib/billing/opening-payment";
+import type { PaymentSummary } from "@/lib/billing/payment-summary";
 import { initialReactivateFormState, type ReactivateFormState } from "@/lib/billing/reactivate-form";
 
 interface ReactivatePlanProps {
@@ -14,6 +17,8 @@ interface ReactivatePlanProps {
   readonly monthlyAmount: string;
   /** Under the price: "₹9,999 a month, GST included." */
   readonly priceNote: string;
+  /** What the confirmation shows before the payment opens. */
+  readonly summary: PaymentSummary;
   readonly action: (state: ReactivateFormState, formData: FormData) => Promise<ReactivateFormState>;
   /** The services the customer chose to come back to, posted with the press, or null when the basket is not theirs to choose. */
   readonly services: readonly MonthlyAddOnId[] | null;
@@ -26,10 +31,12 @@ interface ReactivatePlanProps {
  * it. A customer who cancelled themselves chooses their services first (`children`), and the press posts the choice. Disabled from the press until the payment has opened, so a double press opens one payment. A refusal is shown under it
  * and announced again each time, because the alert unmounts while the action runs.
  */
-export function ReactivatePlan({ planName, monthlyAmount, priceNote, action, services, children }: ReactivatePlanProps): ReactElement {
+export function ReactivatePlan({ planName, monthlyAmount, priceNote, summary, action, services, children }: ReactivatePlanProps): ReactElement {
   const [state, formAction, isPending] = useActionState(action, initialReactivateFormState);
   const message = state.status === "error" && !isPending ? state.message : null;
   const opening = useOpeningPayment(isPending, state);
+  const formId = useId();
+  const confirm = useConfirmPayment(state, isPending);
 
   return (
     <section aria-labelledby="reactivate-heading" className={cn(LIFT, "p-6 sm:p-7")}>
@@ -58,10 +65,11 @@ export function ReactivatePlan({ planName, monthlyAmount, priceNote, action, ser
         </p>
       </div>
 
-      <form action={formAction} className="mt-6">
+      <form id={formId} action={formAction} className="mt-6">
         {services?.map((service) => <input key={service} type="hidden" name="service" value={service} />)}
         <button
-          type="submit"
+          type="button"
+          onClick={confirm.ask}
           disabled={opening}
           aria-busy={opening}
           aria-describedby={message === null ? undefined : "reactivate-error"}
@@ -69,6 +77,13 @@ export function ReactivatePlan({ planName, monthlyAmount, priceNote, action, ser
         >
           {opening ? "Opening payment…" : `Reactivate for ${monthlyAmount}`}
         </button>
+        <ConfirmPaymentDialog
+          summary={summary}
+          open={confirm.open}
+          onClose={confirm.close}
+          busy={opening}
+          confirm={<PaymentConfirmButton formId={formId} opening={opening} label={`Pay ${monthlyAmount}`} />}
+        />
         {message === null ? null : (
           <p
             id="reactivate-error"

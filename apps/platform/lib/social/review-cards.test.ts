@@ -2,8 +2,8 @@ import { describe, expect, it } from "vitest";
 import type { Poster, WrittenBatch } from "./ai";
 import { groupReview } from "./review-cards";
 
-const post = (id: string, state: "pending" | "kept" | "dropped" = "kept") => ({ id, headline: `Headline ${id}`, caption: "C", captions: {}, state, edited: false, advice: null });
-const batch = (id: string, ids: string[]): WrittenBatch => ({ id, createdAt: "x", networks: ["instagram", "linkedin"], rules: {}, posts: ids.map((one) => post(one)) });
+const post = (id: string, state: "pending" | "kept" | "dropped" = "kept") => ({ id, headline: `Headline ${id}`, caption: "C", captions: {}, state, edited: false, advice: null, date: null, notDrawn: null });
+const batch = (id: string, ids: string[]): WrittenBatch => ({ id, createdAt: "x", networks: ["instagram", "linkedin"], rules: {}, posts: ids.map((one) => post(one)), weeks: null });
 const poster = (over: Partial<Poster>): Poster => ({ id: "v1", batchId: "week-01.json", postId: "p1", network: "instagram", shape: "square", width: 1, height: 1, headline: "Drawn headline", caption: "C", versionNumber: 1, status: "pending", canRedraw: false, redrawsLeft: 0, createdAt: "2026-11-11T10:00:00Z", ...over });
 
 describe("groupReview", () => {

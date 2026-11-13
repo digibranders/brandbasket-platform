@@ -13,7 +13,7 @@ import { renderReceiptsPdf } from "@/lib/server/receipt-pdf";
 
 const NO_STORE = { "Cache-Control": "private, no-store" } as const;
 
-function refuse(status: 400 | 401 | 404): Response {
+function refuse(status: 400 | 401 | 403 | 404): Response {
   return new Response(null, { status, headers: NO_STORE });
 }
 
@@ -94,11 +94,13 @@ function fileNameFor(pieces: readonly Piece[], customer: ReceiptCustomer, brand:
  * tax invoice downloads as that invoice; any other (made before invoicing began, or in dollars) as its receipt. With no
  * ids it is every payment on the billing page. Payments and invoices are read through row-level security, so a
  * customer asking for another business's payment id finds nothing and gets a 404, exactly as for an id that does not
- * exist.
+ * exist. Only the owner may download: an editor or a viewer gets a 403.
  */
 export async function GET(request: Request): Promise<Response> {
   const access = await getCustomerAccess();
   if (access.kind !== "granted") return refuse(401);
+  // Receipts and tax invoices carry the business's billing details: only the owner downloads them.
+  if (access.tenant.role !== "owner") return refuse(403);
 
   const selection = parseReceiptSelection(new URL(request.url).searchParams.get("ids"));
   if (selection.kind === "invalid") return refuse(400);
@@ -122,8 +124,7 @@ export async function GET(request: Request): Promise<Response> {
   // "Billed to" on a receipt names the account by what it signs in with: its number, never a phone account's placeholder.
   const customer: ReceiptCustomer = { businessName: access.tenant.businessName, email: accountLabel(access.user) };
   // An invoice with no billing details prints the account's mobile under "Billed to" (it is never stored on the invoice).
-  // Only the owner's, as the admin download does: an editor's own number is not the business's.
-  const phone = access.tenant.role === "owner" ? displayPhoneText(access.user.phone) : null;
+  const phone = displayPhoneText(access.user.phone);
   const brand = BRAND;
   const bytes = await joinPdfs(await Promise.all(groupRuns(pieces).map((run) => renderRun(run, customer, phone, brand))), brand);
 

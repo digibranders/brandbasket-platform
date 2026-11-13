@@ -34,13 +34,16 @@ function refreshCallPages(): void {
   revalidatePath("/");
 }
 
+/** A failed read of the kickoff booking counts as closed, so the action answers `failed` instead of throwing. */
+const callsAreOpenOrNot = (...args: Parameters<typeof callsAreOpen>): Promise<boolean> => callsAreOpen(...args).catch(() => false);
+
 /**
  * Books a call for the signed-in customer's own business. Everything comes from the session except the time, the reason and
  * the note; an account with no real email address cannot be sent the invitation, and calls are closed during the first look.
  */
 export async function bookCallAction(input: unknown): Promise<BookCallActionResult> {
-  const { user, tenant, billing } = await requireCustomerAccess();
-  if (isPhoneAccountEmail(user.email) || !(await callsAreOpen(tenant, billing))) return { ok: false, reason: "failed" };
+  const { user, tenant, billing } = await requireCustomerAccess({ access: "write" });
+  if (isPhoneAccountEmail(user.email) || !(await callsAreOpenOrNot(tenant, billing))) return { ok: false, reason: "failed" };
   const parsed = bookSchema.safeParse(input);
   if (!parsed.success) return { ok: false, reason: "failed" };
   const allowed = kindOptions((await loadSetupServices(tenant)) ?? []).map((option) => option.value);
@@ -59,9 +62,9 @@ export async function bookCallAction(input: unknown): Promise<BookCallActionResu
 
 /** Cancels one of the signed-in business's calls that has not started. */
 export async function cancelCallAction(callId: unknown): Promise<CancelCallActionResult> {
-  const { tenant, billing } = await requireCustomerAccess();
+  const { tenant, billing } = await requireCustomerAccess({ access: "write" });
   const id = z.uuid().safeParse(callId);
-  if (!id.success || !(await callsAreOpen(tenant, billing))) return { ok: false, reason: "failed" };
+  if (!id.success || !(await callsAreOpenOrNot(tenant, billing))) return { ok: false, reason: "failed" };
   const result = await cancelTeamCallFor(tenant, id.data, new Date());
   // A call that is already gone is shown as gone on the next draw, so the page is refreshed either way.
   if (result.ok || result.reason === "gone") refreshCallPages();

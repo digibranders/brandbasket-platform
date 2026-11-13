@@ -2,7 +2,7 @@ import "server-only";
 import type { TenantContext } from "@brandbasket/shared/lib/access";
 import { looksLikeJpeg } from "@/lib/social/new-post";
 import { SocialAutoError } from "./social-auto";
-import { readUploadBody, refuseUpload, refuseUploadEnvelope, UPLOAD_RELOAD_MESSAGE, UPLOAD_SIGNED_OUT_MESSAGE } from "./upload-request";
+import { readUploadBody, refuseUpload, refuseUploadEnvelope, refuseViewer, UPLOAD_RELOAD_MESSAGE, UPLOAD_SIGNED_OUT_MESSAGE } from "./upload-request";
 
 /**
  * `POST /api/social-posts/picture`: the picture for a new post, sent as the raw JPG bytes (a form action cannot carry 4 MB). The
@@ -34,6 +34,8 @@ export async function handleSocialPictureRequest(request: Request, deps: SocialP
 
   const tenant = await deps.getTenant();
   if (tenant === null) return refuseUpload(401, UPLOAD_SIGNED_OUT_MESSAGE);
+  const viewer = refuseViewer(tenant);
+  if (viewer !== null) return viewer;
   if (!(await deps.hasSocial(tenant))) return refuseUpload(403, "Posting is not part of your plan yet.");
 
   const bytes = await readUploadBody(request);

@@ -30,7 +30,7 @@ const chargeIdSchema = z.uuid();
 export async function payChargeAction(formData: FormData): Promise<void> {
   const parsed = chargeIdSchema.safeParse(formData.get("chargeId"));
   if (!parsed.success) notFound();
-  const customer = await requireCustomerAccess({ listingAccount: "allow" });
+  const customer = await requireCustomerAccess({ listingAccount: "allow", access: "owner" });
   redirectForChargePayment(await startCustomerChargePayment(customer, parsed.data));
 }
 
@@ -41,7 +41,7 @@ export async function payChargeAction(formData: FormData): Promise<void> {
  * plan and for how much is worked out on the server, under the business's billing lock. On success the customer goes to pay.
  */
 export async function reactivateAction(_previous: ReactivateFormState, formData: FormData): Promise<ReactivateFormState> {
-  const customer = await requireCustomerAccess();
+  const customer = await requireCustomerAccess({ access: "owner" });
   const chosen = readBundleSelection(formData.getAll("service").filter((value): value is string => typeof value === "string"));
   const outcome = await startReactivationFor(customer, new Date(), chosen);
   if (outcome.kind === "refused") return { status: "error", message: outcome.problem.message };
@@ -56,7 +56,7 @@ export async function reactivateAction(_previous: ReactivateFormState, formData:
  * earlier (staff can set it) is kept: this form has no fields for it.
  */
 export async function saveBillingDetailsAction(_previous: PanelFormState, formData: FormData): Promise<PanelFormState> {
-  const customer = await requireCustomerAccess({ listingAccount: "allow", membershipCheckout: "allow" });
+  const customer = await requireCustomerAccess({ listingAccount: "allow", membershipCheckout: "allow", access: "owner" });
   const { tenant } = customer;
   try {
     const existing = await withTenantScope(getAppDb(), tenant, (tx) => findBillingProfile(tx, tenant.businessId));
@@ -100,7 +100,7 @@ export type BillingPincodeLookup =
  * customer like the form it serves; reads no business data.
  */
 export async function lookupBillingPincodeAction(pincode: string): Promise<BillingPincodeLookup> {
-  await requireCustomerAccess({ listingAccount: "allow", membershipCheckout: "allow" });
+  await requireCustomerAccess({ listingAccount: "allow", membershipCheckout: "allow", access: "owner" });
   if (typeof pincode !== "string" || pincode.length > 12) return { kind: "not-found" };
   const place = await findPincode(getAppDb(), pincode.replace(/\s+/g, ""));
   if (place === null) return (await hasPincodeDirectory(getAppDb())) ? { kind: "not-found" } : { kind: "no-directory" };

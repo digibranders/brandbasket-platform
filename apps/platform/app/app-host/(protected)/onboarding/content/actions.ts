@@ -26,7 +26,7 @@ function describeServiceError(error: unknown): StepProblem | null {
 
 /** Step 02: saves the services and the brief together, marks the step done and moves on. */
 export async function saveContentStep(_previous: StepFormState, formData: FormData): Promise<StepFormState> {
-  const { tenant } = await requireCustomerAccess();
+  const { tenant } = await requireCustomerAccess({ access: "write" });
 
   const parsed = parseContentForm(formData);
   if (!parsed.success) return refusedStepState(parsed, formData);

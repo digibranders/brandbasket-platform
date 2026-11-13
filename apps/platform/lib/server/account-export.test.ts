@@ -62,7 +62,7 @@ describe("buildAccountExport", () => {
     expect(file.generatedAt).toBe("2026-11-01T06:00:00.000Z");
     expect(file.account).toMatchObject({ name: "Asha Rao", mobileNumber: "+919876543210", mobileNumberConfirmed: true });
     expect(file.signIns).toHaveLength(1);
-    expect(file.business.business).toMatchObject({ name: "Asha Dental" });
+    expect(file.business?.business).toMatchObject({ name: "Asha Dental" });
     expect(file.supportRequests).toEqual([
       { reference: "FY-1001", category: "billing", subject: "Invoice", status: "closed", createdAt: NOW, messages: [{ sentAt: NOW, body: "Hello" }], screenshots: 1 },
     ]);
@@ -71,12 +71,19 @@ describe("buildAccountExport", () => {
     expect(file.notIncluded).toBe(ACCOUNT_EXPORT_NOT_INCLUDED);
   });
 
+  it("leaves the business's records out when no business id is given", async () => {
+    arrange();
+    const file = await buildAccountExport(dbs, { ...INPUT, businessId: null });
+    expect(file.business).toBeNull();
+    expect(readExportedBusiness).not.toHaveBeenCalled();
+  });
+
   it("includes the business's enquiries, connected accounts and website pages, and the user's own email choices", async () => {
     arrange();
     const file = await buildAccountExport(dbs, INPUT);
-    expect(file.business.enquiries).toEqual([{ kind: "chat", name: "Ravi", phone: "+919820011223", status: "contacted", note: "Called back" }]);
-    expect(file.business.connectedAccounts).toEqual([{ platform: "instagram", handle: "@asha", status: "connected" }]);
-    expect(file.business.websitePages).toEqual([{ url: "https://asha.example/about", title: "About" }]);
+    expect(file.business?.enquiries).toEqual([{ kind: "chat", name: "Ravi", phone: "+919820011223", status: "contacted", note: "Called back" }]);
+    expect(file.business?.connectedAccounts).toEqual([{ platform: "instagram", handle: "@asha", status: "connected" }]);
+    expect(file.business?.websitePages).toEqual([{ url: "https://asha.example/about", title: "About" }]);
     expect(file.emailChoices).toEqual([{ businessId: INPUT.businessId, topic: "billing", email: false, changedAt: NOW }]);
     expect(readExportedNotificationPreferences).toHaveBeenCalledWith(dbs.staff, "user-asha");
   });

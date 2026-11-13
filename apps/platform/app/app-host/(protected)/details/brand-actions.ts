@@ -8,7 +8,7 @@ import { removeBrandImage, type MediaActionResult } from "@/lib/server/onboardin
 
 /** Removes one logo or photo of the business. Uploads go to the /api/brand-assets route handler instead, to keep actions' 1 MB body limit. */
 export async function removeBrandAssetAction(mediaId: string): Promise<MediaActionResult> {
-  const { tenant } = await requireCustomerAccess();
+  const { tenant } = await requireCustomerAccess({ access: "write" });
   if (typeof mediaId !== "string") return { ok: false, message: "Reload the page and try again." };
   const result = await removeBrandImage({ appDb: getAppDb(), storage: getMediaStorage() }, tenant, mediaId);
   refresh();

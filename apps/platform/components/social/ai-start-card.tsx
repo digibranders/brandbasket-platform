@@ -5,10 +5,10 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useTransition, type FormEvent, type ReactElement } from "react";
 import { cn } from "@brandbasket/shared/lib/cn";
-import { startSiteJobAction } from "@/app/app-host/(protected)/social/actions";
+import { startNextMonthAction, startSiteJobAction } from "@/app/app-host/(protected)/social/actions";
 import { LIFT, SECTION_TITLE } from "@/components/v2/classes";
-import { jobIsActive, jobLine, type SiteJob } from "@/lib/social/ai";
-import { CHANNEL_PLATFORMS, PLATFORM_NAMES, websiteLabel, type AutoChannel, type ChannelPlatform } from "@/lib/social/auto";
+import { jobIsActive, jobLine, knownWordsForCode, type SiteJob } from "@/lib/social/ai";
+import { CHANNEL_PLATFORMS, dayLabel, PLATFORM_NAMES, websiteLabel, type AutoChannel, type ChannelPlatform } from "@/lib/social/auto";
 import { ChannelLogo } from "./channel-logo";
 import { DismissibleNotice } from "./dismissible-notice";
 import { SMALL_DARK, SMALL_SOFT } from "./small-buttons";
@@ -30,6 +30,8 @@ interface AiStartCardProps {
   readonly unavailable?: boolean;
   /** How many written batches and pictures were put away because nobody decided within 14 days. */
   readonly expired?: { readonly batches: number; readonly pictures: number };
+  /** Set when the customer's month is nearly over and the next one can be written: the Monday it would start. */
+  readonly nextMonth?: { readonly startDate: string; readonly endsOn: string | null } | null;
 }
 
 /**
@@ -37,7 +39,7 @@ interface AiStartCardProps {
  * ended. Starting opens a window with the address (the whole website, or one page of it) and the networks to write for; no account
  * has to be connected yet, that comes before anything is booked. While a batch is being written the page asks again every few seconds.
  */
-export function AiStartCard({ jobs, channels, website = null, savedWebsite = null, unavailable = false, expired = { batches: 0, pictures: 0 } }: AiStartCardProps): ReactElement | null {
+export function AiStartCard({ jobs, channels, website = null, savedWebsite = null, unavailable = false, expired = { batches: 0, pictures: 0 }, nextMonth = null }: AiStartCardProps): ReactElement | null {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const active = jobs.find(jobIsActive);
@@ -54,6 +56,7 @@ export function AiStartCard({ jobs, channels, website = null, savedWebsite = nul
   const titleId = "ai-start-title";
   // Posts that are written need no card: looking them over is a button beside New post. What was put away for waiting too long still says so.
   if (active === undefined && latest !== undefined && latest.state === "done") {
+    if (nextMonth !== null) return <NextMonthCard startDate={nextMonth.startDate} endsOn={nextMonth.endsOn} />;
     return expired.batches + expired.pictures === 0 ? null : (
       <DismissibleNotice id={`expired:${expired.batches}:${expired.pictures}`}>
         Some of your posts were put away because nobody decided within 14 days.{" "}
@@ -69,7 +72,7 @@ export function AiStartCard({ jobs, channels, website = null, savedWebsite = nul
     if (active !== undefined) return { title: active.kind === "draw" ? "We are drawing your pictures" : "We are writing your posts", text: `${jobLine(active).replace(/\.$/, "")}. You can leave this page: they will be here when they are ready.`, button: null };
     if (latest === undefined) return { title: "Let us write your posts from your website", text: "Give us your website and we read it once, learn what you sell and how you sound, and write posts for each network. You look them over before anything is drawn or posted.", button: "Start from my website" };
     // Nothing is running and the latest job is not done (that returned above), so it failed.
-    return { title: latest.kind === "draw" ? "We could not draw your pictures" : "We could not write your posts", text: `${jobLine(latest)} Check the address and try again.`, button: "Try again" };
+    return { title: latest.kind === "draw" ? "We could not draw your pictures" : "We could not write your posts", text: knownWordsForCode(latest.failure) ?? `${jobLine(latest)} Check the address and try again.`, button: "Try again" };
   })();
 
   return (
@@ -295,5 +298,45 @@ export function StartDialog({ connected, website = null, savedWebsite = null, on
         </div>
       </form>
     </dialog>
+  );
+}
+
+/** The customer's month is nearly over: one button writes the next one from the same website, for the networks connected now. */
+function NextMonthCard({ startDate, endsOn }: { readonly startDate: string; readonly endsOn: string | null }): ReactElement {
+  const router = useRouter();
+  const [pending, startTransition] = useTransition();
+  const [error, setError] = useState<string | null>(null);
+  const start = (): void => {
+    setError(null);
+    startTransition(async () => {
+      const form = new FormData();
+      form.set("startDate", startDate);
+      const result = await startNextMonthAction(form);
+      if (result.status === "error") setError(result.message);
+      else router.refresh();
+    });
+  };
+  const monday = dayLabel(startDate, { weekday: "long", day: "numeric", month: "long" });
+  return (
+    <section aria-labelledby="next-month-title" className={cn(LIFT, "grid gap-4 p-5")}>
+      <div className="min-w-0">
+        <h2 id="next-month-title" className={SECTION_TITLE}>
+          Write your next month
+        </h2>
+        <p className="mt-1 text-[0.84375rem] leading-relaxed text-ink-2">
+          {endsOn === null ? "Your posts are nearly all out." : `Your posts run until ${dayLabel(endsOn, { day: "numeric", month: "long" })}.`} We can write the next month from your website now. It starts on {monday}. You look the posts over before anything is drawn or posted.
+        </p>
+      </div>
+      <div className="flex flex-wrap items-center gap-3">
+        <button type="button" disabled={pending} onClick={start} className={SMALL_DARK}>
+          {pending ? "Starting" : "Write my next month"}
+        </button>
+        {error === null ? null : (
+          <p role="alert" className="text-[0.84375rem] font-semibold text-error">
+            {error}
+          </p>
+        )}
+      </div>
+    </section>
   );
 }

@@ -33,9 +33,9 @@ describe("getSetupCallUrl", () => {
     }
   });
 
-  it("is nothing, without throwing, when the setting cannot be read", async () => {
+  it("throws when the setting cannot be read, so the caller shows an error and not a page with no link", async () => {
     vi.mocked(findSiteSetting).mockRejectedValue(new Error("connection lost"));
 
-    expect(await getSetupCallUrl()).toBeNull();
+    await expect(getSetupCallUrl()).rejects.toThrow("connection lost");
   });
 });

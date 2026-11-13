@@ -13,7 +13,7 @@ import { isSetupKey, parseSetupItem, setupFieldsFor, SETUP_SERVICE, type SetupFo
  * only the item's own fields are read from the form. Answers are never logged.
  */
 export async function saveSetupItemAction(_previous: SetupFormState, formData: FormData): Promise<SetupFormState> {
-  const { tenant, billing } = await requireCustomerAccess();
+  const { tenant, billing } = await requireCustomerAccess({ access: "write" });
   const currency = billing.plan?.currency ?? "INR";
   const key = String(formData.get("key") ?? "");
   if (!isSetupKey(key)) throw new Error("Unknown setup item.");

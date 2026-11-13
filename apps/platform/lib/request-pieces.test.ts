@@ -46,7 +46,8 @@ function box(view: ChangeView, events: readonly ChangeEventView[] = []): string 
   return renderToStaticMarkup(createElement(NextStepBox, { step: nextStep(view, events, TODAY, NOW), requestId: REQUEST, ticketId: TICKET })).replaceAll("<!-- -->", "");
 }
 
-const dark = (html: string): number => html.split(DARK_BUTTON).length - 1;
+// The payment dialog's own button is not on the page: it is counted apart from the page's one dark button.
+const dark = (html: string): number => html.replace(/<dialog[\s\S]*?<\/dialog>/g, "").split(DARK_BUTTON).length - 1;
 
 it("draws the five steps with their dates, marks where the request is, and says in words which are reached", () => {
   const rows = stepperRows(change({ state: "quoted", coverage: "paid", quote: QUOTE }), [at("requested", "2026-11-27T12:30:00.000Z"), at("quoted", "2026-11-28T04:50:00.000Z")]);

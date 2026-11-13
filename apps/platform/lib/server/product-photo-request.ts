@@ -7,6 +7,7 @@ import type { ProductPhotoOutcome, ProductPhotoRefusal } from "./product-photos"
 import {
   readUploadBody,
   refuseUpload,
+  refuseViewer,
   refuseUploadEnvelope,
   UPLOAD_RELOAD_MESSAGE,
   UPLOAD_SIGNED_OUT_MESSAGE,
@@ -59,6 +60,8 @@ export async function handleProductPhotoRequest(request: Request, deps: ProductP
 
   const tenant = await deps.getTenant();
   if (tenant === null) return refuseUpload(401, UPLOAD_SIGNED_OUT_MESSAGE);
+  const viewer = refuseViewer(tenant);
+  if (viewer !== null) return viewer;
 
   if (!(await deps.canAddPhotos(tenant))) return refuseUpload(409, NO_LISTING_MESSAGE);
 

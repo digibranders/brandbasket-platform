@@ -14,11 +14,15 @@ import { DetailsCard } from "@/components/website/details-card";
 import { LiveCard } from "@/components/website/live-card";
 import { PreviewCard } from "@/components/website/preview-card";
 import { RecentChangesCard } from "@/components/website/recent-changes-card";
+import { SiteHealthCard } from "@/components/website/site-health-card";
 import { StageHeader } from "@/components/website/stage-header";
 import { Timeline } from "@/components/website/timeline";
+import { VisitsCard } from "@/components/website/visits-card";
 import { requireWebsiteClient } from "@/lib/server/customer-access";
 import { quietly } from "@/lib/server/quietly";
 import { loadRequests } from "@/lib/server/requests";
+import { loadSiteHealth } from "@/lib/server/site-health";
+import { loadVisits } from "@/lib/server/site-visits";
 import { loadWebsite } from "@/lib/server/website";
 import { addressCardView, siteAddress } from "@/lib/website/address";
 import { changesView, detailRows, inProgressRow, recentChanges, stageChip, versionRows } from "@/lib/website/history";
@@ -39,7 +43,8 @@ export default async function WebsitePage({ searchParams }: WebsitePageProps): P
   if (!billing.hasAccess) redirect("/");
   const { response } = await searchParams;
   const notice = readWebsiteNotice(response);
-  const data = await loadWebsite(tenant, new Date());
+  const now = new Date();
+  const data = await loadWebsite(tenant, now);
   const { project, domain, live, view } = data;
 
   const noticeLine =
@@ -81,6 +86,14 @@ export default async function WebsitePage({ searchParams }: WebsitePageProps): P
   const isLive = view.kind === "live";
   // A failed read leaves the card out; an empty list is a real answer and the card says so.
   const recent = isLive ? await quietly("website", "the recent changes", null, async () => recentChanges((await loadRequests(tenant, billing.hasWebsite)).items)) : null;
+  // Each failed read leaves its card out. Visits is null while its switch is off, and nothing is read then.
+  const [health, visits] =
+    isLive && live !== null
+      ? await Promise.all([
+          quietly("website", "the site health", null, () => loadSiteHealth(tenant, now)),
+          quietly("website", "the visits", null, () => loadVisits(tenant, now)),
+        ])
+      : [null, null];
 
   return (
     <>
@@ -90,6 +103,8 @@ export default async function WebsitePage({ searchParams }: WebsitePageProps): P
         main={
           <>
             {isLive && live !== null ? <LiveCard hostname={live.hostname} /> : null}
+            {health === null ? null : <SiteHealthCard facts={health} now={now} />}
+            {visits === null ? null : <VisitsCard visits={visits} now={now} />}
             <PreviewCard
               rows={versionRows(data.versions, data.changes, status)}
               inProgress={inProgressRow(data.versions, status, data.previewDue)}

@@ -1,5 +1,6 @@
 import { createFakeBillingProvider, type BillingProvider } from "@brandbasket/billing";
 import {
+  businessHasHadService,
   consumeRateLimit,
   findActivePlan,
   findBillingState,
@@ -58,6 +59,7 @@ vi.mock("@brandbasket/db", () => {
   return {
     BillingBusinessNotFoundError: MockBillingBusinessNotFoundError,
     bundledNetCents: (items: readonly { netAmountCents: number }[]) => items.reduce((total, item) => total + item.netAmountCents, 0),
+    businessHasHadService: vi.fn(),
     consumeRateLimit: vi.fn(),
     findActivePlan: vi.fn(),
     findBillingState: vi.fn(),
@@ -133,7 +135,10 @@ function subscription(overrides: Partial<Subscription>): Subscription {
     discountAmountCents: 0,
     bundledAddOnNetCents: 5_900,
     adCreditCents: 0,
+    billingInterval: "month",
     cancelRequestedAt: null,
+    firstPaymentCents: null,
+    firstChargeAt: null,
     createdAt: new Date(NOW.getTime() - HOUR_MS),
     ...overrides,
   } as Subscription;
@@ -211,6 +216,8 @@ beforeEach(() => {
   newest(null);
   vi.mocked(findActivePlan).mockResolvedValue(PLAN);
   vi.mocked(isPackageOfferForfeited).mockResolvedValue(false);
+  // A business that has had every service before, so no first-month offer, unless a test says otherwise.
+  vi.mocked(businessHasHadService).mockResolvedValue(true);
   // No referral code applied, unless a test says otherwise.
   vi.mocked(findBusinessReferralCode).mockResolvedValue(null);
   vi.mocked(findRedeemableReferralCode).mockResolvedValue(null);
@@ -256,6 +263,7 @@ describe("startCheckoutFor", () => {
         discountAmountCents: 0,
         discountMonthsLeft: null,
         bundledAddOns: [WEBSITE_USD_LINE],
+        billingInterval: "month",
         adCreditCents: 0,
         replacing: null,
         now: NOW,
@@ -553,6 +561,196 @@ describe("startMembershipCheckoutFor", () => {
     vi.mocked(readOnboardingSnapshot).mockResolvedValue({ ...COMPLETE, project: null, locked: false, completed: [], domain: null, logo: null });
   });
 
+  describe("paying yearly", () => {
+    it("prices the services for the year, 10% off twelve months, and opens a yearly subscription", async () => {
+      const started = vi.spyOn(provider, "startCheckout");
+
+      const result = await startMembershipCheckoutFor(owner, NOW, "managed", ["managed-website", "social-media"], "year");
+
+      // Each plan is ₹32,389 a year (₹2,999 x 12, less 10%, to the rupee), with the 18% GST inside it.
+      expect(await chargedFor(result)).toBe(2 * 3_238_900);
+      expect(started).toHaveBeenCalledWith(expect.objectContaining({ billingInterval: "year", bundledAddOnNetCents: 2 * 3_238_900 }));
+      expect(vi.mocked(ensureDiscountPlan)).toHaveBeenCalledWith(expect.anything(), INR_PLAN, 0, 2 * 3_238_900, "year");
+      expect(openCheckoutSubscription).toHaveBeenCalledWith({ name: "tx2" }, expect.objectContaining({ billingInterval: "year" }));
+    });
+
+    it("takes a percentage code off the year's payment, frozen for that one payment", async () => {
+      const code = coupon({ kind: "percent", basisPoints: 1_000 });
+      vi.mocked(findBusinessReferralCode).mockResolvedValue(code);
+      vi.mocked(findRedeemableReferralCode).mockResolvedValue(code);
+
+      const result = await startMembershipCheckoutFor(owner, NOW, "managed", ["managed-website"], "year");
+
+      expect(await chargedFor(result)).toBe(3_238_900 - 323_890);
+      expect(openCheckoutSubscription).toHaveBeenCalledWith({ name: "tx2" }, expect.objectContaining({ billingInterval: "year", discountAmountCents: 323_890, discountMonthsLeft: 1 }));
+    });
+
+    it("leaves a monthly basket monthly", async () => {
+      await startMembershipCheckoutFor(owner, NOW, "managed", ["managed-website"]);
+
+      expect(openCheckoutSubscription).toHaveBeenCalledWith({ name: "tx2" }, expect.objectContaining({ billingInterval: "month", bundledAddOns: [expect.objectContaining({ netAmountCents: 299_900 })] }));
+    });
+  });
+
+  describe("the first-month offer (plan 63)", () => {
+    const FIRST_CHARGE_AT = new Date("2026-10-16T12:00:00.000Z");
+    const neverHad = () => vi.mocked(businessHasHadService).mockResolvedValue(false);
+    const openedLines = () => {
+      const call = vi.mocked(openCheckoutSubscription).mock.calls[0]?.[1];
+      return call?.bundledAddOns ?? [];
+    };
+
+    it("takes ₹1 for Social Media alone and opens a subscription that starts a month on", async () => {
+      neverHad();
+      const started = vi.spyOn(provider, "startCheckout");
+
+      const result = await startMembershipCheckoutFor(owner, NOW, "managed", ["social-media"]);
+
+      expect(await chargedFor(result)).toBe(100);
+      expect(started).toHaveBeenCalledWith(expect.objectContaining({ firstPayment: { amountCents: 100, startAt: FIRST_CHARGE_AT } }));
+      expect(openCheckoutSubscription).toHaveBeenCalledWith(
+        { name: "tx2" },
+        expect.objectContaining({ firstPaymentCents: 100, firstChargeAt: FIRST_CHARGE_AT, bundledAddOns: [expect.objectContaining({ addOn: "social-media", trialPriceCents: 100 })] }),
+      );
+      // The subscription is for the full monthly price: the frozen monthly total is the line's whole price.
+      expect(openedLines().reduce((total, line) => total + line.netAmountCents, 0)).toBeGreaterThan(100);
+    });
+
+    it("takes the Website in full and ₹1 for Social Media", async () => {
+      neverHad();
+
+      await startMembershipCheckoutFor(owner, NOW, "managed", ["managed-website", "social-media"]);
+
+      const website = openedLines().find((line) => line.addOn === "managed-website");
+      expect(website?.trialPriceCents ?? null).toBeNull();
+      expect(openCheckoutSubscription).toHaveBeenCalledWith({ name: "tx2" }, expect.objectContaining({ firstPaymentCents: (website?.netAmountCents ?? 0) + 100 }));
+    });
+
+    it("takes ₹1 each for all three plans' offer services, Website at its price", async () => {
+      neverHad();
+
+      await startMembershipCheckoutFor(owner, NOW, "managed", ALL_THREE);
+
+      const website = openedLines().find((line) => line.addOn === "managed-website");
+      expect(openCheckoutSubscription).toHaveBeenCalledWith({ name: "tx2" }, expect.objectContaining({ firstPaymentCents: (website?.netAmountCents ?? 0) + 200 }));
+    });
+
+    it("charges a service the business had before at its price, and opens an ordinary checkout when no service is on the offer", async () => {
+      const started = vi.spyOn(provider, "startCheckout");
+
+      await startMembershipCheckoutFor(owner, NOW, "managed", ["social-media"]);
+
+      expect(started).toHaveBeenCalledWith(expect.not.objectContaining({ firstPayment: expect.anything() }));
+      const opened = vi.mocked(openCheckoutSubscription).mock.calls[0]?.[1];
+      expect(opened).not.toHaveProperty("firstPaymentCents");
+      expect(openedLines()[0]).not.toHaveProperty("trialPriceCents", 100);
+    });
+
+    it("does not offer it on a yearly basket: the year is paid in full", async () => {
+      neverHad();
+
+      await startMembershipCheckoutFor(owner, NOW, "managed", ["social-media"], "year");
+
+      expect(vi.mocked(openCheckoutSubscription).mock.calls[0]?.[1]).not.toHaveProperty("firstPaymentCents");
+    });
+
+    it("refuses a referral code on a basket of offer services only, and opens nothing", async () => {
+      neverHad();
+      const code = coupon({ kind: "amount", amountCents: 50_000 });
+      vi.mocked(findBusinessReferralCode).mockResolvedValue(code);
+      vi.mocked(findRedeemableReferralCode).mockResolvedValue(code);
+      const started = vi.spyOn(provider, "startCheckout");
+
+      const result = await startMembershipCheckoutFor(owner, NOW, "managed", ["social-media"]);
+
+      expect(result).toMatchObject({ kind: "refused", problem: { message: expect.stringMatching(/referral code/) } });
+      expect(started).not.toHaveBeenCalled();
+      expect(openCheckoutSubscription).not.toHaveBeenCalled();
+    });
+
+    it("takes a code off the services that pay full price when the basket has one", async () => {
+      neverHad();
+      const code = coupon({ kind: "amount", amountCents: 50_000 });
+      vi.mocked(findBusinessReferralCode).mockResolvedValue(code);
+      vi.mocked(findRedeemableReferralCode).mockResolvedValue(code);
+
+      await startMembershipCheckoutFor(owner, NOW, "managed", ["managed-website", "social-media"]);
+
+      const website = openedLines().find((line) => line.addOn === "managed-website");
+      expect(openCheckoutSubscription).toHaveBeenCalledWith({ name: "tx2" }, expect.objectContaining({ discountAmountCents: 50_000, firstPaymentCents: (website?.netAmountCents ?? 0) + 100 - 50_000 }));
+    });
+
+    it("sends the customer back to their unpaid offer checkout with the first payment it froze, instead of opening another", async () => {
+      neverHad();
+      redirectUrl(await startMembershipCheckoutFor(owner, NOW, "managed", ["social-media"]));
+      const opened = vi.mocked(openCheckoutSubscription).mock.calls[0]?.[1];
+      const frozen = subscription({
+        id: "sub-offer",
+        status: "incomplete",
+        planId: INR_PLAN.id,
+        providerSubscriptionId: opened?.providerSubscriptionId ?? "",
+        bundledAddOnNetCents: opened?.bundledAddOns?.reduce((total, line) => total + line.netAmountCents, 0) ?? 0,
+        firstPaymentCents: 100,
+        firstChargeAt: FIRST_CHARGE_AT,
+      });
+      newest(frozen, { currency: "INR", plan: INR_PLAN });
+      vi.mocked(findBundledAddOnsForSubscription).mockResolvedValue([{ addOn: "social-media", status: "pending" } as BundledAddOn]);
+      vi.mocked(openCheckoutSubscription).mockClear();
+      const started = vi.spyOn(provider, "startCheckout");
+
+      redirectUrl(await startMembershipCheckoutFor(owner, NOW, "managed", ["social-media"]));
+
+      expect(started).toHaveBeenCalledWith(expect.objectContaining({ existingProviderSubscriptionId: frozen.providerSubscriptionId, firstPayment: { amountCents: 100, startAt: FIRST_CHARGE_AT } }));
+      expect(openCheckoutSubscription).not.toHaveBeenCalled();
+    });
+
+    describe("an earlier offer checkout whose payment is not recorded yet", () => {
+      const unrecorded = () =>
+        subscription({ id: "sub-offer", status: "active", activatedAt: null, paidThroughAt: null, firstPaymentCents: 100, firstChargeAt: new Date(NOW.getTime() + 29 * 86_400_000) });
+
+      it("is not replaced while the provider holds its payment: the customer is told it was received, and nothing opens", async () => {
+        newest(unrecorded(), { currency: "INR", plan: INR_PLAN });
+        const found = vi.spyOn(provider, "findUpfrontPayment").mockResolvedValue({ providerPaymentId: "pay_up", amountCents: 100, currency: "INR", paidAt: NOW });
+        const started = vi.spyOn(provider, "startCheckout");
+
+        const result = await startMembershipCheckoutFor(owner, NOW, "managed", ["social-media"]);
+
+        expect(found).toHaveBeenCalledWith(unrecorded().providerSubscriptionId);
+        expect(result).toMatchObject({ kind: "refused" });
+        expect(started).not.toHaveBeenCalled();
+        expect(openCheckoutSubscription).not.toHaveBeenCalled();
+      });
+
+      it("opens nothing when the provider cannot be asked, and says to try again", async () => {
+        newest(unrecorded(), { currency: "INR", plan: INR_PLAN });
+        vi.spyOn(provider, "findUpfrontPayment").mockRejectedValue(new Error("Razorpay is down"));
+
+        const result = await startMembershipCheckoutFor(owner, NOW, "managed", ["social-media"]);
+
+        expect(result).toMatchObject({ kind: "refused", problem: { message: expect.stringMatching(/try again/) } });
+        expect(openCheckoutSubscription).not.toHaveBeenCalled();
+      });
+
+      it("is replaced as before when the provider holds no payment for it", async () => {
+        newest(unrecorded(), { currency: "INR", plan: INR_PLAN });
+        vi.spyOn(provider, "findUpfrontPayment").mockResolvedValue(null);
+
+        redirectUrl(await startMembershipCheckoutFor(owner, NOW, "managed", ["social-media"]));
+
+        expect(openCheckoutSubscription).toHaveBeenCalledWith({ name: "tx2" }, expect.objectContaining({ replacing: "sub-offer" }));
+      });
+
+      it("asks the provider nothing for an ordinary checkout", async () => {
+        newest(subscription({ id: "sub-plain", status: "incomplete" }), { currency: "INR", plan: INR_PLAN });
+        const found = vi.spyOn(provider, "findUpfrontPayment");
+
+        await startMembershipCheckoutFor(owner, NOW, "managed", ["social-media"]);
+
+        expect(found).not.toHaveBeenCalled();
+      });
+    });
+  });
+
   it("refuses a free listing account billed in rupees that has saved no billing details, and opens nothing", async () => {
     vi.mocked(billingDetailsMissing).mockResolvedValue(true);
 
@@ -594,7 +792,7 @@ describe("startMembershipCheckoutFor", () => {
     redirectUrl(await startMembershipCheckoutFor(owner, NOW, "managed", WEBSITE_ALONE));
 
     // The website line in rupees, ₹2,999 a month with the GST inside it, is billed with the plan.
-    expect(ensureDiscountPlan).toHaveBeenCalledWith(provider, INR_PLAN, 50_000, 299_900);
+    expect(ensureDiscountPlan).toHaveBeenCalledWith(provider, INR_PLAN, 50_000, 299_900, "month");
     expect(started).toHaveBeenCalledWith(expect.objectContaining({ providerPlanId: "plan_discounted", discountAmountCents: 50_000 }));
     expect(openCheckoutSubscription).toHaveBeenCalledWith(
       { name: "tx2" },
@@ -632,7 +830,7 @@ describe("startMembershipCheckoutFor", () => {
 
     expect(charged).toBe(899_700);
     // The provider runs one plan for the lines' total, ₹8,997 a month with the GST inside it.
-    expect(ensureDiscountPlan).toHaveBeenCalledWith(provider, INR_PLAN, 0, 899_700);
+    expect(ensureDiscountPlan).toHaveBeenCalledWith(provider, INR_PLAN, 0, 899_700, "month");
     expect(openCheckoutSubscription).toHaveBeenCalledWith(
       { name: "tx2" },
       expect.objectContaining({
@@ -756,7 +954,7 @@ describe("startMembershipCheckoutFor", () => {
 
     // The website and Social Media Management come to ₹5,998 at list; the code takes 10% of that once, ₹599.80.
     expect(charged).toBe(539_820);
-    expect(ensureDiscountPlan).toHaveBeenCalledWith(provider, INR_PLAN, 59_980, 599_800);
+    expect(ensureDiscountPlan).toHaveBeenCalledWith(provider, INR_PLAN, 59_980, 599_800, "month");
     expect(openCheckoutSubscription).toHaveBeenCalledWith(
       { name: "tx2" },
       expect.objectContaining({ referralCodeId: code.id, discountAmountCents: 59_980, discountMonthsLeft: 3 }),
@@ -786,7 +984,7 @@ describe("startMembershipCheckoutFor", () => {
 
     // 10% of ₹2,999 is ₹299.90, leaving ₹2,699.10 with the GST inside it.
     expect(charged).toBe(269_910);
-    expect(ensureDiscountPlan).toHaveBeenCalledWith(provider, INR_PLAN, 29_990, 299_900);
+    expect(ensureDiscountPlan).toHaveBeenCalledWith(provider, INR_PLAN, 29_990, 299_900, "month");
     expect(openCheckoutSubscription).toHaveBeenCalledWith({ name: "tx2" }, expect.objectContaining({ referralCodeId: code.id, discountAmountCents: 29_990 }));
   });
 
@@ -850,6 +1048,18 @@ describe("startReactivationFor", () => {
     createdAt: NOW,
   };
 
+  it("takes no first-month offer for a business coming back, even for a service it never had", async () => {
+    const halted = subscription({ id: "sub-halted", status: "inactive", activatedAt: LONG_AGO, paidThroughAt: new Date(NOW.getTime() - 1000) });
+    newest(halted, { hasEverPaid: true });
+    lapsedLines(halted, [billedLine("managed-website"), billedLine("social-media")]);
+    vi.mocked(businessHasHadService).mockResolvedValue(false);
+
+    redirectUrl(await startReactivationFor(lapsedCustomer, NOW));
+
+    expect(businessHasHadService).not.toHaveBeenCalled();
+    expect(vi.mocked(openCheckoutSubscription).mock.calls[0]?.[1]).not.toHaveProperty("firstPaymentCents");
+  });
+
   it("replaces the lapsed subscription with a new checkout and cancels the old one at the provider after the commit", async () => {
     const halted = subscription({ id: "sub-halted", status: "inactive", activatedAt: LONG_AGO, paidThroughAt: new Date(NOW.getTime() - 1000) });
     newest(halted, { hasEverPaid: true });
@@ -907,7 +1117,7 @@ describe("startReactivationFor", () => {
       const lines = [usdLine("managed-website", 5_900, 0), usdLine("social-media", 5_900, 0), usdLine("paid-ads", 5_900, 0)];
       expect(openCheckoutSubscription).toHaveBeenCalledWith({ name: "tx2" }, expect.objectContaining({ bundledAddOns: lines, adCreditCents: 6_000, replacing: "sub-lapsed", referralCodeId: null, discountAmountCents: 0 }));
       expect(started).toHaveBeenCalledWith(expect.objectContaining({ bundledAddOnNetCents: 17_700, discountAmountCents: 0 }));
-      expect(ensureDiscountPlan).toHaveBeenCalledWith(provider, PLAN, 0, 17_700);
+      expect(ensureDiscountPlan).toHaveBeenCalledWith(provider, PLAN, 0, 17_700, "month");
       expect(markPackageOfferForfeited).not.toHaveBeenCalled();
     });
 
@@ -968,7 +1178,7 @@ describe("startReactivationFor", () => {
           expect.objectContaining({ referralCodeId: CODE.id, discountAmountCents: 1_770, discountMonthsLeft: 2, adCreditCents: 6_000, replacing: "sub-lapsed" }),
         );
         expect(started).toHaveBeenCalledWith(expect.objectContaining({ bundledAddOnNetCents: 17_700, discountAmountCents: 1_770 }));
-        expect(ensureDiscountPlan).toHaveBeenCalledWith(provider, PLAN, 1_770, 17_700);
+        expect(ensureDiscountPlan).toHaveBeenCalledWith(provider, PLAN, 1_770, 17_700, "month");
         // The client has the code already: it need not still be redeemable, and the redemption cap is not used again.
         expect(findRedeemableReferralCode).not.toHaveBeenCalled();
         expect(findBusinessReferralCode).not.toHaveBeenCalled();

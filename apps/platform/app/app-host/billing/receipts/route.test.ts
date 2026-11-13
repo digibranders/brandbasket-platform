@@ -225,18 +225,18 @@ describe("GET /billing/receipts", () => {
     expect(renderTaxInvoicesPdf).toHaveBeenCalledWith([invoice], { recipientPhone: "+91 98200 12345", brandName: "Brandbasket" });
   });
 
-  it("hands the invoice no mobile when the signed-in member is an editor, not the owner", async () => {
-    const invoice = invoiceFor(SECOND, 1);
-    mockedReceipts.mockResolvedValue([invoicedReceipt(SECOND, 2, invoice)]);
-    mockedInvoices.mockResolvedValue([invoice]);
+  it.each(["editor", "viewer"] as const)("refuses %s members with 403 and reads no payment", async (role) => {
     mockedAccess.mockResolvedValue({
       kind: "granted",
-      user: { id: "user-2", email: "editor@example.com", name: "Editor", emailConfirmed: true, phone: "+919811100000" },
-      tenant: { userId: "user-2", businessId: "0192f3c4-1111-7000-8000-000000000001", businessName: "Riverside", role: "editor" },
+      user: { id: "user-2", email: "member@example.com", name: "Member", emailConfirmed: true, phone: "+919811100000" },
+      tenant: { userId: "user-2", businessId: "0192f3c4-1111-7000-8000-000000000001", businessName: "Riverside", role },
     } as never);
 
-    expect((await get(`?ids=${SECOND}`)).status).toBe(200);
-    expect(renderTaxInvoicesPdf).toHaveBeenCalledWith([invoice], { recipientPhone: null, brandName: "Brandbasket" });
+    const response = await get(`?ids=${SECOND}`);
+    expect(response.status).toBe(403);
+    expect(response.headers.get("Cache-Control")).toBe("private, no-store");
+    expect(mockedReceipts).not.toHaveBeenCalled();
+    expect(mockedInvoices).not.toHaveBeenCalled();
   });
 
   it("hands the invoice no mobile for an account that has none", async () => {

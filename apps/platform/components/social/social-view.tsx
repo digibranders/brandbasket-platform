@@ -110,7 +110,7 @@ export function SocialView({ data, notice, now, setup = [], savedWebsite = null 
               Your posts are paused. Nothing is being sent for now. Posts whose time comes while it is paused are skipped, and new ones go out again when we resume.
             </p>
           ) : null}
-          {connect.ai === null ? null : <AiStartCard jobs={connect.ai.jobs} channels={connect.channels} website={connect.ai.website} savedWebsite={savedWebsite} unavailable={connect.ai.jobsUnavailable} expired={connect.ai.expired} />}
+          {connect.ai === null ? null : <AiStartCard jobs={connect.ai.jobs} channels={connect.channels} website={connect.ai.website} savedWebsite={savedWebsite} unavailable={connect.ai.jobsUnavailable} expired={connect.ai.expired} nextMonth={connect.ai.plan?.canStartNext === true && connect.ai.plan.nextStartDate !== null ? { startDate: connect.ai.plan.nextStartDate, endsOn: connect.ai.plan.endsOn } : null} />}
           <SocialCalendar
             posts={connect.posts}
             today={connect.today}

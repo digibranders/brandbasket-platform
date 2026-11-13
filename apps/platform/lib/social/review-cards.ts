@@ -1,5 +1,5 @@
 import { CHANNEL_PLATFORMS } from "./auto";
-import type { Poster, WrittenBatch, WrittenPost } from "./ai";
+import type { Poster, Topic, TopicNetwork, WrittenBatch, WrittenPost } from "./ai";
 
 /** One post idea on the review page: its written words (until its pictures are drawn) and the pictures drawn for it. */
 export interface ReviewCard {
@@ -11,6 +11,8 @@ export interface ReviewCard {
   readonly written: WrittenPost | null;
   /** One entry for each picture of the post, in the order the networks are listed. */
   readonly pictures: readonly Poster[];
+  /** Where each channel's picture of this topic stands, as the posting service says; empty when it does not say. */
+  readonly states: readonly TopicNetwork[];
 }
 
 /** The cards of one batch, with the batch's written words when it is still listed. */
@@ -27,7 +29,8 @@ const networkOrder = (poster: Poster): number => CHANNEL_PLATFORMS.indexOf(poste
  * words, and once its pictures exist they sit on the same card. A batch whose posts are no longer listed (it was drawn) still
  * shows its pictures, under the headline they carry. Batches that are listed come first, in the order given.
  */
-export function groupReview(batches: readonly WrittenBatch[], pictures: readonly Poster[]): ReviewGroup[] {
+export function groupReview(batches: readonly WrittenBatch[], pictures: readonly Poster[], topics: readonly Topic[] = []): ReviewGroup[] {
+  const statesOf = (batchId: string, postId: string): readonly TopicNetwork[] => topics.find((topic) => topic.batchId === batchId && topic.postId === postId)?.networks ?? [];
   const byPost = new Map<string, Poster[]>();
   for (const poster of pictures) {
     const key = `${poster.batchId}/${poster.postId}`;
@@ -42,14 +45,14 @@ export function groupReview(batches: readonly WrittenBatch[], pictures: readonly
   const groups: ReviewGroup[] = batches.map((batch) => ({
     batchId: batch.id,
     batch,
-    cards: batch.posts.map((post) => ({ key: `${batch.id}/${post.id}`, batchId: batch.id, postId: post.id, headline: post.headline, written: post, pictures: take(batch.id, post.id) })),
+    cards: batch.posts.map((post) => ({ key: `${batch.id}/${post.id}`, batchId: batch.id, postId: post.id, headline: post.headline, written: post, pictures: take(batch.id, post.id), states: statesOf(batch.id, post.id) })),
   }));
   const rest = new Map<string, ReviewCard[]>();
   for (const [key, posters] of byPost) {
     if (used.has(key)) continue;
     const first = posters[0];
     if (first === undefined) continue;
-    const card: ReviewCard = { key, batchId: first.batchId, postId: first.postId, headline: first.headline, written: null, pictures: take(first.batchId, first.postId) };
+    const card: ReviewCard = { key, batchId: first.batchId, postId: first.postId, headline: first.headline, written: null, pictures: take(first.batchId, first.postId), states: [] };
     rest.set(first.batchId, [...(rest.get(first.batchId) ?? []), card]);
   }
   for (const [batchId, cards] of rest) {

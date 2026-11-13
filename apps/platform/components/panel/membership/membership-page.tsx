@@ -9,7 +9,10 @@ import { MEMBER_WELCOME_HREF } from "@/lib/celebration";
 import { personalizeHref, INTAKE_SUMMARY_STEP } from "@/lib/intake/links";
 import {
   MEMBER_HOME,
+  MEMBERSHIP_PATH,
+  billingSwitchHrefs,
   isWaitingOnPayment,
+  readBillingInterval,
   readMembershipPaymentNotice,
   readSelectedServices,
   type MembershipTier,
@@ -18,6 +21,8 @@ import { getCustomerBusinessEntry, isAwaitingMembership, requireCustomerAccess }
 import { loadIntake } from "@/lib/server/intake";
 import { loadMembershipCheckout } from "@/lib/server/membership-checkout";
 import { requestBrand } from "@/lib/server/request-brand";
+import { formatDate } from "@/lib/website/format";
+import { addMonthsUtc, monthsPerCycle } from "@brandbasket/billing";
 import { chooseFreeListing } from "@/app/app-host/(protected)/plan/actions";
 
 interface MembershipPageProps {
@@ -42,7 +47,7 @@ interface MembershipPageProps {
  * for as long as the account really has a checkout that has not settled (unsettledCheckout).
  */
 export async function MembershipPage({ tier, searchParams }: MembershipPageProps): Promise<ReactElement> {
-  const { tenant, billing } = await requireCustomerAccess({ listingAccount: "allow", membershipCheckout: "allow" });
+  const { tenant, billing } = await requireCustomerAccess({ listingAccount: "allow", membershipCheckout: "allow", access: "owner" });
   const entry = await getCustomerBusinessEntry(tenant.userId, tenant.businessId);
   const params = await searchParams;
   const notice = readMembershipPaymentNotice(params);
@@ -53,7 +58,10 @@ export async function MembershipPage({ tier, searchParams }: MembershipPageProps
   const held = isAwaitingMembership(entry);
   const waiting = isWaitingOnPayment(billing.subscription, notice);
   // The services are named in the address, so they survive applying a code and a reload, and are paid together.
-  const view = await loadMembershipCheckout({ tenant, billing }, tier, readSelectedServices(params), new Date());
+  // How often it is paid for is in the address too (`?billing=yearly`), so the code and the total are priced for it on the server.
+  const interval = readBillingInterval(params);
+  const now = new Date();
+  const view = await loadMembershipCheckout({ tenant, billing }, tier, readSelectedServices(params), now, interval);
   const { plan, services: selected } = view;
   const brand = await requestBrand();
 
@@ -81,12 +89,16 @@ export async function MembershipPage({ tier, searchParams }: MembershipPageProps
             taxRateBasisPoints: plan.taxRateBasisPoints,
             forfeited: view.forfeited,
             hasEverPaid: view.hasEverPaid,
+            neverHad: view.neverHad,
+            interval,
           }}
           initialTermMonths={plan.initialTermMonths}
-          code={view.discount === null ? null : { code: view.discount.code, stated: view.discount.stated, months: view.discount.months }}
+          code={view.discount === null ? null : { code: view.discount.code, stated: view.discount.stated, months: view.discount.months, codeMonths: view.discount.codeMonths }}
           lapsedCode={view.lapsedCode}
           billingDetails={view.billingDetails}
           paymentFailed={notice === "failed"}
+          billingHrefs={billingSwitchHrefs(MEMBERSHIP_PATH, params)}
+          paidThrough={interval === "year" ? formatDate(addMonthsUtc(now, monthsPerCycle("year")), now) : null}
         />
       ) : (
         <div className="max-w-xl">

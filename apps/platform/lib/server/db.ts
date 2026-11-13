@@ -89,6 +89,10 @@ export function getAppDb(): Database {
  * - lib/server/site-analytics-rollup.ts (POST /api/internal/roll-up-site-analytics), the nightly job that turns the site hits
  *   into daily numbers and monthly lists. It is called with its own bearer token, has no customer session, and writes only
  *   metric_daily, metric_breakdowns and report_source_runs rows for each business, then deletes hits older than 90 days.
+ * - lib/server/team.ts (Settings, Team and the invite accept page): lists the business's members (a member can read only their
+ *   own membership row), removes an editor or a viewer, and turns an invite into a membership. The business id and the user
+ *   come only from the session; the owner guard runs before the first two, the invite token and the signed-in address guard
+ *   the third. It never removes an owner and never writes an owner row.
  * - Support submission rate limits, private screenshot lifecycle/closure checks, and the upload/erasure lock.
  *   Requester-owned ticket and attachment metadata use getAppDb with user scope. Staff access only finalizes
  *   private file lifecycle changes and records redacted automatic errors; it does not read customer messages.

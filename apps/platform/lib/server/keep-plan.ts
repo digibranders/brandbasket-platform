@@ -1,6 +1,6 @@
 import "server-only";
 
-import { CheckoutVerificationError, type BillingProvider, type StartedCheckout } from "@brandbasket/billing";
+import { chargedAmountCents, CheckoutVerificationError, type BillingProvider, type StartedCheckout } from "@brandbasket/billing";
 import {
   bundledNetCents,
   confirmKeptSubscription,
@@ -25,11 +25,16 @@ import {
   type ScopedTransaction,
   type Subscription,
 } from "@brandbasket/db";
+import { addOnById, isMonthlyAddOnId } from "@brandbasket/shared/lib/billing/add-ons";
+import { formatMoney } from "@brandbasket/shared/lib/money";
 import { nextDiscountCents, reactivationBasketOf } from "@brandbasket/shared/lib/billing/bundle";
 import { packageLines } from "@brandbasket/shared/lib/billing/packages";
 import { describeError, logBillingEvent } from "@brandbasket/shared/server/billing-log";
 import { cancelAtProvider } from "@brandbasket/shared/server/provider-cancellation";
 import { isSafeCheckoutUrl } from "@/lib/billing/checkout-url";
+import { formatPaymentDay } from "@/lib/billing/payment-day";
+import { keepPlanSummary } from "@/lib/billing/payment-summaries";
+import type { PaymentSummary } from "@/lib/billing/payment-summary";
 import { keepPlanOffered } from "@/lib/account-exit-rules";
 import type { KeepPlanRefusal } from "@/lib/keep-plan-copy";
 import { getBillingProvider } from "./billing";
@@ -70,10 +75,51 @@ async function readKeepState(db: Database | ScopedTransaction, userId: string): 
   return { closure, subscription, waiting };
 }
 
-/** Whether the restore-account page offers Keep my plan to this person. False for an account that is not closing. */
-export async function loadKeepPlanOffered(userId: string, now: Date): Promise<boolean> {
-  const state = await readKeepState(getStaffDb(), userId);
-  return state !== null && keepPlanOffered(state, now);
+/** The kept plan's services, each at the price it goes on billing at, and the ad credit it carries. */
+async function keptBasket(db: Database | ScopedTransaction, subscription: Subscription, plan: Plan): Promise<{ readonly bundle: readonly NewBundledAddOn[]; readonly adCreditCents: number }> {
+  // The client's cancel ended nothing yet: read the basket as the subscription bills it, not as a cancelled one (which
+  // would price it at list with no credit). The offer is only given up if the business gave it up earlier.
+  const basket = reactivationBasketOf({
+    subscription: { ...subscription, cancelRequestedAt: null },
+    lines: await findBundledAddOnsForSubscription(db, subscription.id),
+    forfeited: await isPackageOfferForfeited(db, subscription.businessId),
+  });
+  // A yearly plan kept is kept yearly: its lines are priced for the year it goes on billing.
+  const bundle = packageLines({ services: basket.services, forfeited: basket.forfeited }, plan.currency, subscription.billingInterval).map((line) => ({
+    addOn: line.addOn,
+    listAmountCents: line.listCents,
+    offerDiscountAmountCents: line.offerCents,
+    netAmountCents: line.netCents,
+    taxRateBasisPoints: plan.taxRateBasisPoints,
+  }));
+  return { bundle, adCreditCents: basket.adCreditCents };
+}
+
+/**
+ * What the restore-account page's Keep my plan confirms before the payment window opens: the services at the price they go on
+ * billing at, and the first payment, which falls when the paid time ends. Null when it is not offered (an account that is not
+ * closing, or a plan that was not cancelled), or when it could not be kept as it is.
+ */
+export async function loadKeepPlanOffer(userId: string, now: Date): Promise<PaymentSummary | null> {
+  const db = getStaffDb();
+  const state = await readKeepState(db, userId);
+  if (state === null || !keepPlanOffered(state, now)) return null;
+  const { subscription } = state;
+  if (subscription === null || subscription.paidThroughAt === null) return null;
+  const plan = await findPlanById(db, subscription.planId);
+  if (plan === null) return null;
+  const { bundle } = await keptBasket(db, subscription, plan);
+  const discountCents = nextDiscountCents(subscription);
+  const netCents = plan.recurringAmountCents + bundledNetCents(bundle);
+  if (discountCents >= netCents) return null;
+  return keepPlanSummary({
+    services: bundle.map((line) => ({ key: line.addOn, title: isMonthlyAddOnId(line.addOn) ? addOnById(line.addOn).title : line.addOn, netCents: line.netAmountCents })),
+    discountCents,
+    total: formatMoney(chargedAmountCents(netCents, discountCents), plan.currency),
+    currency: plan.currency,
+    interval: subscription.billingInterval,
+    firstPaymentOn: formatPaymentDay(subscription.paidThroughAt, now),
+  });
 }
 
 /** What the new subscription is made of, worked out under the lock. */
@@ -115,27 +161,13 @@ export async function startKeepPlanFor(
     }
     const plan = await findPlanById(tx, subscription.planId);
     if (plan === null) return { kind: "refused", reason: "unavailable" };
-    // The client's cancel ended nothing yet: read the basket as the subscription bills it, not as a cancelled one (which
-    // would price it at list with no credit). The offer is only given up if the business gave it up earlier.
-    const basket = reactivationBasketOf({
-      subscription: { ...subscription, cancelRequestedAt: null },
-      lines: await findBundledAddOnsForSubscription(tx, subscription.id),
-      forfeited: await isPackageOfferForfeited(tx, businessId),
-    });
-    // A yearly plan kept is kept yearly: its lines are priced for the year it goes on billing.
-    const bundle: readonly NewBundledAddOn[] = packageLines({ services: basket.services, forfeited: basket.forfeited }, plan.currency, subscription.billingInterval).map((line) => ({
-      addOn: line.addOn,
-      listAmountCents: line.listCents,
-      offerDiscountAmountCents: line.offerCents,
-      netAmountCents: line.netCents,
-      taxRateBasisPoints: plan.taxRateBasisPoints,
-    }));
+    const { bundle, adCreditCents } = await keptBasket(tx, subscription, plan);
     // The kept plan bills what the next renewal would have: the code's discount from then (repriced on a changed basket, or
     // nothing once its months ran out), which must leave something to charge, as the plan's own checkout requires.
     if (nextDiscountCents(subscription) >= plan.recurringAmountCents + bundledNetCents(bundle)) {
       return { kind: "refused", reason: "unavailable" };
     }
-    return { kind: "planned", plan, planned: { continues: subscription, waiting, bundle, adCreditCents: basket.adCreditCents } };
+    return { kind: "planned", plan, planned: { continues: subscription, waiting, bundle, adCreditCents } };
   });
   if (step.kind === "refused") return refused(step.reason);
   const { planned, plan } = step;

@@ -106,6 +106,13 @@ describe("billingMonths", () => {
         addedIso: "2026-10-20T09:00:00.000Z",
         amount: "₹1,121",
         taxNote: "includes 18% GST",
+        summary: {
+          title: "Pay this charge",
+          rows: [{ key: "charge", label: "Extra publish", amount: "₹1,121", tone: "plain" }],
+          totalLabel: "Due today",
+          total: "₹1,121",
+          notes: ["A one-off payment.", "All prices include GST."],
+        },
       },
     ]);
   });

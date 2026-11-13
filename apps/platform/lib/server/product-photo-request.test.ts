@@ -67,6 +67,18 @@ describe("POST /api/product-photos", () => {
     expect(deps.getTenant).not.toHaveBeenCalled();
   });
 
+  it("refuses a viewer with 403 before spending any budget or storing anything", async () => {
+    deps.getTenant.mockResolvedValue({ ...tenant, role: "viewer" });
+    const request = photoRequest();
+    const response = await handleProductPhotoRequest(request, deps);
+    expect(response.status).toBe(403);
+    expect(await response.json()).toEqual({ error: "Only owners and editors can change this." });
+    expect(request.bodyUsed).toBe(false);
+    expect(deps.canAddPhotos).not.toHaveBeenCalled();
+    expect(deps.consumeAllowance).not.toHaveBeenCalled();
+    expect(deps.store).not.toHaveBeenCalled();
+  });
+
   it("answers 401 without a customer session", async () => {
     deps.getTenant.mockResolvedValue(null);
     expect((await handleProductPhotoRequest(photoRequest(), deps)).status).toBe(401);
