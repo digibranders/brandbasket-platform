@@ -1,9 +1,12 @@
 import "server-only";
-import { findBillingState, isPackageOfferForfeited, type BillingInterval, type Plan } from "@brandbasket/db";
+import { businessHasHadService, findBillingState, isPackageOfferForfeited, type BillingInterval, type Plan } from "@brandbasket/db";
 import type { BillingDetailsView } from "../rules/billing-details-view";
+import type { LedgerFirstMonth } from "../rules/ledger";
 import type { MonthlyAddOnId } from "@brandbasket/shared/lib/billing/add-ons";
+import { TRIAL_ADD_ON_IDS } from "@brandbasket/shared/lib/billing/trial";
 import type { MembershipTier } from "../rules/membership";
 import { loadReactivationBasket } from "@brandbasket/shared/server/reactivation-basket";
+import { getBillingProvider } from "./billing";
 import { loadBillingDetailsView } from "./billing-details";
 import type { GrantedCustomer } from "./customer-access";
 import { getStaffDb } from "./db";
@@ -34,6 +37,8 @@ export interface MembershipCheckoutView {
    * of the one subscription (lib/billing/packages.ts); the plan row itself costs nothing.
    */
   readonly offer: MembershipOffer;
+  /** What the first-month offer (plan 63) is judged on, read as the checkout reads it; null for a reactivation, which never gets it. */
+  readonly firstMonth: LedgerFirstMonth | null;
 }
 
 export type MembershipOffer =
@@ -70,5 +75,14 @@ export async function loadMembershipCheckout(
   ]);
   const offer: MembershipOffer = !hasEverPaid && plan !== null ? { kind: "available" } : { kind: "none" };
   // A code that still works is not lapsed, whatever the second read says.
-  return { plan, services, discount, lapsedCode: discount === null ? lapsedCode : null, forfeited, hasEverPaid, billingDetails, offer };
+  // The offer is for a first purchase: a business coming back from a lapse pays its first month in full, as the checkout charges it.
+  const firstMonth: LedgerFirstMonth | null =
+    reactivation === null
+      ? {
+          provider: getBillingProvider().name,
+          // Both offer plans, chosen or not, so a page can show the offer on a plan the customer has yet to add.
+          hadService: Object.fromEntries(await Promise.all(TRIAL_ADD_ON_IDS.map(async (id) => [id, await businessHasHadService(staffDb, businessId, id)] as const))),
+        }
+      : null;
+  return { plan, services, discount, lapsedCode: discount === null ? lapsedCode : null, forfeited, hasEverPaid, billingDetails, offer, firstMonth };
 }
