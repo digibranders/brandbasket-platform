@@ -343,5 +343,10 @@ export function createFakeBillingProvider(options: FakeBillingProviderOptions): 
         method: FAKE_PAYMENT_METHOD,
       };
     },
+
+    /** A fake payment is recorded on the confirm page as it is made; nothing is held anywhere to find later. */
+    async findUpfrontPayment(): Promise<null> {
+      return null;
+    },
   };
 }

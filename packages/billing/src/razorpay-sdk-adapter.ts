@@ -37,7 +37,19 @@ export function wrapRazorpaySdkClient(client: Razorpay): RazorpaySdkClient {
               ? Number(payment.amount)
               : Number.NaN
             : payment.amount;
-        return { id: payment.id, amount, currency: payment.currency, created_at: payment.created_at };
+        return { id: payment.id, amount, currency: payment.currency, created_at: payment.created_at, status: payment.status };
+      },
+    },
+    invoices: {
+      all: async (query) => {
+        const listed = await client.invoices.all({ subscription_id: query.subscription_id });
+        return {
+          items: listed.items.map((invoice) => ({
+            status: invoice.status ?? "",
+            payment_id: invoice.payment_id ?? null,
+            line_items: (invoice.line_items ?? []).map((line) => ({ type: typeof line.type === "string" ? line.type : null })),
+          })),
+        };
       },
     },
     plans: {

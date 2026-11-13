@@ -68,3 +68,41 @@ describe("the fake provider: a first-month offer in the basket", () => {
     await expect(fake.startCheckout({ businessId: BUSINESS, businessName: "B", email: "o@b.test", plan, firstPayment: { amountCents: 0, startAt: MONTH_ON() } })).rejects.toThrow(RangeError);
   });
 });
+
+describe("Razorpay: reading a subscription's first-month payment back", () => {
+  const invoice = (overrides: Record<string, unknown> = {}) => ({ status: "paid", payment_id: "pay_up", line_items: [{ type: "addon" }], ...overrides });
+  const payment = (overrides: Record<string, unknown> = {}) => ({ id: "pay_up", amount: 100, currency: "INR", created_at: 1_790_000_000, status: "captured", ...overrides });
+
+  function providerWith(invoices: unknown[], fetched: Record<string, unknown> = payment()) {
+    const fetch = vi.fn().mockResolvedValue(fetched);
+    const all = vi.fn().mockResolvedValue({ items: invoices });
+    const provider = createRazorpayProvider({
+      keySecret: "a-test-key-secret-at-least-this-long",
+      client: { invoices: { all }, payments: { fetch } } as never,
+      resolveBusinessId: async () => null,
+      resolveChargeOrder: async () => null,
+    });
+    return { provider, all, fetch };
+  }
+
+  it("finds the paid invoice of add-on lines and the captured payment that paid it", async () => {
+    const { provider, all, fetch } = providerWith([invoice({ status: "issued", payment_id: null }), invoice()]);
+    expect(await provider.findUpfrontPayment("sub_offer")).toEqual({ providerPaymentId: "pay_up", amountCents: 100, currency: "INR", paidAt: new Date(1_790_000_000 * 1000) });
+    expect(all).toHaveBeenCalledWith({ subscription_id: "sub_offer" });
+    expect(fetch).toHaveBeenCalledWith("pay_up");
+  });
+
+  it("is null before anything was paid, and for an invoice of an ordinary charge", async () => {
+    expect(await providerWith([]).provider.findUpfrontPayment("sub_offer")).toBeNull();
+    expect(await providerWith([invoice({ status: "issued" })]).provider.findUpfrontPayment("sub_offer")).toBeNull();
+    const { provider, fetch } = providerWith([invoice({ line_items: [{ type: "plan" }] })]);
+    expect(await provider.findUpfrontPayment("sub_offer")).toBeNull();
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it("is null for a payment that was not captured, or is in a currency or amount we cannot record", async () => {
+    expect(await providerWith([invoice()], payment({ status: "authorized" })).provider.findUpfrontPayment("sub_offer")).toBeNull();
+    expect(await providerWith([invoice()], payment({ currency: "EUR" })).provider.findUpfrontPayment("sub_offer")).toBeNull();
+    expect(await providerWith([invoice()], payment({ amount: Number.NaN })).provider.findUpfrontPayment("sub_offer")).toBeNull();
+  });
+});

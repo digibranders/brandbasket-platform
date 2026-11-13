@@ -321,6 +321,9 @@ export function parseRazorpayWebhookEvent(body: string): RazorpayWebhookEvent {
     const paid = orderPaidSchema.safeParse(json);
     if (!paid.success) return { kind: "invalid", reason: "order.paid payload did not match the expected shape" };
     const payment = paid.data.payload.payment.entity;
+    // A subscription's own payments (its first-month payment, its charges) are paid through orders of their invoices. Those are
+    // recorded from the subscription's events, never as a charge, so their order.paid is not ours to read.
+    if (typeof payment.invoice_id === "string" && payment.invoice_id !== "") return { kind: "unhandled" };
     if (payment.status !== "captured") return { kind: "invalid", reason: `unexpected payment status: ${payment.status}` };
     if (!isCurrency(payment.currency)) return { kind: "invalid", reason: `unsupported currency: ${payment.currency}` };
     return {

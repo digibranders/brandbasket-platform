@@ -362,6 +362,30 @@ function basketKey(addOnIds: readonly string[], netCents: number, adCreditCents:
 }
 
 /**
+ * Whether the business's newest checkout is a first-month offer the customer has paid but whose payment is not recorded yet (its
+ * webhook is late or lost; apps/platform records it within minutes). Such a checkout must not be replaced: replacing it would cancel
+ * the subscription the customer just paid for. Read before the decision, unlocked, because the provider is asked and no transaction
+ * may be open for that. `unknown` when the provider cannot be asked: nothing is opened then, so nothing paid is ever replaced.
+ */
+async function unrecordedOfferPayment(provider: BillingProvider, businessId: string): Promise<"paid" | "none" | "unknown"> {
+  const latest = await findLatestSubscriptionForBusiness(getStaffDb(), businessId);
+  if (latest === null || latest.firstPaymentCents === null || latest.activatedAt !== null || latest.status === "cancelled") return "none";
+  if (latest.provider !== provider.name) return "none";
+  try {
+    return (await provider.findUpfrontPayment(latest.providerSubscriptionId)) === null ? "none" : "paid";
+  } catch (error) {
+    logBillingEvent("error", "first-payment-check-failed", {
+      businessId,
+      subscriptionId: latest.id,
+      provider: provider.name,
+      providerSubscriptionId: latest.providerSubscriptionId,
+      ...describeError(error),
+    });
+    return "unknown";
+  }
+}
+
+/**
  * Opens the plan's checkout for a business its caller has already cleared to pay:
  *
  * 1. under a per-business lock on the staff connection (customers never write billing rows), the billing package
@@ -395,6 +419,9 @@ async function openPlanCheckout(
   const provider = getBillingProvider();
   const changedMeanwhile = async (): Promise<CheckoutOutcome> =>
     lookAgain ? openPlanCheckout(customer, now, paidHref, tier, chosen, chosenInterval, false) : refused(CHANGED_MEANWHILE);
+  const unrecorded = await unrecordedOfferPayment(provider, tenant.businessId);
+  if (unrecorded === "paid") return refused(PAYMENT_RECEIVED_MESSAGE);
+  if (unrecorded === "unknown") return refused(PAYMENT_UNAVAILABLE);
   const first = await getStaffDb().transaction(async (tx): Promise<DecisionStep> => {
     await lockBusinessForBilling(tx, tenant.businessId);
     const state = await findBillingState(tx, tenant.businessId);
@@ -437,8 +464,11 @@ async function openPlanCheckout(
     const discount = priced !== null && carried !== null && interval === "month" ? { ...priced, months: carried.monthsLeft } : priced;
     // The first-month offer (plan 63): Social Media and Paid Ads for a business that never had them. Under the lock, so two presses
     // cannot both take it. A business that has paid for a service before, on any subscription, takes it at its price.
+    // A business coming back after a lapse or a cancel pays its first month in full: the offer is for a first purchase (plan 63).
     const hadService = new Map<string, boolean>();
-    for (const line of pricedLines) hadService.set(line.addOn, await businessHasHadService(tx, tenant.businessId, line.addOn));
+    if (reactivation === null) {
+      for (const line of pricedLines) hadService.set(line.addOn, await businessHasHadService(tx, tenant.businessId, line.addOn));
+    }
     const firstPayment = planFirstPayment({
       lines: pricedLines.map((line) => ({ addOn: line.addOn, netCents: line.netCents, hadService: hadService.get(line.addOn) ?? true })),
       interval,

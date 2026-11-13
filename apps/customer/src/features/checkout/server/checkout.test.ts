@@ -137,6 +137,8 @@ function subscription(overrides: Partial<Subscription>): Subscription {
     bundledAddOnNetCents: 5_900,
     adCreditCents: 0,
     cancelRequestedAt: null,
+    firstPaymentCents: null,
+    firstChargeAt: null,
     createdAt: new Date(NOW.getTime() - HOUR_MS),
     ...overrides,
   } as Subscription;
@@ -635,6 +637,52 @@ describe("startMembershipCheckoutFor", () => {
       expect(openCheckoutSubscription).not.toHaveBeenCalled();
     });
 
+    describe("an earlier offer checkout whose payment is not recorded yet", () => {
+      const unrecorded = () =>
+        subscription({ id: "sub-offer", status: "active", activatedAt: null, paidThroughAt: null, firstPaymentCents: 100, firstChargeAt: new Date(NOW.getTime() + 29 * 86_400_000) });
+
+      it("is not replaced while the provider holds its payment: the customer is told it was received, and nothing opens", async () => {
+        newest(unrecorded(), { currency: "INR", plan: INR_PLAN });
+        const found = vi.spyOn(provider, "findUpfrontPayment").mockResolvedValue({ providerPaymentId: "pay_up", amountCents: 100, currency: "INR", paidAt: NOW });
+        const started = vi.spyOn(provider, "startCheckout");
+
+        const result = await startMembershipCheckoutFor(owner, NOW, "managed", ["social-media"]);
+
+        expect(found).toHaveBeenCalledWith(unrecorded().providerSubscriptionId);
+        expect(result).toMatchObject({ kind: "refused" });
+        expect(started).not.toHaveBeenCalled();
+        expect(openCheckoutSubscription).not.toHaveBeenCalled();
+      });
+
+      it("opens nothing when the provider cannot be asked, and says to try again", async () => {
+        newest(unrecorded(), { currency: "INR", plan: INR_PLAN });
+        vi.spyOn(provider, "findUpfrontPayment").mockRejectedValue(new Error("Razorpay is down"));
+
+        const result = await startMembershipCheckoutFor(owner, NOW, "managed", ["social-media"]);
+
+        expect(result).toMatchObject({ kind: "refused", problem: { message: expect.stringMatching(/try again/) } });
+        expect(openCheckoutSubscription).not.toHaveBeenCalled();
+      });
+
+      it("is replaced as before when the provider holds no payment for it", async () => {
+        newest(unrecorded(), { currency: "INR", plan: INR_PLAN });
+        vi.spyOn(provider, "findUpfrontPayment").mockResolvedValue(null);
+
+        redirectUrl(await startMembershipCheckoutFor(owner, NOW, "managed", ["social-media"]));
+
+        expect(openCheckoutSubscription).toHaveBeenCalledWith({ name: "tx2" }, expect.objectContaining({ replacing: "sub-offer" }));
+      });
+
+      it("asks the provider nothing for an ordinary checkout", async () => {
+        newest(subscription({ id: "sub-plain", status: "incomplete" }), { currency: "INR", plan: INR_PLAN });
+        const found = vi.spyOn(provider, "findUpfrontPayment");
+
+        await startMembershipCheckoutFor(owner, NOW, "managed", ["social-media"]);
+
+        expect(found).not.toHaveBeenCalled();
+      });
+    });
+
     it("takes a code off the services that pay full price when the basket has one", async () => {
       neverHad();
       const code = coupon({ kind: "amount", amountCents: 50_000 });
@@ -966,6 +1014,18 @@ describe("startReactivationFor", () => {
     maxRedemptions: null,
     createdAt: NOW,
   };
+
+  it("takes no first-month offer for a business coming back, even for a service it never had", async () => {
+    const halted = subscription({ id: "sub-halted", status: "inactive", activatedAt: LONG_AGO, paidThroughAt: new Date(NOW.getTime() - 1000) });
+    newest(halted, { hasEverPaid: true });
+    lapsedLines(halted, [billedLine("managed-website"), billedLine("social-media")]);
+    vi.mocked(businessHasHadService).mockResolvedValue(false);
+
+    redirectUrl(await startReactivationFor(lapsedCustomer, NOW));
+
+    expect(businessHasHadService).not.toHaveBeenCalled();
+    expect(vi.mocked(openCheckoutSubscription).mock.calls[0]?.[1]).not.toHaveProperty("firstPaymentCents");
+  });
 
   it("replaces the lapsed subscription with a new checkout and cancels the old one at the provider after the commit", async () => {
     const halted = subscription({ id: "sub-halted", status: "inactive", activatedAt: LONG_AGO, paidThroughAt: new Date(NOW.getTime() - 1000) });

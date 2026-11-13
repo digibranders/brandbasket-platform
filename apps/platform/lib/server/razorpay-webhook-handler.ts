@@ -1,11 +1,12 @@
 import "server-only";
-import { chargedAmountCents, mapRazorpayStatus, type RazorpayWebhookEvent } from "@brandbasket/billing";
+import { chargedAmountCents, mapRazorpayStatus, type RazorpayWebhookEvent, type UpfrontPayment } from "@brandbasket/billing";
 import {
   activateBundledAddOns,
   completeBundledAddOnChanges,
   completePlanUpgradeAtRenewal,
   findAddOnSubscriptionByProviderId,
   findBundledAddOnsForSubscription,
+  findPaymentByProviderId,
   findPlanById,
   findSubscriptionByProviderId,
   flagPaymentForAttention,
@@ -137,6 +138,14 @@ export async function handleRazorpayWebhookEvent(event: RazorpayWebhookEvent): P
   if (addOn !== null) {
     await handleAddOnCharge(event, addOn);
     return;
+  }
+
+  // The first full charge of a first-month offer whose upfront payment was never recorded (its webhook was lost): Razorpay is asked
+  // for that payment and it is recorded first, so this charge is then an ordinary renewal rather than money set aside for staff. A
+  // failure to ask throws before anything is written, and Razorpay delivers this charge again.
+  if (event.upfront !== true) {
+    const waiting = await findSubscriptionByProviderId(getStaffDb(), "razorpay", event.subscriptionId);
+    if (waiting !== null && waiting.firstPaymentCents !== null && waiting.activatedAt === null) await recordUpfrontFromRazorpay(event.subscriptionId);
   }
 
   // Filled inside the transaction when this payment was the last month of a code's discount: the provider is moved once it commits.
@@ -583,4 +592,34 @@ async function handleAddOnCharge(event: ChargedEvent, initial: AddOnSubscription
       providerSubscriptionId: target.providerSubscriptionId,
     });
   }
+}
+
+/** The first-month payment Razorpay holds for a subscription, shaped as the event its webhook would have delivered. */
+export function upfrontChargeEvent(providerSubscriptionId: string, found: UpfrontPayment): ChargedEvent {
+  return {
+    kind: "charged",
+    subscriptionId: providerSubscriptionId,
+    currentStart: null,
+    currentEnd: found.paidAt,
+    paidAt: found.paidAt,
+    paymentId: found.providerPaymentId,
+    amountCents: found.amountCents,
+    currency: found.currency,
+    method: null,
+    upfront: true,
+  };
+}
+
+/**
+ * Asks Razorpay for a subscription's first-month payment (plan 63) and, when it holds a captured one, records it through this same
+ * handler, exactly as its webhook would have been: once, whatever else delivers it, since a payment is recorded once per Razorpay
+ * payment id. Returns whether Razorpay held one. For a payment whose webhook never arrived.
+ */
+export async function recordUpfrontFromRazorpay(providerSubscriptionId: string): Promise<boolean> {
+  const found = await getRazorpayProvider().findUpfrontPayment(providerSubscriptionId);
+  if (found === null) return false;
+  // Already recorded (applied, or kept for staff): nothing to do, and nothing to count again on every run of the job.
+  if ((await findPaymentByProviderId(getStaffDb(), "razorpay", found.providerPaymentId)) !== null) return false;
+  await handleRazorpayWebhookEvent(upfrontChargeEvent(providerSubscriptionId, found));
+  return true;
 }

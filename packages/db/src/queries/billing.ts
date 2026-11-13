@@ -471,6 +471,42 @@ export async function insertSubscription(db: Runner, input: NewSubscription): Pr
   return subscription;
 }
 
+/** An offer checkout (plan 63) that has no first payment recorded, for asking the provider whether it was paid. */
+export interface UnpaidOfferCheckout {
+  readonly subscriptionId: string;
+  readonly businessId: string;
+  readonly providerSubscriptionId: string;
+}
+
+/**
+ * Checkouts opened with a first-month offer whose first payment has not been recorded: not activated and not cancelled (Razorpay's
+ * `authenticated`, which arrives as its own event, marks one `active` before any money is recorded), opened between `settleMs` ago
+ * (the webhook's head start) and two days ago. An older one that was paid is caught by its first full charge instead, so abandoned
+ * checkouts are not asked about for a month. Oldest first, at most `limit`. Staff connection.
+ */
+export async function listUnpaidOfferCheckouts(
+  db: Runner,
+  input: { readonly provider: BillingProviderName; readonly now: Date; readonly settleMs: number; readonly limit: number },
+): Promise<UnpaidOfferCheckout[]> {
+  const openedBefore = new Date(input.now.getTime() - input.settleMs);
+  const openedAfter = new Date(input.now.getTime() - 2 * 24 * 60 * 60 * 1000);
+  return db
+    .select({ subscriptionId: subscriptions.id, businessId: subscriptions.businessId, providerSubscriptionId: subscriptions.providerSubscriptionId })
+    .from(subscriptions)
+    .where(
+      and(
+        eq(subscriptions.provider, input.provider),
+        inArray(subscriptions.status, ["incomplete", "active", "past_due"]),
+        isNull(subscriptions.activatedAt),
+        isNotNull(subscriptions.firstPaymentCents),
+        lte(subscriptions.createdAt, openedBefore),
+        gte(subscriptions.createdAt, openedAfter),
+      ),
+    )
+    .orderBy(asc(subscriptions.createdAt))
+    .limit(input.limit);
+}
+
 /** A subscription by our id, as the provider is billing it (no pending move up applied), whatever its status. Staff connection. */
 export async function findSubscriptionById(db: Runner, subscriptionId: string): Promise<Subscription | null> {
   if (!isUuid(subscriptionId)) return null;

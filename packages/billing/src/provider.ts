@@ -146,6 +146,14 @@ export interface ConfirmedAddOnPayment {
   readonly method?: PaymentMethodDetails | null;
 }
 
+/** A first-month payment the provider holds for a subscription opened to start a month on (plan 63), read back from the provider. */
+export interface UpfrontPayment {
+  readonly providerPaymentId: string;
+  readonly amountCents: number;
+  readonly currency: BillingCurrency;
+  readonly paidAt: Date;
+}
+
 export interface BillingProvider {
   readonly name: BillingProviderName;
   startCheckout(input: StartCheckoutInput): Promise<StartedCheckout>;
@@ -197,6 +205,12 @@ export interface BillingProvider {
    * add-on payment, so its version always throws.
    */
   confirmAddOnPayment(payload: unknown): Promise<ConfirmedAddOnPayment>;
+  /**
+   * The captured first-month payment of a subscription opened to start a month on (plan 63), read from the provider with our own
+   * key, so as trustworthy as its signed webhook. Null when there is none yet, or it was not captured. The fake provider records its
+   * payments when they are made and holds nothing to find.
+   */
+  findUpfrontPayment(providerSubscriptionId: string): Promise<UpfrontPayment | null>;
 }
 
 /**

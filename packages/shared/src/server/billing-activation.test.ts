@@ -12,6 +12,8 @@ vi.mock("@brandbasket/db", async () => {
     activateBundledAddOns: vi.fn().mockResolvedValue([]),
     settleDiscountAfterPayment: vi.fn().mockResolvedValue({ monthsLeft: null, ended: false }),
     findSubscriptionById: vi.fn(),
+    findBundledAddOnsForSubscription: vi.fn().mockResolvedValue([]),
+    startBundledTrials: vi.fn(),
   };
 });
 
@@ -19,7 +21,7 @@ vi.mock("@brandbasket/db", async () => {
 vi.mock("./affiliate-accrual", () => ({ accrueAffiliateEarning: vi.fn() }));
 vi.mock("./tax-invoicing", () => ({ issueTaxInvoiceSafely: vi.fn() }));
 
-import { activateBundledAddOns, findSubscriptionById, openMembershipForListingBusiness, recordPaymentAndActivate, settleDiscountAfterPayment, type BundledAddOn } from "@brandbasket/db";
+import { activateBundledAddOns, findBundledAddOnsForSubscription, findSubscriptionById, openMembershipForListingBusiness, recordPaymentAndActivate, settleDiscountAfterPayment, startBundledTrials, type BundledAddOn } from "@brandbasket/db";
 import { accrueAffiliateEarning } from "./affiliate-accrual";
 import { issueTaxInvoiceSafely } from "./tax-invoicing";
 
@@ -184,6 +186,32 @@ describe("activateFirstPayment", () => {
     const activation = await activateFirstPayment(tx, { ...BASE, discountAmountCents: 52_500 });
     expect(settleDiscountAfterPayment).toHaveBeenCalledWith(tx, { subscriptionId: "sub-1", discountTakenCents: 52_500, adoptsNewDiscount: false, now: BASE.paidAt });
     expect(activation.discountEnded).toBe(true);
+  });
+
+  it("records a first-month offer at its frozen amount, ends the term on the first charge, and spends none of the code's months on it", async () => {
+    const tx = {} as never;
+    const firstChargeAt = new Date(BASE.paidAt.getTime() + 30 * 86_400_000);
+    const lines = [
+      { addOn: "managed-website", status: "pending", netAmountCents: 299_900, listAmountCents: 299_900, offerDiscountAmountCents: 0, trialPriceCents: null },
+      { addOn: "social-media", status: "pending", netAmountCents: 299_900, listAmountCents: 299_900, offerDiscountAmountCents: 0, trialPriceCents: 100 },
+    ] as unknown as BundledAddOn[];
+    vi.mocked(findSubscriptionById).mockResolvedValueOnce({ billingInterval: "month", firstPaymentCents: 299_900 + 100 - 52_500, firstChargeAt } as never);
+    vi.mocked(findBundledAddOnsForSubscription).mockResolvedValueOnce(lines);
+    vi.mocked(recordPaymentAndActivate).mockResolvedValue({ alreadyRecorded: false, payment: { id: "payment_1" } } as never);
+    vi.mocked(settleDiscountAfterPayment).mockClear();
+
+    await activateFirstPayment(tx, { ...BASE, discountAmountCents: 52_500 });
+
+    expect(recordPaymentAndActivate).toHaveBeenLastCalledWith(tx, expect.objectContaining({ amountCents: 247_500, paidThroughAt: firstChargeAt, commitmentEndsAt: firstChargeAt }));
+    expect(startBundledTrials).toHaveBeenCalledWith(tx, { subscriptionId: "sub-1", trialEndsAt: firstChargeAt, now: BASE.paidAt });
+    expect(settleDiscountAfterPayment).toHaveBeenCalledWith(tx, expect.objectContaining({ discountTakenCents: 0 }));
+  });
+
+  it("refuses an offer whose frozen amount does not match its lines", async () => {
+    const lines = [{ addOn: "social-media", status: "pending", netAmountCents: 299_900, trialPriceCents: 100 }] as unknown as BundledAddOn[];
+    vi.mocked(findSubscriptionById).mockResolvedValueOnce({ billingInterval: "month", firstPaymentCents: 555, firstChargeAt: new Date() } as never);
+    vi.mocked(findBundledAddOnsForSubscription).mockResolvedValueOnce(lines);
+    await expect(activateFirstPayment({} as never, BASE)).rejects.toThrow("froze a first payment of 555");
   });
 
   it("counts nothing for a payment already recorded", async () => {

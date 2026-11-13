@@ -151,6 +151,17 @@ describe("parseRazorpayWebhookEvent", () => {
     });
   });
 
+  it("leaves an order.paid for a subscription's own invoice alone: that payment is a subscription's, never a charge", () => {
+    const body = JSON.stringify({
+      event: "order.paid",
+      payload: {
+        order: { entity: { id: "order_invoice" } },
+        payment: { entity: { id: "pay_up", amount: 100, currency: "INR", status: "captured", created_at: 1_790_000_000, invoice_id: "inv_1" } },
+      },
+    });
+    expect(parseRazorpayWebhookEvent(body)).toEqual({ kind: "unhandled" });
+  });
+
   it("refuses an order.paid event with the wrong shape, an uncaptured payment or an unknown currency", () => {
     const base = { id: "pay_abc", amount: 100, currency: "INR", status: "captured", created_at: 1_790_000_000 };
     const body = (payment: Record<string, unknown>, order: unknown = { entity: { id: "order_abc" } }) =>

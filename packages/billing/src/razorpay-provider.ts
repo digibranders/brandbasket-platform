@@ -13,6 +13,7 @@ import {
   type StartedAddOnSubscription,
   type StartedChargePayment,
   type StartedCheckout,
+  type UpfrontPayment,
 } from "./provider";
 import { chargedAmountCents } from "./tax";
 
@@ -49,7 +50,24 @@ export interface RazorpaySdkClient {
     fetch(subscriptionId: string): Promise<{ readonly id: string; readonly status: string }>;
   };
   readonly payments: {
-    fetch(paymentId: string): Promise<{ readonly id: string; readonly amount: number; readonly currency: string; readonly created_at: number }>;
+    fetch(paymentId: string): Promise<{
+      readonly id: string;
+      readonly amount: number;
+      readonly currency: string;
+      readonly created_at: number;
+      /** Razorpay's own word for the payment: `captured` is money taken. */
+      readonly status?: string;
+    }>;
+  };
+  /** A subscription's invoices, for finding a first-month payment whose webhook never arrived. */
+  readonly invoices: {
+    all(query: { readonly subscription_id: string }): Promise<{
+      readonly items: readonly {
+        readonly status: string;
+        readonly payment_id: string | null;
+        readonly line_items: readonly { readonly type: string | null }[];
+      }[];
+    }>;
   };
   /** Monthly or yearly plans, one per price: a new price is always a new plan. */
   readonly plans: {
@@ -331,6 +349,21 @@ export function createRazorpayProvider(options: RazorpayProviderOptions): Razorp
     },
 
     fetchSubscriptionStatus,
+
+    async findUpfrontPayment(providerSubscriptionId: string): Promise<UpfrontPayment | null> {
+      const { items } = await client.invoices.all({ subscription_id: providerSubscriptionId });
+      const upfront = items.find(
+        (invoice) =>
+          invoice.status === "paid" &&
+          invoice.payment_id !== null &&
+          invoice.line_items.length > 0 &&
+          invoice.line_items.every((line) => line.type === "addon"),
+      );
+      if (upfront?.payment_id == null) return null;
+      const payment = await client.payments.fetch(upfront.payment_id);
+      if (payment.status !== "captured" || !isCurrency(payment.currency) || !Number.isSafeInteger(payment.amount) || payment.amount <= 0) return null;
+      return { providerPaymentId: payment.id, amountCents: payment.amount, currency: payment.currency, paidAt: new Date(payment.created_at * 1000) };
+    },
 
     async changeSubscriptionPlanAtPeriodEnd(providerSubscriptionId: string, providerPlanId: string): Promise<void> {
       // At cycle end, never now: switching now would re-price the period already paid for.

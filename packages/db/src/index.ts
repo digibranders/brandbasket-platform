@@ -29,6 +29,8 @@ export {
   findPaymentByProviderId,
   findPlanById,
   findSubscriptionById,
+  listUnpaidOfferCheckouts,
+  type UnpaidOfferCheckout,
   planTierForSignupChoice,
   findSubscriptionByProviderId,
   findWaitingSuccessor,

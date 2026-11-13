@@ -6,12 +6,14 @@ import {
   findPaymentByProviderId,
   findSubscriptionById,
   findTaxInvoiceByPaymentId,
+  listUnpaidOfferCheckouts,
   openCheckoutSubscription,
+  subscriptions,
   type NewBundledAddOn,
   type Plan,
   type Subscription,
 } from "@brandbasket/db";
-import { openTestDatabases, resetTestDatabase, seedPlansFromMigrations, type TestDatabases } from "@brandbasket/db/testing";
+import { eq, openTestDatabases, resetTestDatabase, seedPlansFromMigrations, type TestDatabases } from "@brandbasket/db/testing";
 import { activateFirstPayment } from "./server/billing-activation";
 
 // The activation is server-only in the app; there is no browser here to keep it out of.
@@ -36,7 +38,10 @@ function line(addOn: string, trialPriceCents: number | null = null): NewBundledA
   return { addOn, listAmountCents: PRICE, offerDiscountAmountCents: 0, netAmountCents: PRICE, taxRateBasisPoints: plan.taxRateBasisPoints, trialPriceCents };
 }
 
-function open(bundledAddOns: readonly NewBundledAddOn[], extra: { firstPaymentCents?: number | null; firstChargeAt?: Date | null } = {}): Promise<Subscription> {
+function open(
+  bundledAddOns: readonly NewBundledAddOn[],
+  extra: { firstPaymentCents?: number | null; firstChargeAt?: Date | null; replacing?: string | null; providerSubscriptionId?: string } = {},
+): Promise<Subscription> {
   return openCheckoutSubscription(dbs.staff.db, {
     businessId,
     planId: plan.id,
@@ -168,5 +173,39 @@ describe("what the database and the activation refuse", () => {
     expect((await findPaymentByProviderId(dbs.staff.db, "fake", "fake_pay_offer"))?.amountCents).toBe(PRICE);
     const [social] = await findBundledAddOnsForSubscription(dbs.staff.db, subscription.id);
     expect(social).toMatchObject({ trialPriceCents: null, trialEndsAt: null });
+  });
+});
+
+describe("checkouts still waiting for their first-month payment", () => {
+  const MINUTE = 60_000;
+  const list = (now: Date) => listUnpaidOfferCheckouts(dbs.staff.db, { provider: "fake", now, settleMs: 10 * MINUTE, limit: 100 });
+
+  it("lists an offer checkout once its webhook has had ten minutes, and stops once it is paid", async () => {
+    const subscription = await open([line("social-media", TRIAL)], { firstPaymentCents: TRIAL, firstChargeAt: FIRST_CHARGE_AT });
+    expect(await list(new Date(subscription.createdAt.getTime() + 5 * MINUTE))).toEqual([]);
+    expect(await list(new Date(subscription.createdAt.getTime() + 11 * MINUTE))).toEqual([
+      { subscriptionId: subscription.id, businessId, providerSubscriptionId: subscription.providerSubscriptionId },
+    ]);
+    await pay(subscription);
+    expect(await list(new Date(subscription.createdAt.getTime() + 11 * MINUTE))).toEqual([]);
+  });
+
+  it("still lists one Razorpay's authenticated event marked active before its payment was recorded", async () => {
+    const subscription = await open([line("social-media", TRIAL)], { firstPaymentCents: TRIAL, firstChargeAt: FIRST_CHARGE_AT });
+    await dbs.owner.db.update(subscriptions).set({ status: "active", providerStatus: "authenticated" }).where(eq(subscriptions.id, subscription.id));
+    expect(await list(new Date(subscription.createdAt.getTime() + 11 * MINUTE))).toHaveLength(1);
+  });
+
+  it("leaves out an ordinary checkout, another provider's, a cancelled one, and one opened more than two days ago", async () => {
+    const ordinary = await open([line("social-media")]);
+    const later = new Date(ordinary.createdAt.getTime() + 11 * MINUTE);
+    expect(await list(later)).toEqual([]);
+    const offer = await open([line("social-media", TRIAL)], { firstPaymentCents: TRIAL, firstChargeAt: FIRST_CHARGE_AT, replacing: ordinary.id, providerSubscriptionId: `fake_sub_${"e".repeat(24)}` });
+    const soon = new Date(offer.createdAt.getTime() + 11 * MINUTE);
+    expect(await listUnpaidOfferCheckouts(dbs.staff.db, { provider: "razorpay", now: soon, settleMs: 10 * MINUTE, limit: 100 })).toEqual([]);
+    expect(await list(soon)).toHaveLength(1);
+    expect(await list(new Date(offer.createdAt.getTime() + 2 * 24 * 60 * MINUTE + MINUTE))).toEqual([]);
+    await dbs.owner.db.update(subscriptions).set({ status: "cancelled", cancelledAt: soon }).where(eq(subscriptions.id, offer.id));
+    expect(await list(soon)).toEqual([]);
   });
 });

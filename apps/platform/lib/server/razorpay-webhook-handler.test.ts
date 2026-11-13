@@ -8,6 +8,8 @@ vi.mock("@brandbasket/db", async () => {
   return {
     ...actual,
     findSubscriptionByProviderId: vi.fn(),
+    // No payment recorded yet, unless a test says otherwise.
+    findPaymentByProviderId: vi.fn(async () => null),
     findBundledAddOnsForSubscription: vi.fn(async () => []),
     activateBundledAddOns: vi.fn(async () => []),
     removeBundledAddOnsOf: vi.fn(),
@@ -53,7 +55,8 @@ vi.mock("./db", () => {
   return { getStaffDb: () => db };
 });
 const fetchSubscriptionStatus = vi.fn();
-const razorpay = { name: "razorpay", fetchSubscriptionStatus };
+const findUpfrontPayment = vi.fn();
+const razorpay = { name: "razorpay", fetchSubscriptionStatus, findUpfrontPayment };
 vi.mock("./billing", () => ({ getRazorpayProvider: () => razorpay }));
 
 import {
@@ -63,6 +66,7 @@ import {
   completePlanUpgradeAtRenewal,
   findAddOnSubscriptionByProviderId,
   findBundledAddOnsForSubscription,
+  findPaymentByProviderId,
   findPlanById,
   findSubscriptionByProviderId,
   flagPaymentForAttention,
@@ -85,7 +89,7 @@ import { reportFirstPaymentToAds } from "./conversions";
 import { sendPaymentReceipt } from "./payment-emails";
 import { announcePaymentToTeams, announcePlanStatusToTeams } from "./teams";
 import { syncTenantForBusiness } from "./payload-tenant-sync";
-import { handleRazorpayWebhookEvent } from "./razorpay-webhook-handler";
+import { handleRazorpayWebhookEvent, recordUpfrontFromRazorpay } from "./razorpay-webhook-handler";
 
 const PLAN = {
   id: "plan_1",
@@ -677,6 +681,89 @@ describe("handleRazorpayWebhookEvent", () => {
       expect(recordUnappliedPayment).not.toHaveBeenCalled();
     });
 
+    describe("when the upfront payment's webhook never arrived", () => {
+      const PAID_UPFRONT = { providerPaymentId: "pay_up", amountCents: 100, currency: "INR", paidAt: new Date("2026-11-13T07:00:00.000Z") } as const;
+      const firstFullCharge = {
+        kind: "charged",
+        currentStart: new Date("2026-12-13T07:00:00.000Z"),
+        method: null,
+        subscriptionId: "sub_rzp_offer",
+        currentEnd: new Date("2027-01-12T18:30:00.000Z"),
+        paidAt: new Date("2026-12-13T07:00:05.000Z"),
+        paymentId: "pay_first_full",
+        amountCents: 299_900,
+        currency: "INR",
+      } as const;
+      const activated = () => offerSubscription({ activatedAt: PAID_UPFRONT.paidAt, status: "active", commitmentEndsAt: new Date("2026-12-13T07:00:00.000Z") });
+
+      it("asks Razorpay for it at the first full charge, records it as the first payment, then records the charge as a renewal", async () => {
+        // The safety net's read, then the upfront payment's two reads (before and under the lock), then the charge's.
+        vi.mocked(findSubscriptionByProviderId)
+          .mockResolvedValueOnce(offerSubscription())
+          .mockResolvedValueOnce(offerSubscription())
+          .mockResolvedValueOnce(offerSubscription())
+          .mockResolvedValue(activated());
+        vi.mocked(findPlanById).mockResolvedValue(OFFER_PLAN as never);
+        findUpfrontPayment.mockResolvedValueOnce(PAID_UPFRONT);
+
+        await handleRazorpayWebhookEvent(firstFullCharge);
+
+        expect(findUpfrontPayment).toHaveBeenCalledWith("sub_rzp_offer");
+        expect(activateFirstPayment).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ providerPaymentId: "pay_up", paidAt: PAID_UPFRONT.paidAt }));
+        expect(activateRenewalPayment).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ providerPaymentId: "pay_first_full", amountCents: 299_900 }));
+        expect(recordUnappliedPayment).not.toHaveBeenCalled();
+      });
+
+      it("keeps the charge for staff when Razorpay holds no upfront payment either", async () => {
+        vi.mocked(findSubscriptionByProviderId).mockResolvedValue(offerSubscription());
+        vi.mocked(findPlanById).mockResolvedValue(OFFER_PLAN as never);
+        findUpfrontPayment.mockResolvedValueOnce(null);
+
+        await handleRazorpayWebhookEvent(firstFullCharge);
+
+        expect(activateFirstPayment).not.toHaveBeenCalled();
+        expect(recordUnappliedPayment).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ reason: "amount_mismatch", amountCents: 299_900 }));
+      });
+
+      it("lets a failure to ask Razorpay through before anything is written, so the charge is delivered again", async () => {
+        vi.mocked(findSubscriptionByProviderId).mockResolvedValue(offerSubscription());
+        findUpfrontPayment.mockRejectedValueOnce(new Error("Razorpay is down"));
+
+        await expect(handleRazorpayWebhookEvent(firstFullCharge)).rejects.toThrow("Razorpay is down");
+        expect(activateFirstPayment).not.toHaveBeenCalled();
+        expect(recordUnappliedPayment).not.toHaveBeenCalled();
+      });
+
+      it("asks nothing when the first payment was already recorded, or the subscription has no offer", async () => {
+        vi.mocked(findSubscriptionByProviderId).mockResolvedValue(activated());
+        vi.mocked(findPlanById).mockResolvedValue(OFFER_PLAN as never);
+        await handleRazorpayWebhookEvent(firstFullCharge);
+        vi.mocked(findSubscriptionByProviderId).mockResolvedValue(offerSubscription({ firstPaymentCents: null, activatedAt: PAID_UPFRONT.paidAt, status: "active", commitmentEndsAt: PAID_UPFRONT.paidAt }));
+        await handleRazorpayWebhookEvent(firstFullCharge);
+        expect(findUpfrontPayment).not.toHaveBeenCalled();
+      });
+
+      it("records a payment Razorpay holds when asked directly, and reports when it holds none", async () => {
+        vi.mocked(findSubscriptionByProviderId).mockResolvedValue(offerSubscription());
+        vi.mocked(findPlanById).mockResolvedValue(OFFER_PLAN as never);
+        findUpfrontPayment.mockResolvedValueOnce(PAID_UPFRONT).mockResolvedValueOnce(null);
+
+        expect(await recordUpfrontFromRazorpay("sub_rzp_offer")).toBe(true);
+        expect(activateFirstPayment).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ providerPaymentId: "pay_up" }));
+        expect(await recordUpfrontFromRazorpay("sub_rzp_offer")).toBe(false);
+      });
+
+      it("does nothing more for a payment already recorded, so the job does not count it again every run", async () => {
+        findUpfrontPayment.mockResolvedValueOnce(PAID_UPFRONT);
+        vi.mocked(findPaymentByProviderId).mockResolvedValueOnce({ id: "payment_row" } as never);
+
+        expect(await recordUpfrontFromRazorpay("sub_rzp_offer")).toBe(false);
+        expect(findPaymentByProviderId).toHaveBeenCalledWith(expect.anything(), "razorpay", "pay_up");
+        expect(activateFirstPayment).not.toHaveBeenCalled();
+        expect(recordUnappliedPayment).not.toHaveBeenCalled();
+      });
+    });
+
     it("treats the first full charge a month later as an ordinary renewal at the monthly amount", async () => {
       vi.mocked(findSubscriptionByProviderId).mockResolvedValue(
         offerSubscription({ activatedAt: new Date("2026-11-13T07:00:00.000Z"), status: "active", commitmentEndsAt: new Date("2026-12-13T07:00:00.000Z") }),
@@ -846,6 +933,8 @@ describe("handleRazorpayWebhookEvent", () => {
     // must be what drives the activateFirstPayment-vs-activateRenewalPayment decision, or this would incorrectly
     // treat an already-activated subscription's charge as a first payment.
     vi.mocked(findSubscriptionByProviderId)
+      // The first-month offer's safety net reads first (plan 63); this subscription has no offer, so it asks Razorpay nothing.
+      .mockResolvedValueOnce(null)
       .mockResolvedValueOnce({
         id: "sub_row_4",
         businessId: "biz_4",

@@ -131,9 +131,11 @@ export async function activateFirstPayment(tx: ScopedTransaction, payment: First
   if (activation.alreadyRecorded) return { ...activation, openedMembership: null, discountEnded: false };
   const activeBundle = await activateBundledAddOns(tx, { subscriptionId: payment.subscriptionId, now: payment.paidAt });
   if (offer !== null) await startBundledTrials(tx, { subscriptionId: payment.subscriptionId, trialEndsAt: offer.chargeAt, now: payment.paidAt });
+  // A first-month payment does not use up one of a code's months: the provider's subscription has not started, and its first full
+  // charge is still on the discounted plan, which is where the code's months are counted from (plan 63).
   const settlement = await settleDiscountAfterPayment(tx, {
     subscriptionId: payment.subscriptionId,
-    discountTakenCents: payment.discountAmountCents ?? 0,
+    discountTakenCents: offer === null ? (payment.discountAmountCents ?? 0) : 0,
     adoptsNewDiscount: false,
     now: payment.paidAt,
   });
