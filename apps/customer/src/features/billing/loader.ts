@@ -152,17 +152,26 @@ function combinedSummary(offer: Extract<AddOnOffer, { kind: "combined" }>, entry
   const name = serviceName(entry.addOn);
   const until = formatDate(offer.newBillingDate, now);
   const rows: PaymentSummaryRow[] = [
-    { key: "service", label: offer.offer ? `${name}, first month` : `${name}, until ${until}`, amount: formatMoney(offer.serviceCents, currency), tone: "plain" },
+    { key: "service", label: offer.offer ? `${name}, first month offer` : `${name}, until ${until}`, amount: formatMoney(offer.serviceCents, currency), tone: "plain" },
   ];
-  if (offer.extensionCents > 0) {
-    rows.push({ key: "plan", label: `Your plan, ${formatDate(offer.paidThroughAt, now)} to ${until}`, amount: formatMoney(offer.extensionCents, currency), tone: "plain" });
+  const extended = offer.extensionCents > 0;
+  if (extended) {
+    // Whole days: the two dates fall at the same time of day, so the gap is a whole number of days give or take a clock change.
+    const extraDays = Math.round((offer.newBillingDate.getTime() - offer.paidThroughAt.getTime()) / 86_400_000);
+    rows.push({ key: "plan", label: `Current plan, ${formatQuantity(extraDays, "extra day")}`, amount: formatMoney(offer.extensionCents, currency), tone: "plain" });
   }
   return {
     title: `Add ${name}`,
     rows,
     totalLabel: "Due today",
     total: formatMoney(offer.upfrontCents, currency),
-    notes: [`From ${until}, you pay ${formatMoney(offer.monthlyCents, currency)} a month for all your services.`, ...gstNote(currency)],
+    notes: [
+      ...(extended
+        ? [`All your services will now renew together on ${until}. Your current plan is paid until ${formatDate(offer.paidThroughAt, now)}, so today also covers the days in between.`]
+        : []),
+      `Then ${formatMoney(offer.monthlyCents, currency)} a month for all your services, from ${until}.`,
+      ...gstNote(currency),
+    ],
   };
 }
 
