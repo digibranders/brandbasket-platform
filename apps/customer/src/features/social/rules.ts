@@ -12,9 +12,9 @@ import type { TabLink } from "@/ui";
  */
 
 export const SOCIAL_PATH = "/social";
-export const SOCIAL_CONTENT_PATH = "/social/content";
-export const SOCIAL_ADS_PATH = "/social/ads";
-export const SOCIAL_ACCOUNTS_PATH = "/social/accounts";
+/** Paid Ads is its own page and menu item, apart from Social media. */
+export const SOCIAL_ADS_PATH = "/ads";
+export const SOCIAL_ANALYTICS_PATH = "/social/analytics";
 /** The New request dialog (owned by Requests) with Social & Ads chosen. */
 export const ASK_FOR_CHANGE_HREF = "/requests?new=1&kind=social";
 /** Plan & billing with Social & Ads ready to add. */
@@ -420,13 +420,12 @@ export function accountRows(accounts: readonly Pick<ConnectedAccount, "platform"
 
 // ---- Tabs ----
 
-/** The section's tabs. The Content tab carries the number of posts waiting, when it is known and not zero. */
-export function socialTabs(waiting: number | null): readonly TabLink[] {
+/** The section's tabs: Posts, with the number waiting for approval when it is known and not zero, and Analytics where there is a posting service to ask. */
+export function socialTabs(waiting: number | null, analytics = false): readonly TabLink[] {
   return [
-    { href: SOCIAL_PATH, label: "Overview" },
-    { href: SOCIAL_CONTENT_PATH, label: "Content", ...(waiting === null || waiting === 0 ? {} : { count: formatNumber(waiting) }) },
-    { href: SOCIAL_ADS_PATH, label: "Ads" },
-    { href: SOCIAL_ACCOUNTS_PATH, label: "Accounts" },
+    { href: SOCIAL_PATH, label: "Posts", ...(waiting === null || waiting === 0 ? {} : { count: formatNumber(waiting) }) },
+    // Only on a server that has a posting service to ask: a tab with no source behind it is not drawn.
+    ...(analytics ? [{ href: SOCIAL_ANALYTICS_PATH, label: "Analytics" }] : []),
   ];
 }
 

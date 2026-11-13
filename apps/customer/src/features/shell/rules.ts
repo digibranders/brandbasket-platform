@@ -18,6 +18,7 @@ export const SHELL_PATHS = {
   newRequest: "/requests?new=1",
   website: "/website",
   social: "/social",
+  ads: "/ads",
   search: "/search",
   reports: "/reports",
   business: "/business",
@@ -74,7 +75,7 @@ export interface NavInput {
 
 const SERVICE_LINKS: Readonly<Record<Service, Omit<NavLink, "bought" | "children">>> = {
   website: { href: SHELL_PATHS.website, label: "Website", icon: "Browser", service: "website" },
-  social: { href: SHELL_PATHS.social, label: "Social & Ads", icon: "MegaphoneSimple", service: "social" },
+  social: { href: SHELL_PATHS.social, label: "Social media", icon: "MegaphoneSimple", service: "social" },
   // The SEO service is never called "Search", which is what the search box is.
   search: { href: SHELL_PATHS.search, label: "Local SEO + AEO", icon: "MapPinArea", service: "search" },
 };
@@ -82,9 +83,12 @@ const SERVICE_LINKS: Readonly<Record<Service, Omit<NavLink, "bought" | "children
 /** Pages inside a bought service that search can open directly, from the mock's search list. */
 const SERVICE_CHILDREN: Readonly<Record<Service, readonly NavTarget[]>> = {
   website: [{ href: "/website/pages", label: "Pages" }],
-  social: [{ href: "/social/content", label: "Content" }],
+  social: [],
   search: [],
 };
+
+/** Paid Ads is its own menu item, apart from Social media. It has no service key of its own yet, so it is shown, and marked bought, with Social media. */
+const ADS_LINK: Omit<NavLink, "bought" | "children"> = { href: SHELL_PATHS.ads, label: "Paid Ads", icon: "ChartLineUp", service: "social" };
 
 const SERVICES_IN_ORDER: readonly Service[] = ["website", "social", "search"];
 
@@ -116,7 +120,7 @@ export function navModel(input: NavInput): NavModel {
   const services = SERVICES_IN_ORDER.filter((service) => service !== "search" || input.services.includes(service)).map((service): NavLink => {
     const bought = input.services.includes(service);
     return { ...SERVICE_LINKS[service], bought, children: bought ? SERVICE_CHILDREN[service] : [] };
-  });
+  }).flatMap((link): NavLink[] => (link.service === "social" ? [link, { ...ADS_LINK, bought: link.bought === true, children: [] }] : [link]));
   return {
     sections: [
       { label: null, links: [HOME, withCount(ENQUIRIES, input.enquiries), requests] },

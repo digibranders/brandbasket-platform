@@ -1,0 +1,5 @@
+ALTER TABLE "bundled_add_ons" ADD COLUMN "trial_price_cents" integer;--> statement-breakpoint
+ALTER TABLE "bundled_add_ons" ADD COLUMN "trial_ends_at" timestamp with time zone;--> statement-breakpoint
+CREATE UNIQUE INDEX "bundled_add_ons_one_trial_idx" ON "bundled_add_ons" USING btree ("business_id","add_on") WHERE "bundled_add_ons"."trial_price_cents" is not null and ("bundled_add_ons"."status" <> 'removed' or "bundled_add_ons"."trial_ends_at" is not null);--> statement-breakpoint
+ALTER TABLE "bundled_add_ons" ADD CONSTRAINT "bundled_add_ons_trial_check" CHECK (("bundled_add_ons"."trial_price_cents" is null or ("bundled_add_ons"."add_on" in ('social-media', 'paid-ads') and "bundled_add_ons"."trial_price_cents" > 0))
+        and ("bundled_add_ons"."trial_ends_at" is null or "bundled_add_ons"."trial_price_cents" is not null));

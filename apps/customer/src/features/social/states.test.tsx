@@ -4,8 +4,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { loadSetupAsks } from "@/features/setup/loader";
 import type { CustomerContext } from "@/lib/guards";
 import { ToastProvider } from "@/ui";
-import { SocialAccounts, SocialAds, SocialContent, SocialOverview } from "./components/social-screens";
-import { loadAccounts, loadAds, loadCampaigns, loadPosts, loadReach, loadReportLink, loadWaitingPostCount } from "./loader";
+import { SocialAds, SocialOverview } from "./components/social-screens";
+import { loadAds, loadCampaigns, loadChannelsColumn, loadPosts, loadReach, loadReportLink, loadWaitingPostCount } from "./loader";
 import type { PostView } from "./rules";
 
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn() }), unstable_rethrow: vi.fn() }));
@@ -15,12 +15,13 @@ vi.mock("./loader", () => ({
   loadAds: vi.fn(),
   loadCampaigns: vi.fn(),
   loadReach: vi.fn(),
-  loadAccounts: vi.fn(),
+  loadChannelsColumn: vi.fn(),
   loadReportLink: vi.fn(),
   loadWaitingPostCount: vi.fn(),
 }));
 vi.mock("@/features/setup/loader", () => ({ loadSetupAsks: vi.fn(), loadNotBought: vi.fn() }));
 vi.mock("./actions", () => ({ approvePostsAction: vi.fn() }));
+vi.mock("./accounts/actions", () => ({ startConnectAction: vi.fn() }));
 
 const NOW = new Date("2026-11-04T06:00:00.000Z");
 const NOISE = /No data|undefined|\bnull\b|NaN/;
@@ -39,10 +40,10 @@ beforeEach(() => {
   vi.mocked(loadAds).mockResolvedValue({ ads: null, month: "November" });
   vi.mocked(loadCampaigns).mockResolvedValue({ campaigns: [], month: "November" });
   vi.mocked(loadReach).mockResolvedValue(null);
-  vi.mocked(loadAccounts).mockResolvedValue([]);
+  vi.mocked(loadChannelsColumn).mockResolvedValue({ rows: [], missing: [], live: false });
 });
 
-describe("Social & Ads Overview: one failed panel", () => {
+describe("Social media Overview: one failed panel", () => {
   it.each([
     { panel: "posts", what: "your posts", set: () => vi.mocked(loadPosts).mockRejectedValue(down), heading: "Waiting for your approval" },
     { panel: "ads", what: "your ad figures", set: () => vi.mocked(loadAds).mockRejectedValue(down), heading: "Ads" },
@@ -53,7 +54,7 @@ describe("Social & Ads Overview: one failed panel", () => {
     wrap(await SocialOverview({ customer, now: NOW }));
     expect(screen.getByText(`We could not load ${what}.`)).toBeTruthy();
     expect(screen.getByRole("heading", { name: heading })).toBeTruthy();
-    expect(screen.getByRole("heading", { name: "Social & Ads", level: 1 })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Social media", level: 1 })).toBeTruthy();
     expect(screen.getAllByRole("alert")).toHaveLength(1);
   });
 
@@ -66,7 +67,7 @@ describe("Social & Ads Overview: one failed panel", () => {
   });
 });
 
-describe("Social & Ads Overview: everything ok but empty", () => {
+describe("Social media Overview: everything ok but empty", () => {
   it("says why the approvals and the week are empty and draws no empty strips", async () => {
     const { container } = wrap(await SocialOverview({ customer, now: NOW }));
     expect(screen.getByText("When a post is ready, it appears here as it will look, with one button to approve it.")).toBeTruthy();
@@ -76,16 +77,16 @@ describe("Social & Ads Overview: everything ok but empty", () => {
   });
 });
 
-describe("Social Content", () => {
+describe("Social media Posts", () => {
   it("a failed posts read shows its own error and the tabs", async () => {
     vi.mocked(loadPosts).mockRejectedValue(down);
-    wrap(await SocialContent({ customer, now: NOW }));
+    wrap(await SocialOverview({ customer, now: NOW }));
     expect(screen.getByText("We could not load your posts.")).toBeTruthy();
-    expect(screen.getByRole("heading", { name: "Social & Ads", level: 1 })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Social media", level: 1 })).toBeTruthy();
   });
 
   it("no posts says what appears on the calendar", async () => {
-    const { container } = wrap(await SocialContent({ customer, now: NOW }));
+    const { container } = wrap(await SocialOverview({ customer, now: NOW }));
     expect(screen.getByText("No posts are planned for November yet.")).toBeTruthy();
     expect(screen.getByText("Planned and published posts appear on their day.")).toBeTruthy();
     expect(container.textContent).not.toMatch(NOISE);
@@ -93,7 +94,7 @@ describe("Social Content", () => {
 
   it("a scheduled post with an empty waiting list still says nothing is waiting", async () => {
     vi.mocked(loadPosts).mockResolvedValue({ posts: [POST], month: "November" });
-    wrap(await SocialContent({ customer, now: NOW }));
+    wrap(await SocialOverview({ customer, now: NOW }));
     expect(screen.getByText("When a post is ready, it appears here as it will look, with one button to approve it.")).toBeTruthy();
   });
 });
@@ -117,17 +118,17 @@ describe("Social Ads", () => {
   });
 });
 
-describe("Social Accounts", () => {
-  it("a failed read shows its own error", async () => {
-    vi.mocked(loadAccounts).mockRejectedValue(down);
-    wrap(await SocialAccounts({ customer, now: NOW }));
-    expect(screen.getByRole("alert").textContent).toContain("We could not load your accounts.");
-    expect(screen.getByRole("heading", { name: "Connected accounts" })).toBeTruthy();
+describe("Social media channels column", () => {
+  it("a failed read shows its own error and the rest of the page", async () => {
+    vi.mocked(loadChannelsColumn).mockRejectedValue(down);
+    wrap(await SocialOverview({ customer, now: NOW }));
+    expect(screen.getByText("We could not load your channels.")).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Social media", level: 1 })).toBeTruthy();
   });
 
-  it("no accounts says when they appear", async () => {
-    const { container } = wrap(await SocialAccounts({ customer, now: NOW }));
-    expect(screen.getByText("No accounts are listed yet.")).toBeTruthy();
+  it("no accounts shows no empty-state paragraph, only what can be connected", async () => {
+    const { container } = wrap(await SocialOverview({ customer, now: NOW }));
+    expect(screen.queryByText("No accounts are connected yet.")).toBeNull();
     expect(container.textContent).not.toMatch(NOISE);
   });
 });

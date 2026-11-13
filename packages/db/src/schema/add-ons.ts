@@ -171,10 +171,26 @@ export const bundledAddOns = pgTable(
     /** When staff got in touch about this purchase, as for add_on_subscriptions; null until then. */
     contactedAt: timestamp("contacted_at", { withTimezone: true }),
     contactedByStaffId: text("contacted_by_staff_id").references(() => users.id),
+    /**
+     * The first-month offer (docs/plans/63-one-rupee-trial.md in the BrandBasket workspace): what that month cost, ₹1 or
+     * $1 in minor units, on a Social Media or Paid Ads line taken on the offer; null for a line without it.
+     */
+    trialPriceCents: integer("trial_price_cents"),
+    /** When the trial month ends, one calendar month after its payment; null until that payment is recorded. */
+    trialEndsAt: timestamp("trial_ends_at", { withTimezone: true }),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
   (table) => [
+    // One trial per business per plan, ever: a paid trial counts for good, an unpaid one only while it is open.
+    uniqueIndex("bundled_add_ons_one_trial_idx")
+      .on(table.businessId, table.addOn)
+      .where(sql`${table.trialPriceCents} is not null and (${table.status} <> 'removed' or ${table.trialEndsAt} is not null)`),
+    check(
+      "bundled_add_ons_trial_check",
+      sql`(${table.trialPriceCents} is null or (${table.addOn} in ('social-media', 'paid-ads') and ${table.trialPriceCents} > 0))
+        and (${table.trialEndsAt} is null or ${table.trialPriceCents} is not null)`,
+    ),
     // One live row per add-on: it can be taken again after an earlier one has stopped.
     uniqueIndex("bundled_add_ons_subscription_add_on_idx")
       .on(table.subscriptionId, table.addOn)

@@ -16,6 +16,7 @@ import { BrandSwitcher } from "./brand-switcher";
 import { SMALL_SOFT } from "./small-buttons";
 import { ApproveBar } from "./approve-bar";
 import { ChannelFilterProvider } from "./channel-filter";
+import { SocialTabs } from "./social-tabs";
 import { ChannelsSidebar, type ChannelRow } from "./channels-sidebar";
 import { ConnectStatusCard } from "./connect-status";
 import { NewPostButton, NewPostRequestProvider } from "./new-post-request";
@@ -56,6 +57,8 @@ export function SocialView({ data, notice, now, setup = [], savedWebsite = null 
   const canPost = connect !== null && connect.channels.length > 0;
   // Once posts have been written from the website, looking them over is a button beside New post, not a card.
   const hasReview = connect !== null && connect.ai !== null && connect.ai.jobs.length > 0;
+  // Numbers come from Instagram, Facebook and Google; LinkedIn gives none, so it alone does not earn the link.
+  const hasNumbers = connect !== null && connect.channels.some((channel) => channel.platform === "instagram" || channel.platform === "facebook" || channel.platform === "google");
   const brandView = data.brand?.view ?? null;
   const hasBrands = brandView !== null && (brandView.allowed > 1 || brandView.brands.filter((brand) => !brand.archived).length > 1);
   const frame = (
@@ -82,6 +85,7 @@ export function SocialView({ data, notice, now, setup = [], savedWebsite = null 
         )
       }
     >
+      {connect === null ? null : <SocialTabs current="posts" hasNumbers={hasNumbers} />}
       {notice === null ? null : (
         <p role={notice.ok ? "status" : "alert"} className={cn("text-[0.8125rem] font-semibold", notice.ok ? "text-sage-deep" : "text-error")}>
           {notice.text}
