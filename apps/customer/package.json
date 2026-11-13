@@ -9,7 +9,16 @@
     "lint": "eslint",
     "typecheck": "next typegen && tsc --noEmit",
     "test": "vitest run",
-    "e2e": "playwright test"
+    "e2e": "playwright test",
+    "pictures:backfill-copies": "pnpm --filter @brandbasket/db exec tsx --conditions=react-server --tsconfig ../../apps/customer/tsconfig.json ../../apps/customer/scripts/backfill-picture-copies.ts",
+    "retention:run": "pnpm --filter @brandbasket/db exec tsx --tsconfig ../../apps/customer/tsconfig.json ../../apps/customer/scripts/retention-run.ts",
+    "support:attachments:maintain": "pnpm --filter @brandbasket/db exec tsx --conditions=react-server --tsconfig ../../apps/customer/tsconfig.json ../../apps/customer/scripts/maintain-support-attachments.ts",
+    "google:provision": "pnpm --filter @brandbasket/db exec tsx --conditions=react-server --tsconfig ../../apps/customer/tsconfig.json ../../apps/customer/scripts/google-provision-run.ts",
+    "google:sync": "pnpm --filter @brandbasket/db exec tsx --conditions=react-server --tsconfig ../../apps/customer/tsconfig.json ../../apps/customer/scripts/google-sync-run.ts",
+    "site-health:run": "pnpm --filter @brandbasket/db exec tsx --conditions=react-server --tsconfig ../../apps/customer/tsconfig.json ../../apps/customer/scripts/site-health-run.ts",
+    "reports:run": "pnpm --filter @brandbasket/db exec tsx --conditions=react-server --tsconfig ../../apps/customer/tsconfig.json ../../apps/customer/scripts/monthly-reports-run.ts",
+    "cms:migrate": "PAYLOAD_CONFIG_PATH=../../packages/cms/payload.config.ts payload migrate",
+    "cms:migrate:status": "PAYLOAD_CONFIG_PATH=../../packages/cms/payload.config.ts payload migrate:status"
   },
   "dependencies": {
     "@base-ui/react": "1.9.0",

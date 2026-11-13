@@ -1,0 +1,32 @@
+import { getCustomerBusinessEntry, isAwaitingMembership } from "@/platform/lib/server/customer-access";
+import { getCustomerTenant } from "@/platform/lib/server/customer-tenant";
+import { getAppDb, getStaffDb } from "@/platform/lib/server/db";
+import { serverEnv } from "@/platform/lib/server/env";
+import { canAddListingPictures } from "@/platform/lib/server/listing-pictures";
+import { BUSY_MESSAGE, BUSY_RETRY_AFTER_SECONDS, hasDecodeCapacity } from "@brandbasket/shared/server/media-upload";
+import { consumeUploadAllowance } from "@/platform/lib/server/onboarding-media";
+import { handleProductPhotoRequest } from "@/platform/lib/server/product-photo-request";
+import { storeProductPhoto } from "@/platform/lib/server/product-photos";
+import { allowsAnyLocalHost } from "@/platform/lib/surfaces";
+import { getMediaStorage } from "@brandbasket/shared/server/media-storage";
+
+/**
+ * A product's photo: `POST /api/product-photos?product=<id>`, the raw image bytes. Under /api/ for the same reasons as
+ * /api/listing-pictures: proxy.ts skips the prefix, so Next never copies the body for the proxy, and the handler
+ * checks the Host itself. The upload shares the business's hourly image budget with every other upload. See
+ * handleProductPhotoRequest for the checks and their order.
+ */
+export async function POST(request: Request): Promise<Response> {
+  return handleProductPhotoRequest(request, {
+    getTenant: getCustomerTenant,
+    appOrigin: serverEnv().APP_ORIGIN,
+    anyLocalHost: allowsAnyLocalHost(process.env),
+    // The same rule as the listing's pictures: a paid-up member with a listing.
+    canAddPhotos: async (tenant) =>
+      !isAwaitingMembership(await getCustomerBusinessEntry(tenant.userId, tenant.businessId)) &&
+      (await canAddListingPictures(getAppDb(), tenant)),
+    decodeBusy: () => (hasDecodeCapacity() ? null : { message: BUSY_MESSAGE, retryAfterSeconds: BUSY_RETRY_AFTER_SECONDS }),
+    consumeAllowance: (tenant) => consumeUploadAllowance(getAppDb(), tenant),
+    store: (tenant, productId, bytes) => storeProductPhoto({ staffDb: getStaffDb(), storage: getMediaStorage() }, tenant, productId, bytes),
+  });
+}

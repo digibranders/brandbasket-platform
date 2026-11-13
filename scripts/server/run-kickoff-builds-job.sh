@@ -4,16 +4,16 @@
 # starts the website build for every customer whose kickoff call is over (docs/kickoff-builds.md). Installed on the VPS as
 # /usr/local/sbin/brandbasket-kickoff-builds-job (root-owned) and run by brandbasket-kickoff-builds.service as the brandbasket user.
 #
-# Assumes: the dashboard is up on 127.0.0.1:3201 and KICKOFF_SYNC_TOKEN is set in the env file.
+# Assumes: the customer app is up on 127.0.0.1:3202 and KICKOFF_SYNC_TOKEN is set in the env file.
 # The token is passed to curl on its standard input, so it never appears in the process list. Fails (exit 1) on any answer but
 # 2xx and still prints the report, so systemd and journalctl show a failed run: 502 means a build could not be started. Takes no
 # action in the database itself, and is safe to run as often as wanted.
 #
-#   run-kickoff-builds-job.sh --env-file /srv/brandbasket/shared/platform.env.local [--url URL]
+#   run-kickoff-builds-job.sh --env-file /srv/brandbasket/shared/customer.env.production [--url URL]
 set -euo pipefail
 
 ENV_FILE=""
-URL="http://127.0.0.1:3201/api/internal/start-builds-after-kickoff"
+URL="http://127.0.0.1:3202/api/internal/start-builds-after-kickoff"
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --env-file) ENV_FILE="${2:?--env-file needs a path}"; shift 2 ;;

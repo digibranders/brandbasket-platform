@@ -74,6 +74,16 @@ const LITERAL_RULES = [
   ...literalRules(SPACING_CLASS, SPACING_MESSAGE),
 ];
 
+// src/platform holds server code moved from apps/platform unchanged (the public API routes, webhooks and jobs it still serves),
+// so its dates and numbers are written the way that code always wrote them. Nothing there renders UI. The only old-UI import is
+// the BrandLogo type in brand.ts, so that one path is let through the ban on @brandbasket/shared/ui.
+const PLATFORM_IMPORTS = [
+  ...BANNED_IMPORTS.map((pattern) =>
+    pattern.group?.includes("@brandbasket/shared/ui") ? { ...pattern, group: [...pattern.group.filter((entry) => entry !== "@brandbasket/shared/ui"), "!@brandbasket/shared/ui/logo"] } : pattern,
+  ),
+  PHOSPHOR,
+];
+
 const eslintConfig = defineConfig([
   ...nextVitals,
   ...nextTs,
@@ -98,11 +108,14 @@ const eslintConfig = defineConfig([
     },
   },
   { files: ["src/ui/icon.tsx"], rules: { "no-restricted-imports": restrictedImports(UI_BOUNDARY) } },
+  { files: ["src/platform/**/*.{ts,tsx}"], rules: { "no-restricted-imports": ["error", { patterns: PLATFORM_IMPORTS }] } },
+  // A moved test builds a coloured test image from a hex fixture (listing-pictures.test.ts); no UI is drawn.
+  { files: ["src/platform/**/*.test.ts"], rules: { "no-restricted-syntax": "off" } },
 
   // Numbers, money and dates are written by src/lib/format.ts only (plan 60, section 12).
   {
     files: SOURCES,
-    ignores: ["src/lib/format.ts", ...TESTS],
+    ignores: ["src/lib/format.ts", "src/platform/**", ...TESTS],
     rules: {
       "no-restricted-properties": [
         "error",

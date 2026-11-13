@@ -4,18 +4,18 @@
 # project of every client whose website has ended and unpauses the ones that paid (docs/site-hosting.md). Installed on the
 # server as /usr/local/sbin/brandbasket-site-hosting-job (root-owned) and run by brandbasket-site-hosting.service as the app user.
 #
-# Assumes: the dashboard is up on 127.0.0.1:3201 and SITE_HOSTING_SYNC_TOKEN is set in the env file.
+# Assumes: the customer app is up on 127.0.0.1:3202 and SITE_HOSTING_SYNC_TOKEN is set in the env file.
 # The token is passed to curl on its standard input, so it never appears in the process list. Fails (exit 1) on any answer but
 # 2xx and still prints the report, so systemd and journalctl show a failed run: 409 means the safety brake stopped a batch of
 # pauses, 502 means the host refused a change. Takes no action in the database itself.
 #
-#   run-site-hosting-job.sh --env-file /srv/brandbasket/shared/platform.env.local [--dry-run] [--url URL]
+#   run-site-hosting-job.sh --env-file /srv/brandbasket/shared/customer.env.production [--dry-run] [--url URL]
 # --dry-run asks the endpoint to report what it WOULD change without changing anything (?dryRun=1). Safe to run any time.
 set -euo pipefail
 
 ENV_FILE=""
 DRY=0
-URL="http://127.0.0.1:3201/api/internal/sync-site-hosting"
+URL="http://127.0.0.1:3202/api/internal/sync-site-hosting"
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --env-file) ENV_FILE="${2:?--env-file needs a path}"; shift 2 ;;

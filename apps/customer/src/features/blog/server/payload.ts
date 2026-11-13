@@ -17,7 +17,8 @@ const cmsEnvSchema = z.object({
 
 let config: ReturnType<typeof buildCmsConfig> | undefined;
 
-function cmsConfig(): ReturnType<typeof buildCmsConfig> {
+/** The CMS config, built on first use (also for the tenant sync in src/platform, which takes a config). */
+export function blogCmsConfig(): ReturnType<typeof buildCmsConfig> {
   if (config === undefined) {
     const parsed = cmsEnvSchema.safeParse(process.env);
     if (!parsed.success) {
@@ -30,5 +31,5 @@ function cmsConfig(): ReturnType<typeof buildCmsConfig> {
 
 /** The shared Payload instance (Payload caches it per process). */
 export function getBlogPayload(): Promise<Payload> {
-  return getPayload({ config: cmsConfig() });
+  return getPayload({ config: blogCmsConfig() });
 }
