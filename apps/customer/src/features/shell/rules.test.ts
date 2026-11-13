@@ -36,7 +36,7 @@ describe("navModel", () => {
   it("follows the mock once the kickoff call is over", () => {
     expect(shape(LIVE)).toEqual([
       [null, ["Home", "Enquiries", "Requests"]],
-      ["Services", ["Website", "Social & Ads", "Local SEO + AEO"]],
+      ["Services", ["Website", "Social media", "Paid Ads", "Local SEO + AEO"]],
       ["Business", ["Reports", "Business profile"]],
     ]);
     expect(navModel(LIVE).foot.map((entry) => entry.label)).toEqual(["Plan & billing", "Settings", "Help & calls"]);
@@ -59,8 +59,9 @@ describe("navModel", () => {
   });
 
   it("keeps a service not bought, marked as such, still linking to its page", () => {
-    const social = link("Social & Ads", { ...LIVE, services: ["website"] });
+    const social = link("Social media", { ...LIVE, services: ["website"] });
     expect(social).toMatchObject({ href: "/social", bought: false, service: "social", children: [] });
+    expect(link("Paid Ads", { ...LIVE, services: ["website"] })).toMatchObject({ href: "/ads", bought: false });
     expect(link("Website", { ...LIVE, services: ["website"] })).toMatchObject({ bought: true });
   });
 
@@ -87,7 +88,7 @@ describe("navModel", () => {
   it("points every link at a page of the route map (plan 61, section 3)", () => {
     const model = navModel(LIVE);
     const hrefs = [...model.sections.flatMap((section) => section.links), ...model.foot].map((entry) => entry.href);
-    expect(hrefs).toEqual(["/", "/enquiries", "/requests", "/website", "/social", "/search", "/reports", "/business", "/billing", "/settings", "/help"]);
+    expect(hrefs).toEqual(["/", "/enquiries", "/requests", "/website", "/social", "/ads", "/search", "/reports", "/business", "/billing", "/settings", "/help"]);
   });
 });
 
@@ -133,7 +134,7 @@ describe("phoneTabs", () => {
       const found = menu(id);
       return found?.kind === "menu" ? found.links.map((entry) => entry.label) : [];
     };
-    expect(links("services")).toEqual(["Website", "Social & Ads", "Local SEO + AEO"]);
+    expect(links("services")).toEqual(["Website", "Social media", "Paid Ads", "Local SEO + AEO"]);
     expect(links("more")).toEqual(["Reports", "Business profile", "Plan & billing", "Settings", "Help & calls"]);
   });
 });

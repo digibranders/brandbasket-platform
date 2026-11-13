@@ -4,32 +4,27 @@ import { loadSetupAsks } from "@/features/setup/loader";
 import { formatDate, formatNumber } from "@/lib/format";
 import type { CustomerContext } from "@/lib/guards";
 import { load, type Loaded } from "@/lib/loaded";
-import { Badge, Icon, LinkButton, Meter, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/ui";
-import { loadAccounts, loadAds, loadCampaigns, loadPosts, loadReach, loadReportLink, loadWaitingPostCount, type AdsData, type PostsView } from "../loader";
+import { Banner, Meter, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/ui";
+import type { NoticeLine } from "../accounts/rules";
+import type { Platform } from "../analytics/rules";
+import { loadAds, loadCampaigns, loadChannelsColumn, loadPosts, loadReach, loadReportLink, type AdsData, type PostsView } from "../loader";
 import {
   AD_LEADS_NOTE,
-  ASK_FOR_CHANGE_HREF,
   campaignsUpdatedAt,
   monthCounts,
   monthLine,
-  SOCIAL_ACCOUNTS_PATH,
-  SOCIAL_ADS_PATH,
-  SOCIAL_CONTENT_PATH,
   SOCIAL_PATH,
   type CampaignRow,
   type ReachView,
 } from "../rules";
-import { ApprovalsSection, CalendarPanel, DEFAULT_DESCRIPTION, SocialHeader, Stack, ThisWeekPanel, waitingIn } from "./parts";
+import { ChannelsColumn } from "./channels-column";
+import { AdsHeader, ApprovalsSection, CalendarPanel, DEFAULT_DESCRIPTION, SocialHeader, SocialLayout, Stack, ThisWeekPanel, waitingIn } from "./parts";
 
 interface ScreenProps {
   readonly customer: CustomerContext;
   readonly now?: Date;
-}
-
-/** The count on the Content tab for a tab that does not load the posts itself. */
-async function waitingFor(customer: CustomerContext): Promise<number | null> {
-  const count = await load("social.waiting", () => loadWaitingPostCount(customer));
-  return count.ok ? count.data.count : null;
+  /** What the network said when it sent the customer back (`?social=connected` and the like), for the Accounts page. */
+  readonly notice?: NoticeLine | null;
 }
 
 /** The metrics we have a source for, each left out when it is unknown: never a zero that means "we do not know". */
@@ -57,24 +52,37 @@ function reachMetrics(reach: ReachView): Metric[] {
   ];
 }
 
-/** Social & Ads Overview: approvals first, then the month's figures that have a source, and this week's posts. */
-export async function SocialOverview({ customer, now = new Date() }: ScreenProps) {
-  const [posts, ads, reach, report, asks] = await Promise.all([
+/** The month's posts, filtered to one channel when the person tapped one. Posts made before the channel column existed have none, and show only under all. */
+const inChannel = (posts: Loaded<PostsView>, channel: "all" | Platform): Loaded<PostsView> =>
+  !posts.ok || channel === "all" ? posts : { ok: true, data: { ...posts.data, posts: posts.data.posts.filter((post) => post.channel === channel) } };
+
+/**
+ * Social media: the accounts down the side, the posts waiting for the customer's OK as they will look, the month's calendar and
+ * the month's figures that have a source. Each panel is drawn only when its numbers exist, and a failed read is its own error.
+ */
+export async function SocialOverview({ customer, now = new Date(), notice = null, channel = "all" }: ScreenProps & { readonly channel?: "all" | Platform }) {
+  const [allPosts, ads, reach, report, asks, column] = await Promise.all([
     load("social.posts", () => loadPosts(customer, now)),
     load("social.ads", () => loadAds(customer, now)),
     load("social.reach", () => loadReach(customer, now)),
     load("social.report", () => loadReportLink(customer, "social")),
     load("social.setup", () => loadSetupAsks(customer, "social")),
+    load("social.channels", () => loadChannelsColumn(customer, now)),
   ]);
-  const strip = metrics(posts, ads, now);
+  const posts = inChannel(allPosts, channel);
+  const strip = metrics(allPosts, ads, now);
   const reachStrip = reach.ok && reach.data !== null ? reachMetrics(reach.data) : [];
-  const line = posts.ok ? monthLine(posts.data.posts, now) : null;
+  const line = allPosts.ok ? monthLine(allPosts.data.posts, now) : null;
   return (
-    <>
-      <SocialHeader customer={customer} current={SOCIAL_PATH} waiting={waitingIn(posts)} description={line ?? DEFAULT_DESCRIPTION} reportHref={report.ok ? report.data : null} />
+    <SocialLayout
+      column={<ChannelsColumn data={column} hint="Tap a channel to see only its posts." selected={channel} hrefFor={(next) => (next === "all" ? SOCIAL_PATH : `${SOCIAL_PATH}?channel=${next}`)} canChange={customer.role !== "viewer"} />}
+    >
+      <SocialHeader customer={customer} current={SOCIAL_PATH} waiting={waitingIn(allPosts)} description={line ?? DEFAULT_DESCRIPTION} reportHref={report.ok ? report.data : null} />
       <Stack>
+        {notice === null ? null : <Banner tone={notice.ok ? "pos" : "neg"}>{notice.text}</Banner>}
         {customer.role === "viewer" ? null : asks.ok ? <SetupCard asks={asks.data} /> : <Panel title="What we need from you"><PanelError failure={asks.error} what="what we need from you" /></Panel>}
-        <ApprovalsSection customer={customer} posts={posts} layout="rows" now={now} />
+        <ApprovalsSection customer={customer} posts={posts} layout="cards" now={now} />
+        {posts.ok ? <CalendarPanel posts={posts.data.posts} now={now} month={posts.data.month} /> : null}
         {strip.length === 0 ? null : <MetricStrip label="This month" metrics={strip} />}
         {reachStrip.length === 0 ? null : <MetricStrip label="Social reach" metrics={reachStrip} />}
         {reach.ok ? null : (
@@ -89,34 +97,16 @@ export async function SocialOverview({ customer, now = new Date() }: ScreenProps
         )}
         {posts.ok ? <ThisWeekPanel posts={posts.data.posts} now={now} /> : null}
       </Stack>
-    </>
-  );
-}
-
-/** Content: the posts waiting for approval as they will look, and the month's calendar. */
-export async function SocialContent({ customer, now = new Date() }: ScreenProps) {
-  const posts = await load("social.posts", () => loadPosts(customer, now));
-  return (
-    <>
-      <SocialHeader customer={customer} current={SOCIAL_CONTENT_PATH} waiting={waitingIn(posts)} />
-      <Stack>
-        <ApprovalsSection customer={customer} posts={posts} layout="cards" now={now} />
-        {posts.ok ? <CalendarPanel posts={posts.data.posts} now={now} month={posts.data.month} /> : null}
-      </Stack>
-    </>
+    </SocialLayout>
   );
 }
 
 /** Ads: spend against budget, leads and cost per lead from the month's figures, and the ad money we add. Panels without a source are not drawn. */
 export async function SocialAds({ customer, now = new Date() }: ScreenProps) {
-  const [ads, campaigns, waiting] = await Promise.all([
-    load("social.ads", () => loadAds(customer, now)),
-    load("social.campaigns", () => loadCampaigns(customer, now)),
-    waitingFor(customer),
-  ]);
+  const [ads, campaigns] = await Promise.all([load("social.ads", () => loadAds(customer, now)), load("social.campaigns", () => loadCampaigns(customer, now))]);
   return (
     <>
-      <SocialHeader customer={customer} current={SOCIAL_ADS_PATH} waiting={waiting} />
+      <AdsHeader customer={customer} />
       <Stack>
         <PanelData
           data={ads}
@@ -207,59 +197,3 @@ function Row({ label, value }: { readonly label: string; readonly value: string 
     </div>
   );
 }
-
-const STATUS_BADGE = {
-  connected: <Badge tone="pos" icon="Check">Connected</Badge>,
-  needs_attention: <Badge tone="warn" icon="Warning">Needs attention</Badge>,
-  not_connected: <Badge>Not connected</Badge>,
-} as const;
-
-/** Accounts: the accounts we look after and whether we can post to each. Read only: we keep this list. */
-export async function SocialAccounts({ customer, now = new Date() }: ScreenProps) {
-  const [accounts, waiting] = await Promise.all([load("social.accounts", () => loadAccounts(customer)), waitingFor(customer)]);
-  return (
-    <>
-      <SocialHeader customer={customer} current={SOCIAL_ACCOUNTS_PATH} waiting={waiting} />
-      <PanelData
-        data={accounts}
-        title="Connected accounts"
-        what="your accounts"
-        flush
-        isEmpty={(rows) => rows.length === 0}
-        empty={{ icon: "Link", title: "No accounts are listed yet.", description: "Your Instagram, Facebook and Google accounts appear here once we have connected them." }}
-      >
-        {(rows) => (
-          <ul>
-            {rows.map((row) => (
-              <li key={row.platform} className="flex items-center gap-3 border-b border-border-subtle px-4 py-3 last:border-b-0">
-                <span className="inline-flex size-9 shrink-0 items-center justify-center rounded-control bg-neutral-wash text-ink-2">
-                  <Icon name={row.icon} />
-                </span>
-                <div className="min-w-0 flex-1">
-                  <p className="type-body font-medium text-ink">{row.label}</p>
-                  <p className="truncate type-meta">
-                    {row.url === null ? (
-                      (row.handle ?? "")
-                    ) : (
-                      <a href={row.url} target="_blank" rel="noopener noreferrer" className="hover:text-ink">
-                        {row.handle ?? row.url}
-                      </a>
-                    )}
-                    {row.checkedAt === null ? "" : `${row.handle === null && row.url === null ? "" : ". "}Checked ${formatDate(row.checkedAt, now)}`}
-                  </p>
-                </div>
-                {STATUS_BADGE[row.status]}
-                {row.status === "not_connected" && customer.role !== "viewer" ? (
-                  <LinkButton href={ASK_FOR_CHANGE_HREF} size="sm">
-                    Connect
-                  </LinkButton>
-                ) : null}
-              </li>
-            ))}
-          </ul>
-        )}
-      </PanelData>
-    </>
-  );
-}
-

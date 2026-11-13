@@ -10,6 +10,8 @@ import {
   withTenantScope,
 } from "@brandbasket/db";
 import { getAppDb } from "@/lib/db";
+import { loadLiveAccounts } from "./accounts/loader";
+import { postingServiceSettings, type Platform } from "./analytics/rules";
 import type { CustomerContext } from "@/lib/guards";
 import {
   accountRows,
@@ -28,7 +30,7 @@ import {
   type ReachView,
 } from "./rules";
 
-type Reader = Pick<CustomerContext, "tenant" | "businessId">;
+type Reader = Pick<CustomerContext, "tenant" | "businessId" | "businessName">;
 
 /*
  * One function per panel. Each throws when its read fails; the screen wraps it in `load`, so a failed read becomes that
@@ -98,4 +100,38 @@ export async function loadReportLink(customer: Reader, service: "social" | "sear
 
 export async function loadAccounts(customer: Pick<CustomerContext, "tenant">): Promise<readonly AccountRow[]> {
   return accountRows(await withTenantScope(getAppDb(), customer.tenant, (tx) => listConnectedAccounts(tx)));
+}
+
+export interface ChannelsColumnRow {
+  readonly id: string;
+  readonly platform: Platform;
+  readonly account: string;
+  /** "Ends in 5 days" when the connection ends soon or has, else null. Only a live connection has an end. */
+  readonly ending: string | null;
+  readonly paused: boolean;
+}
+
+export interface ChannelsColumnData {
+  readonly rows: readonly ChannelsColumnRow[];
+  /** The networks with no account yet, which get a Connect button. Empty without a posting service. */
+  readonly missing: readonly Platform[];
+  /** True when the rows come from the posting service, so the person can connect and reconnect here. */
+  readonly live: boolean;
+}
+
+/**
+ * The accounts down the side of the Social media pages. With a posting service on this server they are the accounts posts
+ * really go to, and the person can connect more; without one, the accounts staff keep in the database, read only.
+ */
+export async function loadChannelsColumn(customer: Reader, now: Date): Promise<ChannelsColumnData> {
+  if (postingServiceSettings(process.env) !== null) {
+    const live = await loadLiveAccounts(customer, now);
+    return { rows: live.rows.map((row) => ({ id: row.id, platform: row.platform, account: row.account, ending: row.ending, paused: row.paused })), missing: live.missing, live: true };
+  }
+  const rows = await loadAccounts(customer);
+  const shown = rows.flatMap((row): ChannelsColumnRow[] => {
+    const platform = row.platform === "google_business" ? "google" : row.platform;
+    return platform === "instagram" || platform === "facebook" || platform === "linkedin" || platform === "google" ? [{ id: row.platform, platform, account: row.handle ?? row.label, ending: null, paused: false }] : [];
+  });
+  return { rows: shown, missing: [], live: false };
 }

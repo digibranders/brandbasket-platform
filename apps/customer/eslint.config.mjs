@@ -78,6 +78,9 @@ const eslintConfig = defineConfig([
   ...nextVitals,
   ...nextTs,
   globalIgnores([".next/**", "out/**", "build/**", "next-env.d.ts"]),
+  // The old Social media page, copied as it was (owner decision, 2026-11-12). It uses the old app's classes, icons and Intl, which the rules
+  // above refuse for new code, so this folder is outside them until the page is rebuilt on src/ui.
+  globalIgnores(["src/legacy-social/**"]),
 
   {
     files: SOURCES,
