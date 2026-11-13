@@ -6,7 +6,7 @@ import { load } from "@/lib/loaded";
 import { Banner, Icon, Meter, Table, TableBody, TableCell, TableHead, TableHeader, TableRow, type IconName } from "@/ui";
 import { ConnectButton } from "../../accounts/components/connect-button";
 import { SOCIAL_ANALYTICS_PATH } from "../../rules";
-import { BrandSwitcher } from "@/legacy-social/components/brand-switcher";
+import { BrandControl } from "@/legacy-social/components/brand-switcher";
 import { brandOf } from "../../brand";
 import { ChannelsColumn } from "../../components/channels-column";
 import { SocialHeader, SocialLayout, Stack } from "../../components/parts";
@@ -228,8 +228,8 @@ export async function SocialAnalytics({ customer, range, channel, now = new Date
   const [data, column] = await Promise.all([load("social.analytics", () => loadAnalytics(customer, now, range)), load("social.channels", () => loadChannelsColumn(customer, now))]);
   const hrefFor = (next: "all" | AnalyticsChannel | "linkedin") => (next === "all" ? SOCIAL_ANALYTICS_PATH : `${SOCIAL_ANALYTICS_PATH}?channel=${next}&range=${range}`);
   return (
-    <SocialLayout column={<ChannelsColumn data={column} hint="Tap a channel to see only its numbers." selected={channel} hrefFor={hrefFor} canChange={customer.role !== "viewer"} />}>
-      <SocialHeader customer={customer} current={SOCIAL_ANALYTICS_PATH} waiting={null} description={DESCRIPTION} extra={brand.view === null ? null : <BrandSwitcher view={brand.view} current={brand.externalId} />} />
+    <SocialLayout column={<ChannelsColumn data={column} selected={channel} hrefFor={hrefFor} canChange={customer.role !== "viewer"} />}>
+      <SocialHeader customer={customer} current={SOCIAL_ANALYTICS_PATH} waiting={null} description={DESCRIPTION} extra={<BrandControl view={brand.view} current={brand.externalId} name={brand.name} />} />
       <Stack>
         {!data.ok ? (
           <Panel title="Analytics">

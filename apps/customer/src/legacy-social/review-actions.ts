@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache";
 import { unstable_rethrow } from "next/navigation";
 import { z } from "zod";
 import { requireService, type CustomerContext } from "@/lib/guards";
-import { actorOf, addNetwork, decideBatch, decideCarousel, decidePoster, drawBatch, loadTopics, makeCarousel, setCarouselWeekly, SocialAutoError, socialAutoSettings, type SocialAutoSettings } from "@/legacy-social/server/social-auto";
+import { actorOf, addNetwork, decideBatch, decideCarousel, decidePoster, drawBatch, loadTopics, moveTopic, replaceTopic, makeCarousel, setCarouselWeekly, SocialAutoError, socialAutoSettings, type SocialAutoSettings } from "@/legacy-social/server/social-auto";
 import { brandOf, type SocialBrand } from "@/features/social/brand";
 import { wordsForCode } from "@/legacy-social/lib/social/ai";
 import { CHANNEL_PLATFORMS, PLATFORM_NAMES } from "@/legacy-social/lib/social/auto";
@@ -74,6 +74,24 @@ export async function decideBatchAction(formData: FormData): Promise<NewPostStat
   return run("change a written post", async ({ settings, brand, actor }) => {
     await decideBatch(settings, brand.externalId, d.batchId, d.action === "edit" ? { action: "edit", postId: d.postId, caption: d.caption, ...(d.network === undefined ? {} : { network: d.network }), ...(d.headline === undefined ? {} : { headline: d.headline }) } : { action: d.action, postId: d.postId }, actor);
   });
+}
+
+/** Moves a topic to another day of its week by dragging its card or picking a day. The week's other topics stay where they are. */
+export async function moveTopicAction(formData: FormData): Promise<NewPostState> {
+  const parsed = z.object({ batchId: ID, postId: ID, day: z.string().regex(/^\d{4}-\d{2}-\d{2}$/) }).safeParse({ batchId: formData.get("batchId"), postId: formData.get("postId"), day: formData.get("day") });
+  if (!parsed.success) return badForm();
+  return run("move a topic", async ({ settings, brand, actor }) => {
+    const moved = await moveTopic(settings, brand.externalId, parsed.data.batchId, parsed.data.postId, parsed.data.day, actor);
+    // The words are not rewritten for the new day, so a topic that names one (Friday, tomorrow) is flagged for her to check.
+    return moved.wordsNameADay ? "Moved. The words of this topic name a day, so read them again to see they still fit." : undefined;
+  });
+}
+
+/** "New topic": asks for a new topic in place of a post the customer dropped. It is written in the background; the page shows it when it is ready. */
+export async function replaceTopicAction(formData: FormData): Promise<NewPostState> {
+  const parsed = z.object({ batchId: ID, postId: ID }).safeParse({ batchId: formData.get("batchId"), postId: formData.get("postId") });
+  if (!parsed.success) return badForm();
+  return run("write a new topic", async ({ settings, brand, actor }) => void (await replaceTopic(settings, brand.externalId, parsed.data.batchId, parsed.data.postId, actor)));
 }
 
 /** "Draw my pictures": asks for pictures for the posts the customer kept. This is what costs money, so social-auto limits it. */

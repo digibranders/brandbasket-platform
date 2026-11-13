@@ -106,6 +106,7 @@ describe("words and the address", () => {
   it("finds the posting service only when both its address and key are set", () => {
     expect(postingServiceSettings({})).toBeNull();
     expect(postingServiceSettings({ SOCIAL_AUTO_URL: "http://127.0.0.1:4020/", SOCIAL_AUTO_KEY: " k " })).toEqual({ url: "http://127.0.0.1:4020", key: "k" });
+    expect(postingServiceSettings({ SOCIAL_AUTO_URL: "https://social.example.com/publisher/?x=1#y", SOCIAL_AUTO_KEY: "k" })).toEqual({ url: "https://social.example.com/publisher", key: "k" });
     expect(postingServiceSettings({ SOCIAL_AUTO_URL: "not a url", SOCIAL_AUTO_KEY: "k" })).toBeNull();
     expect(postingServiceSettings({ SOCIAL_AUTO_URL: "http://127.0.0.1:4020" })).toBeNull();
   });

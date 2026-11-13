@@ -1,53 +1,54 @@
 import Link from "next/link";
 import type { ReactElement } from "react";
-import { PageFrame } from "./page-frame";
 import { localDateIn } from "@brandbasket/shared/lib/calendar/local-date";
 import { BRAND_TIME_ZONE } from "@/legacy-social/shims";
 import type { SocialReview } from "@/legacy-social/server/social-review";
 import { jobIsActive, jobLine } from "@/legacy-social/lib/social/ai";
 import { dayLabel, PLATFORM_NAMES } from "@/legacy-social/lib/social/auto";
 import { groupReview } from "@/legacy-social/lib/social/review-cards";
-import { BrandSwitcher } from "./brand-switcher";
+import { replaceStates } from "@/legacy-social/lib/social/review-flow";
+import { BrandControl } from "./brand-switcher";
 import { CarouselCard } from "./carousel-card";
 import { DismissibleNotice } from "./dismissible-notice";
 import { NetworksPanel } from "./networks-panel";
 import { SMALL_SOFT } from "./small-buttons";
-import { PostsPanel } from "./posts-panel";
+import { ReviewChannelsColumn, ReviewFlowProvider, ReviewWorkspace } from "./review-workspace";
 import { ReviewRefresher } from "./review-refresher";
 
 /** Look over the posts written from the website: the facts they came from, the words for each network, and the pictures. */
 export function ReviewView({ review, canChange = true }: { readonly review: SocialReview; /** False for a viewer, who may look at the carousel but not decide it. */ readonly canChange?: boolean }): ReactElement {
   const active = review.jobs.find(jobIsActive);
   return (
-    <PageFrame
-      title="Look over your posts"
-      lede="Check what we found, keep the posts you like, and approve the pictures. Nothing is drawn or posted until you say so."
-      action={
-        <div className="flex flex-wrap items-center gap-2">
-          {review.brand?.view == null ? null : <BrandSwitcher view={review.brand.view} current={review.brand.externalId} />}
-          <Link href="/social" className={SMALL_SOFT}>
-            Back to Social media
-          </Link>
-        </div>
-      }
+    <ReviewFlowProvider
+      groups={groupReview(review.batches, [...review.waiting, ...review.approved], review.topics)}
+      drawing={review.jobs.filter((job) => job.kind === "draw" && jobIsActive(job) && job.batchId !== undefined).map((job) => job.batchId ?? "")}
+      reasons={review.reasons}
+      channels={review.channels}
+      replacing={replaceStates(review.jobs)}
+      today={localDateIn(BRAND_TIME_ZONE, new Date())}
     >
+      {/* On a wide screen the channels column steps out of the shell's gutter and sits against the menu, as on the Posts and Analytics pages. */}
+      <div className="flex flex-col gap-6 lg:-mt-5 lg:-ml-gutter lg:flex-row lg:gap-8">
+        <ReviewChannelsColumn />
+        <div className="order-first min-w-0 flex-1 lg:order-none lg:pt-5">
+          <div className="mr-auto grid w-full max-w-[97.5rem] grid-cols-[minmax(0,1fr)] gap-6 md:gap-8">
+            <header className="flex flex-wrap items-start justify-between gap-4">
+              <div className="min-w-0">
+                <h1 className="type-title text-ink">Look over your posts</h1>
+                <p className="mt-1 type-meta">Check what we found, keep the posts you like, and approve the pictures. Nothing is drawn or posted until you say so.</p>
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                {review.brand == null ? null : <BrandControl view={review.brand.view} current={review.brand.externalId} name={review.brand.name} />}
+                <Link href="/social" className={SMALL_SOFT}>
+                  Back to Social media
+                </Link>
+              </div>
+            </header>
       {review.unavailable ? (
         <p role="alert" className="text-[0.8125rem] font-semibold text-error">
           We could not reach the posting service just now, so some of this may be missing. Try again in a few minutes.
         </p>
       ) : null}
-      {review.limits === null || review.limits.channels.length === 0 ? null : (
-        <p className="text-[0.8125rem] text-ink-2">
-          Pictures left this week:{" "}
-          {review.limits.channels.map((channel, index) => (
-            <span key={channel.network}>
-              {index === 0 ? "" : ", "}
-              {PLATFORM_NAMES[channel.network]} {channel.left} of {channel.limit}
-            </span>
-          ))}
-          . Each network gets its own picture, and the count starts again on {dayLabel(review.limits.restart, { day: "numeric", month: "long" })}.
-        </p>
-      )}
       {review.expired.batches.length === 0 && review.expired.pictures.length === 0 ? null : (
         <DismissibleNotice id={`expired:${review.expired.batches.length}:${review.expired.pictures.length}`}>
           <p>Some of your posts were put away because nobody decided within 14 days.</p>
@@ -72,11 +73,14 @@ export function ReviewView({ review, canChange = true }: { readonly review: Soci
       {/* Nothing could be read: say so once, above, and do not also say that nothing is waiting, which would not be true. */}
       {review.unavailable && review.batches.length === 0 && review.waiting.length === 0 && review.approved.length === 0 ? null : (
         <>
-          <CarouselCard summary={review.carousels[0]} detail={review.carousel} canMake={review.canMakeCarousel} canChange={canChange} making={review.jobs.some((job) => job.kind === "carousel" && jobIsActive(job))} weekly={review.weeklyCarousel} />
           <NetworksPanel missing={review.missingNetworks} busy={review.jobs.some((job) => job.kind === "network" && jobIsActive(job))} />
-          <PostsPanel groups={groupReview(review.batches, [...review.waiting, ...review.approved], review.topics)} drawing={review.jobs.filter((job) => job.kind === "draw" && jobIsActive(job) && job.batchId !== undefined).map((job) => job.batchId ?? "")} reasons={review.reasons} />
+          <ReviewWorkspace />
+          <CarouselCard summary={review.carousels[0]} detail={review.carousel} canMake={review.canMakeCarousel} canChange={canChange} making={review.jobs.some((job) => job.kind === "carousel" && jobIsActive(job))} weekly={review.weeklyCarousel} />
         </>
       )}
-    </PageFrame>
+          </div>
+        </div>
+      </div>
+    </ReviewFlowProvider>
   );
 }

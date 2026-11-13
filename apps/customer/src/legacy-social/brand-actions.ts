@@ -7,7 +7,7 @@ import { unstable_rethrow } from "next/navigation";
 import { z } from "zod";
 import { requireService, type CustomerContext } from "@/lib/guards";
 import { fetchBrands } from "@/features/social/brand";
-import { archiveBrand, createBrand, SocialAutoError, socialAutoSettings, type SocialAutoSettings } from "@/legacy-social/server/social-auto";
+import { archiveBrand, createBrand, ensureWorkspace, renameBrand, SocialAutoError, socialAutoSettings, type SocialAutoSettings } from "@/legacy-social/server/social-auto";
 import { wordsForCode } from "@/legacy-social/lib/social/ai";
 import { BRAND_COOKIE, brandIdFor, brandKeyFrom, isBrandOf, type BrandsView } from "@/features/social/brands";
 import type { NewPostState } from "@/legacy-social/lib/social/new-post";
@@ -95,4 +95,43 @@ export async function archiveBrandAction(formData: FormData): Promise<NewPostSta
     // Archiving the brand being looked at sends her back to the first one that is left.
     if (archived) (await cookies()).delete(BRAND_COOKIE);
   });
+}
+
+const renameSchema = z.object({ brand: ID, name: nameSchema });
+
+/** Gives a brand another name, here and on the staff dashboard. Pictures and captions keep the name written on the brand's website. */
+export async function renameBrandAction(formData: FormData): Promise<NewPostState> {
+  const parsed = renameSchema.safeParse({ brand: formData.get("brand"), name: formData.get("name") });
+  if (!parsed.success) return { status: "error", message: parsed.error.issues[0]?.message ?? "Write the brand's name." };
+  return run("rename a brand", async ({ tenant, settings, view }) => {
+    const brand = view.brands.find((one) => one.externalId === parsed.data.brand && isBrandOf(tenant.businessId, one.externalId));
+    if (brand === undefined) throw new SocialAutoError("not one of the business's brands", 404, null, "NOT_FOUND");
+    await renameBrand(settings, brand.externalId, parsed.data.name);
+  });
+}
+
+/**
+ * Names the business's own (first) brand. Until now it has only been shown under the business's name, and the posting service has not met
+ * it, so it is opened under the name written (a business it already knows keeps its name until renamed) and then renamed to it. Works on
+ * the business's own id from the session, never one from the form.
+ */
+export async function renameFirstBrandAction(formData: FormData): Promise<NewPostState> {
+  const name = nameSchema.safeParse(formData.get("name"));
+  if (!name.success) return { status: "error", message: name.error.issues[0]?.message ?? "Write the brand's name." };
+  try {
+    const customer = await requireService("social", { write: true });
+    if (customer.role === "viewer") return refuse("Only owners and editors can change this.").state;
+    const settings = socialAutoSettings();
+    if (settings === null) return refuse("Posting is not available just now. Try again later.").state;
+    await ensureWorkspace(settings, { id: customer.businessId, name: name.data });
+    await renameBrand(settings, customer.businessId, name.data);
+  } catch (error) {
+    unstable_rethrow(error);
+    if (error instanceof SocialAutoError && error.code !== null) return { status: "error", message: wordsForCode(error.code) };
+    reportError(error, { area: "social.rename the first brand" });
+    return { status: "error", message: wordsForCode(null) };
+  }
+  revalidatePath("/social");
+  revalidatePath("/social/analytics");
+  return { status: "saved" };
 }

@@ -13,11 +13,13 @@ const platformSchema = z.enum(CHANNEL_PLATFORMS);
 export const jobSchema = z.object({
   id: z.string().min(1),
   /** `write` is a batch of written posts; `draw` is the pictures for the posts that were kept; `network` is the same posts written for one more network. */
-  kind: z.enum(["write", "draw", "network", "carousel"]),
+  kind: z.enum(["write", "draw", "network", "carousel", "replace"]),
   state: z.enum(["queued", "running", "done", "failed"]),
   /** 1 to 4 while it runs: reading the website, writing, drawing, putting the results in review. */
   step: z.number().int().optional(),
   batchId: z.string().optional(),
+  /** The dropped post a `replace` job writes a new topic for. */
+  postId: z.string().optional(),
   createdAt: z.string(),
   finishedAt: z.string().optional(),
   /** Why a job failed, as the posting service's stable code (such as `PAGE_MODE_UNAVAILABLE`), when it says. */
@@ -63,8 +65,14 @@ const writtenPostSchema = z.object({
   advice: z.string().optional(),
   /** The day the post goes out, `YYYY-MM-DD` (batches written before days were recorded have none). */
   date: z.string().optional(),
+  /** The time of day it goes out, `HH:MM` India time, when the posting service says. */
+  time: z.string().regex(/^\d{2}:\d{2}$/).optional(),
   /** Why a kept topic got no picture in a finished draw, in the posting service's own sentence; the topic is open again. */
   notDrawn: z.object({ code: z.string(), message: z.string() }).optional(),
+  /** The dropped post this post was written to replace. */
+  replaces: z.string().optional(),
+  /** The new post written in place of this dropped one. */
+  replacedBy: z.string().optional(),
   signoff: z.object({ brandName: z.string().optional(), domain: z.string().optional() }).partial().optional(),
 });
 
@@ -79,8 +87,14 @@ export interface WrittenPost {
   readonly advice: string | null;
   /** The day the post goes out, `YYYY-MM-DD`, or null when the batch has no days. */
   readonly date: string | null;
+  /** The time of day it goes out, `HH:MM`, or null when the posting service does not say (then 10:00). */
+  readonly time?: string | null;
   /** Set when this kept topic got no picture in a finished draw: the reason in plain words. The topic is open again to keep, drop and edit. */
   readonly notDrawn: { readonly code: string; readonly message: string } | null;
+  /** The id of the dropped post this one replaces, or null. */
+  readonly replaces?: string | null;
+  /** The id of the post written in place of this dropped one, or null. */
+  readonly replacedBy?: string | null;
 }
 
 /** One week of a plan: the Monday it starts, the Sunday it ends, where its pictures stand, and which posts are in it. */
@@ -94,6 +108,8 @@ export interface BatchWeek {
   readonly notDrawn: readonly { readonly postId: string; readonly code: string; readonly message: string }[];
   /** Days of this week with no post, `YYYY-MM-DD`; empty when none is missing. */
   readonly missingDays: readonly string[];
+  /** How many dropped posts of this week can still be given a new topic, or null when the posting service does not say. */
+  readonly replacementsLeft?: number | null;
 }
 
 /** How long a network's caption may be, and what reads best there. */
@@ -131,6 +147,7 @@ const batchWeekSchema = z.object({
   notDrawn: z.array(z.object({ postId: z.string(), code: z.string(), message: z.string() })).optional(),
   /** Days of the week that were asked for but have no post (the writer could not make one). */
   missingDays: z.array(z.string()).optional(),
+  replacementsLeft: z.number().int().nonnegative().optional(),
 });
 
 export const posterSchema = z.object({
@@ -152,6 +169,9 @@ export const posterSchema = z.object({
   /** The other networks whose current picture of the same post is this very drawing, so the customer knows a redraw would make this one its own. */
   sharedWith: z.array(platformSchema).optional(),
   createdAt: z.string(),
+  /** The day and time (India) the post is planned for, when the posting service says; a post moved to another day shows its new one. */
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  time: z.string().regex(/^\d{2}:\d{2}$/).optional(),
 });
 export type Poster = z.output<typeof posterSchema>;
 
@@ -223,11 +243,11 @@ export function readBatches(body: unknown): WrittenBatch[] {
       if (!post.success) return [];
       const captions: Partial<Record<ChannelPlatform, string>> = {};
       for (const network of networks) captions[network] = captionText(post.data.captions?.[network]) ?? post.data.caption;
-      return [{ id: post.data.id, headline: post.data.headline, caption: post.data.caption, captions, state: post.data.state, edited: post.data.edited === true, advice: post.data.advice ?? null, date: post.data.date?.slice(0, 10) ?? null, notDrawn: post.data.notDrawn ?? null }];
+      return [{ id: post.data.id, headline: post.data.headline, caption: post.data.caption, captions, state: post.data.state, edited: post.data.edited === true, advice: post.data.advice ?? null, date: post.data.date?.slice(0, 10) ?? null, time: post.data.time ?? null, notDrawn: post.data.notDrawn ?? null, replaces: post.data.replaces ?? null, replacedBy: post.data.replacedBy ?? null }];
     });
     // Weeks are shown only when every one of them can be read: one unreadable week would hide posts, so the batch is shown as one piece.
     const weeks = batch.data.weeks?.map((entry) => batchWeekSchema.safeParse(entry));
-    const readable = weeks !== undefined && weeks.length > 0 && weeks.every((week) => week.success) ? weeks.flatMap((week) => (week.success ? [{ ...week.data, notDrawn: week.data.notDrawn ?? [], missingDays: week.data.missingDays ?? [] }] : [])) : null;
+    const readable = weeks !== undefined && weeks.length > 0 && weeks.every((week) => week.success) ? weeks.flatMap((week) => (week.success ? [{ ...week.data, notDrawn: week.data.notDrawn ?? [], missingDays: week.data.missingDays ?? [], replacementsLeft: week.data.replacementsLeft ?? null }] : [])) : null;
     return [{ id: batch.data.id, createdAt: batch.data.createdAt, networks, posts, rules, weeks: readable }];
   });
 }
@@ -333,6 +353,7 @@ const STEP_WORDS: Readonly<Record<number, string>> = { 1: "Reading your website"
 
 /** What to tell the customer about a job, in plain words. */
 export function jobLine(job: Pick<SiteJob, "kind" | "state" | "step">): string {
+  if (job.kind === "replace") return job.state === "failed" ? "We could not write a new topic this time. You can try again." : job.state === "done" ? "Your new topic is ready to look at." : job.state === "queued" ? "Waiting to start." : "Writing a new topic";
   if (job.kind === "carousel") return job.state === "failed" ? "We could not make your carousel. You can try again." : job.state === "done" ? "Your carousel is ready to look at." : job.state === "queued" ? "Waiting to start." : "Making your carousel";
   if (job.state === "failed") return job.kind === "draw" ? "The pictures could not be drawn. You can try again." : job.kind === "network" ? "We could not write your posts for the new network. You can try again." : "We could not write your posts. You can try again.";
   if (job.state === "done") return job.kind === "draw" ? "Your pictures are ready to look at." : job.kind === "network" ? "Your posts for the new network are ready to look at." : "Your posts are written and ready to look at.";
@@ -361,6 +382,10 @@ const CODE_WORDS: Readonly<Record<string, string>> = {
   PICTURE_LIMIT_REACHED: "You have used this week's pictures for one of your networks. You can draw more from Monday.",
   JOB_LIMIT_REACHED: "You have started as many batches as you can for now. Try again tomorrow.",
   DRAW_LIMIT_REACHED: "You have asked for as many pictures as you can for now. Try again tomorrow.",
+  REPLACE_LIMIT_REACHED: "You have asked for as many new topics as you can this week. You can ask for more from Monday.",
+  DAY_PASSED: "The day of this post has passed, so it cannot get a new topic.",
+  INVALID_DAY: "A topic can only move to another day of its own week.",
+  NOTHING_WRITTEN: "We could not write a new topic this time. You can try again.",
   NOTHING_KEPT: "Keep at least one post first, then ask for the pictures.",
   BATCH_LOCKED: "These posts are final now, so they can no longer be changed.",
   WORDS_NOT_ACCEPTED: "Those words do not agree with what is on your website. Change them and try again.",

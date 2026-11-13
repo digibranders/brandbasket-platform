@@ -139,6 +139,12 @@ export async function createBrand(settings: SocialAutoSettings, businessId: stri
   if (answer.status !== 200 && answer.status !== 201) throw refusal(answer, "the new brand");
 }
 
+/** Renames a brand. The name is a label on Brandbasket's screens and the staff dashboard: it does not change what is printed on pictures. */
+export async function renameBrand(settings: SocialAutoSettings, externalId: string, name: string, send: typeof fetch = fetch): Promise<void> {
+  const answer = await call(settings, "/api/v1/workspaces", { method: "PATCH", body: { externalId, name } }, send);
+  if (answer.status !== 200) throw refusal(answer, "the new name");
+}
+
 /** Archives a brand (nothing new is sent or drawn, and it frees a place) or brings it back. */
 export async function archiveBrand(settings: SocialAutoSettings, externalId: string, archived: boolean, send: typeof fetch = fetch): Promise<void> {
   const answer = await call(settings, "/api/v1/workspaces/archive", { method: "POST", body: { externalId, archived } }, send);
@@ -366,6 +372,31 @@ export async function drawBatch(settings: SocialAutoSettings, businessId: string
   const started = readJob(answer.body);
   if (started === null) throw new SocialAutoError("social-auto answered with a job that could not be read");
   return started;
+}
+
+/**
+ * Asks for a new topic in place of a dropped post of a week that is not drawn yet. It is written from the website like the rest and costs a
+ * fraction of a cent; no picture is drawn until the customer keeps it. The same ask while one is being written answers the job that runs.
+ */
+export async function replaceTopic(settings: SocialAutoSettings, businessId: string, batchId: string, postId: string, actor: string, send: typeof fetch = fetch): Promise<{ readonly job: SiteJob; readonly created: boolean }> {
+  const answer = await call(settings, "/api/v1/batches", { method: "POST", body: { externalId: businessId, batchId, action: "replace", postId }, actor }, send);
+  if (answer.status !== 200 && answer.status !== 202) throw refusal(answer, "the new topic");
+  const started = readJob(answer.body);
+  if (started === null) throw new SocialAutoError("social-auto answered with a job that could not be read");
+  return started;
+}
+
+/**
+ * Moves a written post to another day of its week, before the week's pictures are drawn. The time stays as it is, and the post goes out on the
+ * new day. The posting service refuses a day outside the week, one that has passed, or a week that is already drawn.
+ */
+export async function moveTopic(settings: SocialAutoSettings, businessId: string, batchId: string, postId: string, day: string, actor: string, send: typeof fetch = fetch): Promise<{ readonly batch: WrittenBatch; /** True when the post's words name a day or say "tomorrow", so they may no longer be right. */ readonly wordsNameADay: boolean }> {
+  const answer = await call(settings, "/api/v1/batches", { method: "POST", body: { externalId: businessId, batchId, action: "move", postId, day }, actor }, send);
+  if (answer.status !== 200) throw refusal(answer, "the new day");
+  const body = answer.body as { batch?: unknown; networkRules?: unknown; warnings?: unknown } | null;
+  const batch = readBatches({ batches: [body?.batch], networkRules: body?.networkRules })[0];
+  if (batch === undefined) throw new SocialAutoError("social-auto answered with a batch that could not be read");
+  return { batch, wordsNameADay: Array.isArray(body?.warnings) && body.warnings.includes("WORDS_NAME_A_DAY") };
 }
 
 /** The pictures waiting for the customer (`open`: waiting, plus any that need confirming again) or already decided. */

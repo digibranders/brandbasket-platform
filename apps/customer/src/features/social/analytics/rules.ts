@@ -194,5 +194,7 @@ export function postingServiceSettings(env: Readonly<Record<string, string | und
   const url = z.url({ protocol: /^https?$/ }).safeParse(env["SOCIAL_AUTO_URL"]);
   const key = env["SOCIAL_AUTO_KEY"];
   if (!url.success || key === undefined || key.trim() === "") return null;
-  return { url: new URL(url.data).origin, key: key.trim() };
+  // The path is kept: the posting service may be served under one (https://social.example.com/publisher) and the API's own paths start after it.
+  const address = new URL(url.data);
+  return { url: `${address.origin}${address.pathname.replace(/\/+$/, "")}`, key: key.trim() };
 }
