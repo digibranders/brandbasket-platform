@@ -29,9 +29,9 @@ describe("BrandSwitcher", () => {
     expect(screen.queryByRole("combobox", { name: "Brand" })).toBeNull();
   });
 
-  it("offers the choice of brand and the Brands window when more are allowed", () => {
+  it("offers the choice of brand and the window to add brands when more are allowed", () => {
     render(<BrandSwitcher view={room} current="b1" />);
-    expect(screen.getByRole("button", { name: "Brands" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Add brands" })).toBeTruthy();
   });
 
   it("renames the brand with the name written", async () => {

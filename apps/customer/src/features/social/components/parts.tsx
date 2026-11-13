@@ -44,6 +44,7 @@ export function SocialHeader({
   description = DEFAULT_DESCRIPTION,
   reportHref = null,
   extra = null,
+  askForChange = true,
 }: {
   readonly customer: Pick<CustomerContext, "role">;
   readonly current: string;
@@ -52,6 +53,8 @@ export function SocialHeader({
   readonly reportHref?: string | null;
   /** Beside the buttons: the brand switcher on the pages that have one. */
   readonly extra?: ReactNode;
+  /** Ask for a change beside the buttons: off on the page that has its own actions. */
+  readonly askForChange?: boolean;
 }) {
   return (
     <PageHeader
@@ -67,7 +70,7 @@ export function SocialHeader({
               Monthly report
             </a>
           )}
-          {customer.role === "viewer" ? null : <LinkButton href={ASK_FOR_CHANGE_HREF}>Ask for a change</LinkButton>}
+          {customer.role === "viewer" || !askForChange ? null : <LinkButton href={ASK_FOR_CHANGE_HREF}>Ask for a change</LinkButton>}
         </>
       }
     />

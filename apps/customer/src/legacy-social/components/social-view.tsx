@@ -77,7 +77,7 @@ export function LegacySocialView({ data, notice, now, approvals, hasNumbers, can
                   )}
                   {hasReview ? (
                     <Link href="/social/review" className={SMALL_SOFT}>
-                      Look over your posts
+                      See posts
                     </Link>
                   ) : null}
                   {canPost ? <NewPostButton disabled={!hasAccounts} /> : null}

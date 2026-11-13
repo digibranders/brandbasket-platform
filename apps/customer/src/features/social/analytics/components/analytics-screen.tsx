@@ -3,10 +3,12 @@ import { shortDay } from "@/features/website/rules/visits";
 import { formatDate, formatNumber } from "@/lib/format";
 import type { CustomerContext } from "@/lib/guards";
 import { load } from "@/lib/loaded";
+import Link from "next/link";
 import { Banner, Icon, Meter, Table, TableBody, TableCell, TableHead, TableHeader, TableRow, type IconName } from "@/ui";
 import { ConnectButton } from "../../accounts/components/connect-button";
 import { SOCIAL_ANALYTICS_PATH } from "../../rules";
 import { BrandControl } from "@/legacy-social/components/brand-switcher";
+import { SMALL_ACCENT, SMALL_SOFT } from "@/legacy-social/components/small-buttons";
 import { brandOf } from "../../brand";
 import { ChannelsColumn } from "../../components/channels-column";
 import { SocialHeader, SocialLayout, Stack } from "../../components/parts";
@@ -229,7 +231,24 @@ export async function SocialAnalytics({ customer, range, channel, now = new Date
   const hrefFor = (next: "all" | AnalyticsChannel | "linkedin") => (next === "all" ? SOCIAL_ANALYTICS_PATH : `${SOCIAL_ANALYTICS_PATH}?channel=${next}&range=${range}`);
   return (
     <SocialLayout column={<ChannelsColumn data={column} selected={channel} hrefFor={hrefFor} canChange={customer.role !== "viewer"} />}>
-      <SocialHeader customer={customer} current={SOCIAL_ANALYTICS_PATH} waiting={null} description={DESCRIPTION} extra={<BrandControl view={brand.view} current={brand.externalId} name={brand.name} />} />
+      <SocialHeader customer={customer} current={SOCIAL_ANALYTICS_PATH} waiting={null} description={DESCRIPTION} askForChange={false}
+        extra={
+          <>
+            <BrandControl view={brand.view} current={brand.externalId} name={brand.name} />
+            {customer.role === "viewer" ? null : (
+              <>
+                <Link href="/social/review" className={SMALL_SOFT}>
+                  See posts
+                </Link>
+                <Link href="/social?newpost=1" className={SMALL_ACCENT}>
+                  <Icon name="Plus" size="sm" />
+                  New post
+                </Link>
+              </>
+            )}
+          </>
+        }
+      />
       <Stack>
         {!data.ok ? (
           <Panel title="Analytics">

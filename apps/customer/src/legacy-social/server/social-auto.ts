@@ -3,7 +3,7 @@ import { z } from "zod";
 import { readAnalytics, type Analytics } from "@/legacy-social/lib/social/analytics";
 import { readCarousel, readCarouselWeekly, readCarousels, type CarouselDetail, type CarouselSummary } from "@/legacy-social/lib/social/carousel";
 import { brandIdFor, readBrands, type BrandsView } from "@/features/social/brands";
-import { readBatches, readBatchPlan, readExpiredBatches, readFacts, readJob, readJobs, readPosters, readTopics, type BatchPlan, type ExpiredBatch, type FactsView, type Poster, type SiteJob, type Topic, type WrittenBatch } from "@/legacy-social/lib/social/ai";
+import { readBatches, readBatchPlan, readExpiredBatches, readFacts, readJob, readJobs, readPosters, readTopicRequests, readTopics, type BatchPlan, type ExpiredBatch, type FactsView, type Poster, type SiteJob, type Topic, type TopicRequest, type WrittenBatch } from "@/legacy-social/lib/social/ai";
 import { isChannelPlatform, readChannels, readConnectLink, readNotices, readPosts, readWebsite, type AutoChannel, type AutoPost, type ChannelPlatform, type WorkspaceNotice } from "@/legacy-social/lib/social/auto";
 
 /**
@@ -397,6 +397,26 @@ export async function moveTopic(settings: SocialAutoSettings, businessId: string
   const batch = readBatches({ batches: [body?.batch], networkRules: body?.networkRules })[0];
   if (batch === undefined) throw new SocialAutoError("social-auto answered with a batch that could not be read");
   return { batch, wordsNameADay: Array.isArray(body?.warnings) && body.warnings.includes("WORDS_NAME_A_DAY") };
+}
+
+/** The topics the customer wrote in her own words, newest first (the last ten); none when the posting service does not have them yet. */
+export async function loadTopicRequests(settings: SocialAutoSettings, businessId: string, send: typeof fetch = fetch): Promise<TopicRequest[]> {
+  const answer = await call(settings, `/api/v1/topic-requests?externalId=${encodeURIComponent(businessId)}`, { method: "GET" }, send);
+  if (answer.status === 404 || answer.status === 501) return [];
+  if (answer.status !== 200) throw refusal(answer, "your own topics");
+  return readTopicRequests(answer.body);
+}
+
+/**
+ * Asks for a post about something she wrote in her own words: an offer, a new dish, an event. It is written only from her words, for the
+ * week asked for (the next day she can still use) or tomorrow's week, and one a week is allowed. Nothing is drawn until she asks.
+ */
+export async function askTopic(settings: SocialAutoSettings, businessId: string, text: string, week: string | undefined, actor: string, send: typeof fetch = fetch): Promise<TopicRequest> {
+  const answer = await call(settings, "/api/v1/topic-requests", { method: "POST", body: { externalId: businessId, text, ...(week === undefined ? {} : { week }) }, actor }, send);
+  if (answer.status !== 200 && answer.status !== 202) throw refusal(answer, "your topic");
+  const asked = readTopicRequests({ requests: [(answer.body as { request?: unknown } | null)?.request] })[0];
+  if (asked === undefined) throw new SocialAutoError("social-auto answered with a topic that could not be read");
+  return asked;
 }
 
 /** The pictures waiting for the customer (`open`: waiting, plus any that need confirming again) or already decided. */

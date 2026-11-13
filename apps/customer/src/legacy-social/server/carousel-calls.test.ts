@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 
 vi.mock("server-only", () => ({}));
 
-import { decideCarousel, fetchCarouselSlide, loadCarousel, loadCarouselList, loadCarousels, makeCarousel, renameBrand, replaceTopic, setCarouselWeekly, SocialAutoError, type SocialAutoSettings } from "./social-auto";
+import { askTopic, decideCarousel, fetchCarouselSlide, loadCarousel, loadCarouselList, loadCarousels, loadTopicRequests, makeCarousel, renameBrand, replaceTopic, setCarouselWeekly, SocialAutoError, type SocialAutoSettings } from "./social-auto";
 
 const settings: SocialAutoSettings = { baseUrl: "http://127.0.0.1:4020", key: "secret", returnUrl: "https://app.example.com/social" };
 const json = (status: number, body: unknown = {}) => vi.fn(async () => new Response(JSON.stringify(body), { status })) as unknown as typeof fetch;
@@ -91,5 +91,20 @@ describe("the carousel calls", () => {
     expect(String(call?.[0])).toBe("http://127.0.0.1:4020/api/v1/batches");
     expect(JSON.parse(String(call?.[1]?.body))).toEqual({ externalId: "biz-1", batchId: "b1", action: "replace", postId: "p1" });
     await expect(replaceTopic(settings, "biz-1", "b1", "p1", "actor-1", json(429, { code: "REPLACE_LIMIT_REACHED", error: "limit" }))).rejects.toBeInstanceOf(SocialAutoError);
+  });
+
+  it("asks for a topic in her own words, and lists the ones she asked for", async () => {
+    const sent = { id: "t-1", week: { from: "2026-11-16", to: "2026-11-22" }, goesOutOn: "2026-11-16", goesOutAt: "10:00", state: "writing", createdAt: "2026-11-13T10:00:00Z", picturesToDraw: 0 };
+    const send = json(202, { request: sent });
+    const asked = await askTopic(settings, "biz-1", "Diwali special: 20% off", "2026-11-16", "actor-1", send);
+    expect(asked).toMatchObject({ id: "t-1", state: "writing", goesOutOn: "2026-11-16", batchId: null });
+    const call = vi.mocked(send).mock.calls[0];
+    expect(String(call?.[0])).toBe("http://127.0.0.1:4020/api/v1/topic-requests");
+    expect(JSON.parse(String(call?.[1]?.body))).toEqual({ externalId: "biz-1", text: "Diwali special: 20% off", week: "2026-11-16" });
+    await expect(askTopic(settings, "biz-1", "x", undefined, "actor-1", json(429, { code: "TOPIC_LIMIT_REACHED", error: "one a week", restart: "2026-11-23" }))).rejects.toBeInstanceOf(SocialAutoError);
+    const list = await loadTopicRequests(settings, "biz-1", json(200, { requests: [{ ...sent, state: "waiting_for_words", batchId: "own-1", postId: "o1", picturesToDraw: 2 }, { nonsense: true }] }));
+    expect(list).toHaveLength(1);
+    expect(list[0]).toMatchObject({ state: "waiting_for_words", batchId: "own-1", postId: "o1", picturesToDraw: 2 });
+    expect(await loadTopicRequests(settings, "biz-1", json(404))).toEqual([]);
   });
 });
