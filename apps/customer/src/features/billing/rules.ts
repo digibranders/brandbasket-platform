@@ -1,4 +1,5 @@
 import { chargedAmountCents, gstInsideCents } from "@brandbasket/billing/tax";
+import { gstNote, type PaymentSummary } from "../checkout/rules/payment-summary";
 import type { BillingInterval, BundledAddOn, Charge, CurrentPaymentMethod, Plan, Receipt, Subscription } from "@brandbasket/db";
 import { isUnappliedReason } from "@brandbasket/db/unapplied-reasons";
 import { MONTHLY_ADD_ON_IDS, perCycle, type MonthlyAddOnId } from "@brandbasket/shared/lib/billing/add-ons";
@@ -355,7 +356,18 @@ export type InvoiceRow =
       /** False for a failed attempt: nothing was taken, so there is nothing to download. */
       readonly downloadable: boolean;
     }
-  | { readonly kind: "due"; readonly id: string; readonly number: string; readonly date: Date; readonly amountCents: number; readonly amount: string; readonly status: string; readonly tone: InvoiceTone };
+  | {
+      readonly kind: "due";
+      readonly id: string;
+      readonly number: string;
+      readonly date: Date;
+      readonly amountCents: number;
+      readonly amount: string;
+      readonly status: string;
+      readonly tone: InvoiceTone;
+      /** What Pay's confirm dialog shows before the payment opens. */
+      readonly summary: PaymentSummary;
+    };
 
 function receiptStatus(receipt: Receipt): { readonly status: string; readonly tone: InvoiceTone } {
   if (receipt.status === "failed") return { status: "Failed", tone: "neg" };
@@ -369,7 +381,21 @@ export function invoiceRows(receipts: readonly Receipt[], openCharges: readonly 
   const due: InvoiceRow[] = openCharges
     .filter((charge) => charge.status === "open")
     .toSorted((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
-    .map((charge) => ({ kind: "due", id: charge.id, number: chargeLabel(charge), date: charge.createdAt, amountCents: charge.amountCents, amount: formatMoney(charge.amountCents, charge.currency), status: "To pay", tone: "warn" }));
+    .map((charge): InvoiceRow => {
+      const amount = formatMoney(charge.amountCents, charge.currency);
+      const label = chargeLabel(charge);
+      return {
+        kind: "due",
+        id: charge.id,
+        number: label,
+        date: charge.createdAt,
+        amountCents: charge.amountCents,
+        amount,
+        status: "To pay",
+        tone: "warn",
+        summary: { title: "Pay this charge", rows: [{ key: "charge", label, amount, tone: "plain" }], totalLabel: "Due today", total: amount, notes: ["A one-off payment.", ...gstNote(charge.currency)] },
+      };
+    });
   const paid: InvoiceRow[] = receipts.map((receipt) => ({
     kind: "payment",
     id: receipt.id,

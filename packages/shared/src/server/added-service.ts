@@ -202,13 +202,20 @@ export type CombinedAddOnStart =
   /** The business changed while the provider was asked: nothing was opened. */
   | { readonly kind: "changed" };
 
-interface PlannedCombined {
+export interface PlannedCombined {
   readonly subscription: Subscription;
   readonly plan: Plan;
   readonly lines: readonly NewBundledAddOn[];
   readonly netCents: number;
   readonly discountCents: number;
+  /** Taken when the customer approves it: `serviceCents` for the added service and `extensionCents` for the plan's extra days. */
   readonly upfrontCents: number;
+  readonly serviceCents: number;
+  readonly extensionCents: number;
+  /** The added service's first-month price on the offer, or null at its price. */
+  readonly trialPriceCents: number | null;
+  /** What every full charge takes from the new billing date, GST included. */
+  readonly monthlyCents: number;
   readonly newBillingDate: Date;
   readonly replacing: Subscription | null;
 }
@@ -221,11 +228,89 @@ function combinable(subscription: Subscription): boolean {
   return subscription.billingInterval === "month" && (subscription.provider === "razorpay" || subscription.provider === "fake");
 }
 
+/** What adding a service as a combined subscription would come to, or why it cannot. */
+export type CombinedAddOnPlan = { readonly kind: "planned"; readonly planned: PlannedCombined } | Exclude<CombinedAddOnStart, { kind: "approve" }>;
+
+/**
+ * Works out a combined subscription for an added service without opening anything: the lines, the new billing date and what is
+ * paid upfront. startCombinedAddOn runs it under the business's billing lock; the Plan & billing page runs it to show the add.
+ */
+export async function planCombinedAddOn(
+  tx: Database | ScopedTransaction,
+  input: { readonly businessId: string; readonly addOn: MonthlyAddOnId; readonly providerName: BillingProviderName; readonly now: Date },
+): Promise<CombinedAddOnPlan> {
+  const assessment = await readAddOnAssessment(tx, { businessId: input.businessId, addOn: input.addOn, providerName: input.providerName, now: input.now });
+  if (assessment === null) return { kind: "refused", assessment: { kind: "blocked", reason: "unpaid" } };
+  if (assessment.kind === "keep") return { kind: "not-combined" };
+  if (assessment.kind !== "offer") return { kind: "refused", assessment };
+  const { subscription, plan, line } = assessment;
+  if (!combinable(subscription)) return { kind: "not-combined" };
+  if (subscription.paidThroughAt === null) return { kind: "refused", assessment: { kind: "blocked", reason: "unpaid" } };
+
+  const live = (await findBundledAddOnsForSubscription(tx, subscription.id)).filter((row) => row.status === "active");
+  if (subscription.pendingPlanId !== null || live.some((row) => row.endRequestedAt !== null)) return { kind: "change-pending", changesOn: subscription.paidThroughAt };
+  // Monitoring is free with all three plans: a monitoring line being billed is not carried over once this add completes them.
+  const monitoringIncluded = monitoringIncludedWith([...live.map((row) => row.addOn).filter(isMonthlyAddOnId), input.addOn]);
+  const carried = live.filter((row) => !(monitoringIncluded && row.addOn === MONITORING_ID));
+  const nextNetOf = (row: BundledAddOn): number => row.listAmountCents - (row.pendingOfferDiscountAmountCents ?? row.offerDiscountAmountCents);
+  const monitoringDroppedCents = live.filter((row) => !carried.includes(row)).reduce((total, row) => total + nextNetOf(row), 0);
+
+  const added = planAddedService({
+    service: input.addOn,
+    netCents: line.netCents,
+    hadService: await businessHasHadService(tx, input.businessId, input.addOn),
+    interval: subscription.billingInterval,
+    provider: subscription.provider,
+    currency: plan.currency,
+    now: input.now,
+    period: { start: assessment.periodStart, end: subscription.paidThroughAt },
+    // The plan as it would renew, without a monitoring line the add makes free: the days up to the new billing date are taken at that.
+    currentRenewalCents: chargedAmountCents(plan.recurringAmountCents + nextBundledNetCents(subscription) - monitoringDroppedCents, nextDiscountCents(subscription)),
+  });
+  if (added.kind === "refused") return { kind: "refused", assessment: { kind: "unavailable", reason: "renewal-due" } };
+
+  // Every service the combined subscription bills, each at the price it takes from the new billing date.
+  const staying: NewBundledAddOn[] = carried.map((row) => {
+    const offer = row.pendingOfferDiscountAmountCents ?? row.offerDiscountAmountCents;
+    return { addOn: row.addOn, listAmountCents: row.listAmountCents, offerDiscountAmountCents: offer, netAmountCents: nextNetOf(row), taxRateBasisPoints: row.taxRateBasisPoints };
+  });
+  const lines: NewBundledAddOn[] = [
+    ...staying,
+    {
+      addOn: input.addOn,
+      listAmountCents: line.listCents,
+      offerDiscountAmountCents: line.offerCents,
+      netAmountCents: line.netCents,
+      taxRateBasisPoints: plan.taxRateBasisPoints,
+      trialPriceCents: added.trialPriceCents,
+    },
+  ];
+  const netCents = lines.reduce((total, row) => total + row.netAmountCents, 0);
+  const discountCents = await discountOnBasket(tx, subscription, netCents);
+  return {
+    kind: "planned",
+    planned: {
+      subscription,
+      plan,
+      lines,
+      netCents,
+      discountCents,
+      upfrontCents: added.upfrontCents,
+      serviceCents: added.serviceCents,
+      extensionCents: added.extensionCents,
+      trialPriceCents: added.trialPriceCents,
+      monthlyCents: chargedAmountCents(plan.recurringAmountCents + netCents, discountCents),
+      newBillingDate: added.newBillingDate,
+      replacing: await findWaitingAddedServiceSuccessor(tx, subscription.id),
+    },
+  };
+}
+
 /**
  * Adds a service after sign-up as one combined subscription (plan 63, Option Y). Under the business's billing lock it checks the add
  * as every add is checked (readAddOnAssessment) and works out the new billing date and the upfront amount (planAddedService); with no
  * lock held it makes the provider's plan and subscription; then, under the lock again and only if nothing moved, it records the
- * combined subscription and its upfront charge (openAddedServiceSuccessor). An earlier one that was never paid is replaced and
+ * combined subscription (openAddedServiceSuccessor). An earlier one that was never paid is replaced and
  * cancelled at the provider after the commit. The customer is then sent to approve it.
  */
 export async function startCombinedAddOn(
@@ -233,69 +318,9 @@ export async function startCombinedAddOn(
   input: { readonly businessId: string; readonly businessName: string; readonly email: string; readonly addOn: MonthlyAddOnId; readonly now: Date },
 ): Promise<CombinedAddOnStart> {
   const { staffDb, provider } = deps;
-  const decided = await staffDb.transaction(async (tx): Promise<{ readonly kind: "planned"; readonly planned: PlannedCombined } | Exclude<CombinedAddOnStart, { kind: "approve" }>> => {
+  const decided = await staffDb.transaction(async (tx) => {
     await lockBusinessForBilling(tx, input.businessId);
-    const assessment = await readAddOnAssessment(tx, { businessId: input.businessId, addOn: input.addOn, providerName: provider.name, now: input.now });
-    if (assessment === null) return { kind: "refused", assessment: { kind: "blocked", reason: "unpaid" } };
-    if (assessment.kind === "keep") return { kind: "not-combined" };
-    if (assessment.kind !== "offer") return { kind: "refused", assessment };
-    const { subscription, plan, line } = assessment;
-    if (!combinable(subscription)) return { kind: "not-combined" };
-    if (subscription.paidThroughAt === null) return { kind: "refused", assessment: { kind: "blocked", reason: "unpaid" } };
-
-    const live = (await findBundledAddOnsForSubscription(tx, subscription.id)).filter((row) => row.status === "active");
-    if (subscription.pendingPlanId !== null || live.some((row) => row.endRequestedAt !== null)) return { kind: "change-pending", changesOn: subscription.paidThroughAt };
-    // Monitoring is free with all three plans: a monitoring line being billed is not carried over once this add completes them.
-    const monitoringIncluded = monitoringIncludedWith([...live.map((row) => row.addOn).filter(isMonthlyAddOnId), input.addOn]);
-    const carried = live.filter((row) => !(monitoringIncluded && row.addOn === MONITORING_ID));
-    const nextNetOf = (row: BundledAddOn): number => row.listAmountCents - (row.pendingOfferDiscountAmountCents ?? row.offerDiscountAmountCents);
-    const monitoringDroppedCents = live.filter((row) => !carried.includes(row)).reduce((total, row) => total + nextNetOf(row), 0);
-
-    const added = planAddedService({
-      service: input.addOn,
-      netCents: line.netCents,
-      hadService: await businessHasHadService(tx, input.businessId, input.addOn),
-      interval: subscription.billingInterval,
-      provider: subscription.provider,
-      currency: plan.currency,
-      now: input.now,
-      period: { start: assessment.periodStart, end: subscription.paidThroughAt },
-      // The plan as it would renew, without a monitoring line the add makes free: the days up to the new billing date are taken at that.
-      currentRenewalCents: chargedAmountCents(plan.recurringAmountCents + nextBundledNetCents(subscription) - monitoringDroppedCents, nextDiscountCents(subscription)),
-    });
-    if (added.kind === "refused") return { kind: "refused", assessment: { kind: "unavailable", reason: "renewal-due" } };
-
-    // Every service the combined subscription bills, each at the price it takes from the new billing date.
-    const staying: NewBundledAddOn[] = carried.map((row) => {
-      const offer = row.pendingOfferDiscountAmountCents ?? row.offerDiscountAmountCents;
-      return { addOn: row.addOn, listAmountCents: row.listAmountCents, offerDiscountAmountCents: offer, netAmountCents: nextNetOf(row), taxRateBasisPoints: row.taxRateBasisPoints };
-    });
-    const lines: NewBundledAddOn[] = [
-      ...staying,
-      {
-        addOn: input.addOn,
-        listAmountCents: line.listCents,
-        offerDiscountAmountCents: line.offerCents,
-        netAmountCents: line.netCents,
-        taxRateBasisPoints: plan.taxRateBasisPoints,
-        trialPriceCents: added.trialPriceCents,
-      },
-    ];
-    const netCents = lines.reduce((total, row) => total + row.netAmountCents, 0);
-    const discountCents = await discountOnBasket(tx, subscription, netCents);
-    return {
-      kind: "planned",
-      planned: {
-        subscription,
-        plan,
-        lines,
-        netCents,
-        discountCents,
-        upfrontCents: added.upfrontCents,
-        newBillingDate: added.newBillingDate,
-        replacing: await findWaitingAddedServiceSuccessor(tx, subscription.id),
-      },
-    };
+    return planCombinedAddOn(tx, { businessId: input.businessId, addOn: input.addOn, providerName: provider.name, now: input.now });
   });
   if (decided.kind !== "planned") return decided;
   const { planned } = decided;
