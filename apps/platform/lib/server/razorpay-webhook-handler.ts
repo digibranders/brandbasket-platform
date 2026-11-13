@@ -4,6 +4,7 @@ import {
   activateBundledAddOns,
   completeBundledAddOnChanges,
   completePlanUpgradeAtRenewal,
+  findActivatedSuccessor,
   findAddOnSubscriptionByProviderId,
   findBundledAddOnsForSubscription,
   findPaymentByProviderId,
@@ -28,6 +29,7 @@ import { nextAddOnStatus } from "@brandbasket/shared/lib/billing/add-on-state";
 import { nextDiscountCents } from "@brandbasket/shared/lib/billing/bundle";
 import { applyAddOnPayment, type ProviderSubscriptionRef } from "@brandbasket/shared/server/add-on-activation";
 import { discountOnBasket, moveProviderAfterDiscountEnds, packageMove } from "@brandbasket/shared/server/basket-change";
+import { recordAddedServicePayment } from "@brandbasket/shared/server/added-service";
 import { activateFirstPayment, activateReactivationPayment, activateRenewalPayment } from "@brandbasket/shared/server/billing-activation";
 import { describeError, logBillingEvent } from "@brandbasket/shared/server/billing-log";
 import { cancelAtProvider } from "@brandbasket/shared/server/provider-cancellation";
@@ -120,12 +122,14 @@ export async function handleRazorpayWebhookEvent(event: RazorpayWebhookEvent): P
       providerStatus,
       now: new Date(),
     });
-    // Staff are told when a plan ends, once per change (a redelivery finds the status already set). Never about a payment that failed.
-    if (status !== known.status && status === "cancelled") {
+    // Staff are told when a plan ends, once per change (a redelivery finds the status already set). Never about a payment that failed,
+    // and not about a subscription a combined one has taken over (plan 63): the client's plan goes on.
+    if (status !== known.status && status === "cancelled" && (await findActivatedSuccessor(getStaffDb(), known.id)) === null) {
       void announcePlanStatusToTeams({ businessId: known.businessId, subscriptionId: known.id, status, providerStatus });
     }
-    // The mandate of a kept plan (Keep my plan) is authorised: the account closure is lifted and the plan shows as running.
-    if (known.continuesId !== null && mapRazorpayStatus(providerStatus) === "active") {
+    // The mandate of a kept plan (Keep my plan) is authorised: the account closure is lifted and the plan shows as running. A combined
+    // subscription for an added service is authorised the same way, but it takes over only once its upfront payment is recorded.
+    if (known.continuesId !== null && known.firstPaymentCents === null && mapRazorpayStatus(providerStatus) === "active") {
       await getStaffDb().transaction(async (tx) => {
         await lockBusinessForBilling(tx, known.businessId);
         await restoreKeptPlan(tx, known.id, new Date());
@@ -138,6 +142,15 @@ export async function handleRazorpayWebhookEvent(event: RazorpayWebhookEvent): P
   if (addOn !== null) {
     await handleAddOnCharge(event, addOn);
     return;
+  }
+
+  // The upfront payment of a combined subscription for a service added after sign-up (plan 63, Option Y): its own path.
+  if (event.upfront === true) {
+    const combined = await findSubscriptionByProviderId(getStaffDb(), "razorpay", event.subscriptionId);
+    if (combined !== null && combined.continuesId !== null && combined.firstPaymentCents !== null) {
+      await recordCombinedUpfront(event, combined.businessId, combined.id);
+      return;
+    }
   }
 
   // The first full charge of a first-month offer whose upfront payment was never recorded (its webhook was lost): Razorpay is asked
@@ -156,6 +169,8 @@ export async function handleRazorpayWebhookEvent(event: RazorpayWebhookEvent): P
   const receipts: string[] = [];
   // Businesses whose lapsed plan this charge brought back: their paused website is unpaused once the transaction commits.
   const resumedBusinesses = new Set<string>();
+  // Subscriptions a combined one replaced that still took a renewal: cancelled at the provider at once, after the commit.
+  const replacedToCancel: { readonly businessId: string; readonly subscriptionId: string; readonly providerSubscriptionId: string }[] = [];
   const noted = <T extends { readonly payment: { readonly id: string }; readonly alreadyRecorded: boolean }>(recorded: T): T => {
     if (!recorded.alreadyRecorded) announce.push(recorded.payment.id);
     return recorded;
@@ -221,6 +236,52 @@ export async function handleRazorpayWebhookEvent(event: RazorpayWebhookEvent): P
           provider: "razorpay",
           providerPaymentId: event.paymentId,
           reason: "checkout_replaced",
+        });
+        return null;
+      }
+
+      // A subscription a combined one has replaced (plan 63) is cancelled at the provider at the end of its paid month. A renewal that
+      // still arrives on it means that cancel did not take: the money is kept for staff to refund, and it is cancelled now.
+      if (subscription.activatedAt !== null && (await findActivatedSuccessor(tx, subscription.id)) !== null) {
+        noted(await recordUnappliedPayment(tx, {
+          businessId: subscription.businessId,
+          subscriptionId: subscription.id,
+          provider: "razorpay",
+          providerPaymentId: event.paymentId,
+          kind: "renewal",
+          amountCents: event.amountCents,
+          currency: event.currency,
+          paidAt: event.paidAt,
+          reason: "checkout_replaced",
+          now: new Date(),
+          method: event.method,
+        }));
+        replacedToCancel.push({ businessId: subscription.businessId, subscriptionId: subscription.id, providerSubscriptionId: subscription.providerSubscriptionId });
+        return null;
+      }
+
+      // A combined subscription for an added service (plan 63) is activated only by its upfront payment, which the safety net above
+      // looked for at Razorpay. A full charge on one that still never recorded it is kept for staff, not taken as a kept plan's renewal.
+      if (subscription.activatedAt === null && subscription.continuesId !== null && subscription.firstPaymentCents !== null) {
+        noted(await recordUnappliedPayment(tx, {
+          businessId: subscription.businessId,
+          subscriptionId: subscription.id,
+          provider: "razorpay",
+          providerPaymentId: event.paymentId,
+          kind: "renewal",
+          amountCents: event.amountCents,
+          currency: event.currency,
+          paidAt: event.paidAt,
+          reason: "add_on_not_applied",
+          now: new Date(),
+          method: event.method,
+        }));
+        logBillingEvent("error", "confirmation-refused", {
+          businessId: subscription.businessId,
+          subscriptionId: subscription.id,
+          provider: "razorpay",
+          providerPaymentId: event.paymentId,
+          reason: "add_on_not_applied",
         });
         return null;
       }
@@ -480,6 +541,40 @@ export async function handleRazorpayWebhookEvent(event: RazorpayWebhookEvent): P
   // The last month of a code's discount was just paid: the provider bills the basket without it from the next renewal.
   for (const subscriptionId of discountEndedFor) await moveProviderAfterDiscountEnds(basketDeps(), subscriptionId, new Date());
   for (const businessId of resumedBusinesses) await syncSiteHostingForBusiness(businessId);
+  for (const replaced of replacedToCancel) await cancelAtProvider(getRazorpayProvider(), { ...replaced, provider: "razorpay" });
+}
+
+/**
+ * Records the upfront payment of a combined subscription (plan 63, Option Y) under the business's billing lock, then, once that has
+ * committed, tells staff, sends the receipt, and cancels the subscription it replaced at the end of the month it is paid for.
+ */
+async function recordCombinedUpfront(event: ChargedEvent, businessId: string, subscriptionId: string): Promise<void> {
+  const recorded = await getStaffDb().transaction(async (tx) => {
+    await lockBusinessForBilling(tx, businessId);
+    return recordAddedServicePayment(tx, {
+      subscriptionId,
+      provider: "razorpay",
+      providerPaymentId: event.paymentId,
+      amountCents: event.amountCents,
+      currency: event.currency,
+      paidAt: event.paidAt,
+      method: event.method,
+    });
+  });
+  if (recorded.kind === "unapplied") {
+    if (recorded.newlyRecorded) void announcePaymentToTeams(recorded.paymentId);
+    logBillingEvent("warn", "confirmation-refused", { businessId, subscriptionId, provider: "razorpay", providerPaymentId: event.paymentId, reason: recorded.reason });
+    // It can buy nothing, so it must not go on to take its monthly charges: the money is kept for staff to refund.
+    await cancelAtProvider(getRazorpayProvider(), { businessId, subscriptionId, provider: "razorpay", providerSubscriptionId: event.subscriptionId });
+    return;
+  }
+  if (recorded.kind !== "recorded") return;
+  void announcePaymentToTeams(recorded.paymentId);
+  void sendPaymentReceipt(recorded.paymentId);
+  // The replaced subscription is cancelled now, not at the end of its month: the combined one pays from today, and Razorpay refuses a
+  // cycle-end cancel of a subscription still authenticated (a first-month offer before its first full charge). A failure is logged
+  // and the renewal guard above keeps any charge that still lands on it for staff to refund, cancelling it then.
+  if (recorded.replaced !== null) await cancelAtProvider(getRazorpayProvider(), { businessId, ...recorded.replaced });
 }
 
 /**

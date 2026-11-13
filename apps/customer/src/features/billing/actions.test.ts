@@ -76,6 +76,12 @@ describe("addServiceAction", () => {
     expect(addBundledAddOnFor).toHaveBeenCalledWith(OWNER, "paid-ads", expect.any(Date));
   });
 
+  it("sends the customer to approve a combined subscription", async () => {
+    vi.mocked(addBundledAddOnFor).mockResolvedValue({ kind: "approve", url: "/billing/services/pay" });
+    await expect(addServiceAction(null, form({ addOn: "paid-ads" }))).rejects.toThrow("redirect:/billing/services/pay");
+    expect(startCustomerChargePayment).not.toHaveBeenCalled();
+  });
+
   it("returns the refusal, and a plain message when something breaks", async () => {
     vi.mocked(addBundledAddOnFor).mockResolvedValue({ kind: "refused", message: "Your payment is due within the hour." });
     expect(await addServiceAction(null, form({ addOn: "social-media" }))).toEqual({ ok: false, message: "Your payment is due within the hour." });
