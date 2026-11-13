@@ -22,7 +22,6 @@ vi.mock("../actions", () => actions);
 const VIEW: ShellView = {
   business: { name: "Apex Diagnostics", services: ["website", "social"] },
   person: { name: "Anand Verma", contact: "anand@example.com", role: "owner" },
-  kickoffOver: true,
   enquiries: { ok: true, data: 4 },
   requests: { ok: false, error: { at: new Date("2026-11-03T05:00:00Z") } },
   reports: { ok: true, data: true },
@@ -135,12 +134,6 @@ describe("AppShell", () => {
     await userEvent.click(await screen.findByRole("menuitem", { name: "Sign out" }));
     expect(actions.signOutAction).toHaveBeenCalledOnce();
     expect((await screen.findByRole("alert")).textContent).toBe("We could not sign you out. Try again.");
-  });
-
-  it("is reduced before the kickoff call", () => {
-    shell({ ...VIEW, kickoffOver: false });
-    const main = screen.getByRole("navigation", { name: "Main" });
-    expect(within(main).getAllByRole("link").map((link) => link.textContent)).toEqual(["Home", "Requests", "Business profile", "Plan & billing", "Settings", "Help & calls"]);
   });
 });
 

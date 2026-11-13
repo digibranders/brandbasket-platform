@@ -1,6 +1,7 @@
 import { discountCentsFor, firstYearDiscountCents, isChargeableDiscount } from "@brandbasket/billing/referral";
-import type { BillingInterval, ReferralDiscount } from "@brandbasket/db";
+import type { BillingInterval, BillingProviderName, ReferralDiscount } from "@brandbasket/db";
 import { addOnById, ANNUAL_DISCOUNT_BASIS_POINTS, annualListCents, type MonthlyAddOnId } from "@brandbasket/shared/lib/billing/add-ons";
+import { planFirstPayment } from "@brandbasket/shared/lib/billing/first-payment";
 import { packageBasisPointsFor, percentOf } from "@brandbasket/shared/lib/billing/packages";
 import { formatMoney, type MoneyCurrency } from "@brandbasket/shared/lib/money";
 import { basketNetCents, orderSummary, type OrderSummary, type OrderSummaryInput } from "./membership";
@@ -38,6 +39,35 @@ export function ledgerSummary(pricing: LedgerPricing, services: readonly Monthly
   return orderSummary({ ...pricing, services }, codeDiscountCents(code, services, pricing.currency, pricing.interval));
 }
 
+/** What the page knows for the first-month offer (plan 63): the provider that will take the payment, and the plans the business has had. */
+export interface LedgerFirstMonth {
+  readonly provider: BillingProviderName;
+  /** A plan missing here is treated as had: no offer is shown that the checkout might not give. */
+  readonly hadService: Readonly<Partial<Record<MonthlyAddOnId, boolean>>>;
+}
+
+/** Today's payment when some plans are on the first-month offer: what is due, and each offer plan's price for the month. */
+export interface LedgerOffer {
+  readonly firstPaymentCents: number;
+  readonly trialPriceByAddOn: Readonly<Record<string, number>>;
+}
+
+/**
+ * The first-month offer on this basket, by the rule the checkout charges with (planFirstPayment), so the page shows what is
+ * taken. Null when no plan is on it, or when the code would be refused with it (the checkout then says so).
+ */
+export function ledgerOffer(summary: OrderSummary, firstMonth: LedgerFirstMonth | null, currency: MoneyCurrency, interval: BillingInterval): LedgerOffer | null {
+  if (firstMonth === null) return null;
+  const plan = planFirstPayment({
+    lines: summary.lines.map((line) => ({ addOn: line.addOn, netCents: line.netCents, hadService: firstMonth.hadService[line.addOn] ?? true })),
+    interval,
+    provider: firstMonth.provider,
+    currency,
+    discountCents: summary.discountCents,
+  });
+  return plan.kind === "offer" ? { firstPaymentCents: plan.firstPaymentCents, trialPriceByAddOn: plan.trialPriceByAddOn } : null;
+}
+
 export interface LedgerRow {
   readonly key: string;
   readonly label: string;
@@ -50,26 +80,31 @@ export interface LedgerRow {
  * package saving and the code, each as one line. Paid yearly, each plan is twelve months at its monthly price and the annual
  * saving is a line of its own, so the lines still add up to the total.
  */
-export function ledgerRows(summary: OrderSummary, currency: MoneyCurrency, code: LedgerCode | null): readonly LedgerRow[] {
+export function ledgerRows(summary: OrderSummary, currency: MoneyCurrency, code: LedgerCode | null, firstMonth: LedgerOffer | null = null): readonly LedgerRow[] {
   const money = (cents: number): string => formatMoney(cents, currency);
   const yearly = summary.annual !== null;
   const months = yearly ? ", 12 months" : "";
   const listOf = (line: OrderSummary["lines"][number]): string => money(yearly ? annualListCents(addOnById(line.addOn).prices[currency]) : line.listCents);
-  const rows: LedgerRow[] = summary.lines.flatMap((line): LedgerRow[] =>
-    line.addOn === "managed-website"
-      ? [
-          { key: "website", label: "Website", amount: "Free", tone: "free" },
-          { key: "maintenance", label: `Maintenance${months}`, amount: listOf(line), tone: "plain" },
-        ]
-      : [{ key: line.addOn, label: `${line.title}${months}`, amount: listOf(line), tone: "plain" }],
-  );
+  const trialCents = (line: OrderSummary["lines"][number]): number | null => firstMonth?.trialPriceByAddOn[line.addOn] ?? null;
+  const rows: LedgerRow[] = summary.lines.flatMap((line): LedgerRow[] => {
+    if (line.addOn === "managed-website") {
+      return [
+        { key: "website", label: "Website", amount: "Free", tone: "free" },
+        { key: "maintenance", label: `Maintenance${months}`, amount: listOf(line), tone: "plain" },
+      ];
+    }
+    const trial = trialCents(line);
+    return [trial === null ? { key: line.addOn, label: `${line.title}${months}`, amount: listOf(line), tone: "plain" } : { key: line.addOn, label: `${line.title}, first month`, amount: money(trial), tone: "plain" }];
+  });
   if (summary.annual !== null) {
     rows.push({ key: "annual", label: `Paid yearly, ${percentOf(ANNUAL_DISCOUNT_BASIS_POINTS)}% off`, amount: `-${money(summary.annual.savingCents)}`, tone: "save" });
   }
   if (summary.offer !== null) {
-    // An offer on the summary means the business has not given it up, so the percentage is the basket's own.
+    // An offer on the summary means the business has not given it up, so the percentage is the basket's own. A plan on the
+    // first-month offer costs its offer price whole, so only the plans at full price give a saving today.
     const basisPoints = packageBasisPointsFor({ services: summary.lines.map((line) => line.addOn), forfeited: false });
-    rows.push({ key: "offer", label: `${percentOf(basisPoints)}% off`, amount: `-${money(summary.offer.discountCents)}`, tone: "save" });
+    const savingCents = summary.lines.reduce((total, line) => (trialCents(line) === null ? total + line.offerCents : total), 0);
+    if (savingCents > 0) rows.push({ key: "offer", label: `${percentOf(basisPoints)}% off`, amount: `-${money(savingCents)}`, tone: "save" });
   }
   if (code !== null && summary.discountCents > 0) {
     rows.push({ key: "code", label: `Code ${code.code}${yearly ? ", first year" : ""}`, amount: `-${money(summary.discountCents)}`, tone: "save" });

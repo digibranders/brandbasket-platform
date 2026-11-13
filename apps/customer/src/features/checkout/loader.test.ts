@@ -30,6 +30,8 @@ function view(overrides: Partial<MembershipCheckoutView> = {}): MembershipChecko
     hasEverPaid: false,
     billingDetails: null,
     offer: { kind: "available" },
+    // A business that has had both offer plans, unless a test says otherwise: every plan at its price.
+    firstMonth: { provider: "razorpay", hadService: { "social-media": true, "paid-ads": true } },
     ...overrides,
   };
 }
@@ -74,6 +76,22 @@ describe("loadCheckout", () => {
     expect(result.ledger.gstLine).toBe("Includes ₹1,372.42 of GST at 18%");
     expect(result.ledger.adCredit).toBeNull();
     expect(result.ledger.changeServicesHref).toBe("/start?services=managed-website,social-media,paid-ads&q=summary");
+  });
+
+  it("charges ₹1 for the first month of a plan the business never had, and says what is due today: ₹3,000 for the website and Social Media", async () => {
+    vi.mocked(loadMembershipCheckout).mockResolvedValue(
+      view({ services: ["managed-website", "social-media"], firstMonth: { provider: "razorpay", hadService: { "social-media": false, "paid-ads": false } } }),
+    );
+    const result = await loadCheckout(customer(), { services: "managed-website,social-media" });
+    if (result.kind !== "pay") throw new Error("expected the pay view");
+    expect(result.ledger.rows.map((row) => [row.label, row.amount])).toEqual([
+      ["Website", "Free"],
+      ["Maintenance", "₹2,999"],
+      ["Social Media Management, first month", "₹1"],
+    ]);
+    expect(result.ledger.total).toBe("₹3,000");
+    expect(result.ledger.gstLine).toBe("Includes ₹457.62 of GST at 18%");
+    expect(result.ledger.renewal).toBe("Your first payment covers your first month, then ₹5,998 (GST included) is taken each month for your services.");
   });
 
   it("names no GST for a dollar plan", async () => {

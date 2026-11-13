@@ -1,5 +1,6 @@
 import "server-only";
 import { addMonthsUtc, monthsPerCycle } from "@brandbasket/billing";
+import { gstInsideCents } from "@brandbasket/billing/tax";
 import type { BillingInterval } from "@brandbasket/db";
 import { addOnById, type MonthlyAddOnId } from "@brandbasket/shared/lib/billing/add-ons";
 import { WEBSITE_ALONE } from "@brandbasket/shared/lib/billing/bundle";
@@ -12,7 +13,7 @@ import { INTAKE_SUMMARY_STEP, startHref } from "../start/rules";
 import { loadIntake } from "../start/server";
 import type { BillingDetailsView } from "./rules/billing-details-view";
 import { MEMBER_WELCOME_HREF } from "./rules/confirm-href";
-import { ledgerRows, ledgerSummary, type LedgerRow } from "./rules/ledger";
+import { ledgerOffer, ledgerRows, ledgerSummary, type LedgerRow } from "./rules/ledger";
 import {
   billingParamValue,
   billingSwitchHrefs,
@@ -118,6 +119,9 @@ export async function loadCheckout(customer: CustomerContext, params: Params, no
   };
   const code = view.discount === null ? null : { code: view.discount.code, stated: view.discount.stated, months: view.discount.months };
   const summary = ledgerSummary(pricing, view.services, code);
+  // With a plan on the first-month offer (plan 63) today's payment is less than a month of the services: the checkout charges it.
+  const firstMonth = ledgerOffer(summary, view.firstMonth, plan.currency, interval);
+  const dueCents = firstMonth?.firstPaymentCents ?? summary.totalCents;
   const taxed = plan.taxRateBasisPoints > 0;
   return {
     kind: "pay",
@@ -126,9 +130,9 @@ export async function loadCheckout(customer: CustomerContext, params: Params, no
     ledger: {
       services: view.services,
       billing: { interval, value: billingParamValue(interval), ...billingSwitchHrefs(MEMBERSHIP_PATH, params) },
-      rows: ledgerRows(summary, plan.currency, code),
-      total: formatMoney(summary.totalCents, plan.currency),
-      gstLine: taxed ? `Includes ${formatMoney(summary.gstCents, plan.currency)} of GST at ${formatPercent(plan.taxRateBasisPoints / 100)}` : null,
+      rows: ledgerRows(summary, plan.currency, code, firstMonth),
+      total: formatMoney(dueCents, plan.currency),
+      gstLine: taxed ? `Includes ${formatMoney(gstInsideCents(dueCents, plan.taxRateBasisPoints), plan.currency)} of GST at ${formatPercent(plan.taxRateBasisPoints / 100)}` : null,
       adCredit: summary.adCredit?.label ?? null,
       renewal: renewalTerms(
         summary,

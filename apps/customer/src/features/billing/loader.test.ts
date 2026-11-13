@@ -102,14 +102,14 @@ describe("loadBillingOverview", () => {
       summary: {
         title: "Add Paid Ads Management",
         rows: [
-          { key: "service", label: "Paid Ads Management, first month offer", amount: "₹1", tone: "plain" },
+          { key: "service", label: "Paid Ads Management, first month (Tue 3 Nov to Fri 11 Dec)", amount: "₹1", tone: "plain" },
           { key: "plan", label: "Current plan, 14 extra days", amount: "₹967.42", tone: "plain" },
         ],
         totalLabel: "Due today",
         total: "₹968.42",
         notes: [
           "All your services will now renew together on Fri 11 Dec. Your current plan is paid until Fri 27 Nov, so today also covers the days in between.",
-          "Then ₹30,398 a month for all your services, from Fri 11 Dec.",
+          "From Fri 11 Dec, ₹30,398 a month for Website Management, Social Media Management and Paid Ads Management.",
           "All prices include GST.",
         ],
       },
@@ -125,7 +125,7 @@ describe("loadBillingOverview", () => {
     const action = view.services.data.rows[2]?.action;
     if (action?.kind !== "add") throw new Error("Expected an add");
     expect(action.summary.rows.map((row) => row.key)).toEqual(["service"]);
-    expect(action.summary.notes).toEqual(["Then ₹30,398 a month for all your services, from Fri 11 Dec.", "All prices include GST."]);
+    expect(action.summary.notes).toEqual(["From Fri 11 Dec, ₹30,398 a month for Website Management, Social Media Management and Paid Ads Management.", "All prices include GST."]);
   });
 
   it("gives an editor the same figures and no action", async () => {

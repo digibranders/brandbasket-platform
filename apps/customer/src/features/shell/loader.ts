@@ -1,7 +1,6 @@
 import "server-only";
 import {
   countNewEnquiries,
-  findSetupCallBooking,
   getNotificationsSeenAt,
   listActivityEvents,
   listRequestNeeds,
@@ -15,7 +14,7 @@ import { cache } from "react";
 import { getAppDb } from "@/lib/db";
 import type { CustomerContext, Service } from "@/lib/guards";
 import { load, type Loaded } from "@/lib/loaded";
-import { bellView, billingBannerState, kickoffOverOrAssumed, requestsWaiting, type BellView, type BillingBannerState, type KickoffBooking } from "./rules";
+import { bellView, billingBannerState, requestsWaiting, type BellView, type BillingBannerState } from "./rules";
 
 /** How many lines of work the bell lists. */
 const BELL_ACTIVITY = 10;
@@ -35,8 +34,6 @@ export interface ShellView {
     readonly contact: string;
     readonly role: CustomerContext["role"];
   };
-  /** The kickoff call is over, so the full sidebar shows. True when the booking could not be read: no link hides on a failure. */
-  readonly kickoffOver: boolean;
   /** New enquiries. */
   readonly enquiries: Loaded<number>;
   /** Requests waiting on the customer, one per conversation. */
@@ -56,13 +53,7 @@ export const loadShell = cache(async (customer: CustomerContext): Promise<ShellV
   const db = getAppDb();
   const scoped = <T>(work: (tx: ScopedTransaction) => Promise<T>): Promise<T> => withTenantScope(db, tenant, work);
 
-  const [kickoff, enquiries, requests, reports, notifications] = await Promise.all([
-    load("shell.kickoff", () =>
-      scoped(async (tx): Promise<KickoffBooking | null> => {
-        const booking = await findSetupCallBooking(tx, businessId);
-        return booking === null ? null : { endsAt: booking.endsAt, heldAt: booking.heldAt };
-      }),
-    ),
+  const [enquiries, requests, reports, notifications] = await Promise.all([
     load("shell.enquiries", () => scoped((tx) => countNewEnquiries(tx))),
     load("shell.requests", () =>
       scoped(async (tx) => requestsWaiting(await listRequestNeeds(tx, user.id, businessId), await listWaitingOnYou(tx, user.id, businessId))),
@@ -90,7 +81,6 @@ export const loadShell = cache(async (customer: CustomerContext): Promise<ShellV
   return {
     business: { name: customer.businessName, services: customer.services },
     person: { name: user.name, contact: user.phone ?? user.email, role: customer.role },
-    kickoffOver: kickoffOverOrAssumed(kickoff, new Date()),
     enquiries,
     requests,
     reports,
