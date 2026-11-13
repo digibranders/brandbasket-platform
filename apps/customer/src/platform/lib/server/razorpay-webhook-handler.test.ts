@@ -772,6 +772,58 @@ describe("handleRazorpayWebhookEvent", () => {
       });
     });
 
+    describe("a status event while the first-month payment is still unrecorded (live Razorpay sent no invoice.paid)", () => {
+      const PAID_UPFRONT = { providerPaymentId: "pay_up", amountCents: 135, currency: "INR", paidAt: new Date("2026-11-13T14:44:14.000Z") } as const;
+      const combined = (overrides: Record<string, unknown> = {}) => offerSubscription({ continuesId: "sub_row_old", firstPaymentCents: 135, status: "active", ...overrides });
+
+      it("asks Razorpay for the payment when the mandate is authorised, and records it through the combined path", async () => {
+        vi.mocked(findSubscriptionByProviderId).mockResolvedValue(combined());
+        fetchSubscriptionStatus.mockResolvedValue("authenticated");
+        findUpfrontPayment.mockResolvedValueOnce(PAID_UPFRONT);
+        vi.mocked(recordAddedServicePayment).mockResolvedValueOnce({ kind: "recorded", paymentId: "pay_row_added", replaced: null } as never);
+
+        await handleRazorpayWebhookEvent({ kind: "status", subscriptionId: "sub_rzp_offer", providerStatus: "authenticated" });
+
+        expect(findUpfrontPayment).toHaveBeenCalledWith("sub_rzp_offer");
+        expect(recordAddedServicePayment).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ subscriptionId: "sub_row_offer", providerPaymentId: "pay_up", amountCents: 135 }));
+        expect(removeBundledAddOnsOf).not.toHaveBeenCalled();
+      });
+
+      it("keeps the payment of a combined subscription cancelled before it took over for staff, and frees its services' offer", async () => {
+        vi.mocked(findSubscriptionByProviderId).mockResolvedValue(combined());
+        fetchSubscriptionStatus.mockResolvedValue("cancelled");
+        findUpfrontPayment.mockResolvedValueOnce(PAID_UPFRONT);
+        vi.mocked(recordAddedServicePayment).mockResolvedValueOnce({ kind: "unapplied", businessId: "biz_offer", paymentId: "pay_row_kept", newlyRecorded: true, reason: "checkout_replaced" } as never);
+
+        await handleRazorpayWebhookEvent({ kind: "status", subscriptionId: "sub_rzp_offer", providerStatus: "cancelled" });
+
+        expect(recordAddedServicePayment).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ providerPaymentId: "pay_up" }));
+        expect(removeBundledAddOnsOf).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ subscriptionId: "sub_row_offer" }));
+      });
+
+      it("frees the services of a combined subscription cancelled before anything was paid", async () => {
+        vi.mocked(findSubscriptionByProviderId).mockResolvedValue(combined());
+        fetchSubscriptionStatus.mockResolvedValue("cancelled");
+        findUpfrontPayment.mockResolvedValueOnce(null);
+
+        await handleRazorpayWebhookEvent({ kind: "status", subscriptionId: "sub_rzp_offer", providerStatus: "cancelled" });
+
+        expect(recordAddedServicePayment).not.toHaveBeenCalled();
+        expect(removeBundledAddOnsOf).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ subscriptionId: "sub_row_offer" }));
+      });
+
+      it("asks nothing and frees nothing once the first payment is recorded, or for a subscription opened without an offer", async () => {
+        vi.mocked(findSubscriptionByProviderId).mockResolvedValue(combined({ activatedAt: PAID_UPFRONT.paidAt }));
+        fetchSubscriptionStatus.mockResolvedValue("cancelled");
+        await handleRazorpayWebhookEvent({ kind: "status", subscriptionId: "sub_rzp_offer", providerStatus: "cancelled" });
+        vi.mocked(findSubscriptionByProviderId).mockResolvedValue(offerSubscription({ firstPaymentCents: null, continuesId: "sub_row_kept" }));
+        await handleRazorpayWebhookEvent({ kind: "status", subscriptionId: "sub_rzp_offer", providerStatus: "cancelled" });
+
+        expect(findUpfrontPayment).not.toHaveBeenCalled();
+        expect(removeBundledAddOnsOf).not.toHaveBeenCalled();
+      });
+    });
+
     it("treats the first full charge a month later as an ordinary renewal at the monthly amount", async () => {
       vi.mocked(findSubscriptionByProviderId).mockResolvedValue(
         offerSubscription({ activatedAt: new Date("2026-11-13T07:00:00.000Z"), status: "active", commitmentEndsAt: new Date("2026-12-13T07:00:00.000Z") }),

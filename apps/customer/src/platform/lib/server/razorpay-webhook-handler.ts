@@ -135,6 +135,17 @@ export async function handleRazorpayWebhookEvent(event: RazorpayWebhookEvent): P
         await restoreKeptPlan(tx, known.id, new Date());
       });
     }
+    // A first-month payment (plan 63) is taken when the mandate is authorised, but live Razorpay does not always send the invoice.paid
+    // that carries it: an added service's came as order.paid and subscription.authenticated only. So every status event of a
+    // subscription still waiting for that payment asks Razorpay for it; it is recorded once whatever else delivers it, and kept for
+    // staff to refund when the subscription is cancelled. A failure to ask throws, so Razorpay delivers the event again.
+    const awaitingFirstPayment = known.firstPaymentCents !== null && known.activatedAt === null;
+    if (awaitingFirstPayment) await recordUpfrontFromRazorpay(event.subscriptionId);
+    // A combined subscription cancelled before it took over (its mandate revoked, say) would leave its services pending and their
+    // first-month offer taken: they are removed, so the customer can add the service again.
+    if (awaitingFirstPayment && known.continuesId !== null && status === "cancelled") {
+      await removeBundledAddOnsOf(getStaffDb(), { subscriptionId: known.id, now: new Date() });
+    }
     return;
   }
 

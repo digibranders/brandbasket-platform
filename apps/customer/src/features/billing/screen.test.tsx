@@ -33,7 +33,7 @@ const SERVICES: ServicesPanelView = {
   rows: [
     { addOn: "managed-website", service: "website", name: "Website Management", status: { word: "Active", tone: "pos" }, price: "₹2,399", line: "Since Thu 27 Aug.", offerPrice: null, action: { kind: "cancel" } },
     { addOn: "social-media", service: "social", name: "Social & Ads", status: { word: "Active", tone: "pos" }, price: "₹7,999", line: "Since Thu 27 Aug.", offerPrice: null, action: { kind: "cancel" } },
-    { addOn: "paid-ads", service: "search", name: "Local SEO + AEO", status: { word: "Not added", tone: "neutral" }, price: "₹22,499", line: "Local search.", offerPrice: "₹1", action: { kind: "add", summary: { title: "Add Local SEO + AEO", rows: [{ key: "service", label: "Local SEO + AEO, until Fri 27 Nov", amount: "₹18,000", tone: "plain" }], totalLabel: "Due today", total: "₹18,000", notes: ["From Fri 27 Nov, you pay ₹30,398 a month for all your services."] } } },
+    { addOn: "paid-ads", service: "search", name: "Local SEO + AEO", status: { word: "Not added", tone: "neutral" }, price: "₹22,499", line: "Local search.", offerPrice: "₹1", action: { kind: "add", summary: { title: "Add Local SEO + AEO", rows: [{ key: "service", label: "Local SEO + AEO, until Fri 27 Nov", amount: "₹18,000", tone: "plain" }], totalLabel: "Due today", total: "₹18,000", notes: ["Then ₹30,398 a month for all your services, from Fri 27 Nov."] } } },
   ],
   cancel: {
     endsOn: "Fri 27 Nov",
@@ -85,7 +85,7 @@ describe("Plan & billing, Your services", () => {
     wrap(await BillingScreen({ customer, params: { add: "search" } }));
     const dialog = await screen.findByRole("dialog");
     expect(within(dialog).getByText("Local SEO + AEO, until Fri 27 Nov")).toBeTruthy();
-    expect(within(dialog).getByText("From Fri 27 Nov, you pay ₹30,398 a month for all your services.")).toBeTruthy();
+    expect(within(dialog).getByText("Then ₹30,398 a month for all your services, from Fri 27 Nov.")).toBeTruthy();
     expect(within(dialog).getByRole("button", { name: "Pay ₹18,000" })).toBeTruthy();
   });
 
