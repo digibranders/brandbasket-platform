@@ -32,6 +32,7 @@
     "db:migrate": "tsx scripts/migrate.ts --target=dev",
     "db:migrate:test": "tsx scripts/migrate.ts --target=test",
     "db:seed:kickoff": "tsx scripts/seed-kickoff-customers.ts",
+    "db:seed:v4": "tsx --conditions=react-server scripts/seed-v4-states.ts",
     "directory:import-places": "tsx scripts/import-directory-places.ts",
     "directory:import-pincodes": "tsx scripts/import-india-pincodes.ts",
     "directory:backfill-places": "tsx scripts/backfill-directory-places.ts",

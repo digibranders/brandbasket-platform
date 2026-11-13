@@ -46,7 +46,7 @@ source was pulled in `report_source_runs`.
 | The owner's email | `packages/email/src/templates/monthly-report.ts` |
 | Staff review | the console, Clients, Reports (`apps/admin/app/(protected)/reports`) |
 | The monthly job | `pnpm reports:run`, `brandbasket-monthly-reports.timer` |
-| Customer reading and downloading | the customer app (Reports) |
+| Customer reading and downloading | `apps/customer/src/features/reports`, `/reports/[month]/pdf` |
 
 ## How a month goes
 

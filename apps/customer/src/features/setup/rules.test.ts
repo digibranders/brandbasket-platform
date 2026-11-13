@@ -1,0 +1,62 @@
+import { describe, expect, it } from "vitest";
+import { notBoughtView, setupAsks, setupCardTitle, setupPageHref } from "./rules";
+
+const NONE = { social: undefined, search: undefined };
+
+describe("setupAsks", () => {
+  it("asks for the accounts and the ad budget for Social & Ads, and the areas for Paid Ads Management, in the checklist's order", () => {
+    expect(setupAsks("social", NONE).map((ask) => ask.key)).toEqual(["accounts", "budget"]);
+    expect(setupAsks("search", NONE).map((ask) => ask.key)).toEqual(["areas"]);
+  });
+
+  it("no longer asks what to promote: it comes up on the kickoff call", () => {
+    expect(setupAsks("social", NONE).map((ask) => ask.key)).not.toContain("offers");
+  });
+
+  it("gives each question its label, its hint and the checklist item that takes the answer", () => {
+    expect(setupAsks("social", NONE)[0]).toEqual({
+      key: "accounts",
+      label: "Instagram and Facebook pages",
+      hint: "Links to your pages, and whether you added us as an admin",
+      href: "/checklist?item=accounts",
+    });
+  });
+
+  it("leaves out a question that is answered", () => {
+    expect(setupAsks("social", { social: { instagramUrl: "https://instagram.com/apex" }, search: undefined }).map((ask) => ask.key)).toEqual(["budget"]);
+    expect(setupAsks("social", { social: { instagramUrl: "https://instagram.com/apex", adBudgetRupees: 10000, adArea: "4 km" }, search: undefined })).toEqual([]);
+    expect(setupAsks("search", { social: undefined, search: { areas: "Thane West" } })).toEqual([]);
+  });
+
+  it("does not count a budget without an area, or a blank link, as answered", () => {
+    expect(setupAsks("social", { social: { facebookUrl: "  ", adBudgetRupees: 10000 }, search: undefined }).map((ask) => ask.key)).toEqual(["accounts", "budget"]);
+  });
+
+  it("opens the service's own page at its card, and words the card's title", () => {
+    expect(setupPageHref("social")).toBe("/social#setup");
+    expect(setupPageHref("search")).toBe("/search#setup");
+    expect(setupCardTitle(1)).toBe("We need one thing from you");
+    expect(setupCardTitle(2)).toBe("We need a few things from you");
+  });
+});
+
+describe("notBoughtView", () => {
+  it("prices a service alone at its list price in rupees, with GST named once", () => {
+    const view = notBoughtView({ service: "social", held: [], forfeited: false, currency: "INR" });
+    expect(view).toMatchObject({ price: "₹2,999 a month", listPrice: null, offer: null, note: "Prices are in rupees and include GST.", addHref: "/billing?add=social" });
+    expect(view.includes).toContain("Automated posting and scheduling");
+    expect(view.includes).not.toContain("Your ad spend is paid on top");
+  });
+
+  it("prices a service at list once it joins what is held, with no package offer", () => {
+    const view = notBoughtView({ service: "social", held: [{ addOn: "managed-website", listCents: 299_900 }], forfeited: false, currency: "INR" });
+    expect(view).toMatchObject({ price: "₹2,999 a month", listPrice: null, offer: null, addHref: "/billing?add=social" });
+  });
+
+  it("never mentions GST beside a dollar price", () => {
+    const view = notBoughtView({ service: "social", held: [], forfeited: false, currency: "USD" });
+    expect(view.price).toBe("$59 a month");
+    expect(view.note).toBe("Prices are in dollars.");
+    expect(JSON.stringify(view)).not.toContain("GST");
+  });
+});

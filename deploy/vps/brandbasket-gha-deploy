@@ -3,9 +3,13 @@
 # /usr/local/sbin/brandbasket-gha-deploy (root:root 0755) and run only as the forced command of one SSH key (see
 # docs/deployment/brandbasket-vps.md, "Deploying from GitHub Actions"): the key can run nothing else.
 #
-#   ssh root@vps "deploy <40 hex sha>" < release.tgz
+#   ssh root@vps "deploy <40 hex sha>" < release.tgz            platform and admin (what has always run)
+#   ssh root@vps "deploy <40 hex sha> customer" < release.tgz   the same, then apps/customer too
 #
-# The tarball is the source of one commit plus apps/platform/.next and apps/admin/.next, without node_modules; it is built at
+# The word `customer` is sent by .github/workflows/deploy.yml only while the repository variable CUSTOMER_APP_ENABLED is 1
+# (docs/deployment/brandbasket-vps.md, "Customer app v4"). Install this script before setting the variable: an older copy refuses it.
+#
+# The tarball is the source of one commit plus apps/platform/.next and apps/admin/.next (and apps/customer/.next with `customer`), without node_modules; it is built at
 # /srv/brandbasket/releases/<sha> on the runner so no path inside it changes. This script checks the name, unpacks as
 # `brandbasket`, and the release script installs dependencies, checks the env files, migrates and switches both apps.
 set -euo pipefail
@@ -13,9 +17,11 @@ set -euo pipefail
 readonly ROOT=/srv/brandbasket
 readonly REQUEST="${SSH_ORIGINAL_COMMAND:-}"
 
-[[ "$REQUEST" =~ ^deploy\ ([0-9a-f]{40})$ ]] || { echo "refused: expected 'deploy <40 hex sha>'" >&2; exit 2; }
+[[ "$REQUEST" =~ ^deploy\ ([0-9a-f]{40})(\ customer)?$ ]] || { echo "refused: expected 'deploy <40 hex sha>' or 'deploy <40 hex sha> customer'" >&2; exit 2; }
 readonly SHA="${BASH_REMATCH[1]}"
-readonly APPS=(platform admin)
+APPS=(platform admin)
+[[ -z "${BASH_REMATCH[2]}" ]] || APPS+=(customer)
+readonly APPS
 readonly DIR="$ROOT/releases/$SHA"
 
 as_bb() { runuser -u brandbasket -- env HOME=/home/brandbasket "$@"; }
