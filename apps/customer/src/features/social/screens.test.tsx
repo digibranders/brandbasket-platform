@@ -4,9 +4,9 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { loadSetupAsks } from "@/features/setup/loader";
 import type { CustomerContext } from "@/lib/guards";
 import { ToastProvider } from "@/ui";
-import { SocialAccounts, SocialAds, SocialContent, SocialOverview } from "./components/social-screens";
-import { loadAccounts, loadAds, loadCampaigns, loadPosts, loadReach, loadReportLink, loadWaitingPostCount } from "./loader";
-import { accountRows, adsView, campaignRows, reachView, type CampaignSource, type PostView } from "./rules";
+import { SocialAds, SocialOverview } from "./components/social-screens";
+import { loadAds, loadCampaigns, loadChannelsColumn, loadPosts, loadReach, loadReportLink, loadWaitingPostCount } from "./loader";
+import { adsView, campaignRows, reachView, type CampaignSource, type PostView } from "./rules";
 
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn() }), unstable_rethrow: vi.fn() }));
 vi.mock("@sentry/nextjs", () => ({ captureException: vi.fn(() => "event-1") }));
@@ -15,12 +15,13 @@ vi.mock("./loader", () => ({
   loadAds: vi.fn(),
   loadCampaigns: vi.fn(),
   loadReach: vi.fn(),
-  loadAccounts: vi.fn(),
+  loadChannelsColumn: vi.fn(),
   loadReportLink: vi.fn(),
   loadWaitingPostCount: vi.fn(),
 }));
 vi.mock("@/features/setup/loader", () => ({ loadSetupAsks: vi.fn(), loadNotBought: vi.fn() }));
 vi.mock("./actions", () => ({ approvePostsAction: vi.fn() }));
+vi.mock("./accounts/actions", () => ({ startConnectAction: vi.fn() }));
 
 const NOW = new Date("2026-11-04T06:00:00.000Z");
 const customer = (over: Partial<CustomerContext> = {}): CustomerContext =>
@@ -40,6 +41,7 @@ beforeEach(() => {
   vi.mocked(loadAds).mockResolvedValue({ ads: null, month: "November" });
   vi.mocked(loadCampaigns).mockResolvedValue({ campaigns: [], month: "November" });
   vi.mocked(loadReach).mockResolvedValue(null);
+  vi.mocked(loadChannelsColumn).mockResolvedValue({ rows: [], missing: [], live: false });
 });
 
 const ENTERED = new Date("2026-11-03T05:00:00.000Z");
@@ -64,7 +66,7 @@ describe("Social & Ads Overview", () => {
     expect(screen.getByRole("button", { name: "Approve all 2" })).toBeTruthy();
     expect(screen.getAllByRole("button", { name: "Approve" })).toHaveLength(2);
     expect(screen.getAllByText("Instagram post · Wed 25 Nov").length).toBeGreaterThan(0);
-    const headings = screen.getAllByRole("heading", { level: 2 }).map((heading) => heading.textContent);
+    const headings = screen.getAllByRole("heading", { level: 2 }).map((heading) => heading.textContent).filter((text) => text !== "Channels");
     expect(headings[0]).toBe("Waiting for your approval");
   });
 
@@ -175,19 +177,19 @@ describe("Social & Ads Overview", () => {
   });
 });
 
-describe("Content", () => {
+describe("Posts: waiting posts and the calendar", () => {
   it("shows the waiting posts as cards with their captions, and a calendar of the month", async () => {
     vi.mocked(loadPosts).mockResolvedValue({ month: "November", posts: [post("a", "2026-11-25", "awaiting_approval"), post("b", "2026-11-03", "published")] });
-    wrap(await SocialContent({ customer: customer(), now: NOW }));
+    wrap(await SocialOverview({ customer: customer(), now: NOW }));
     expect(screen.getByText("Caption a")).toBeTruthy();
     expect(screen.getByRole("heading", { name: "Calendar" })).toBeTruthy();
     expect(screen.getByRole("table", { name: "Posts in November" })).toBeTruthy();
-    expect(screen.getByRole("link", { name: /Content/ }).textContent).toContain("1");
+    expect(screen.getByRole("link", { name: /Posts/ }).textContent).toContain("1");
   });
 
   it("shows an error, not an empty calendar, when the posts cannot be read", async () => {
     vi.mocked(loadPosts).mockRejectedValue(new Error("down"));
-    wrap(await SocialContent({ customer: customer(), now: NOW }));
+    wrap(await SocialOverview({ customer: customer(), now: NOW }));
     expect(screen.getByText("We could not load your posts.")).toBeTruthy();
     expect(screen.queryByRole("heading", { name: "Calendar" })).toBeNull();
   });
@@ -248,28 +250,32 @@ describe("Ads", () => {
   });
 });
 
-describe("Accounts", () => {
-  it("lists the accounts with their state, and Connect only on one that is not connected", async () => {
-    vi.mocked(loadAccounts).mockResolvedValue(
-      accountRows([
-        { platform: "instagram", handle: "@apex", url: "https://instagram.com/apex", status: "connected", checkedAt: new Date("2026-11-02T05:00:00.000Z") },
-        { platform: "whatsapp_business", handle: null, url: null, status: "not_connected", checkedAt: null },
-      ]),
-    );
-    wrap(await SocialAccounts({ customer: customer(), now: NOW }));
-    expect(screen.getByText("Connected")).toBeTruthy();
-    expect(screen.getByText("Not connected")).toBeTruthy();
-    expect(screen.getAllByRole("link", { name: "Connect" })).toHaveLength(1);
-    expect(screen.getByRole("link", { name: "@apex" }).getAttribute("href")).toBe("https://instagram.com/apex");
+describe("Channels column", () => {
+  it("lists the accounts down the side, each a link that shows only that channel", async () => {
+    vi.mocked(loadPosts).mockResolvedValue({ month: "November", posts: [] });
+    vi.mocked(loadChannelsColumn).mockResolvedValue({ rows: [{ id: "instagram", platform: "instagram", account: "@apex", ending: null, paused: false }], missing: [], live: false });
+    wrap(await SocialOverview({ customer: customer(), now: NOW }));
+    expect(screen.getByRole("heading", { name: "Channels" })).toBeTruthy();
+    expect(screen.getByRole("link", { name: /@apex/ }).getAttribute("href")).toBe("/social?channel=instagram");
   });
 
-  it("explains an empty list and shows an error when it cannot be read", async () => {
-    vi.mocked(loadAccounts).mockResolvedValue([]);
-    const { unmount } = wrap(await SocialAccounts({ customer: customer(), now: NOW }));
-    expect(screen.getByText("No accounts are listed yet.")).toBeTruthy();
+  it("says nothing about an empty list and shows an error when it cannot be read", async () => {
+    vi.mocked(loadPosts).mockResolvedValue({ month: "November", posts: [] });
+    const { unmount } = wrap(await SocialOverview({ customer: customer(), now: NOW }));
+    expect(screen.queryByText("No accounts are connected yet.")).toBeNull();
     unmount();
-    vi.mocked(loadAccounts).mockRejectedValue(new Error("down"));
-    wrap(await SocialAccounts({ customer: customer(), now: NOW }));
-    expect(screen.getByText("We could not load your accounts.")).toBeTruthy();
+    vi.mocked(loadChannelsColumn).mockRejectedValue(new Error("down"));
+    wrap(await SocialOverview({ customer: customer(), now: NOW }));
+    expect(screen.getByText("We could not load your channels.")).toBeTruthy();
+  });
+
+  it("offers Connect for a network with no account only when posts go through a posting service and the person can change things", async () => {
+    vi.mocked(loadPosts).mockResolvedValue({ month: "November", posts: [] });
+    vi.mocked(loadChannelsColumn).mockResolvedValue({ rows: [], missing: ["instagram", "google"], live: true });
+    const { unmount } = wrap(await SocialOverview({ customer: customer(), now: NOW }));
+    expect(screen.getByRole("button", { name: "Connect Instagram" })).toBeTruthy();
+    unmount();
+    wrap(await SocialOverview({ customer: customer({ role: "viewer" }), now: NOW }));
+    expect(screen.queryByRole("button", { name: "Connect Instagram" })).toBeNull();
   });
 });

@@ -20,9 +20,16 @@ import {
   WEEKDAY_NAMES,
   type PostView,
 } from "../rules";
+import { postingServiceSettings } from "../analytics/rules";
 import { ApprovalsPanel } from "./approvals-panel";
 
-export const DEFAULT_DESCRIPTION = "Instagram and Facebook posts, and your ads.";
+export const DEFAULT_DESCRIPTION = "Your Instagram and Facebook posts, and how they did.";
+export const ADS_DESCRIPTION = "What your ads spent, and what they brought in.";
+
+/** The title and Ask for a change of the Paid Ads page, which has no tabs. */
+export function AdsHeader({ customer }: { readonly customer: Pick<CustomerContext, "role"> }) {
+  return <PageHeader title="Paid Ads" description={ADS_DESCRIPTION} actions={customer.role === "viewer" ? null : <LinkButton href={ASK_FOR_CHANGE_HREF}>Ask for a change</LinkButton>} />;
+}
 
 /** The number of posts waiting, from a posts panel that loaded; null when it did not. */
 export function waitingIn(posts: Loaded<PostsView> | null): number | null {
@@ -36,20 +43,24 @@ export function SocialHeader({
   waiting,
   description = DEFAULT_DESCRIPTION,
   reportHref = null,
+  extra = null,
 }: {
   readonly customer: Pick<CustomerContext, "role">;
   readonly current: string;
   readonly waiting: number | null;
   readonly description?: string;
   readonly reportHref?: string | null;
+  /** Beside the buttons: the brand switcher on the pages that have one. */
+  readonly extra?: ReactNode;
 }) {
   return (
     <PageHeader
-      title="Social & Ads"
+      title="Social media"
       description={description}
-      tabs={<TabLinks items={socialTabs(waiting)} current={current} aria-label="Social & Ads" />}
+      tabs={<TabLinks items={socialTabs(waiting, postingServiceSettings(process.env) !== null)} current={current} aria-label="Social media" />}
       actions={
         <>
+          {extra}
           {reportHref === null ? null : (
             <a href={reportHref} target="_blank" rel="noopener noreferrer" className={buttonClasses("secondary", "md")}>
               <Icon name="ArrowUpRight" size="sm" />
@@ -174,6 +185,19 @@ export function CalendarPanel({ posts, now, month }: { readonly posts: readonly 
         </>
       )}
     </Panel>
+  );
+}
+
+/**
+ * The page and the channels column beside it: on a wide screen the column steps out of the shell's gutter and sits flush against the
+ * menu, as on the Posts page; on a phone it is above the page.
+ */
+export function SocialLayout({ column, children }: { readonly column: ReactNode; readonly children: ReactNode }) {
+  return (
+    <div className="flex flex-col gap-6 lg:-mt-5 lg:-ml-gutter lg:flex-row lg:gap-8">
+      {column}
+      <div className="min-w-0 flex-1 lg:pt-5">{children}</div>
+    </div>
   );
 }
 

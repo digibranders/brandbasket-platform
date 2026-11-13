@@ -3,8 +3,9 @@
 import { usePathname } from "next/navigation";
 import { useEffect, useMemo, useState, useSyncExternalStore, type ReactNode } from "react";
 import { Banner } from "@/ui";
+import { cx } from "@/ui/cx";
 import type { ShellView } from "../loader";
-import { countOf, isSearchShortcut, navModel, phoneTabs, searchTargets } from "../rules";
+import { countOf, isSearchShortcut, navModel, phoneTabs, searchTargets, SHELL_PATHS } from "../rules";
 import { BillingBanner } from "./billing-banner";
 import { CommandSearch } from "./command-search";
 import { Sidebar } from "./sidebar";
@@ -48,6 +49,8 @@ function toggleCollapsed(): void {
  */
 export function AppShell({ view, children }: { readonly view: ShellView; readonly children: ReactNode }) {
   const pathname = usePathname();
+  // Social media pages have a channels column that sits against the menu, so their page does not stop at the usual width.
+  const fillsWidth = pathname === SHELL_PATHS.social || pathname.startsWith(`${SHELL_PATHS.social}/`);
   const [searching, setSearching] = useState(false);
   const [signOutError, setSignOutError] = useState<string | null>(null);
   const collapsed = useSyncExternalStore(subscribeCollapsed, readCollapsed, () => false);
@@ -105,7 +108,7 @@ export function AppShell({ view, children }: { readonly view: ShellView; readonl
             onSearch={openSearch}
             onSignOutError={setSignOutError}
           />
-          <main id="page" tabIndex={-1} className="mx-auto w-full max-w-page px-gutter pt-4 pb-12 outline-none md:pt-5">
+          <main id="page" tabIndex={-1} className={cx("mx-auto w-full px-gutter pt-4 pb-12 outline-none md:pt-5", fillsWidth ? "social-pointer max-w-none" : "max-w-page")}>
             {signOutError === null ? null : (
               <Banner tone="neg" className="mb-4">
                 {signOutError}
