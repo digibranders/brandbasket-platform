@@ -231,6 +231,14 @@ export const subscriptions = pgTable(
     continuesId: uuid("continues_id"),
     /** Keep my plan: the day the new mandate is first charged, the old one's `paid_through_at`. Null for any other subscription. */
     startAt: timestamp("start_at", { withTimezone: true }),
+    /**
+     * A checkout with a first-month offer in it (plan 63): what the first payment takes, GST included, frozen when the checkout
+     * opened. The subscription is opened at the provider to start a month later and the first payment is taken upfront at
+     * authorisation, so it is less than the recurring amount. Null when the first payment is the ordinary one.
+     */
+    firstPaymentCents: integer("first_payment_cents"),
+    /** The day the provider takes the first full charge, which is the end of the first month and of the offer. Set with `firstPaymentCents`. */
+    firstChargeAt: timestamp("first_charge_at", { withTimezone: true }),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
@@ -255,6 +263,11 @@ export const subscriptions = pgTable(
       sql`${table.bundledAddOnNetCents} >= 0 and (${table.pendingBundledAddOnNetCents} is null or ${table.pendingBundledAddOnNetCents} >= 0)`,
     ),
     check("subscriptions_ad_credit_check", sql`${table.adCreditCents} >= 0`),
+    // The first-month offer is monthly only, and its amount and its first full charge go together.
+    check(
+      "subscriptions_first_payment_check",
+      sql`(${table.firstPaymentCents} is null) = (${table.firstChargeAt} is null) and (${table.firstPaymentCents} is null or (${table.firstPaymentCents} > 0 and ${table.billingInterval} = 'month'))`,
+    ),
     check(
       "subscriptions_discount_months_check",
       sql`(${table.discountMonthsLeft} is null or ${table.discountMonthsLeft} >= 0) and (${table.nextDiscountAmountCents} is null or ${table.nextDiscountAmountCents} >= 0)`,

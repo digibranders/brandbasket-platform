@@ -201,7 +201,11 @@ export function createFakeBillingProvider(options: FakeBillingProviderOptions): 
         `${SUBSCRIPTION_ID_PREFIX}${randomBytes(SUBSCRIPTION_ID_BYTES).toString("hex")}`;
       // Charged through the same function everything else uses (the price less any discount, GST already inside it), so the
       // local and test path takes exactly what Razorpay would. It throws for a discount that leaves nothing to charge.
-      const amountCents = chargedAmountCents(input.plan.initialAmountCents + (input.bundledAddOnNetCents ?? 0), input.discountAmountCents ?? 0);
+      const amountCents =
+        input.firstPayment === undefined
+          ? chargedAmountCents(input.plan.initialAmountCents + (input.bundledAddOnNetCents ?? 0), input.discountAmountCents ?? 0)
+          : input.firstPayment.amountCents;
+      if (!Number.isSafeInteger(amountCents) || amountCents <= 0) throw new RangeError(`A first payment must be a positive whole number of minor units, received ${amountCents}`);
       const token = mintToken(secret, {
         providerSubscriptionId,
         businessId: input.businessId,
@@ -338,6 +342,11 @@ export function createFakeBillingProvider(options: FakeBillingProviderOptions): 
         paidAt,
         method: FAKE_PAYMENT_METHOD,
       };
+    },
+
+    /** A fake payment is recorded on the confirm page as it is made; nothing is held anywhere to find later. */
+    async findUpfrontPayment(): Promise<null> {
+      return null;
     },
   };
 }

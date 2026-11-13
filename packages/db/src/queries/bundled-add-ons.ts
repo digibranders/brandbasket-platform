@@ -27,6 +27,8 @@ export interface NewBundledAddOn {
   readonly offerDiscountAmountCents: number;
   readonly netAmountCents: number;
   readonly taxRateBasisPoints: number;
+  /** What the first month costs when the service is on the first-month offer (plan 63): ₹1 or $1. Null or absent for a service at its price. */
+  readonly trialPriceCents?: number | null;
 }
 
 /** The monthly price of a set of bundled add-ons, GST included: what is added to the plan's price. */
@@ -52,8 +54,21 @@ export async function insertBundledAddOns(
       offerDiscountAmountCents: item.offerDiscountAmountCents,
       netAmountCents: item.netAmountCents,
       taxRateBasisPoints: item.taxRateBasisPoints,
+      trialPriceCents: item.trialPriceCents ?? null,
     })),
   );
+}
+
+/**
+ * Starts the first-month offer of every service on a subscription that carries one: it runs until `trialEndsAt`, the day the
+ * provider takes the first full charge. Called when the first payment is recorded. Idempotent. Staff connection.
+ */
+export async function startBundledTrials(db: Runner, input: { readonly subscriptionId: string; readonly trialEndsAt: Date; readonly now: Date }): Promise<void> {
+  if (!isUuid(input.subscriptionId)) return;
+  await db
+    .update(bundledAddOns)
+    .set({ trialEndsAt: input.trialEndsAt, updatedAt: input.now })
+    .where(and(eq(bundledAddOns.subscriptionId, input.subscriptionId), isNotNull(bundledAddOns.trialPriceCents), isNull(bundledAddOns.trialEndsAt)));
 }
 
 /** The add-ons a subscription was opened with, in the order they were added, whatever their status. */

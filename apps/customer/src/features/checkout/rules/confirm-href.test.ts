@@ -9,6 +9,7 @@ const kinds: readonly PaymentConfirmation[] = [
   { kind: "needs-attention" },
   { kind: "membership-opened" },
   { kind: "reactivated" },
+  { kind: "service-added" },
   { kind: "already-recorded", projectStillOpen: true },
   { kind: "already-recorded", projectStillOpen: false },
   { kind: "paid", submission: {} as never, projectStillOpen: true },
@@ -28,6 +29,10 @@ describe("where a confirmed payment sends the customer", () => {
   it("sends a payment that did not open the plan back to the checkout, for both kinds of unpaid account", () => {
     expect(hrefAfter({ kind: "invalid" }, null)).toBe("/checkout?payment=failed");
     expect(hrefAfter({ kind: "invalid" }, "managed")).toBe("/checkout?payment=failed");
+  });
+
+  it("returns a paid added service to Plan & billing", () => {
+    expect(hrefAfter({ kind: "service-added" }, null)).toBe("/billing");
   });
 
   it("says a payment we could not match was received", () => {

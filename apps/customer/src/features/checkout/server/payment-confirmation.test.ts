@@ -22,6 +22,7 @@ import { afterEach, beforeEach, describe, expect, it, vi, type MockInstance } fr
 import type { TenantContext } from "@brandbasket/shared/lib/access";
 import { getBillingProvider } from "./billing";
 import { moveProviderAfterDiscountEnds } from "@brandbasket/shared/server/basket-change";
+import { recordAddedServicePayment } from "@brandbasket/shared/server/added-service";
 import { activateFirstPayment, activateReactivationPayment } from "@brandbasket/shared/server/billing-activation";
 import { getStaffDb } from "./db";
 import { sendOnboardingWithin, StepRefusedError } from "./onboarding";
@@ -29,7 +30,7 @@ import { notifyTeamOnboardingSent } from "./onboarding-alert";
 import { reportFirstPaymentToAds } from "./conversions";
 import { sendPaymentReceipt } from "./payment-emails";
 import { announcePaymentToTeams } from "./teams";
-import { confirmFirstPayment, verifyCheckoutFor } from "./payment-confirmation";
+import { confirmFirstPayment, isCombinedCheckoutFor, verifyCheckoutFor } from "./payment-confirmation";
 
 // The database is a double: that the payment, the subscription, the lead and the submission really commit (or roll
 // back) together is proven in packages/db's payment-confirmation integration test. The provider is the real fake
@@ -39,6 +40,7 @@ vi.mock("./billing", () => ({ getBillingProvider: vi.fn() }));
 vi.mock("./add-ons", () => ({ basketDeps: vi.fn(() => ({ deps: true })) }));
 vi.mock("@brandbasket/shared/server/basket-change", () => ({ moveProviderAfterDiscountEnds: vi.fn() }));
 vi.mock("@brandbasket/shared/server/billing-activation", () => ({ activateFirstPayment: vi.fn(), activateReactivationPayment: vi.fn() }));
+vi.mock("@brandbasket/shared/server/added-service", () => ({ recordAddedServicePayment: vi.fn() }));
 vi.mock("./db", () => ({ getStaffDb: vi.fn() }));
 vi.mock("./onboarding-alert", () => ({ notifyTeamOnboardingSent: vi.fn() }));
 vi.mock("./payment-emails", () => ({ sendPaymentReceipt: vi.fn(async () => undefined) }));
@@ -145,6 +147,8 @@ function unpaidSubscription(providerSubscriptionId: string, overrides: Partial<S
     discountAmountCents: 0,
     bundledAddOnNetCents: 0,
     pendingBundledAddOnNetCents: null,
+    firstPaymentCents: null,
+    continuesId: null,
     ...overrides,
   } as Subscription;
 }
@@ -589,6 +593,40 @@ describe("confirmFirstPayment", () => {
     expect(recordUnappliedPayment).not.toHaveBeenCalled();
   });
 
+  it("activates a first payment of a first-month offer: the amount frozen at checkout, not the monthly amount", async () => {
+    const services = { ...PLAN, currency: "INR" as const, initialAmountCents: 0, recurringAmountCents: 0, taxRateBasisPoints: 1_800 };
+    vi.mocked(findPlanById).mockResolvedValue(services);
+    const started = await provider.startCheckout({
+      businessId: BUSINESS_ID,
+      businessName: "Riverside",
+      email: "ana@example.com",
+      plan: services,
+      bundledAddOnNetCents: 299_900,
+      firstPayment: { amountCents: 100, startAt: new Date(NOW.getTime() + 30 * 86_400_000) },
+    });
+    const token = new URL(started.checkoutUrl, "http://app.localhost").searchParams.get("token");
+    vi.mocked(findSubscriptionByProviderId).mockResolvedValue(
+      unpaidSubscription(started.providerSubscriptionId, { bundledAddOnNetCents: 299_900, firstPaymentCents: 100, firstChargeAt: new Date(NOW.getTime() + 30 * 86_400_000) }),
+    );
+
+    await expect(confirmFirstPayment(tenant, { token }, NOW)).resolves.toMatchObject({ kind: "paid" });
+    expect(recordUnappliedPayment).not.toHaveBeenCalled();
+  });
+
+  it("sets aside a payment of the monthly amount for a subscription that was opened with a first-month offer", async () => {
+    const services = { ...PLAN, currency: "INR" as const, initialAmountCents: 0, recurringAmountCents: 0, taxRateBasisPoints: 1_800 };
+    vi.mocked(findPlanById).mockResolvedValue(services);
+    const started = await provider.startCheckout({ businessId: BUSINESS_ID, businessName: "Riverside", email: "ana@example.com", plan: services, bundledAddOnNetCents: 299_900 });
+    const token = new URL(started.checkoutUrl, "http://app.localhost").searchParams.get("token");
+    vi.mocked(findSubscriptionByProviderId).mockResolvedValue(
+      unpaidSubscription(started.providerSubscriptionId, { bundledAddOnNetCents: 299_900, firstPaymentCents: 100, firstChargeAt: new Date(NOW.getTime() + 30 * 86_400_000) }),
+    );
+
+    await confirmFirstPayment(tenant, { token }, NOW);
+
+    expect(recordUnappliedPayment).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ reason: "amount_mismatch", amountCents: 299_900 }));
+  });
+
   it("activates a first payment that had a referral discount taken off", async () => {
     vi.mocked(findPlanById).mockResolvedValue(PLAN);
     const started = await provider.startCheckout({
@@ -732,5 +770,61 @@ describe("confirmFirstPayment", () => {
     await expect(confirmFirstPayment(tenant, { token }, NOW)).rejects.toThrow("connection lost");
     expect(outcome).toBe("rolled back");
     expect(sendOnboardingWithin).not.toHaveBeenCalled();
+  });
+});
+
+describe("confirmFirstPayment for a service added as a combined subscription (plan 63)", () => {
+  const combined = (providerSubscriptionId: string) =>
+    unpaidSubscription(providerSubscriptionId, { id: "sub-2", continuesId: "sub-1", firstPaymentCents: 22500, activatedAt: null });
+
+  it("records the upfront payment, then tells Teams, sends the receipt and cancels the replaced subscription at the provider", async () => {
+    const { token, providerSubscriptionId } = await checkoutToken();
+    const cancelled: string[] = [];
+    vi.mocked(getBillingProvider).mockReturnValue({ ...provider, cancelSubscription: async (id) => void cancelled.push(id) });
+    vi.mocked(findSubscriptionByProviderId).mockResolvedValue(combined(providerSubscriptionId));
+    vi.mocked(recordAddedServicePayment).mockResolvedValue({
+      kind: "recorded",
+      businessId: BUSINESS_ID,
+      paymentId: "pay-2",
+      replaced: { provider: "fake", providerSubscriptionId: "fake_sub_old", subscriptionId: "sub-1" },
+    });
+
+    await expect(confirmFirstPayment(tenant, { token }, NOW)).resolves.toEqual({ kind: "service-added" });
+
+    expect(recordAddedServicePayment).toHaveBeenCalledWith(staffTx, expect.objectContaining({ subscriptionId: "sub-2", provider: "fake", amountCents: 22500, currency: "USD" }));
+    expect(activateFirstPayment).not.toHaveBeenCalled();
+    expect(sendOnboardingWithin).not.toHaveBeenCalled();
+    expect(outcome).toBe("committed");
+    expect(announcePaymentToTeams).toHaveBeenCalledWith("pay-2");
+    expect(sendPaymentReceipt).toHaveBeenCalledWith("pay-2");
+    expect(cancelled).toEqual(["fake_sub_old"]);
+  });
+
+  it("keeps money that cannot pay for it for staff, with no receipt, and stops the combined subscription at the provider", async () => {
+    const { token, providerSubscriptionId } = await checkoutToken();
+    const cancelled: string[] = [];
+    vi.mocked(getBillingProvider).mockReturnValue({ ...provider, cancelSubscription: async (id) => void cancelled.push(id) });
+    vi.mocked(findSubscriptionByProviderId).mockResolvedValue(combined(providerSubscriptionId));
+    vi.mocked(recordAddedServicePayment).mockResolvedValue({ kind: "unapplied", businessId: BUSINESS_ID, paymentId: "pay-3", newlyRecorded: true, reason: "checkout_replaced" });
+
+    await expect(confirmFirstPayment(tenant, { token }, NOW)).resolves.toEqual({ kind: "needs-attention" });
+    expect(announcePaymentToTeams).toHaveBeenCalledWith("pay-3");
+    expect(sendPaymentReceipt).not.toHaveBeenCalled();
+    expect(cancelled).toEqual([providerSubscriptionId]);
+    expect(String(warned.mock.calls[0]?.[0])).toContain('"reason":"checkout_replaced"');
+  });
+
+  it("is told apart from an ordinary checkout only while it waits for its payment, and only for this business", async () => {
+    const { token, providerSubscriptionId } = await checkoutToken();
+    const confirmed = await verifyCheckoutFor(tenant, { token });
+    if (confirmed === null) throw new Error("the token did not verify");
+    vi.mocked(findSubscriptionByProviderId).mockResolvedValueOnce(combined(providerSubscriptionId));
+    await expect(isCombinedCheckoutFor(tenant, confirmed)).resolves.toBe(true);
+    vi.mocked(findSubscriptionByProviderId).mockResolvedValueOnce({ ...combined(providerSubscriptionId), activatedAt: NOW });
+    await expect(isCombinedCheckoutFor(tenant, confirmed)).resolves.toBe(false);
+    vi.mocked(findSubscriptionByProviderId).mockResolvedValueOnce({ ...combined(providerSubscriptionId), businessId: OTHER_BUSINESS_ID });
+    await expect(isCombinedCheckoutFor(tenant, confirmed)).resolves.toBe(false);
+    vi.mocked(findSubscriptionByProviderId).mockResolvedValueOnce(unpaidSubscription(providerSubscriptionId, { continuesId: null }));
+    await expect(isCombinedCheckoutFor(tenant, confirmed)).resolves.toBe(false);
   });
 });

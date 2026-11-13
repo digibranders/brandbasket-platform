@@ -151,6 +151,17 @@ describe("parseRazorpayWebhookEvent", () => {
     });
   });
 
+  it("leaves an order.paid for a subscription's own invoice alone: that payment is a subscription's, never a charge", () => {
+    const body = JSON.stringify({
+      event: "order.paid",
+      payload: {
+        order: { entity: { id: "order_invoice" } },
+        payment: { entity: { id: "pay_up", amount: 100, currency: "INR", status: "captured", created_at: 1_790_000_000, invoice_id: "inv_1" } },
+      },
+    });
+    expect(parseRazorpayWebhookEvent(body)).toEqual({ kind: "unhandled" });
+  });
+
   it("refuses an order.paid event with the wrong shape, an uncaptured payment or an unknown currency", () => {
     const base = { id: "pay_abc", amount: 100, currency: "INR", status: "captured", created_at: 1_790_000_000 };
     const body = (payment: Record<string, unknown>, order: unknown = { entity: { id: "order_abc" } }) =>
@@ -161,6 +172,50 @@ describe("parseRazorpayWebhookEvent", () => {
       reason: "unexpected payment status: authorized",
     });
     expect(parseRazorpayWebhookEvent(body({ ...base, currency: "EUR" }))).toEqual({ kind: "invalid", reason: "unsupported currency: EUR" });
+  });
+
+  describe("invoice.paid, the first-month payment of a subscription that starts a month on (plan 63)", () => {
+    const body = (invoice: Record<string, unknown>, payment: Record<string, unknown> = {}) =>
+      JSON.stringify({
+        event: "invoice.paid",
+        payload: {
+          invoice: { entity: { id: "inv_1", subscription_id: "sub_offer", status: "paid", line_items: [{ type: "addon", name: "Brandbasket first month", amount: 100 }], ...invoice } },
+          payment: { entity: { id: "pay_up", amount: 100, currency: "INR", status: "captured", created_at: 1_790_000_000, method: "card", card: { network: "Visa", last4: "4366", type: "credit" }, ...payment } },
+        },
+      });
+
+    it("reads the paid invoice of add-on lines as the first payment of the subscription, not as a charge of it", () => {
+      expect(parseRazorpayWebhookEvent(body({}))).toEqual({
+        kind: "charged",
+        subscriptionId: "sub_offer",
+        currentStart: null,
+        currentEnd: new Date(1_790_000_000 * 1000),
+        paidAt: new Date(1_790_000_000 * 1000),
+        paymentId: "pay_up",
+        amountCents: 100,
+        currency: "INR",
+        method: { method: "card", cardNetwork: "Visa", cardLast4: "4366", cardType: "credit", cardIssuer: null, upiVpa: null },
+        upfront: true,
+      });
+    });
+
+    it("leaves the invoice of an ordinary charge to subscription.charged, which it duplicates", () => {
+      expect(parseRazorpayWebhookEvent(body({ line_items: [{ type: "plan", name: "Plan", amount: 299_900 }] }))).toEqual({ kind: "unhandled" });
+      expect(parseRazorpayWebhookEvent(body({ line_items: [{ type: "addon" }, { type: "plan" }] }))).toEqual({ kind: "unhandled" });
+    });
+
+    it("ignores an invoice that is not paid, has no lines, or belongs to no subscription", () => {
+      expect(parseRazorpayWebhookEvent(body({ status: "issued" }))).toEqual({ kind: "unhandled" });
+      expect(parseRazorpayWebhookEvent(body({ line_items: [] }))).toEqual({ kind: "unhandled" });
+      expect(parseRazorpayWebhookEvent(body({ subscription_id: null }))).toEqual({ kind: "unhandled" });
+      expect(parseRazorpayWebhookEvent(body({ subscription_id: undefined }))).toEqual({ kind: "unhandled" });
+    });
+
+    it("refuses a payment that was not captured or is in a currency we do not bill in, and a body of the wrong shape is not ours", () => {
+      expect(parseRazorpayWebhookEvent(body({}, { status: "authorized" }))).toEqual({ kind: "invalid", reason: "unexpected payment status: authorized" });
+      expect(parseRazorpayWebhookEvent(body({}, { currency: "EUR" }))).toEqual({ kind: "invalid", reason: "unsupported currency: EUR" });
+      expect(parseRazorpayWebhookEvent(JSON.stringify({ event: "invoice.paid", payload: {} }))).toEqual({ kind: "unhandled" });
+    });
   });
 
   it("parses a subscription.halted event with no payment entity", () => {

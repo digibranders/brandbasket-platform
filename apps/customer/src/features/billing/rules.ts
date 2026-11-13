@@ -80,6 +80,14 @@ export function planStartsAgain(startsOn: Date, now: Date = new Date()): string 
   return `Your plan starts again on ${formatDate(startsOn, now)}. You can change your services from then.`;
 }
 
+/** A service is set to stop, or the plan to change, on `changesOn`: a new service is added after that, so the change is not undone. */
+export function planChangesFirst(changesOn: Date, now: Date = new Date()): string {
+  return `Your plan changes on ${formatDate(changesOn, now)}. You can add a new service after that.`;
+}
+
+/** Where a customer approves the combined subscription for a service they added (plan 63, Option Y). Razorpay only. */
+export const ADDED_SERVICE_PAY_PATH = "/billing/services/pay";
+
 /** Where a service stands, as a word (never colour alone) and the tone the row draws it in. */
 export interface AddOnStatus {
   readonly word: "Active" | "Ending" | "Not added";

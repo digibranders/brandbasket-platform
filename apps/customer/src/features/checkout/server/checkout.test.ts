@@ -1,5 +1,6 @@
 import { createFakeBillingProvider, type BillingProvider } from "@brandbasket/billing";
 import {
+  businessHasHadService,
   consumeRateLimit,
   findActivePlan,
   findBillingState,
@@ -58,6 +59,7 @@ vi.mock("@brandbasket/db", () => {
   return {
     BillingBusinessNotFoundError: MockBillingBusinessNotFoundError,
     bundledNetCents: (items: readonly { netAmountCents: number }[]) => items.reduce((total, item) => total + item.netAmountCents, 0),
+    businessHasHadService: vi.fn(),
     consumeRateLimit: vi.fn(),
     findActivePlan: vi.fn(),
     findBillingState: vi.fn(),
@@ -135,6 +137,8 @@ function subscription(overrides: Partial<Subscription>): Subscription {
     bundledAddOnNetCents: 5_900,
     adCreditCents: 0,
     cancelRequestedAt: null,
+    firstPaymentCents: null,
+    firstChargeAt: null,
     createdAt: new Date(NOW.getTime() - HOUR_MS),
     ...overrides,
   } as Subscription;
@@ -212,6 +216,8 @@ beforeEach(() => {
   newest(null);
   vi.mocked(findActivePlan).mockResolvedValue(PLAN);
   vi.mocked(isPackageOfferForfeited).mockResolvedValue(false);
+  // A business that has had every service before, so no first-month offer, unless a test says otherwise.
+  vi.mocked(businessHasHadService).mockResolvedValue(true);
   // No referral code applied, unless a test says otherwise.
   vi.mocked(findBusinessReferralCode).mockResolvedValue(null);
   vi.mocked(findRedeemableReferralCode).mockResolvedValue(null);
@@ -555,6 +561,141 @@ describe("startMembershipCheckoutFor", () => {
     vi.mocked(readOnboardingSnapshot).mockResolvedValue({ ...COMPLETE, project: null, locked: false, completed: [], domain: null, logo: null });
   });
 
+  describe("the first-month offer (plan 63)", () => {
+    const FIRST_CHARGE_AT = new Date("2026-10-16T12:00:00.000Z");
+    const neverHad = () => vi.mocked(businessHasHadService).mockResolvedValue(false);
+    const openedLines = () => {
+      const call = vi.mocked(openCheckoutSubscription).mock.calls[0]?.[1];
+      return call?.bundledAddOns ?? [];
+    };
+
+    it("takes ₹1 for Social Media alone and opens a subscription that starts a month on", async () => {
+      neverHad();
+      const started = vi.spyOn(provider, "startCheckout");
+
+      const result = await startMembershipCheckoutFor(owner, NOW, "managed", ["social-media"]);
+
+      expect(await chargedFor(result)).toBe(100);
+      expect(started).toHaveBeenCalledWith(expect.objectContaining({ firstPayment: { amountCents: 100, startAt: FIRST_CHARGE_AT } }));
+      expect(openCheckoutSubscription).toHaveBeenCalledWith(
+        { name: "tx2" },
+        expect.objectContaining({ firstPaymentCents: 100, firstChargeAt: FIRST_CHARGE_AT, bundledAddOns: [expect.objectContaining({ addOn: "social-media", trialPriceCents: 100 })] }),
+      );
+      // The subscription is for the full monthly price: the frozen monthly total is the line's whole price.
+      expect(openedLines().reduce((total, line) => total + line.netAmountCents, 0)).toBeGreaterThan(100);
+    });
+
+    it("takes the Website in full and ₹1 for Social Media", async () => {
+      neverHad();
+
+      await startMembershipCheckoutFor(owner, NOW, "managed", ["managed-website", "social-media"]);
+
+      const website = openedLines().find((line) => line.addOn === "managed-website");
+      expect(website?.trialPriceCents ?? null).toBeNull();
+      expect(openCheckoutSubscription).toHaveBeenCalledWith({ name: "tx2" }, expect.objectContaining({ firstPaymentCents: (website?.netAmountCents ?? 0) + 100 }));
+    });
+
+    it("takes ₹1 each for all three plans' offer services, Website at its price", async () => {
+      neverHad();
+
+      await startMembershipCheckoutFor(owner, NOW, "managed", ALL_THREE);
+
+      const website = openedLines().find((line) => line.addOn === "managed-website");
+      expect(openCheckoutSubscription).toHaveBeenCalledWith({ name: "tx2" }, expect.objectContaining({ firstPaymentCents: (website?.netAmountCents ?? 0) + 200 }));
+    });
+
+    it("charges a service the business had before at its price, and opens an ordinary checkout when no service is on the offer", async () => {
+      const started = vi.spyOn(provider, "startCheckout");
+
+      await startMembershipCheckoutFor(owner, NOW, "managed", ["social-media"]);
+
+      expect(started).toHaveBeenCalledWith(expect.not.objectContaining({ firstPayment: expect.anything() }));
+      const opened = vi.mocked(openCheckoutSubscription).mock.calls[0]?.[1];
+      expect(opened).not.toHaveProperty("firstPaymentCents");
+      expect(openedLines()[0]).not.toHaveProperty("trialPriceCents", 100);
+    });
+
+    it("does not offer it on a yearly plan", async () => {
+      neverHad();
+
+      await startMembershipCheckoutFor(owner, NOW, "managed", ["social-media"], "year");
+
+      expect(vi.mocked(openCheckoutSubscription).mock.calls[0]?.[1]).not.toHaveProperty("firstPaymentCents");
+    });
+
+    it("refuses a referral code on a basket of offer services only, and opens nothing", async () => {
+      neverHad();
+      const code = coupon({ kind: "amount", amountCents: 50_000 });
+      vi.mocked(findBusinessReferralCode).mockResolvedValue(code);
+      vi.mocked(findRedeemableReferralCode).mockResolvedValue(code);
+      const started = vi.spyOn(provider, "startCheckout");
+
+      const result = await startMembershipCheckoutFor(owner, NOW, "managed", ["social-media"]);
+
+      expect(result).toMatchObject({ kind: "refused", problem: { message: expect.stringMatching(/referral code/) } });
+      expect(started).not.toHaveBeenCalled();
+      expect(openCheckoutSubscription).not.toHaveBeenCalled();
+    });
+
+    describe("an earlier offer checkout whose payment is not recorded yet", () => {
+      const unrecorded = () =>
+        subscription({ id: "sub-offer", status: "active", activatedAt: null, paidThroughAt: null, firstPaymentCents: 100, firstChargeAt: new Date(NOW.getTime() + 29 * 86_400_000) });
+
+      it("is not replaced while the provider holds its payment: the customer is told it was received, and nothing opens", async () => {
+        newest(unrecorded(), { currency: "INR", plan: INR_PLAN });
+        const found = vi.spyOn(provider, "findUpfrontPayment").mockResolvedValue({ providerPaymentId: "pay_up", amountCents: 100, currency: "INR", paidAt: NOW });
+        const started = vi.spyOn(provider, "startCheckout");
+
+        const result = await startMembershipCheckoutFor(owner, NOW, "managed", ["social-media"]);
+
+        expect(found).toHaveBeenCalledWith(unrecorded().providerSubscriptionId);
+        expect(result).toMatchObject({ kind: "refused" });
+        expect(started).not.toHaveBeenCalled();
+        expect(openCheckoutSubscription).not.toHaveBeenCalled();
+      });
+
+      it("opens nothing when the provider cannot be asked, and says to try again", async () => {
+        newest(unrecorded(), { currency: "INR", plan: INR_PLAN });
+        vi.spyOn(provider, "findUpfrontPayment").mockRejectedValue(new Error("Razorpay is down"));
+
+        const result = await startMembershipCheckoutFor(owner, NOW, "managed", ["social-media"]);
+
+        expect(result).toMatchObject({ kind: "refused", problem: { message: expect.stringMatching(/try again/) } });
+        expect(openCheckoutSubscription).not.toHaveBeenCalled();
+      });
+
+      it("is replaced as before when the provider holds no payment for it", async () => {
+        newest(unrecorded(), { currency: "INR", plan: INR_PLAN });
+        vi.spyOn(provider, "findUpfrontPayment").mockResolvedValue(null);
+
+        redirectUrl(await startMembershipCheckoutFor(owner, NOW, "managed", ["social-media"]));
+
+        expect(openCheckoutSubscription).toHaveBeenCalledWith({ name: "tx2" }, expect.objectContaining({ replacing: "sub-offer" }));
+      });
+
+      it("asks the provider nothing for an ordinary checkout", async () => {
+        newest(subscription({ id: "sub-plain", status: "incomplete" }), { currency: "INR", plan: INR_PLAN });
+        const found = vi.spyOn(provider, "findUpfrontPayment");
+
+        await startMembershipCheckoutFor(owner, NOW, "managed", ["social-media"]);
+
+        expect(found).not.toHaveBeenCalled();
+      });
+    });
+
+    it("takes a code off the services that pay full price when the basket has one", async () => {
+      neverHad();
+      const code = coupon({ kind: "amount", amountCents: 50_000 });
+      vi.mocked(findBusinessReferralCode).mockResolvedValue(code);
+      vi.mocked(findRedeemableReferralCode).mockResolvedValue(code);
+
+      await startMembershipCheckoutFor(owner, NOW, "managed", ["managed-website", "social-media"]);
+
+      const website = openedLines().find((line) => line.addOn === "managed-website");
+      expect(openCheckoutSubscription).toHaveBeenCalledWith({ name: "tx2" }, expect.objectContaining({ discountAmountCents: 50_000, firstPaymentCents: (website?.netAmountCents ?? 0) + 100 - 50_000 }));
+    });
+  });
+
   it("refuses a free listing account billed in rupees that has saved no billing details, and opens nothing", async () => {
     vi.mocked(billingDetailsMissing).mockResolvedValue(true);
 
@@ -873,6 +1014,18 @@ describe("startReactivationFor", () => {
     maxRedemptions: null,
     createdAt: NOW,
   };
+
+  it("takes no first-month offer for a business coming back, even for a service it never had", async () => {
+    const halted = subscription({ id: "sub-halted", status: "inactive", activatedAt: LONG_AGO, paidThroughAt: new Date(NOW.getTime() - 1000) });
+    newest(halted, { hasEverPaid: true });
+    lapsedLines(halted, [billedLine("managed-website"), billedLine("social-media")]);
+    vi.mocked(businessHasHadService).mockResolvedValue(false);
+
+    redirectUrl(await startReactivationFor(lapsedCustomer, NOW));
+
+    expect(businessHasHadService).not.toHaveBeenCalled();
+    expect(vi.mocked(openCheckoutSubscription).mock.calls[0]?.[1]).not.toHaveProperty("firstPaymentCents");
+  });
 
   it("replaces the lapsed subscription with a new checkout and cancels the old one at the provider after the commit", async () => {
     const halted = subscription({ id: "sub-halted", status: "inactive", activatedAt: LONG_AGO, paidThroughAt: new Date(NOW.getTime() - 1000) });

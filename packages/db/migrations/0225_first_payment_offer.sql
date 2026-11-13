@@ -1,0 +1,3 @@
+ALTER TABLE "subscriptions" ADD COLUMN "first_payment_cents" integer;--> statement-breakpoint
+ALTER TABLE "subscriptions" ADD COLUMN "first_charge_at" timestamp with time zone;--> statement-breakpoint
+ALTER TABLE "subscriptions" ADD CONSTRAINT "subscriptions_first_payment_check" CHECK (("subscriptions"."first_payment_cents" is null) = ("subscriptions"."first_charge_at" is null) and ("subscriptions"."first_payment_cents" is null or ("subscriptions"."first_payment_cents" > 0 and "subscriptions"."billing_interval" = 'month')));

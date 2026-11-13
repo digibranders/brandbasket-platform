@@ -35,6 +35,12 @@ export interface StartCheckoutInput {
    * The customer authorises the mandate now and nothing is taken until then. Absent starts the subscription at once.
    */
   readonly startAt?: Date;
+  /**
+   * A first-month offer in the basket (plan 63): the subscription is for the full recurring amount and starts on `startAt`, a month
+   * from now, and the first payment, `amountCents`, is taken upfront when the customer approves. Never with `startAt` (Keep my plan).
+   * Razorpay takes it as an add-on on the new subscription (a real payment, kept); the fake provider simply charges it.
+   */
+  readonly firstPayment?: { readonly amountCents: number; readonly startAt: Date };
 }
 
 export interface StartedCheckout {
@@ -140,6 +146,14 @@ export interface ConfirmedAddOnPayment {
   readonly method?: PaymentMethodDetails | null;
 }
 
+/** A first-month payment the provider holds for a subscription opened to start a month on (plan 63), read back from the provider. */
+export interface UpfrontPayment {
+  readonly providerPaymentId: string;
+  readonly amountCents: number;
+  readonly currency: BillingCurrency;
+  readonly paidAt: Date;
+}
+
 export interface BillingProvider {
   readonly name: BillingProviderName;
   startCheckout(input: StartCheckoutInput): Promise<StartedCheckout>;
@@ -191,6 +205,12 @@ export interface BillingProvider {
    * add-on payment, so its version always throws.
    */
   confirmAddOnPayment(payload: unknown): Promise<ConfirmedAddOnPayment>;
+  /**
+   * The captured first-month payment of a subscription opened to start a month on (plan 63), read from the provider with our own
+   * key, so as trustworthy as its signed webhook. Null when there is none yet, or it was not captured. The fake provider records its
+   * payments when they are made and holds nothing to find.
+   */
+  findUpfrontPayment(providerSubscriptionId: string): Promise<UpfrontPayment | null>;
 }
 
 /**

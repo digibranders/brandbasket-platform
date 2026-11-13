@@ -76,7 +76,8 @@ export type BillingLogEvent =
   | "add-on-checkout-failed"
   | "add-on-end-failed"
   | "add-on-end-not-recorded"
-  | "add-on-view-failed";
+  | "add-on-view-failed"
+  | "first-payment-check-failed";
 
 /** Plain values only. Never put a checkout token or any other credential in here. */
 export type BillingLogFields = Readonly<Record<string, string | number | boolean | null>>;

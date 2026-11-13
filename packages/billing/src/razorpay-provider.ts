@@ -13,6 +13,7 @@ import {
   type StartedAddOnSubscription,
   type StartedChargePayment,
   type StartedCheckout,
+  type UpfrontPayment,
 } from "./provider";
 import { chargedAmountCents } from "./tax";
 
@@ -36,6 +37,8 @@ export interface RazorpaySdkClient {
       readonly notes: Readonly<Record<string, string>>;
       /** Unix timestamp in whole seconds when the subscription starts and is first charged; absent starts it at once. */
       readonly start_at?: number;
+      /** Amounts taken once, at authorisation, before the first charge: with a later `start_at`, the first month's payment. */
+      readonly addons?: readonly { readonly item: { readonly name: string; readonly amount: number; readonly currency: string } }[];
     }): Promise<{ readonly id: string }>;
     cancel(subscriptionId: string, options: { readonly cancel_at_cycle_end: boolean }): Promise<unknown>;
     /** Moves the subscription to another plan; `schedule_change_at` says whether now or when the cycle ends. */
@@ -47,7 +50,24 @@ export interface RazorpaySdkClient {
     fetch(subscriptionId: string): Promise<{ readonly id: string; readonly status: string }>;
   };
   readonly payments: {
-    fetch(paymentId: string): Promise<{ readonly id: string; readonly amount: number; readonly currency: string; readonly created_at: number }>;
+    fetch(paymentId: string): Promise<{
+      readonly id: string;
+      readonly amount: number;
+      readonly currency: string;
+      readonly created_at: number;
+      /** Razorpay's own word for the payment: `captured` is money taken. */
+      readonly status?: string;
+    }>;
+  };
+  /** A subscription's invoices, for finding a first-month payment whose webhook never arrived. */
+  readonly invoices: {
+    all(query: { readonly subscription_id: string }): Promise<{
+      readonly items: readonly {
+        readonly status: string;
+        readonly payment_id: string | null;
+        readonly line_items: readonly { readonly type: string | null }[];
+      }[];
+    }>;
   };
   /** Monthly or yearly plans, one per price: a new price is always a new plan. */
   readonly plans: {
@@ -117,6 +137,9 @@ const RAZORPAY_PERIODS: Readonly<Record<BillingInterval, { readonly period: "mon
 
 /** Razorpay statuses of a subscription that will never charge again, so a cancel of it has nothing left to do. */
 const STOPPED_SUBSCRIPTION_STATUSES: ReadonlySet<string> = new Set(["cancelled", "completed", "expired"]);
+
+/** What the first-month payment is called on Razorpay's payment window and on its invoice. */
+const FIRST_PAYMENT_ITEM_NAME = "Brandbasket first month";
 
 /** Where the checkout-opening page lives; see Task 6. It reads the business's own open subscription from the
  * database rather than trusting a subscription id from the URL, so nothing here needs to carry one. */
@@ -259,6 +282,16 @@ export function createRazorpayProvider(options: RazorpayProviderOptions): Razorp
       if (input.startAt !== undefined && !(input.startAt.getTime() > Date.now())) {
         throw new RangeError(`A subscription start date must be in the future, received ${input.startAt.toISOString()}`);
       }
+      if (input.firstPayment !== undefined) {
+        if (input.startAt !== undefined) throw new RangeError("A first-month offer and a kept plan cannot share a subscription");
+        if (!Number.isSafeInteger(input.firstPayment.amountCents) || input.firstPayment.amountCents <= 0) {
+          throw new RangeError(`A first payment must be a positive whole number of minor units, received ${input.firstPayment.amountCents}`);
+        }
+        if (!(input.firstPayment.startAt.getTime() > Date.now())) {
+          throw new RangeError(`The first full charge must be in the future, received ${input.firstPayment.startAt.toISOString()}`);
+        }
+      }
+      const firstChargeAt = input.firstPayment?.startAt ?? input.startAt;
       const created = await client.subscriptions.create({
         plan_id: providerPlanId,
         total_count: RAZORPAY_PERIODS[input.billingInterval ?? "month"].cycles,
@@ -266,7 +299,10 @@ export function createRazorpayProvider(options: RazorpayProviderOptions): Razorp
         // We send our own emails (packages/email); Razorpay's would duplicate them.
         customer_notify: false,
         notes: { businessId: input.businessId },
-        ...(input.startAt === undefined ? {} : { start_at: Math.floor(input.startAt.getTime() / 1000) }),
+        ...(firstChargeAt === undefined ? {} : { start_at: Math.floor(firstChargeAt.getTime() / 1000) }),
+        ...(input.firstPayment === undefined
+          ? {}
+          : { addons: [{ item: { name: FIRST_PAYMENT_ITEM_NAME, amount: input.firstPayment.amountCents, currency: input.plan.currency } }] }),
       });
       return { providerSubscriptionId: created.id, checkoutUrl: input.startAt === undefined ? RAZORPAY_PAY_PATH : RAZORPAY_KEEP_PAY_PATH };
     },
@@ -313,6 +349,21 @@ export function createRazorpayProvider(options: RazorpayProviderOptions): Razorp
     },
 
     fetchSubscriptionStatus,
+
+    async findUpfrontPayment(providerSubscriptionId: string): Promise<UpfrontPayment | null> {
+      const { items } = await client.invoices.all({ subscription_id: providerSubscriptionId });
+      const upfront = items.find(
+        (invoice) =>
+          invoice.status === "paid" &&
+          invoice.payment_id !== null &&
+          invoice.line_items.length > 0 &&
+          invoice.line_items.every((line) => line.type === "addon"),
+      );
+      if (upfront?.payment_id == null) return null;
+      const payment = await client.payments.fetch(upfront.payment_id);
+      if (payment.status !== "captured" || !isCurrency(payment.currency) || !Number.isSafeInteger(payment.amount) || payment.amount <= 0) return null;
+      return { providerPaymentId: payment.id, amountCents: payment.amount, currency: payment.currency, paidAt: new Date(payment.created_at * 1000) };
+    },
 
     async changeSubscriptionPlanAtPeriodEnd(providerSubscriptionId: string, providerPlanId: string): Promise<void> {
       // At cycle end, never now: switching now would re-price the period already paid for.

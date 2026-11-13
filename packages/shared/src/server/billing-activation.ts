@@ -8,6 +8,7 @@ import {
   findSubscriptionById,
   recordPaymentAndActivate,
   settleDiscountAfterPayment,
+  startBundledTrials,
   type BillingCurrency,
   type BillingProviderName,
   type BundledAddOn,
@@ -92,16 +93,26 @@ export async function activateFirstPayment(tx: ScopedTransaction, payment: First
   // A yearly subscription's first payment buys its first year; a monthly one buys the plan's first term.
   const opened = await findSubscriptionById(tx, payment.subscriptionId);
   const yearly = opened?.billingInterval === "year";
-  const termEnd = addMonthsUtc(payment.paidAt, yearly ? monthsPerCycle("year") : payment.plan.initialTermMonths);
+  // A checkout with a first-month offer in it (plan 63) was opened to start its full charge a month on, and its first payment is
+  // the amount frozen then. The first term ends on that day, which is also the end of every offer service's first month.
+  const offer = opened?.firstPaymentCents != null && opened.firstChargeAt !== null ? { cents: opened.firstPaymentCents, chargeAt: opened.firstChargeAt } : null;
+  const termEnd = offer?.chargeAt ?? addMonthsUtc(payment.paidAt, yearly ? monthsPerCycle("year") : payment.plan.initialTermMonths);
   // What was actually taken: the price (GST included) less the discount. chargedAmountCents throws for a discount that
   // would leave nothing, so a nonsense figure is never recorded as a payment.
   // The services taken at this checkout are lines of the subscription, billed in the same charge: their prices (the plan
   // row itself costs nothing), less the discount.
   const bundled = await billedLines(tx, payment.subscriptionId);
-  const amountCents = chargedAmountCents(
-    payment.plan.initialAmountCents + bundledNetCents(bundled),
-    payment.discountAmountCents ?? 0,
-  );
+  const offerNet = (line: BundledAddOn): number => line.trialPriceCents ?? line.netAmountCents;
+  let amountCents: number;
+  if (offer === null) {
+    amountCents = chargedAmountCents(payment.plan.initialAmountCents + bundledNetCents(bundled), payment.discountAmountCents ?? 0);
+  } else {
+    // The lines say what the offer costs; the frozen first payment must agree with them, or the checkout was opened wrongly.
+    amountCents = bundled.reduce((total, line) => total + offerNet(line), 0) - (payment.discountAmountCents ?? 0);
+    if (amountCents !== offer.cents) {
+      throw new Error(`Subscription ${payment.subscriptionId} froze a first payment of ${offer.cents} but its lines come to ${amountCents}`);
+    }
+  }
   const activation = await recordPaymentAndActivate(tx, {
     businessId: payment.businessId,
     subscriptionId: payment.subscriptionId,
@@ -119,13 +130,28 @@ export async function activateFirstPayment(tx: ScopedTransaction, payment: First
   });
   if (activation.alreadyRecorded) return { ...activation, openedMembership: null, discountEnded: false };
   const activeBundle = await activateBundledAddOns(tx, { subscriptionId: payment.subscriptionId, now: payment.paidAt });
+  if (offer !== null) await startBundledTrials(tx, { subscriptionId: payment.subscriptionId, trialEndsAt: offer.chargeAt, now: payment.paidAt });
+  // A first-month payment does not use up one of a code's months: the provider's subscription has not started, and its first full
+  // charge is still on the discounted plan, which is where the code's months are counted from (plan 63).
   const settlement = await settleDiscountAfterPayment(tx, {
     subscriptionId: payment.subscriptionId,
-    discountTakenCents: payment.discountAmountCents ?? 0,
+    discountTakenCents: offer === null ? (payment.discountAmountCents ?? 0) : 0,
     adoptsNewDiscount: false,
     now: payment.paidAt,
   });
-  await accrueAffiliateEarning(tx, { paymentId: activation.payment.id, subscriptionId: payment.subscriptionId, kind: "initial" });
+  // No reward on a first-month offer (owner decision D6, plan 63): the affiliate earns from the first real payment after it. A
+  // basket that also holds services at full price earns on those, not on the ₹1.
+  const fullPriceNet = bundled.filter((line) => line.trialPriceCents == null).reduce((total, line) => total + line.netAmountCents, 0);
+  if (offer === null) {
+    await accrueAffiliateEarning(tx, { paymentId: activation.payment.id, subscriptionId: payment.subscriptionId, kind: "initial" });
+  } else if (fullPriceNet > 0) {
+    await accrueAffiliateEarning(tx, {
+      paymentId: activation.payment.id,
+      subscriptionId: payment.subscriptionId,
+      kind: "initial",
+      invoiced: { netCents: fullPriceNet, discountCents: payment.discountAmountCents ?? 0 },
+    });
+  }
   const openedMembership = await openMembershipForListingBusiness(tx, payment.businessId, {
     withProject: activeBundle.some((line) => line.addOn === "managed-website"),
   });
@@ -135,7 +161,10 @@ export async function activateFirstPayment(tx: ScopedTransaction, payment: First
   await issueTaxInvoiceSafely(tx, activation.payment, {
     kind: "plan",
     plan: payment.plan,
-    bundledAddOns: activeBundle,
+    // A service on the offer is invoiced at what it cost, so the lines add up to the payment.
+    bundledAddOns: activeBundle.map((line) =>
+      line.trialPriceCents == null ? line : { ...line, listAmountCents: line.trialPriceCents, offerDiscountAmountCents: 0, netAmountCents: line.trialPriceCents },
+    ),
     netAmountCents: payment.plan.initialAmountCents,
     discountAmountCents: payment.discountAmountCents ?? 0,
     // A stay offer is only ever added to a live subscription, never to its first payment.

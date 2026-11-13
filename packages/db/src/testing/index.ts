@@ -137,3 +137,6 @@ export async function querySql<Row extends Record<string, unknown>>(owner: Datab
   const result = await owner.db.execute<Row>(sql.raw(statement));
   return result.rows as Row[];
 }
+
+/** For integration tests in packages that do not depend on drizzle-orm themselves: the operator they need to update one row. */
+export { eq } from "drizzle-orm";

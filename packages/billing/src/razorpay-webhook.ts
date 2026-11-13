@@ -51,6 +51,33 @@ const chargedSchema = z.object({
   }),
 });
 
+/**
+ * An invoice paid on a subscription. Only the first-month payment is read from it (plan 63): a subscription opened to start a month
+ * on takes that month's payment upfront as an add-on, which Razorpay records as a paid invoice of add-on lines and not as a charge
+ * of the subscription. Lenient on the invoice, strict on the payment, whose money is what is recorded.
+ */
+const invoicePaidSchema = z.object({
+  event: z.literal("invoice.paid"),
+  payload: z.object({
+    invoice: z.object({
+      entity: z.looseObject({
+        subscription_id: z.string().min(1).nullish().catch(null),
+        status: z.string().nullish().catch(null),
+        line_items: z.array(z.looseObject({ type: z.string().nullish().catch(null) })).catch([]),
+      }),
+    }),
+    payment: z.object({
+      entity: z.looseObject({
+        id: z.string().min(1),
+        amount: z.number().int().nonnegative(),
+        currency: z.string(),
+        status: z.string().min(1),
+        created_at: z.number().int().positive(),
+      }),
+    }),
+  }),
+});
+
 /** A short piece of text Razorpay sent, or null when it is missing, empty, too long or not text at all. */
 const lenientText = z.string().trim().min(1).max(80).nullable().catch(null);
 
@@ -175,6 +202,11 @@ export type RazorpayWebhookEvent =
       readonly currency: BillingCurrency;
       /** How the customer paid, or null when Razorpay did not say in a form we could read. */
       readonly method: PaymentMethodDetails | null;
+      /**
+       * True for the first-month payment of a subscription opened to start a month on (plan 63), read from the paid invoice of its
+       * add-on lines. It is not a charge of the subscription: `currentStart` is null and `currentEnd` is only the payment's own time.
+       */
+      readonly upfront?: true;
     }
   /** A one-time payment for a charge (a paid extra), matched to the charge by the Razorpay order id. */
   | {
@@ -259,10 +291,39 @@ export function parseRazorpayWebhookEvent(body: string): RazorpayWebhookEvent {
     };
   }
 
+  if (eventName.data.event === "invoice.paid") {
+    const invoicePaid = invoicePaidSchema.safeParse(json);
+    // Every paid invoice of a subscription raises this event, a charge's included; only an invoice of add-on lines is read.
+    if (!invoicePaid.success) return { kind: "unhandled" };
+    const { invoice, payment } = invoicePaid.data.payload;
+    const lines = invoice.entity.line_items;
+    const upfront = invoice.entity.status === "paid" && lines.length > 0 && lines.every((line) => line.type === "addon");
+    const subscriptionId = invoice.entity.subscription_id;
+    if (!upfront || subscriptionId == null) return { kind: "unhandled" };
+    if (payment.entity.status !== "captured") return { kind: "invalid", reason: `unexpected payment status: ${payment.entity.status}` };
+    if (!isCurrency(payment.entity.currency)) return { kind: "invalid", reason: `unsupported currency: ${payment.entity.currency}` };
+    const paidAt = new Date(payment.entity.created_at * 1000);
+    return {
+      kind: "charged",
+      subscriptionId,
+      currentStart: null,
+      currentEnd: paidAt,
+      paidAt,
+      paymentId: payment.entity.id,
+      amountCents: payment.entity.amount,
+      currency: payment.entity.currency,
+      method: readPaymentMethod(payment.entity),
+      upfront: true,
+    };
+  }
+
   if (eventName.data.event === "order.paid") {
     const paid = orderPaidSchema.safeParse(json);
     if (!paid.success) return { kind: "invalid", reason: "order.paid payload did not match the expected shape" };
     const payment = paid.data.payload.payment.entity;
+    // A subscription's own payments (its first-month payment, its charges) are paid through orders of their invoices. Those are
+    // recorded from the subscription's events, never as a charge, so their order.paid is not ours to read.
+    if (typeof payment.invoice_id === "string" && payment.invoice_id !== "") return { kind: "unhandled" };
     if (payment.status !== "captured") return { kind: "invalid", reason: `unexpected payment status: ${payment.status}` };
     if (!isCurrency(payment.currency)) return { kind: "invalid", reason: `unsupported currency: ${payment.currency}` };
     return {

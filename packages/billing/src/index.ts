@@ -48,6 +48,7 @@ export {
   type StartedAddOnSubscription,
   type StartedChargePayment,
   type StartedCheckout,
+  type UpfrontPayment,
 } from "./provider";
 export {
   ALLOW_FAKE_BILLING_VARIABLE,

@@ -13,7 +13,9 @@ import type { RazorpaySdkClient } from "./razorpay-provider";
 export function wrapRazorpaySdkClient(client: Razorpay): RazorpaySdkClient {
   return {
     subscriptions: {
-      create: (input) => client.subscriptions.create(input),
+      // The SDK types addons as a mutable array; ours is readonly, so it is copied.
+      create: ({ addons, ...rest }) =>
+        client.subscriptions.create({ ...rest, ...(addons === undefined ? {} : { addons: addons.map((addon) => ({ item: { ...addon.item } })) }) }),
       cancel: (id, options) => client.subscriptions.cancel(id, options.cancel_at_cycle_end),
       update: (id, input) => client.subscriptions.update(id, input),
       fetch: async (id) => {
@@ -35,7 +37,19 @@ export function wrapRazorpaySdkClient(client: Razorpay): RazorpaySdkClient {
               ? Number(payment.amount)
               : Number.NaN
             : payment.amount;
-        return { id: payment.id, amount, currency: payment.currency, created_at: payment.created_at };
+        return { id: payment.id, amount, currency: payment.currency, created_at: payment.created_at, status: payment.status };
+      },
+    },
+    invoices: {
+      all: async (query) => {
+        const listed = await client.invoices.all({ subscription_id: query.subscription_id });
+        return {
+          items: listed.items.map((invoice) => ({
+            status: invoice.status ?? "",
+            payment_id: invoice.payment_id ?? null,
+            line_items: (invoice.line_items ?? []).map((line) => ({ type: typeof line.type === "string" ? line.type : null })),
+          })),
+        };
       },
     },
     plans: {
