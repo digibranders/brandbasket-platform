@@ -20,6 +20,12 @@ describe("wrapRazorpaySdkClient", () => {
     expect(fetch).toHaveBeenCalledWith("sub_1");
   });
 
+  it("keeps the paid count and the billing period of a subscription", async () => {
+    const fetch = vi.fn().mockResolvedValue({ id: "sub_1", status: "active", paid_count: 1, current_start: 1_700_000_000, current_end: 1_702_592_000, notes: {} });
+    const wrapped = wrapRazorpaySdkClient({ subscriptions: { fetch } } as never);
+    await expect(wrapped.subscriptions.fetch("sub_1")).resolves.toEqual({ id: "sub_1", status: "active", paid_count: 1, current_start: 1_700_000_000, current_end: 1_702_592_000 });
+  });
+
   it("coerces a string amount from the real SDK into a number", async () => {
     const fetch = vi.fn().mockResolvedValue({ id: "pay_1", amount: "7500", currency: "USD", created_at: 1_700_000_000 });
     const fakeRealClient = {

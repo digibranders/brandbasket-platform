@@ -48,6 +48,7 @@ export {
   type StartedAddOnSubscription,
   type StartedChargePayment,
   type StartedCheckout,
+  type SubscriptionCharge,
   type UpfrontPayment,
 } from "./provider";
 export {

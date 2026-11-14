@@ -91,6 +91,11 @@ export async function loadCheckout(customer: CustomerContext, params: Params, no
   // Not a redirect: the workspace layout sends an unpaid sign-up back here, so sending a non-owner Home would loop.
   if (customer.role !== "owner") return { kind: "owner-only" };
 
+  // The provider’s webhook can be late or refused. A checkout that is still open is asked about first, so a payment the provider already
+  // holds is recorded now and the customer moves on, instead of being offered Pay again.
+  const openCheckout = unsettledCheckout(billing.subscription);
+  if (openCheckout !== null && (await recordFirstPaymentIfHeld(openCheckout))) redirect(MEMBER_WELCOME_HREF);
+
   const entry = await loadBusinessEntry(customer);
   const signUp = entry.kind === "listing";
   // A website client invited by staff pays for the website alone (the old Check and send); a sign-up account for its basket.
@@ -106,11 +111,7 @@ export async function loadCheckout(customer: CustomerContext, params: Params, no
 
   if (billing.paymentUnderReview) return { kind: "under-review", message: PAYMENT_RECEIVED_MESSAGE };
   const checkout = unsettledCheckout(billing.subscription);
-  if (waiting && checkout !== null) {
-    // The provider’s webhook can be late or refused, so ask it directly: a payment it holds is recorded now and the customer moves on.
-    if (await recordFirstPaymentIfHeld(checkout)) redirect(MEMBER_WELCOME_HREF);
-    return { kind: "waiting", waitKey: `membership:${checkout.id}` };
-  }
+  if (waiting && checkout !== null) return { kind: "waiting", waitKey: `membership:${checkout.id}` };
   const { plan } = view;
   if (plan === null) return { kind: "no-plan" };
 

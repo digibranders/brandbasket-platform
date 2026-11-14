@@ -154,6 +154,17 @@ export interface UpfrontPayment {
   readonly paidAt: Date;
 }
 
+/** The captured first charge of a subscription (the plan's own payment), read back from the provider. */
+export interface SubscriptionCharge {
+  readonly providerPaymentId: string;
+  readonly amountCents: number;
+  readonly currency: BillingCurrency;
+  readonly paidAt: Date;
+  /** The billing period the charge paid for, as the provider computed it. */
+  readonly currentStart: Date | null;
+  readonly currentEnd: Date;
+}
+
 export interface BillingProvider {
   readonly name: BillingProviderName;
   startCheckout(input: StartCheckoutInput): Promise<StartedCheckout>;
@@ -211,6 +222,11 @@ export interface BillingProvider {
    * payments when they are made and holds nothing to find.
    */
   findUpfrontPayment(providerSubscriptionId: string): Promise<UpfrontPayment | null>;
+  /**
+   * The captured first charge of an ordinary subscription (the plan's own payment, not a first-month offer), read from the provider with
+   * our own key, for a payment whose webhook never arrived. Null when the subscription has no captured charge yet.
+   */
+  findSubscriptionCharge(providerSubscriptionId: string): Promise<SubscriptionCharge | null>;
 }
 
 /**
