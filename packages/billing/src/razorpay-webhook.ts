@@ -99,7 +99,7 @@ const paymentMethodSchema = z.object({
     .catch(null),
 });
 
-function readPaymentMethod(paymentEntity: unknown): PaymentMethodDetails | null {
+export function readPaymentMethod(paymentEntity: unknown): PaymentMethodDetails | null {
   const parsed = paymentMethodSchema.safeParse(paymentEntity);
   if (!parsed.success) return null;
   const { method, vpa, card } = parsed.data;

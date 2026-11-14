@@ -1,6 +1,6 @@
-# Starts brandbasket-first-payment-check.service every 10 minutes. Installed, not enabled: see the service file.
+# Starts brandbasket-first-payment-check.service every 10 minutes. Enabled on install: see the service file.
 [Unit]
-Description=Brandbasket first-month payment check every 10 minutes
+Description=Brandbasket first payment check every 10 minutes
 
 [Timer]
 OnCalendar=*:0/10
