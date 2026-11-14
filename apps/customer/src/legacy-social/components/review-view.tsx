@@ -41,6 +41,8 @@ export function ReviewView({ review, canChange = true, approvals = null }: { rea
       replacing={replaceStates(review.jobs)}
       today={localDateIn(BRAND_TIME_ZONE, new Date())}
       renewsOn={review.renewsOn}
+      jobs={review.jobs}
+      brandId={review.brand?.externalId ?? "brand"}
       carousel={review.carousels[0] === undefined ? null : { summary: review.carousels[0], detail: review.carousel, canChange }}
       own={{ requests: review.topicRequests, batches: review.batches.filter((batch) => ownBatchIds.has(batch.id)), posters: [...review.waiting, ...review.approved].filter((poster) => ownBatchIds.has(poster.batchId)), canChange }}
     >
