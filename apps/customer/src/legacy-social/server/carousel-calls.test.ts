@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 
 vi.mock("server-only", () => ({}));
 
-import { askTopic, decideCarousel, fetchCarouselSlide, loadCarousel, loadCarouselList, loadAutoPosting, loadCarousels, loadSchedule, loadTopicRequests, makeCarousel, renameBrand, replaceTopic, saveAutoPosting, setCarouselWeekly, SocialAutoError, type SocialAutoSettings } from "./social-auto";
+import { askTopic, decideCarousel, moveCarousel, fetchCarouselSlide, loadCarousel, loadCarouselList, loadAutoPosting, loadCarousels, loadSchedule, loadTopicRequests, makeCarousel, renameBrand, replaceTopic, saveAutoPosting, setCarouselWeekly, SocialAutoError, type SocialAutoSettings } from "./social-auto";
 
 const settings: SocialAutoSettings = { baseUrl: "http://127.0.0.1:4020", key: "secret", returnUrl: "https://app.example.com/social" };
 const json = (status: number, body: unknown = {}) => vi.fn(async () => new Response(JSON.stringify(body), { status })) as unknown as typeof fetch;
@@ -29,6 +29,13 @@ describe("the carousel calls", () => {
     expect(String(call?.[0])).toBe("http://127.0.0.1:4020/api/v1/carousels");
     expect(JSON.parse(String(call?.[1]?.body))).toEqual({ externalId: "b1", action: "weekly", enabled: true });
     await expect(setCarouselWeekly(settings, "b1", false, "actor-1", json(500))).rejects.toBeInstanceOf(SocialAutoError);
+  });
+
+  it("moves a carousel to another day, and refuses when the posting service does", async () => {
+    const send = json(200, { carousel: { id: "c1", date: "2026-11-21" } });
+    await moveCarousel(settings, "b1", "c1", "2026-11-21", "actor-1", send);
+    expect(sentBody(send)).toEqual({ externalId: "b1", action: "move", id: "c1", day: "2026-11-21" });
+    await expect(moveCarousel(settings, "b1", "c1", "2026-11-21", "actor-1", json(409))).rejects.toBeInstanceOf(SocialAutoError);
   });
 
   it("reads one carousel by its id, and null when it is not there", async () => {

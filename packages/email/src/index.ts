@@ -43,6 +43,7 @@ export {
 export { signupCodeEmail, type SignupCodeInput } from "./templates/signup-code";
 export { siteDownAlertEmail, type SiteDownAlertInput } from "./templates/site-down-alert";
 export { setupLinkEmail, type SetupLinkInput } from "./templates/setup-link";
+export { requestAcknowledgementEmail, type RequestAcknowledgementInput } from "./templates/request-acknowledgement";
 export { supportRequestOpenedEmail, type SupportRequestOpenedInput } from "./templates/support-request-opened";
 export { staffInviteEmail, type StaffInviteInput } from "./templates/staff-invite";
 export { websiteLiveEmail, type WebsiteLiveInput } from "./templates/website-live";

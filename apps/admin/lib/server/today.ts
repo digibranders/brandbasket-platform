@@ -4,6 +4,7 @@ import {
   countSupportTicketsByStatus,
   listAddOnsToContact,
   listClients,
+  listDomainMoves,
   listErrorIssues,
   listKickoffBoard,
   listLeads,
@@ -14,6 +15,7 @@ import {
   type AddOnToContact,
   type BookedCall,
   type ClientSummary,
+  type DomainMoveRow,
   type ErrorIssue,
   type Lead,
   type PaymentNeedingAttention,
@@ -65,6 +67,8 @@ interface QueueSources {
   /** Google problems (a site that cannot be verified, a silent source, a lost sign-in for admins). */
   readonly google: readonly TodayItem[];
   readonly canSeeMoney: boolean;
+  /** Domain move requests. */
+  readonly domainMoves: readonly DomainMoveRow[];
 }
 
 interface QueueRead {
@@ -80,7 +84,7 @@ interface QueueRead {
 async function readQueueSources(now: Date, canSeeMoney: boolean, canSeeGoogleAccount: boolean): Promise<QueueRead> {
   const db = getStaffDb();
   const failed: string[] = [];
-  const [clients, leads, flagged, addOns, newTickets, newErrors, failedDeliveries, kickoffsNeedingOutcome, google] = await Promise.all([
+  const [clients, leads, flagged, addOns, newTickets, newErrors, failedDeliveries, kickoffsNeedingOutcome, google, domainMoves] = await Promise.all([
     guarded("clients", () => listClients(db), [], failed),
     guarded("leads", () => listLeads(db, {}), [], failed),
     canSeeMoney ? guarded("flagged payments", () => listPaymentsNeedingAttention(db, { limit: ATTENTION_READ_LIMIT }), [], failed) : Promise.resolve([]),
@@ -100,8 +104,9 @@ async function readQueueSources(now: Date, canSeeMoney: boolean, canSeeGoogleAcc
       failed,
     ),
     guarded<readonly TodayItem[]>("Google", () => readGoogleToday(now, canSeeGoogleAccount), [], failed),
+    guarded("domain moves", () => listDomainMoves(db), [], failed),
   ]);
-  return { sources: { clients, leads, flagged, addOns, newTickets, newErrors, failedDeliveries, kickoffsNeedingOutcome, google, canSeeMoney }, failed };
+  return { sources: { clients, leads, flagged, addOns, newTickets, newErrors, failedDeliveries, kickoffsNeedingOutcome, google, domainMoves, canSeeMoney }, failed };
 }
 
 function queueFrom(sources: QueueSources, now: Date): readonly TodayItem[] {
@@ -130,6 +135,11 @@ function queueFrom(sources: QueueSources, now: Date): readonly TodayItem[] {
     }
   }
 
+  const approvedPreviews = sources.clients.flatMap((client) =>
+    client.project?.status === "approved"
+      ? [{ businessId: client.businessId, businessName: client.businessName, dueAt: client.project.slaDueAt }]
+      : [],
+  );
   return todayQueue({
     attention: attentionItems({
       flagged: sources.flagged,
@@ -144,6 +154,8 @@ function queueFrom(sources: QueueSources, now: Date): readonly TodayItem[] {
     failedDeliveries: sources.failedDeliveries,
     kickoffsNeedingOutcome: sources.kickoffsNeedingOutcome,
     billing,
+    approvedPreviews,
+    domainMoves: sources.domainMoves,
     google: sources.google,
     endOfToday: todayRange(now).end,
   });

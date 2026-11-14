@@ -80,7 +80,7 @@ describe("callRowsFor", () => {
     const held = { startsAt: new Date("2026-10-27T08:30:00.000Z"), heldAt: new Date("2026-10-27T09:10:00.000Z"), summary: "6 pages in blue and white" } as never;
     const [first, second] = callRowsFor({ calls: [call({})], kickoff: held, now: NOW });
     expect(first).toMatchObject({ key: "call-1" });
-    expect(second).toMatchObject({ key: "kickoff", about: "Kickoff", status: "Held", canMarkHeld: false, canUndo: false, canWrite: true, summary: "6 pages in blue and white" });
+    expect(second).toMatchObject({ key: "kickoff", about: "Kickoff", status: "Call completed", canMarkHeld: false, canUndo: false, canWrite: true, summary: "6 pages in blue and white" });
     expect(callRowsFor({ calls: [], kickoff: { startsAt: null, heldAt: null, summary: null } as never, now: NOW })).toEqual([]);
   });
 });

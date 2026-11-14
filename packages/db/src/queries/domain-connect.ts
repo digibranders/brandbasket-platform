@@ -1,7 +1,7 @@
 import { and, asc, eq, inArray, isNull } from "drizzle-orm";
 import type { Database } from "../client";
 import type { ScopedTransaction } from "../scope";
-import { domains, projects, type DomainStatus } from "../schema";
+import { businesses, domains, projects, type DomainStatus } from "../schema";
 import { setBusinessWebsiteUrl } from "./business-website";
 import { DomainTakenError, InvalidHostnameError } from "./onboarding-data";
 import { currentBusinessId, hasPostgresCode, UNIQUE_VIOLATION } from "./tenant";
@@ -176,4 +176,30 @@ export async function recordDomainDnsCheck(
     await tx.update(domains).set({ status: next }).where(and(eq(domains.id, domain.id), inArray(domains.status, [...IN_DNS_STEP])));
     return { becameConnected: next === "verifying" && domain.status !== "verifying" };
   });
+}
+
+export interface DomainMoveRow {
+  readonly id: string;
+  readonly businessId: string;
+  readonly businessName: string;
+  readonly hostname: string;
+  readonly status: DomainStatus;
+  readonly createdAt: Date;
+}
+
+/** Lists active domain move requests (non-primary domains that have not been removed). */
+export async function listDomainMoves(db: Database): Promise<DomainMoveRow[]> {
+  return await db
+    .select({
+      id: domains.id,
+      businessId: domains.businessId,
+      businessName: businesses.name,
+      hostname: domains.hostname,
+      status: domains.status,
+      createdAt: domains.createdAt,
+    })
+    .from(domains)
+    .innerJoin(businesses, eq(businesses.id, domains.businessId))
+    .where(and(eq(domains.isPrimary, false), isNull(domains.removedAt)))
+    .orderBy(asc(domains.createdAt));
 }

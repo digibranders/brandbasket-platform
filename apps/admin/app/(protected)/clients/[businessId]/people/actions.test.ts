@@ -1,4 +1,4 @@
-import { extendAccountClosure, renameBusinessOwner, restoreAccountClosureForBusiness } from "@brandbasket/db";
+import { extendAccountClosure, openAccountClosure, renameBusinessOwner, restoreAccountClosureForBusiness } from "@brandbasket/db";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -6,12 +6,17 @@ import { recordStaffAction } from "@/lib/server/activity";
 import { requireStaffAccess, type GrantedStaff } from "@/lib/server/staff-access";
 import { logStaffAccess } from "@/lib/server/staff-access-log";
 import { requireStaffCan } from "@/lib/server/staff-role";
-import { extendClosureAction, renameOwnerAction, restoreClosureAction } from "./actions";
+import { closeAccountAction, extendClosureAction, renameOwnerAction, restoreClosureAction } from "./actions";
 
 vi.mock("server-only", () => ({}));
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 vi.mock("next/navigation", () => ({ redirect: vi.fn() }));
-vi.mock("@brandbasket/db", () => ({ renameBusinessOwner: vi.fn(), restoreAccountClosureForBusiness: vi.fn(), extendAccountClosure: vi.fn() }));
+vi.mock("@brandbasket/db", () => ({
+  renameBusinessOwner: vi.fn(),
+  restoreAccountClosureForBusiness: vi.fn(),
+  extendAccountClosure: vi.fn(),
+  openAccountClosure: vi.fn(),
+}));
 vi.mock("@/lib/server/db", () => ({ getStaffDb: () => ({ name: "staff-db" }) }));
 vi.mock("@/lib/server/staff-access", () => ({ requireStaffAccess: vi.fn() }));
 vi.mock("@/lib/server/staff-role", () => ({ requireStaffCan: vi.fn() }));
@@ -64,9 +69,15 @@ describe("renameOwnerAction", () => {
 });
 
 describe("restoreClosureAction", () => {
-  it("is admin only, restores, logs the access and records the action", async () => {
+  it("refuses to restore without confirmation", async () => {
+    await expect(restoreClosureAction(form({ businessId: BUSINESS }))).rejects.toThrow("people=unconfirmed");
+    expect(restoreAccountClosureForBusiness).not.toHaveBeenCalled();
+    expect(recordStaffAction).not.toHaveBeenCalled();
+  });
+
+  it("is admin only, restores when confirmed, logs the access and records the action", async () => {
     vi.mocked(restoreAccountClosureForBusiness).mockResolvedValue(true);
-    await expect(restoreClosureAction(form({ businessId: BUSINESS }))).rejects.toThrow("people=restored");
+    await expect(restoreClosureAction(form({ businessId: BUSINESS, confirm: "yes" }))).rejects.toThrow("people=restored");
     expect(requireStaffCan).toHaveBeenCalledWith("oversight");
     expect(restoreAccountClosureForBusiness).toHaveBeenCalledWith(DB, { businessId: BUSINESS, now: expect.any(Date) });
     expect(logStaffAccess).toHaveBeenCalledWith({ staffUserId: "staff-1", action: "client.closure_restore", targetType: "business", targetId: BUSINESS, businessId: BUSINESS });
@@ -75,8 +86,24 @@ describe("restoreClosureAction", () => {
 
   it("says nothing changed when the account is not leaving", async () => {
     vi.mocked(restoreAccountClosureForBusiness).mockResolvedValue(false);
-    await expect(restoreClosureAction(form({ businessId: BUSINESS }))).rejects.toThrow("people=no-closure");
+    await expect(restoreClosureAction(form({ businessId: BUSINESS, confirm: "yes" }))).rejects.toThrow("people=no-closure");
     expect(recordStaffAction).not.toHaveBeenCalled();
+  });
+});
+
+describe("closeAccountAction", () => {
+  it("refuses to close without confirmation", async () => {
+    await expect(closeAccountAction(form({ businessId: BUSINESS, userId: "owner-1" }))).rejects.toThrow("people=unconfirmed");
+    expect(openAccountClosure).not.toHaveBeenCalled();
+    expect(recordStaffAction).not.toHaveBeenCalled();
+  });
+
+  it("is admin only, schedules closure when confirmed, and records the action", async () => {
+    vi.mocked(openAccountClosure).mockResolvedValue({ id: "closure-1", businessId: BUSINESS, userId: "owner-1", requestedAt: new Date(), eraseAfter: new Date() });
+    await expect(closeAccountAction(form({ businessId: BUSINESS, userId: "owner-1", confirm: "yes" }))).rejects.toThrow("people=closed");
+    expect(requireStaffCan).toHaveBeenCalledWith("oversight");
+    expect(openAccountClosure).toHaveBeenCalledWith(DB, expect.objectContaining({ businessId: BUSINESS, userId: "owner-1" }));
+    expect(recordStaffAction).toHaveBeenCalledWith(STAFF, { businessId: BUSINESS, kind: "account.closed", summary: "Closed the account" });
   });
 });
 

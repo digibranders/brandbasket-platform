@@ -6,7 +6,7 @@ import { CarouselCard } from "./carousel-card";
 
 vi.mock("@/legacy-social/review-actions", () => ({ makeCarouselAction: vi.fn(async () => ({ status: "saved" })), decideCarouselAction: vi.fn(async () => ({ status: "saved" })), setWeeklyCarouselAction: vi.fn(async () => ({ status: "saved" })) }));
 
-const summary = (status: CarouselSummary["status"]): CarouselSummary => ({ id: "c1", topic: "Diwali boxes", date: "2026-11-18", count: 3, status });
+const summary = (status: CarouselSummary["status"]): CarouselSummary => ({ id: "c1", topic: "Diwali boxes", date: "2026-11-18", count: 3, status, headlines: [] });
 const detail = (status: CarouselDetail["status"]): CarouselDetail => ({
   id: "c1",
   count: 3,

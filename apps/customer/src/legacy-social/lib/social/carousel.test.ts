@@ -1,12 +1,22 @@
 import { describe, expect, it } from "vitest";
-import { carouselSlideUrl, readCarousel, readCarousels } from "./carousel";
+import { carouselDrawn, carouselMovable, carouselSlideUrl, readCarousel, readCarousels } from "./carousel";
 
 describe("readCarousels", () => {
   it("reads the list newest first, with the day cut to a date", () => {
     expect(readCarousels({ carousels: [{ id: "c2", topic: "Diwali boxes", date: "2026-11-18T10:00:00+05:30", count: 4, status: "pending" }, { id: "c1", date: "2026-11-11", count: 3, status: "approved" }] })).toEqual([
-      { id: "c2", topic: "Diwali boxes", date: "2026-11-18", count: 4, status: "pending" },
-      { id: "c1", topic: null, date: "2026-11-11", count: 3, status: "approved" },
+      { id: "c2", topic: "Diwali boxes", date: "2026-11-18", count: 4, status: "pending", headlines: [] },
+      { id: "c1", topic: null, date: "2026-11-11", count: 3, status: "approved", headlines: [] },
     ]);
+  });
+
+  it("reads the topic stage and the headline of each slide", () => {
+    expect(readCarousels({ carousels: [{ id: "c1", topic: "Diwali boxes", date: "2026-11-20", count: 3, status: "topic", headlines: ["Why boxes sell out", " What is inside ", null] }] })).toEqual([
+      { id: "c1", topic: "Diwali boxes", date: "2026-11-20", count: 3, status: "topic", headlines: ["Why boxes sell out", "What is inside", ""] },
+    ]);
+    expect(carouselDrawn("topic")).toBe(false);
+    expect(carouselDrawn("pending")).toBe(true);
+    expect(carouselMovable("dropped")).toBe(false);
+    expect(carouselMovable("kept")).toBe(true);
   });
 
   it("leaves out an entry it cannot read, and is empty for an answer that is not a list", () => {

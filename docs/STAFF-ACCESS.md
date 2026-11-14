@@ -64,7 +64,36 @@ is unusually high; bursts of blocked sign-ins also email the team (`docs/operati
 There is **no second factor** in this console today: not an authenticator app, not an emailed code, not a passkey. A
 staff account is protected by its password alone (plus the limits above). Treat that as the main risk of exposing the console to the internet.
 
+## Cloudflare Access verification (WP-03)
+
+The console includes built-in verification for Cloudflare Access via `apps/admin/proxy.ts`.
+
+When `REQUIRE_CF_ACCESS=1` is set in the environment:
+- Every request to the console must carry the `Cf-Access-Jwt-Assertion` header.
+- The token signature is validated against the team public keys from Cloudflare's certs endpoint (`<CF_ACCESS_ISSUER>/cdn-cgi/access/certs`).
+- The token audience must match `CF_ACCESS_AUDIENCE`.
+- The token issuer must match `CF_ACCESS_ISSUER`.
+- Requests missing the header or with an invalid, expired, or untrusted assertion are refused with HTTP 401.
+- When `REQUIRE_CF_ACCESS` is unset or not `1`, the verification check is disabled (for local development and testing).
+
+Environment variables:
+- `REQUIRE_CF_ACCESS`: Set to `1` to require verification.
+- `CF_ACCESS_AUDIENCE`: The Application Audience (AUD) tag from Cloudflare Zero Trust.
+- `CF_ACCESS_ISSUER`: The Cloudflare Access team domain (e.g. `https://<team-name>.cloudflareaccess.com`).
+
+## Confirmations on destructive actions (WP-03)
+
+To protect customer data and billing state, destructive staff actions require explicit confirmation before execution:
+- Cancel build (`cancelProjectAction`): refuses unless `confirm=yes`.
+- Add free round (`grantRoundAction`): refuses unless `confirm=yes`.
+- Change domain (`switchDomainAction`, `changeFreeAddressAction`): refuses unless `confirm=yes`.
+- Mark refunded (`markPaymentRefundedAction`): refuses unless `confirm=yes`.
+- Close or restore account (`closeAccountAction`, `restoreClosureAction`): refuses unless `confirm=yes`.
+
+The console uses an accessible `ConfirmDialog` component displaying the title, consequence line, and cancel/confirm buttons using the existing design tokens.
+
 ## Recommendations
+
 
 1. Put the console behind **Cloudflare Access** (or another identity-aware proxy) with the team's own identity provider and a
    second factor, so `console.brandbasket.in` is not reachable at all without it. This is the quickest real second factor;
