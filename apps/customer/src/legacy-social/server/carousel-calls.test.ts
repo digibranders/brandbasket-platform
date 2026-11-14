@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 
 vi.mock("server-only", () => ({}));
 
-import { askTopic, decideCarousel, fetchCarouselSlide, loadCarousel, loadCarouselList, loadCarousels, loadSchedule, loadTopicRequests, makeCarousel, renameBrand, replaceTopic, saveSchedule, setCarouselWeekly, SocialAutoError, type SocialAutoSettings } from "./social-auto";
+import { askTopic, decideCarousel, fetchCarouselSlide, loadCarousel, loadCarouselList, loadAutoPosting, loadCarousels, loadSchedule, loadTopicRequests, makeCarousel, renameBrand, replaceTopic, saveAutoPosting, saveSchedule, setCarouselWeekly, SocialAutoError, type SocialAutoSettings } from "./social-auto";
 
 const settings: SocialAutoSettings = { baseUrl: "http://127.0.0.1:4020", key: "secret", returnUrl: "https://app.example.com/social" };
 const json = (status: number, body: unknown = {}) => vi.fn(async () => new Response(JSON.stringify(body), { status })) as unknown as typeof fetch;
@@ -92,6 +92,29 @@ describe("the carousel calls", () => {
     const refused = await saveSchedule(settings, "b1", { instagram: [] }, json(400, { code: "INVALID_DAYS", error: "days must be a list" })).catch((error: unknown) => error);
     expect(refused).toBeInstanceOf(SocialAutoError);
     expect((refused as SocialAutoError).code).toBe("INVALID_DAYS");
+  });
+
+  it("reads automatic posting from the workspace, with none yet for a business with no workspace and null for an older service", async () => {
+    const send = json(200, { workspace: { channels: [{ id: "instagram:1", platform: "instagram", account: "acme" }], autoPosting: { channels: ["instagram"], safetyHours: 24, consentedAt: "2026-11-14T10:00:00Z", needsChoice: [] } } });
+    expect((await loadAutoPosting(settings, "b1", send))?.channels).toEqual(["instagram"]);
+    expect(sentUrl(send)).toBe("http://127.0.0.1:4020/api/v1/workspaces?externalId=b1");
+    expect((await loadAutoPosting(settings, "b1", json(404)))?.channels).toEqual([]);
+    expect(await loadAutoPosting(settings, "b1", json(200, { workspace: { channels: [] } }))).toBeNull();
+    await expect(loadAutoPosting(settings, "b1", json(500))).rejects.toBeInstanceOf(SocialAutoError);
+  });
+
+  it("chooses the channels with a PATCH that carries her agreement and who agreed, and switches off without one", async () => {
+    const send = json(200, { workspace: { channels: [{ id: "instagram:1", platform: "instagram", account: "acme" }], autoPosting: { channels: ["instagram"], safetyHours: 48, consentedAt: "2026-11-14T10:00:00Z", needsChoice: [] } } });
+    await saveAutoPosting(settings, "b1", { channels: ["instagram"], safetyHours: 48 }, "brandbasket:u1", send);
+    const call = vi.mocked(send).mock.calls[0];
+    expect(call?.[1]?.method).toBe("PATCH");
+    expect(JSON.parse(String(call?.[1]?.body))).toEqual({ externalId: "b1", autoPosting: { channels: ["instagram"], safetyHours: 48, consent: true } });
+    expect((call?.[1]?.headers as Record<string, string>)["X-Social-Actor"]).toBe("brandbasket:u1");
+    const off = json(200, { workspace: { channels: [], autoPosting: { channels: [], safetyHours: 24, consentedAt: null, needsChoice: [] } } });
+    await saveAutoPosting(settings, "b1", { channels: [], safetyHours: 24 }, "brandbasket:u1", off);
+    expect(JSON.parse(String(vi.mocked(off).mock.calls[0]?.[1]?.body))).toEqual({ externalId: "b1", autoPosting: { channels: [] } });
+    const refused = await saveAutoPosting(settings, "b1", { channels: ["facebook"], safetyHours: 24 }, "a", json(400, { code: "CHANNEL_NOT_CONNECTED", error: "no" })).catch((error: unknown) => error);
+    expect((refused as SocialAutoError).code).toBe("CHANNEL_NOT_CONNECTED");
   });
 
   it("renames a brand with a PATCH, and says so when the posting service refuses", async () => {

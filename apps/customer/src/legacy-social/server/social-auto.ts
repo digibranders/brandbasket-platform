@@ -2,6 +2,7 @@ import "server-only";
 import { z } from "zod";
 import { readAnalytics, type Analytics } from "@/legacy-social/lib/social/analytics";
 import { readCarousel, readCarouselWeekly, readCarousels, type CarouselDetail, type CarouselSummary } from "@/legacy-social/lib/social/carousel";
+import { readAutoPosting, type AutoPostingState } from "@/legacy-social/lib/social/auto-posting";
 import { readSchedule, type PostingDays } from "@/legacy-social/lib/social/schedule";
 import { brandIdFor, readBrands, type BrandsView } from "@/features/social/brands";
 import { readBatches, readBatchPlan, readExpiredBatches, readFacts, readJob, readJobs, readPosters, readTopicRequests, readTopics, type BatchPlan, type ExpiredBatch, type FactsView, type Poster, type SiteJob, type Topic, type TopicRequest, type WrittenBatch } from "@/legacy-social/lib/social/ai";
@@ -516,6 +517,28 @@ export async function saveSchedule(settings: SocialAutoSettings, externalId: str
   const answer = await call(settings, "/api/v1/schedule", { method: "PUT", body: { externalId, channels } }, send);
   if (answer.status !== 200) throw refusal(answer, "the posting days");
   return readSchedule(answer.body);
+}
+
+/**
+ * Which channels the system posts for by itself, and how long before posting it may approve a picture. Null when the posting service has no
+ * automatic posting (an older one) so the page offers no choice; a business with no workspace yet has nothing automatic.
+ */
+export async function loadAutoPosting(settings: SocialAutoSettings, businessId: string, send: typeof fetch = fetch): Promise<AutoPostingState> {
+  const answer = await call(settings, `/api/v1/workspaces?externalId=${encodeURIComponent(businessId)}`, { method: "GET" }, send);
+  if (answer.status === 404) return { channels: [], safetyHours: 24, consentedAt: null, needsChoice: [] };
+  if (answer.status !== 200) throw refusal(answer, "automatic posting");
+  return readAutoPosting(answer.body, readChannels(answer.body).map((channel) => channel.platform));
+}
+
+/**
+ * Chooses the channels the system posts for (the list replaces the old one; none switches it off). Agreeing is part of choosing, so it is
+ * sent with any list that is not empty, with the person who agreed. Nothing is saved when the posting service refuses.
+ */
+export async function saveAutoPosting(settings: SocialAutoSettings, businessId: string, choice: { readonly channels: readonly ChannelPlatform[]; readonly safetyHours: number }, actor: string, send: typeof fetch = fetch): Promise<AutoPostingState> {
+  const autoPosting = choice.channels.length === 0 ? { channels: [] } : { channels: choice.channels, safetyHours: choice.safetyHours, consent: true };
+  const answer = await call(settings, "/api/v1/workspaces", { method: "PATCH", body: { externalId: businessId, autoPosting }, actor }, send);
+  if (answer.status !== 200) throw refusal(answer, "automatic posting");
+  return readAutoPosting(answer.body, readChannels(answer.body).map((channel) => channel.platform));
 }
 
 /** The customer's carousels, newest first, and whether the weekly carousel is on. A business with no workspace, or a posting service that has no carousels yet, has none. */

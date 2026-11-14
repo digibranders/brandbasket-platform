@@ -5,6 +5,7 @@ import { allPaused, bookedUntil, connectStatus, dayLabel, daysUntilEnd, endingSo
 import type { LegacySocialData } from "@/legacy-social/server/load";
 import Link from "next/link";
 import { AiStartCard } from "./ai-start-card";
+import { AutoPostingCard } from "./auto-posting-card";
 import { BrandControl } from "./brand-switcher";
 import { ChannelFilterProvider } from "./channel-filter";
 import { ChannelsSidebar, type ChannelRow } from "./channels-sidebar";
@@ -107,6 +108,7 @@ export function LegacySocialView({ data, notice, now, approvals, hasNumbers, can
                 </p>
               ) : null}
               {canChange ? <AiStartCard jobs={data.ai.jobs} channels={data.channels} postingDays={data.postingDays} website={data.ai.website} savedWebsite={savedWebsite} unavailable={data.ai.jobsUnavailable} expired={data.ai.expired} nextMonth={data.ai.plan?.canStartNext === true && data.ai.plan.nextStartDate !== null ? { startDate: data.ai.plan.nextStartDate, endsOn: data.ai.plan.endsOn } : null} /> : null}
+              {data.autoPosting !== null && data.channels.length > 0 ? <AutoPostingCard auto={data.autoPosting} channels={data.channels.map((channel) => ({ platform: channel.platform, account: channel.account }))} canChange={canChange} /> : null}
               {approvals}
               <SocialCalendar
                 posts={data.posts}

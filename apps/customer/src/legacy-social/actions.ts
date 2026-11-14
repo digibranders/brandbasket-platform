@@ -9,10 +9,11 @@ import { redirect, unstable_rethrow } from "next/navigation";
 import { requireService } from "@/lib/guards";
 import { brandOf } from "@/features/social/brand";
 import { BRAND_TIME_ZONE } from "@/legacy-social/shims";
-import { actorOf, connectLink, createPost, deletePost, ensureWorkspace, loadChannels, loadSchedule, loadWorkspaceFacts, movePost, saveSchedule, sendPostNow, SocialAutoError, socialAutoSettings, startSiteJob, updatePost } from "@/legacy-social/server/social-auto";
+import { actorOf, connectLink, createPost, deletePost, ensureWorkspace, loadChannels, loadSchedule, loadWorkspaceFacts, movePost, saveAutoPosting, saveSchedule, sendPostNow, SocialAutoError, socialAutoSettings, startSiteJob, updatePost } from "@/legacy-social/server/social-auto";
 import { canAddOn, checkNewPost, checkPostEdit, wordsForPostRefusal, isChangeablePostId, isTime, isWrittenPostId, momentHasPassed, type NewPostState } from "@/legacy-social/lib/social/new-post";
 import { wordsForCode } from "@/legacy-social/lib/social/ai";
 import { CHANNEL_PLATFORMS, PLATFORM_NAMES, type ChannelPlatform } from "@/legacy-social/lib/social/auto";
+import { SAFETY_HOURS } from "@/legacy-social/lib/social/auto-posting";
 import { dayGroups, parseDays, withChannelDays } from "@/legacy-social/lib/social/schedule";
 
 /*
@@ -323,6 +324,42 @@ export async function setPostingDaysAction(formData: FormData): Promise<NewPostS
     unstable_rethrow(error);
     if (error instanceof SocialAutoError && error.code !== null) return { status: "error", message: wordsForCode(error.code) };
     reportError(error, { area: "social.posting-days" });
+    return { status: "error", message: wordsForCode(null) };
+  }
+  revalidatePath("/social");
+  return { status: "saved" };
+}
+
+const autoPostingSchema = z.object({
+  channels: z.string().max(80),
+  hours: z.coerce.number().int().refine((value) => (SAFETY_HOURS as readonly number[]).includes(value), "Choose how long before posting we may approve."),
+  agreed: z.string().optional(),
+});
+
+/**
+ * Lets the system post by itself for the channels chosen (`instagram,facebook`; none switches it off) and approve their pictures inside
+ * the safety wait. Choosing channels means agreeing to the words beside the box, so a list with no agreement is refused here and by the posting
+ * service. Only owners and editors can choose, only for channels that are connected (the posting service checks), and the person who agreed
+ * is the one signed in.
+ */
+export async function setAutoPostingAction(formData: FormData): Promise<NewPostState> {
+  const parsed = autoPostingSchema.safeParse({ channels: formData.get("channels") ?? "", hours: formData.get("hours") ?? "24", agreed: formData.get("agreed") ?? undefined });
+  if (!parsed.success) return { status: "error", message: parsed.error.issues[0]?.message ?? "Check your choice and try again." };
+  const names = parsed.data.channels.split(",").map((name) => name.trim()).filter((name) => name !== "");
+  const chosen = CHANNEL_PLATFORMS.filter((platform) => names.includes(platform));
+  if (chosen.length !== names.length) return { status: "error", message: "Choose from your channels." };
+  if (chosen.length > 0 && parsed.data.agreed !== "yes") return { status: "error", message: wordsForCode("CONSENT_REQUIRED") };
+  try {
+    const customer = await requireService("social", { write: true });
+    if (customer.role === "viewer") return { status: "error", message: "Only owners and editors can change this." };
+    const settings = socialAutoSettings();
+    if (settings === null) return { status: "error", message: "Posting is not available just now. Try again later." };
+    const brand = await brandOf(customer);
+    await saveAutoPosting(settings, brand.externalId, { channels: chosen, safetyHours: parsed.data.hours }, actorOf(customer.tenant));
+  } catch (error) {
+    unstable_rethrow(error);
+    if (error instanceof SocialAutoError && error.code !== null) return { status: "error", message: wordsForCode(error.code) };
+    reportError(error, { area: "social.auto-posting" });
     return { status: "error", message: wordsForCode(null) };
   }
   revalidatePath("/social");

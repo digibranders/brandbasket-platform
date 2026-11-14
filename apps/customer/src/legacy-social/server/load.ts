@@ -6,8 +6,9 @@ import { localDateIn } from "@brandbasket/shared/lib/calendar/local-date";
 import { BRAND_TIME_ZONE } from "@/legacy-social/shims";
 import { loadWindow, toCalendarPost, type AutoChannel, type CalendarPost, type WorkspaceNotice } from "@/legacy-social/lib/social/auto";
 import type { BatchPlan, SiteJob } from "@/legacy-social/lib/social/ai";
+import type { AutoPostingState } from "@/legacy-social/lib/social/auto-posting";
 import type { PostingDays } from "@/legacy-social/lib/social/schedule";
-import { loadBatches, loadChannels, loadPosters, loadPosts, loadSchedule, loadSiteJobs, loadWorkspaceFacts, socialAutoSettings } from "./social-auto";
+import { loadBatches, loadChannels, loadAutoPosting, loadPosters, loadPosts, loadSchedule, loadSiteJobs, loadWorkspaceFacts, socialAutoSettings } from "./social-auto";
 
 /** What the old Social media page shows from the posting service: the connected channels and the posts it writes and publishes. */
 export interface LegacySocialData {
@@ -20,6 +21,8 @@ export interface LegacySocialData {
   readonly posts: readonly CalendarPost[];
   /** The days each channel posts on; null when the posting service cannot say (an older one), so the page offers no choice. */
   readonly postingDays: PostingDays | null;
+  /** The channels the system posts for by itself; null when the posting service has no automatic posting, so the page offers no choice. */
+  readonly autoPosting: AutoPostingState;
   /** Today in India, `YYYY-MM-DD`. */
   readonly today: string;
   /** The AI side: the jobs that write the posts, and what was put away because nobody decided in time. */
@@ -46,7 +49,7 @@ export async function loadLegacySocial(customer: Pick<CustomerContext, "business
   if (settings === null) return null;
   const brand = await brandOf(customer);
   const today = localDateIn(BRAND_TIME_ZONE, now);
-  const [channels, posts, facts, jobs, written, expiredPictures, schedule] = await Promise.allSettled([
+  const [channels, posts, facts, jobs, written, expiredPictures, schedule, auto] = await Promise.allSettled([
     loadChannels(settings, brand.externalId),
     loadPosts(settings, brand.externalId, loadWindow(today)),
     loadWorkspaceFacts(settings, brand.externalId),
@@ -54,14 +57,16 @@ export async function loadLegacySocial(customer: Pick<CustomerContext, "business
     loadBatches(settings, brand.externalId),
     loadPosters(settings, brand.externalId, "expired"),
     loadSchedule(settings, brand.externalId),
+    loadAutoPosting(settings, brand.externalId),
   ]);
-  for (const outcome of [channels, posts, facts, jobs, written, expiredPictures, schedule]) if (outcome.status === "rejected") reportError(outcome.reason, { area: "social.posting-service" });
+  for (const outcome of [channels, posts, facts, jobs, written, expiredPictures, schedule, auto]) if (outcome.status === "rejected") reportError(outcome.reason, { area: "social.posting-service" });
   return {
     businessName: brand.name,
     brand,
     channels: channels.status === "fulfilled" ? channels.value : [],
     notices: facts.status === "fulfilled" ? facts.value.notices : [],
     posts: posts.status === "fulfilled" ? posts.value.flatMap((post) => toCalendarPost(post) ?? []) : [],
+    autoPosting: auto.status === "fulfilled" ? auto.value : null,
     postingDays: schedule.status === "fulfilled" ? schedule.value : null,
     today,
     // A failed read of the jobs shows as none yet: the page still draws, and Sentry has the reason.
