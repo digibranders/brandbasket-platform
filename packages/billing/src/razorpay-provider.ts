@@ -1,5 +1,5 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
-import { billingCurrency, type BillingCurrency, type BillingInterval } from "@brandbasket/db";
+import { billingCurrency, type BillingCurrency, type BillingInterval, type PaymentMethodDetails } from "@brandbasket/db";
 import {
   CheckoutVerificationError,
   type BillingProvider,
@@ -58,6 +58,7 @@ export interface RazorpaySdkClient {
       readonly created_at: number;
       /** Razorpay's own word for the payment: `captured` is money taken. */
       readonly status?: string;
+      readonly method?: PaymentMethodDetails | null;
     }>;
   };
   /** A subscription's invoices, for finding a first-month payment whose webhook never arrived. */
@@ -363,7 +364,13 @@ export function createRazorpayProvider(options: RazorpayProviderOptions): Razorp
       if (upfront?.payment_id == null) return null;
       const payment = await client.payments.fetch(upfront.payment_id);
       if (payment.status !== "captured" || !isCurrency(payment.currency) || !Number.isSafeInteger(payment.amount) || payment.amount <= 0) return null;
-      return { providerPaymentId: payment.id, amountCents: payment.amount, currency: payment.currency, paidAt: new Date(payment.created_at * 1000) };
+      return {
+        providerPaymentId: payment.id,
+        amountCents: payment.amount,
+        currency: payment.currency,
+        paidAt: new Date(payment.created_at * 1000),
+        method: payment.method ?? null,
+      };
     },
 
     async findSubscriptionCharge(providerSubscriptionId: string): Promise<SubscriptionCharge | null> {
@@ -381,6 +388,7 @@ export function createRazorpayProvider(options: RazorpayProviderOptions): Razorp
         paidAt: new Date(payment.created_at * 1000),
         currentStart: typeof subscription.current_start === "number" ? new Date(subscription.current_start * 1000) : null,
         currentEnd: new Date(subscription.current_end * 1000),
+        method: payment.method ?? null,
       };
     },
 

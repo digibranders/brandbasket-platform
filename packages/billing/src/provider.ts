@@ -152,6 +152,7 @@ export interface UpfrontPayment {
   readonly amountCents: number;
   readonly currency: BillingCurrency;
   readonly paidAt: Date;
+  readonly method?: PaymentMethodDetails | null;
 }
 
 /** The captured first charge of a subscription (the plan's own payment), read back from the provider. */
@@ -163,6 +164,7 @@ export interface SubscriptionCharge {
   /** The billing period the charge paid for, as the provider computed it. */
   readonly currentStart: Date | null;
   readonly currentEnd: Date;
+  readonly method?: PaymentMethodDetails | null;
 }
 
 export interface BillingProvider {

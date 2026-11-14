@@ -1,12 +1,12 @@
-# The first-month payment check (plan 63): POSTs to the dashboard's own /api/internal/check-first-payments on 127.0.0.1 with the
-# bearer token from the environment file. It asks Razorpay about every first-month offer checkout still waiting for its first
-# payment and records any it holds, for a payment whose webhook never arrived. Installed by deploy/vps/install.sh backups but NOT
-# enabled: set PAYMENT_RECONCILE_TOKEN in /srv/brandbasket/shared/customer.env.production first (make-env-files.sh generates it for a
-# new server; an existing one needs `openssl rand -hex 32`), start the service once and read its journal, then enable the timer.
+# The first payment check: POSTs to the dashboard's own /api/internal/check-first-payments on 127.0.0.1 with the
+# bearer token from the environment file. It asks Razorpay about every checkout still waiting for its first
+# payment and records any it holds, for a payment whose webhook never arrived. Enabled on install by deploy/vps/install.sh:
+# set PAYMENT_RECONCILE_TOKEN in /srv/brandbasket/shared/customer.env.production (make-env-files.sh generates it for a
+# new server; an existing one needs `openssl rand -hex 32`), start the service once and read its journal.
 # brandbasket-first-payment-check-job keeps the token out of the process list. It writes nothing itself (the app records the
 # payment), so this unit has no writable paths.
 [Unit]
-Description=Brandbasket check for first-month payments whose webhook never arrived
+Description=Brandbasket check for first payments whose webhook never arrived
 After=brandbasket-customer.service
 
 [Service]

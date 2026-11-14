@@ -2,18 +2,23 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("server-only", () => ({}));
-vi.mock("@brandbasket/db", () => ({ listUnpaidOfferCheckouts: vi.fn() }));
+vi.mock("@brandbasket/db", () => ({ listUnpaidCheckouts: vi.fn() }));
 vi.mock("./db", () => ({ getStaffDb: () => ({ staff: true }) }));
 vi.mock("./billing", () => ({ getBillingProvider: vi.fn() }));
-vi.mock("./razorpay-webhook-handler", () => ({ recordUpfrontFromRazorpay: vi.fn() }));
+vi.mock("./razorpay-webhook-handler", () => ({ recordChargeFromRazorpay: vi.fn(), recordUpfrontFromRazorpay: vi.fn() }));
 
-import { listUnpaidOfferCheckouts } from "@brandbasket/db";
+import { listUnpaidCheckouts } from "@brandbasket/db";
 import { getBillingProvider } from "./billing";
 import { checkFirstPayments, firstPaymentCheckToken } from "./first-payment-check";
-import { recordUpfrontFromRazorpay } from "./razorpay-webhook-handler";
+import { recordChargeFromRazorpay, recordUpfrontFromRazorpay } from "./razorpay-webhook-handler";
 
 const NOW = new Date("2026-11-13T08:00:00.000Z");
-const checkout = (n: number) => ({ subscriptionId: `sub-${n}`, businessId: `biz-${n}`, providerSubscriptionId: `sub_rzp_${n}` });
+const checkout = (n: number, firstPaymentCents: number | null = null) => ({
+  subscriptionId: `sub-${n}`,
+  businessId: `biz-${n}`,
+  providerSubscriptionId: `sub_rzp_${n}`,
+  firstPaymentCents,
+});
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -23,18 +28,21 @@ beforeEach(() => {
 });
 
 describe("checkFirstPayments", () => {
-  it("asks Razorpay about every offer checkout still waiting, ten minutes after it opened, and counts what it found", async () => {
-    vi.mocked(listUnpaidOfferCheckouts).mockResolvedValue([checkout(1), checkout(2), checkout(3)]);
-    vi.mocked(recordUpfrontFromRazorpay).mockResolvedValueOnce(true).mockResolvedValueOnce(false).mockResolvedValueOnce(true);
+  it("asks Razorpay about every unpaid checkout still waiting after ten minutes, and counts what it found", async () => {
+    vi.mocked(listUnpaidCheckouts).mockResolvedValue([checkout(1, null), checkout(2, 100), checkout(3, null)]);
+    vi.mocked(recordChargeFromRazorpay).mockResolvedValueOnce(true).mockResolvedValueOnce(true);
+    vi.mocked(recordUpfrontFromRazorpay).mockResolvedValueOnce(false);
 
     expect(await checkFirstPayments(NOW)).toEqual({ checked: 3, found: 2, failed: 0 });
-    expect(listUnpaidOfferCheckouts).toHaveBeenCalledWith({ staff: true }, { provider: "razorpay", now: NOW, settleMs: 600_000, limit: 100 });
-    expect(recordUpfrontFromRazorpay).toHaveBeenNthCalledWith(2, "sub_rzp_2");
+    expect(listUnpaidCheckouts).toHaveBeenCalledWith({ staff: true }, { provider: "razorpay", now: NOW, settleMs: 600_000, limit: 100 });
+    expect(recordChargeFromRazorpay).toHaveBeenCalledWith("sub_rzp_1");
+    expect(recordUpfrontFromRazorpay).toHaveBeenCalledWith("sub_rzp_2");
+    expect(recordChargeFromRazorpay).toHaveBeenCalledWith("sub_rzp_3");
   });
 
-  it("carries on past a checkout Razorpay could not be asked about, and reports it", async () => {
-    vi.mocked(listUnpaidOfferCheckouts).mockResolvedValue([checkout(1), checkout(2)]);
-    vi.mocked(recordUpfrontFromRazorpay).mockRejectedValueOnce(new Error("timeout")).mockResolvedValueOnce(true);
+  it("carries on past an ordinary checkout Razorpay could not be asked about, and reports it", async () => {
+    vi.mocked(listUnpaidCheckouts).mockResolvedValue([checkout(1, null), checkout(2, null)]);
+    vi.mocked(recordChargeFromRazorpay).mockRejectedValueOnce(new Error("timeout")).mockResolvedValueOnce(true);
 
     expect(await checkFirstPayments(NOW)).toEqual({ checked: 2, found: 1, failed: 1 });
     expect(console.error).toHaveBeenCalled();
@@ -43,7 +51,7 @@ describe("checkFirstPayments", () => {
   it("does nothing with any provider but Razorpay", async () => {
     vi.mocked(getBillingProvider).mockReturnValue({ name: "fake" } as never);
     expect(await checkFirstPayments(NOW)).toEqual({ checked: 0, found: 0, failed: 0 });
-    expect(listUnpaidOfferCheckouts).not.toHaveBeenCalled();
+    expect(listUnpaidCheckouts).not.toHaveBeenCalled();
   });
 
   it("reads its secret from PAYMENT_RECONCILE_TOKEN and refuses one that is missing or short", () => {

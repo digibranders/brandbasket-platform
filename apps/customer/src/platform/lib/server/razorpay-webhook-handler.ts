@@ -711,7 +711,7 @@ export function upfrontChargeEvent(providerSubscriptionId: string, found: Upfron
     paymentId: found.providerPaymentId,
     amountCents: found.amountCents,
     currency: found.currency,
-    method: null,
+    method: found.method ?? null,
     upfront: true,
   };
 }
@@ -734,7 +734,7 @@ export async function recordChargeFromRazorpay(providerSubscriptionId: string): 
     paymentId: found.providerPaymentId,
     amountCents: found.amountCents,
     currency: found.currency,
-    method: null,
+    method: found.method ?? null,
   });
   return true;
 }
