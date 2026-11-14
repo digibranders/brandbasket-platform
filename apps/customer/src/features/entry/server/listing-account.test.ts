@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AccountAlreadyExistsError, createVerifiedEmailAccountWithGrant } from "@brandbasket/auth";
 import {
+  checkBusinessInvite,
   consumeRateLimit,
   createUnlistedAccountBusiness,
   findUserByEmail,
@@ -54,6 +55,7 @@ vi.mock("@brandbasket/db", async () => {
     setUserPhoneNumber: vi.fn(),
     recordSignupLead: vi.fn(),
     recordSignupAttribution: vi.fn(),
+    checkBusinessInvite: vi.fn(),
   };
 });
 
@@ -154,6 +156,41 @@ describe("createListingAccount", () => {
     expect(await createListingAccount(WITH_CODE)).toEqual({ kind: "created" });
     expect(setUserPhoneNumber).toHaveBeenCalledWith(DB, "user-2", E164);
     expect(recordSignupLead).toHaveBeenCalledWith(DB, expect.objectContaining({ businessId: "business-1", phone: E164 }));
+  });
+
+  it("does not create a personal business or lead when sign-up carries a valid invite for the same email", async () => {
+    vi.mocked(checkBusinessInvite).mockResolvedValue({
+      kind: "valid",
+      invite: {
+        id: "invite-1",
+        businessId: "biz-inviter",
+        businessName: "Inviter Workspace",
+        email: EMAIL,
+        role: "editor",
+        expiresAt: new Date(Date.now() + 86_400_000),
+        acceptedAt: null,
+        revokedAt: null,
+        createdAt: new Date(),
+      },
+    });
+
+    expect(await createListingAccount(WITH_CODE, null, { inviteToken: "valid-token-for-email" })).toEqual({ kind: "created" });
+    expect(createVerifiedEmailAccountWithGrant).toHaveBeenCalled();
+    expect(createUnlistedAccountBusiness).not.toHaveBeenCalled();
+    expect(recordSignupLead).not.toHaveBeenCalled();
+    expect(signInEmail).toHaveBeenCalled();
+  });
+
+  it("still creates a personal business when the invite is expired or for a different email", async () => {
+    vi.mocked(checkBusinessInvite).mockResolvedValue({
+      kind: "refused",
+      reason: "wrong_email",
+    });
+
+    expect(await createListingAccount(WITH_CODE, null, { inviteToken: "token-for-other-email" })).toEqual({ kind: "created" });
+    expect(createVerifiedEmailAccountWithGrant).toHaveBeenCalled();
+    expect(createUnlistedAccountBusiness).toHaveBeenCalled();
+    expect(recordSignupLead).toHaveBeenCalled();
   });
 
   it("keeps the ad the account came from on its business, and nothing when it came from none", async () => {

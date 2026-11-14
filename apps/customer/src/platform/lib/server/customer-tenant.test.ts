@@ -5,6 +5,13 @@ import { getCustomerTenant } from "./customer-tenant";
 import { getAppDb, getStaffDb } from "./db";
 import { getSessionUser } from "./session";
 
+const cookieGet = vi.fn();
+vi.mock("next/headers", () => ({
+  cookies: vi.fn(async () => ({
+    get: cookieGet,
+  })),
+}));
+
 vi.mock("server-only", () => ({}));
 vi.mock("./session", () => ({ getSessionUser: vi.fn() }));
 vi.mock("./db", () => ({ getAppDb: vi.fn(), getStaffDb: vi.fn() }));
@@ -42,6 +49,22 @@ describe("getCustomerTenant", () => {
     expect(listMembershipsForUser).toHaveBeenCalledWith(appDb, USER.id);
     expect(findBillingState).not.toHaveBeenCalled();
     expect(withTenantScope).not.toHaveBeenCalled();
+  });
+
+  it("resolves the active business choice from the cookie when the user has several memberships", async () => {
+    const SECOND_BIZ = "0192f3c4-2222-7000-8000-000000000002";
+    vi.mocked(listMembershipsForUser).mockResolvedValue([
+      { businessId: BUSINESS_ID, businessName: "Riverside Plumbing", role: "owner" },
+      { businessId: SECOND_BIZ, businessName: "Second Business", role: "editor" },
+    ]);
+    cookieGet.mockReturnValue({ value: SECOND_BIZ });
+
+    await expect(getCustomerTenant()).resolves.toEqual({
+      userId: USER.id,
+      businessId: SECOND_BIZ,
+      businessName: "Second Business",
+      role: "editor",
+    });
   });
 
   it("is null without a session, and reads nothing else", async () => {

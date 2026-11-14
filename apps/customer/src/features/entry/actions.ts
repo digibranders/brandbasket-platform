@@ -83,14 +83,16 @@ export async function signUpAction(previous: SignUpResult | null, formData: Form
     return fail(outcome.message, resend ? current : null);
   }
 
-  const outcome = await createListingAccount(parsed.data, attributionFromStart(formData, leadsApiToken()));
+  const nextReturn = inviteReturn(formData.get(NEXT_FIELD));
+  const inviteToken = nextReturn !== null ? nextReturn.slice("/invite/".length) : null;
+  const outcome = await createListingAccount(parsed.data, attributionFromStart(formData, leadsApiToken()), { inviteToken });
   if (outcome.kind === "limited") {
     return fail(otpLimitMessage(outcome, "confirm"), current, { operation: "confirm", scope: outcome.scope, retryAfterSeconds: outcome.retryAfterSeconds });
   }
   if (outcome.kind === "wrong-code") return fail(outcome.message, current);
   if (outcome.kind === "refused") return fail(outcome.message, null);
   // The basket rides along so checkout opens on those services; only catalogue ids survive.
-  redirect(inviteReturn(formData.get(NEXT_FIELD)) ?? startHref(readBundleSelection(String(formData.get("services") ?? "").split(","))));
+  redirect(nextReturn ?? startHref(readBundleSelection(String(formData.get("services") ?? "").split(","))));
 }
 
 /** What the forgot-password form says once it is sent, whether or not there is an account. */
