@@ -68,6 +68,8 @@ describe("ReviewWorkspace topics", () => {
     await waitFor(() => expect(vi.mocked(decideBatchAction)).toHaveBeenCalledTimes(1));
     const form = vi.mocked(decideBatchAction).mock.calls[0]?.[0] as FormData;
     expect([form.get("batchId"), form.get("postId"), form.get("action")]).toEqual(["b1", "p1", "keep"]);
+    // A choice is ignored while the one before it is still on its way, so wait for the buttons to come back on before the next click.
+    await waitFor(() => expect((screen.getAllByRole("button", { name: "Drop this topic" })[0] as HTMLButtonElement).disabled).toBe(false));
     fireEvent.click(screen.getAllByRole("button", { name: "Drop this topic" })[0] as HTMLElement);
     await waitFor(() => expect(vi.mocked(decideBatchAction)).toHaveBeenCalledTimes(2));
     expect((vi.mocked(decideBatchAction).mock.calls[1]?.[0] as FormData).get("action")).toBe("drop");
