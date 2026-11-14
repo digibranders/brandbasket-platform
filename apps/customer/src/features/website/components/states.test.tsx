@@ -64,6 +64,38 @@ describe("Website live overview: one failed panel", () => {
     expect(screen.getByRole("heading", { name: "What happens next" })).toBeTruthy();
     expect(screen.getByText("We could not load your website's progress.")).toBeTruthy();
   });
+
+  it("shows exact call timing and Join kickoff call button when in kickoff step with meeting link", () => {
+    const startsAt = new Date("2026-11-03T10:00:00Z"); // 15:30 IST
+    const endsAt = new Date("2026-11-03T10:30:00Z"); // 16:00 IST
+    const overview = liveOverview({
+      kickoffFirst: ok(true),
+      history: ok({
+        events: [],
+        callStartsAt: startsAt,
+        callEndsAt: endsAt,
+        meetingUrl: "https://app.cal.com/video/meet-xyz",
+      }),
+    });
+    render(
+      <WebsiteScreen
+        context={owner}
+        core={{ project: { ...LIVE_PROJECT, status: "onboarding" } as Project, domain: null, live: null }}
+        overview={overview}
+        pages={null}
+        notice={null}
+        feedbackKey="k"
+        now={NOW}
+      />,
+    );
+    expect(screen.getByRole("heading", { name: "Kickoff call booked" })).toBeTruthy();
+    expect(screen.getByText(/Your kickoff call is booked for Tue 3 Nov, 15:30 to 16:00/)).toBeTruthy();
+    const joinButton = screen.getByRole("link", { name: /Join kickoff call/ });
+    expect(joinButton).toBeTruthy();
+    expect(joinButton.getAttribute("href")).toBe("https://app.cal.com/video/meet-xyz");
+    expect(joinButton.getAttribute("target")).toBe("_blank");
+    expect(joinButton.getAttribute("rel")).toContain("noopener");
+  });
 });
 
 describe("Website preview: a failed panel", () => {

@@ -22,12 +22,21 @@ export interface ProgressInput {
   readonly kickoffFirst: boolean;
   /** Day of the booked kickoff call, `YYYY-MM-DD`, or null when none is booked. */
   readonly kickoffDay: string | null;
+  /** The start time of the kickoff call when booked. */
+  readonly startsAt?: Date | null;
+  /** The end time of the kickoff call when booked. */
+  readonly endsAt?: Date | null;
+  /** The video meeting link for the kickoff call. */
+  readonly meetingUrl?: string | null;
 }
 
 export interface ProgressView {
   readonly kind: ProgressKind;
   readonly title: string;
   readonly line: string | null;
+  readonly startsAt?: Date | null;
+  readonly endsAt?: Date | null;
+  readonly meetingUrl?: string | null;
 }
 
 const WORDS = ["no", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten"] as const;
@@ -61,7 +70,13 @@ export function progressView(input: ProgressInput): ProgressView {
         return {
           kind: "kickoff",
           title: CUSTOMER_STAGE_HEADLINE.onboarding,
-          line: input.kickoffDay === null ? "Book your call and we start building straight after it." : `Your kickoff call is booked for ${dayLabel(input.kickoffDay)}. We will start your website right after your call.`,
+          line:
+            input.kickoffDay === null
+              ? "Book your call and we start building straight after it."
+              : `Your kickoff call is booked for ${dayLabel(input.kickoffDay)}. We will start your website right after your call.`,
+          ...(input.startsAt !== undefined ? { startsAt: input.startsAt } : {}),
+          ...(input.endsAt !== undefined ? { endsAt: input.endsAt } : {}),
+          ...(input.meetingUrl !== undefined ? { meetingUrl: input.meetingUrl } : {}),
         };
       }
       return { kind: "setup", title: "Finish your setup", line: "We start building once your setup is in." };

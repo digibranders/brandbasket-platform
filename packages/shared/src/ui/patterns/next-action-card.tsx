@@ -13,6 +13,8 @@ export interface NextActionCardProps {
     readonly onClick?: () => void;
     readonly href?: string;
     readonly disabled?: boolean;
+    readonly target?: string;
+    readonly rel?: string;
   };
   readonly secondaryAction?: ReactNode;
   readonly asideNote?: string;
@@ -72,6 +74,8 @@ export function NextActionCard({
             primaryAction.href ? (
               <a
                 href={primaryAction.href}
+                target={primaryAction.target}
+                rel={primaryAction.rel}
                 className="inline-flex h-[42px] items-center justify-center rounded-[8px] bg-ink px-5 font-sans text-sm font-semibold text-white shadow-button hover:bg-primary-hover active:translate-y-[1px]"
               >
                 {primaryAction.label}

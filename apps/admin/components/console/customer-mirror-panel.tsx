@@ -3,12 +3,14 @@ import type { ReactElement } from "react";
 import type { ClientDetail, SetupCallBooking } from "@brandbasket/db";
 import { clientPaymentState } from "@brandbasket/shared/lib/billing/client-payment";
 import { CUSTOMER_STAGE_HEADLINE } from "@brandbasket/shared/lib/project-customer-line";
+import { formatTimingWindow, kickoffMeetingLink } from "@brandbasket/shared/lib/setup-call-link";
 import { clock, weekdayDate } from "@/lib/team-time";
 
 export interface CustomerMirrorPanelProps {
   readonly client: ClientDetail;
   readonly booking: SetupCallBooking | null;
   readonly now: Date;
+  readonly fallbackCallUrl?: string | null;
 }
 
 function kickoffCustomerMessage(booking: SetupCallBooking | null, now: Date): string {
@@ -18,6 +20,9 @@ function kickoffCustomerMessage(booking: SetupCallBooking | null, now: Date): st
     return "We will start your website right after your call";
   }
   if (booking.startsAt !== null) {
+    if (booking.endsAt !== null) {
+      return `Your kickoff call is booked for ${clock(booking.startsAt)} to ${clock(booking.endsAt)} on ${weekdayDate(booking.startsAt)}`;
+    }
     return `Your kickoff call is booked for ${clock(booking.startsAt)} on ${weekdayDate(booking.startsAt)}`;
   }
   return "Your kickoff call is booked";
@@ -41,11 +46,12 @@ function projectStepInfo(status: string | null): { readonly step: number; readon
  * Mirror panel: "What the customer sees".
  * Read-only mirror reflecting the exact customer status across Website, Kickoff call, and Plan and billing.
  */
-export function CustomerMirrorPanel({ client, booking, now }: CustomerMirrorPanelProps): ReactElement {
+export function CustomerMirrorPanel({ client, booking, now, fallbackCallUrl }: CustomerMirrorPanelProps): ReactElement {
   const stepInfo = projectStepInfo(client.project?.status ?? null);
   const websiteStatus = client.project ? CUSTOMER_STAGE_HEADLINE[client.project.status] : "No website service active";
   const kickoffStatus = kickoffCustomerMessage(booking, now);
   const billingStatus = billingCustomerMessage(client, now);
+  const meetingUrl = kickoffMeetingLink(booking?.inviteeUri, fallbackCallUrl);
 
   return (
     <section aria-labelledby="customer-sees-title" className="rounded-[14px] border border-line bg-surface p-5 shadow-card">
@@ -120,6 +126,23 @@ export function CustomerMirrorPanel({ client, booking, now }: CustomerMirrorPane
               <p className="mt-1 font-sans text-sm font-semibold text-ink">
                 {kickoffStatus}
               </p>
+              {booking?.startsAt !== null && booking?.startsAt !== undefined && booking?.endsAt !== null && booking?.endsAt !== undefined ? (
+                <p className="mt-1 font-mono text-xs text-ink-2">
+                  {formatTimingWindow(booking.startsAt, booking.endsAt)}
+                </p>
+              ) : null}
+              {meetingUrl && booking?.heldAt === null ? (
+                <div className="mt-2">
+                  <a
+                    href={meetingUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 text-xs font-semibold text-rattan-text hover:underline"
+                  >
+                    Join meeting &rarr;
+                  </a>
+                </div>
+              ) : null}
             </div>
 
             <div className="rounded-[8px] border border-line/60 bg-surface p-3 shadow-xs">
