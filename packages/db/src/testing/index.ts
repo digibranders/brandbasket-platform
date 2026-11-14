@@ -17,7 +17,7 @@ function parseConnectionUrl(connectionString: string): URL {
     return new URL(connectionString);
   } catch {
     throw new Error(
-      "A test database URL in apps/platform/.env.local is not a valid URL (value hidden because it may contain a password).",
+      "A test database URL in apps/customer/.env.local is not a valid URL (value hidden because it may contain a password).",
     );
   }
 }

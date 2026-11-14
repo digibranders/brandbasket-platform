@@ -18,7 +18,7 @@ counsel; do not switch it on for customers before that is answered and the priva
 
 | Part | Where |
 |---|---|
-| The script | `apps/platform/public/t/v1.js`, served at `/t/v1.js` (cached for an hour). Tests: `apps/platform/lib/tracker/v1.test.ts`, including a 3 KB gzip budget |
+| The script | `apps/customer/public/t/v1.js`, served at `/t/v1.js` (cached for an hour). Tests: `apps/platform/lib/tracker/v1.test.ts`, including a 3 KB gzip budget |
 | The ingest route | `POST /api/t`: `app/api/t/route.ts`, decisions in `lib/server/site-hit-handler.ts`, connections in `lib/server/site-hit-deps.ts` |
 | The store | `site_keys`, `site_hits`, `visitor_salts` (migration 0203), queries in `packages/db/src/queries/site-hits.ts` |
 | The pure rules | `packages/shared/src/lib/analytics/` |
@@ -43,7 +43,7 @@ with no hostname yet, such as one still on a preview address, is not counted.
 ## The nightly job
 
 `brandbasket-site-rollup.timer` starts at 21:00 UTC (02:30 in India). It calls the dashboard's own
-`/api/internal/roll-up-site-analytics` on 127.0.0.1 with `SITE_ANALYTICS_TOKEN` from `/srv/brandbasket/shared/platform.env.local`
+`/api/internal/roll-up-site-analytics` on 127.0.0.1 with `SITE_ANALYTICS_TOKEN` from `/srv/brandbasket/shared/customer.env.production`
 (`make-env-files.sh` generates it; add it by hand to a file made before this existed, then restart the app). It:
 
 1. Rolls the last two Indian days (yesterday and the day before) into `metric_daily` (`own.*`) and the month so far into
@@ -58,7 +58,7 @@ recorded in `report_source_runs` and the rest carry on. Running it twice writes 
 Preview without changing anything:
 
 ```bash
-runuser -u brandbasket -- /usr/local/sbin/brandbasket-site-rollup-job --env-file /srv/brandbasket/shared/platform.env.local --dry-run
+runuser -u brandbasket -- /usr/local/sbin/brandbasket-site-rollup-job --env-file /srv/brandbasket/shared/customer.env.production --dry-run
 ```
 
 The answer is a JSON report: days rolled, businesses, days written and skipped, lists written, failures (business id and error
@@ -74,7 +74,7 @@ footer says so. Treat these as a floor, and as one definition used for every cus
 | Sign | Check |
 |---|---|
 | "No event received yet" after loading the site | The tag is on the page; the page's host is one of the business's hostnames; the business's plan is live; the visitor is not sending Do Not Track |
-| The job fails with 503 | `SITE_ANALYTICS_TOKEN` is missing or under 32 characters in `platform.env.local` |
+| The job fails with 503 | `SITE_ANALYTICS_TOKEN` is missing or under 32 characters in `customer.env.production` |
 | The job fails with 401 | The token in the file differs from the one the running app loaded; restart the app |
 | A business shows in `failures` | `report_source_runs` has a failed `own` row for it with the error class; run the dry run for that night again |
 

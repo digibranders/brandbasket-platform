@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Builds and activates a platform release (app.brandbasket.in and console.brandbasket.in) on the VPS. Installed as
+# Builds and activates a release (app.brandbasket.in and console.brandbasket.in) on the VPS. Installed as
 # /usr/local/bin/brandbasket-platform-release (root-owned) and run as `brandbasket` (never as Firstfold's `deploy`).
 # Adapted from Firstfold's firstfold-platform-release.
 #
@@ -14,17 +14,16 @@
 #                                                            rollback); pauses the autodeploy
 #   brandbasket-platform-release --list                      releases, newest first, and which app runs which
 #
-# <app> is `platform`, `admin` or `customer`. They live in one repository and share every package, but each runs from its own
-# symlink (current-platform, current-admin, current-customer), so a change confined to one app's folder rebuilds and restarts
-# that app only. brandbasket-platform-autodeploy decides which apps a commit needs; this script does what it is told.
-# `customer` (apps/customer, the v4 customer app on 3202) is named only by brandbasket-gha-deploy, and only when the owner has set
-# the repository variable CUSTOMER_APP_ENABLED=1 (docs/deployment/brandbasket-vps.md, "Customer app v4"). Its env file is
-# shared/customer.env.production, linked to apps/customer/.env.production.
+# <app> is `admin` or `customer`. They live in one repository and share every package, but each runs from its own symlink
+# (current-admin, current-customer), so a change confined to one app's folder rebuilds and restarts that app only. The apps are
+# named by brandbasket-gha-deploy; this script does what it is told. The customer app (apps/customer, port 3202) is the customer
+# dashboard, the payment webhooks and the timer jobs. Its env file is shared/customer.env.production, linked to
+# apps/customer/.env.production.
 #
 # Layout under /srv/brandbasket:
 #   releases/<release>/     the monorepo at one commit (<sha>, or <sha>+<unix time> when <sha> is already live for the other
 #                           app), with node_modules and the built app(s)
-#   shared/<app>.env.local  each app's env file, linked into every release after its build (customer: shared/customer.env.production)
+#   shared/admin.env.local  the console's env file, linked into every release after its build (customer: shared/customer.env.production)
 #   current-<app> ->        the release that app runs; its unit resolves it when it starts
 #   deploying ->            the release being deployed, which brandbasket-migrate (root) runs the migrations from
 #
@@ -46,7 +45,7 @@ set -euo pipefail
 
 readonly ROOT=/srv/brandbasket
 readonly BUILD_ENV=/etc/brandbasket-platform-build.env
-# Every app answers 200 on /login without a session (apps/customer has no health route; adding one would touch apps/customer/src).
+# Every app answers 200 on /login without a session (neither has a health route).
 readonly HEALTH_PATH=/login
 readonly KEEP_OTHERS=2
 readonly PAUSED="$ROOT/autodeploy-paused"
@@ -62,18 +61,14 @@ if [[ "${1:-}" == --prebuilt ]]; then PREBUILT=1; shift; fi
 # shellcheck source=heavy-lock.sh
 source /usr/local/lib/brandbasket/heavy-lock.sh
 
-# TODO after switch: drop `platform` here, from units_of/host_of/env_link_of/env_source_of and from check_env's --platform file, once
-# apps/platform is deleted and brandbasket-app is removed (docs/deployment/brandbasket-vps.md, "Switching the platform paths to
-# apps/customer"). Migrations already need nothing from apps/platform: db:migrate and scripts/cms-migrate.sh read apps/customer's
-# env file when apps/platform has none.
-readonly APPS=(platform admin customer)
+readonly APPS=(admin customer)
 valid_app() { [[ " ${APPS[*]} " == *" $1 "* ]] || die "not an app: $1 (${APPS[*]})"; }
 valid_release() { [[ "$1" =~ ^[0-9a-f]{40}(\+[0-9]+)?$ ]] || die "not a release name: $1"; }
 
 # Each app's systemd unit with its port, and the host its health check asks for. The unit names are exactly the ones the
 # sudoers rule allows brandbasket to restart and stop.
-units_of() { case "$1" in platform) echo "brandbasket-app:3201" ;; admin) echo "brandbasket-admin:3203" ;; customer) echo "brandbasket-customer:3202" ;; esac; }
-host_of() { case "$1" in platform) echo app.brandbasket.in ;; admin) echo console.brandbasket.in ;; customer) echo app.brandbasket.in ;; esac; }
+units_of() { case "$1" in admin) echo "brandbasket-admin:3203" ;; customer) echo "brandbasket-customer:3202" ;; esac; }
+host_of() { case "$1" in admin) echo console.brandbasket.in ;; customer) echo app.brandbasket.in ;; esac; }
 # The env file a release gets for an app, relative to the app's folder, and where it lives in shared/. The customer app uses Next's
 # production file rather than .env.local.
 env_link_of() { case "$1" in customer) echo ".env.production" ;; *) echo ".env.local" ;; esac; }
@@ -163,13 +158,13 @@ build() {
 check_env() {
   local release=$1; shift
   echo "== step: env"
-  ( cd "$ROOT/releases/$release" && pnpm env:check --platform "$ROOT/shared/platform.env.local" --admin "$ROOT/shared/admin.env.local" )
+  ( cd "$ROOT/releases/$release" && pnpm env:check --customer "$(env_source_of customer)" --admin "$(env_source_of admin)" )
   [[ " $* " == *" customer "* ]] && check_customer_env
   return 0
 }
 
-# pnpm env:check does not read the customer app's file. The app itself refuses to start without its database URLs, auth secret and
-# origin (apps/customer/src/instrumentation.ts), which the health check then reports; this catches the rest before any restart.
+# pnpm env:check holds the customer file to the same rules as the console's. The app itself also refuses to start without its database
+# URLs, auth secret and origin (apps/customer/src/instrumentation.ts), which the health check then reports.
 check_customer_env() {
   local file value
   file="$(env_source_of customer)"
@@ -179,9 +174,6 @@ check_customer_env() {
   fi
   value="$(sed -n 's/^BETTER_AUTH_SECRET=//p' "$file" | tail -n 1)"
   [[ "${#value}" -ge 32 ]] || die "customer: BETTER_AUTH_SECRET is missing or shorter than 32 characters"
-  # Names only, never values. A different secret is fine on next.brandbasket.in, but sessions end at the cutover unless it matches.
-  [[ "$value" == "$(sed -n 's/^BETTER_AUTH_SECRET=//p' "$(env_source_of platform)" | tail -n 1)" ]] \
-    || echo "warning: customer BETTER_AUTH_SECRET differs from platform's; make them equal before the cutover or every customer is signed out" >&2
 }
 
 migrate() {

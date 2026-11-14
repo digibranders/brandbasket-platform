@@ -3,8 +3,8 @@
 #
 # Run from the repository root, by the production deploy (brandbasket-platform-release on the VPS, from the release
 # being deployed; see docs/deployment/brandbasket-vps.md) and by CI's database job. It reads
-# DATABASE_URL_PAYLOAD and PAYLOAD_SECRET from the first env file that exists: apps/platform/.env.local, apps/customer/.env.local
-# or apps/customer/.env.production (the last is how a release without apps/platform gets them). `pnpm cms:migrate` runs Payload's
+# DATABASE_URL_PAYLOAD and PAYLOAD_SECRET from the first env file that exists: apps/customer/.env.local
+# or apps/customer/.env.production (the last is how a release on the server gets them). `pnpm cms:migrate` runs Payload's
 # CLI from apps/customer, which reads only its own env files, so the two values are passed in the environment. The connection
 # belongs to the role that owns the Payload database, so no sudo or owner password is involved.
 #
@@ -32,7 +32,7 @@ else
 fi
 
 # Values are unquoted in these files (packages/db/src/local-env-template.ts); a variable already set in the environment wins.
-for env_file in apps/platform/.env.local apps/customer/.env.local apps/customer/.env.production; do
+for env_file in apps/customer/.env.local apps/customer/.env.production; do
   [[ -r "$env_file" ]] || continue
   for name in DATABASE_URL_PAYLOAD PAYLOAD_SECRET; do
     value="$({ grep -E "^$name=" "$env_file" || true; } | head -n 1 | cut -d= -f2-)"
