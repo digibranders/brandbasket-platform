@@ -1,11 +1,10 @@
 "use client";
 
-import { useState, type ReactElement } from "react";
+import type { ReactElement } from "react";
 import { cn } from "@brandbasket/shared/lib/cn";
-import { REJECT_REASON_WORDS } from "@/legacy-social/lib/social/ai";
 import { dayLabel, PLATFORM_NAMES, type ChannelPlatform } from "@/legacy-social/lib/social/auto";
-import { carouselSlideUrl, type CarouselDetail, type CarouselSummary } from "@/legacy-social/lib/social/carousel";
-import { decideCarouselAction } from "@/legacy-social/review-actions";
+import { CAROUSEL_STATUS_WORDS, carouselDrawn, carouselSlideUrl, type CarouselDetail, type CarouselSummary } from "@/legacy-social/lib/social/carousel";
+import { decideCarouselAction, drawCarouselAction } from "@/legacy-social/review-actions";
 import { SMALL_DARK, SMALL_WHITE } from "./small-buttons";
 import { useReviewAction } from "./use-review-action";
 
@@ -21,22 +20,74 @@ export interface WeekCarousel {
 export const carouselInWeek = (carousel: WeekCarousel | null, from: string, to: string): carousel is WeekCarousel =>
   carousel !== null && carousel.summary.date !== null && from !== "" && carousel.summary.date >= from && carousel.summary.date <= to;
 
+/** The headlines of the slides: from the list answer when it has them, else from the slides of the detail. */
+export function slideHeadlines(carousel: WeekCarousel): { readonly position: number; readonly headline: string }[] {
+  const fromList = carousel.summary.headlines.flatMap((headline, index) => (headline === "" ? [] : [{ position: index + 1, headline }]));
+  if (fromList.length > 0) return fromList;
+  return (carousel.detail?.slides ?? []).flatMap((slide) => (slide.headline === undefined ? [] : [{ position: slide.position, headline: slide.headline }]));
+}
+
 /** What the customer has decided about the carousel, in the words the other topics use. */
 export const decisionOf = (summary: CarouselSummary): { readonly word: string; readonly tone: string } => {
-  if (summary.status === "approved") return { word: "Kept", tone: "font-semibold text-ok" };
-  if (summary.status === "rejected") return { word: "Dropped", tone: "text-ink-3" };
-  return { word: "Not decided", tone: "font-semibold text-warn" };
+  const word = CAROUSEL_STATUS_WORDS[summary.status];
+  if (summary.status === "kept" || summary.status === "approved") return { word, tone: "font-semibold text-ok" };
+  if (summary.status === "dropped" || summary.status === "rejected") return { word, tone: "text-ink-3" };
+  return { word, tone: "font-semibold text-warn" };
 };
 
-/** The carousel among the week's topics: its topic and day, and keep or send it back. Slides are not shown here, only under Pictures once it is kept. */
-export function CarouselTopic({ carousel }: { readonly carousel: WeekCarousel }): ReactElement {
+/** The reason a carousel is sent back with when she does not say: the posting service's own "other". */
+export const sendBackReason = (detail: CarouselDetail | null): string => (detail !== null && detail.reasons.length > 0 && !detail.reasons.includes("other") ? (detail.reasons[0] ?? "other") : "other");
+
+/** The choices for a carousel as buttons: keep or drop its topic, undo that, and approve or send back the drawn slides. */
+function Choices({ carousel }: { readonly carousel: WeekCarousel }): ReactElement | null {
   const { summary, detail, canChange } = carousel;
   const decide = useReviewAction();
-  const [sendingBack, setSendingBack] = useState(false);
-  const [reason, setReason] = useState("");
+  if (!canChange) return null;
+  const run = (action: "keep" | "drop" | "reset" | "approve"): void => decide.run(decideCarouselAction, { id: summary.id, action });
+  const sendBack = (): void => decide.run(decideCarouselAction, { id: summary.id, action: "reject", reason: sendBackReason(detail) });
+  return (
+    <div className="grid gap-1.5">
+      <div className="flex flex-wrap items-center gap-2">
+        {summary.status === "topic" ? (
+          <>
+            <button type="button" disabled={decide.pending} onClick={() => run("keep")} className={SMALL_DARK}>
+              Keep
+            </button>
+            <button type="button" disabled={decide.pending} onClick={() => run("drop")} className={SMALL_WHITE}>
+              Drop
+            </button>
+          </>
+        ) : null}
+        {summary.status === "kept" || summary.status === "dropped" ? (
+          <button type="button" disabled={decide.pending} onClick={() => run("reset")} className={SMALL_WHITE}>
+            Undo
+          </button>
+        ) : null}
+        {summary.status === "pending" && detail !== null ? (
+          <>
+            <button type="button" disabled={decide.pending} onClick={() => run("approve")} className={SMALL_DARK}>
+              Approve the carousel
+            </button>
+            <button type="button" disabled={decide.pending} onClick={sendBack} className={SMALL_WHITE}>
+              Send it back
+            </button>
+          </>
+        ) : null}
+      </div>
+      {decide.error === null ? null : (
+        <p role="alert" className="text-[0.84375rem] font-semibold text-error">
+          {decide.error}
+        </p>
+      )}
+    </div>
+  );
+}
+
+/** The carousel among the week's topics when the week cannot be laid out by day: its topic, day and where it stands, with the choices. */
+export function CarouselTopic({ carousel }: { readonly carousel: WeekCarousel }): ReactElement {
+  const { summary } = carousel;
   const decision = decisionOf(summary);
-  const reasons = detail !== null && detail.reasons.length > 0 ? detail.reasons : Object.keys(REJECT_REASON_WORDS);
-  const open = summary.status === "pending" && canChange && detail !== null;
+  const headlines = slideHeadlines(carousel);
   return (
     <section aria-label="Carousel of the week" className="grid gap-2 rounded-xl bg-surface p-3.5 ring-1 ring-line">
       <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
@@ -49,56 +100,36 @@ export function CarouselTopic({ carousel }: { readonly carousel: WeekCarousel })
           <span className={decision.tone}>{decision.word}</span>
         </p>
       </div>
-      {open ? (
-        sendingBack ? (
-          <div className="flex flex-wrap items-center gap-2">
-            <label htmlFor="carousel-week-reason" className="sr-only">
-              Why are you sending it back?
-            </label>
-            <select id="carousel-week-reason" value={reason} onChange={(event) => setReason(event.target.value)} className="h-9 rounded-lg border border-ink-2/65 bg-surface px-3 text-[0.84375rem] text-ink">
-              <option value="">Choose a reason</option>
-              {reasons.map((one) => (
-                <option key={one} value={one}>
-                  {REJECT_REASON_WORDS[one] ?? one}
-                </option>
-              ))}
-            </select>
-            <button type="button" disabled={decide.pending || reason === ""} onClick={() => decide.run(decideCarouselAction, { id: detail.id, action: "reject", reason }, () => setSendingBack(false))} className={SMALL_WHITE}>
-              Send it back
-            </button>
-            <button type="button" onClick={() => setSendingBack(false)} className={SMALL_WHITE}>
-              Cancel
-            </button>
-          </div>
-        ) : (
-          <div className="flex flex-wrap gap-2">
-            <button type="button" disabled={decide.pending} onClick={() => decide.run(decideCarouselAction, { id: detail.id, action: "approve" })} className={SMALL_DARK}>
-              {decide.pending ? "Saving" : "Keep"}
-            </button>
-            <button type="button" disabled={decide.pending} onClick={() => setSendingBack(true)} className={SMALL_WHITE}>
-              Send it back
-            </button>
-          </div>
-        )
-      ) : null}
-      {decide.error === null ? null : (
-        <p role="alert" className="text-[0.84375rem] font-semibold text-error">
-          {decide.error}
-        </p>
+      {headlines.length === 0 ? null : (
+        <ol className="m-0 grid list-none gap-0.5 p-0 text-xs leading-snug text-ink-2">
+          {headlines.map((slide) => (
+            <li key={slide.position}>
+              {slide.position}. {slide.headline}
+            </li>
+          ))}
+        </ol>
       )}
+      <Choices carousel={carousel} />
     </section>
   );
 }
 
-/** The carousel among the week's pictures: its slides and the words for this channel once it is kept; before that, only that nothing is decided. */
+/**
+ * The carousel among the week's pictures. Its slides show only once they are drawn: before that it says where it stands (not decided, kept
+ * and waiting to be drawn, dropped), and a kept one can be drawn from here. A drawn one is approved or sent back here.
+ */
 export function CarouselPictures({ carousel, channel }: { readonly carousel: WeekCarousel; readonly channel: "all" | ChannelPlatform }): ReactElement {
-  const { summary, detail } = carousel;
-  const kept = summary.status === "approved" && detail !== null && detail.slides.length > 0;
+  const { summary, detail, canChange } = carousel;
+  const draw = useReviewAction();
+  const drawn = carouselDrawn(summary.status) && detail !== null && detail.slides.length > 0;
   const caption = channel === "all" || detail === null ? undefined : detail.captions.find((one) => one.network === channel);
   return (
     <section aria-label="Carousel pictures" className="grid gap-2 rounded-xl bg-surface p-3.5 ring-1 ring-line">
-      <p className="text-[0.9375rem] font-semibold text-ink">Carousel{summary.topic === null ? "" : `: ${summary.topic}`}</p>
-      {kept ? (
+      <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+        <p className="text-[0.9375rem] font-semibold text-ink">Carousel{summary.topic === null ? "" : `: ${summary.topic}`}</p>
+        <span className={cn("text-[0.8125rem]", decisionOf(summary).tone)}>{CAROUSEL_STATUS_WORDS[summary.status]}</span>
+      </div>
+      {drawn ? (
         <>
           <ol className="m-0 flex list-none gap-3 overflow-x-auto p-0 pb-1" aria-label="The slides of your carousel">
             {detail.slides.map((slide) => (
@@ -108,15 +139,38 @@ export function CarouselPictures({ carousel, channel }: { readonly carousel: Wee
               </li>
             ))}
           </ol>
-          {caption === undefined ? null : (
-            <p className={cn("whitespace-pre-wrap break-words text-[0.84375rem] leading-relaxed text-ink")}>
-              <span className="mb-0.5 block text-xs font-semibold text-ink-2">{channel === "all" ? "" : PLATFORM_NAMES[channel]}</span>
+          {caption === undefined || channel === "all" ? null : (
+            <p className="whitespace-pre-wrap break-words text-[0.84375rem] leading-relaxed text-ink">
+              <span className="mb-0.5 block text-xs font-semibold text-ink-2">{PLATFORM_NAMES[channel]}</span>
               {caption.caption}
             </p>
           )}
+          <Choices carousel={carousel} />
         </>
+      ) : summary.status === "kept" ? (
+        <div className="flex flex-wrap items-center gap-3">
+          <p className="text-[0.84375rem] text-ink-2">Kept. Its slides are drawn when you press Draw pictures.</p>
+          {canChange ? (
+            <button type="button" disabled={draw.pending} onClick={() => draw.run(drawCarouselAction, { id: summary.id })} className={SMALL_DARK}>
+              {draw.pending ? "Asking" : "Draw the carousel"}
+            </button>
+          ) : null}
+        </div>
+      ) : summary.status === "drawing" ? (
+        <p role="status" className="text-[0.84375rem] text-ink-2">
+          Drawing the slides. This page updates when they are ready.
+        </p>
+      ) : summary.status === "dropped" || summary.status === "rejected" ? (
+        <p className="text-[0.84375rem] text-ink-2">{summary.status === "dropped" ? "Dropped, nothing to show." : "Sent back, nothing to show."}</p>
+      ) : summary.status === "blocked" ? (
+        <p className="text-[0.84375rem] text-ink-2">A slide did not pass our checks, so this carousel cannot go out.</p>
       ) : (
-        <p className="text-[0.84375rem] text-ink-2">{summary.status === "rejected" ? "Dropped, nothing to show." : "Nothing is decided yet. The slides show here once you keep the carousel."}</p>
+        <p className="text-[0.84375rem] text-ink-2">Nothing is decided yet. The slides are drawn once you keep the carousel.</p>
+      )}
+      {draw.error === null ? null : (
+        <p role="alert" className="text-[0.84375rem] font-semibold text-error">
+          {draw.error}
+        </p>
       )}
     </section>
   );

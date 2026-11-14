@@ -572,12 +572,18 @@ export async function makeCarousel(settings: SocialAutoSettings, businessId: str
   return started;
 }
 
-export type CarouselDecision = { readonly action: "approve"; readonly id: string } | { readonly action: "reject"; readonly id: string; readonly reason: string; readonly comment?: string };
+export type CarouselDecision = { readonly action: "approve" | "keep" | "drop" | "reset"; readonly id: string } | { readonly action: "reject"; readonly id: string; readonly reason: string; readonly comment?: string };
 
 /** The customer's decision on the whole carousel: every slide and every channel's words, exactly as they are now. */
 export async function decideCarousel(settings: SocialAutoSettings, businessId: string, decision: CarouselDecision, actor: string, send: typeof fetch = fetch): Promise<void> {
   const answer = await call(settings, "/api/v1/carousels", { method: "POST", body: { externalId: businessId, ...decision }, actor }, send);
   if (answer.status !== 200) throw refusal(answer, "the carousel decision");
+}
+
+/** Draws the slides of a kept carousel (a job, like a draw of pictures). Answers the job; asking again while it runs answers the same job. */
+export async function drawCarousel(settings: SocialAutoSettings, businessId: string, carouselId: string, actor: string, send: typeof fetch = fetch): Promise<void> {
+  const answer = await call(settings, "/api/v1/carousels", { method: "POST", body: { externalId: businessId, action: "draw", id: carouselId }, actor }, send);
+  if (answer.status !== 200 && answer.status !== 202) throw refusal(answer, "the carousel pictures");
 }
 
 /** Moves the carousel to another day of its week; it keeps its time and, when approved, stays approved. */

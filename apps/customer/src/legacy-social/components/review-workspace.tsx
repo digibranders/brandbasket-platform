@@ -4,7 +4,7 @@ import { ArrowClockwise, CalendarBlank, CaretDown, CaretLeft, CaretRight, Check,
 import { useSearchParams } from "next/navigation";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, useTransition, type FormEvent, type PointerEvent as ReactPointerEvent, type ReactElement, type ReactNode } from "react";
 import { cn } from "@brandbasket/shared/lib/cn";
-import { askTopicAction, decideBatchAction, decideCarouselAction, moveCarouselAction, decidePosterAction, drawBatchAction, moveTopicAction, replaceTopicAction } from "@/legacy-social/review-actions";
+import { askTopicAction, decideBatchAction, decideCarouselAction, drawCarouselAction, moveCarouselAction, decidePosterAction, drawBatchAction, moveTopicAction, replaceTopicAction } from "@/legacy-social/review-actions";
 import { REJECT_REASON_WORDS, TOPIC_NOT_MADE_WORDS, type Poster, type TopicRequest, type WrittenBatch } from "@/legacy-social/lib/social/ai";
 import { CHANNEL_PLATFORMS, dayLabel, PLATFORM_HINTS, PLATFORM_NAMES, type ChannelPlatform } from "@/legacy-social/lib/social/auto";
 import { CHANNEL_PARAM, channelParamOf, rememberChannel } from "@/legacy-social/lib/social/channel-param";
@@ -12,7 +12,8 @@ import type { ReviewCard, ReviewGroup } from "@/legacy-social/lib/social/review-
 import { cardsOfWeek, channelTodo, firstOpenWeek, flowWeeks, picturesOn, POST_TIME, postFinal, weekAsked, type FlowWeek, type ReplaceState } from "@/legacy-social/lib/social/review-flow";
 import { ConnectButton } from "./channels-sidebar";
 import { AddChannelChoice } from "./add-channel-choice";
-import { CarouselPictures, CarouselTopic, carouselInWeek, decisionOf, type WeekCarousel } from "./carousel-week";
+import { CarouselPictures, CarouselTopic, carouselInWeek, decisionOf, sendBackReason, slideHeadlines, type WeekCarousel } from "./carousel-week";
+import { carouselMovable } from "@/legacy-social/lib/social/carousel";
 import type { PostingDays } from "@/legacy-social/lib/social/schedule";
 import { ChannelLogo } from "./channel-logo";
 import { imageUrl, pictureWord } from "./poster-tile";
@@ -270,17 +271,22 @@ interface WeekGridProps {
   readonly carousel?: WeekCarousel | null;
 }
 
-/** The carousel as a topic of its day: its topic, that it is a carousel, and keep or send it back. Its slides show under Pictures once it is kept. */
+/** The carousel as a topic of its day: its topic and slide headlines, and the same choices a topic has (keep, drop, undo). Its slides show under Pictures once drawn. */
 function CarouselDayCard({ carousel, dragProps }: { readonly carousel: WeekCarousel; readonly dragProps?: { readonly onPointerDown: (event: ReactPointerEvent) => void; readonly dragging: boolean } }): ReactElement {
   const { summary, detail, canChange } = carousel;
   const { pending, error, run } = useReviewAction();
   const decision = decisionOf(summary);
-  const open = summary.status === "pending" && canChange && detail !== null;
-  const headlines = (detail?.slides ?? []).flatMap((slide) => (slide.headline === undefined ? [] : [{ position: slide.position, headline: slide.headline }]));
+  const headlines = slideHeadlines(carousel);
+  const decide = (action: "keep" | "drop" | "reset" | "approve"): void => run(decideCarouselAction, { id: summary.id, action });
+  const kept = summary.status === "kept" || summary.status === "approved";
+  const dropped = summary.status === "dropped";
+  /** Keep and drop while it is a topic (and to undo either); approve and send back once the slides are drawn. */
+  const topicChoices = canChange && (summary.status === "topic" || summary.status === "kept" || summary.status === "dropped");
+  const drawnChoices = canChange && summary.status === "pending" && detail !== null;
   return (
     <li
       {...(dragProps === undefined ? {} : { onPointerDown: dragProps.onPointerDown })}
-      className={cn("grid content-start gap-2 rounded-xl bg-surface p-2.5 ring-1", summary.status === "approved" ? "ring-2 ring-ok" : "ring-line", dragProps !== undefined && "cursor-grab touch-pan-x select-none", dragProps?.dragging === true && "opacity-40")}
+      className={cn("grid content-start gap-2 rounded-xl bg-surface p-2.5 ring-1", kept ? "ring-2 ring-ok" : dropped ? "bg-surface-subtle ring-line" : "ring-line", dragProps !== undefined && "cursor-grab touch-pan-x select-none", dragProps?.dragging === true && "opacity-40")}
     >
       <p className="text-[0.6875rem] font-semibold text-ink-3">Carousel · {summary.count} slides</p>
       <p className="text-[0.84375rem] font-semibold leading-snug text-ink">{summary.topic ?? "Carousel of the week"}</p>
@@ -293,18 +299,26 @@ function CarouselDayCard({ carousel, dragProps }: { readonly carousel: WeekCarou
           ))}
         </ol>
       )}
-      {open ? (
+      {topicChoices ? (
         <div className="flex flex-nowrap items-center justify-between gap-1 pt-1">
-          <IconButton label="Keep this carousel" disabled={pending} onClick={() => run(decideCarouselAction, { id: detail.id, action: "approve" })}>
+          <IconButton label={kept ? "Undo keeping this carousel" : "Keep this carousel"} pressed={kept} disabled={pending} onClick={() => decide(kept ? "reset" : "keep")}>
             <Check size={13} weight="bold" aria-hidden="true" />
           </IconButton>
-          <IconButton label="Send this carousel back" disabled={pending} onClick={() => run(decideCarouselAction, { id: detail.id, action: "reject", reason: detail.reasons.includes("other") ? "other" : (detail.reasons[0] ?? "other") })}>
+          <IconButton label={dropped ? "Undo dropping this carousel" : "Drop this carousel"} pressed={dropped} muted disabled={pending} onClick={() => decide(dropped ? "reset" : "drop")}>
             <X size={13} weight="bold" aria-hidden="true" />
           </IconButton>
         </div>
-      ) : (
-        <p className={cn("text-[0.8125rem]", decision.tone)}>{decision.word}</p>
-      )}
+      ) : drawnChoices ? (
+        <div className="flex flex-nowrap items-center justify-between gap-1 pt-1">
+          <IconButton label="Approve this carousel" disabled={pending} onClick={() => decide("approve")}>
+            <Check size={13} weight="bold" aria-hidden="true" />
+          </IconButton>
+          <IconButton label="Send this carousel back" disabled={pending} onClick={() => run(decideCarouselAction, { id: summary.id, action: "reject", reason: sendBackReason(detail) })}>
+            <X size={13} weight="bold" aria-hidden="true" />
+          </IconButton>
+        </div>
+      ) : null}
+      {summary.status === "topic" && topicChoices ? null : <p className={cn("text-[0.8125rem]", decision.tone)}>{decision.word}</p>}
       {error === null ? null : (
         <p role="alert" className="text-xs font-semibold text-error">
           {error}
@@ -353,7 +367,7 @@ function WeekGrid({ cards, week, replacing, today, pictureOf, onOpenPicture, car
   };
   const carouselDay = carouselMoved ?? carousel?.summary.date ?? null;
   /** The days the carousel may go to: the other days of its week from tomorrow on, while it is still wanted and no move is on its way. Its content is never changed. */
-  const carouselTargets = (): string[] => (carousel === null || !carousel.canChange || carousel.summary.status === "rejected" || carousel.summary.status === "blocked" || carousel.summary.status === "incomplete" || moving || !placed ? [] : days.filter((day) => day !== carouselDay && day >= earliest));
+  const carouselTargets = (): string[] => (carousel === null || !carousel.canChange || !carouselMovable(carousel.summary.status) || moving || !placed ? [] : days.filter((day) => day !== carouselDay && day >= earliest));
   const drag = useTopicDrag({
     allowed: (key, day) => {
       if (key === CAROUSEL_DRAG_KEY) return carouselTargets().includes(day);
@@ -652,10 +666,16 @@ function OwnTopicButton(): ReactElement | null {
 }
 
 /** Asks for the pictures of a week, after saying what it makes and what it locks. */
-function DrawBar({ week, kept, total, retry, pictures, stay }: { readonly week: FlowWeek; readonly kept: number; readonly total: number; readonly retry: boolean; /** The new pictures a draw makes: for each topic kept and not drawn yet, one for each connected channel it is written for. */ readonly pictures: number; /** The topics that stay open after this draw. */ readonly stay: number }): ReactElement {
+function DrawBar({ week, kept, total, retry, pictures, stay, carousel = null }: { readonly week: FlowWeek; /** The topics kept to draw, the kept carousel not counted. */ readonly kept: number; /** The kept carousel of this week, drawn with the pictures when she presses the bar. */ readonly carousel?: { readonly id: string; readonly count: number } | null; readonly total: number; readonly retry: boolean; /** The new pictures a draw makes: for each topic kept and not drawn yet, one for each connected channel it is written for. */ readonly pictures: number; /** The topics that stay open after this draw. */ readonly stay: number }): ReactElement {
   const rounds = !week.whole;
   const picturesWord = pictures === 1 ? "picture" : "pictures";
   const draw = useReviewAction();
+  const drawSlides = useReviewAction();
+  /** What is drawn now: the kept topics, and the kept carousel (counted as one). */
+  const toDrawCount = kept + (carousel === null ? 0 : 1);
+  const carouselNote = carousel === null ? "" : `${pictures > 0 ? " and " : ""}the ${carousel.count} slides of the carousel`;
+  /** What a draw makes, in words: the new pictures and/or the carousel's slides. */
+  const makesWords = pictures > 0 ? `${pictures} new ${picturesWord}${carouselNote}` : carouselNote === "" ? `${pictures} new ${picturesWord}` : carouselNote;
   const dialog = useRef<HTMLDialogElement>(null);
   const [asking, setAsking] = useState(false);
   useEffect(() => {
@@ -665,6 +685,15 @@ function DrawBar({ week, kept, total, retry, pictures, stay }: { readonly week: 
     if (!asking && window.open) window.close();
   }, [asking]);
   const fields = { batchId: week.batchId, ...(week.whole ? {} : { week: week.from }), ...(retry ? { retry: "1" } : {}) };
+  /** Draws the kept topics, then the kept carousel; a carousel alone when no topic is kept. */
+  const drawNow = (after?: () => void): void => {
+    const slides = (): void => {
+      if (carousel === null) after?.();
+      else drawSlides.run(drawCarouselAction, { id: carousel.id }, after);
+    };
+    if (kept > 0 || retry) draw.run(drawBatchAction, fields, slides);
+    else slides();
+  };
   return (
     <div className="sticky bottom-0 z-10 -mx-1 flex flex-wrap items-center justify-between gap-3 border-t border-line bg-canvas/95 px-1 py-3 backdrop-blur">
       <p className="min-w-0 flex-1 text-[0.84375rem] text-ink-2">
@@ -672,12 +701,12 @@ function DrawBar({ week, kept, total, retry, pictures, stay }: { readonly week: 
           <>Change the headline or drop a topic that got no picture, then draw again. Posts that have pictures stay as they are.</>
         ) : (
           rounds ? (
-            kept === 0 ? null : (
+            toDrawCount === 0 ? null : (
             <>
               <b className="text-ink">
-                {kept} kept to draw.
+                {toDrawCount} kept to draw.
               </b>{" "}
-              Drawing makes {pictures} new {picturesWord}. {stay > 0 ? (stay === 1 ? "The other one stays open." : `The other ${stay} stay open.`) : "Nothing else is left open."}
+              Drawing makes {makesWords}. {stay > 0 ? (stay === 1 ? "The other one stays open." : `The other ${stay} stay open.`) : "Nothing else is left open."}
             </>
             )
           ) : (
@@ -690,8 +719,8 @@ function DrawBar({ week, kept, total, retry, pictures, stay }: { readonly week: 
           )
         )}
       </p>
-      <button type="button" disabled={draw.pending || (!retry && kept === 0)} onClick={() => (retry ? draw.run(drawBatchAction, fields) : setAsking(true))} className={SMALL_DARK}>
-        {draw.pending ? "Asking" : retry ? "Draw the missing pictures" : `Draw pictures for ${kept} kept`}
+      <button type="button" disabled={draw.pending || drawSlides.pending || (!retry && toDrawCount === 0)} onClick={() => (retry ? drawNow() : setAsking(true))} className={SMALL_DARK}>
+        {draw.pending || drawSlides.pending ? "Asking" : retry ? "Draw the missing pictures" : `Draw pictures for ${toDrawCount} kept`}
       </button>
       {draw.error === null ? null : (
         <p role="alert" className="w-full text-[0.84375rem] font-semibold text-error">
@@ -708,13 +737,16 @@ function DrawBar({ week, kept, total, retry, pictures, stay }: { readonly week: 
         className="m-auto w-[min(calc(100%-2rem),28rem)] rounded-2xl border-0 bg-surface p-6 text-ink shadow-[0_24px_60px_-20px_rgb(21_22_26/0.5)] backdrop:bg-[rgb(17_20_24/0.5)]"
       >
         <h3 id={`draw-title-${week.key}`} className="type-section text-ink">
-          Draw pictures for {kept} kept {kept === 1 ? "topic" : "topics"}?
+          Draw pictures for {toDrawCount} kept {toDrawCount === 1 ? "topic" : "topics"}?
         </h3>
         {rounds ? (
           <>
-            <p className="mt-2 text-[0.875rem] text-ink-2">This makes {pictures} new {picturesWord}, one for each connected channel a topic is written for.</p>
+            <p className="mt-2 text-[0.875rem] text-ink-2">
+              This makes {makesWords}
+              {pictures > 0 ? ", one for each connected channel a topic is written for" : ""}.
+            </p>
             <p className="mt-3 text-[0.875rem] text-ink-2">
-              <b className="text-ink">It locks only {kept === 1 ? "this topic" : `these ${kept} topics`}:</b> you can no longer change {kept === 1 ? "it" : "them"} after you draw.
+              <b className="text-ink">It locks only {toDrawCount === 1 ? "this topic" : `these ${toDrawCount} topics`}:</b> you can no longer change {toDrawCount === 1 ? "it" : "them"} after you draw.
               {stay > 0 ? (stay === 1 ? " The other one stays open, and you can keep it and draw again later." : ` The ${stay} others stay open, and you can keep them and draw again later.`) : ""}
             </p>
           </>
@@ -730,12 +762,8 @@ function DrawBar({ week, kept, total, retry, pictures, stay }: { readonly week: 
         <div className="mt-5 flex flex-wrap gap-2">
           <button
             type="button"
-            disabled={draw.pending}
-            onClick={() =>
-              draw.run(drawBatchAction, fields, () => {
-                setAsking(false);
-              })
-            }
+            disabled={draw.pending || drawSlides.pending}
+            onClick={() => drawNow(() => setAsking(false))}
             className={SMALL_DARK}
           >
             Draw pictures
@@ -1260,6 +1288,10 @@ export function ReviewWorkspace(): ReactElement | null {
   const [pictureStep, setPictureStep] = useState<"waiting" | "approved" | null>(null);
   if (week === undefined) return null;
   const asked = weekAsked(week);
+  /** The carousel of this week: its topic with the topics, its slides with the pictures once they are drawn. */
+  const weekCarousel = carouselInWeek(carousel, week.from, week.to) ? carousel : null;
+  /** A kept carousel waiting to be drawn, whose day is still ahead; it is drawn with the Draw bar. */
+  const carouselToDraw = weekCarousel !== null && weekCarousel.canChange && weekCarousel.summary.status === "kept" && (today === "" || (weekCarousel.summary.date ?? "") > today) ? { id: weekCarousel.summary.id, count: weekCarousel.summary.count } : null;
   /** The pictures of her own topic of this week: shown with the others once the week's pictures are the thing to look at. */
   const ownPosters = own.requests.filter((request) => request.week.from === week.from && request.batchId !== null).flatMap((request) => own.posters.filter((poster) => poster.batchId === request.batchId));
   const missing = week.state === "not_drawn" || cards.some((card) => card.written?.notDrawn != null);
@@ -1288,12 +1320,10 @@ export function ReviewWorkspace(): ReactElement | null {
   const pictureList = channel === "all" ? cards.flatMap((card) => card.pictures) : picturesOn(cards, channel);
   /** What is left in this week, for the numbers on the Topics step (topics not decided yet) and the Pictures step (pictures to approve). Approved has none. */
   const stepCounts: readonly [number, number, number] = [
-    cards.filter((card) => card.written?.state === "pending").length,
-    pictureList.filter((poster) => poster.status === "pending" || poster.status === "held").length,
+    cards.filter((card) => card.written?.state === "pending").length + (weekCarousel?.summary.status === "topic" ? 1 : 0),
+    pictureList.filter((poster) => poster.status === "pending" || poster.status === "held").length + (weekCarousel?.summary.status === "pending" ? 1 : 0),
     0,
   ];
-  /** The carousel of this week: its topic with the topics, its slides with the pictures once it is kept. */
-  const weekCarousel = carouselInWeek(carousel, week.from, week.to) ? carousel : null;
   const carouselBlock =
     weekCarousel === null || channel === "all" || stage === 0 ? null : stage === 1 || weekCarousel.summary.status === "approved" ? <CarouselPictures carousel={weekCarousel} channel={channel} /> : null;
   return (
@@ -1322,7 +1352,7 @@ export function ReviewWorkspace(): ReactElement | null {
           ) : (
             <WeekGrid cards={cards} week={week} replacing={replacing} today={today} pictureOf={pictureOf} onOpenPicture={openPicture} carousel={weekCarousel} />
           )}
-          {partly && roundView === "pictures" ? null : <DrawBar week={week} kept={keptCount} total={cards.length} retry={asked || missing} pictures={newPictures} stay={stay} />}
+          {partly && roundView === "pictures" ? null : <DrawBar week={week} kept={keptCount} total={cards.length} retry={asked || missing} pictures={newPictures} stay={stay} carousel={carouselToDraw} />}
         </>
       )}
       {carouselBlock}
