@@ -757,7 +757,7 @@ export {
   type DirectoryRef,
   type ResolvedDirectoryAsk,
 } from "./queries/directory-refs";
-export { CHECK_VIOLATION, hasPostgresCode, TenantScopeMissingError } from "./queries/tenant";
+export { CHECK_VIOLATION, hasPostgresCode, isUuid, TenantScopeMissingError } from "./queries/tenant";
 export { slugify } from "./slug";
 export {
   PLACE_ID_ALPHABET,
@@ -1101,6 +1101,11 @@ export {
   findTaxInvoiceForBusiness,
   findTaxInvoicesByNumber,
   insertTaxInvoice,
+  findCreditNoteById,
+  findCreditNoteByInvoiceId,
+  findCreditNoteByPaymentId,
+  insertCreditNote,
+  listCreditNotesForBusiness,
   isInvoiceablePayment,
   listMissingTaxInvoices,
   listPaymentsWithoutTaxInvoice,
@@ -1112,11 +1117,14 @@ export {
   savePaymentInvoiceBasis,
   type BillingProfileInput,
   type InvoiceFallbackRecipient,
+
   type MissingTaxInvoice,
+  type NewCreditNote,
   type NewTaxInvoice,
   type PaymentForInvoice,
   type ReferralCodeForInvoice,
 } from "./queries/tax-invoices";
+
 export {
   applyPaidPlanUpgrade,
   cancelOpenPlanUpgrade,

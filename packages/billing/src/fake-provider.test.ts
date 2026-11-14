@@ -606,3 +606,32 @@ describe("getPaymentMethodUpdateUrl", () => {
     await expect(provider().getPaymentMethodUpdateUrl("invalid-id")).rejects.toThrow("Not a fake provider subscription id");
   });
 });
+
+describe("refundPayment", () => {
+  it("returns a provider refund id for a valid amount", async () => {
+    const fake = createFakeBillingProvider({ secret: SECRET, now: () => PAID_AT });
+    const result = await fake.refundPayment({
+      providerPaymentId: "fake_pay_123456",
+      amountCents: 1500,
+      reason: "Customer requested",
+    });
+    expect(result.providerRefundId).toMatch(/^fake_rfnd_[0-9a-f]{24}$/);
+  });
+
+  it("refuses zero or negative refund amounts", async () => {
+    const fake = createFakeBillingProvider({ secret: SECRET, now: () => PAID_AT });
+    await expect(
+      fake.refundPayment({
+        providerPaymentId: "fake_pay_123456",
+        amountCents: 0,
+      }),
+    ).rejects.toThrow(RangeError);
+
+    await expect(
+      fake.refundPayment({
+        providerPaymentId: "fake_pay_123456",
+        amountCents: -100,
+      }),
+    ).rejects.toThrow(RangeError);
+  });
+});

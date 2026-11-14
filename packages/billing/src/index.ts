@@ -50,7 +50,10 @@ export {
   type StartedCheckout,
   type SubscriptionCharge,
   type UpfrontPayment,
+  type RefundPaymentInput,
+  type RefundPaymentResult,
 } from "./provider";
+
 export {
   ALLOW_FAKE_BILLING_VARIABLE,
   BillingConfigurationError,
@@ -92,3 +95,10 @@ export {
   type RecipientInput,
   type TaxInvoiceDraft,
 } from "./tax-invoice";
+export {
+  buildCreditNoteDraft,
+  CREDIT_NOTE_PREFIX,
+  type BuildCreditNoteInput,
+  type CreditNoteDraft,
+} from "./credit-note";
+

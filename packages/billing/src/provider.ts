@@ -98,6 +98,17 @@ export interface ConfirmedChargePayment {
   readonly method?: PaymentMethodDetails | null;
 }
 
+export interface RefundPaymentInput {
+  readonly providerPaymentId: string;
+  readonly amountCents: number;
+  readonly reason?: string;
+}
+
+export interface RefundPaymentResult {
+  readonly providerRefundId: string;
+}
+
+
 /** A new price to put on sale at the provider, charged every month or every year. */
 export interface CreatePlanInput {
   readonly currency: BillingCurrency;
@@ -230,11 +241,17 @@ export interface BillingProvider {
    */
   findSubscriptionCharge(providerSubscriptionId: string): Promise<SubscriptionCharge | null>;
   /**
+  /**
    * Returns a hosted URL where the customer can self-serve update their payment method (card or UPI)
    * for a running subscription through the provider.
    */
   getPaymentMethodUpdateUrl(providerSubscriptionId: string): Promise<string>;
+  /**
+   * Refunds a captured payment at the provider, partially or in full. Throws on provider failure or invalid input.
+   */
+  refundPayment(input: RefundPaymentInput): Promise<RefundPaymentResult>;
 }
+
 
 /**
  * A confirmation that could not be verified. The message never includes the payload, because the payload is the

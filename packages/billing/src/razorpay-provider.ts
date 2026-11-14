@@ -15,7 +15,10 @@ import {
   type StartedCheckout,
   type SubscriptionCharge,
   type UpfrontPayment,
+  type RefundPaymentInput,
+  type RefundPaymentResult,
 } from "./provider";
+
 import { chargedAmountCents } from "./tax";
 
 /**
@@ -60,7 +63,20 @@ export interface RazorpaySdkClient {
       readonly status?: string;
       readonly method?: PaymentMethodDetails | null;
     }>;
+    refund(
+      paymentId: string,
+      options: {
+        readonly amount: number;
+        readonly notes?: Readonly<Record<string, string>>;
+        readonly receipt?: string;
+      },
+    ): Promise<{
+      readonly id: string;
+      readonly amount?: number | string;
+      readonly status?: string;
+    }>;
   };
+
   /** A subscription's invoices, for finding a first-month payment whose webhook never arrived. */
   readonly invoices: {
     all(query: { readonly subscription_id: string }): Promise<{
@@ -501,5 +517,17 @@ export function createRazorpayProvider(options: RazorpayProviderOptions): Razorp
         paidAt: payment.paidAt,
       };
     },
+
+    async refundPayment(input: RefundPaymentInput): Promise<RefundPaymentResult> {
+      if (!Number.isSafeInteger(input.amountCents) || input.amountCents <= 0) {
+        throw new RangeError(`Refund amount must be a positive whole number of minor units, received ${input.amountCents}`);
+      }
+      const refund = await client.payments.refund(input.providerPaymentId, {
+        amount: input.amountCents,
+        notes: input.reason ? { reason: input.reason.slice(0, 255) } : undefined,
+      });
+      return { providerRefundId: refund.id };
+    },
   };
 }
+

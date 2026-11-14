@@ -507,7 +507,7 @@ describe("what the erase knows about", () => {
    * staff cannot delete (append only) and so the erase leaves in place for now.
    */
   const KEPT = [
-    "account_closures", "add_on_payments", "add_on_subscriptions", "affiliate_earnings", "bundled_add_ons", "charges", "directory_ad_bids",
+    "account_closures", "add_on_payments", "add_on_subscriptions", "affiliate_earnings", "bundled_add_ons", "charges", "credit_notes", "directory_ad_bids",
     "directory_ad_wins", "directory_promotions", "payments", "plan_upgrades", "press_releases", "setup_call_outcomes", "subscriptions",
     "tax_invoices", "webhook_events",
   ];

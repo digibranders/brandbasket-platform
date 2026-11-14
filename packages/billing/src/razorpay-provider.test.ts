@@ -704,4 +704,66 @@ describe("add-on subscriptions", () => {
     await expect(provider.confirmAddOnPayment({})).rejects.toThrow(CheckoutVerificationError);
     await expect(provider.confirmAddOnPayment({})).rejects.toThrow(/confirmed by Razorpay's webhook/);
   });
+
+  describe("refundPayment", () => {
+    it("calls client.payments.refund and returns providerRefundId", async () => {
+      const refund = vi.fn().mockResolvedValue({ id: "rfnd_123", amount: 2500, status: "processed" });
+      const client = fakeClient() as any;
+      client.payments.refund = refund;
+      const provider = createRazorpayProvider({
+        resolveChargeOrder: async () => null,
+        keySecret: KEY_SECRET,
+        client,
+        resolveBusinessId: async () => null,
+      });
+
+      const result = await provider.refundPayment({
+        providerPaymentId: "pay_test123",
+        amountCents: 2500,
+        reason: "Customer request",
+      });
+
+      expect(refund).toHaveBeenCalledWith("pay_test123", {
+        amount: 2500,
+        notes: { reason: "Customer request" },
+      });
+      expect(result).toEqual({ providerRefundId: "rfnd_123" });
+    });
+
+    it("propagates provider failures when refund fails", async () => {
+      const refund = vi.fn().mockRejectedValue(new Error("BAD_REQUEST_ERROR: Payment already refunded"));
+      const client = fakeClient() as any;
+      client.payments.refund = refund;
+      const provider = createRazorpayProvider({
+        resolveChargeOrder: async () => null,
+        keySecret: KEY_SECRET,
+        client,
+        resolveBusinessId: async () => null,
+      });
+
+      await expect(
+        provider.refundPayment({
+          providerPaymentId: "pay_test123",
+          amountCents: 2500,
+        }),
+      ).rejects.toThrow("BAD_REQUEST_ERROR: Payment already refunded");
+    });
+
+    it("refuses zero or negative refund amount", async () => {
+      const provider = createRazorpayProvider({
+        resolveChargeOrder: async () => null,
+        keySecret: KEY_SECRET,
+        client: fakeClient() as any,
+        resolveBusinessId: async () => null,
+      });
+
+      await expect(
+        provider.refundPayment({
+          providerPaymentId: "pay_test123",
+          amountCents: 0,
+        }),
+      ).rejects.toThrow(RangeError);
+    });
+  });
 });
+

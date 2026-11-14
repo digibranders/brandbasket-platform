@@ -32,7 +32,7 @@ import { getStaffDb } from "@/lib/server/db";
 import { requireStaffCan } from "@/lib/server/staff-role";
 import { resolvePaymentAttentionAction } from "../actions";
 import { BillingFacts, ManualPaymentForm } from "../parts";
-import { markPaymentRefundedAction } from "./refund-actions";
+import { markPaymentRefundedAction, refundPaymentAction } from "./refund-actions";
 
 /** How many flagged payments one client page lists. */
 const ATTENTION_SHOWN = 20;
@@ -106,7 +106,8 @@ export async function BillingSection({
         payments={payments}
         canRefund
         notice={refundNotice}
-        refundAction={markPaymentRefundedAction}
+        refundAction={refundPaymentAction}
+        recordManualRefundAction={markPaymentRefundedAction}
       />
 
       <Section title="Billing">

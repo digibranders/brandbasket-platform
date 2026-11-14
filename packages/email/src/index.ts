@@ -28,6 +28,8 @@ export { firstChargeReminderEmail, type FirstChargeReminderInput } from "./templ
 export { paymentFailedEmail, type PaymentFailedInput, type PaymentFailedPlan } from "./templates/payment-failed";
 export { monthlyReportEmail, type MonthlyReportInput } from "./templates/monthly-report";
 export { paymentReceivedEmail, type PaymentReceivedInput } from "./templates/payment-received";
+export { paymentRefundedEmail, type PaymentRefundedInput } from "./templates/payment-refunded";
+
 export {
   previewChangesReceivedEmail,
   CHANGES_QUOTE_LIMIT,

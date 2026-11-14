@@ -1576,6 +1576,13 @@
       "when": 1794655458513,
       "tag": "0227_started_without_call_confirmation",
       "breakpoints": true
+    },
+    {
+      "idx": 225,
+      "version": "7",
+      "when": 1794656464959,
+      "tag": "0228_credit_notes",
+      "breakpoints": true
     }
   ]
 }
