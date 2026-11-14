@@ -5,9 +5,9 @@ import type { DueClosure, ErasureOutcome, ErasureSkipReason } from "@brandbasket
  * a disk. The order is the point:
  *
  * 1. Ask whether the closure may be erased at all. Nothing is removed for a closure that will be skipped.
- * 2. Clear the account's content from the website's CMS (its own database): idempotent, so a failure here leaves the
- *    closure open and the next run does it again.
- * 3. Erase the rows in one transaction, which asks again under its own lock.
+ * 2. Erase the rows in one transaction, which asks again under its own lock. A closure restored during the window
+ *    is skipped here before anything outside the database is touched.
+ * 3. Clear the account's content from the website's CMS (its own database).
  * 4. Remove the stored files the erased rows pointed at, and the videos they named on Vimeo. A failure leaves an
  *    unreferenced file or video, which cannot be shown, and is reported rather than retried.
  */
@@ -68,13 +68,6 @@ async function eraseOne(deps: ErasureDeps, closure: DueClosure, options: Erasure
   if (block !== null) return { closureId, status: "skipped", reason: block };
   if (options.dryRun) return { closureId, status: "would-erase" };
 
-  try {
-    await deps.eraseWebsiteContent(closure.businessId);
-  } catch (error) {
-    console.error("Could not clear an account's website content, so it was not erased.", { closureId, error });
-    return { closureId, status: "failed", stage: "website-content" };
-  }
-
   let outcome: ErasureOutcome;
   try {
     outcome = await deps.eraseRows(closureId, options.now);
@@ -83,6 +76,13 @@ async function eraseOne(deps: ErasureDeps, closure: DueClosure, options: Erasure
     return { closureId, status: "failed", stage: "rows" };
   }
   if (outcome.kind === "skipped") return { closureId, status: "skipped", reason: outcome.reason };
+
+  try {
+    await deps.eraseWebsiteContent(closure.businessId);
+  } catch (error) {
+    console.error("Could not clear an account's website content.", { closureId, error });
+    return { closureId, status: "failed", stage: "website-content" };
+  }
 
   const notRemoved = await deps.deleteFiles(outcome.storageKeys);
   const videosNotRemoved = await deps.deleteVimeoVideos(outcome.vimeoIds);

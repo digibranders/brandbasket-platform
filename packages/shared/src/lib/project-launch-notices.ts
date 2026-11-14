@@ -21,7 +21,8 @@ export type ProjectLaunchNotice =
   | "address-unavailable"
   | "check-ok"
   | "check-failed"
-  | "check-no-domain";
+  | "check-no-domain"
+  | "unconfirmed";
 
 /** Fixed messages only: the query parameter picks one, and nothing from it is ever shown. */
 export const PROJECT_LAUNCH_NOTICES: Readonly<Record<ProjectLaunchNotice, { readonly text: string; readonly ok: boolean }>> = {
@@ -74,6 +75,7 @@ export const PROJECT_LAUNCH_NOTICES: Readonly<Record<ProjectLaunchNotice, { read
   },
   "check-failed": { text: "The address did not load properly. Check DNS and the deployment, then try again.", ok: false },
   "check-no-domain": { text: "Add an address first.", ok: false },
+  unconfirmed: { text: "Nothing changed: confirm the action to proceed.", ok: false },
 };
 
 export function projectLaunchNoticeHref(businessId: string, notice: ProjectLaunchNotice): string {

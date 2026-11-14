@@ -20,6 +20,103 @@ export const GUARD_PATHS = {
   home: "/",
 } as const;
 
+/** Allowed top-level route prefixes for safe post-login redirection. */
+export const ALLOWED_RETURN_PREFIXES = [
+  "/requests",
+  "/billing",
+  "/website",
+  "/social",
+  "/ads",
+  "/search",
+  "/reports",
+  "/business",
+  "/settings",
+  "/help",
+  "/changelog",
+  "/todo",
+  "/monitoring",
+  "/onboarding",
+  "/checkout",
+  "/start",
+  "/enquiries",
+  "/restore-account",
+] as const;
+
+const INVITE_PATH_PATTERN = /^\/invite\/[A-Za-z0-9_-]{43}$/;
+
+/**
+ * Validates whether a relative target path is safe for post-login return.
+ * Rejects external URLs, protocol-relative addresses, open redirects, control characters,
+ * auth loops (/login, /signup), API endpoints, and unknown routes.
+ */
+export function safeReturnPath(target: unknown): string | null {
+  if (typeof target !== "string") return null;
+
+  // Reject any backslashes, control characters, or angle brackets in the raw string
+  if (/[\u0000-\u001F\u007F\\<>]/.test(target)) {
+    return null;
+  }
+
+  const trimmed = target.trim();
+  if (trimmed === "" || trimmed !== target) return null;
+
+  // Must begin with a single slash; reject protocol-relative (//) and Windows backslash (/\)
+  if (!trimmed.startsWith("/") || trimmed.startsWith("//") || trimmed.startsWith("/\\")) {
+    return null;
+  }
+
+  // Parse path with dummy origin to verify it is strictly same-origin relative
+  let parsed: URL;
+  try {
+    parsed = new URL(trimmed, "http://localhost");
+  } catch {
+    return null;
+  }
+
+  if (parsed.origin !== "http://localhost") {
+    return null;
+  }
+
+  const { pathname } = parsed;
+
+  // Root is allowed
+  if (pathname === "/") {
+    return trimmed;
+  }
+
+  // Invite pages require the exact 43-character token without extra query params or path segments
+  if (pathname.startsWith("/invite")) {
+    return INVITE_PATH_PATTERN.test(trimmed) ? trimmed : null;
+  }
+
+  // Reject auth loops and APIs explicitly
+  if (
+    pathname === "/login" ||
+    pathname.startsWith("/login/") ||
+    pathname === "/signup" ||
+    pathname.startsWith("/signup/") ||
+    pathname === "/forgot-password" ||
+    pathname === "/reset-password" ||
+    pathname === "/api" ||
+    pathname.startsWith("/api/")
+  ) {
+    return null;
+  }
+
+  // Check allow list prefixes: must match exact prefix, or have / or ? or # immediately following
+  const isAllowed = ALLOWED_RETURN_PREFIXES.some(
+    (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
+  );
+
+  return isAllowed ? trimmed : null;
+}
+
+/** Constructs the sign-in URL, appending a safe return path when present. */
+export function signInHref(next?: string | null): string {
+  const safe = safeReturnPath(next);
+  return safe !== null ? `${GUARD_PATHS.signIn}?next=${encodeURIComponent(safe)}` : GUARD_PATHS.signIn;
+}
+
 /**
  * What a page or action needs beyond a signed-in member of a business.
  * - `paid: "ever"`: the business has paid at least once. A lapsed customer keeps read access (plan 60, section 13).
@@ -39,9 +136,10 @@ export interface CustomerFacts {
 }
 
 /** Where someone without a workspace is sent, or null when they have one. */
-export function accessRedirect(access: CustomerAccess): string | null {
+export function accessRedirect(access: CustomerAccess, currentPath?: string | null): string | null {
   switch (access.kind) {
     case "signed-out":
+      return signInHref(currentPath);
     case "no-business":
       return GUARD_PATHS.signIn;
     // An account that asked to be deleted is locked until it is restored or erased.

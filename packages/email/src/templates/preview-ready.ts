@@ -5,16 +5,26 @@ import { emailBrandName } from "../brand";
 export interface PreviewReadyInput {
   readonly to: string;
   readonly businessName: string;
-  readonly previewUrl: string;
+  /** Links to /website where Approve and Ask for changes live. */
+  readonly reviewUrl?: string | null;
+  /** Direct link to the external preview. */
+  readonly previewUrl?: string | null;
 }
 
 /** Sent when staff have a preview of the customer's website ready for them to look at. */
 export function previewReadyEmail(input: PreviewReadyInput): EmailMessage {
   const brand = emailBrandName();
-  const previewUrl = assertWebUrl(input.previewUrl, "previewUrl");
-  const intro = `Your preview for ${input.businessName} is ready to look at:`;
-  const outro = "Reply and tell us what to change, or let us know if it's ready to go live.";
-  const lines = [intro, previewUrl, outro];
+  const targetUrl = input.reviewUrl ?? input.previewUrl;
+  if (!targetUrl) throw new Error("reviewUrl must be an absolute http or https URL");
+  const reviewUrl = assertWebUrl(targetUrl, input.reviewUrl ? "reviewUrl" : "previewUrl");
+  if (input.previewUrl && input.reviewUrl) {
+    assertWebUrl(input.previewUrl, "previewUrl");
+  }
+
+  const intro = `Your preview for ${input.businessName} is ready to look at.`;
+  const action = "Check your preview in your dashboard, where you can approve it to go live or ask for changes:";
+  const replyNote = "You can approve the preview or ask for changes directly from your dashboard. If you reply to this email, we will still receive your message and turn it into a change request.";
+  const lines = [intro, action, reviewUrl, replyNote];
 
   return {
     to: sanitizeHeaderValue(input.to),
@@ -25,7 +35,12 @@ export function previewReadyEmail(input: PreviewReadyInput): EmailMessage {
       title: `Your ${brand} preview is ready`,
       kicker: "Preview ready",
       heading: `Your ${brand} preview is ready`,
-      body: [receiptParagraph(intro), receiptButton(previewUrl, "Open the preview"), receiptParagraph(outro)],
+      body: [
+        receiptParagraph(intro),
+        receiptParagraph(action),
+        receiptButton(reviewUrl, "Review your website"),
+        receiptParagraph(replyNote),
+      ],
     }),
   };
 }

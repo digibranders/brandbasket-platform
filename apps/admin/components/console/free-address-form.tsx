@@ -3,6 +3,7 @@ import { SUBDOMAIN_NAME_MAX } from "@brandbasket/shared/lib/onboarding/domain-fo
 import { GatedSubmitButton } from "@brandbasket/shared/ui/forms/submit-gate";
 import { changeFreeAddressAction, useFreeAddressAction } from "@/app/(protected)/clients/[businessId]/actions";
 import { buttonPrimary, buttonSecondary } from "@/components/console/buttons";
+import { ConfirmDialog } from "@/components/console/confirm-dialog";
 import { fieldClasses, hintClasses, labelClasses } from "@/components/console/field-styles";
 
 interface FreeAddressFormProps {
@@ -59,15 +60,26 @@ export function FreeAddressForm({ businessId, baseDomain }: FreeAddressFormProps
 /** Changes a free address that is already saved, while the website is not live on it. */
 export function ChangeFreeAddressForm({ businessId, baseDomain, currentName }: ChangeFreeAddressFormProps): ReactElement {
   return (
-    <form action={changeFreeAddressAction} className="mt-6 max-w-xl">
-      <input type="hidden" name="businessId" value={businessId} />
+    <div className="mt-6 max-w-xl">
       <label htmlFor="change-address-name" className={labelClasses}>
         Change address
       </label>
-      <AddressNameField id="change-address-name" baseDomain={baseDomain} defaultValue={currentName} />
-      <GatedSubmitButton className={`${buttonSecondary} mt-4`} pendingLabel="Saving…">
-        Save address
-      </GatedSubmitButton>
-    </form>
+      <ConfirmDialog
+        title="Change free website address"
+        consequence="This changes the address on the free domain. Any existing links using the previous address will stop working."
+        triggerLabel="Change address"
+        triggerClassName={buttonSecondary}
+        confirmLabel="Save address"
+        cancelLabel="Cancel"
+        variant="default"
+        formAction={changeFreeAddressAction}
+      >
+        <input type="hidden" name="businessId" value={businessId} />
+        <div className="my-4">
+          <AddressNameField id="change-address-name" baseDomain={baseDomain} defaultValue={currentName} />
+          <p className={`${hintClasses} mt-2`}>Letters, numbers and single hyphens. It can be changed until the website is live.</p>
+        </div>
+      </ConfirmDialog>
+    </div>
   );
 }

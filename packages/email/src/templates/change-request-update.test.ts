@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { changeRequestUpdateEmail, type ChangeRequestUpdate } from "./change-request-update";
 
-const BASE = { to: "priya@example.com", name: "Priya Shah", title: "Add an Implants page", requestUrl: "https://app.brandbasket.in/requests?open=0192f3c4" };
+const BASE = { to: "priya@example.com", name: "Priya Shah", title: "Add an Implants page", requestUrl: "https://app.brandbasket.in/requests/0192f3c4" };
 const send = (update: ChangeRequestUpdate, overrides: Partial<typeof BASE> = {}) => changeRequestUpdateEmail({ ...BASE, ...overrides, update });
 
 describe("changeRequestUpdateEmail", () => {
@@ -10,10 +10,10 @@ describe("changeRequestUpdateEmail", () => {
     expect(email.subject).toBe("New reply: Add an Implants page");
     expect(email.template).toBe("change-request-reply");
     expect(email.bodyText).toBe(
-      ['Hi Priya,', "", 'The Brandbasket team replied to "Add an Implants page":', "", "Happy to.", "A new page takes about 3 hours.", "", "Open your request: https://app.brandbasket.in/requests?open=0192f3c4"].join("\n"),
+      ['Hi Priya,', "", 'The Brandbasket team replied to "Add an Implants page":', "", "Happy to.", "A new page takes about 3 hours.", "", "Open your request: https://app.brandbasket.in/requests/0192f3c4"].join("\n"),
     );
     expect(email.bodyHtml).toContain("white-space:pre-wrap");
-    expect(email.bodyHtml).toContain('href="https://app.brandbasket.in/requests?open=0192f3c4"');
+    expect(email.bodyHtml).toContain('href="https://app.brandbasket.in/requests/0192f3c4"');
     expect(email.bodyHtml).toContain(">Open your request</a>");
   });
 

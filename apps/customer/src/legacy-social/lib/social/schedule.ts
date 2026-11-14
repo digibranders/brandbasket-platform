@@ -36,9 +36,9 @@ export function readSchedule(body: unknown): PostingDays {
   return out;
 }
 
-/** "Mon, Tue, Sat", or "Usual spread" for a channel with no days of its own. */
+/** "Mon, Tue, Sat", or "weekdays" for a channel with no days of its own (the posting service spreads its posts over Monday to Friday). */
 export function daysWords(days: readonly Weekday[] | undefined): string {
-  return days === undefined || days.length === 0 ? "Usual spread" : days.map((day) => WEEKDAY_SHORT[day]).join(", ");
+  return days === undefined || days.length === 0 ? "weekdays" : days.map((day) => WEEKDAY_SHORT[day]).join(", ");
 }
 
 /**

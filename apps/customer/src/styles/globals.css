@@ -178,6 +178,21 @@
   animation: job-slide 1.4s ease-in-out infinite;
 }
 
+/* A channel's logo in the channels column once posts are ready for it: it zooms in and out until the customer looks. */
+@keyframes channel-zoom {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.22);
+  }
+}
+
+@utility animate-channel-zoom {
+  animation: channel-zoom 1.6s ease-in-out infinite;
+}
+
 @utility type-title {
   font-size: 22px;
   line-height: 28px;

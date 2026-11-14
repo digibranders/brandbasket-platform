@@ -19,8 +19,8 @@ describe("the days a channel posts on", () => {
 
   it("says the days in words, or the usual spread", () => {
     expect(daysWords(["mon", "tue", "sat"])).toBe("Mon, Tue, Sat");
-    expect(daysWords([])).toBe("Usual spread");
-    expect(daysWords(undefined)).toBe("Usual spread");
+    expect(daysWords([])).toBe("weekdays");
+    expect(daysWords(undefined)).toBe("weekdays");
   });
 
 });

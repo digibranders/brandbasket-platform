@@ -118,8 +118,8 @@ export function noticesFrom({ banner, projectStatus, nextStep, requests = [] }: 
     notices.push({
       id: `request-${request.kind}-${request.ticketId}`,
       text: `${REQUEST_NOTICE_WORDS[request.kind]}: ${subject}`,
-      // The Requests page (apps/platform/lib/requests/links.ts), spelled out because this file is shared with the console.
-      href: `/requests?open=${request.ticketId}`,
+      // Canonical request URL: opens the request page directly.
+      href: `/requests/${request.ticketId}`,
       actionable: request.kind !== "reply",
     });
   }

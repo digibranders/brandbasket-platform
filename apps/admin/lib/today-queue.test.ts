@@ -64,6 +64,52 @@ describe("todayQueue", () => {
       ["Signed up, not paid: Kumar Opticals", "Signed up 29 Nov", "/leads/lead-kumar"],
     ]);
   });
+
+  it("adds approved previews with launch action and links to the client website page", () => {
+    const queue = todayQueue({
+      ...EMPTY,
+      approvedPreviews: [
+        { businessId: "biz-1", businessName: "Harbour Bakery", dueAt: new Date("2026-12-01T12:00:00.000Z") },
+      ],
+    });
+    expect(queue).toEqual([
+      {
+        key: "approved:biz-1",
+        kind: "approved",
+        href: "/clients/biz-1/website",
+        title: "Website approved: Harbour Bakery",
+        detail: "Ready to launch",
+        dueAt: new Date("2026-12-01T12:00:00.000Z"),
+        action: "Launch",
+      },
+    ]);
+  });
+
+  it("adds domain moves with due date based on wait limit", () => {
+    const queue = todayQueue({
+      ...EMPTY,
+      domainMoves: [
+        {
+          id: "dom-1",
+          businessId: "biz-1",
+          businessName: "Harbour Bakery",
+          hostname: "harbourbakery.com",
+          status: "pending",
+          createdAt: new Date("2026-11-29T10:00:00.000Z"),
+        },
+      ],
+    });
+    expect(queue).toEqual([
+      {
+        key: "domain:dom-1",
+        kind: "domain",
+        href: "/clients/biz-1/website",
+        title: "Domain move: Harbour Bakery",
+        detail: "harbourbakery.com · pending",
+        dueAt: new Date("2026-11-30T10:00:00.000Z"),
+      },
+    ]);
+  });
 });
 
 describe("dueLabel", () => {
@@ -83,6 +129,8 @@ describe("actionLabel", () => {
     expect(actionLabel("payment")).toBe("Check");
     expect(actionLabel("request")).toBe("Reply");
     expect(actionLabel("overdue")).toBe("Open");
+    expect(actionLabel("approved")).toBe("Launch");
+    expect(actionLabel("domain")).toBe("Open");
   });
 });
 

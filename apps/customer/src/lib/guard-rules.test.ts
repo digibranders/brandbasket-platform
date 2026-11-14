@@ -1,6 +1,6 @@
 import type { SessionUser } from "@brandbasket/shared/lib/access";
 import { describe, expect, it } from "vitest";
-import { accessRedirect, GUARD_PATHS, requirementRedirect, servicesFrom, type CustomerFacts } from "./guard-rules";
+import { accessRedirect, GUARD_PATHS, requirementRedirect, safeReturnPath, servicesFrom, signInHref, type CustomerFacts } from "./guard-rules";
 
 const user: SessionUser = { id: "user-1", email: "owner@example.com", name: "Riley Owner", emailConfirmed: true, phone: null };
 const tenant = { userId: user.id, businessId: "0192f3c4-0000-7000-8000-000000000001", businessName: "Riverside Plumbing", role: "owner" } as const;
@@ -14,21 +14,121 @@ const facts = (overrides: Partial<CustomerFacts> & { status?: CustomerFacts["bil
   };
 };
 
+describe("safeReturnPath", () => {
+  it("allows same-origin application paths", () => {
+    const allowed = [
+      "/",
+      "/requests",
+      "/requests/0192f3c4-0000-7000-8000-000000000001",
+      "/requests?filter=needs_action",
+      "/requests/calls",
+      "/billing",
+      "/billing/invoices",
+      "/billing/payment",
+      "/website",
+      "/website/pages",
+      "/social",
+      "/ads",
+      "/search",
+      "/reports",
+      "/business",
+      "/settings",
+      "/settings/security",
+      "/settings/team",
+      "/help",
+      "/help/contact",
+      "/changelog",
+      "/todo",
+      "/monitoring",
+      "/onboarding",
+      "/checkout",
+      "/checkout/charges/0192f3c4-0000-7000-8000-000000000001",
+      "/start",
+      "/enquiries",
+      "/restore-account",
+      `/invite/${"A".repeat(43)}`,
+    ];
+    for (const path of allowed) {
+      expect(safeReturnPath(path), `expected ${path} to be allowed`).toBe(path);
+    }
+  });
+
+  it("rejects open redirects and external URLs", () => {
+    const rejected = [
+      "https://evil.example",
+      "http://evil.example",
+      "https://evil.example/requests",
+      "//evil.example",
+      "//evil.example/requests",
+      "/\\evil.example",
+      "/\\\\evil.example",
+      "\\\\evil.example",
+      "javascript:alert(1)",
+      "data:text/html,bad",
+    ];
+    for (const path of rejected) {
+      expect(safeReturnPath(path), `expected ${path} to be rejected`).toBeNull();
+    }
+  });
+
+  it("rejects auth loops, API routes, and invalid paths", () => {
+    const rejected = [
+      "/login",
+      "/signup",
+      "/forgot-password",
+      "/reset-password",
+      "/api",
+      "/api/auth",
+      "/invite",
+      "/invite/not-a-token",
+      "/invite/short",
+      "/unknown-unmapped-top-level",
+      "requests",
+      "",
+      "   ",
+      null,
+      undefined,
+      123,
+      {},
+      "/requests\r\n",
+    ];
+    for (const path of rejected) {
+      expect(safeReturnPath(path), `expected ${String(path)} to be rejected`).toBeNull();
+    }
+  });
+});
+
+describe("signInHref", () => {
+  it("returns /login with next param for safe targets", () => {
+    expect(signInHref("/requests/0192f3c4")).toBe(`/login?next=${encodeURIComponent("/requests/0192f3c4")}`);
+    expect(signInHref("/billing")).toBe(`/login?next=${encodeURIComponent("/billing")}`);
+  });
+
+  it("returns plain /login for unsafe or missing targets", () => {
+    expect(signInHref("https://evil.example")).toBe("/login");
+    expect(signInHref("//evil.example")).toBe("/login");
+    expect(signInHref(null)).toBe("/login");
+    expect(signInHref(undefined)).toBe("/login");
+  });
+});
+
 describe("accessRedirect", () => {
-  it("sends someone signed out to sign in", () => {
+  it("sends someone signed out to sign in, preserving a safe current path", () => {
+    expect(accessRedirect({ kind: "signed-out" }, "/requests/0192f3c4")).toBe(`/login?next=${encodeURIComponent("/requests/0192f3c4")}`);
+    expect(accessRedirect({ kind: "signed-out" }, "https://evil.example")).toBe(GUARD_PATHS.signIn);
     expect(accessRedirect({ kind: "signed-out" })).toBe(GUARD_PATHS.signIn);
   });
 
   it("sends an account with no business to sign in, as the old app does", () => {
-    expect(accessRedirect({ kind: "no-business", user })).toBe(GUARD_PATHS.signIn);
+    expect(accessRedirect({ kind: "no-business", user }, "/requests")).toBe(GUARD_PATHS.signIn);
   });
 
   it("sends a closing account to restore it, whatever else is true of it", () => {
-    expect(accessRedirect({ kind: "closing", user, eraseAfter: new Date() })).toBe(GUARD_PATHS.restoreAccount);
+    expect(accessRedirect({ kind: "closing", user, eraseAfter: new Date() }, "/requests")).toBe(GUARD_PATHS.restoreAccount);
   });
 
   it("lets a member of a business in", () => {
-    expect(accessRedirect({ kind: "granted", user, tenant })).toBeNull();
+    expect(accessRedirect({ kind: "granted", user, tenant }, "/requests")).toBeNull();
   });
 });
 
