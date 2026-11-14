@@ -5,7 +5,7 @@ import { NextActionCard } from "@brandbasket/shared/ui/patterns";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { formatDateTime, formatTime } from "@/lib/format";
-import { Banner, Button, Icon } from "@/ui";
+import { Banner, Button, Icon, LinkButton } from "@/ui";
 import { bookKickoffAction } from "../actions";
 import { BOOK_PROBLEM_TEXT, bookButtonLabel, dayLabel, promiseDates } from "../rules";
 import { SlotChooser, useCallSlots } from "./slot-picker";
@@ -78,7 +78,11 @@ export interface KickoffPanelProps {
   /** Why booking is not possible here, when canBook is false. */
   readonly cannotBookLine: string | null;
   /** The booked call, or null to ask for a booking. */
-  readonly booked: { readonly startsAtIso: string | null; readonly endsAtIso: string | null } | null;
+  readonly booked: {
+    readonly startsAtIso: string | null;
+    readonly endsAtIso: string | null;
+    readonly meetingUrl?: string | null;
+  } | null;
   /** The time staff marked as missed, already written, or null. */
   readonly missedLine: string | null;
 }
@@ -109,27 +113,58 @@ export function KickoffPanel({ services, bookingUrl, canBook, cannotBookLine, bo
   if (booked !== null && !changing) {
     const starts = booked.startsAtIso === null ? null : new Date(booked.startsAtIso);
     const ends = booked.endsAtIso === null ? null : new Date(booked.endsAtIso);
+    const timingWindow =
+      starts === null
+        ? "Your kickoff call is booked"
+        : ends === null
+          ? `Your kickoff call is booked for ${formatDateTime(starts)}`
+          : `Your kickoff call is booked for ${formatDateTime(starts)} to ${formatTime(ends)}`;
+
+    const hasInvite = booked.startsAtIso !== null && booked.endsAtIso !== null;
+
     return (
       <NextActionCard
         serviceName="Website"
         serviceIcon={<Icon name="Browser" size="md" />}
         serviceBadge="Active"
         title="Kickoff call booked"
-        description="Video call. The link is in your email and calendar invite."
+        description={
+          booked.meetingUrl
+            ? "Video call. Join with the button below, or use the link in your calendar invite."
+            : "Video call. The link is in your email and calendar invite."
+        }
         primaryAction={
-          booked.startsAtIso !== null && booked.endsAtIso !== null
+          booked.meetingUrl
             ? {
-                label: "Add to calendar",
-                href: callInviteHref(booked.startsAtIso, booked.endsAtIso),
+                label: "Join meeting",
+                href: booked.meetingUrl,
+                target: "_blank",
+                rel: "noopener noreferrer",
               }
-            : undefined
+            : hasInvite
+              ? {
+                  label: "Add to calendar",
+                  href: callInviteHref(booked.startsAtIso!, booked.endsAtIso!),
+                }
+              : undefined
         }
         secondaryAction={
-          canBook ? (
-            <Button variant="ghost" onClick={() => setChanging(true)}>
-              Change time
-            </Button>
-          ) : undefined
+          <div className="flex flex-wrap items-center gap-2">
+            {booked.meetingUrl && hasInvite ? (
+              <LinkButton
+                href={callInviteHref(booked.startsAtIso!, booked.endsAtIso!)}
+                variant="secondary"
+                download="brandbasket-kickoff.ics"
+              >
+                Add to calendar
+              </LinkButton>
+            ) : null}
+            {canBook ? (
+              <Button variant="ghost" onClick={() => setChanging(true)}>
+                Change time
+              </Button>
+            ) : null}
+          </div>
         }
         statusText="Waiting for your kickoff call"
         statusTone="waiting"
@@ -137,11 +172,7 @@ export function KickoffPanel({ services, bookingUrl, canBook, cannotBookLine, bo
         <div className="flex items-start gap-3">
           <Icon name="CheckCircle" className="mt-0.5 text-pos-text" />
           <div className="min-w-0">
-            <p className="type-sub font-semibold text-ink">
-              {starts === null
-                ? "Your kickoff call is booked"
-                : `Your kickoff call is booked for ${ends === null ? formatDateTime(starts) : `${formatDateTime(starts)} to ${formatTime(ends)}`}`}
-            </p>
+            <p className="type-sub font-semibold text-ink">{timingWindow}</p>
           </div>
         </div>
       </NextActionCard>

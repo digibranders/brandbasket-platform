@@ -28,6 +28,8 @@ import { isCustomerVisitsEnabled } from "@brandbasket/shared/lib/launch-flags";
 import { isTemporarySubdomain } from "@brandbasket/shared/lib/onboarding/domain-form";
 import { addDays } from "@brandbasket/shared/lib/calendar/local-date";
 import { dayKey } from "@brandbasket/shared/lib/call-slots";
+import { kickoffMeetingLink } from "@brandbasket/shared/lib/setup-call-link";
+import { readBookingUrl } from "@/features/calls/server/calls";
 import { cache } from "react";
 import { SEARCH_LOOKBACK_DAYS, searchSummary } from "@/features/search/rules/search-presence";
 import { getAppDb, getStaffDb } from "@/lib/db";
@@ -104,12 +106,19 @@ export async function loadWebsiteOverview(context: CustomerContext, core: Websit
   if (project === null) return { history: null, kickoffFirst: null, preview: null, enquiries: null, health: null, visits: null, visitsWaiting: null };
   const db = getAppDb();
   const [history, kickoffFirst, preview, enquiries, health, visits] = await Promise.all([
-    load("website.history", () =>
-      withTenantScope(db, tenant, async (tx) => ({
-        events: (await listProjectEvents(tx, project.id)).map((event) => ({ status: event.status, at: event.occurredAt })),
-        callStartsAt: (await findSetupCallBooking(tx, tenant.businessId))?.startsAt ?? null,
-      })),
-    ),
+    load("website.history", async () => {
+      const [booking, events] = await Promise.all([
+        withTenantScope(db, tenant, (tx) => findSetupCallBooking(tx, tenant.businessId)),
+        withTenantScope(db, tenant, (tx) => listProjectEvents(tx, project.id)),
+      ]);
+      const bookingUrl = await readBookingUrl().catch(() => null);
+      return {
+        events: events.map((event) => ({ status: event.status, at: event.occurredAt })),
+        callStartsAt: booking?.startsAt ?? null,
+        callEndsAt: booking?.endsAt ?? null,
+        meetingUrl: kickoffMeetingLink(booking?.inviteeUri, bookingUrl),
+      };
+    }),
     project.status === "onboarding"
       ? load("website.intake", () => withTenantScope(db, tenant, async (tx) => (await findClientIntake(tx, tenant.businessId))?.completedAt != null))
       : null,

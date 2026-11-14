@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { kickoffMeetingLink } from "@brandbasket/shared/lib/setup-call-link";
 import { PageHeader, Panel, PanelError } from "@/components";
 import { BookCallDialog } from "@/features/calls/components/book-call-dialog";
 import { KickoffPanel } from "@/features/calls/components/kickoff-panel";
@@ -141,9 +142,14 @@ function KickoffTask({ view, panels, person, services, now, purchase }: HomeScre
   const canBook = person.role !== "viewer" && !person.isPhoneAccount;
   const cannotBookLine = canBook ? null : person.role === "viewer" ? VIEWER_MESSAGE : BOOK_PROBLEM_TEXT.no_email;
   const bookingUrl = panels.booking.ok ? panels.booking.data.bookingUrl : null;
+  const meetingUrl = kickoffMeetingLink(view.kickoff?.inviteeUri, bookingUrl);
   const booked =
     state.kind === "kickoff_booked"
-      ? { startsAtIso: state.startsAt?.toISOString() ?? null, endsAtIso: state.endsAt?.toISOString() ?? null }
+      ? {
+          startsAtIso: state.startsAt?.toISOString() ?? null,
+          endsAtIso: state.endsAt?.toISOString() ?? null,
+          meetingUrl,
+        }
       : null;
   const missedLine =
     state.kind === "kickoff_unbooked" && state.missedAt !== null

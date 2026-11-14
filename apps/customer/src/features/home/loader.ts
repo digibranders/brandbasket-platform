@@ -62,7 +62,13 @@ const scoped = <T>(customer: CustomerContext, work: (tx: ScopedTransaction) => P
 export interface HomeStateView {
   readonly state: ClientHomeState;
   readonly layout: HomeLayout;
-  readonly kickoff: { readonly startsAt: Date | null; readonly endsAt: Date | null; readonly heldAt: Date | null; readonly summary: string | null } | null;
+  readonly kickoff: {
+    readonly startsAt: Date | null;
+    readonly endsAt: Date | null;
+    readonly heldAt: Date | null;
+    readonly summary: string | null;
+    readonly inviteeUri?: string | null;
+  } | null;
   readonly project: {
     /** The first preview's promised date, only while it is still ahead. */
     readonly slaDueAt: Date | null;
@@ -96,7 +102,16 @@ export function loadHomeState(customer: CustomerContext, now: Date): Promise<Loa
     return {
       state,
       layout: homeLayoutOf(state),
-      kickoff: booking === null ? null : { startsAt: booking.startsAt, endsAt: booking.endsAt, heldAt: booking.heldAt, summary: booking.summary },
+      kickoff:
+        booking === null
+          ? null
+          : {
+              startsAt: booking.startsAt,
+              endsAt: booking.endsAt,
+              heldAt: booking.heldAt,
+              summary: booking.summary,
+              inviteeUri: booking.inviteeUri,
+            },
       project:
         project === null
           ? null

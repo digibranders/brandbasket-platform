@@ -16,7 +16,12 @@ vi.mock("@/lib/server/db", () => ({ getStaffDb: () => ({ name: "staff-db" }) }))
 vi.mock("@/lib/server/client-page", () => ({ openClientTab: vi.fn() }));
 vi.mock("@/lib/server/add-ons-admin", () => ({ loadClientAddOns: vi.fn() }));
 vi.mock("@/components/activity-list", () => ({ ActivityList: () => "[activity list]" }));
-vi.mock("./parts", () => ({ BillingFacts: () => "[billing facts]", Facts: () => "[facts]", When: () => "[when]" }));
+vi.mock("./parts", () => ({
+  BillingFacts: () => "[billing facts]",
+  Facts: ({ items }: { readonly items: readonly { readonly label: string; readonly value: unknown }[] }) =>
+    `[facts] ${items.map((item) => `${item.label}:${typeof item.value === "string" ? item.value : ""}`).join(" ")}`,
+  When: () => "[when]",
+}));
 vi.mock("@brandbasket/db", async () => {
   const actual = await vi.importActual<typeof import("@brandbasket/db")>("@brandbasket/db");
   return { ...actual, findClientIntake: vi.fn(), findSetupCallBooking: vi.fn(), listActivityForBusiness: vi.fn(), listAssignableSupportStaff: vi.fn() };
@@ -96,6 +101,39 @@ describe("the Overview's money", () => {
   it("shows the Money section only to roles with money", async () => {
     expect(await render("building", "support")).not.toContain("[billing facts]");
     expect(await render("building", "finance")).toContain("[billing facts]");
+  });
+});
+
+describe("the Overview kickoff call", () => {
+  it("renders timing window and direct join meeting button when kickoff call is booked", async () => {
+    vi.mocked(findSetupCallBooking).mockResolvedValue({
+      id: "booking-1",
+      businessId: BUSINESS,
+      inviteeUri: "https://api.cal.com/v2/bookings/cal-uid-456",
+      bookedAt: new Date("2026-11-10T00:00:00Z"),
+      startsAt: new Date("2026-11-14T10:00:00Z"),
+      endsAt: new Date("2026-11-14T10:30:00Z"),
+      heldAt: null,
+      heldByStaffId: null,
+      summary: null,
+      summaryAt: null,
+      summaryByStaffId: null,
+      createdAt: new Date("2026-11-10T00:00:00Z"),
+      updatedAt: new Date("2026-11-10T00:00:00Z"),
+    });
+
+    const html = await render("building");
+    expect(html).toContain("Kickoff call");
+    expect(html).toContain("3:30 PM to 4:00 PM");
+    expect(html).toContain('href="https://app.cal.com/video/cal-uid-456"');
+    expect(html).toContain("Join meeting");
+  });
+
+  it("shows quiet text when no kickoff call is booked", async () => {
+    vi.mocked(findSetupCallBooking).mockResolvedValue(null);
+    const html = await render("building");
+    expect(html).toContain("No kickoff call booked yet.");
+    expect(html).not.toContain("Join meeting");
   });
 });
 

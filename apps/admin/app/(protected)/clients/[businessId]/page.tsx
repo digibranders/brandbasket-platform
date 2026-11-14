@@ -1,4 +1,4 @@
-import { findClientIntake, findSetupCallBooking, listActivityForBusiness, listAssignableSupportStaff } from "@brandbasket/db";
+import { findClientIntake, findSetupCallBooking, findSiteSetting, listActivityForBusiness, listAssignableSupportStaff } from "@brandbasket/db";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
@@ -8,10 +8,11 @@ import { clientPaymentState } from "@brandbasket/shared/lib/billing/client-payme
 import { BILLING_CURRENCY_LABELS } from "@brandbasket/shared/lib/currency";
 import { intakeServicesOf, summaryRows } from "@brandbasket/shared/lib/intake/questions";
 import { ANSWER_STEPS, stepInfo } from "@brandbasket/shared/lib/onboarding/steps";
+import { SETUP_CALL_URL_KEY, formatTimingWindow, kickoffMeetingLink, readSetupCallUrl } from "@brandbasket/shared/lib/setup-call-link";
 import { displayPhoneText } from "@brandbasket/shared/server/phone-display";
 import { TickIcon } from "@brandbasket/shared/ui/icons";
 import { ActivityList } from "@/components/activity-list";
-import { buttonPrimary } from "@/components/console/buttons";
+import { buttonPrimary, buttonSecondary } from "@/components/console/buttons";
 import { LIFT, SECTION_TITLE } from "@/components/console/classes";
 import { CustomerMirrorPanel } from "@/components/console/customer-mirror-panel";
 import { Quiet, Section } from "@/components/console/section";
@@ -43,13 +44,17 @@ export default async function ClientOverviewPage({
   const db = getStaffDb();
   const now = new Date();
   const seesMoney = staffCan(granted.staff.role, "money");
-  const [booking, recent, staff, addOns, intake] = await Promise.all([
+  const [booking, recent, staff, addOns, intake, setupCallSetting] = await Promise.all([
     findSetupCallBooking(db, client.businessId),
     listActivityForBusiness(db, client.businessId, RECENT_SHOWN),
     listAssignableSupportStaff(db),
     seesMoney ? loadClientAddOns(client.businessId, now) : Promise.resolve(null),
     findClientIntake(db, client.businessId),
+    findSiteSetting(db, SETUP_CALL_URL_KEY).catch(() => null),
   ]);
+  const reading = setupCallSetting === null ? null : readSetupCallUrl(setupCallSetting.value);
+  const fallbackCallUrl = reading !== null && reading.ok ? reading.url : null;
+  const meetingLink = kickoffMeetingLink(booking?.inviteeUri, fallbackCallUrl);
   const next = overviewNextStep(client, now);
   const websiteHref = clientTabHref(client.businessId, "website");
   const done = new Set(client.completedSteps);
@@ -73,7 +78,7 @@ export default async function ClientOverviewPage({
           )}
         </section>
 
-        <CustomerMirrorPanel client={client} booking={booking} now={now} />
+        <CustomerMirrorPanel client={client} booking={booking} now={now} fallbackCallUrl={fallbackCallUrl} />
 
         <section aria-labelledby="recent-title">
           <h2 id="recent-title" className={`${SECTION_TITLE} flex items-baseline justify-between`}>
@@ -116,12 +121,40 @@ export default async function ClientOverviewPage({
           {booking === null ? (
             <Quiet>No kickoff call booked yet.</Quiet>
           ) : (
-            <Facts
-              items={[
-                { label: "Booked on", value: <When date={booking.bookedAt} /> },
-                { label: "Call", value: booking.startsAt === null ? "Time not known yet" : <When date={booking.startsAt} /> },
-              ]}
-            />
+            <div className="grid gap-3">
+              <Facts
+                items={[
+                  { label: "Booked on", value: <When date={booking.bookedAt} /> },
+                  {
+                    label: "Call",
+                    value:
+                      booking.startsAt === null ? (
+                        "Time not known yet"
+                      ) : (
+                        <span>
+                          <When date={booking.startsAt} />
+                          {booking.endsAt !== null ? ` (${formatTimingWindow(booking.startsAt, booking.endsAt)})` : null}
+                        </span>
+                      ),
+                  },
+                  ...(booking.startsAt !== null && booking.endsAt !== null
+                    ? [{ label: "Timing window", value: formatTimingWindow(booking.startsAt, booking.endsAt) }]
+                    : []),
+                ]}
+              />
+              {meetingLink ? (
+                <div>
+                  <a
+                    href={meetingLink}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={`${buttonSecondary} inline-flex items-center gap-1.5`}
+                  >
+                    Join meeting
+                  </a>
+                </div>
+              ) : null}
+            </div>
           )}
         </Section>
 
