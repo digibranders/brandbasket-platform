@@ -106,3 +106,23 @@ export function ChannelLogo({ platform, small = false, medium = false, dim = fal
     </svg>
   );
 }
+
+/** The outline of each logo (in the logo's own units), so a line drawn along it hugs the logo's shape: a circle, a rounded square, or the shop front. */
+const GOOGLE_OUTLINE = "M0 32.2L6.5 5.5Q8 0 13.5 0H86.5Q92 0 93.5 5.5L100 32.2H93.3V80.6a6.4 6.4 0 0 1-6.4 6.4H13.1a6.4 6.4 0 0 1-6.4-6.4V32.2z";
+
+/**
+ * The line that runs once around a channel's logo while posts are being written for it. It is drawn in the logo's own coordinates and
+ * sits behind it, on the outline itself, so it follows the logo's shape with no gap and only its outer half shows.
+ */
+export function ChannelRing({ platform, className }: { readonly platform: ChannelPlatform; readonly className?: string }): ReactElement {
+  const google = platform === "google";
+  const stroke = { fill: "none", strokeWidth: google ? 12 : 3, strokeLinecap: "round" as const, strokeDasharray: "26 74", pathLength: 100, className: "animate-channel-run stroke-c-growth" };
+  return (
+    <svg aria-hidden="true" viewBox={google ? "0 0 100 87" : "0 0 24 24"} className={cn("absolute inset-0 size-7 overflow-visible", className)}>
+      {platform === "facebook" ? <circle cx="12" cy="12" r="12" {...stroke} /> : null}
+      {platform === "instagram" ? <rect x="0" y="0" width="24" height="24" rx="6" {...stroke} /> : null}
+      {platform === "linkedin" ? <rect x="0" y="0" width="24" height="24" rx="5" {...stroke} /> : null}
+      {google ? <path d={GOOGLE_OUTLINE} {...stroke} /> : null}
+    </svg>
+  );
+}

@@ -7,6 +7,7 @@ import { cn } from "@brandbasket/shared/lib/cn";
 import { SOFT_BUTTON } from "@/legacy-social/classes";
 import { connectChannelAction } from "@/legacy-social/actions";
 import { CHANNEL_PLATFORMS, PLATFORM_HINTS, PLATFORM_NAMES, type ChannelPlatform } from "@/legacy-social/lib/social/auto";
+import { ChannelLabel } from "./channel-label";
 import { ChannelLogo } from "./channel-logo";
 import { useChannelFilter } from "./channel-filter";
 
@@ -20,10 +21,15 @@ export interface ChannelRow {
   readonly todo?: number;
   /** Posts are being held back from this account. */
   readonly paused: boolean;
+  /** Something is being written for this channel, or was finished; left out when it could not be read. */
+  readonly working?: boolean;
+  readonly doneAt?: string;
 }
 
 interface ChannelsSidebarProps {
   readonly rows: readonly ChannelRow[];
+  /** The brand the channels belong to; what was looked at is kept under it. */
+  readonly brandId?: string;
   /** "Posts booked until 30 Nov.", or what to say when none are. */
   readonly bookedLine: string;
 }
@@ -45,7 +51,7 @@ export function ConnectButton({ platform, label, className, logo = false }: { re
  * The second sidebar of the Social media page: only the channels. Each connected account is a row that switches that
  * network's posts on or off in the calendar; a network with no account yet has a Connect button.
  */
-export function ChannelsSidebar({ rows, bookedLine }: ChannelsSidebarProps): ReactElement {
+export function ChannelsSidebar({ rows, brandId = "brand", bookedLine }: ChannelsSidebarProps): ReactElement {
   const { shown, filtering, only, showAll } = useChannelFilter();
   const missing = CHANNEL_PLATFORMS.filter((platform) => !rows.some((row) => row.platform === platform));
   return (
@@ -85,17 +91,9 @@ export function ChannelsSidebar({ rows, bookedLine }: ChannelsSidebarProps): Rea
                 onClick={() => only(row.platform)}
                 className={cn("grid w-full grid-cols-[1.75rem_minmax(0,1fr)] items-center gap-2.5 rounded-control px-2 py-1.5 text-left transition-colors hover:bg-neutral-wash", selected && "bg-neutral-wash")}
               >
-                <ChannelLogo platform={row.platform} medium />
-                <span className={cn("min-w-0", filtering && !selected && "opacity-60")}>
-                  <span className="flex items-center gap-1.5">
-                    <span title={row.account} className="min-w-0 truncate type-body font-medium text-ink">
-                      {row.account}
-                      <span className="sr-only">, {PLATFORM_NAMES[row.platform]}</span>
-                    </span>
-                    {row.todo === undefined || row.todo === 0 ? null : <span aria-label={`${row.todo} to do`} className="shrink-0 rounded-full bg-warn-wash px-1.5 text-xs font-semibold leading-5 text-warn">{row.todo}</span>}
-                  </span>
+                <ChannelLabel platform={row.platform} account={row.account} todo={row.todo} work={{ brandId, working: row.working === true, doneAt: row.doneAt }} dim={filtering && !selected}>
                   {row.paused ? <span className="mt-0.5 block text-xs font-semibold text-warn">Paused</span> : null}
-                </span>
+                </ChannelLabel>
               </button>
               {row.ending === null ? null : (
                 <div className="mt-1 grid gap-2 pb-2 pl-[2.75rem] pr-1.5">

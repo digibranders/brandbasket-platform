@@ -195,6 +195,17 @@
   }
 }
 
+/* The line of a working channel: one short stretch runs once around the logo's outline (the dash pattern is 100 long in all). */
+@keyframes channel-run {
+  to {
+    stroke-dashoffset: -100;
+  }
+}
+
+@utility animate-channel-run {
+  animation: channel-run 1.6s linear infinite;
+}
+
 @utility animate-channel-zoom {
   animation: channel-zoom 1.6s ease-in-out infinite;
 }

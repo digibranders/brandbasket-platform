@@ -3,6 +3,7 @@ import { Panel, PanelError } from "@/components";
 import type { Loaded } from "@/lib/loaded";
 import { Badge } from "@/ui";
 import { cx } from "@/ui/cx";
+import { ChannelLabel } from "@/legacy-social/components/channel-label";
 import { ChannelLogo } from "@/legacy-social/components/channel-logo";
 import { ConnectButton } from "../accounts/components/connect-button";
 import type { Platform } from "../analytics/rules";
@@ -42,7 +43,7 @@ export function ChannelsColumn({ data, selected, hrefFor, canChange }: ChannelsC
 }
 
 function Body({ data, selected, hrefFor, canChange }: Omit<ChannelsColumnProps, "data"> & { readonly data: ChannelsColumnData }) {
-  const { rows, missing, live } = data;
+  const { rows, missing, live, brandId = "brand" } = data;
   return (
     <>
       {rows.some((row) => (row.todo ?? 0) > 0) ? <p className="-mt-2 px-1 text-xs text-ink-3">The number is what waits for you on Posts.</p> : null}
@@ -65,17 +66,9 @@ function Body({ data, selected, hrefFor, canChange }: Omit<ChannelsColumnProps, 
                 aria-current={selected === row.platform ? "true" : undefined}
                 className={cx("flex items-center gap-2.5 rounded-control px-2 py-1.5 no-underline hover:bg-neutral-wash", selected === row.platform && "bg-neutral-wash")}
               >
-                <ChannelLogo platform={row.platform} medium />
-                <span className="min-w-0 flex-1">
-                  <span className="flex items-center gap-1.5">
-                    <span title={row.account} className="min-w-0 truncate type-body font-medium text-ink">
-                      {row.account}
-                    </span>
-                    {row.todo === undefined || row.todo === 0 ? null : <span aria-label={`${row.todo} to do`} className="shrink-0 rounded-full bg-warn-wash px-1.5 text-xs font-semibold leading-5 text-warn">{row.todo}</span>}
-                  </span>
-                  <span className="sr-only">{CHANNEL_NAMES[row.platform]}</span>
+                <ChannelLabel platform={row.platform} account={row.account} todo={row.todo} work={{ brandId, working: row.working === true, doneAt: row.doneAt }}>
                   {row.paused ? <span className="type-meta">Paused</span> : null}
-                </span>
+                </ChannelLabel>
               </Link>
               {row.ending === null ? null : (
                 <div className="flex flex-col items-start gap-2 pb-2 pl-12">

@@ -19,7 +19,7 @@ import { staysInMonth } from "@/legacy-social/lib/social/plan-window";
 import { CarouselPictures, CarouselTopic, carouselFor, carouselInWeek, decisionOf, sendBackReason, slideHeadlines, type WeekCarousel } from "./carousel-week";
 import { carouselMovable } from "@/legacy-social/lib/social/carousel";
 import type { PostingDays } from "@/legacy-social/lib/social/schedule";
-import { ChannelLogo } from "./channel-logo";
+import { ChannelLogo, ChannelRing } from "./channel-logo";
 import { imageUrl, pictureWord } from "./poster-tile";
 import { SMALL_DARK, SMALL_SOFT } from "./small-buttons";
 import { useReviewAction } from "./use-review-action";
@@ -1289,12 +1289,8 @@ export function ReviewChannelsColumn(): ReactElement {
                 )}
               >
                 <span className="relative grid size-7 place-items-center">
-                  {doing === "working" ? (
-                    <svg aria-hidden="true" viewBox="0 0 36 36" className="absolute -inset-1 size-9 animate-spin">
-                      <circle cx="18" cy="18" r="16.5" fill="none" strokeWidth="2.5" strokeLinecap="round" strokeDasharray="26 78" className="stroke-c-growth" />
-                    </svg>
-                  ) : null}
-                  <span className={cn("grid place-items-center", ready && "animate-channel-zoom")}>
+                  {doing === "working" ? <ChannelRing platform={one.platform} /> : null}
+                  <span className={cn("relative grid place-items-center", ready && "animate-channel-zoom")}>
                     <ChannelLogo platform={one.platform} medium />
                   </span>
                 </span>
