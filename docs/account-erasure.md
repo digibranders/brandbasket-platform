@@ -11,12 +11,12 @@ with the month they paid for. Their data is kept, restorable, for 30 days after 
 1. **Checks it may be erased** and skips it (reporting why) if the plan is still running at the provider
    (`subscription-live`), the user is a staff member (`staff-account`), or the business has another member
    (`other-members`). Nothing is removed for a skipped account. Staff look at those by hand.
-2. **Clears the website CMS** (blog posts, authors, categories, media and tenant for the business). If that fails the
-   account is left open and the next run tries again.
-3. **Erases the rows** in one transaction: patients, bookings, practitioners, the business's details, hours, content,
-   directory listing, pictures, claims and deals, the sales lead and its setup links, the sign-in (sessions, accounts,
-   verification tokens), the outbox emails and sign-up codes to that person. The person's row is scrubbed (name, email,
-   phone and image), not deleted.
+2. **Erases the rows** in one transaction under a row lock: patients, bookings, practitioners, the business's details,
+   hours, content, directory listing, pictures, claims and deals, the sales lead and its setup links, the sign-in (sessions,
+   accounts, verification tokens), the outbox emails and sign-up codes to that person. The person's row is scrubbed (name,
+   email, phone and image), not deleted. A closure restored during the window is skipped under lock before anything outside
+   the database is touched.
+3. **Clears the website CMS** (blog posts, authors, categories, media and tenant for the business).
 4. **Removes the stored files** (pictures and uploads) the erased rows pointed at. A file that cannot be removed is logged
    and counted in `filesNotRemoved`; it is unreferenced and cannot be served.
 

@@ -38,9 +38,9 @@ beforeEach(() => {
 });
 
 describe("runAccountErasure", () => {
-  it("checks, then clears the website, then the rows, then the files", async () => {
+  it("checks, then clears the rows under lock, then the website content, then the files", async () => {
     const report = await runAccountErasure(deps, { now: NOW, limit: 10, dryRun: false });
-    expect(calls).toEqual(["block?", "website", "rows", "files", "videos"]);
+    expect(calls).toEqual(["block?", "rows", "website", "files", "videos"]);
     expect(deps.deleteVimeoVideos).toHaveBeenCalledWith(ERASED.vimeoIds);
     expect(deps.deleteFiles).toHaveBeenCalledWith(ERASED.storageKeys);
     expect(report).toEqual({ dryRun: false, due: 1, items: [{ closureId: "closure-1", status: "erased", files: 2, filesNotRemoved: 0, videos: 3, videosNotRemoved: 0 }] });
@@ -65,24 +65,28 @@ describe("runAccountErasure", () => {
     expect(report.items).toEqual([{ closureId: "closure-1", status: "skipped", reason: "subscription-live" }]);
   });
 
-  it("leaves the rows alone when the website content cannot be cleared, so the next run tries again", async () => {
-    vi.mocked(deps.eraseWebsiteContent).mockRejectedValue(new Error("cms down"));
-    const report = await runAccountErasure(deps, { now: NOW, limit: 10, dryRun: false });
-    expect(deps.eraseRows).not.toHaveBeenCalled();
-    expect(report.items).toEqual([{ closureId: "closure-1", status: "failed", stage: "website-content" }]);
-  });
-
-  it("reports a failed erase of the rows and removes no files", async () => {
+  it("reports a failed erase of the rows and does not clear website content or remove files", async () => {
     vi.mocked(deps.eraseRows).mockRejectedValue(new Error("db down"));
     const report = await runAccountErasure(deps, { now: NOW, limit: 10, dryRun: false });
+    expect(deps.eraseWebsiteContent).not.toHaveBeenCalled();
     expect(deps.deleteFiles).not.toHaveBeenCalled();
     expect(deps.deleteVimeoVideos).not.toHaveBeenCalled();
     expect(report.items).toEqual([{ closureId: "closure-1", status: "failed", stage: "rows" }]);
   });
 
-  it("reports a skip the transaction found under its own lock (restored a moment ago), and removes no files", async () => {
+  it("reports a failed erase of the website content and removes no files", async () => {
+    vi.mocked(deps.eraseWebsiteContent).mockRejectedValue(new Error("cms down"));
+    const report = await runAccountErasure(deps, { now: NOW, limit: 10, dryRun: false });
+    expect(deps.eraseRows).toHaveBeenCalledWith("closure-1", NOW);
+    expect(deps.deleteFiles).not.toHaveBeenCalled();
+    expect(deps.deleteVimeoVideos).not.toHaveBeenCalled();
+    expect(report.items).toEqual([{ closureId: "closure-1", status: "failed", stage: "website-content" }]);
+  });
+
+  it("reports a skip the transaction found under its own lock (restored a moment ago), leaving website content and files untouched", async () => {
     vi.mocked(deps.eraseRows).mockResolvedValue({ kind: "skipped", closureId: "closure-1", reason: "not-due" });
     const report = await runAccountErasure(deps, { now: NOW, limit: 10, dryRun: false });
+    expect(deps.eraseWebsiteContent).not.toHaveBeenCalled();
     expect(deps.deleteFiles).not.toHaveBeenCalled();
     expect(deps.deleteVimeoVideos).not.toHaveBeenCalled();
     expect(report.items).toEqual([{ closureId: "closure-1", status: "skipped", reason: "not-due" }]);
