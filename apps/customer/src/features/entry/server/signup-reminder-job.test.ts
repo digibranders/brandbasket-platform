@@ -72,8 +72,8 @@ describe("processSignupReminders", () => {
     expect(sentEmail.subject).toContain("Finish setting up Smith Bakery");
     expect(sentEmail.bodyText).toContain("/checkout");
     // Ensure no em or en dashes in the sent message
-    expect(sentEmail.subject).not.toMatch(/[—–]/);
-    expect(sentEmail.bodyText).not.toMatch(/[—–]/);
+    expect(sentEmail.subject).not.toMatch(/[\u2014\u2013]/);
+    expect(sentEmail.bodyText).not.toMatch(/[\u2014\u2013]/);
 
     expect(recordSignupReminderSent).toHaveBeenCalledWith(expect.anything(), "lead-123", NOW);
   });

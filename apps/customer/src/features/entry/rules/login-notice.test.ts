@@ -1,3 +1,4 @@
+import { ACCOUNT_CLOSURE_GRACE_DAYS } from "@brandbasket/db";
 import { describe, expect, it } from "vitest";
 import { loginNotice } from "./login-notice";
 
@@ -11,7 +12,6 @@ describe("loginNotice", () => {
   });
 });
 
-it("tells the browser the same number of days the database keeps", async () => {
-  const { ACCOUNT_CLOSURE_GRACE_DAYS } = await import("@brandbasket/db");
+it("tells the browser the same number of days the database keeps", () => {
   expect(loginNotice("account-closed")).toContain(`kept for ${ACCOUNT_CLOSURE_GRACE_DAYS} days`);
 });

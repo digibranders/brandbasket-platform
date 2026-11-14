@@ -55,8 +55,8 @@ describe("signUpPanelCopy", () => {
       for (const invite of [false, true]) {
         const copy = signUpPanelCopy(services, invite);
         const text = JSON.stringify(copy);
-        expect(text).not.toContain("—");
-        expect(text).not.toContain("–");
+        expect(text).not.toContain("\u2014");
+        expect(text).not.toContain("\u2013");
       }
     }
   });
