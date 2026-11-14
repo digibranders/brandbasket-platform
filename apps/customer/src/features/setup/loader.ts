@@ -1,16 +1,18 @@
 import "server-only";
 import { findLiveBundledAddOns, isPackageOfferForfeited, withTenantScope } from "@brandbasket/db";
 import { isMonthlyAddOnId } from "@brandbasket/shared/lib/billing/add-ons";
-import { readSavedAnswers } from "@/features/checklist/server/saved-answers";
+import { postingServiceHasAccounts, readSavedAnswers } from "@/features/checklist/server/saved-answers";
 import { getAppDb } from "@/lib/db";
 import type { CustomerContext } from "@/lib/guards";
 import { notBoughtView, setupAsks, type NotBoughtView, type SetupAsk, type SetupService, type SoldSetupService } from "./rules";
 
-type Reader = Pick<CustomerContext, "tenant" | "businessId">;
+type Reader = Pick<CustomerContext, "tenant" | "businessId"> & { readonly businessName?: string };
 
 /** The questions still open for a service, from the answers saved so far. Throws when the answers cannot be read: the card then shows its error. */
 export async function loadSetupAsks(customer: Reader, service: SetupService): Promise<readonly SetupAsk[]> {
-  const answers = await withTenantScope(getAppDb(), customer.tenant, (tx) => readSavedAnswers(tx, customer.businessId, new Date()));
+  // Accounts connected in Social media live in the posting service: asked before the transaction, so the setup never asks for pages that are already connected.
+  const connectedInPostingService = service === "social" ? await postingServiceHasAccounts(customer) : false;
+  const answers = await withTenantScope(getAppDb(), customer.tenant, (tx) => readSavedAnswers(tx, customer.businessId, new Date(), connectedInPostingService));
   return setupAsks(service, answers);
 }
 
