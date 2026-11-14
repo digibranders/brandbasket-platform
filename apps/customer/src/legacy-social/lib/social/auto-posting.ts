@@ -41,9 +41,9 @@ export function readAutoPosting(body: unknown, connected: readonly ChannelPlatfo
   return { channels: platforms(raw.channels), safetyHours: hours, consentedAt: typeof raw.consentedAt === "string" ? raw.consentedAt : null, needsChoice: platforms(raw.needsChoice) };
 }
 
-/** What a saved wait means, as the end of a sentence: "as soon as it passes our checks", or for a wait set earlier "24 hours before it goes out". */
+/** What a saved wait means, as the end of a sentence: "as soon as they pass our checks", or for a wait set earlier "24 hours before they go out". */
 export function safetyWords(hours: number): string {
-  return hours === 0 ? "as soon as it passes our checks" : `${hours} ${hours === 1 ? "hour" : "hours"} before it goes out`;
+  return hours === 0 ? "as soon as they pass our checks" : `${hours} ${hours === 1 ? "hour" : "hours"} before they go out`;
 }
 
 /** The words a customer agrees to when she lets us post for her. Shown beside the box she ticks. */
