@@ -1,6 +1,6 @@
 import { eq } from "drizzle-orm";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
-import { createLead, markLeadPaidForBusiness, recordSignupLead } from "./queries/leads";
+import { createLead, listAbandonedSignupLeads, markLeadPaidForBusiness, recordSignupLead, recordSignupReminderSent } from "./queries/leads";
 import { businesses, leads } from "./schema";
 import { openTestDatabases, resetTestDatabase, type TestDatabases } from "./testing";
 
@@ -107,5 +107,59 @@ describe("recordSignupLead", () => {
     await recordSignupLead(dbs.staff.db, lead);
     expect(await allLeads()).toHaveLength(1);
     expect((await dbs.owner.db.select().from(leads).where(eq(leads.businessId, businessId)))).toHaveLength(1);
+  });
+
+  describe("abandoned sign-up reminder (D21)", () => {
+    it("returns sign-ups older than cutoff that have not received a reminder", async () => {
+      const b1 = await addBusiness("dental-one");
+      const b2 = await addBusiness("dental-two");
+      const b3 = await addBusiness("dental-three");
+
+      await recordSignupLead(dbs.staff.db, { name: "User 1", businessName: "Dental 1", email: "u1@example.test", businessId: b1, plan: "managed" });
+      await recordSignupLead(dbs.staff.db, { name: "User 2", businessName: "Dental 2", email: "u2@example.test", businessId: b2, plan: "managed" });
+      await recordSignupLead(dbs.staff.db, { name: "User 3", businessName: "Dental 3", email: "u3@example.test", businessId: b3, plan: "managed" });
+
+      const now = new Date("2026-11-14T12:00:00Z");
+      const twoDaysAgo = new Date("2026-11-12T12:00:00Z");
+      const oneHourAgo = new Date("2026-11-14T11:00:00Z");
+
+      // Backdate b1 and b2
+      await dbs.owner.db.update(leads).set({ createdAt: twoDaysAgo }).where(eq(leads.businessId, b1));
+      await dbs.owner.db.update(leads).set({ createdAt: twoDaysAgo }).where(eq(leads.businessId, b2));
+      // b3 is recent (1 hour ago)
+      await dbs.owner.db.update(leads).set({ createdAt: oneHourAgo }).where(eq(leads.businessId, b3));
+
+      // Mark b2 already paid
+      await markLeadPaidForBusiness(dbs.staff.db, b2);
+
+      const cutoff = new Date("2026-11-13T12:00:00Z"); // 24 hours before now
+      const abandoned = await listAbandonedSignupLeads(dbs.staff.db, { cutoff });
+
+      expect(abandoned).toHaveLength(1);
+      expect(abandoned[0]?.businessId).toBe(b1);
+      expect(abandoned[0]?.signupReminderSentAt).toBeNull();
+    });
+
+    it("records reminder sent timestamp so a reminder is sent only once", async () => {
+      const b1 = await addBusiness("clinic-one");
+      await recordSignupLead(dbs.staff.db, { name: "Dr Smith", businessName: "Clinic 1", email: "dr@example.test", businessId: b1, plan: "managed" });
+
+      const twoDaysAgo = new Date("2026-11-12T12:00:00Z");
+      await dbs.owner.db.update(leads).set({ createdAt: twoDaysAgo }).where(eq(leads.businessId, b1));
+
+      const cutoff = new Date("2026-11-13T12:00:00Z");
+      const initial = await listAbandonedSignupLeads(dbs.staff.db, { cutoff });
+      expect(initial).toHaveLength(1);
+      const leadId = initial[0]!.id;
+
+      const sentTime = new Date("2026-11-14T08:00:00Z");
+      await recordSignupReminderSent(dbs.staff.db, leadId, sentTime);
+
+      const afterSent = await listAbandonedSignupLeads(dbs.staff.db, { cutoff });
+      expect(afterSent).toHaveLength(0);
+
+      const row = (await allLeads())[0];
+      expect(row?.signupReminderSentAt).toEqual(sentTime);
+    });
   });
 });

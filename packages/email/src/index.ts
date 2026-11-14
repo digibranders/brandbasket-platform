@@ -40,6 +40,7 @@ export {
   type PreviewRevisionsRequestedInput,
 } from "./templates/preview-revisions-requested";
 export { signupCodeEmail, type SignupCodeInput } from "./templates/signup-code";
+export { signupReminderEmail, type SignupReminderInput } from "./templates/signup-reminder";
 export { siteDownAlertEmail, type SiteDownAlertInput } from "./templates/site-down-alert";
 export { setupLinkEmail, type SetupLinkInput } from "./templates/setup-link";
 export { supportRequestOpenedEmail, type SupportRequestOpenedInput } from "./templates/support-request-opened";

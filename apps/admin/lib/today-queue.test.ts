@@ -64,6 +64,20 @@ describe("todayQueue", () => {
       ["Signed up, not paid: Kumar Opticals", "Signed up 29 Nov", "/leads/lead-kumar"],
     ]);
   });
+
+  it("shows the owner on unpaid sign-up rows when assigned (D21)", () => {
+    const queue = todayQueue({
+      ...EMPTY,
+      unpaidSignups: [
+        { id: "lead-1", businessName: "Kumar Opticals", createdAt: new Date("2026-11-29T00:00:00.000Z"), ownerName: "Rohan Mehta" },
+        { id: "lead-2", businessName: "Om Sweets", createdAt: new Date("2026-11-29T00:00:00.000Z"), ownerName: null },
+      ],
+    });
+    expect(queue.map((item) => [item.title, item.detail])).toEqual([
+      ["Signed up, not paid: Kumar Opticals", "Signed up 29 Nov · Rohan Mehta"],
+      ["Signed up, not paid: Om Sweets", "Signed up 29 Nov"],
+    ]);
+  });
 });
 
 describe("dueLabel", () => {

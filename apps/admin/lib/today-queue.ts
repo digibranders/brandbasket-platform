@@ -31,7 +31,9 @@ export interface TodayInput {
   /** Requests nobody on the team has answered yet (status "new"). */
   readonly newTickets: readonly Pick<SupportTicket, "id" | "subject" | "displayRef" | "category" | "createdAt">[];
   /** Sign-ups on the dashboard that have not paid (lead status "account_created"). */
-  readonly unpaidSignups: readonly Pick<Lead, "id" | "businessName" | "createdAt">[];
+  readonly unpaidSignups: readonly (Pick<Lead, "id" | "businessName" | "createdAt"> & {
+    readonly ownerName?: string | null;
+  })[];
   /** Errors nobody has looked at yet (status "new"). */
   readonly newErrors: readonly Pick<ErrorIssue, "id" | "operation" | "route" | "occurrenceCount" | "firstSeenAt">[];
   /** Deliveries that failed in the last 24 hours (the rail's count); null when that count could not be read. */
@@ -113,7 +115,7 @@ export function todayQueue(input: TodayInput): readonly TodayItem[] {
       kind: "signup",
       href: `/leads/${lead.id}`,
       title: `Signed up, not paid: ${lead.businessName}`,
-      detail: `Signed up ${shortDate(lead.createdAt)}`,
+      detail: lead.ownerName ? `Signed up ${shortDate(lead.createdAt)} · ${lead.ownerName}` : `Signed up ${shortDate(lead.createdAt)}`,
       dueAt: after(lead.createdAt, WAIT_LIMITS.signup),
     }),
   );
