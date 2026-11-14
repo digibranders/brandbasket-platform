@@ -112,6 +112,9 @@ export function connectNoticeLine(social: string | readonly string[] | undefined
   if (typeof social !== "string" || (social !== "connected" && social !== "denied" && social !== "failed")) return null;
   const name = typeof channel === "string" && isPlatform(channel) ? CHANNEL_NAMES[channel] : "That account";
   // The posting service refuses an account that is connected elsewhere: it never says whose it is, so the line does not either.
+  // The posting service says why a failed connection failed when it knows: the link took too long, or the Google account manages no listing.
+  if (social === "failed" && reason === "EXPIRED") return { ok: false, text: `${name === "That account" ? "That account" : name} was not connected: the connection took too long. Press Connect and try again.` };
+  if (social === "failed" && reason === "NO_LOCATION") return { ok: false, text: "That Google account does not manage a business listing, so nothing was connected. Press Connect Google and sign in with the account that manages yours." };
   if (social === "failed" && reason === "ACCOUNT_IN_USE") return { ok: false, text: `${name === "That account" ? "That account" : `That ${name} account`} is already connected somewhere else, so it was not connected here. Use a different account, or tell us if you think this is a mistake.` };
   return CONNECT_NOTICES[social](name);
 }

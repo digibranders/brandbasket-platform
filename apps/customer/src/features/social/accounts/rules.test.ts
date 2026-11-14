@@ -71,3 +71,12 @@ describe("an account that is connected elsewhere", () => {
     expect(accountInUse({ social: "connected", channel: "instagram", reason: "ACCOUNT_IN_USE", heldBy: "b1" })).toBeNull();
   });
 });
+
+describe("why a connection failed", () => {
+  it("says it took too long, or that the Google account has no listing, and keeps the plain line for anything else", () => {
+    expect(connectNoticeLine("failed", "google", "EXPIRED")?.text).toContain("took too long");
+    expect(connectNoticeLine("failed", "google", "NO_LOCATION")?.text).toContain("does not manage a business listing");
+    expect(connectNoticeLine("failed", "google", "SOMETHING_ELSE")).toEqual(connectNoticeLine("failed", "google"));
+    expect(connectNoticeLine("connected", "google", "EXPIRED")).toEqual(connectNoticeLine("connected", "google"));
+  });
+});
