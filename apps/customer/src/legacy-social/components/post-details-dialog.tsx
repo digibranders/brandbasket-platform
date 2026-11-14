@@ -10,6 +10,7 @@ import { CHANNEL_PLATFORMS, dayLabel, PLATFORM_NAMES, postStatus, time12, type C
 import { localDateIn } from "@brandbasket/shared/lib/calendar/local-date";
 import { BRAND_TIME_ZONE } from "@/legacy-social/shims";
 import { canAddOn, earliestDay, isTime, latestDay, momentHasPassed } from "@/legacy-social/lib/social/new-post";
+import { postPictureSrc } from "@/legacy-social/lib/social/post-picture";
 import { ChannelLogo } from "./channel-logo";
 import { SMALL_DARK, SMALL_SOFT } from "./small-buttons";
 
@@ -231,7 +232,7 @@ export function PostDetailsDialog({ post, onClose }: PostDetailsDialogProps): Re
         {post.imageUrl === undefined ? null : (
           // The post's picture, served by social-auto, which Next's image optimiser cannot reach.
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={post.imageUrl} alt="The picture of this post" className="size-40 rounded-xl object-cover" />
+          <img src={postPictureSrc(post.imageUrl)} alt="The picture of this post" className="size-40 rounded-xl object-cover" />
         )}
 
         <p className="whitespace-pre-wrap break-words text-[0.875rem] leading-relaxed text-ink">{post.caption}</p>

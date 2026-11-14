@@ -288,11 +288,11 @@ export const actorOf = (tenant: { readonly businessId: string; readonly userId: 
 export async function startSiteJob(
   settings: SocialAutoSettings,
   businessId: string,
-  request: { readonly site: string; readonly page: boolean; readonly networks?: readonly ChannelPlatform[]; /** The Monday a further month starts, `YYYY-MM-DD`. */ readonly startDate?: string },
+  request: { readonly site: string; readonly page: boolean; readonly networks?: readonly ChannelPlatform[]; /** The first day a plan starts, `YYYY-MM-DD`. */ readonly startDate?: string; /** The last day a post may fall on, `YYYY-MM-DD`: the day before the paid month renews. */ readonly endDate?: string },
   actor: string,
   send: typeof fetch = fetch,
 ): Promise<{ readonly job: SiteJob; readonly created: boolean }> {
-  const body = { externalId: businessId, site: request.site, ...(request.page ? { page: true } : {}), ...(request.networks === undefined || request.networks.length === 0 ? {} : { networks: request.networks }), ...(request.startDate === undefined ? {} : { startDate: request.startDate }) };
+  const body = { externalId: businessId, site: request.site, ...(request.page ? { page: true } : {}), ...(request.networks === undefined || request.networks.length === 0 ? {} : { networks: request.networks }), ...(request.startDate === undefined ? {} : { startDate: request.startDate }), ...(request.endDate === undefined ? {} : { endDate: request.endDate }) };
   const answer = await call(settings, "/api/v1/site-jobs", { method: "POST", body, actor }, send);
   if (answer.status !== 200 && answer.status !== 202) throw refusal(answer, "the website job");
   const started = readJob(answer.body);
@@ -572,12 +572,24 @@ export async function makeCarousel(settings: SocialAutoSettings, businessId: str
   return started;
 }
 
-export type CarouselDecision = { readonly action: "approve"; readonly id: string } | { readonly action: "reject"; readonly id: string; readonly reason: string; readonly comment?: string };
+export type CarouselDecision = { readonly action: "approve" | "keep" | "drop" | "reset"; readonly id: string } | { readonly action: "reject"; readonly id: string; readonly reason: string; readonly comment?: string };
 
 /** The customer's decision on the whole carousel: every slide and every channel's words, exactly as they are now. */
 export async function decideCarousel(settings: SocialAutoSettings, businessId: string, decision: CarouselDecision, actor: string, send: typeof fetch = fetch): Promise<void> {
   const answer = await call(settings, "/api/v1/carousels", { method: "POST", body: { externalId: businessId, ...decision }, actor }, send);
   if (answer.status !== 200) throw refusal(answer, "the carousel decision");
+}
+
+/** Draws the slides of a kept carousel (a job, like a draw of pictures). Answers the job; asking again while it runs answers the same job. */
+export async function drawCarousel(settings: SocialAutoSettings, businessId: string, carouselId: string, actor: string, send: typeof fetch = fetch): Promise<void> {
+  const answer = await call(settings, "/api/v1/carousels", { method: "POST", body: { externalId: businessId, action: "draw", id: carouselId }, actor }, send);
+  if (answer.status !== 200 && answer.status !== 202) throw refusal(answer, "the carousel pictures");
+}
+
+/** Moves the carousel to another day of its week; it keeps its time and, when approved, stays approved. */
+export async function moveCarousel(settings: SocialAutoSettings, businessId: string, carouselId: string, day: string, actor: string, send: typeof fetch = fetch): Promise<void> {
+  const answer = await call(settings, "/api/v1/carousels", { method: "POST", body: { externalId: businessId, action: "move", id: carouselId, day }, actor }, send);
+  if (answer.status !== 200) throw refusal(answer, "the new day of the carousel");
 }
 
 /** One slide of a carousel as a JPEG; null when it is not there. Asked for with the customer's own brand, so a customer sees only their own slides. */

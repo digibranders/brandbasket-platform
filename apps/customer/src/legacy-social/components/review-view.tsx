@@ -1,6 +1,7 @@
 import type { ReactElement, ReactNode } from "react";
 import { localDateIn } from "@brandbasket/shared/lib/calendar/local-date";
 import { BRAND_TIME_ZONE } from "@/legacy-social/shims";
+import { nextStartDay } from "@/legacy-social/lib/social/plan-window";
 import type { SocialReview } from "@/legacy-social/server/social-review";
 import { jobIsActive, jobLine } from "@/legacy-social/lib/social/ai";
 import { dayLabel, PLATFORM_NAMES } from "@/legacy-social/lib/social/auto";
@@ -39,6 +40,8 @@ export function ReviewView({ review, canChange = true, approvals = null }: { rea
       channels={review.channels}
       replacing={replaceStates(review.jobs)}
       today={localDateIn(BRAND_TIME_ZONE, new Date())}
+      renewsOn={review.renewsOn}
+      carousel={review.carousels[0] === undefined ? null : { summary: review.carousels[0], detail: review.carousel, canChange }}
       own={{ requests: review.topicRequests, batches: review.batches.filter((batch) => ownBatchIds.has(batch.id)), posters: [...review.waiting, ...review.approved].filter((poster) => ownBatchIds.has(poster.batchId)), canChange }}
     >
       {/* On a wide screen the channels column steps out of the shell's gutter and sits against the menu, as on the Posts and Analytics pages. */}
@@ -81,16 +84,16 @@ export function ReviewView({ review, canChange = true, approvals = null }: { rea
       {approvals}
       {/* Starting the next channel or the next month lives with the written posts. The choice to post automatically is made when posts are started; this card appears only once it is on, to change or switch it off, or when a channel connected since needs a choice. */}
       {!canChange || active !== undefined ? null : (
-        <AiStartCard jobs={review.jobs} channels={review.channels} postingDays={review.postingDays} website={review.website} expired={{ batches: review.expired.batches.length, pictures: review.expired.pictures.length }} nextMonth={review.plan?.canStartNext === true && review.plan.nextStartDate !== null ? { startDate: review.plan.nextStartDate, endsOn: review.plan.endsOn } : null} />
+        <AiStartCard jobs={review.jobs} channels={review.channels} postingDays={review.postingDays} website={review.website} expired={{ batches: review.expired.batches.length, pictures: review.expired.pictures.length }} nextMonth={review.plan?.canStartNext === true && review.plan.nextStartDate !== null ? { startDate: nextStartDay({ today: localDateIn(BRAND_TIME_ZONE, new Date()), earliest: review.plan.nextStartDate, renewsOn: review.renewsOn }), endsOn: review.plan.endsOn } : null} />
       )}
       {review.autoPosting !== null && review.channels.length > 0 && review.autoPosting.channels.length > 0 ? <AutoPostingCard auto={review.autoPosting} channels={review.channels} canChange={canChange} /> : null}
       <ReviewRefresher active={active !== undefined || ownBusy} />
-      {active === undefined ? null : <ActiveJobNote text={`${jobLine(active).replace(/\.$/, "")}. This page updates when it is ready.`} networks={active.kind === "write" ? active.networks : undefined} />}
+      {active === undefined ? null : <ActiveJobNote text={jobLine(active).replace(/\.$/, "")} networks={active.kind === "write" ? active.networks : undefined} />}
       {/* Nothing could be read: say so once, above, and do not also say that nothing is waiting, which would not be true. */}
       {review.unavailable && review.batches.length === 0 && review.waiting.length === 0 && review.approved.length === 0 ? null : (
         <>
           <NewChannelChoice unwritten={unwritten} missing={review.missingNetworks} postingDays={review.postingDays} website={review.website} busy={review.jobs.some((job) => jobIsActive(job))} canChange={canChange} />
-          <ReviewWorkspace />
+          <ReviewWorkspace empty={{ connected: review.channels.map((channel) => channel.platform), website: review.website, postingDays: review.postingDays, canChange, busy: active !== undefined, startCardShown: canChange && active === undefined && review.jobs[0]?.state !== "done" }} />
           {/* The weekly carousel card (CarouselCard) is hidden for now: it is to move to another place. */}
         </>
       )}
