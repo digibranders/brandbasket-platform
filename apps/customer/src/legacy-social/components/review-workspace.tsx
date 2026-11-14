@@ -13,6 +13,7 @@ import { cardsOfWeek, channelTodo, firstOpenWeek, flowWeeks, picturesOn, POST_TI
 import { ConnectButton } from "./channels-sidebar";
 import { AddChannelChoice } from "./add-channel-choice";
 import { EmptyPosts } from "./empty-posts";
+import { JobProgress } from "./job-progress";
 import { staysInMonth } from "@/legacy-social/lib/social/plan-window";
 import { CarouselPictures, CarouselTopic, carouselFor, carouselInWeek, decisionOf, sendBackReason, slideHeadlines, type WeekCarousel } from "./carousel-week";
 import { carouselMovable } from "@/legacy-social/lib/social/carousel";
@@ -1227,13 +1228,14 @@ export function NewChannelChoice({ unwritten, missing, postingDays, website, bus
  * for it, so a customer never thinks posts were started for a channel she has not asked for. When the posting service does not say which
  * channels the job is for, the note is shown on every channel as before.
  */
-export function ActiveJobNote({ text, networks }: { readonly text: string; readonly networks: readonly ChannelPlatform[] | undefined }): ReactElement {
+export function ActiveJobNote({ text, networks, step }: { readonly text: string; readonly networks: readonly ChannelPlatform[] | undefined; /** 1 to 4 while the job runs (reading the website, writing, drawing, putting it together); not known for every job. */ readonly step?: number | undefined }): ReactElement {
   const { channel } = useFlow();
   if (channel === "all" || networks === undefined || networks.includes(channel)) {
     return (
-      <p role="status" className="rounded-xl bg-warn-wash px-4 py-3 text-[0.84375rem] font-semibold text-warn">
-        {text}
-      </p>
+      <div role="status" className="grid gap-2 rounded-xl bg-warn-wash px-4 py-3">
+        <p className="text-[0.84375rem] font-semibold text-warn">{text}</p>
+        <JobProgress step={step} />
+      </div>
     );
   }
   return (

@@ -88,7 +88,7 @@ export function ReviewView({ review, canChange = true, approvals = null }: { rea
       )}
       {review.autoPosting !== null && review.channels.length > 0 && review.autoPosting.channels.length > 0 ? <AutoPostingCard auto={review.autoPosting} channels={review.channels} canChange={canChange} /> : null}
       <ReviewRefresher active={active !== undefined || ownBusy} />
-      {active === undefined ? null : <ActiveJobNote text={`${jobLine(active).replace(/\.$/, "")}. This page updates when it is ready.`} networks={active.kind === "write" ? active.networks : undefined} />}
+      {active === undefined ? null : <ActiveJobNote text={`${jobLine(active).replace(/\.$/, "")}. This page updates when it is ready.`} networks={active.kind === "write" ? active.networks : undefined} step={active.step} />}
       {/* Nothing could be read: say so once, above, and do not also say that nothing is waiting, which would not be true. */}
       {review.unavailable && review.batches.length === 0 && review.waiting.length === 0 && review.approved.length === 0 ? null : (
         <>
