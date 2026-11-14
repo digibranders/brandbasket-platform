@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { addOnById, PLAN_ADD_ON_IDS } from "@brandbasket/shared/lib/billing/add-ons";
-import { Panel, PanelError } from "@/components";
-import { Badge, Meter } from "@/ui";
+import { StatusChip } from "@brandbasket/shared/ui/patterns";
+import { PanelError } from "@/components";
+import { Meter } from "@/ui";
 import { formatOutOf } from "@/lib/format";
 import { servicesAfterToggle } from "../../checkout/rules/membership";
 import type { StartAside, StartSummary, StartView } from "../loader";
@@ -17,7 +18,10 @@ export function StartScreen({ view }: { readonly view: StartView }) {
   const basket = view.services.join(",");
   return (
     <div className="grid items-start gap-6 lg:grid-cols-3">
-      <section aria-label="Personalise your setup" className="flex flex-col gap-6 rounded-panel border border-border bg-surface p-6 lg:col-span-2">
+      <section
+        aria-label="Personalise your setup"
+        className="relative flex flex-col gap-6 rounded-overlay border border-border border-t-2 border-t-accent-gold bg-surface p-6 shadow-hero sm:p-7 lg:col-span-2"
+      >
         {view.step.kind === "question" ? (
           <>
             <div className="flex flex-col gap-2">
@@ -116,24 +120,32 @@ function SummaryStep({ summary, services, basket }: { readonly summary: StartSum
 /** The services already chosen, with the price the checkout will take: the checkout's own rows and figures. */
 function Aside({ aside }: { readonly aside: StartAside }) {
   return (
-    <Panel title="Your services" action={<Badge>Chosen by you</Badge>}>
+    <article className="rounded-panel border border-border bg-surface p-6 shadow-card">
+      <div className="flex items-center justify-between gap-3 mb-4">
+        <h2 className="font-display text-lg font-bold tracking-tight text-ink">Your services</h2>
+        <StatusChip label="Chosen by you" variant="active" />
+      </div>
       <ul className="flex flex-col divide-y divide-border-subtle">
         {aside.rows.map((row) => (
           <li key={row.key} className="flex justify-between gap-4 py-2 type-body text-ink-2">
-            <span className={row.tone === "save" ? "text-pos-text" : undefined}>{row.label}</span>
-            <span className={`${row.tone === "free" ? "" : "tabular-nums"} ${row.tone === "plain" ? "" : "text-pos-text"}`}>{row.amount}</span>
+            <span className={row.tone === "save" ? "text-pos-text font-medium" : undefined}>{row.label}</span>
+            <span className={`${row.tone === "free" ? "" : "tabular-nums font-mono"} ${row.tone === "plain" ? "text-ink" : "text-pos-text font-medium"}`}>{row.amount}</span>
           </li>
         ))}
-        <li className="flex items-baseline justify-between gap-4 py-3">
-          <span className="type-sub text-ink">Due today</span>
-          <span className="type-metric-sm text-ink">{aside.total}</span>
+        <li className="flex items-baseline justify-between gap-4 py-3 border-t border-border mt-1">
+          <span className="type-sub font-semibold text-ink">Due today</span>
+          <span className="font-mono text-2xl font-bold text-ink tabular-nums">{aside.total}</span>
         </li>
       </ul>
-      <div className="flex flex-col gap-2">
-        {aside.taxed ? <p className="type-meta">GST is included in every price.</p> : null}
-        {aside.adCredit === null ? null : <p className="type-body text-pos-text">{aside.adCredit}</p>}
-        {aside.changeHref === null ? null : <Link href={aside.changeHref} className="type-sub">Change services</Link>}
+      <div className="flex flex-col gap-2 pt-2">
+        {aside.taxed ? <p className="font-sans text-xs text-ink-3">GST is included in every price.</p> : null}
+        {aside.adCredit === null ? null : <p className="type-body text-pos-text font-medium">{aside.adCredit}</p>}
+        {aside.changeHref === null ? null : (
+          <Link href={aside.changeHref} className="type-sub font-medium text-accent-gold-text underline underline-offset-4 decoration-accent-gold/40 hover:decoration-accent-gold">
+            Change services
+          </Link>
+        )}
       </div>
-    </Panel>
+    </article>
   );
 }
