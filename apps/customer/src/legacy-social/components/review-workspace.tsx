@@ -9,7 +9,7 @@ import { REJECT_REASON_WORDS, TOPIC_NOT_MADE_WORDS, type Poster, type SiteJob, t
 import { CHANNEL_PLATFORMS, dayLabel, PLATFORM_HINTS, PLATFORM_NAMES, type ChannelPlatform } from "@/legacy-social/lib/social/auto";
 import { CHANNEL_PARAM, channelParamOf, rememberChannel } from "@/legacy-social/lib/social/channel-param";
 import type { ReviewCard, ReviewGroup } from "@/legacy-social/lib/social/review-cards";
-import { cardsOfWeek, channelTodo, firstOpenWeek, flowWeeks, picturesOn, POST_TIME, postFinal, weekAsked, type FlowWeek, type ReplaceState } from "@/legacy-social/lib/social/review-flow";
+import { cardsOfWeek, channelTodo, groupIsFor, firstOpenWeek, flowWeeks, picturesOn, POST_TIME, postFinal, weekAsked, type FlowWeek, type ReplaceState } from "@/legacy-social/lib/social/review-flow";
 import { ConnectButton } from "./channels-sidebar";
 import { AddChannelChoice } from "./add-channel-choice";
 import { EmptyPosts } from "./empty-posts";
@@ -1168,14 +1168,6 @@ function useFlow(): Flow {
   return value;
 }
 
-/**
- * Whether a written batch (or, once its posts are gone, its pictures) is for this channel. Channels that post on different days are written
- * as batches of their own, so a channel looks only at the batches written for it.
- */
-export function groupIsFor(group: ReviewGroup, channel: ChannelPlatform): boolean {
-  if (group.batch !== null) return group.batch.networks.includes(channel);
-  return group.cards.some((card) => card.pictures.some((poster) => poster.network === channel));
-}
 
 /** Holds which channel and which week the customer is looking at, for the channels column and the workspace beside it. */
 export function ReviewFlowProvider({ groups, drawing = [], reasons, channels, replacing = {}, today = "", own = NO_OWN, carousel = null, renewsOn = null, jobs = [], brandId = "brand", children }: ReviewFlowProps): ReactElement {

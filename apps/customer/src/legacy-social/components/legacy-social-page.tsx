@@ -6,6 +6,7 @@ import { postingServiceSettings } from "@/features/social/analytics/rules";
 import { readChecklistState } from "@/features/checklist/loader";
 import { loadReportMonths } from "@/features/reports/loader";
 import { reportPath } from "@/features/reports/rules";
+import { loadChannelTodos } from "@/legacy-social/server/channel-todos";
 import { loadLegacySocial } from "@/legacy-social/server/load";
 import { LegacySocialView } from "./social-view";
 
@@ -20,6 +21,8 @@ export async function LegacySocialPage({ customer, notice, now = new Date() }: {
   ]);
   // The newest month that has a sent Social media report; a failed read just leaves the button off (it is in Sentry via load).
   const newest = months.ok ? months.data.find((month) => month.reports.some((report) => report.service === "social")) : undefined;
+  // The number beside each channel, as on the Posts page; left off when it cannot be read.
+  const todos = data.ok && data.data !== null ? await loadChannelTodos(customer, data.data.channels.map((channel) => channel.platform)) : {};
   if (!data.ok || data.data === null) {
     return (
       <Panel title="Social media">
@@ -39,6 +42,7 @@ export async function LegacySocialPage({ customer, notice, now = new Date() }: {
       hasNumbers={data.data.channels.some((channel) => channel.platform !== "linkedin") && postingServiceSettings(process.env) !== null}
       canChange={customer.role !== "viewer"}
       savedWebsite={savedWebsite}
+      todos={todos}
     />
   );
 }

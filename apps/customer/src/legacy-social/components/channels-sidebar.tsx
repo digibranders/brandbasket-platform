@@ -16,6 +16,8 @@ export interface ChannelRow {
   readonly account: string;
   /** "Ends in 5 days" when the connection ends soon (or has), else null. */
   readonly ending: string | null;
+  /** How many topics or pictures this channel has waiting for the customer; none when 0. */
+  readonly todo?: number;
   /** Posts are being held back from this account. */
   readonly paused: boolean;
 }
@@ -84,9 +86,12 @@ export function ChannelsSidebar({ rows, bookedLine }: ChannelsSidebarProps): Rea
               >
                 <ChannelLogo platform={row.platform} medium />
                 <span className={cn("min-w-0", filtering && !selected && "opacity-60")}>
-                  <span title={row.account} className="block truncate type-body font-medium text-ink">
-                    {row.account}
-                    <span className="sr-only">, {PLATFORM_NAMES[row.platform]}</span>
+                  <span className="flex items-center gap-1.5">
+                    <span title={row.account} className="min-w-0 truncate type-body font-medium text-ink">
+                      {row.account}
+                      <span className="sr-only">, {PLATFORM_NAMES[row.platform]}</span>
+                    </span>
+                    {row.todo === undefined || row.todo === 0 ? null : <span aria-label={`${row.todo} to do`} className="shrink-0 rounded-full bg-warn-wash px-1.5 text-xs font-semibold leading-5 text-warn">{row.todo}</span>}
                   </span>
                   {row.paused ? <span className="mt-0.5 block text-xs font-semibold text-warn">Paused</span> : null}
                 </span>
