@@ -108,10 +108,27 @@ const CONNECT_NOTICES = {
 } as const;
 
 /** What the page says when a network sends the customer back (`?social=connected|denied|failed&channel=instagram`). Null for anything else, so a made-up address says nothing. */
-export function connectNoticeLine(social: string | readonly string[] | undefined, channel: string | readonly string[] | undefined): NoticeLine | null {
+export function connectNoticeLine(social: string | readonly string[] | undefined, channel: string | readonly string[] | undefined, reason?: string | readonly string[] | undefined): NoticeLine | null {
   if (typeof social !== "string" || (social !== "connected" && social !== "denied" && social !== "failed")) return null;
   const name = typeof channel === "string" && isPlatform(channel) ? CHANNEL_NAMES[channel] : "That account";
+  // The posting service refuses an account that is connected elsewhere: it never says whose it is, so the line does not either.
+  if (social === "failed" && reason === "ACCOUNT_IN_USE") return { ok: false, text: `${name === "That account" ? "That account" : `That ${name} account`} is already connected somewhere else, so it was not connected here. Use a different account, or tell us if you think this is a mistake.` };
   return CONNECT_NOTICES[social](name);
+}
+
+/** A refused connect that the customer may settle herself: an account connected to another of her own brands, which she can move here. */
+export interface AccountInUse {
+  readonly channel: Platform;
+  /** The posting service's id of the brand that holds the account. */
+  readonly heldBy: string;
+}
+
+/** Reads `?social=failed&channel=instagram&reason=ACCOUNT_IN_USE&heldBy=<id>`; null for anything else, and when the brand that holds it is not named (another customer's, never shown). */
+export function accountInUse(params: { readonly social?: string | readonly string[]; readonly channel?: string | readonly string[]; readonly reason?: string | readonly string[]; readonly heldBy?: string | readonly string[] }): AccountInUse | null {
+  const { social, channel, reason, heldBy } = params;
+  if (social !== "failed" || reason !== "ACCOUNT_IN_USE" || typeof channel !== "string" || !isPlatform(channel)) return null;
+  if (typeof heldBy !== "string" || heldBy.trim() === "" || heldBy.length > 200) return null;
+  return { channel, heldBy };
 }
 
 export const CONNECT_UNAVAILABLE = "Connecting accounts is not available just now. Try again later, or ask us for help.";

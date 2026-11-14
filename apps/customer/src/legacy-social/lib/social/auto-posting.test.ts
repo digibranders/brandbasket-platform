@@ -27,6 +27,6 @@ describe("automatic posting as the posting service holds it", () => {
   it("says the wait in words", () => {
     expect(safetyWords(24)).toBe("24 hours before it goes out");
     expect(safetyWords(1)).toBe("1 hour before it goes out");
-    expect(safetyWords(0)).toBe("No wait: right before it goes out");
+    expect(safetyWords(0)).toBe("as soon as it passes our checks");
   });
 });

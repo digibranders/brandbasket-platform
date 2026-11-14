@@ -9,6 +9,7 @@ import Link from "next/link";
 import { BrandControl } from "./brand-switcher";
 import { ChannelFilterProvider } from "./channel-filter";
 import { ChannelsSidebar, type ChannelRow } from "./channels-sidebar";
+import { MoveAccountPrompt, type MoveOffer } from "./move-account";
 import { ConnectStatusCard } from "./connect-status";
 import { NewPostButton, NewPostRequestProvider } from "./new-post-request";
 import { SMALL_SOFT } from "./small-buttons";
@@ -29,6 +30,8 @@ export interface LegacySocialViewProps {
   readonly reportHref: string | null;
   /** What each channel has waiting for the customer and whether posts are being written for it, beside its name. */
   readonly channelState?: ChannelState;
+  /** An account the customer tried to connect is connected to another of her brands: offer to move it here. */
+  readonly move?: MoveOffer | null;
 }
 
 /** The channels column's rows and its line about how far ahead posts are booked. */
@@ -51,7 +54,7 @@ function channelsColumn(data: LegacySocialData, now: Date, state: ChannelState |
  * Social media as it was in the old dashboard: the channels column against the rail, the title with New post, the Posts and Analytics
  * tabs, and the week calendar. Copied from the old app and left as it was.
  */
-export function LegacySocialView({ data, notice, now, hasNumbers, canChange, reportHref, savedWebsite, channelState }: LegacySocialViewProps): ReactElement {
+export function LegacySocialView({ data, notice, now, hasNumbers, canChange, reportHref, savedWebsite, channelState, move = null }: LegacySocialViewProps): ReactElement {
   const status = connectStatus(data.channels, data.posts, now);
   const canPost = canChange;
   const hasAccounts = data.channels.length > 0;
@@ -81,7 +84,8 @@ export function LegacySocialView({ data, notice, now, hasNumbers, canChange, rep
                 </div>
               </header>
               <SocialTabs current="calendar" hasNumbers={hasNumbers} onlyWithoutNumbers={!hasNumbers && data.channels.length > 0} hasPosts={canChange} waiting={totalTodo(channelState?.todos ?? {})} />
-              {notice === null ? null : (
+              {move === null ? null : <MoveAccountPrompt offer={move} />}
+              {notice === null || move !== null ? null : (
                 <p role={notice.ok ? "status" : "alert"} className={cn("text-[0.8125rem] font-semibold", notice.ok ? "text-sage-deep" : "text-error")}>
                   {notice.text}
                 </p>

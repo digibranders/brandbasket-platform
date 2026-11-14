@@ -8,12 +8,13 @@ import { revalidatePath } from "next/cache";
 import { redirect, unstable_rethrow } from "next/navigation";
 import { requireService } from "@/lib/guards";
 import { brandOf } from "@/features/social/brand";
+import { loadBrands } from "@/legacy-social/server/social-auto";
 import { BRAND_TIME_ZONE } from "@/legacy-social/shims";
 import { actorOf, connectLink, createPost, decidePoster, deletePost, ensureWorkspace, loadAutoPosting, loadBatches, loadChannels, loadPosters, loadSchedule, loadWorkspaceFacts, movePost, saveAutoPosting, sendPostNow, SocialAutoError, socialAutoSettings, startSiteJob, updatePost } from "@/legacy-social/server/social-auto";
 import { canAddOn, checkNewPost, checkPostEdit, wordsForPostRefusal, isChangeablePostId, isTime, isWrittenPostId, momentHasPassed, type NewPostState } from "@/legacy-social/lib/social/new-post";
 import { wordsForCode } from "@/legacy-social/lib/social/ai";
 import { CHANNEL_PLATFORMS, PLATFORM_NAMES, type ChannelPlatform } from "@/legacy-social/lib/social/auto";
-import { SAFETY_HOURS } from "@/legacy-social/lib/social/auto-posting";
+import { AUTO_SAFETY_HOURS, SAFETY_HOURS } from "@/legacy-social/lib/social/auto-posting";
 import { firstStartDay, nextStartDay, planEndDay, renewalDay } from "@/legacy-social/lib/social/plan-window";
 import { dayGroups } from "@/legacy-social/lib/social/schedule";
 
@@ -68,6 +69,42 @@ export async function connectChannelAction(formData: FormData): Promise<void> {
   } catch (error) {
     unstable_rethrow(error);
     console.error("[social] could not start a connection", errorLogInfo(error));
+    redirect(failed);
+  }
+  redirect(link);
+}
+
+const moveSchema = z.object({ channel: z.enum(CHANNEL_PLATFORMS), moveFrom: z.string().min(1).max(200) });
+
+/**
+ * "Move it": an account that is connected to another brand of the same business is moved to the brand being looked at. The brand it comes
+ * from is never taken from the form on trust: it must be one of this business's own brands (read from the posting service) and not the
+ * brand it goes to. The customer then presses Allow on the network's page, and the posting service moves the account; the brand it leaves
+ * keeps its posts, held until an account is connected again.
+ */
+export async function moveChannelAction(formData: FormData): Promise<void> {
+  const customer = await requireService("social", { write: true });
+  const parsed = moveSchema.safeParse({ channel: formData.get("channel"), moveFrom: formData.get("moveFrom") });
+  if (!parsed.success || customer.role === "viewer") redirect("/social?social=failed");
+  const failed = `/social?social=failed&channel=${parsed.data.channel}`;
+  let settings: ReturnType<typeof socialAutoSettings>;
+  try {
+    settings = socialAutoSettings();
+  } catch (error) {
+    console.error("[social] social-auto is not configured correctly", errorLogInfo(error));
+    redirect(failed);
+  }
+  if (settings === null) redirect("/social?social=unavailable");
+  let link: string;
+  try {
+    const brand = await brandOf(customer);
+    const brands = await loadBrands(settings, customer.businessId, customer.businessName);
+    const holder = brands?.brands.find((one) => one.externalId === parsed.data.moveFrom);
+    if (holder === undefined || holder.externalId === brand.externalId) redirect(failed);
+    link = await connectLink(settings, brand.externalId, parsed.data.channel, fetch, holder.externalId);
+  } catch (error) {
+    unstable_rethrow(error);
+    console.error("[social] could not start moving an account", errorLogInfo(error));
     redirect(failed);
   }
   redirect(link);
@@ -296,7 +333,7 @@ export async function startSiteJobAction(formData: FormData): Promise<NewPostSta
       const wanted = parsed.data.networks.filter((platform) => connectedNow.some((channel) => channel.platform === platform));
       if (wanted.length === 0) return { status: "error", message: wordsForCode("CHANNEL_NOT_CONNECTED") };
       const channelsToSave = CHANNEL_PLATFORMS.filter((platform) => wanted.includes(platform) || current.channels.includes(platform));
-      await saveAutoPosting(settings, brand.externalId, { channels: channelsToSave, safetyHours: autoHours.success ? autoHours.data : 24 }, actorOf(customer.tenant));
+      await saveAutoPosting(settings, brand.externalId, { channels: channelsToSave, safetyHours: autoHours.success ? autoHours.data : AUTO_SAFETY_HOURS }, actorOf(customer.tenant));
     }
     // The first plan starts tomorrow, not on the next Monday. A channel added to a plan already running keeps the posting service's own start, so it
     // lines up with the others.
