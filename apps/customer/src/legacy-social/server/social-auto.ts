@@ -2,6 +2,7 @@ import "server-only";
 import { z } from "zod";
 import { readAnalytics, type Analytics } from "@/legacy-social/lib/social/analytics";
 import { readCarousel, readCarouselWeekly, readCarousels, type CarouselDetail, type CarouselSummary } from "@/legacy-social/lib/social/carousel";
+import { readSchedule, type PostingDays } from "@/legacy-social/lib/social/schedule";
 import { brandIdFor, readBrands, type BrandsView } from "@/features/social/brands";
 import { readBatches, readBatchPlan, readExpiredBatches, readFacts, readJob, readJobs, readPosters, readTopicRequests, readTopics, type BatchPlan, type ExpiredBatch, type FactsView, type Poster, type SiteJob, type Topic, type TopicRequest, type WrittenBatch } from "@/legacy-social/lib/social/ai";
 import { isChannelPlatform, readChannels, readConnectLink, readNotices, readPosts, readWebsite, type AutoChannel, type AutoPost, type ChannelPlatform, type WorkspaceNotice } from "@/legacy-social/lib/social/auto";
@@ -77,7 +78,7 @@ interface Answer {
 }
 
 /** One call. Never follows a redirect (the key must not travel anywhere else) and gives up after ten seconds. */
-async function call(settings: SocialAutoSettings, path: string, init: { readonly method: "GET" | "POST" | "PATCH" | "DELETE"; readonly body?: unknown; readonly picture?: Uint8Array; readonly actor?: string }, send: typeof fetch): Promise<Answer> {
+async function call(settings: SocialAutoSettings, path: string, init: { readonly method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE"; readonly body?: unknown; readonly picture?: Uint8Array; readonly actor?: string }, send: typeof fetch): Promise<Answer> {
   let response: Response;
   try {
     response = await send(`${settings.baseUrl}${path}`, {
@@ -496,6 +497,25 @@ export async function loadPictureLimits(settings: SocialAutoSettings, externalId
     restart: parsed.data.week.restart,
     channels: parsed.data.channels.flatMap((channel) => (isChannelPlatform(channel.network) ? [{ network: channel.network, limit: channel.limit, used: channel.used, left: channel.left }] : [])),
   };
+}
+
+/**
+ * The days each channel posts on. Null when the posting service has no schedule to give (an older one), so the page leaves the choice out
+ * instead of offering something that cannot be saved; empty for a brand with no workspace yet.
+ */
+export async function loadSchedule(settings: SocialAutoSettings, externalId: string, send: typeof fetch = fetch): Promise<PostingDays | null> {
+  const answer = await call(settings, `/api/v1/schedule?${new URLSearchParams({ externalId })}`, { method: "GET" }, send);
+  if (answer.status === 404 && (answer.body as { code?: unknown } | null)?.code === "WORKSPACE_NOT_FOUND") return {};
+  if (answer.status === 404 || answer.status === 405 || answer.status === 501) return null;
+  if (answer.status !== 200) throw refusal(answer, "the posting days");
+  return readSchedule(answer.body);
+}
+
+/** Saves the days of every channel at once (a channel left out goes back to the usual spread) and answers what the service now holds. */
+export async function saveSchedule(settings: SocialAutoSettings, externalId: string, channels: Readonly<Record<string, readonly string[]>>, send: typeof fetch = fetch): Promise<PostingDays> {
+  const answer = await call(settings, "/api/v1/schedule", { method: "PUT", body: { externalId, channels } }, send);
+  if (answer.status !== 200) throw refusal(answer, "the posting days");
+  return readSchedule(answer.body);
 }
 
 /** The customer's carousels, newest first, and whether the weekly carousel is on. A business with no workspace, or a posting service that has no carousels yet, has none. */

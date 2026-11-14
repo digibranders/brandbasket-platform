@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 
 vi.mock("server-only", () => ({}));
 
-import { askTopic, decideCarousel, fetchCarouselSlide, loadCarousel, loadCarouselList, loadCarousels, loadTopicRequests, makeCarousel, renameBrand, replaceTopic, setCarouselWeekly, SocialAutoError, type SocialAutoSettings } from "./social-auto";
+import { askTopic, decideCarousel, fetchCarouselSlide, loadCarousel, loadCarouselList, loadCarousels, loadSchedule, loadTopicRequests, makeCarousel, renameBrand, replaceTopic, saveSchedule, setCarouselWeekly, SocialAutoError, type SocialAutoSettings } from "./social-auto";
 
 const settings: SocialAutoSettings = { baseUrl: "http://127.0.0.1:4020", key: "secret", returnUrl: "https://app.example.com/social" };
 const json = (status: number, body: unknown = {}) => vi.fn(async () => new Response(JSON.stringify(body), { status })) as unknown as typeof fetch;
@@ -70,6 +70,28 @@ describe("the carousel calls", () => {
     expect(sentUrl(send)).toBe("http://127.0.0.1:4020/api/v1/carousels?externalId=b1&id=c1&slide=2&image=1");
     expect(await fetchCarouselSlide(settings, "b1", "c1", 2, vi.fn(async () => new Response(null, { status: 404 })) as unknown as typeof fetch)).toBeNull();
     await expect(fetchCarouselSlide(settings, "b1", "c1", 2, vi.fn(async () => new Response("nope", { status: 200, headers: { "content-type": "text/html" } })) as unknown as typeof fetch)).rejects.toBeInstanceOf(SocialAutoError);
+  });
+
+  it("reads the posting days, and tells a missing workspace (none yet) from a posting service that has no schedule (not offered)", async () => {
+    const send = json(200, { schedule: { channels: { instagram: { days: ["mon", "tue", "sat"], nextWeek: [] } } } });
+    expect(await loadSchedule(settings, "b1", send)).toEqual({ instagram: ["mon", "tue", "sat"] });
+    expect(sentUrl(send)).toBe("http://127.0.0.1:4020/api/v1/schedule?externalId=b1");
+    expect(await loadSchedule(settings, "b1", json(404, { code: "WORKSPACE_NOT_FOUND", error: "no such workspace" }))).toEqual({});
+    expect(await loadSchedule(settings, "b1", json(404))).toBeNull();
+    expect(await loadSchedule(settings, "b1", json(501))).toBeNull();
+    await expect(loadSchedule(settings, "b1", json(500))).rejects.toBeInstanceOf(SocialAutoError);
+  });
+
+  it("saves the posting days with a PUT of every channel's days, and passes on a refusal with its code", async () => {
+    const send = json(200, { schedule: { channels: { instagram: { days: ["mon"], nextWeek: [] } } } });
+    expect(await saveSchedule(settings, "b1", { instagram: ["mon"] }, send)).toEqual({ instagram: ["mon"] });
+    const call = vi.mocked(send).mock.calls[0];
+    expect(String(call?.[0])).toBe("http://127.0.0.1:4020/api/v1/schedule");
+    expect(call?.[1]?.method).toBe("PUT");
+    expect(JSON.parse(String(call?.[1]?.body))).toEqual({ externalId: "b1", channels: { instagram: ["mon"] } });
+    const refused = await saveSchedule(settings, "b1", { instagram: [] }, json(400, { code: "INVALID_DAYS", error: "days must be a list" })).catch((error: unknown) => error);
+    expect(refused).toBeInstanceOf(SocialAutoError);
+    expect((refused as SocialAutoError).code).toBe("INVALID_DAYS");
   });
 
   it("renames a brand with a PATCH, and says so when the posting service refuses", async () => {

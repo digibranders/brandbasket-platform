@@ -382,6 +382,8 @@ const CODE_WORDS: Readonly<Record<string, string>> = {
   INVALID_SITE: "That does not look like a website address. Check it and try again.",
   SITE_MISMATCH: "Your posts are written from the website you gave us first. If your website has changed, ask us and we will update it.",
   INVALID_NETWORKS: "Choose at least one network to write for.",
+  INVALID_DAYS: "Choose at least one day of the week.",
+  CHANNEL_DAYS_DIFFER: "Your channels post on different days, so their posts are written one channel at a time. Start them one by one.",
   LAST_BRAND: "Keep at least one brand. Add another before you archive this one.",
   BRAND_LIMIT_REACHED: "You have as many brands as your plan allows. Ask us to allow more.",
   GROUP_MISMATCH: "Something went wrong on our side. Reload the page and try again.",

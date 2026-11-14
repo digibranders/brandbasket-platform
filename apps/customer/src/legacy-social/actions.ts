@@ -9,10 +9,11 @@ import { redirect, unstable_rethrow } from "next/navigation";
 import { requireService } from "@/lib/guards";
 import { brandOf } from "@/features/social/brand";
 import { BRAND_TIME_ZONE } from "@/legacy-social/shims";
-import { actorOf, connectLink, createPost, deletePost, ensureWorkspace, loadChannels, loadWorkspaceFacts, movePost, sendPostNow, SocialAutoError, socialAutoSettings, startSiteJob, updatePost } from "@/legacy-social/server/social-auto";
+import { actorOf, connectLink, createPost, deletePost, ensureWorkspace, loadChannels, loadSchedule, loadWorkspaceFacts, movePost, saveSchedule, sendPostNow, SocialAutoError, socialAutoSettings, startSiteJob, updatePost } from "@/legacy-social/server/social-auto";
 import { canAddOn, checkNewPost, checkPostEdit, wordsForPostRefusal, isChangeablePostId, isTime, isWrittenPostId, momentHasPassed, type NewPostState } from "@/legacy-social/lib/social/new-post";
 import { wordsForCode } from "@/legacy-social/lib/social/ai";
 import { CHANNEL_PLATFORMS, type ChannelPlatform } from "@/legacy-social/lib/social/auto";
+import { parseDays, withChannelDays } from "@/legacy-social/lib/social/schedule";
 
 /*
  * The old Social media page's actions, copied as they were and moved onto this app's guards: the business and its name come from the
@@ -277,6 +278,36 @@ export async function startSiteJobAction(formData: FormData): Promise<NewPostSta
     unstable_rethrow(error);
     if (error instanceof SocialAutoError && error.code !== null) return { status: "error", message: wordsForCode(error.code) };
     reportError(error, { area: "social.start-site-job" });
+    return { status: "error", message: wordsForCode(null) };
+  }
+  revalidatePath("/social");
+  return { status: "saved" };
+}
+
+const postingDaysSchema = z.object({ channel: z.enum(CHANNEL_PLATFORMS), days: z.string().max(40) });
+
+/**
+ * Saves the days one channel posts on (`mon,tue,sat`; nothing at all takes the channel back to the usual spread). The posting service keeps
+ * every channel's days as one setting, so the channels' other days are read first and sent with it. Only batches written afterwards use
+ * the new days: what is already written never moves. The brand comes from the session, never from the form.
+ */
+export async function setPostingDaysAction(formData: FormData): Promise<NewPostState> {
+  const parsed = postingDaysSchema.safeParse({ channel: formData.get("channel"), days: formData.get("days") ?? "" });
+  const days = parsed.success ? parseDays(parsed.data.days) : null;
+  if (!parsed.success || days === null) return { status: "error", message: "Choose the days from Monday to Sunday." };
+  try {
+    const customer = await requireService("social", { write: true });
+    if (customer.role === "viewer") return { status: "error", message: "Only owners and editors can change this." };
+    const settings = socialAutoSettings();
+    if (settings === null) return { status: "error", message: "Posting is not available just now. Try again later." };
+    const brand = await brandOf(customer);
+    const current = await loadSchedule(settings, brand.externalId);
+    if (current === null) return { status: "error", message: "Choosing days is not available just now. Try again later." };
+    await saveSchedule(settings, brand.externalId, withChannelDays(current, parsed.data.channel, days));
+  } catch (error) {
+    unstable_rethrow(error);
+    if (error instanceof SocialAutoError && error.code !== null) return { status: "error", message: wordsForCode(error.code) };
+    reportError(error, { area: "social.posting-days" });
     return { status: "error", message: wordsForCode(null) };
   }
   revalidatePath("/social");

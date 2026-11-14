@@ -6,8 +6,10 @@ import { cn } from "@brandbasket/shared/lib/cn";
 import { SOFT_BUTTON } from "@/legacy-social/classes";
 import { connectChannelAction } from "@/legacy-social/actions";
 import { CHANNEL_PLATFORMS, PLATFORM_HINTS, PLATFORM_NAMES, type ChannelPlatform } from "@/legacy-social/lib/social/auto";
+import type { Weekday } from "@/legacy-social/lib/social/schedule";
 import { ChannelLogo } from "./channel-logo";
 import { useChannelFilter } from "./channel-filter";
+import { PostingDays } from "./posting-days";
 
 export interface ChannelRow {
   readonly id: string;
@@ -17,12 +19,16 @@ export interface ChannelRow {
   readonly ending: string | null;
   /** Posts are being held back from this account. */
   readonly paused: boolean;
+  /** The days this channel posts on (empty for the usual spread), or null when the posting service cannot say, so no choice is offered. */
+  readonly days: readonly Weekday[] | null;
 }
 
 interface ChannelsSidebarProps {
   readonly rows: readonly ChannelRow[];
   /** "Posts booked until 30 Nov.", or what to say when none are. */
   readonly bookedLine: string;
+  /** Owners and editors may choose the days; a viewer only reads them. */
+  readonly canChange: boolean;
 }
 
 /** A button that sends the customer to a network's own Allow page. The business comes from the session on the server. */
@@ -42,7 +48,7 @@ export function ConnectButton({ platform, label, className, logo = false }: { re
  * The second sidebar of the Social media page: only the channels. Each connected account is a row that switches that
  * network's posts on or off in the calendar; a network with no account yet has a Connect button.
  */
-export function ChannelsSidebar({ rows, bookedLine }: ChannelsSidebarProps): ReactElement {
+export function ChannelsSidebar({ rows, bookedLine, canChange }: ChannelsSidebarProps): ReactElement {
   const { shown, filtering, only, showAll } = useChannelFilter();
   const missing = CHANNEL_PLATFORMS.filter((platform) => !rows.some((row) => row.platform === platform));
   return (
@@ -90,6 +96,7 @@ export function ChannelsSidebar({ rows, bookedLine }: ChannelsSidebarProps): Rea
                   {row.paused ? <span className="mt-0.5 block text-xs font-semibold text-warn">Paused</span> : null}
                 </span>
               </button>
+              {row.days === null ? null : <PostingDays platform={row.platform} days={row.days} canChange={canChange} />}
               {row.ending === null ? null : (
                 <div className="mt-1 grid gap-2 pb-2 pl-[2.75rem] pr-1.5">
                   <span className="inline-flex w-fit items-center gap-1 rounded-full bg-warn-wash px-2 py-0.5 text-xs font-semibold text-warn">

@@ -38,6 +38,7 @@ function channelsColumn(data: LegacySocialData, now: Date): { rows: ChannelRow[]
     account: channel.account,
     ending: endingSoon(channel, now) ? endsInWords(daysUntilEnd(channel, now) ?? 0) : null,
     paused: channel.paused === true,
+    days: data.postingDays === null ? null : (data.postingDays[channel.platform] ?? []),
   }));
   const until = bookedUntil(data.posts, data.today);
   return { rows, bookedLine: until === null ? "No posts are booked yet." : `Posts booked until ${dayLabel(until, { day: "numeric", month: "short" })}.` };
@@ -59,7 +60,7 @@ export function LegacySocialView({ data, notice, now, approvals, hasNumbers, can
       <ChannelFilterProvider>
         {/* On a wide screen the channels column steps out of the shell's gutter and sits against the menu, as it did in the old dashboard. */}
         <div className="flex flex-col gap-6 lg:-mt-5 lg:-ml-gutter lg:flex-row lg:gap-8">
-          <ChannelsSidebar rows={rows} bookedLine={bookedLine} />
+          <ChannelsSidebar rows={rows} bookedLine={bookedLine} canChange={canChange} />
           <div className="order-first min-w-0 flex-1 lg:order-none lg:pt-5">
             <div className="mr-auto grid w-full max-w-[97.5rem] grid-cols-[minmax(0,1fr)] gap-6 md:gap-8">
               <header className="flex flex-wrap items-start justify-between gap-4">
