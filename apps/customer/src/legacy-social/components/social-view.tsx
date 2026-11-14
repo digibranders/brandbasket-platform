@@ -2,7 +2,7 @@ import { FileText } from "@phosphor-icons/react/dist/ssr";
 import type { ReactElement, ReactNode } from "react";
 import { cn } from "@brandbasket/shared/lib/cn";
 import { allPaused, bookedUntil, connectStatus, dayLabel, daysUntilEnd, endingSoon, endsInWords, type ChannelPlatform } from "@/legacy-social/lib/social/auto";
-import { sortChannels } from "@/legacy-social/lib/social/review-flow";
+import { sortChannels, totalTodo } from "@/legacy-social/lib/social/review-flow";
 import type { LegacySocialData } from "@/legacy-social/server/load";
 import Link from "next/link";
 import { BrandControl } from "./brand-switcher";
@@ -77,7 +77,7 @@ export function LegacySocialView({ data, notice, now, hasNumbers, canChange, rep
                   {canPost ? <NewPostButton disabled={!hasAccounts} /> : null}
                 </div>
               </header>
-              <SocialTabs current="calendar" hasNumbers={hasNumbers} onlyWithoutNumbers={!hasNumbers && data.channels.length > 0} hasPosts={canChange} />
+              <SocialTabs current="calendar" hasNumbers={hasNumbers} onlyWithoutNumbers={!hasNumbers && data.channels.length > 0} hasPosts={canChange} waiting={totalTodo(todos)} />
               {notice === null ? null : (
                 <p role={notice.ok ? "status" : "alert"} className={cn("text-[0.8125rem] font-semibold", notice.ok ? "text-sage-deep" : "text-error")}>
                   {notice.text}

@@ -14,13 +14,15 @@ export interface SocialTabsProps {
   readonly onlyWithoutNumbers?: boolean;
   /** True once posts have been written from the website: only then is there anything to look over. */
   readonly hasPosts?: boolean;
+  /** How many things wait for the customer on the Posts tab (the channel numbers added up); none when 0 or not known. */
+  readonly waiting?: number;
 }
 
 const TAB = "-mb-px no-underline border-b-2 px-3.5 py-2 text-[0.875rem] font-semibold";
 const tab = (on: boolean): string => cn(TAB, on ? "border-rattan-text text-ink" : "border-transparent text-ink-2");
 
 /** Calendar, Posts (the written posts to look over) and Analytics, one line under the page title, so the header keeps only its buttons. Analytics is greyed, with the reason, until an account is connected. */
-export function SocialTabs({ current, hasNumbers, onlyWithoutNumbers = false, hasPosts = false }: SocialTabsProps): ReactElement {
+export function SocialTabs({ current, hasNumbers, onlyWithoutNumbers = false, hasPosts = false, waiting = 0 }: SocialTabsProps): ReactElement {
   // The channel she is looking at goes with her to the next tab.
   const channel = channelParamOf(useSearchParams()?.get(CHANNEL_PARAM));
   return (
@@ -31,6 +33,12 @@ export function SocialTabs({ current, hasNumbers, onlyWithoutNumbers = false, ha
       {hasPosts ? (
         <Link href={withChannel("/social/review", channel)} aria-current={current === "posts" ? "page" : undefined} className={tab(current === "posts")}>
           Posts
+          {waiting > 0 ? (
+            <span className="ml-1.5 rounded-full bg-warn-wash px-1.5 text-[0.6875rem] font-bold leading-5 text-warn" title={`${waiting} waiting for you on Posts`}>
+              <span className="sr-only">, {waiting} waiting for you</span>
+              <span aria-hidden="true">{waiting}</span>
+            </span>
+          ) : null}
         </Link>
       ) : null}
       {hasNumbers ? (

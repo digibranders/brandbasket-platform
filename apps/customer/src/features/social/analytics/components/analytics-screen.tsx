@@ -248,7 +248,7 @@ export async function SocialAnalytics({ customer, range, channel, now = new Date
             )}
           </div>
         </header>
-        <SocialTabs current="analytics" hasNumbers hasPosts={customer.role !== "viewer"} />
+        <SocialTabs current="analytics" hasNumbers hasPosts={customer.role !== "viewer"} waiting={column.ok ? column.data.rows.reduce((total, row) => total + (row.todo ?? 0), 0) : 0} />
       <Stack>
         {!data.ok ? (
           <Panel title="Analytics">

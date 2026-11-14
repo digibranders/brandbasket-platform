@@ -1259,6 +1259,7 @@ export function ReviewChannelsColumn(): ReactElement {
       <h2 id="review-channels-title" className="px-1 type-section text-ink">
         Channels
       </h2>
+      {channels.some((one) => todoOf(one.platform).count > 0) ? <p className="mt-1 px-1 text-xs text-ink-3">The number is what waits for you on Posts.</p> : null}
       <ul className="mt-3 grid gap-1">
         <li>
           <button type="button" aria-pressed={channel === "all"} onClick={() => setChannel("all")} className={cn("grid w-full grid-cols-[1.75rem_minmax(0,1fr)] items-center gap-2.5 rounded-control px-2 py-1.5 text-left transition-colors hover:bg-neutral-wash", channel === "all" && "bg-neutral-wash")}>

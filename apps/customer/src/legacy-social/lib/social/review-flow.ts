@@ -139,3 +139,6 @@ export function channelTodoCounts(groups: readonly ReviewGroup[], platforms: rea
 
 /** The channels in one fixed order (Instagram, Facebook, LinkedIn, Google) on every page, whatever order the posting service lists them in. */
 export const sortChannels = <T extends { readonly platform: ChannelPlatform }>(rows: readonly T[]): T[] => [...rows].sort((a, b) => CHANNEL_PLATFORMS.indexOf(a.platform) - CHANNEL_PLATFORMS.indexOf(b.platform));
+
+/** The channel numbers added up: what waits for the customer on the Posts tab. */
+export const totalTodo = (counts: Partial<Record<ChannelPlatform, number>>): number => Object.values(counts).reduce<number>((total, count) => total + (count ?? 0), 0);

@@ -57,6 +57,7 @@ export function ChannelsSidebar({ rows, bookedLine }: ChannelsSidebarProps): Rea
       <h2 id="channels-title" className="px-1 type-section text-ink">
         Channels
       </h2>
+      {rows.some((row) => (row.todo ?? 0) > 0) ? <p className="mt-1 px-1 text-xs text-ink-3">The number is what waits for you on Posts.</p> : null}
 
       <ul className="mt-3 grid gap-1">
         {rows.length === 0 ? null : (

@@ -45,6 +45,7 @@ function Body({ data, selected, hrefFor, canChange }: Omit<ChannelsColumnProps, 
   const { rows, missing, live } = data;
   return (
     <>
+      {rows.some((row) => (row.todo ?? 0) > 0) ? <p className="-mt-2 px-1 text-xs text-ink-3">The number is what waits for you on Posts.</p> : null}
       {rows.length === 0 ? null : (
         <ul className="m-0 flex list-none gap-1 overflow-x-auto p-0 lg:flex-col lg:overflow-visible">
           <li className="shrink-0 lg:shrink">
