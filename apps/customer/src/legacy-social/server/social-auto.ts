@@ -288,11 +288,11 @@ export const actorOf = (tenant: { readonly businessId: string; readonly userId: 
 export async function startSiteJob(
   settings: SocialAutoSettings,
   businessId: string,
-  request: { readonly site: string; readonly page: boolean; readonly networks?: readonly ChannelPlatform[]; /** The Monday a further month starts, `YYYY-MM-DD`. */ readonly startDate?: string },
+  request: { readonly site: string; readonly page: boolean; readonly networks?: readonly ChannelPlatform[]; /** The first day a plan starts, `YYYY-MM-DD`. */ readonly startDate?: string; /** The last day a post may fall on, `YYYY-MM-DD`: the day before the paid month renews. */ readonly endDate?: string },
   actor: string,
   send: typeof fetch = fetch,
 ): Promise<{ readonly job: SiteJob; readonly created: boolean }> {
-  const body = { externalId: businessId, site: request.site, ...(request.page ? { page: true } : {}), ...(request.networks === undefined || request.networks.length === 0 ? {} : { networks: request.networks }), ...(request.startDate === undefined ? {} : { startDate: request.startDate }) };
+  const body = { externalId: businessId, site: request.site, ...(request.page ? { page: true } : {}), ...(request.networks === undefined || request.networks.length === 0 ? {} : { networks: request.networks }), ...(request.startDate === undefined ? {} : { startDate: request.startDate }), ...(request.endDate === undefined ? {} : { endDate: request.endDate }) };
   const answer = await call(settings, "/api/v1/site-jobs", { method: "POST", body, actor }, send);
   if (answer.status !== 200 && answer.status !== 202) throw refusal(answer, "the website job");
   const started = readJob(answer.body);

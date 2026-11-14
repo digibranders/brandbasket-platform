@@ -14,7 +14,7 @@ import { canAddOn, checkNewPost, checkPostEdit, wordsForPostRefusal, isChangeabl
 import { wordsForCode } from "@/legacy-social/lib/social/ai";
 import { CHANNEL_PLATFORMS, PLATFORM_NAMES, type ChannelPlatform } from "@/legacy-social/lib/social/auto";
 import { SAFETY_HOURS } from "@/legacy-social/lib/social/auto-posting";
-import { firstStartDay, nextStartDay, renewalDay } from "@/legacy-social/lib/social/plan-window";
+import { firstStartDay, nextStartDay, planEndDay, renewalDay } from "@/legacy-social/lib/social/plan-window";
 import { dayGroups } from "@/legacy-social/lib/social/schedule";
 
 /*
@@ -256,7 +256,9 @@ export async function startNextMonthAction(formData: FormData): Promise<NewPostS
     const [networks = connected, ...later] = dayGroups(connected, await loadSchedule(settings, brand.externalId));
     // The next month follows the paid month: it starts on the renewal day, never before the usual start (so plans do not overlap).
     const start = nextStartDay({ today: localDateIn(BRAND_TIME_ZONE, new Date()), earliest: parsed.data.startDate, renewsOn: renewalDay(customer.billing.subscription?.paidThroughAt ?? null, (at) => localDateIn(BRAND_TIME_ZONE, at)) });
-    const started = await startSiteJob(settings, brand.externalId, { site: facts.website, page: false, networks, startDate: start }, actorOf(customer.tenant));
+    const renews = renewalDay(customer.billing.subscription?.paidThroughAt ?? null, (at) => localDateIn(BRAND_TIME_ZONE, at));
+    const end = planEndDay({ start, renewsOn: renews });
+    const started = await startSiteJob(settings, brand.externalId, { site: facts.website, page: false, networks, startDate: start, ...(end === null ? {} : { endDate: end }) }, actorOf(customer.tenant));
     if (!started.created) return { status: "error", message: STILL_WRITING };
     if (later.length > 0) return { status: "partial", message: laterGroupsMessage(networks, later.flat()) };
   } catch (error) {
@@ -300,7 +302,9 @@ export async function startSiteJobAction(formData: FormData): Promise<NewPostSta
     // lines up with the others.
     const hasPlan = (await loadBatches(settings, brand.externalId)).plan?.startsOn != null;
     const first = startDate.success ? startDate.data : hasPlan ? undefined : firstStartDay(localDateIn(BRAND_TIME_ZONE, new Date()));
-    const started = await startSiteJob(settings, brand.externalId, { site: parsed.data.site, page: parsed.data.page, networks: parsed.data.networks satisfies ChannelPlatform[], ...(first === undefined ? {} : { startDate: first }) }, actorOf(customer.tenant));
+    // The first plan, with no start asked for, stops the day before the paid month renews.
+    const end = first === undefined || startDate.success ? null : planEndDay({ start: first, renewsOn: renewalDay(customer.billing.subscription?.paidThroughAt ?? null, (at) => localDateIn(BRAND_TIME_ZONE, at)) });
+    const started = await startSiteJob(settings, brand.externalId, { site: parsed.data.site, page: parsed.data.page, networks: parsed.data.networks satisfies ChannelPlatform[], ...(first === undefined ? {} : { startDate: first }), ...(end === null ? {} : { endDate: end }) }, actorOf(customer.tenant));
     // A batch is already being written: the posting service hands back that one, not a new one for these channels.
     if (!started.created) return { status: "error", message: STILL_WRITING };
   } catch (error) {
