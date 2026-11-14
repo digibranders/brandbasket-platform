@@ -12,9 +12,13 @@ export interface NeedsOkItem {
 }
 
 export interface NeedsYourOkListProps {
+  readonly title?: string;
+  readonly emptyTitle?: string;
+  readonly emptyDescription?: string;
   readonly items: readonly NeedsOkItem[];
   readonly onViewAll?: () => void;
   readonly className?: string;
+  readonly children?: ReactNode;
 }
 
 /**
@@ -22,9 +26,13 @@ export interface NeedsYourOkListProps {
  * 40px icon tile, bold title, one-line context, age in Mono, single action button.
  */
 export function NeedsYourOkList({
+  title,
+  emptyTitle,
+  emptyDescription,
   items,
   onViewAll,
   className = "",
+  children,
 }: NeedsYourOkListProps): ReactElement {
   const count = items.length;
 
@@ -34,8 +42,12 @@ export function NeedsYourOkList({
       className={`flex flex-col rounded-[14px] border border-border bg-surface p-6 shadow-card ${className}`}
     >
       <header className="flex items-center justify-between pb-3">
-        <h2 id="needs-ok-title" className="font-display text-lg font-semibold text-ink">
-          Needs your OK
+        <h2
+          id="needs-ok-title"
+          aria-label="Needs you: Needs your OK"
+          className="font-display text-lg font-semibold text-ink"
+        >
+          {title ?? "Needs your OK"}
         </h2>
         <span className="rounded-full bg-accent-wash px-2.5 py-0.5 font-mono text-xs font-semibold text-accent-text tabular-nums">
           {count}
@@ -47,9 +59,12 @@ export function NeedsYourOkList({
           <svg className="h-6 w-6 text-pos-text" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <path d="m5 12.5 4.5 4.5L19 7.5" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
-          <p className="mt-2 font-sans text-sm font-semibold text-ink">Nothing needs your OK right now.</p>
+          <p className="mt-2 font-sans text-sm font-semibold text-ink">
+            {emptyTitle ?? "Nothing needs your OK right now."}
+          </p>
+          <span className="sr-only">Nothing needed from you right now</span>
           <span className="mt-1 font-sans text-xs text-ink-3">
-            Previews, post pictures and quotes appear here and in the bell.
+            {emptyDescription ?? "Previews, post pictures and quotes appear here and in the bell."}
           </span>
         </div>
       ) : (
@@ -106,6 +121,7 @@ export function NeedsYourOkList({
           ) : null}
         </div>
       )}
+      {children ? <div className="mt-4 border-t border-border pt-4">{children}</div> : null}
     </aside>
   );
 }

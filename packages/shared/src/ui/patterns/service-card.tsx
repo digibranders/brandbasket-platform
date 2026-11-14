@@ -6,6 +6,7 @@ export interface ServiceCardProps {
   readonly serviceIcon: ReactNode;
   readonly statusLabel: string;
   readonly statusVariant?: StatusChipVariant;
+  readonly statusHasDot?: boolean;
   readonly summary: string;
   readonly action?: ReactNode;
   readonly children?: ReactNode;
@@ -20,6 +21,7 @@ export function ServiceCard({
   serviceIcon,
   statusLabel,
   statusVariant = "idle",
+  statusHasDot,
   summary,
   action,
   children,
@@ -36,7 +38,11 @@ export function ServiceCard({
           </span>
           <h2 className="font-display text-lg font-semibold tracking-tight text-ink">{serviceName}</h2>
         </div>
-        <StatusChip label={statusLabel} variant={statusVariant} />
+        <StatusChip
+          label={statusLabel}
+          variant={statusVariant}
+          hasDot={statusHasDot ?? (statusVariant === "active")}
+        />
       </header>
 
       <p className="mt-4 font-sans text-sm leading-relaxed text-ink-2">{summary}</p>
