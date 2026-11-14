@@ -105,7 +105,13 @@ describe("the Overview's money", () => {
 });
 
 describe("the Overview kickoff call", () => {
-  it("renders timing window and direct join meeting button when kickoff call is booked", async () => {
+  it("does not render redundant kickoff call section on client overview", async () => {
+    vi.mocked(findSetupCallBooking).mockResolvedValue(null);
+    const html = await render("building");
+    expect(html).not.toContain("No kickoff call booked yet.");
+  });
+
+  it("reflects kickoff booking in the CustomerMirrorPanel without a duplicate section", async () => {
     vi.mocked(findSetupCallBooking).mockResolvedValue({
       id: "booking-1",
       businessId: BUSINESS,
@@ -123,17 +129,10 @@ describe("the Overview kickoff call", () => {
     });
 
     const html = await render("building");
-    expect(html).toContain("Kickoff call");
+    expect(html).toContain("What the customer sees");
     expect(html).toContain("3:30 PM to 4:00 PM");
     expect(html).toContain('href="https://app.cal.com/video/cal-uid-456"');
-    expect(html).toContain("Join meeting");
-  });
-
-  it("shows quiet text when no kickoff call is booked", async () => {
-    vi.mocked(findSetupCallBooking).mockResolvedValue(null);
-    const html = await render("building");
-    expect(html).toContain("No kickoff call booked yet.");
-    expect(html).not.toContain("Join meeting");
+    expect(html).not.toContain("No kickoff call booked yet.");
   });
 });
 
