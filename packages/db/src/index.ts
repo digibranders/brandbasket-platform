@@ -1139,6 +1139,9 @@ export {
   type PriceChange,
 } from "./queries/pricing";
 export {
+  assertCustomerAppRole,
+  CUSTOMER_ROLE,
+  verifyStartupDatabaseRole,
   withCustomerRole,
   withTenantScope,
   withUserScope,
