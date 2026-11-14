@@ -11,7 +11,7 @@ import {
 } from "@brandbasket/db";
 import { getAppDb } from "@/lib/db";
 import { loadLiveAccounts } from "./accounts/loader";
-import { loadChannelTodos } from "@/legacy-social/server/channel-todos";
+import { loadChannelState } from "@/legacy-social/server/channel-todos";
 import { sortChannels } from "@/legacy-social/lib/social/review-flow";
 import { postingServiceSettings, type Platform } from "./analytics/rules";
 import type { CustomerContext } from "@/lib/guards";
@@ -113,9 +113,15 @@ export interface ChannelsColumnRow {
   readonly paused: boolean;
   /** How many topics or pictures this channel has waiting for the customer; left out or 0 when none. */
   readonly todo?: number;
+  /** Posts are being written or drawn for this channel right now. */
+  readonly working?: boolean;
+  /** When the newest finished work for this channel ended (ISO 8601). */
+  readonly doneAt?: string;
 }
 
 export interface ChannelsColumnData {
+  /** What the browser keeps the "looked at" record under; the brand being shown. */
+  readonly brandId?: string;
   readonly rows: readonly ChannelsColumnRow[];
   /** The networks with no account yet, which get a Connect button. Empty without a posting service. */
   readonly missing: readonly Platform[];
@@ -130,9 +136,9 @@ export interface ChannelsColumnData {
 export async function loadChannelsColumn(customer: Reader, now: Date): Promise<ChannelsColumnData> {
   if (postingServiceSettings(process.env) !== null) {
     const live = await loadLiveAccounts(customer, now);
-    const todos = await loadChannelTodos(customer, live.rows.map((row) => row.platform));
+    const state = await loadChannelState(customer, live.rows.map((row) => row.platform));
     // The channels in the same order on every page, each with the number of things waiting for the customer, as on the Posts page.
-    return { rows: sortChannels(live.rows).map((row) => ({ id: row.id, platform: row.platform, account: row.account, ending: row.ending, paused: row.paused, todo: todos[row.platform] ?? 0 })), missing: live.missing, live: true };
+    return { rows: sortChannels(live.rows).map((row) => ({ id: row.id, platform: row.platform, account: row.account, ending: row.ending, paused: row.paused, todo: state.todos[row.platform] ?? 0, working: state.working.includes(row.platform), doneAt: state.doneAt[row.platform] })), missing: live.missing, live: true, brandId: state.brandId };
   }
   const rows = await loadAccounts(customer);
   const shown = rows.flatMap((row): ChannelsColumnRow[] => {

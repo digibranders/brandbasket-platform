@@ -86,3 +86,14 @@ export function markSeen(brandId: string, current: SeenChannels, platform: Chann
   }
   return next;
 }
+
+/** What the channels column shows about each channel besides its name: the number waiting, and the work being done for it. */
+export interface ChannelState {
+  /** What the brand's channels are saved under in the browser, so "looked at" is kept per brand. */
+  readonly brandId: string;
+  readonly todos: Partial<Record<ChannelPlatform, number>>;
+  /** The channels something is being written or drawn for right now. */
+  readonly working: readonly ChannelPlatform[];
+  /** When the newest finished work for each channel ended (ISO 8601). */
+  readonly doneAt: Partial<Record<ChannelPlatform, string>>;
+}
