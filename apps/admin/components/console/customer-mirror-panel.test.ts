@@ -109,4 +109,30 @@ describe("CustomerMirrorPanel", () => {
 
     expect(html).toContain("Payment past due");
   });
+
+  it("displays timing window and join meeting link when meeting link is available", () => {
+    const client = makeClient("building");
+    const futureCall = new Date("2026-11-16T10:00:00Z"); // 3:30 PM IST
+    const booking: SetupCallBooking = {
+      ...makeBooking(futureCall),
+      inviteeUri: "https://api.cal.com/v2/bookings/call-abc-123",
+    };
+    const html = renderToStaticMarkup(createElement(CustomerMirrorPanel, { client, booking, now: NOW }));
+
+    expect(html).toContain("3:30 PM to 4:00 PM");
+    expect(html).toContain('href="https://app.cal.com/video/call-abc-123"');
+    expect(html).toContain("Join meeting");
+  });
+
+  it("does not display join meeting link once the call has been held", () => {
+    const client = makeClient("building");
+    const pastCall = new Date("2026-11-14T08:00:00Z");
+    const booking: SetupCallBooking = {
+      ...makeBooking(pastCall, new Date("2026-11-14T08:30:00Z")),
+      inviteeUri: "https://api.cal.com/v2/bookings/call-abc-123",
+    };
+    const html = renderToStaticMarkup(createElement(CustomerMirrorPanel, { client, booking, now: NOW }));
+
+    expect(html).not.toContain("Join meeting");
+  });
 });

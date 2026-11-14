@@ -2,7 +2,7 @@ import type { WebsitePage } from "@brandbasket/db";
 import { NextActionCard, PreviewFrame, Stepper, type StepItem } from "@brandbasket/shared/ui/patterns";
 import { safeExternalHref } from "@brandbasket/shared/lib/safe-link";
 import { MetricStrip, PageHeader, Panel, PanelData, PanelError } from "@/components";
-import { formatDate, formatNumber, formatQuantity } from "@/lib/format";
+import { formatDate, formatDateTime, formatNumber, formatQuantity, formatTime } from "@/lib/format";
 import type { CustomerContext } from "@/lib/guards";
 import type { Loaded } from "@/lib/loaded";
 import { EmptyState, Icon, LinkButton, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/ui";
@@ -112,6 +112,15 @@ export function WebsiteScreen({ context, core, overview, pages, notice, feedback
   const address = addressPanel(domain, project?.status ?? null);
 
   if (view.kind === "kickoff") {
+    const kickoffTiming = view.startsAt
+      ? view.endsAt
+        ? `${formatDateTime(view.startsAt, now)} to ${formatTime(view.endsAt)}`
+        : formatDateTime(view.startsAt, now)
+      : null;
+    const description = kickoffTiming
+      ? `Kickoff call booked for ${kickoffTiming}. We will call the primary contact number or join on video.`
+      : KICKOFF_CALL_D31_WORDING;
+
     return (
       <>
         <PageHeader
@@ -129,16 +138,39 @@ export function WebsiteScreen({ context, core, overview, pages, notice, feedback
                 serviceIcon={<Icon name="Globe" size="md" />}
                 serviceBadge="Kickoff"
                 title="Kickoff call booked"
-                description={KICKOFF_CALL_D31_WORDING}
+                description={description}
                 statusText="We will call the primary contact number."
                 statusTone="waiting"
-                primaryAction={{
-                  label: "See your kickoff",
-                  href: "/",
-                }}
+                primaryAction={
+                  view.meetingUrl
+                    ? {
+                        label: "Join kickoff call",
+                        href: view.meetingUrl,
+                        target: "_blank",
+                        rel: "noopener noreferrer",
+                      }
+                    : {
+                        label: "See your kickoff",
+                        href: "/",
+                      }
+                }
+                secondaryAction={
+                  view.meetingUrl ? (
+                    <LinkButton href="/" variant="secondary">
+                      See your kickoff
+                    </LinkButton>
+                  ) : undefined
+                }
               >
+                {kickoffTiming ? (
+                  <p className="type-body font-semibold text-ink">
+                    Your kickoff call is booked for {kickoffTiming}.
+                  </p>
+                ) : null}
                 <p className="type-body text-ink-2">
-                  30 minutes on video or phone. We go through your business and plan your website with you.
+                  {view.meetingUrl
+                    ? "Video call. Join with the button above or from your calendar invite."
+                    : "30 minutes on video or phone. We go through your business and plan your website with you."}
                 </p>
               </NextActionCard>
               <NextStepsPanel steps={steps} history={overview.history} />
