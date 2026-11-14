@@ -8,6 +8,7 @@ import {
   listKickoffBoard,
   listLeads,
   listPaymentsNeedingAttention,
+  listProjectsStartedWithoutCallConfirmation,
   listSetupCallsBetween,
   listStaffRoster,
   listSupportTicketsForStaff,
@@ -38,6 +39,7 @@ vi.mock("@brandbasket/db", async () => {
     listKickoffBoard: vi.fn(),
     listLeads: vi.fn(),
     listPaymentsNeedingAttention: vi.fn(),
+    listProjectsStartedWithoutCallConfirmation: vi.fn(),
     listSetupCallsBetween: vi.fn(),
     listStaffRoster: vi.fn(),
     listSupportTicketsForStaff: vi.fn(),
@@ -75,6 +77,7 @@ beforeEach(() => {
   vi.mocked(countFailedDeliveries24h).mockResolvedValue(0);
   vi.mocked(listKickoffBoard).mockResolvedValue([]);
   vi.mocked(listStaffRoster).mockResolvedValue([]);
+  vi.mocked(listProjectsStartedWithoutCallConfirmation).mockResolvedValue([]);
   vi.mocked(readGoogleToday).mockResolvedValue([]);
 });
 
@@ -464,5 +467,22 @@ describe("loadTodayPage", () => {
       detail: "domaincafe.com · pending",
       dueAt: new Date("2026-11-30T10:00:00.000Z"),
     });
+  });
+
+  it("includes projects started without call confirmation in today's items", async () => {
+    vi.mocked(listProjectsStartedWithoutCallConfirmation).mockResolvedValue([
+      {
+        projectId: "proj-1",
+        businessId: "biz-1",
+        businessName: "Fallback Bakers",
+        startedAt: new Date("2026-11-29T10:00:00.000Z"),
+      },
+    ]);
+    const items = await loadTodayItems(NOW, true);
+    const item = items.find((i) => i.key === "unconfirmed_start:biz-1");
+    expect(item).toBeDefined();
+    expect(item?.title).toBe("Started without call confirmation");
+    expect(item?.detail).toBe("Fallback Bakers");
+    expect(item?.href).toBe("/clients/biz-1/website");
   });
 });

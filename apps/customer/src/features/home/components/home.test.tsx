@@ -139,4 +139,12 @@ describe("HomeScreen", () => {
     expect(screen.queryByText("Needs you")).toBeNull();
     expect(screen.queryByRole("link", { name: "New request" })).toBeNull();
   });
+
+  it("shows 'Your kickoff call is booked for <time>' before the call", () => {
+    show({
+      state: { kind: "kickoff_booked", startsAt: new Date("2026-11-10T10:00:00Z"), endsAt: new Date("2026-11-10T10:30:00Z") },
+      layout: "task",
+    });
+    expect(screen.getByText(/Your kickoff call is booked for/)).toBeTruthy();
+  });
 });

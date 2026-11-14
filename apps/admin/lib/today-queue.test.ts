@@ -124,6 +124,25 @@ describe("todayQueue", () => {
       },
     ]);
   });
+
+  it("lists builds started without call confirmation with the expected label", () => {
+    const queue = todayQueue({
+      ...EMPTY,
+      unconfirmedStarts: [
+        { businessId: "biz-1", businessName: "Auto Start Cafe", startedAt: new Date("2026-11-29T10:00:00.000Z") },
+      ],
+    });
+    expect(queue).toEqual([
+      {
+        key: "unconfirmed_start:biz-1",
+        kind: "unconfirmed_start",
+        href: "/clients/biz-1/website",
+        title: "Started without call confirmation",
+        detail: "Auto Start Cafe",
+        dueAt: null,
+      },
+    ]);
+  });
 });
 
 describe("dueLabel", () => {

@@ -1569,6 +1569,13 @@
       "when": 1794650714583,
       "tag": "0226_signup_reminder_sent_at",
       "breakpoints": true
+    },
+    {
+      "idx": 224,
+      "version": "7",
+      "when": 1794655458513,
+      "tag": "0227_started_without_call_confirmation",
+      "breakpoints": true
     }
   ]
 }

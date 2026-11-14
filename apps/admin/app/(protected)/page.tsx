@@ -11,6 +11,7 @@ import { PageHeader } from "@/components/console/page-header";
 import { CallsToday } from "@/components/today/calls-today";
 import { NeedsSomeone } from "@/components/today/needs-someone";
 import { Systems } from "@/components/today/systems";
+import { TodayKickoffPrompt } from "@/components/today/kickoff-prompt";
 import { requireStaffAccess } from "@/lib/server/staff-access";
 import { logStaffAccess } from "@/lib/server/staff-access-log";
 import { loadTodayPage } from "@/lib/server/today";
@@ -43,6 +44,9 @@ export default async function TodayPage(): Promise<ReactElement> {
       <Figures items={today.figures} />
       <div className="grid items-start gap-[1.375rem] lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
         <div className="grid gap-[1.375rem]">
+          {today.pendingKickoffs.length > 0 ? (
+            <TodayKickoffPrompt kickoffs={today.pendingKickoffs} />
+          ) : null}
           {today.failed.length > 0 ? (
             <Notice tone="problem">
               Some lists could not load: {today.failed.join(", ")}. What you see may be incomplete.
