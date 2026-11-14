@@ -13,7 +13,7 @@ export function readSummary(value: unknown): SummaryRead {
 
 /** What the client page says after a call action (`?calls=` in its address). */
 export const CALL_NOTICES = {
-  held: { ok: true, text: "Call marked as held." },
+  held: { ok: true, text: "Call completed." },
   undone: { ok: true, text: "The mark was undone." },
   saved: { ok: true, text: "Saved. The customer can read it on their Calls page." },
   cleared: { ok: true, text: "Cleared." },
@@ -82,7 +82,7 @@ export function callRowsFor(input: {
   });
   const kickoff = input.kickoff;
   if (kickoff !== null && kickoff.startsAt !== null && kickoff.heldAt !== null) {
-    rows.push({ key: "kickoff", startsAt: kickoff.startsAt, about: "Kickoff", status: "Held", from: null, note: null, summary: kickoff.summary, canMarkHeld: false, canUndo: false, canWrite: true });
+    rows.push({ key: "kickoff", startsAt: kickoff.startsAt, about: "Kickoff", status: "Call completed", from: null, note: null, summary: kickoff.summary, canMarkHeld: false, canUndo: false, canWrite: true });
   }
   return rows.sort((a, b) => b.startsAt.getTime() - a.startsAt.getTime());
 }
