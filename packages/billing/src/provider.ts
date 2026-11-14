@@ -227,6 +227,11 @@ export interface BillingProvider {
    * our own key, for a payment whose webhook never arrived. Null when the subscription has no captured charge yet.
    */
   findSubscriptionCharge(providerSubscriptionId: string): Promise<SubscriptionCharge | null>;
+  /**
+   * Returns a hosted URL where the customer can self-serve update their payment method (card or UPI)
+   * for a running subscription through the provider.
+   */
+  getPaymentMethodUpdateUrl(providerSubscriptionId: string): Promise<string>;
 }
 
 /**

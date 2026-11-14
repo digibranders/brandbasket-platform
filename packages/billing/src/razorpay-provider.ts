@@ -48,7 +48,7 @@ export interface RazorpaySdkClient {
       input: { readonly plan_id: string; readonly schedule_change_at: "now" | "cycle_end" },
     ): Promise<unknown>;
     /** The subscription as Razorpay holds it now. */
-    fetch(subscriptionId: string): Promise<{ readonly id: string; readonly status: string; readonly paid_count?: number; readonly current_start?: number | null; readonly current_end?: number | null }>;
+    fetch(subscriptionId: string): Promise<{ readonly id: string; readonly status: string; readonly short_url?: string; readonly paid_count?: number; readonly current_start?: number | null; readonly current_end?: number | null }>;
   };
   readonly payments: {
     fetch(paymentId: string): Promise<{
@@ -350,6 +350,17 @@ export function createRazorpayProvider(options: RazorpayProviderOptions): Razorp
     },
 
     fetchSubscriptionStatus,
+
+    async getPaymentMethodUpdateUrl(providerSubscriptionId: string): Promise<string> {
+      const subscription = await client.subscriptions.fetch(providerSubscriptionId);
+      if (subscription.id !== providerSubscriptionId) {
+        throw new Error(`Razorpay answered with ${subscription.id} when asked for ${providerSubscriptionId}`);
+      }
+      if (!subscription.short_url) {
+        throw new Error(`Razorpay subscription ${providerSubscriptionId} has no short_url`);
+      }
+      return subscription.short_url;
+    },
 
     async findUpfrontPayment(providerSubscriptionId: string): Promise<UpfrontPayment | null> {
       const { items } = await client.invoices.all({ subscription_id: providerSubscriptionId });

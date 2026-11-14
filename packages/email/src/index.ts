@@ -24,6 +24,7 @@ export { domainRequestedEmail, type DomainRequestedInput } from "./templates/dom
 export { domainReadyEmail, type DomainReadyInput } from "./templates/domain-ready";
 export { onboardingSentEmail, type OnboardingSentInput } from "./templates/onboarding-sent";
 export { assertMinorUnits, emailDate, emailMoney, type EmailCurrency } from "./format";
+export { firstChargeReminderEmail, type FirstChargeReminderInput } from "./templates/first-charge-reminder";
 export { paymentFailedEmail, type PaymentFailedInput, type PaymentFailedPlan } from "./templates/payment-failed";
 export { monthlyReportEmail, type MonthlyReportInput } from "./templates/monthly-report";
 export { paymentReceivedEmail, type PaymentReceivedInput } from "./templates/payment-received";

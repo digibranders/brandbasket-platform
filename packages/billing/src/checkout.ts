@@ -70,7 +70,14 @@ export function decideCheckout(
   now: Date,
   history: CheckoutHistory,
 ): CheckoutDecision {
-  if (latest !== null && hasBillingAccess(latest, now)) return { kind: "already-paid" };
+  if (
+    latest !== null &&
+    (latest.status === "past_due"
+      ? latest.paidThroughAt !== null && latest.paidThroughAt.getTime() > now.getTime()
+      : hasBillingAccess(latest, now))
+  ) {
+    return { kind: "already-paid" };
+  }
   if (history.paymentUnderReview) return { kind: "payment-under-review" };
   if (latest === null) return { kind: "create" };
 

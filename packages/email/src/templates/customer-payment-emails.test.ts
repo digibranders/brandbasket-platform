@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { firstChargeReminderEmail } from "./first-charge-reminder";
 import { paymentFailedEmail } from "./payment-failed";
 import { paymentReceivedEmail } from "./payment-received";
 import { CHANGES_QUOTE_LIMIT, clampChangesText, previewChangesReceivedEmail } from "./preview-changes-received";
@@ -155,6 +156,31 @@ describe("paymentFailedEmail", () => {
   it("uses no dashes as punctuation", () => {
     const email = paymentFailedEmail(base);
     expect(`${email.subject}${email.bodyText}`).not.toMatch(DASH);
+  });
+});
+
+describe("firstChargeReminderEmail", () => {
+  const input = {
+    to: "asha@example.com",
+    name: "Asha Rao",
+    currency: "INR" as const,
+    amountCents: 299_900,
+    chargeDate: new Date("2026-11-27T05:00:00Z"),
+    items: ["Managed Website"],
+    billingUrl: "https://app.brandbasket.in/billing/payment",
+    businessId: "biz-1",
+  };
+
+  it("states the amount and date in the subject and body without em or en dashes", () => {
+    const email = firstChargeReminderEmail(input);
+    expect(email.template).toBe("first-charge-reminder");
+    expect(email.subject).toBe("Upcoming renewal: ₹2,999 on 27 November 2026");
+    expect(email.bodyText).toContain("Hi Asha,");
+    expect(email.bodyText).toContain("Your next payment of ₹2,999 for Managed Website will be taken on 27 November 2026.");
+    expect(email.bodyText).toContain("https://app.brandbasket.in/billing/payment");
+    expect(email.bodyHtml).toContain("₹2,999");
+    expect(email.bodyHtml).toContain("27 November 2026");
+    expect(`${email.subject}${email.bodyText}${email.bodyHtml}`).not.toMatch(DASH);
   });
 });
 

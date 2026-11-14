@@ -38,6 +38,8 @@ export interface TodayInput {
   readonly failedDeliveries: number | null;
   /** Kickoff calls that are over and not marked held (or as missed); null when they could not be read. One item each. */
   readonly kickoffsNeedingOutcome: readonly KickoffNeedingOutcome[] | null;
+  /** Billing status issues: past_due and lapsed subscriptions for money-capable roles. */
+  readonly billing?: readonly TodayItem[];
   /** Google problems: sites that cannot be verified, silent sources, a lost sign-in (lib/google-today.ts). Already built and shown in their own section. */
   readonly google?: readonly TodayItem[];
   /** The end of the team's day: a preview due after it is not today's work. */
@@ -153,7 +155,7 @@ export function todayQueue(input: TodayInput): readonly TodayItem[] {
       dueAt: call.endsAt,
     }),
   );
-  return [...attention, ...requests, ...signups, ...errors, ...deliveries, ...kickoffs, ...(input.google ?? [])].sort(byDue);
+  return [...attention, ...requests, ...signups, ...errors, ...deliveries, ...kickoffs, ...(input.billing ?? []), ...(input.google ?? [])].sort(byDue);
 }
 
 export const GROUP_HEADINGS = {

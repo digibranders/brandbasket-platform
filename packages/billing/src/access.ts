@@ -1,4 +1,7 @@
 import type { BundledAddOn, SubscriptionStatus } from "@brandbasket/db";
+import { LAPSE_GRACE_PERIOD_DAYS } from "./lapse-policy";
+
+const GRACE_PERIOD_MS = LAPSE_GRACE_PERIOD_DAYS * 24 * 60 * 60 * 1000;
 
 export interface BillingAccessInput {
   readonly status: SubscriptionStatus;
@@ -28,9 +31,10 @@ export function hasBillingAccess(subscription: BillingAccessInput | null, now: D
     case "inactive":
       return false;
     case "active":
-    case "past_due":
     case "cancelled":
       return subscription.paidThroughAt !== null && subscription.paidThroughAt.getTime() > now.getTime();
+    case "past_due":
+      return subscription.paidThroughAt !== null && subscription.paidThroughAt.getTime() + GRACE_PERIOD_MS > now.getTime();
     default: {
       const unhandled: never = subscription.status;
       throw new Error(`Unhandled subscription status: ${String(unhandled)}`);

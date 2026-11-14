@@ -10,6 +10,8 @@ import {
   listSetupCallsBetween,
   listSupportTicketsForStaff,
   sumCapturedPaymentsBetween,
+  type ClientBilling,
+  type ClientSummary,
   type KickoffBoardRow,
   type Lead,
   type PaymentNeedingAttention,
@@ -226,6 +228,113 @@ describe("a role without the money capability", () => {
     vi.mocked(listPaymentsNeedingAttention).mockResolvedValue([FLAGGED]);
     expect(await countTodayItems(true)).toBe(2);
     expect(await countTodayItems(false)).toBe(1);
+  });
+});
+
+describe("billing status items in the queue (past_due and lapsed)", () => {
+  const PAID_THROUGH = new Date("2026-11-20T00:00:00.000Z");
+  const LAPSED_THROUGH = new Date("2026-10-01T00:00:00.000Z");
+
+  function makeClient(businessId: string, businessName: string, billing: Partial<ClientBilling>): ClientSummary {
+    return {
+      businessId,
+      businessName,
+      currency: "INR",
+      tier: "managed",
+      createdAt: new Date("2026-10-01T00:00:00.000Z"),
+      owner: null,
+      project: null,
+      billing: {
+        subscription: null,
+        firstPayment: null,
+        ...billing,
+      },
+    };
+  }
+
+  it("adds past_due and lapsed items for staff with money capability", async () => {
+    const clientPastDue = makeClient("c-past-due", "Past Due Business", {
+      subscription: {
+        status: "past_due",
+        provider: "razorpay",
+        billingInterval: "month",
+        activatedAt: new Date("2026-10-01T00:00:00.000Z"),
+        paidThroughAt: PAID_THROUGH,
+        commitmentEndsAt: null,
+      },
+      firstPayment: {
+        amountCents: 299_900,
+        currency: "INR",
+        provider: "razorpay",
+        paidAt: new Date("2026-10-01T00:00:00.000Z"),
+        manual: null,
+      },
+    });
+
+    const clientLapsed = makeClient("c-lapsed", "Lapsed Business", {
+      subscription: {
+        status: "cancelled",
+        provider: "razorpay",
+        billingInterval: "month",
+        activatedAt: new Date("2026-09-01T00:00:00.000Z"),
+        paidThroughAt: LAPSED_THROUGH,
+        commitmentEndsAt: null,
+      },
+      firstPayment: {
+        amountCents: 299_900,
+        currency: "INR",
+        provider: "razorpay",
+        paidAt: new Date("2026-09-01T00:00:00.000Z"),
+        manual: null,
+      },
+    });
+
+    vi.mocked(listClients).mockResolvedValue([clientPastDue, clientLapsed]);
+    const items = await loadTodayItems(NOW, true);
+
+    const pastDueItem = items.find((item) => item.key === "billing:past_due:c-past-due");
+    expect(pastDueItem).toEqual({
+      key: "billing:past_due:c-past-due",
+      kind: "payment",
+      title: "Payment past due: Past Due Business",
+      detail: "Renewal payment failed",
+      dueAt: PAID_THROUGH,
+      href: "/clients/c-past-due/billing",
+    });
+
+    const lapsedItem = items.find((item) => item.key === "billing:lapsed:c-lapsed");
+    expect(lapsedItem).toEqual({
+      key: "billing:lapsed:c-lapsed",
+      kind: "payment",
+      title: "Plan lapsed: Lapsed Business",
+      detail: "Plan has ended",
+      dueAt: LAPSED_THROUGH,
+      href: "/clients/c-lapsed/billing",
+    });
+  });
+
+  it("hides past_due and lapsed items when staff cannot see money", async () => {
+    const clientPastDue = makeClient("c-past-due", "Past Due Business", {
+      subscription: {
+        status: "past_due",
+        provider: "razorpay",
+        billingInterval: "month",
+        activatedAt: new Date("2026-10-01T00:00:00.000Z"),
+        paidThroughAt: PAID_THROUGH,
+        commitmentEndsAt: null,
+      },
+      firstPayment: {
+        amountCents: 299_900,
+        currency: "INR",
+        provider: "razorpay",
+        paidAt: new Date("2026-10-01T00:00:00.000Z"),
+        manual: null,
+      },
+    });
+
+    vi.mocked(listClients).mockResolvedValue([clientPastDue]);
+    const items = await loadTodayItems(NOW, false);
+    expect(items.some((item) => item.key.startsWith("billing:"))).toBe(false);
   });
 });
 
