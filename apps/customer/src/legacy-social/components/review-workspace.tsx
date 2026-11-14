@@ -943,16 +943,15 @@ function PicturesStage({ cards, week, channel, account, reasons, ownPosters = []
   const dropped = cards.filter((card) => card.written?.state === "dropped");
   const undecided = cards.filter((card) => card.written?.state === "pending");
   const drawingNow = cards.some((card) => card.written?.drawn === true && card.pictures.length === 0 && card.written.notDrawn === null);
-  if (!settled && pictures.length === 0 && !drawingNow) return null;
   return (
     <div className="grid gap-4">
       {pictures.length === 0 && week.state !== "drawing" && !drawingNow ? (
         <p className="rounded-xl bg-surface p-4 text-[0.84375rem] text-ink-2 ring-1 ring-line">
           {only === "approved"
             ? "Nothing is approved yet. Approve the pictures under Pictures and they show here, ready to go out on their days."
-            : only === "waiting"
-              ? "No pictures are waiting for you. Keep the topics you like under Topics and press Draw pictures: the pictures to approve show here."
-              : `No picture was drawn for ${PLATFORM_NAMES[channel]} this week. Keep the topics you like under Topics and press Draw pictures.`}
+            : everyPicture.length > 0
+              ? "Nothing is waiting for you to approve. Keep more topics under Topics and press Draw pictures: their pictures show here."
+              : `No pictures yet. Keep the topics you like under Topics and press Draw pictures: their pictures show here for you to approve${only === undefined ? ` on ${PLATFORM_NAMES[channel]}` : ""}.`}
         </p>
       ) : null}
       {pictures.length === 0 ? null : (
