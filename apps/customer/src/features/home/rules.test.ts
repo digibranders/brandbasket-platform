@@ -263,6 +263,17 @@ describe("words", () => {
     expect(websiteCopy({ kind: "building", dueAt: at("2026-11-01T10:00:00Z") }, NOW).text).toContain("Sun 1 Nov, 15:30");
     expect(websiteCopy({ kind: "on_hold", reason: null }, NOW).text).toBe("We will tell you here when it starts again.");
   });
+
+  it("uses the required kickoff wording before and after call confirmation", () => {
+    expect(websiteCopy({ kind: "kickoff_unconfirmed", callAt: at("2026-11-01T10:00:00Z") }, NOW)).toEqual({
+      title: "We will start your website right after your call",
+      text: "We will start your website right after your call",
+    });
+    expect(websiteCopy({ kind: "starting" }, NOW)).toEqual({
+      title: "Thanks for the call. We are getting your website started",
+      text: "The date of your first preview appears here as soon as the build starts.",
+    });
+  });
 });
 
 describe("kickoffSteps", () => {

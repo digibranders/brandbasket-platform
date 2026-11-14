@@ -164,6 +164,35 @@
   height: calc(100dvh - var(--spacing-topbar) - 3rem);
 }
 
+/* The thin line along the top of a card while something is being written or drawn: one short stretch slides across it. */
+@keyframes job-slide {
+  0% {
+    left: -30%;
+  }
+  100% {
+    left: 100%;
+  }
+}
+
+@utility animate-job-slide {
+  animation: job-slide 1.4s ease-in-out infinite;
+}
+
+/* A channel's logo in the channels column once posts are ready for it: it zooms in and out until the customer looks. */
+@keyframes channel-zoom {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.22);
+  }
+}
+
+@utility animate-channel-zoom {
+  animation: channel-zoom 1.6s ease-in-out infinite;
+}
+
 @utility type-title {
   font-size: 22px;
   line-height: 28px;

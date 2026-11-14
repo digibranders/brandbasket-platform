@@ -3,6 +3,7 @@ import {
   countSupportTicketsByStatus,
   listAddOnsToContact,
   listClients,
+  listDomainMoves,
   listErrorIssues,
   listKickoffBoard,
   listLeads,
@@ -29,6 +30,7 @@ vi.mock("@brandbasket/db", async () => {
     countSupportTicketsByStatus: vi.fn(),
     listAddOnsToContact: vi.fn(),
     listClients: vi.fn(),
+    listDomainMoves: vi.fn(),
     listErrorIssues: vi.fn(),
     listKickoffBoard: vi.fn(),
     listLeads: vi.fn(),
@@ -55,6 +57,7 @@ const NEW_LEAD = {
 beforeEach(() => {
   vi.spyOn(console, "error").mockImplementation(() => undefined);
   vi.mocked(listClients).mockResolvedValue([]);
+  vi.mocked(listDomainMoves).mockResolvedValue([]);
   vi.mocked(listLeads).mockResolvedValue([NEW_LEAD]);
   vi.mocked(listPaymentsNeedingAttention).mockResolvedValue([]);
   vi.mocked(listAddOnsToContact).mockResolvedValue([]);
@@ -275,5 +278,59 @@ describe("loadTodayPage", () => {
     expect(page.failed).toEqual(
       expect.arrayContaining(["clients", "leads", "flagged payments", "add-ons to contact", "requests needing a reply", "new errors"]),
     );
+  });
+
+  it("adds an approved preview row linking to the website page with Launch action", async () => {
+    vi.mocked(listClients).mockResolvedValue([
+      {
+        businessId: "biz-app",
+        businessName: "Approved Cafe",
+        project: {
+          id: "p1",
+          status: "approved",
+          slaDueAt: new Date("2026-12-01T10:00:00.000Z"),
+          onboardingSubmittedAt: null,
+          previewUrl: "https://preview.example.com",
+          previewSentAt: null,
+          revisionRoundsGranted: 0,
+          launchedAt: null,
+          createdAt: new Date("2026-11-20T00:00:00.000Z"),
+        },
+      } as never,
+    ]);
+    const items = await loadTodayItems(NOW, true);
+    const approved = items.find((item) => item.kind === "approved");
+    expect(approved).toEqual({
+      key: "approved:biz-app",
+      kind: "approved",
+      href: "/clients/biz-app/website",
+      title: "Website approved: Approved Cafe",
+      detail: "Ready to launch",
+      dueAt: new Date("2026-12-01T10:00:00.000Z"),
+      action: "Launch",
+    });
+  });
+
+  it("adds domain move items from listDomainMoves", async () => {
+    vi.mocked(listDomainMoves).mockResolvedValue([
+      {
+        id: "dom-1",
+        businessId: "biz-1",
+        businessName: "Domain Cafe",
+        hostname: "domaincafe.com",
+        status: "pending",
+        createdAt: new Date("2026-11-29T10:00:00.000Z"),
+      },
+    ]);
+    const items = await loadTodayItems(NOW, true);
+    const domainItem = items.find((item) => item.kind === "domain");
+    expect(domainItem).toEqual({
+      key: "domain:dom-1",
+      kind: "domain",
+      href: "/clients/biz-1/website",
+      title: "Domain move: Domain Cafe",
+      detail: "domaincafe.com · pending",
+      dueAt: new Date("2026-11-30T10:00:00.000Z"),
+    });
   });
 });

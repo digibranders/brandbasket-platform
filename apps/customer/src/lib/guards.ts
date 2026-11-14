@@ -11,10 +11,11 @@ import {
 } from "@brandbasket/db";
 import { decideCustomerAccess, type CustomerAccess, type SessionUser, type TenantContext } from "@brandbasket/shared/lib/access";
 import { summariseBilling, type CustomerBilling } from "@brandbasket/shared/lib/billing/status";
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { cache } from "react";
 import { getAppDb, getStaffDb } from "./db";
-import { accessRedirect, GUARD_PATHS, requirementRedirect, servicesFrom, type Requirement, type Service } from "./guard-rules";
+import { accessRedirect, GUARD_PATHS, requirementRedirect, servicesFrom, signInHref, type Requirement, type Service } from "./guard-rules";
 import { getSessionUser } from "./session";
 
 /*
@@ -91,9 +92,19 @@ const loadCustomerContext = cache(async (user: SessionUser, tenant: TenantContex
   };
 });
 
+async function currentRequestPath(): Promise<string | null> {
+  try {
+    const h = await headers();
+    return h.get("x-pathname");
+  } catch {
+    return null;
+  }
+}
+
 async function requireCustomerWith(requirement: Requirement): Promise<CustomerContext> {
   const access = await getCustomerAccess();
-  const away = accessRedirect(access);
+  const path = await currentRequestPath();
+  const away = accessRedirect(access, path);
   if (away !== null || access.kind !== "granted") redirect(away ?? GUARD_PATHS.signIn);
   const context = await loadCustomerContext(access.user, access.tenant);
   const elsewhere = requirementRedirect(context, requirement);
@@ -106,7 +117,10 @@ const paid = (options: GuardOptions): Requirement["paid"] => (options.write === 
 /** Anyone signed in, with or without a business: the entry screens before payment. */
 export async function requireSignedIn(): Promise<SignedInContext> {
   const user = await getSessionUser();
-  if (user === null) redirect(GUARD_PATHS.signIn);
+  if (user === null) {
+    const path = await currentRequestPath();
+    redirect(signInHref(path));
+  }
   return { user };
 }
 
@@ -146,7 +160,10 @@ export async function requireService(service: Service, options: GuardOptions = {
 /** The signed-in user is an affiliate. The affiliate comes from the session's user and nothing else. */
 export async function requireAffiliate(): Promise<AffiliateContext> {
   const user = await getSessionUser();
-  if (user === null) redirect(GUARD_PATHS.signIn);
+  if (user === null) {
+    const path = await currentRequestPath();
+    redirect(signInHref(path));
+  }
   // Staff connection: the affiliate tables are staff-only. Sanctioned in ./db.ts.
   const affiliate = await findAffiliateByUserId(getStaffDb(), user.id);
   if (affiliate === null) redirect(GUARD_PATHS.signIn);

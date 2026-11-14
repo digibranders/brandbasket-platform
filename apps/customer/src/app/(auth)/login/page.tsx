@@ -19,12 +19,13 @@ export default async function LoginPage({ searchParams }: { readonly searchParam
   const signUp = signUpHrefFromLogin(params);
   // Old sign-up links are permanent redirects (PARITY Part 2); the signed-in hop below is not.
   if (signUp !== null) permanentRedirect(signUp);
-  const signedIn = await signedInEntry(false);
+  const next = inviteReturn(params.next);
+  const signedIn = await signedInEntry(false, next);
   if (signedIn?.kind === "elsewhere") redirect(signedIn.href);
   if (signedIn?.kind === "no-business") return <NoBusiness label={signedIn.label} />;
   return (
     <EntryScreen title="Sign in" lede="Use the email or mobile number you signed up with.">
-      <SignInForm siteKey={turnstileSiteKey()} notice={loginNotice(params.notice)} next={inviteReturn(params.next)} />
+      <SignInForm siteKey={turnstileSiteKey()} notice={loginNotice(params.notice)} next={next} />
     </EntryScreen>
   );
 }

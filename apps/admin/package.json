@@ -27,6 +27,7 @@
     "@payloadcms/next": "^3.90.2",
     "@payloadcms/richtext-lexical": "^3.90.2",
     "@phosphor-icons/react": "2.1.10",
+    "jose": "^6.2.17",
     "lexical": "0.41.0",
     "libphonenumber-js": "1.13.13",
     "next": "16.4.3",

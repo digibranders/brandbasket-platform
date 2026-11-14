@@ -9,11 +9,12 @@ import { redirect, unstable_rethrow } from "next/navigation";
 import { requireService } from "@/lib/guards";
 import { brandOf } from "@/features/social/brand";
 import { BRAND_TIME_ZONE } from "@/legacy-social/shims";
-import { actorOf, connectLink, createPost, decidePoster, deletePost, ensureWorkspace, loadAutoPosting, loadChannels, loadPosters, loadSchedule, loadWorkspaceFacts, movePost, saveAutoPosting, sendPostNow, SocialAutoError, socialAutoSettings, startSiteJob, updatePost } from "@/legacy-social/server/social-auto";
+import { actorOf, connectLink, createPost, decidePoster, deletePost, ensureWorkspace, loadAutoPosting, loadBatches, loadChannels, loadPosters, loadSchedule, loadWorkspaceFacts, movePost, saveAutoPosting, sendPostNow, SocialAutoError, socialAutoSettings, startSiteJob, updatePost } from "@/legacy-social/server/social-auto";
 import { canAddOn, checkNewPost, checkPostEdit, wordsForPostRefusal, isChangeablePostId, isTime, isWrittenPostId, momentHasPassed, type NewPostState } from "@/legacy-social/lib/social/new-post";
 import { wordsForCode } from "@/legacy-social/lib/social/ai";
 import { CHANNEL_PLATFORMS, PLATFORM_NAMES, type ChannelPlatform } from "@/legacy-social/lib/social/auto";
 import { SAFETY_HOURS } from "@/legacy-social/lib/social/auto-posting";
+import { firstStartDay, nextStartDay, planEndDay, renewalDay } from "@/legacy-social/lib/social/plan-window";
 import { dayGroups } from "@/legacy-social/lib/social/schedule";
 
 /*
@@ -253,7 +254,11 @@ export async function startNextMonthAction(formData: FormData): Promise<NewPostS
     if (connected.length === 0) return { status: "error", message: wordsForCode("INVALID_NETWORKS") };
     // Channels that post on different days are written one group at a time: the first now, the others when the customer starts them next.
     const [networks = connected, ...later] = dayGroups(connected, await loadSchedule(settings, brand.externalId));
-    const started = await startSiteJob(settings, brand.externalId, { site: facts.website, page: false, networks, startDate: parsed.data.startDate }, actorOf(customer.tenant));
+    // The next month follows the paid month: it starts on the renewal day, never before the usual start (so plans do not overlap).
+    const start = nextStartDay({ today: localDateIn(BRAND_TIME_ZONE, new Date()), earliest: parsed.data.startDate, renewsOn: renewalDay(customer.billing.subscription?.paidThroughAt ?? null, (at) => localDateIn(BRAND_TIME_ZONE, at)) });
+    const renews = renewalDay(customer.billing.subscription?.paidThroughAt ?? null, (at) => localDateIn(BRAND_TIME_ZONE, at));
+    const end = planEndDay({ start, renewsOn: renews });
+    const started = await startSiteJob(settings, brand.externalId, { site: facts.website, page: false, networks, startDate: start, ...(end === null ? {} : { endDate: end }) }, actorOf(customer.tenant));
     if (!started.created) return { status: "error", message: STILL_WRITING };
     if (later.length > 0) return { status: "partial", message: laterGroupsMessage(networks, later.flat()) };
   } catch (error) {
@@ -293,7 +298,13 @@ export async function startSiteJobAction(formData: FormData): Promise<NewPostSta
       const channelsToSave = CHANNEL_PLATFORMS.filter((platform) => wanted.includes(platform) || current.channels.includes(platform));
       await saveAutoPosting(settings, brand.externalId, { channels: channelsToSave, safetyHours: autoHours.success ? autoHours.data : 24 }, actorOf(customer.tenant));
     }
-    const started = await startSiteJob(settings, brand.externalId, { site: parsed.data.site, page: parsed.data.page, networks: parsed.data.networks satisfies ChannelPlatform[], ...(startDate.success ? { startDate: startDate.data } : {}) }, actorOf(customer.tenant));
+    // The first plan starts tomorrow, not on the next Monday. A channel added to a plan already running keeps the posting service's own start, so it
+    // lines up with the others.
+    const hasPlan = (await loadBatches(settings, brand.externalId)).plan?.startsOn != null;
+    const first = startDate.success ? startDate.data : hasPlan ? undefined : firstStartDay(localDateIn(BRAND_TIME_ZONE, new Date()));
+    // The first plan, with no start asked for, stops the day before the paid month renews.
+    const end = first === undefined || startDate.success ? null : planEndDay({ start: first, renewsOn: renewalDay(customer.billing.subscription?.paidThroughAt ?? null, (at) => localDateIn(BRAND_TIME_ZONE, at)) });
+    const started = await startSiteJob(settings, brand.externalId, { site: parsed.data.site, page: parsed.data.page, networks: parsed.data.networks satisfies ChannelPlatform[], ...(first === undefined ? {} : { startDate: first }), ...(end === null ? {} : { endDate: end }) }, actorOf(customer.tenant));
     // A batch is already being written: the posting service hands back that one, not a new one for these channels.
     if (!started.created) return { status: "error", message: STILL_WRITING };
   } catch (error) {

@@ -16,7 +16,7 @@ import { revalidatePath } from "next/cache";
 import { unstable_rethrow } from "next/navigation";
 import { startCustomerChargePayment } from "@/features/checkout/server/charges";
 import { actionFail, actionOk, type ActionResult } from "@/lib/action-result";
-import { getAppDb } from "@/lib/db";
+import { getAppDb, getStaffDb } from "@/lib/db";
 import { requireBilling, requireCustomer, type CustomerContext } from "@/lib/guards";
 import { reportError } from "@/lib/report";
 import {
@@ -33,7 +33,7 @@ import {
   supportSubmissionsEnabled,
   titleFromText,
 } from "./rules";
-import { openQuoteCharge, sendReplyAlert, sendTicketAlert, supportRateLimit } from "./server";
+import { openQuoteCharge, sendReplyAlert, sendRequestAcknowledgement, sendTicketAlert, supportRateLimit } from "./server";
 
 /*
  * The writes of Requests. Each calls its own guard, takes the business and the person from the session and reads only ids,
@@ -100,6 +100,13 @@ export async function sendRequestAction(_previous: ActionResult<{ ticketId: stri
         { category: rule.category, subject, description: body, ...(details === undefined ? {} : { details }), attachmentIds },
         { user, businessId: tenant.businessId, businessName: tenant.businessName },
       ).catch((error: unknown) => console.error("[requests] team alert", errorLogInfo(error)));
+
+      void sendRequestAcknowledgement(
+        getStaffDb(),
+        ticket,
+        { subject },
+        { user, businessId: tenant.businessId, businessName: tenant.businessName },
+      ).catch((error: unknown) => console.error("[requests] customer acknowledgement", errorLogInfo(error)));
     }
     refresh();
     return actionOk({ ticketId: ticket.id });

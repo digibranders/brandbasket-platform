@@ -48,13 +48,13 @@ export type SignedInEntry = { readonly kind: "elsewhere"; readonly href: string 
  * when the link names a plan; a closing account goes to restore it; an affiliate with no business to their page; anyone
  * else signed in with no business is told so on the page. Ported from apps/platform app/app-host/login/page.tsx.
  */
-export async function signedInEntry(namesPlan: boolean): Promise<SignedInEntry> {
+export async function signedInEntry(namesPlan: boolean, next?: string | null): Promise<SignedInEntry> {
   const access = await getEntryAccess();
   switch (access.kind) {
     case "signed-out":
       return null;
     case "granted":
-      return { kind: "elsewhere", href: namesPlan ? "/checkout" : "/" };
+      return { kind: "elsewhere", href: next ?? (namesPlan ? "/checkout" : "/") };
     case "closing":
       return { kind: "elsewhere", href: "/restore-account" };
     case "no-business":

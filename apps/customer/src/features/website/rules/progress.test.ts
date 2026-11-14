@@ -27,7 +27,7 @@ describe("progressView", () => {
       title: "We start after your kickoff call",
       line: "Book your call and we start building straight after it.",
     });
-    expect(progressView(input({ status: "onboarding", kickoffFirst: true, kickoffDay: "2026-11-02" })).line).toBe("Your call is on Mon 2 Nov. We start building straight after it.");
+    expect(progressView(input({ status: "onboarding", kickoffFirst: true, kickoffDay: "2026-11-02" })).line).toBe("Your kickoff call is booked for Mon 2 Nov. We will start your website right after your call.");
     expect(progressView(input({ status: "building", kickoffFirst: true })).kind).toBe("building");
   });
 

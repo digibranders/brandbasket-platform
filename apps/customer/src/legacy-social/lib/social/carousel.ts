@@ -7,7 +7,11 @@ import { isChannelPlatform, type ChannelPlatform } from "./auto";
  * words for each state.
  */
 
-export const CAROUSEL_STATUSES = ["incomplete", "pending", "approved", "rejected", "blocked"] as const;
+/**
+ * Where a carousel stands. It starts as a `topic` (words only, no pictures), she keeps or drops it like any topic, and only a kept one is
+ * drawn (`drawing`, then `pending` for her OK). `incomplete` is an older carousel still being made.
+ */
+export const CAROUSEL_STATUSES = ["incomplete", "topic", "kept", "dropped", "drawing", "pending", "approved", "rejected", "blocked"] as const;
 export type CarouselStatus = (typeof CAROUSEL_STATUSES)[number];
 
 const statusSchema = z.enum(CAROUSEL_STATUSES);
@@ -20,14 +24,22 @@ export interface CarouselSummary {
   readonly date: string | null;
   readonly count: number;
   readonly status: CarouselStatus;
+  /** The headline of each slide in order; empty when the posting service does not say. */
+  readonly headlines: readonly string[];
 }
+
+/** Whether the slides were drawn, so there is something to look at and approve. */
+export const carouselDrawn = (status: CarouselStatus): boolean => status === "pending" || status === "approved";
+
+/** Whether the carousel can still be moved to another day: any carousel that is still wanted. */
+export const carouselMovable = (status: CarouselStatus): boolean => status === "topic" || status === "kept" || status === "pending" || status === "approved";
 
 /** One carousel in full: its slides, and the words each channel will post with it. */
 export interface CarouselDetail {
   readonly id: string;
   readonly count: number;
   readonly status: CarouselStatus;
-  readonly slides: readonly { readonly position: number; readonly status: string }[];
+  readonly slides: readonly { readonly position: number; readonly status: string; /** The slide's headline, when the posting service says it. */ readonly headline?: string }[];
   readonly captions: readonly { readonly network: ChannelPlatform; readonly caption: string; readonly status: string }[];
   /** The reasons a carousel may be sent back with, as the posting service names them. */
   readonly reasons: readonly string[];
@@ -42,6 +54,7 @@ const summarySchema = z.object({
     .nullish(),
   count: z.number().int().nonnegative(),
   status: statusSchema,
+  headlines: z.array(z.string().nullish()).nullish(),
 });
 
 /** The carousels of a list answer (`{ carousels: [...] }`), newest first as the posting service sends them; anything unreadable is left out. */
@@ -50,7 +63,7 @@ export function readCarousels(body: unknown): CarouselSummary[] {
   if (!Array.isArray(list)) return [];
   return list.flatMap((item): CarouselSummary[] => {
     const parsed = summarySchema.safeParse(item);
-    return parsed.success ? [{ id: parsed.data.id, topic: parsed.data.topic ?? null, date: parsed.data.date?.slice(0, 10) ?? null, count: parsed.data.count, status: parsed.data.status }] : [];
+    return parsed.success ? [{ id: parsed.data.id, topic: parsed.data.topic ?? null, date: parsed.data.date?.slice(0, 10) ?? null, count: parsed.data.count, status: parsed.data.status, headlines: (parsed.data.headlines ?? []).map((headline) => (typeof headline === "string" ? headline.trim() : "")) }] : [];
   });
 }
 
@@ -63,7 +76,7 @@ const detailSchema = z.object({
   id: z.string().min(1),
   count: z.number().int().nonnegative(),
   status: statusSchema,
-  slides: z.array(z.object({ position: z.number().int().positive(), status: z.string() })),
+  slides: z.array(z.object({ position: z.number().int().positive(), status: z.string(), headline: z.string().nullish() })),
   captions: z.array(z.object({ network: z.string(), caption: z.string(), status: z.string() })).optional(),
 });
 
@@ -76,7 +89,7 @@ export function readCarousel(body: unknown): CarouselDetail | null {
     id: parsed.data.id,
     count: parsed.data.count,
     status: parsed.data.status,
-    slides: [...parsed.data.slides].sort((a, b) => a.position - b.position),
+    slides: [...parsed.data.slides].sort((a, b) => a.position - b.position).map((slide) => (typeof slide.headline === "string" && slide.headline.trim() !== "" ? { position: slide.position, status: slide.status, headline: slide.headline.trim() } : { position: slide.position, status: slide.status })),
     captions: (parsed.data.captions ?? []).flatMap((entry) => (isChannelPlatform(entry.network) ? [{ network: entry.network, caption: entry.caption, status: entry.status }] : [])),
     reasons: Array.isArray(raw?.reasons) ? raw.reasons.filter((reason): reason is string => typeof reason === "string") : [],
   };
@@ -85,6 +98,10 @@ export function readCarousel(body: unknown): CarouselDetail | null {
 /** Where the customer's carousel stands, in plain words. */
 export const CAROUSEL_STATUS_WORDS: Readonly<Record<CarouselStatus, string>> = {
   incomplete: "We are making your carousel",
+  topic: "Not decided",
+  kept: "Kept",
+  dropped: "Dropped",
+  drawing: "Drawing the slides",
   pending: "Waiting for your OK",
   approved: "Approved",
   rejected: "Sent back",
