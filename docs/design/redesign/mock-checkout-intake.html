@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Checkout & Intake · BrandBasket</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Red+Hat+Display:wght@500;600;700&family=Red+Hat+Mono:wght@500;600&family=Red+Hat+Text:wght@400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --ground: #F6F5F2;
+      --surface: #FFFFFF;
+      --sunken: #EEECE7;
+      --line: #E3E0D9;
+      --ink: #15161A;
+      --ink-2: #343741;
+      --ink-3: #5F626A;
+      --accent: #C48A47;
+      --accent-wash: #F4E6D3;
+      --accent-deep: #8A5524;
+      --sage: #4F7A63;
+      --sage-wash: #E5EFE8;
+      --error: #B42318;
+      --error-wash: #FDECEA;
+      --r-control: 8px;
+      --r-card: 14px;
+      --r-hero: 20px;
+      --r-pill: 9999px;
+      --sh-resting: 0 1px 0 rgba(42,28,16,0.03);
+      --sh-hero: 0 1px 2px rgba(42,28,16,0.05), 0 12px 32px -12px rgba(42,28,16,0.14);
+      --sh-button: 0 1px 2px rgba(42,28,16,0.12);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--ground);
+      color: var(--ink);
+      font-family: "Red Hat Text", sans-serif;
+      font-size: 15px;
+      padding: 32px 20px 80px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .demo-bar {
+      position: sticky;
+      top: 12px;
+      z-index: 50;
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: var(--r-pill);
+      padding: 6px 12px;
+      display: flex;
+      gap: 8px;
+      box-shadow: var(--sh-hero);
+      margin-bottom: 24px;
+      font-size: 13px;
+    }
+    .demo-btn {
+      background: var(--sunken);
+      border: 1px solid var(--line);
+      color: var(--ink-2);
+      padding: 4px 10px;
+      border-radius: var(--r-pill);
+      cursor: pointer;
+      font-weight: 500;
+    }
+    .demo-btn.active { background: var(--ink); color: #FFF; border-color: var(--ink); }
+    .frame { width: 100%; max-width: 960px; display: flex; flex-direction: column; gap: 24px; }
+    .frame.mobile { max-width: 390px; }
+    .card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-card); box-shadow: var(--sh-resting); padding: 24px; }
+    .focal-card { background: var(--surface); border: 1px solid var(--line); border-top: 3px solid var(--accent); border-radius: var(--r-hero); box-shadow: var(--sh-hero); padding: 28px; }
+    .mono { font-family: "Red Hat Mono", monospace; }
+    .btn { display: inline-flex; align-items: center; justify-content: center; height: 42px; padding: 0 18px; border-radius: var(--r-control); font-size: 14px; font-weight: 600; cursor: pointer; border: none; box-shadow: var(--sh-button); }
+    .btn-primary { background: var(--ink); color: #FFF; }
+    .btn-secondary { background: var(--surface); border: 1px solid var(--line); color: var(--ink); }
+    .grid-checkout { display: grid; grid-template-columns: 1.4fr 1fr; gap: 24px; }
+    @media (max-width: 860px) { .grid-checkout { grid-template-columns: 1fr; } }
+    .input-group { display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px; }
+    .input-label { font-size: 13px; font-weight: 600; color: var(--ink-2); }
+    .input-control { height: 42px; border: 1px solid var(--line); border-radius: var(--r-control); padding: 0 12px; font-size: 14px; background: var(--surface); color: var(--ink); font-family: inherit; }
+  </style>
+</head>
+<body>
+  <div class="demo-bar">
+    <span style="font-weight:600">State:</span>
+    <button class="demo-btn active" id="btnLive" onclick="setState('live')">Review order</button>
+    <button class="demo-btn" id="btnNew" onclick="setState('new')">Intake form</button>
+    <button class="demo-btn" id="btnEmpty" onclick="setState('empty')">Empty cart</button>
+    <button class="demo-btn" id="btnError" onclick="setState('error')">Payment failed</button>
+    <span style="border-left:1px solid var(--line); margin:0 4px; height:16px"></span>
+    <span style="font-weight:600">Viewport:</span>
+    <button class="demo-btn active" id="btnDesktop" onclick="setViewport('desktop')">1440</button>
+    <button class="demo-btn" id="btnMobile" onclick="setViewport('mobile')">390</button>
+  </div>
+
+  <div class="frame" id="frame">
+    <div>
+      <div style="font-size:11px; text-transform:uppercase; letter-spacing:0.08em; font-weight:700; color:var(--ink-3)">Membership Checkout</div>
+      <h1 style="font-family:'Red Hat Display', sans-serif; font-size:32px; font-weight:700; letter-spacing:-0.02em">Complete your subscription</h1>
+    </div>
+
+    <div id="errorBanner" style="display:none; background:var(--error-wash); border:1px solid var(--error); border-radius:var(--r-card); padding:16px; color:var(--error)">
+      Payment declined: Please review card details or choose UPI.
+    </div>
+
+    <div class="grid-checkout" id="checkoutGrid">
+      <div class="focal-card" id="formCard">
+        <h2 style="font-family:'Red Hat Display', sans-serif; font-size:20px; font-weight:700; margin-bottom:16px">Business Details</h2>
+        <div class="input-group">
+          <label class="input-label">Business name</label>
+          <input class="input-control" value="Sweet Crust Bakery" />
+        </div>
+        <div class="input-group">
+          <label class="input-label">City and State</label>
+          <input class="input-control" value="Pune, Maharashtra" />
+        </div>
+        <div class="input-group">
+          <label class="input-label">Primary contact number</label>
+          <input class="input-control mono" value="+91 98765 43210" />
+        </div>
+        <div class="input-group">
+          <label class="input-label">GSTIN (Optional)</label>
+          <input class="input-control mono" value="27AADCS1234F1Z8" />
+        </div>
+      </div>
+
+      <div class="card" id="summaryCard">
+        <h2 style="font-family:'Red Hat Display', sans-serif; font-size:18px; font-weight:700; margin-bottom:16px">Order Summary</h2>
+        <div style="display:flex; justify-content:space-between; margin-bottom:8px">
+          <span>Growth Plan (Monthly)</span>
+          <span class="mono">Rs 4,999.00</span>
+        </div>
+        <div style="display:flex; justify-content:space-between; margin-bottom:8px; font-size:13px; color:var(--ink-3)">
+          <span>First month Social offer</span>
+          <span class="mono" style="color:var(--sage)">Rs 1.00</span>
+        </div>
+        <div style="display:flex; justify-content:space-between; margin-bottom:12px; font-size:13px; color:var(--ink-3)">
+          <span>18% GST (CGST + SGST)</span>
+          <span class="mono">Rs 899.82</span>
+        </div>
+        <div style="border-top:1px solid var(--line); padding-top:12px; display:flex; justify-content:space-between; font-weight:700; font-size:18px">
+          <span>Total due today</span>
+          <span class="mono" style="color:var(--ink)">Rs 5,899.82</span>
+        </div>
+        <button class="btn btn-primary" style="width:100%; margin-top:20px">Pay with Razorpay</button>
+      </div>
+    </div>
+
+    <div id="emptyView" style="display:none; text-align:center; padding:48px; background:var(--surface); border:1px solid var(--line); border-radius:var(--r-card)">
+      <p style="color:var(--ink-2); font-size:16px">Your basket is empty.</p>
+      <button class="btn btn-secondary" style="margin-top:16px">Browse plans</button>
+    </div>
+  </div>
+
+  <script>
+    function setState(st) {
+      document.querySelectorAll('.demo-btn').forEach(b => {
+        if (['btnLive','btnNew','btnEmpty','btnError'].includes(b.id)) b.classList.remove('active');
+      });
+      document.getElementById('btn' + st.charAt(0).toUpperCase() + st.slice(1)).classList.add('active');
+
+      document.getElementById('errorBanner').style.display = st === 'error' ? 'block' : 'none';
+      document.getElementById('checkoutGrid').style.display = st === 'empty' ? 'none' : 'grid';
+      document.getElementById('emptyView').style.display = st === 'empty' ? 'block' : 'none';
+    }
+
+    function setViewport(vp) {
+      document.getElementById('btnDesktop').classList.toggle('active', vp === 'desktop');
+      document.getElementById('btnMobile').classList.toggle('active', vp === 'mobile');
+      document.getElementById('frame').classList.toggle('mobile', vp === 'mobile');
+    }
+  </script>
+</body>
+</html>

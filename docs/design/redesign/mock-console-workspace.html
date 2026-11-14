@@ -1,0 +1,931 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BrandBasket Staff Console - Client Workspace</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Red+Hat+Display:wght@500;600;700&family=Red+Hat+Text:wght@400;500;600&family=Red+Hat+Mono:wght@400;500;600&display=swap">
+<style>
+:root {
+  --ground: #F6F5F2;
+  --surface: #FFFFFF;
+  --sunken: #EEECE7;
+  --line: #E3E0D9;
+  --ink: #15161A;
+  --text-muted: #343741;
+  --text-faint: #5F626A;
+  --gold: #C48A47;
+  --gold-wash: #F4E6D3;
+  --gold-deep: #8A5524;
+  --gold-text: #A46C2F;
+  --sage: #4F7A63;
+  --sage-wash: #E5EFE8;
+  --error: #B42318;
+  --error-wash: #FDECEA;
+  --rail: #23242A;
+  --rail-text: #F6F5F2;
+  --rail-muted: #9B9EA7;
+  --rail-hover: rgba(255, 255, 255, 0.06);
+  --sh-resting: 0 1px 0 rgba(42, 28, 16, 0.03);
+  --sh-elevation: 0 1px 2px rgba(42, 28, 16, 0.05);
+  --sh-hero: 0 1px 2px rgba(42, 28, 16, 0.05), 0 12px 32px -12px rgba(42, 28, 16, 0.14);
+  --sh-dialog: 0 24px 64px -16px rgba(42, 28, 16, 0.28);
+  --r-control: 8px;
+  --r-card: 14px;
+  --r-hero: 20px;
+  --r-pill: 9999px;
+  color-scheme: light;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  margin: 0;
+  background: var(--ground);
+  color: var(--ink);
+  font-family: 'Red Hat Text', system-ui, -apple-system, sans-serif;
+  font-size: 15px;
+  line-height: 1.5;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+button, input, select, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+
+.demo-bar {
+  position: sticky;
+  top: 12px;
+  z-index: 100;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-pill);
+  padding: 6px 14px;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  box-shadow: var(--sh-hero);
+  margin: 12px 0 16px;
+  font-size: 13px;
+}
+.demo-bar span.label { font-weight: 600; color: var(--ink); }
+.demo-btn {
+  background: var(--sunken);
+  border: 1px solid var(--line);
+  color: var(--text-muted);
+  padding: 4px 10px;
+  border-radius: var(--r-pill);
+  font-weight: 500;
+  font-size: 12px;
+}
+.demo-btn.active {
+  background: var(--ink);
+  color: #FFFFFF;
+  border-color: var(--ink);
+  font-weight: 600;
+}
+.demo-sep {
+  width: 1px;
+  height: 16px;
+  background: var(--line);
+  margin: 0 4px;
+}
+
+.frame {
+  width: 100%;
+  max-width: 1440px;
+  min-height: 100vh;
+  display: flex;
+  background: var(--ground);
+  transition: max-width 0.2s ease;
+  box-shadow: 0 0 40px rgba(42, 28, 16, 0.08);
+}
+.frame.mobile {
+  max-width: 390px;
+  box-shadow: 0 0 24px rgba(42, 28, 16, 0.15);
+}
+
+.shell {
+  display: flex;
+  width: 100%;
+  min-height: 100vh;
+}
+.rail {
+  width: 240px;
+  flex: none;
+  background: var(--rail);
+  color: var(--rail-text);
+  display: flex;
+  flex-direction: column;
+  padding: 20px 14px;
+  border-right: 1px solid rgba(255, 255, 255, 0.06);
+}
+.rail-logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: 'Red Hat Display', sans-serif;
+  font-size: 18px;
+  font-weight: 700;
+  padding: 4px 10px 20px;
+  color: #FFFFFF;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+.rail-logo svg {
+  width: 24px;
+  height: 24px;
+  color: var(--gold);
+}
+.rail-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding-top: 16px;
+  flex: 1;
+}
+.rail-link {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 9px 12px;
+  border-radius: var(--r-control);
+  color: var(--rail-muted);
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 500;
+}
+.rail-link:hover {
+  background: var(--rail-hover);
+  color: var(--rail-text);
+}
+.rail-link.active {
+  background: rgba(196, 138, 71, 0.15);
+  color: #FFFFFF;
+  font-weight: 600;
+}
+.rail-link svg {
+  width: 18px;
+  height: 18px;
+  flex: none;
+}
+
+.main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.topbar {
+  height: 60px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--line);
+  padding: 0 32px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--text-faint);
+}
+.breadcrumb a {
+  color: var(--text-muted);
+  text-decoration: none;
+}
+.breadcrumb a:hover {
+  color: var(--ink);
+}
+
+.content {
+  padding: 24px 32px 64px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  max-width: 1200px;
+}
+
+/* Client Header Block */
+.client-header {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-card);
+  padding: 20px 24px;
+  box-shadow: var(--sh-resting);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.client-header-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.client-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.client-name-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.client-name {
+  font-family: 'Red Hat Display', sans-serif;
+  font-size: 26px;
+  line-height: 30px;
+  font-weight: 700;
+  color: var(--ink);
+}
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 3px 10px;
+  border-radius: var(--r-pill);
+}
+.pill-active {
+  background: var(--sage-wash);
+  color: var(--sage);
+}
+.client-meta {
+  font-size: 14px;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.client-meta span.mono {
+  font-family: 'Red Hat Mono', monospace;
+  color: var(--ink);
+}
+
+/* Service Tabs */
+.service-tabs {
+  display: flex;
+  gap: 6px;
+  border-bottom: 1px solid var(--line);
+  margin-top: 4px;
+}
+.service-tab {
+  padding: 8px 16px;
+  border: none;
+  background: transparent;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-muted);
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+}
+.service-tab.active {
+  color: var(--ink);
+  font-weight: 600;
+  border-bottom-color: var(--ink);
+}
+
+/* 2-Column Grid */
+.workspace-grid {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 24px;
+  align-items: start;
+}
+.workspace-main {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* Focal Card: Next Staff Action */
+.focal-card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-top: 3px solid var(--gold);
+  border-radius: var(--r-hero);
+  padding: 24px;
+  box-shadow: var(--sh-hero);
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+.focal-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+}
+.focal-icon-tile {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--r-control);
+  background: var(--gold-wash);
+  color: var(--gold-deep);
+  display: grid;
+  place-items: center;
+  flex: none;
+}
+.focal-titles {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.focal-eyebrow {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--gold-text);
+}
+.focal-title {
+  font-family: 'Red Hat Display', sans-serif;
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--ink);
+}
+.focal-desc {
+  font-size: 14px;
+  color: var(--text-muted);
+}
+.focal-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.form-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink);
+}
+.form-input {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-control);
+  padding: 8px 12px;
+  font-size: 14px;
+  color: var(--ink);
+}
+.form-input:focus {
+  outline: 2px solid var(--ink);
+  outline-offset: 1px;
+}
+.form-textarea {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-control);
+  padding: 8px 12px;
+  font-size: 14px;
+  color: var(--ink);
+  min-height: 72px;
+  resize: vertical;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 38px;
+  padding: 0 16px;
+  border-radius: var(--r-control);
+  font-size: 14px;
+  font-weight: 600;
+  border: 1px solid transparent;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.btn-primary {
+  background: var(--ink);
+  color: #FFFFFF;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+.btn-primary:hover {
+  background: #2A2B31;
+}
+.btn-secondary {
+  background: var(--surface);
+  border-color: var(--line);
+  color: var(--ink);
+}
+.btn-secondary:hover {
+  background: var(--sunken);
+}
+
+/* Service Detail Standard Card */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-card);
+  padding: 20px 24px;
+  box-shadow: var(--sh-resting);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.card-title {
+  font-family: 'Red Hat Display', sans-serif;
+  font-size: 17px;
+  font-weight: 600;
+  color: var(--ink);
+}
+.detail-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+}
+.detail-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.detail-label {
+  font-size: 12px;
+  color: var(--text-faint);
+}
+.detail-val {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+/* "What the customer sees" Mirror Panel */
+.mirror-panel {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-card);
+  padding: 20px;
+  box-shadow: var(--sh-resting);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.mirror-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.mirror-title {
+  font-family: 'Red Hat Display', sans-serif;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--ink);
+}
+.mirror-badge {
+  font-size: 11px;
+  font-weight: 600;
+  background: var(--sunken);
+  color: var(--text-muted);
+  padding: 2px 8px;
+  border-radius: var(--r-pill);
+}
+
+/* Mini Browser Frame Mirroring Customer View */
+.mini-browser {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--ground);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+.browser-top {
+  height: 26px;
+  background: #EAE8E2;
+  border-bottom: 1px solid var(--line);
+  display: flex;
+  align-items: center;
+  padding: 0 8px;
+  gap: 5px;
+}
+.browser-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #CFCBC2;
+}
+.browser-url {
+  margin-left: 6px;
+  font-family: 'Red Hat Mono', monospace;
+  font-size: 10px;
+  color: var(--text-faint);
+}
+.mini-body {
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.mini-customer-card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 12px;
+  box-shadow: 0 1px 2px rgba(42, 28, 16, 0.04);
+}
+.mini-stepper {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+}
+.mini-step-num {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 9px;
+  font-family: 'Red Hat Mono', monospace;
+  font-weight: 600;
+  background: var(--sage);
+  color: #FFFFFF;
+}
+.mini-step-num.active {
+  background: var(--gold);
+}
+
+/* Alert Box */
+.alert-box {
+  display: none;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px 16px;
+  border-radius: var(--r-card);
+  background: var(--error-wash);
+  border: 1px solid #F4C3BE;
+  color: var(--error);
+  font-size: 13px;
+}
+
+/* Empty State Card */
+.empty-box {
+  text-align: center;
+  padding: 32px 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+.empty-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--sage-wash);
+  color: var(--sage);
+  display: grid;
+  place-items: center;
+}
+
+@media (max-width: 860px) {
+  .rail { display: none; }
+  .topbar { padding: 0 16px; }
+  .content { padding: 16px 16px 64px; }
+  .workspace-grid { grid-template-columns: 1fr; }
+  .detail-grid { grid-template-columns: 1fr; }
+  .client-header { padding: 16px; }
+  .client-name { font-size: 22px; }
+}
+
+.frame.mobile .rail { display: none; }
+.frame.mobile .topbar { padding: 0 16px; }
+.frame.mobile .content { padding: 16px 16px 64px; }
+.frame.mobile .workspace-grid { grid-template-columns: 1fr; }
+.frame.mobile .detail-grid { grid-template-columns: 1fr; }
+.frame.mobile .client-header { padding: 16px; }
+.frame.mobile .client-name { font-size: 20px; }
+</style>
+</head>
+<body>
+
+  
+  <div class="demo-bar">
+    <span class="label">State:</span>
+    <button class="demo-btn active" id="btnLive" onclick="setState('live')">Review ready</button>
+    <button class="demo-btn" id="btnNew" onclick="setState('new')">Post-kickoff</button>
+    <button class="demo-btn" id="btnEmpty" onclick="setState('empty')">All caught up</button>
+    <button class="demo-btn" id="btnError" onclick="setState('error')">DNS error</button>
+    <div class="demo-sep"></div>
+    <span class="label">Viewport:</span>
+    <button class="demo-btn active" id="btn1440" onclick="setViewport('desktop')">1440</button>
+    <button class="demo-btn" id="btn390" onclick="setViewport('mobile')">390</button>
+  </div>
+
+  <div class="frame" id="appFrame">
+    <div class="shell">
+      
+      
+      <aside class="rail">
+        <div class="rail-logo">
+          
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M3.5 9.5h17l-1.6 9a2 2 0 0 1-2 1.5H7.1a2 2 0 0 1-2-1.5z"/>
+            <path d="M8 9.5 11 4M16 9.5 13 4"/>
+            <path d="M9 13v3M12 13v3M15 13v3"/>
+          </svg>
+          BrandBasket
+        </div>
+
+        <nav class="rail-nav">
+          <a href="mock-console-today.html" class="rail-link">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+            Today
+          </a>
+          <a href="mock-console-workspace.html" class="rail-link active">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+            Clients
+          </a>
+          <a href="#" class="rail-link">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+            Inbox
+          </a>
+          <a href="mock-console-kickoff-popup.html" class="rail-link">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+            Calls
+          </a>
+          <a href="mock-console-payments.html" class="rail-link">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
+            Money
+          </a>
+          <a href="mock-console-compliance.html" class="rail-link">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            Compliance
+          </a>
+          <a href="#" class="rail-link">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+            System
+          </a>
+        </nav>
+      </aside>
+
+      
+      <main class="main">
+        <header class="topbar">
+          <div class="breadcrumb">
+            <a href="mock-console-workspace.html">Clients</a>
+            <span>/</span>
+            <span style="color:var(--ink); font-weight:600">Sweet Crust Bakery</span>
+          </div>
+          <div style="font-size:13px; color:var(--text-muted)">
+            Assigned: <strong style="color:var(--ink)">Single Staff Desk</strong>
+          </div>
+        </header>
+
+        <div class="content">
+          
+          
+          <div class="client-header">
+            <div class="client-header-top">
+              <div class="client-info">
+                <div class="client-name-row">
+                  <h1 class="client-name">Sweet Crust Bakery</h1>
+                  <span class="pill pill-active">Active Plan</span>
+                </div>
+                <div class="client-meta">
+                  <span>Priya Sharma</span>
+                  <span>+91 98765 43210</span>
+                  <span>priya@sweetcrust.in</span>
+                  <span>ID: <span class="mono">CUST-8492</span></span>
+                  <span>Joined: <span class="mono">10 Nov 2026</span></span>
+                </div>
+              </div>
+              <div>
+                <button class="btn btn-secondary" onclick="alert('Opening customer intake responses')">View intake</button>
+              </div>
+            </div>
+
+            
+            <div class="service-tabs">
+              <button class="service-tab active">Website</button>
+              <button class="service-tab">Social Media</button>
+              <button class="service-tab">Invoices & Billing</button>
+            </div>
+          </div>
+
+          
+          <div id="dnsErrorBanner" class="alert-box">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+            <div>
+              <div style="font-weight:700">Domain verification failed: sweetcrust.in</div>
+              <div>DNS records check returned NXDOMAIN for the required A-record pointing to 76.76.21.21. Client registrar has been notified.</div>
+            </div>
+          </div>
+
+          
+          <div class="workspace-grid">
+            
+            <div class="workspace-main">
+              
+              
+              
+              <div class="focal-card" id="focalActionCard">
+                <div class="focal-header">
+                  
+                  <div class="focal-icon-tile">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+                  </div>
+                  <div class="focal-titles">
+                    <div class="focal-eyebrow">Next staff action</div>
+                    <h2 class="focal-title" id="focalTitle">Send website preview link</h2>
+                    <p class="focal-desc" id="focalDesc">First draft ready. Add external preview link to notify customer for their review round.</p>
+                  </div>
+                </div>
+
+                <div class="focal-form" id="focalForm">
+                  <div class="form-group">
+                    <label class="form-label" for="previewUrl">Draft preview URL</label>
+                    <input class="form-input" id="previewUrl" type="url" value="https://preview.brandbasket.in/sweetcrust-draft-v1">
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label" for="staffNotes">Message to Priya Sharma (sent via portal and WhatsApp)</label>
+                    <textarea class="form-textarea" id="staffNotes">Hi Priya, your website draft is ready for review. Take a look and let us know your feedback or approve to launch.</textarea>
+                  </div>
+                  <div>
+                    <button class="btn btn-primary" onclick="alert('Preview link sent to Priya Sharma. Customer portal updated.')">Send preview to customer</button>
+                  </div>
+                </div>
+
+                <div id="focalEmptyNotice" class="empty-box" style="display:none; padding:12px 0">
+                  <div class="empty-icon" style="width:32px; height:32px">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+                  </div>
+                  <div style="font-weight:600; font-size:14px">Nothing waiting on staff</div>
+                  <div style="font-size:12px; color:var(--text-muted)">The customer has approved the design and website launch is scheduled.</div>
+                </div>
+              </div>
+
+              
+              <div class="card">
+                <div class="card-title">Website pipeline status</div>
+                
+                <div class="detail-grid">
+                  <div class="detail-item">
+                    <span class="detail-label">Current stage</span>
+                    <span class="detail-val" id="stageVal">Design preview</span>
+                  </div>
+                  <div class="detail-item">
+                    <span class="detail-label">Revision rounds</span>
+                    <span class="detail-val">1 of 1 round left</span>
+                  </div>
+                  <div class="detail-item">
+                    <span class="detail-label">Connected domain</span>
+                    <span class="detail-val" style="font-family:'Red Hat Mono',monospace">sweetcrust.in</span>
+                  </div>
+                </div>
+
+                <div style="border-top:1px solid var(--line); padding-top:14px; font-size:13px; color:var(--text-muted); display:flex; flex-direction:column; gap:8px">
+                  <div style="font-weight:600; color:var(--ink)">Recent milestones</div>
+                  <div>· 14 Nov 3:30 pm: Kickoff call completed with Priya Sharma</div>
+                  <div>· 14 Nov 11:20 am: Monthly subscription payment captured (Rs 5,898.82)</div>
+                  <div>· 10 Nov 4:00 pm: Client completed onboarding intake questionnaire</div>
+                </div>
+              </div>
+
+            </div>
+
+            
+            <div style="display:flex; flex-direction:column; gap:20px">
+              
+              <div class="mirror-panel">
+                <div class="mirror-header">
+                  <span class="mirror-title">What the customer sees</span>
+                  <span class="mirror-badge">Read only mirror</span>
+                </div>
+                
+                <div class="mini-browser">
+                  <div class="browser-top">
+                    <div class="browser-dot"></div>
+                    <div class="browser-dot"></div>
+                    <div class="browser-dot"></div>
+                    <span class="browser-url">app.brandbasket.in/website</span>
+                  </div>
+                  
+                  <div class="mini-body">
+                    <div class="mini-stepper">
+                      <div class="mini-step-num">✓</div>
+                      <span>Kickoff</span>
+                      <span>·</span>
+                      <div class="mini-step-num active" id="mirrorStepNum">2</div>
+                      <span style="font-weight:600; color:var(--ink)" id="mirrorStepLabel">Preview</span>
+                    </div>
+
+                    <div class="mini-customer-card">
+                      <div style="font-size:10px; font-weight:600; color:var(--gold-text); margin-bottom:2px">ACTION REQUIRED</div>
+                      <div style="font-size:13px; font-weight:700; color:var(--ink)" id="mirrorCardTitle">Review your website draft</div>
+                      <div style="font-size:11px; color:var(--text-muted); margin:4px 0 8px" id="mirrorCardDesc">Your first website draft is ready. You have 1 round of changes included with your plan.</div>
+                      <div style="display:flex; gap:6px">
+                        <span style="background:var(--ink); color:#fff; font-size:11px; font-weight:600; padding:3px 8px; border-radius:4px">Approve draft</span>
+                        <span style="border:1px solid var(--line); font-size:11px; font-weight:500; padding:3px 8px; border-radius:4px">Request changes</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              
+              <div class="card" style="font-size:13px">
+                <div style="font-weight:600; color:var(--ink); margin-bottom:8px">Client communications</div>
+                <div style="display:flex; flex-direction:column; gap:8px">
+                  <button class="btn btn-secondary" style="height:32px; font-size:12px; justify-content:flex-start" onclick="alert('Opening WhatsApp chat with Priya')">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
+                    Send WhatsApp message
+                  </button>
+                  <button class="btn btn-secondary" style="height:32px; font-size:12px; justify-content:flex-start" onclick="location.href='mock-console-payments.html'">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
+                    View payment records
+                  </button>
+                </div>
+              </div>
+
+            </div>
+
+          </div>
+
+        </div>
+      </main>
+
+    </div>
+  </div>
+
+  <script>
+    function setState(state) {
+      document.querySelectorAll('.demo-bar .demo-btn').forEach(btn => {
+        if (['btnLive', 'btnNew', 'btnEmpty', 'btnError'].includes(btn.id)) {
+          btn.classList.remove('active');
+        }
+      });
+      document.getElementById('btn' + state.charAt(0).toUpperCase() + state.slice(1)).classList.add('active');
+
+      const focalTitle = document.getElementById('focalTitle');
+      const focalDesc = document.getElementById('focalDesc');
+      const focalForm = document.getElementById('focalForm');
+      const focalEmptyNotice = document.getElementById('focalEmptyNotice');
+      const dnsErrorBanner = document.getElementById('dnsErrorBanner');
+      const stageVal = document.getElementById('stageVal');
+      const mirrorStepLabel = document.getElementById('mirrorStepLabel');
+      const mirrorCardTitle = document.getElementById('mirrorCardTitle');
+      const mirrorCardDesc = document.getElementById('mirrorCardDesc');
+
+      if (state === 'live') {
+        dnsErrorBanner.style.display = 'none';
+        focalForm.style.display = 'flex';
+        focalEmptyNotice.style.display = 'none';
+        focalTitle.textContent = 'Send website preview link';
+        focalDesc.textContent = 'First draft ready. Add external preview link to notify customer for their review round.';
+        stageVal.textContent = 'Design preview';
+        mirrorStepLabel.textContent = 'Preview';
+        mirrorCardTitle.textContent = 'Review your website draft';
+        mirrorCardDesc.textContent = 'Your first website draft is ready. You have 1 round of changes included with your plan.';
+      } else if (state === 'new') {
+        dnsErrorBanner.style.display = 'none';
+        focalForm.style.display = 'flex';
+        focalEmptyNotice.style.display = 'none';
+        focalTitle.textContent = 'Build website draft';
+        focalDesc.textContent = 'Kickoff completed. 48 hour countdown active to deliver first external preview link.';
+        stageVal.textContent = 'Building draft';
+        mirrorStepLabel.textContent = 'Building';
+        mirrorCardTitle.textContent = 'We are building your website';
+        mirrorCardDesc.textContent = 'Thanks for the call. Our design team is assembling your website preview.';
+      } else if (state === 'empty') {
+        dnsErrorBanner.style.display = 'none';
+        focalForm.style.display = 'none';
+        focalEmptyNotice.style.display = 'flex';
+        focalTitle.textContent = 'All actions completed';
+        focalDesc.textContent = 'Client has approved the draft. Automated hosting configuration running.';
+        stageVal.textContent = 'Live on domain';
+        mirrorStepLabel.textContent = 'Live';
+        mirrorCardTitle.textContent = 'Your website is live';
+        mirrorCardDesc.textContent = 'sweetcrust.in is published and receiving visitors.';
+      } else if (state === 'error') {
+        dnsErrorBanner.style.display = 'flex';
+        focalForm.style.display = 'flex';
+        focalEmptyNotice.style.display = 'none';
+        focalTitle.textContent = 'Resolve nameserver records';
+        focalDesc.textContent = 'Registrar DNS check failed for sweetcrust.in. Follow up with client registrar.';
+        stageVal.textContent = 'DNS verification failed';
+        mirrorStepLabel.textContent = 'Domain error';
+        mirrorCardTitle.textContent = 'Nameserver verification pending';
+        mirrorCardDesc.textContent = 'We are waiting for your domain registrar to verify the BrandBasket A-record.';
+      }
+    }
+
+    function setViewport(mode) {
+      document.getElementById('btn1440').classList.toggle('active', mode === 'desktop');
+      document.getElementById('btn390').classList.toggle('active', mode === 'mobile');
+      document.getElementById('appFrame').classList.toggle('mobile', mode === 'mobile');
+    }
+  </script>
+</body>
+</html>

@@ -1,6 +1,7 @@
 "use client";
 
 import { receiptDownloadHref } from "@brandbasket/shared/lib/billing/receipt-download";
+import { StatusChip } from "@brandbasket/shared/ui/patterns";
 import { useActionState, useId } from "react";
 import { DataTable, type DataTableColumn } from "@/components";
 import { formatDate, formatQuantity } from "@/lib/format";
@@ -56,8 +57,8 @@ export function InvoicesTable({ invoices, billedTo, canDownload, canPay }: Invoi
   const columns: readonly DataTableColumn<InvoiceView>[] = [
     { key: "invoice", header: "Invoice", cell: (view) => <span className="font-mono">{view.row.number}</span> },
     { key: "date", header: "Date", cell: (view) => formatDate(view.row.date), sortValue: (view) => view.row.date },
-    { key: "amount", header: "Amount", align: "end", cell: (view) => view.row.amount, sortValue: (view) => view.row.amountCents },
-    { key: "status", header: "Status", cell: (view) => <Badge tone={view.row.tone}>{view.row.status}</Badge> },
+    { key: "amount", header: "Amount", align: "end", cell: (view) => <span className="font-mono tabular-nums text-sm font-medium">{view.row.amount}</span>, sortValue: (view) => view.row.amountCents },
+    { key: "status", header: "Status", cell: (view) => <StatusChip variant={view.row.tone === "pos" ? "active" : view.row.tone === "warn" ? "waiting" : "idle"} label={view.row.status} /> },
     {
       key: "action",
       header: "",

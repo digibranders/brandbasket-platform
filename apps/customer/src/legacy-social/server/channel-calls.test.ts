@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 
 vi.mock("server-only", () => ({}));
 
-import { disconnectChannel, loadChannelPreview, SocialAutoError, type SocialAutoSettings } from "./social-auto";
+import { connectLink, disconnectChannel, loadChannelPreview, SocialAutoError, type SocialAutoSettings } from "./social-auto";
 
 const settings: SocialAutoSettings = { baseUrl: "http://127.0.0.1:4020", key: "secret", returnUrl: "https://app.example.com/social" };
 const json = (status: number, body: unknown = {}) => vi.fn(async () => new Response(JSON.stringify(body), { status })) as unknown as typeof fetch;
@@ -41,5 +41,15 @@ describe("the settings", () => {
     expect(socialAutoSettings(env)?.pictureUrl).toBeUndefined();
     expect(socialAutoSettings({ ...env, SOCIAL_AUTO_PICTURE_URL: "http://127.0.0.1:4025/" })?.pictureUrl).toBe("http://127.0.0.1:4025");
     expect(() => socialAutoSettings({ ...env, SOCIAL_AUTO_PICTURE_URL: "not a url" })).toThrow(/SOCIAL_AUTO_PICTURE_URL/);
+  });
+
+  it("asks for a connect link, and names the brand an account is moved from only when it is given", async () => {
+    const answer = { url: "https://allow.example.com/go" };
+    const plain = json(200, answer);
+    await connectLink(settings, "b2", "instagram", plain);
+    expect(sentBody(plain)).toEqual({ externalId: "b2", channel: "instagram", returnUrl: "https://app.example.com/social" });
+    const moving = json(200, answer);
+    await connectLink(settings, "b2", "instagram", moving, "b1");
+    expect(sentBody(moving)).toEqual({ externalId: "b2", channel: "instagram", returnUrl: "https://app.example.com/social", moveFrom: "b1" });
   });
 });

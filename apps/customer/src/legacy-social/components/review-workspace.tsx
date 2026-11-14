@@ -19,7 +19,7 @@ import { staysInMonth } from "@/legacy-social/lib/social/plan-window";
 import { CarouselPictures, CarouselTopic, carouselFor, carouselInWeek, decisionOf, sendBackReason, slideHeadlines, type WeekCarousel } from "./carousel-week";
 import { carouselMovable } from "@/legacy-social/lib/social/carousel";
 import type { PostingDays } from "@/legacy-social/lib/social/schedule";
-import { ChannelLogo } from "./channel-logo";
+import { ChannelLogo, ChannelRing } from "./channel-logo";
 import { imageUrl, pictureWord } from "./poster-tile";
 import { SMALL_DARK, SMALL_SOFT } from "./small-buttons";
 import { useReviewAction } from "./use-review-action";
@@ -485,7 +485,7 @@ function OwnTopicBox({ week, onClose }: { readonly week: string | undefined; rea
         event.preventDefault();
         onClose();
       }}
-      className="m-auto w-[min(calc(100%-2rem),32rem)] rounded-2xl border-0 bg-surface p-6 text-ink shadow-[0_24px_60px_-20px_rgb(21_22_26/0.5)] backdrop:bg-[rgb(17_20_24/0.5)]"
+      className="m-auto w-[min(calc(100%-2rem),32rem)] rounded-2xl border-0 bg-surface p-6 text-ink shadow-dialog backdrop:bg-scrim"
     >
       <form onSubmit={submit} className="grid gap-3">
         <h3 id="own-topic-title" className="type-section text-ink">
@@ -741,7 +741,7 @@ function DrawBar({ week, kept, total, retry, pictures, stay, carousel = null }: 
           event.preventDefault();
           setAsking(false);
         }}
-        className="m-auto w-[min(calc(100%-2rem),28rem)] rounded-2xl border-0 bg-surface p-6 text-ink shadow-[0_24px_60px_-20px_rgb(21_22_26/0.5)] backdrop:bg-[rgb(17_20_24/0.5)]"
+        className="m-auto w-[min(calc(100%-2rem),28rem)] rounded-2xl border-0 bg-surface p-6 text-ink shadow-dialog backdrop:bg-scrim"
       >
         <h3 id={`draw-title-${week.key}`} className="type-section text-ink">
           Draw pictures for {toDrawCount} kept {toDrawCount === 1 ? "topic" : "topics"}?
@@ -1289,12 +1289,8 @@ export function ReviewChannelsColumn(): ReactElement {
                 )}
               >
                 <span className="relative grid size-7 place-items-center">
-                  {doing === "working" ? (
-                    <svg aria-hidden="true" viewBox="0 0 36 36" className="absolute -inset-1 size-9 animate-spin">
-                      <circle cx="18" cy="18" r="16.5" fill="none" strokeWidth="2.5" strokeLinecap="round" strokeDasharray="26 78" className="stroke-c-growth" />
-                    </svg>
-                  ) : null}
-                  <span className={cn("grid place-items-center", ready && "animate-channel-zoom")}>
+                  {doing === "working" ? <ChannelRing platform={one.platform} /> : null}
+                  <span className={cn("relative grid place-items-center", ready && "animate-channel-zoom")}>
                     <ChannelLogo platform={one.platform} medium />
                   </span>
                 </span>

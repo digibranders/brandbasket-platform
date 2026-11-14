@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { NotBought } from "@/features/setup/components/not-bought";
-import { connectNoticeLine } from "@/features/social/accounts/rules";
+import { accountInUse, connectNoticeLine } from "@/features/social/accounts/rules";
 import { channelFrom, postingServiceSettings } from "@/features/social/analytics/rules";
 import { SocialOverview } from "@/features/social/components/social-screens";
 import { LegacySocialPage } from "@/legacy-social/components/legacy-social-page";
@@ -9,15 +9,16 @@ import { requirePaid } from "@/lib/guards";
 export const metadata: Metadata = { title: "Content calendar" };
 
 interface SocialPageProps {
-  readonly searchParams: Promise<{ readonly social?: string | readonly string[]; readonly channel?: string | readonly string[] }>;
+  readonly searchParams: Promise<{ readonly social?: string | readonly string[]; readonly channel?: string | readonly string[]; readonly reason?: string | readonly string[]; readonly heldBy?: string | readonly string[] }>;
 }
 
 export default async function SocialPage({ searchParams }: SocialPageProps) {
   const customer = await requirePaid();
   if (!customer.services.includes("social")) return <NotBought service="social" customer={customer} />;
-  const { social, channel } = await searchParams;
-  const notice = connectNoticeLine(social, channel);
+  const { social, channel, reason, heldBy } = await searchParams;
+  const notice = connectNoticeLine(social, channel, reason);
+  const inUse = accountInUse({ social, channel, reason, heldBy });
   // With a posting service the page is the old Social media page, as it was; without one, the posts and accounts staff keep in the database.
-  if (postingServiceSettings(process.env) !== null) return <LegacySocialPage customer={customer} notice={notice} />;
+  if (postingServiceSettings(process.env) !== null) return <LegacySocialPage customer={customer} notice={notice} inUse={inUse} />;
   return <SocialOverview customer={customer} notice={notice} channel={channelFrom(channel)} />;
 }

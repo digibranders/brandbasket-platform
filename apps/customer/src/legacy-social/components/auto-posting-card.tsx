@@ -5,7 +5,7 @@ import { cn } from "@brandbasket/shared/lib/cn";
 import { setAutoPostingAction } from "@/legacy-social/actions";
 import { LIFT, SECTION_TITLE } from "@/legacy-social/classes";
 import { PLATFORM_NAMES, type ChannelPlatform } from "@/legacy-social/lib/social/auto";
-import { AUTO_POSTING_CONSENT, safetyWords, SAFETY_HOURS, type AutoPosting } from "@/legacy-social/lib/social/auto-posting";
+import { AUTO_POSTING_CONSENT, AUTO_SAFETY_HOURS, safetyWords, type AutoPosting } from "@/legacy-social/lib/social/auto-posting";
 import { ChannelLogo } from "./channel-logo";
 import { SMALL_DARK, SMALL_SOFT } from "./small-buttons";
 import { useReviewAction } from "./use-review-action";
@@ -28,7 +28,6 @@ const names = (list: readonly ChannelPlatform[]): string => list.map((platform) 
 export function AutoPostingCard({ auto, channels, canChange }: AutoPostingCardProps): ReactElement | null {
   const [open, setOpen] = useState(false);
   const [chosen, setChosen] = useState<ReadonlySet<ChannelPlatform>>(new Set(auto.channels));
-  const [hours, setHours] = useState<number>(auto.safetyHours);
   const [agreed, setAgreed] = useState(false);
   const save = useReviewAction();
   if (channels.length === 0) return null;
@@ -47,7 +46,7 @@ export function AutoPostingCard({ auto, channels, canChange }: AutoPostingCardPr
     });
   const submit = (list: readonly ChannelPlatform[]): void => {
     if (save.pending) return;
-    save.run(setAutoPostingAction, { channels: list.join(","), hours: String(hours), ...(list.length > 0 ? { agreed: "yes" } : {}) }, () => {
+    save.run(setAutoPostingAction, { channels: list.join(","), hours: String(AUTO_SAFETY_HOURS), ...(list.length > 0 ? { agreed: "yes" } : {}) }, () => {
       setOpen(false);
       setAgreed(false);
     });
@@ -62,8 +61,8 @@ export function AutoPostingCard({ auto, channels, canChange }: AutoPostingCardPr
         </h2>
         <p className="mt-1 text-[0.84375rem] leading-relaxed text-ink-2">
           {live.length === 0
-            ? "You approve every post before it goes out. You can let us do it for the channels you choose: we approve the pictures that pass our checks, a set time before they go out, and you can still reject any post until then."
-            : `Automatic for ${names(live)}. We approve pictures that pass our checks ${safetyWords(auto.safetyHours).toLowerCase()}, and you can still reject a post until then.${manual.length > 0 ? ` ${names(manual)}: you approve each post.` : ""}`}
+            ? "You approve every post before it goes out. You can let us do it for the channels you choose: we approve the pictures that pass our checks as soon as they are drawn, and you can still reject any post until it goes out."
+            : `Automatic for ${names(live)}. We approve pictures ${safetyWords(auto.safetyHours)}, and you can still reject a post until it goes out.${manual.length > 0 ? ` ${names(manual)}: you approve each post.` : ""}`}
         </p>
       </div>
 
@@ -79,7 +78,6 @@ export function AutoPostingCard({ auto, channels, canChange }: AutoPostingCardPr
             type="button"
             onClick={() => {
               setChosen(new Set([...auto.channels, ...asked]));
-              setHours(auto.safetyHours);
               setAgreed(false);
               setOpen(true);
             }}
@@ -116,19 +114,6 @@ export function AutoPostingCard({ auto, channels, canChange }: AutoPostingCardPr
               </label>
             ))}
           </fieldset>
-          <div className="grid gap-1">
-            <label htmlFor="auto-hours" className="text-xs font-semibold text-ink-2">
-              We approve a picture
-            </label>
-            <select id="auto-hours" value={hours} onChange={(event) => setHours(Number(event.target.value))} className="h-10 w-full max-w-xs rounded-lg border border-ink-2/65 bg-surface px-3 text-[0.875rem] text-ink">
-              {SAFETY_HOURS.map((value) => (
-                <option key={value} value={value}>
-                  {safetyWords(value)}
-                </option>
-              ))}
-            </select>
-            <p className="text-xs text-ink-3">Until then you can reject it. A longer wait gives you more time.</p>
-          </div>
           <p className="text-xs text-ink-3">Carousels, topics you ask for yourself, and anything our checks flag stay with you to approve.</p>
           <label className="flex cursor-pointer items-start gap-3 text-[0.84375rem] text-ink-2">
             <input type="checkbox" checked={agreed} onChange={(event) => setAgreed(event.target.checked)} className="mt-0.5 size-4 shrink-0" />

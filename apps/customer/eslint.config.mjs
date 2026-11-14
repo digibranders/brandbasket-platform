@@ -16,8 +16,12 @@ const BANNED_IMPORTS = [
     message: "apps/customer never imports the old app. Port the logic into a feature's rules.ts with its tests (BUILD-RULES rule 1).",
   },
   {
-    group: ["@brandbasket/shared/ui", "@brandbasket/shared/ui/*", "@brandbasket/shared/styles", "@brandbasket/shared/styles/*"],
-    message: "The old UI and theme stay in the old app. Use src/ui and src/styles (BUILD-RULES rule 1).",
+    regex: "^@brandbasket/shared/ui(/(?!patterns(/|$)).*|)$",
+    message: "The old UI stays in the old app. Use src/ui and @brandbasket/shared/ui/patterns (BUILD-RULES rule 1).",
+  },
+  {
+    group: ["@brandbasket/shared/styles", "@brandbasket/shared/styles/*"],
+    message: "The old theme stays in the old app. Use src/styles (BUILD-RULES rule 1).",
   },
   {
     group: ["@radix-ui/*", "radix-ui", "@mui/*", "antd", "@chakra-ui/*", "@mantine/*", "@headlessui/*"],
@@ -79,7 +83,9 @@ const LITERAL_RULES = [
 // the BrandLogo type in brand.ts, so that one path is let through the ban on @brandbasket/shared/ui.
 const PLATFORM_IMPORTS = [
   ...BANNED_IMPORTS.map((pattern) =>
-    pattern.group?.includes("@brandbasket/shared/ui") ? { ...pattern, group: [...pattern.group.filter((entry) => entry !== "@brandbasket/shared/ui"), "!@brandbasket/shared/ui/logo"] } : pattern,
+    pattern.regex?.includes("@brandbasket/shared/ui")
+      ? { ...pattern, regex: "^@brandbasket/shared/ui(/(?!(patterns|logo)(/|$)).*|)$" }
+      : pattern,
   ),
   PHOSPHOR,
 ];

@@ -27,6 +27,7 @@ describe("KickoffPromptPopup", () => {
     expect(html).toContain("They did not join");
     expect(html).toContain("Reschedule");
     expect(html).toContain("What was agreed (optional)");
+    expect(html).toContain("Call confirmation readies the website build. If not confirmed within 24 hours of scheduled completion, the build starts automatically.");
     expect(html).not.toContain("held");
   });
 

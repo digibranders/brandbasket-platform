@@ -36,7 +36,7 @@ You are the orchestrator for Release 2 build waves B to E of the BrandBasket pla
 Pull origin/development. Re-read docs/implementation/RELEASE-2-PLAN.md, docs/design/redesign/05-PREMIUM-DESIGN-LANGUAGE.md, docs/implementation/AGENT-RULES.md, docs/implementation/MERGE-AND-RELEASE.md, and the approved mocks in docs/design/redesign/ with their notes files.
 
 Run waves in order. Inside a wave run all packages in parallel, one agent each, each in ../bb-r2-NN on branch r2/NN-name from origin/development, with its own database and ports (AGENT-RULES.md section 4):
-- Wave B: R2-02 Home and Needs your OK; R2-03 Website; R2-04 Social (re-read current Social code first, preserve Steve's changes, do not rename legacy-social unless the owner has said so); R2-05 Plan and billing, checkout, sign up and intake.
+- Wave B: R2-02 Home and Needs your OK; R2-03 Website; R2-04 Social (POLISH ONLY: keep Steve's layouts and flows exactly, re-read current Social code first, merge latest origin/steve and origin/development before starting and before merging, do not rename legacy-social, no restructuring); R2-05 Plan and billing, checkout, sign up and intake.
 - Wave C: R2-06 Requests, Reports, Business, Enquiries, Help; R2-07 Settings family and account pages; R2-08 console shell, Today, client workspace, kickoff popup restyle.
 - Wave D: R2-09 console Money, Compliance, System; R2-10 loading, empty, error, permission states and forms that keep input.
 - Wave E: R2-11 Playwright journeys at 1440, 768 and 390, axe sweep, keyboard pass, screenshots.

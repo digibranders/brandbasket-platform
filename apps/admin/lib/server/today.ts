@@ -27,7 +27,7 @@ import {
   type SupportTicket,
 } from "@brandbasket/db";
 import { errorLogInfo } from "@brandbasket/shared/server/error-log-info";
-import { clientPaymentState } from "@brandbasket/shared/lib/billing/client-payment";
+import { clientPaymentState, countPayingClients } from "@brandbasket/shared/lib/billing/client-payment";
 import type { FigureItem } from "@/components/console/figures";
 import { businessFigures, figuresInput } from "@/lib/business-figures";
 import { attentionItems } from "@/lib/pipeline";
@@ -203,6 +203,7 @@ export interface TodayPage {
   readonly systems: readonly SystemLine[];
   /** Kickoff calls that are over and waiting for staff confirmation. */
   readonly pendingKickoffs: readonly KickoffNeedingOutcome[];
+  readonly activeClientsCount: number;
 }
 
 /** Everything the Today page draws, each source read once. Without `canSeeMoney` the collected figure and flagged payments are neither read nor shown. */
@@ -226,5 +227,6 @@ export async function loadTodayPage(now: Date, canSeeMoney: boolean, canSeeGoogl
     calls,
     systems,
     pendingKickoffs: sources.kickoffsNeedingOutcome ?? [],
+    activeClientsCount: countPayingClients(sources.clients, now),
   };
 }

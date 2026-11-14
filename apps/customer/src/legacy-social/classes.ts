@@ -3,7 +3,7 @@ import { buttonClasses } from "@/ui/button-styles";
 /** Class strings every v2 screen shares (apps/platform/DESIGN.md "Surfaces"). */
 
 /** The one raised surface on a screen. */
-export const LIFT = "rounded-lift bg-surface shadow-lift";
+export const LIFT = "rounded-lift border border-line bg-surface shadow-lift";
 
 /** A section that sits on the page: its title with the hairline under it. */
 export const SECTION_TITLE = "border-b border-line pb-2.5 type-section text-ink";
@@ -24,7 +24,7 @@ export const DARK_BUTTON = buttonClasses("primary", "md");
  * The dark button's shape for the shared SubmitButton (packages/shared/src/ui/panel/submit-button.tsx), which keeps its
  * "disabled until the form is complete" rule. Its pill shape and size are overridden with `!`, as the classes are joined, not merged.
  */
-export const DARK_BUTTON_SHAPE = "h-11! rounded-[0.625rem]! px-5! text-[0.875rem]! hover:bg-ink-raised!";
+export const DARK_BUTTON_SHAPE = "h-11! rounded-lg! px-5! text-[0.875rem]! hover:bg-ink-raised!";
 
 /** Every other action: a soft fill, never an outline. */
 export const SOFT_BUTTON = buttonClasses("secondary", "md");

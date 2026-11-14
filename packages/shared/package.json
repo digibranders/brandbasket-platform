@@ -9,6 +9,8 @@
   },
   "type": "module",
   "exports": {
+    "./ui/patterns": "./src/ui/patterns/index.ts",
+    "./ui/patterns/*": "./src/ui/patterns/*.tsx",
     "./ui/*": "./src/ui/*.tsx",
     "./lib/*": "./src/lib/*.ts",
     "./server/*": "./src/server/*.ts",

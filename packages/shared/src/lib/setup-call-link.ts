@@ -76,3 +76,81 @@ export function readInviteeUri(value: unknown): string | null {
   }
   return url.protocol === "https:" && url.hostname === "api.calendly.com" && url.username === "" && url.password === "" ? url.toString() : null;
 }
+
+const CALCOM_BOOKING_API_PATTERN = /^https:\/\/api\.cal\.com\/(?:v\d+\/)?bookings\/([A-Za-z0-9_\\-]{1,64})$/;
+
+function extractDirectVideoUrl(candidate: string): string | null {
+  let url: URL;
+  try {
+    url = new URL(candidate.trim());
+  } catch {
+    return null;
+  }
+  if (url.protocol !== "https:") return null;
+  if (url.username !== "" || url.password !== "") return null;
+  const host = url.hostname.toLowerCase();
+  if (host === "meet.google.com") return url.toString();
+  if (host === "zoom.us" || host.endsWith(".zoom.us") || host === "zoom.gov" || host.endsWith(".zoom.gov")) return url.toString();
+  if (host === "app.cal.com" && url.pathname.startsWith("/video/")) return url.toString();
+  if (host === "teams.microsoft.com" || host === "teams.live.com") return url.toString();
+  if (host === "whereby.com" || host.endsWith(".whereby.com")) return url.toString();
+  return null;
+}
+
+function resolveVideoCandidate(raw: string): string | null {
+  const text = raw.trim();
+  if (text === "") return null;
+  const calcomMatch = CALCOM_BOOKING_API_PATTERN.exec(text);
+  if (calcomMatch && calcomMatch[1]) {
+    return `https://app.cal.com/video/${calcomMatch[1]}`;
+  }
+  return extractDirectVideoUrl(text);
+}
+
+/**
+ * Resolves the video meeting join link from a stored booking inviteeUri and an optional fallback URL.
+ * Cal.com booking API links (https://api.cal.com/v2/bookings/:uid) are translated to their video room
+ * (https://app.cal.com/video/:uid). Direct video meeting links (Google Meet, Cal.com Video, Zoom, Teams,
+ * Whereby) are returned directly. When inviteeUri is missing or not a meeting link, fallbackUrl from settings
+ * is used. Pure and browser-safe.
+ */
+export function kickoffMeetingLink(inviteeUri?: string | null, fallbackUrl?: string | null): string | null {
+  if (typeof inviteeUri === "string" && inviteeUri.trim() !== "") {
+    const resolved = resolveVideoCandidate(inviteeUri);
+    if (resolved !== null) return resolved;
+  }
+  if (typeof fallbackUrl === "string" && fallbackUrl.trim() !== "") {
+    const resolvedFallback = resolveVideoCandidate(fallbackUrl);
+    if (resolvedFallback !== null) return resolvedFallback;
+    try {
+      const url = new URL(fallbackUrl.trim());
+      if (url.protocol === "https:" && url.username === "" && url.password === "") {
+        return url.toString();
+      }
+    } catch {
+      return null;
+    }
+  }
+  return null;
+}
+
+/**
+ * Formats a start and end moment into an exact timing window (for example: "3:30 PM to 4:00 PM").
+ * If only startsAt is provided, returns the formatted start time.
+ */
+export function formatTimingWindow(startsAt: Date, endsAt: Date | null, timeZone = "Asia/Kolkata"): string {
+  if (Number.isNaN(startsAt.getTime())) return "";
+  const formatter = new Intl.DateTimeFormat("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+    timeZone,
+  });
+  const startStr = formatter.format(startsAt);
+  if (endsAt === null || Number.isNaN(endsAt.getTime())) {
+    return startStr;
+  }
+  const endStr = formatter.format(endsAt);
+  return `${startStr} to ${endStr}`;
+}
+

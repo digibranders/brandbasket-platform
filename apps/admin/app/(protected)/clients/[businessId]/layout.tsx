@@ -54,7 +54,7 @@ export default async function ClientLayout({
           </span>
         }
       >
-        <StageTrack stage={clientStage(client)} />
+        {project !== null ? <StageTrack stage={clientStage(client)} /> : null}
       </PageHeader>
       <ClientTabs tabs={tabsFor(staff.role).map((tab) => ({ href: clientTabHref(client.businessId, tab.slug), label: tab.label }))} />
       <div className="mt-8">{children}</div>

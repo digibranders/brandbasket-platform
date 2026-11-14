@@ -2,12 +2,14 @@ import { FileText } from "@phosphor-icons/react/dist/ssr";
 import type { ReactElement, ReactNode } from "react";
 import { cn } from "@brandbasket/shared/lib/cn";
 import { allPaused, bookedUntil, connectStatus, dayLabel, daysUntilEnd, endingSoon, endsInWords, type ChannelPlatform } from "@/legacy-social/lib/social/auto";
+import { type ChannelState } from "@/legacy-social/lib/social/channel-activity";
 import { sortChannels, totalTodo } from "@/legacy-social/lib/social/review-flow";
 import type { LegacySocialData } from "@/legacy-social/server/load";
 import Link from "next/link";
 import { BrandControl } from "./brand-switcher";
 import { ChannelFilterProvider } from "./channel-filter";
 import { ChannelsSidebar, type ChannelRow } from "./channels-sidebar";
+import { MoveAccountPrompt, type MoveOffer } from "./move-account";
 import { ConnectStatusCard } from "./connect-status";
 import { NewPostButton, NewPostRequestProvider } from "./new-post-request";
 import { SMALL_SOFT } from "./small-buttons";
@@ -26,19 +28,23 @@ export interface LegacySocialViewProps {
   readonly savedWebsite: string | null;
   /** Where the latest monthly Social media report is, or null when none has been sent. */
   readonly reportHref: string | null;
-  /** What each channel has waiting for the customer, for the number beside its name. */
-  readonly todos?: Partial<Record<ChannelPlatform, number>>;
+  /** What each channel has waiting for the customer and whether posts are being written for it, beside its name. */
+  readonly channelState?: ChannelState;
+  /** An account the customer tried to connect is connected to another of her brands: offer to move it here. */
+  readonly move?: MoveOffer | null;
 }
 
 /** The channels column's rows and its line about how far ahead posts are booked. */
-function channelsColumn(data: LegacySocialData, now: Date, todos: Partial<Record<ChannelPlatform, number>>): { rows: ChannelRow[]; bookedLine: string } {
+function channelsColumn(data: LegacySocialData, now: Date, state: ChannelState | undefined): { rows: ChannelRow[]; bookedLine: string } {
   const rows = sortChannels(data.channels).map((channel): ChannelRow => ({
     id: channel.id,
     platform: channel.platform,
     account: channel.account,
     ending: endingSoon(channel, now) ? endsInWords(daysUntilEnd(channel, now) ?? 0) : null,
     paused: channel.paused === true,
-    todo: todos[channel.platform] ?? 0,
+    todo: state?.todos[channel.platform] ?? 0,
+    working: state?.working.includes(channel.platform) ?? false,
+    doneAt: state?.doneAt[channel.platform],
   }));
   const until = bookedUntil(data.posts, data.today);
   return { rows, bookedLine: until === null ? "No posts are booked yet." : `Posts booked until ${dayLabel(until, { day: "numeric", month: "short" })}.` };
@@ -48,17 +54,17 @@ function channelsColumn(data: LegacySocialData, now: Date, todos: Partial<Record
  * Social media as it was in the old dashboard: the channels column against the rail, the title with New post, the Posts and Analytics
  * tabs, and the week calendar. Copied from the old app and left as it was.
  */
-export function LegacySocialView({ data, notice, now, hasNumbers, canChange, reportHref, savedWebsite, todos = {} }: LegacySocialViewProps): ReactElement {
+export function LegacySocialView({ data, notice, now, hasNumbers, canChange, reportHref, savedWebsite, channelState, move = null }: LegacySocialViewProps): ReactElement {
   const status = connectStatus(data.channels, data.posts, now);
   const canPost = canChange;
   const hasAccounts = data.channels.length > 0;
-  const { rows, bookedLine } = channelsColumn(data, now, todos);
+  const { rows, bookedLine } = channelsColumn(data, now, channelState);
   return (
     <NewPostRequestProvider>
       <ChannelFilterProvider>
         {/* On a wide screen the channels column steps out of the shell's gutter and sits against the menu, as it did in the old dashboard. */}
         <div className="flex flex-col gap-6 lg:-mt-5 lg:-ml-gutter lg:flex-row lg:gap-8">
-          <ChannelsSidebar rows={rows} bookedLine={bookedLine} />
+          <ChannelsSidebar rows={rows} brandId={channelState?.brandId} bookedLine={bookedLine} />
           <div className="order-first min-w-0 flex-1 lg:order-none lg:pt-5">
             <div className="mr-auto grid w-full max-w-[97.5rem] grid-cols-[minmax(0,1fr)] gap-6 md:gap-8">
               <header className="flex flex-wrap items-start justify-between gap-4">
@@ -77,8 +83,9 @@ export function LegacySocialView({ data, notice, now, hasNumbers, canChange, rep
                   {canPost ? <NewPostButton disabled={!hasAccounts} /> : null}
                 </div>
               </header>
-              <SocialTabs current="calendar" hasNumbers={hasNumbers} onlyWithoutNumbers={!hasNumbers && data.channels.length > 0} hasPosts={canChange} waiting={totalTodo(todos)} />
-              {notice === null ? null : (
+              <SocialTabs current="calendar" hasNumbers={hasNumbers} onlyWithoutNumbers={!hasNumbers && data.channels.length > 0} hasPosts={canChange} waiting={totalTodo(channelState?.todos ?? {})} />
+              {move === null ? null : <MoveAccountPrompt offer={move} />}
+              {notice === null || move !== null ? null : (
                 <p role={notice.ok ? "status" : "alert"} className={cn("text-[0.8125rem] font-semibold", notice.ok ? "text-sage-deep" : "text-error")}>
                   {notice.text}
                 </p>

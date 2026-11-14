@@ -17,6 +17,8 @@ export interface ProjectHistory {
   /** project_events, oldest first. */
   readonly events: readonly TimelineEvent[];
   readonly callStartsAt: Date | null;
+  readonly callEndsAt?: Date | null;
+  readonly meetingUrl?: string | null;
 }
 
 export interface WebsiteProgress {
@@ -66,6 +68,9 @@ export function websiteProgress(input: {
       liveBy: timeline === null ? null : dayStillAhead(liveDate(timeline)?.liveBy ?? null, now),
       kickoffFirst,
       kickoffDay: callStartsAt === null ? null : dayOf(callStartsAt),
+      startsAt: callStartsAt,
+      endsAt: history?.callEndsAt ?? null,
+      meetingUrl: history?.meetingUrl ?? null,
     }),
     steps: timeline === null || history === null ? null : websiteTimeline(timeline),
   };
