@@ -1,0 +1,11 @@
+# Starts brandbasket-signup-reminder.service hourly. Installed, not enabled: see the service file.
+[Unit]
+Description=Brandbasket abandoned sign-up reminder hourly check
+
+[Timer]
+OnCalendar=hourly
+Persistent=true
+RandomizedDelaySec=60
+
+[Install]
+WantedBy=timers.target

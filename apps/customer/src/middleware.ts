@@ -1,0 +1,16 @@
+import { NextResponse, type NextRequest } from "next/server";
+
+export function middleware(request: NextRequest) {
+  const requestHeaders = new Headers(request.headers);
+  const path = `${request.nextUrl.pathname}${request.nextUrl.search}`;
+  requestHeaders.set("x-pathname", path);
+  return NextResponse.next({
+    request: {
+      headers: requestHeaders,
+    },
+  });
+}
+
+export const config = {
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|t/).*)"],
+};

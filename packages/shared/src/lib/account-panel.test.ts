@@ -39,15 +39,15 @@ describe("noticesFrom, requests", () => {
         { ticketId: "t3", subject: "Footer", kind: "payment" },
       ]),
     ).toEqual([
-      { id: "request-quote-t1", text: "Quote waiting: Add an Implants page", href: "/requests?open=t1", actionable: true },
-      { id: "request-check-t2", text: "Ready to check: Change the main photo", href: "/requests?open=t2", actionable: true },
-      { id: "request-payment-t3", text: "Payment waiting: Footer", href: "/requests?open=t3", actionable: true },
+      { id: "request-quote-t1", text: "Quote waiting: Add an Implants page", href: "/requests/t1", actionable: true },
+      { id: "request-check-t2", text: "Ready to check: Change the main photo", href: "/requests/t2", actionable: true },
+      { id: "request-payment-t3", text: "Payment waiting: Footer", href: "/requests/t3", actionable: true },
     ]);
   });
 
   it("lists a reply to read without lighting the dot", () => {
     const notices = ask([{ ticketId: "t1", subject: "Add an Implants page", kind: "reply" }]);
-    expect(notices).toEqual([{ id: "request-reply-t1", text: "New reply: Add an Implants page", href: "/requests?open=t1", actionable: false }]);
+    expect(notices).toEqual([{ id: "request-reply-t1", text: "New reply: Add an Implants page", href: "/requests/t1", actionable: false }]);
     expect(actionableCount(notices)).toBe(0);
   });
 

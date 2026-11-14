@@ -1,0 +1,1 @@
+ALTER TABLE "leads" ADD COLUMN "signup_reminder_sent_at" timestamp with time zone;

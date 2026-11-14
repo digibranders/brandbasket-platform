@@ -1,4 +1,5 @@
 import { PAYMENT_RECEIVED_MESSAGE } from "@brandbasket/shared/lib/billing/payment-step";
+import { StatusChip } from "@brandbasket/shared/ui/patterns";
 import type { ReactNode } from "react";
 import { MetricStrip, PageHeader, Panel, PanelEmpty, PanelError } from "@/components";
 import type { CustomerContext } from "@/lib/guards";
@@ -45,36 +46,75 @@ function Notices({ notices }: { readonly notices: NoticesView }) {
   );
 }
 
-/** The plan at a glance: what the next payment takes and when, and how many of the three plans are on. */
+/** The plan at a glance: focal card with gold top border when active plan exists. */
 function Glance({ glance }: { readonly glance: NonNullable<ServicesPanelView["glance"]> }) {
   return (
-    <MetricStrip
-      label="Your plan at a glance"
-      metrics={[
-        { label: "Next payment", value: glance.nextAmount, period: glance.nextOn },
-        { label: "Your plans", value: String(glance.plansHeld), unit: `of ${glance.plansTotal}`, period: "Dedicated Expert Monitoring is free with all three" },
-      ]}
-    />
+    <article className="relative flex flex-col rounded-overlay border border-border border-t-2 border-t-accent-gold bg-surface p-6 shadow-hero sm:p-7">
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div className="flex flex-col gap-1.5">
+          <div className="flex items-center gap-2">
+            <StatusChip label="Active subscription" variant="active" hasDot />
+          </div>
+          <h2 className="font-display text-2xl font-bold tracking-tight text-ink">
+            Growth Plan
+          </h2>
+          <p className="font-sans text-sm text-ink-2 max-w-xl">
+            Website maintenance, automated social posts, and dedicated expert support.
+          </p>
+        </div>
+        <div className="text-right">
+          <div className="font-mono text-2xl sm:text-3xl font-bold text-ink tabular-nums">
+            {glance.nextAmount}
+          </div>
+          <div className="font-sans text-xs text-ink-3">
+            per month, GST included
+          </div>
+        </div>
+      </div>
+      <div className="mt-4 pt-4 border-t border-border">
+        <MetricStrip
+          label="Your plan at a glance"
+          metrics={[
+            { label: "Next payment", value: glance.nextAmount, period: glance.nextOn },
+            { label: "Your plans", value: String(glance.plansHeld), unit: `of ${glance.plansTotal}`, period: "Dedicated Expert Monitoring is free with all three" },
+          ]}
+        />
+      </div>
+      <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-border pt-4 text-xs font-sans text-ink-2">
+        <span>
+          Next renewal: <strong className="font-mono text-ink">{glance.nextOn}</strong>
+        </span>
+        <LinkButton href={PAYMENT_PATH} size="sm" variant="secondary">
+          Payment details
+        </LinkButton>
+      </div>
+    </article>
   );
 }
 
-function BillPanel({ bill }: { readonly bill: BillView }) {
+function BillPanel({ bill, isFocal = false }: { readonly bill: BillView; readonly isFocal?: boolean }) {
+  const containerClass = isFocal
+    ? "relative flex flex-col rounded-overlay border border-border border-t-2 border-t-accent-gold bg-surface p-6 shadow-hero sm:p-7"
+    : "rounded-panel border border-border bg-surface p-6 shadow-card";
   return (
-    <Panel title={bill.period === "year" ? "This year's bill" : "This month's bill"}>
+    <article className={containerClass}>
+      <h2 className="font-display text-lg font-bold tracking-tight text-ink mb-3">
+        {bill.period === "year" ? "This year's bill" : "This month's bill"}
+      </h2>
       <dl className="flex flex-col gap-2">
         {bill.rows.map((row) => (
           <div key={row.label} className="flex justify-between gap-4">
-            <dt className="text-ink-3">{row.label}</dt>
-            <dd className={row.discount ? "tabular-nums text-pos-text" : "tabular-nums"}>{row.amount}</dd>
+            <dt className="text-ink-3 font-sans text-sm">{row.label}</dt>
+            <dd className={row.discount ? "tabular-nums font-mono text-sm text-pos-text font-medium" : "tabular-nums font-mono text-sm text-ink font-medium"}>{row.amount}</dd>
           </div>
         ))}
-        <div className="flex items-baseline justify-between gap-4">
-          <dt className="type-sub text-ink">{bill.period === "year" ? "Total per year" : "Total per month"}</dt>
-          <dd className="type-metric-sm tabular-nums">{bill.total}</dd>
+        <div className="flex items-baseline justify-between gap-4 border-t border-border pt-3">
+          <dt className="type-sub font-semibold text-ink">{bill.period === "year" ? "Total per year" : "Total per month"}</dt>
+          <dd className="type-metric-sm tabular-nums font-mono">{bill.total}</dd>
         </div>
       </dl>
-      {bill.gstLine === null && bill.adMoneyLine === null ? null : <p className="mt-2 type-meta">{[bill.gstLine, bill.adMoneyLine].filter((line) => line !== null).join(" ")}</p>}
-    </Panel>
+      {bill.gstLine === null && bill.adMoneyLine === null ? null : <p className="mt-3 type-meta">{[bill.gstLine, bill.adMoneyLine].filter((line) => line !== null).join(" ")}</p>}
+    </article>
   );
 }
 
@@ -85,19 +125,27 @@ function StatePanel({ state, overview }: { readonly state: PlanState; readonly o
       return null;
     case "renewal-failing":
       return (
-        <Panel title="We couldn’t take your last payment">
-          <p className="type-body text-ink-3">
+        <div role="alert" className="flex flex-col gap-3 rounded-panel border border-neg-border bg-neg-wash p-5 text-left shadow-card">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-surface text-neg-text shadow-button" aria-hidden="true">
+                <Icon name="Warning" size="sm" />
+              </span>
+              <h2 className="font-display text-lg font-semibold text-neg-text">
+                We couldn’t take your last payment
+              </h2>
+            </div>
+            {overview.canManage ? (
+              <LinkButton href={PAYMENT_PATH} variant="primary" size="sm">
+                Change payment method
+              </LinkButton>
+            ) : null}
+          </div>
+          <p className="type-body text-ink-2">
             We’ll try again on our own. Your website stays online until {formatDate(state.until)}. If the payments keep failing, it goes offline then, and you can restart it from this page. Check
             that the account, card or UPI you subscribed with has enough balance and hasn’t expired.
           </p>
-          {overview.canManage ? (
-            <div className="mt-3">
-              <LinkButton href={PAYMENT_PATH} variant="primary">
-                Change payment method
-              </LinkButton>
-            </div>
-          ) : null}
-        </Panel>
+        </div>
       );
     case "under-review":
       return (
@@ -107,16 +155,19 @@ function StatePanel({ state, overview }: { readonly state: PlanState; readonly o
       );
     case "unpaid":
       return (
-        <Panel title="Your plan">
-          <p className="type-body text-ink-3">Your plan starts when your first payment goes through.</p>
+        <article className="relative flex flex-col rounded-overlay border border-border border-t-2 border-t-accent-gold bg-surface p-6 shadow-hero sm:p-7">
+          <div className="flex flex-col gap-2">
+            <h2 className="font-display text-xl font-bold tracking-tight text-ink">Your plan</h2>
+            <p className="type-body text-ink-3">Your plan starts when your first payment goes through.</p>
+          </div>
           {overview.canManage ? (
-            <div className="mt-3">
+            <div className="mt-4">
               <LinkButton href="/checkout" variant="primary">
                 Go to checkout
               </LinkButton>
             </div>
           ) : null}
-        </Panel>
+        </article>
       );
     case "lapsed": {
       const loaded = overview.reactivation;
@@ -166,7 +217,7 @@ export async function BillingScreen({ customer, params }: { readonly customer: C
               <div className="lg:col-span-2">
                 <ServicesPanel view={services.data} preselect={overview.preselect} />
               </div>
-              {services.data.bill === null ? null : <BillPanel bill={services.data.bill} />}
+              {services.data.bill === null ? null : <BillPanel bill={services.data.bill} isFocal={services.data.glance === null} />}
             </div>
           </>
         ) : (
@@ -230,17 +281,31 @@ function PaymentMethodPanel({ loaded, canChange }: { readonly loaded: Loaded<Pay
       : method.kind === "bank-transfer"
         ? "We arrange each payment with you directly."
         : "The last payment was made with this.";
+  const rawLabel = method.kind === "bank-transfer" ? "" : method.label.toLowerCase();
+  const brandName =
+    method.kind === "bank-transfer"
+      ? "NEFT"
+      : rawLabel.includes("visa")
+        ? "VISA"
+        : rawLabel.includes("mastercard")
+          ? "MC"
+          : rawLabel.includes("rupay")
+            ? "RUPAY"
+            : "CARD";
   return (
-    <Panel title="Payment method">
+    <article className="rounded-panel border border-border bg-surface p-6 shadow-card">
+      <h2 className="font-display text-lg font-bold tracking-tight text-ink mb-4">Payment method</h2>
       <div className="flex flex-wrap items-center gap-3">
-        <Icon name="CreditCard" />
+        <div className="flex h-10 w-12 items-center justify-center rounded-control border border-border bg-canvas font-mono text-xs font-bold text-ink">
+          {brandName}
+        </div>
         <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-          <b className="type-sub text-ink">{label}</b>
-          <span className="type-meta">{line}</span>
+          <b className="font-mono text-sm font-semibold text-ink">{label}</b>
+          <span className="font-sans text-xs text-ink-3">{line}</span>
         </div>
         {canChange && method.kind !== "bank-transfer" ? <PaymentMethodRequest /> : null}
       </div>
-    </Panel>
+    </article>
   );
 }
 

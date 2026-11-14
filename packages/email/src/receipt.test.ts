@@ -66,7 +66,7 @@ const CUSTOMER = [
   { name: "privacy-request-code", kicker: "Confirmation code", mail: privacyRequestCodeEmail({ to, code: "482913", expiresInMinutes: 15 }), button: null },
   { name: "password-reset", kicker: "Password reset", mail: passwordResetEmail({ to, resetUrl: url, expiresInMinutes: 30 }), button: "Choose a new password" },
   { name: "setup-link", kicker: "Set up your account", mail: setupLinkEmail({ to, businessName: "Rao Dental Care", setupUrl: url, expiresInDays: 7 }), button: "Set your password" },
-  { name: "preview-ready", kicker: "Preview ready", mail: previewReadyEmail({ to, businessName: "Rao Dental Care", previewUrl: "https://preview.brandbasket.in/rao" }), button: "Open the preview" },
+  { name: "preview-ready", kicker: "Preview ready", mail: previewReadyEmail({ to, businessName: "Rao Dental Care", previewUrl: "https://preview.brandbasket.in/rao", reviewUrl: "https://app.brandbasket.in/website" }), button: "Review your website" },
   { name: "website-live", kicker: "Website live", mail: websiteLiveEmail({ to, businessName: "Rao Dental Care", websiteUrl: "https://raodental.in/home" }), button: "Visit raodental.in" },
   { name: "domain-ready", kicker: "Connect your domain", mail: domainReadyEmail({ to, businessName: "Rao Dental Care", domain: "raodental.in", projectUrl: url }), button: "Connect my domain" },
   { name: "domain-moved", kicker: "Your own domain", mail: domainMovedEmail({ to, businessName: "Rao Dental Care", websiteUrl: "https://raodental.in", oldHostname: "rao.brandbasket.site" }), button: "Visit raodental.in" },

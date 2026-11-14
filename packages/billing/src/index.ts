@@ -50,7 +50,10 @@ export {
   type StartedCheckout,
   type SubscriptionCharge,
   type UpfrontPayment,
+  type RefundPaymentInput,
+  type RefundPaymentResult,
 } from "./provider";
+
 export {
   ALLOW_FAKE_BILLING_VARIABLE,
   BillingConfigurationError,
@@ -73,6 +76,7 @@ export { wrapRazorpaySdkClient } from "./razorpay-sdk-adapter";
 export { mapRazorpayStatus } from "./status";
 export { chargedAmountCents, GST_BASIS_POINTS, gstInsideCents, NO_TAX, taxableCents } from "./tax";
 export { deriveSiteStatus, type SiteStatus, type SiteStatusInput } from "./site-status";
+export { LAPSE_DATA_RETENTION_DAYS, LAPSE_GRACE_PERIOD_DAYS, LAPSE_HOSTING_PAUSE_DAYS } from "./lapse-policy";
 export { planHostingActions, type HostedSiteState, type HostingAction, type HostingHold, type HostingPlan } from "./hosting-plan";
 export { addMonthsUtc, monthsPerCycle } from "./term";
 export { BillingRangeError } from "./billing-range-error";
@@ -91,3 +95,10 @@ export {
   type RecipientInput,
   type TaxInvoiceDraft,
 } from "./tax-invoice";
+export {
+  buildCreditNoteDraft,
+  CREDIT_NOTE_PREFIX,
+  type BuildCreditNoteInput,
+  type CreditNoteDraft,
+} from "./credit-note";
+

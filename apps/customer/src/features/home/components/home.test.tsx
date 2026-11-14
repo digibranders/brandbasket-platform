@@ -139,4 +139,77 @@ describe("HomeScreen", () => {
     expect(screen.queryByText("Needs you")).toBeNull();
     expect(screen.queryByRole("link", { name: "New request" })).toBeNull();
   });
+
+  it("shows 'Your kickoff call is booked for <time>' before the call", () => {
+    show({
+      state: { kind: "kickoff_booked", startsAt: new Date("2026-11-10T10:00:00Z"), endsAt: new Date("2026-11-10T10:30:00Z") },
+      layout: "task",
+    });
+    expect(screen.getByText(/Your kickoff call is booked for/)).toBeTruthy();
+  });
+
+  it("renders focal NextActionCard for unpaid state with primary action", () => {
+    show({ state: { kind: "payment_required" }, layout: "task" });
+    expect(screen.getByText("Start your plan")).toBeTruthy();
+    expect(screen.getByText("Your plan starts once your first payment goes through.")).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Pay" }).getAttribute("href")).toBe("/checkout");
+  });
+
+  it("renders focal NextActionCard for payment under review state", () => {
+    show({ state: { kind: "payment_processing" }, layout: "task" });
+    expect(screen.getByText("Payment under review")).toBeTruthy();
+    expect(screen.getByText("We have your payment and are checking it. Your plan starts as soon as it clears.")).toBeTruthy();
+    expect(screen.getByRole("link", { name: "View billing" }).getAttribute("href")).toBe("/billing");
+  });
+
+  it("renders focal NextActionCard for preview ready state", () => {
+    show({ state: { kind: "preview_ready" }, layout: "review" });
+    expect(screen.getAllByText("Your website preview is ready").length).toBeGreaterThan(0);
+    expect(screen.getByRole("link", { name: "Open preview" })).toBeTruthy();
+  });
+
+  it("renders service cards for live customer with status chips", () => {
+    show({
+      state: { kind: "ongoing" },
+      layout: "overview",
+      panels: panels({
+        services: {
+          ok: true,
+          data: [
+            { service: "website", line: "Live at sweetcrust.in", needsYou: false },
+            { service: "social", line: "5 posts scheduled this week", needsYou: true },
+          ],
+        },
+      }),
+    });
+    expect(screen.getByText("Website")).toBeTruthy();
+    expect(screen.getByText("Social media")).toBeTruthy();
+    expect(screen.getByText("Reputation")).toBeTruthy();
+    expect(screen.getByText("Live at sweetcrust.in")).toBeTruthy();
+    expect(screen.getByText("5 posts scheduled this week")).toBeTruthy();
+    expect(screen.getByText("Waiting")).toBeTruthy();
+  });
+
+  it("renders social-only customer home cleanly without website elements", () => {
+    render(
+      <ToastProvider>
+        <HomeScreen
+          person={person}
+          services={["social"]}
+          view={view({ kind: "ongoing" }, "overview")}
+          panels={panels({
+            services: {
+              ok: true,
+              data: [{ service: "social", line: "3 posts scheduled", needsYou: false }],
+            },
+          })}
+          now={NOW}
+          purchase={null}
+        />
+      </ToastProvider>,
+    );
+    expect(screen.getByText("Social media")).toBeTruthy();
+    expect(screen.getByText("3 posts scheduled")).toBeTruthy();
+    expect(screen.queryByText("Small edits included this month")).toBeNull();
+  });
 });

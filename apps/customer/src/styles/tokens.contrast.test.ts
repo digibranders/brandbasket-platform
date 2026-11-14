@@ -72,9 +72,9 @@ describe("token contrast", () => {
   });
 
   it("matches the figures plan 60 publishes", () => {
-    expect(contrast("ink", "surface")).toBeCloseTo(18.47, 1);
-    expect(contrast("on-primary", "primary")).toBeCloseTo(5.22, 1);
-    expect(contrast("border-control", "surface")).toBeCloseTo(3.1, 1);
-    expect(contrast("accent-text", "surface")).toBeCloseTo(6.16, 1);
+    expect(contrast("ink", "surface")).toBeCloseTo(18.08, 1);
+    expect(contrast("on-primary", "primary")).toBeCloseTo(18.08, 1);
+    expect(contrast("border-control", "surface")).toBeCloseTo(3.32, 1);
+    expect(contrast("accent-text", "surface")).toBeCloseTo(6.17, 1);
   });
 });

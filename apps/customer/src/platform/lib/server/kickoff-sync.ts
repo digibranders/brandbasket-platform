@@ -49,10 +49,17 @@ export async function startBuildsAfterKickoff(now: Date = new Date()): Promise<K
   let failed = 0;
   for (const kickoff of due) {
     try {
-      const moved = await markProjectReadyAfterKickoff(db, { businessId: kickoff.businessId, dueAt: firstPreviewDueAfterKickoff({ ...kickoff, now }), now });
+      const startedWithoutCallConfirmation = kickoff.heldAt === null;
+      const moved = await markProjectReadyAfterKickoff(db, {
+        businessId: kickoff.businessId,
+        dueAt: firstPreviewDueAfterKickoff({ ...kickoff, now }),
+        now,
+        startedWithoutCallConfirmation,
+      });
       if (!moved) continue;
       started += 1;
-      await addActivityEvent(db, { businessId: kickoff.businessId, service: "website", title: "Kickoff call completed", occurredAt: now, staffId: null });
+      const title = startedWithoutCallConfirmation ? "Started without call confirmation" : "Kickoff call completed";
+      await addActivityEvent(db, { businessId: kickoff.businessId, service: "website", title, occurredAt: now, staffId: null });
     } catch (error) {
       failed += 1;
       console.error("[kickoff-sync] could not start a build", { businessId: kickoff.businessId, error: errorLogInfo(error) });

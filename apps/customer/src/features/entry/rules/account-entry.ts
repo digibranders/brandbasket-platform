@@ -1,6 +1,6 @@
 import type { MonthlyAddOnId } from "@brandbasket/shared/lib/billing/add-ons";
 import { readBundleSelection, WEBSITE_ALONE } from "@brandbasket/shared/lib/billing/bundle";
-import { safeInviteReturn } from "@/features/team/rules";
+import { safeReturnPath } from "@/lib/guard-rules";
 import { offersChoice } from "./brand";
 import { readJoinChoice, type JoinChoice } from "./join-form";
 
@@ -32,12 +32,12 @@ const WEBSITE_SERVICE_IDS: ReadonlyMap<string, MonthlyAddOnId> = new Map([
   ["growth", "social-media"],
 ]);
 
-/** The address and form field that carry where to go after sign-in or sign-up. Only an invite accept page is ever honoured. */
+/** The address and form field that carry where to go after sign-in or sign-up. */
 export const NEXT_FIELD = "next";
 
-/** The invite page a `next` value names, or null for anything else (another site, another path, no value). */
+/** The safe same-origin app or invite page a `next` value names, or null for anything else. */
 export function inviteReturn(value: unknown): string | null {
-  return safeInviteReturn(typeof value === "string" ? value : null);
+  return safeReturnPath(value);
 }
 
 /** `path` with the invite return kept on it, for the link between sign-in and sign-up. */

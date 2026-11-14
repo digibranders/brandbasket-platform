@@ -2,6 +2,7 @@ import { and, desc, eq, inArray, isNull, notInArray, sql } from "drizzle-orm";
 import type { Database } from "../client";
 import type { ScopedTransaction } from "../scope";
 import { domains, projects, type ProjectKind, type ProjectStatus } from "../schema";
+import { approvedDueAt, revisionDueAt } from "../working-days";
 import { findIncludedRevisionRounds } from "./site-settings";
 import { isUuid } from "./tenant";
 
@@ -204,7 +205,7 @@ export interface ProjectPreviewResponse {
 export async function approveProjectPreview(db: Runner, input: ProjectPreviewResponse): Promise<Project> {
   const rows = await db
     .update(projects)
-    .set({ status: "approved" })
+    .set({ status: "approved", slaDueAt: approvedDueAt(input.now) })
     .where(and(eq(projects.businessId, input.businessId), eq(projects.status, "preview")))
     .returning(PROJECT_COLUMNS);
   const project = rows[0];
@@ -224,7 +225,11 @@ export async function approveProjectPreview(db: Runner, input: ProjectPreviewRes
 export async function requestProjectRevisions(db: Runner, input: ProjectPreviewResponse): Promise<Project> {
   const rows = await db
     .update(projects)
-    .set({ status: "revisions", revisionRoundsGranted: sql`${projects.revisionRoundsGranted} + 1` })
+    .set({
+      status: "revisions",
+      revisionRoundsGranted: sql`${projects.revisionRoundsGranted} + 1`,
+      slaDueAt: revisionDueAt(input.now),
+    })
     .where(
       and(
         eq(projects.businessId, input.businessId),

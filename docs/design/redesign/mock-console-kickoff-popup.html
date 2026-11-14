@@ -1,0 +1,615 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BrandBasket Staff Console - Kickoff Call Confirmation</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Red+Hat+Display:wght@500;600;700&family=Red+Hat+Text:wght@400;500;600&family=Red+Hat+Mono:wght@400;500;600&display=swap">
+<style>
+:root {
+  --ground: #F6F5F2;
+  --surface: #FFFFFF;
+  --sunken: #EEECE7;
+  --line: #E3E0D9;
+  --ink: #15161A;
+  --text-muted: #343741;
+  --text-faint: #5F626A;
+  --gold: #C48A47;
+  --gold-wash: #F4E6D3;
+  --gold-deep: #8A5524;
+  --gold-text: #A46C2F;
+  --sage: #4F7A63;
+  --sage-wash: #E5EFE8;
+  --error: #B42318;
+  --error-wash: #FDECEA;
+  --rail: #23242A;
+  --rail-text: #F6F5F2;
+  --rail-muted: #9B9EA7;
+  --rail-hover: rgba(255, 255, 255, 0.06);
+  --sh-resting: 0 1px 0 rgba(42, 28, 16, 0.03);
+  --sh-elevation: 0 1px 2px rgba(42, 28, 16, 0.05);
+  --sh-hero: 0 1px 2px rgba(42, 28, 16, 0.05), 0 12px 32px -12px rgba(42, 28, 16, 0.14);
+  --sh-dialog: 0 24px 64px -16px rgba(42, 28, 16, 0.28);
+  --scrim: rgba(21, 22, 26, 0.40);
+  --r-control: 8px;
+  --r-card: 14px;
+  --r-hero: 20px;
+  --r-dialog: 20px;
+  --r-pill: 9999px;
+  color-scheme: light;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  margin: 0;
+  background: var(--ground);
+  color: var(--ink);
+  font-family: 'Red Hat Text', system-ui, -apple-system, sans-serif;
+  font-size: 15px;
+  line-height: 1.5;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+button, input, select, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+
+/* Demo Control Bar */
+.demo-bar {
+  position: sticky;
+  top: 12px;
+  z-index: 100;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-pill);
+  padding: 6px 14px;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  box-shadow: var(--sh-hero);
+  margin: 12px 0 16px;
+  font-size: 13px;
+}
+.demo-bar span.label { font-weight: 600; color: var(--ink); }
+.demo-btn {
+  background: var(--sunken);
+  border: 1px solid var(--line);
+  color: var(--text-muted);
+  padding: 4px 10px;
+  border-radius: var(--r-pill);
+  font-weight: 500;
+  font-size: 12px;
+}
+.demo-btn.active {
+  background: var(--ink);
+  color: #FFFFFF;
+  border-color: var(--ink);
+  font-weight: 600;
+}
+.demo-sep {
+  width: 1px;
+  height: 16px;
+  background: var(--line);
+  margin: 0 4px;
+}
+
+/* Responsive Frame container */
+.frame {
+  width: 100%;
+  max-width: 1440px;
+  min-height: 100vh;
+  position: relative;
+  display: flex;
+  background: var(--ground);
+  transition: max-width 0.2s ease;
+  box-shadow: 0 0 40px rgba(42, 28, 16, 0.08);
+  overflow: hidden;
+}
+.frame.mobile {
+  max-width: 390px;
+  box-shadow: 0 0 24px rgba(42, 28, 16, 0.15);
+}
+
+/* Background Shell (dimmed under dialog) */
+.shell {
+  display: flex;
+  width: 100%;
+  min-height: 100vh;
+}
+.rail {
+  width: 240px;
+  flex: none;
+  background: var(--rail);
+  color: var(--rail-text);
+  display: flex;
+  flex-direction: column;
+  padding: 20px 14px;
+  border-right: 1px solid rgba(255, 255, 255, 0.06);
+}
+.rail-logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: 'Red Hat Display', sans-serif;
+  font-size: 18px;
+  font-weight: 700;
+  padding: 4px 10px 20px;
+  color: #FFFFFF;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+.rail-logo svg {
+  width: 24px;
+  height: 24px;
+  color: var(--gold);
+}
+.rail-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding-top: 16px;
+  flex: 1;
+}
+.rail-link {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 9px 12px;
+  border-radius: var(--r-control);
+  color: var(--rail-muted);
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 500;
+}
+.rail-link.active {
+  background: rgba(196, 138, 71, 0.15);
+  color: #FFFFFF;
+  font-weight: 600;
+}
+.rail-badge {
+  margin-left: auto;
+  font-family: 'Red Hat Mono', monospace;
+  font-size: 11px;
+  font-weight: 600;
+  background: var(--gold);
+  color: #FFFFFF;
+  padding: 1px 7px;
+  border-radius: var(--r-pill);
+}
+
+.main-preview {
+  flex: 1;
+  padding: 28px 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+.preview-title {
+  font-family: 'Red Hat Display', sans-serif;
+  font-size: 28px;
+  font-weight: 700;
+}
+.preview-card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-card);
+  padding: 20px;
+  box-shadow: var(--sh-resting);
+}
+
+/* Scrim & PromptPopup Dialog */
+.dialog-scrim {
+  position: absolute;
+  inset: 0;
+  background: var(--scrim);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 16px;
+  z-index: 50;
+  backdrop-filter: blur(2px);
+}
+.prompt-popup {
+  background: var(--surface);
+  width: 100%;
+  max-width: 580px;
+  border-radius: var(--r-dialog);
+  padding: 28px;
+  box-shadow: var(--sh-dialog);
+  border: 1px solid var(--line);
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  position: relative;
+}
+.popup-top {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+}
+.popup-icon-tile {
+  width: 44px;
+  height: 44px;
+  border-radius: var(--r-card);
+  background: var(--gold-wash);
+  color: var(--gold-deep);
+  display: grid;
+  place-items: center;
+  flex: none;
+}
+.popup-header-text {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.popup-eyebrow {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--gold-text);
+  letter-spacing: 0.02em;
+}
+.popup-title {
+  font-family: 'Red Hat Display', sans-serif;
+  font-size: 22px;
+  line-height: 28px;
+  font-weight: 700;
+  letter-spacing: -0.015em;
+  color: var(--ink);
+}
+.popup-meta {
+  font-size: 14px;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+.popup-close {
+  background: transparent;
+  border: none;
+  color: var(--text-faint);
+  padding: 4px;
+  border-radius: var(--r-control);
+  display: grid;
+  place-items: center;
+}
+.popup-close:hover {
+  background: var(--sunken);
+  color: var(--ink);
+}
+
+/* Fallback Notice Block (24h fallback rule) */
+.fallback-note {
+  background: var(--sunken);
+  border: 1px solid var(--line);
+  border-radius: var(--r-control);
+  padding: 12px 14px;
+  font-size: 13px;
+  color: var(--text-muted);
+  line-height: 1.45;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+.fallback-note strong {
+  color: var(--ink);
+}
+
+/* Form inputs inside popup */
+.form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.field-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink);
+}
+.field-textarea {
+  width: 100%;
+  min-height: 88px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-control);
+  padding: 10px 12px;
+  font-size: 14px;
+  color: var(--ink);
+  resize: vertical;
+  line-height: 1.45;
+}
+.field-textarea:focus {
+  outline: 2px solid var(--ink);
+  outline-offset: 1px;
+}
+.field-help {
+  font-size: 12px;
+  color: var(--text-faint);
+}
+
+/* Error message inside dialog */
+.popup-error {
+  display: none;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: var(--r-control);
+  background: var(--error-wash);
+  border: 1px solid #F4C3BE;
+  color: var(--error);
+  font-size: 13px;
+}
+
+/* Popup Action Buttons */
+.popup-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding-top: 4px;
+}
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 38px;
+  padding: 0 16px;
+  border-radius: var(--r-control);
+  font-size: 14px;
+  font-weight: 600;
+  border: 1px solid transparent;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.btn-primary {
+  background: var(--ink);
+  color: #FFFFFF;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+.btn-primary:hover {
+  background: #2A2B31;
+}
+.btn-secondary {
+  background: var(--surface);
+  border-color: var(--line);
+  color: var(--ink);
+}
+.btn-secondary:hover {
+  background: var(--sunken);
+}
+.btn-ghost {
+  background: transparent;
+  color: var(--text-muted);
+  border: none;
+}
+.btn-ghost:hover {
+  color: var(--ink);
+  background: var(--sunken);
+}
+
+/* Success Confirmation Banner (shown when completed/empty state) */
+.success-card {
+  display: none;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-card);
+  padding: 24px;
+  box-shadow: var(--sh-elevation);
+  margin-top: 20px;
+}
+.success-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.success-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--sage-wash);
+  color: var(--sage);
+  display: grid;
+  place-items: center;
+}
+
+@media (max-width: 860px) {
+  .rail { display: none; }
+  .prompt-popup { padding: 22px 18px; }
+  .popup-actions { flex-direction: column-reverse; width: 100%; }
+  .popup-actions .btn { width: 100%; }
+}
+
+.frame.mobile .rail { display: none; }
+.frame.mobile .prompt-popup { padding: 20px 16px; }
+.frame.mobile .popup-actions { flex-direction: column-reverse; width: 100%; }
+.frame.mobile .popup-actions .btn { width: 100%; }
+</style>
+</head>
+<body>
+
+  
+  <div class="demo-bar">
+    <span class="label">State:</span>
+    <button class="demo-btn active" id="btnLive" onclick="setState('live')">Live prompt</button>
+    <button class="demo-btn" id="btnNew" onclick="setState('new')">New prompt</button>
+    <button class="demo-btn" id="btnEmpty" onclick="setState('empty')">Completed</button>
+    <button class="demo-btn" id="btnError" onclick="setState('error')">Submit error</button>
+    <div class="demo-sep"></div>
+    <span class="label">Viewport:</span>
+    <button class="demo-btn active" id="btn1440" onclick="setViewport('desktop')">1440</button>
+    <button class="demo-btn" id="btn390" onclick="setViewport('mobile')">390</button>
+  </div>
+
+  <div class="frame" id="appFrame">
+    <div class="shell">
+      
+      
+      <aside class="rail">
+        <div class="rail-logo">
+          
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M3.5 9.5h17l-1.6 9a2 2 0 0 1-2 1.5H7.1a2 2 0 0 1-2-1.5z"/>
+            <path d="M8 9.5 11 4M16 9.5 13 4"/>
+            <path d="M9 13v3M12 13v3M15 13v3"/>
+          </svg>
+          BrandBasket
+        </div>
+
+        <nav class="rail-nav">
+          <a href="mock-console-today.html" class="rail-link">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+            Today
+          </a>
+          <a href="mock-console-workspace.html" class="rail-link">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+            Clients
+          </a>
+          <a href="#" class="rail-link">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+            Inbox
+          </a>
+          <a href="mock-console-kickoff-popup.html" class="rail-link active">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+            Calls
+            
+            <span class="rail-badge">1</span>
+          </a>
+          <a href="mock-console-payments.html" class="rail-link">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
+            Money
+          </a>
+          <a href="mock-console-compliance.html" class="rail-link">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            Compliance
+          </a>
+          <a href="#" class="rail-link">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+            System
+          </a>
+        </nav>
+      </aside>
+
+      
+      <main class="main-preview">
+        <h1 class="preview-title">Kickoff calls queue</h1>
+        <div class="preview-card">
+          <div style="font-weight:600; margin-bottom:4px">Scheduled client calls</div>
+          <div style="font-size:13px; color:var(--text-muted)">Staff confirmations trigger immediate onboarding build steps.</div>
+        </div>
+
+        <div id="successCard" class="success-card">
+          <div class="success-row">
+            <div class="success-icon">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+            </div>
+            <div>
+              <div style="font-weight:700; color:var(--ink)">Kickoff call confirmed: Sweet Crust Bakery</div>
+              <div style="font-size:13px; color:var(--text-muted)">The 48 hour website first preview clock has started. Status updated on Today queue.</div>
+            </div>
+          </div>
+        </div>
+      </main>
+
+    </div>
+
+    
+    <div class="dialog-scrim" id="popupScrim">
+      <div class="prompt-popup" role="dialog" aria-labelledby="popupTitle" aria-modal="true">
+        
+        <div class="popup-top">
+          
+          <div class="popup-icon-tile">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>
+            </svg>
+          </div>
+          <div class="popup-header-text">
+            <div class="popup-eyebrow">Kickoff confirmation</div>
+            <h2 class="popup-title" id="popupTitle">Did the kickoff call with Sweet Crust Bakery happen?</h2>
+            <div class="popup-meta" id="popupMeta">Scheduled for today, 14 November at 3:30 pm (15 minutes ago). Contact: Priya Sharma (+91 98765 43210).</div>
+          </div>
+          <button class="popup-close" onclick="setState('empty')" aria-label="Close dialog">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+        </div>
+
+        
+        <div class="fallback-note">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex:none; margin-top:1px"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          <div>
+            <strong>24-hour automatic fallback:</strong> If unconfirmed by tomorrow at 3:30 pm, the website build starts automatically with status <em>Started without call confirmation</em>.
+          </div>
+        </div>
+
+        
+        <div class="form-field">
+          <label class="field-label" for="callNotes">Call notes and design preferences (optional)</label>
+          <textarea class="field-textarea" id="callNotes" placeholder="Enter customer branding notes, color requests, or reference websites discussed on the call..."></textarea>
+          <div class="field-help">Notes are saved to the client workspace and visible to the design team.</div>
+        </div>
+
+        
+        <div class="popup-error" id="popupError">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          <span id="popupErrorMsg">Unable to record call status. Please check connectivity and retry.</span>
+        </div>
+
+        
+        <div class="popup-actions">
+          <button class="btn btn-ghost" onclick="setState('empty')">Dismiss</button>
+          <button class="btn btn-secondary" onclick="alert('Reschedule calendar picker opened')">Reschedule</button>
+          <button class="btn btn-secondary" onclick="alert('Marked: Customer did not join. Automated follow-up WhatsApp message sent.')">They did not join</button>
+          
+          <button class="btn btn-primary" onclick="setState('empty')">Call completed</button>
+        </div>
+
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    function setState(state) {
+      document.querySelectorAll('.demo-bar .demo-btn').forEach(btn => {
+        if (['btnLive', 'btnNew', 'btnEmpty', 'btnError'].includes(btn.id)) {
+          btn.classList.remove('active');
+        }
+      });
+      document.getElementById('btn' + state.charAt(0).toUpperCase() + state.slice(1)).classList.add('active');
+
+      const popupScrim = document.getElementById('popupScrim');
+      const successCard = document.getElementById('successCard');
+      const popupError = document.getElementById('popupError');
+      const popupMeta = document.getElementById('popupMeta');
+      const callNotes = document.getElementById('callNotes');
+
+      if (state === 'live') {
+        popupScrim.style.display = 'flex';
+        successCard.style.display = 'none';
+        popupError.style.display = 'none';
+        popupMeta.textContent = 'Scheduled for today, 14 November at 3:30 pm (15 minutes ago). Contact: Priya Sharma (+91 98765 43210).';
+        callNotes.value = 'Client prefers warm gold and off-white bakery palette. Requested prominent WhatsApp ordering button.';
+      } else if (state === 'new') {
+        popupScrim.style.display = 'flex';
+        successCard.style.display = 'none';
+        popupError.style.display = 'none';
+        popupMeta.textContent = 'Scheduled for today, 14 November at 3:30 pm (just finished). Contact: Priya Sharma (+91 98765 43210).';
+        callNotes.value = '';
+      } else if (state === 'empty') {
+        popupScrim.style.display = 'none';
+        successCard.style.display = 'block';
+        popupError.style.display = 'none';
+      } else if (state === 'error') {
+        popupScrim.style.display = 'flex';
+        successCard.style.display = 'none';
+        popupError.style.display = 'flex';
+      }
+    }
+
+    function setViewport(mode) {
+      document.getElementById('btn1440').classList.toggle('active', mode === 'desktop');
+      document.getElementById('btn390').classList.toggle('active', mode === 'mobile');
+      document.getElementById('appFrame').classList.toggle('mobile', mode === 'mobile');
+    }
+  </script>
+</body>
+</html>

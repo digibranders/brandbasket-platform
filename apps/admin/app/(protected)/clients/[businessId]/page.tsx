@@ -13,6 +13,7 @@ import { TickIcon } from "@brandbasket/shared/ui/icons";
 import { ActivityList } from "@/components/activity-list";
 import { buttonPrimary } from "@/components/console/buttons";
 import { LIFT, SECTION_TITLE } from "@/components/console/classes";
+import { CustomerMirrorPanel } from "@/components/console/customer-mirror-panel";
 import { Quiet, Section } from "@/components/console/section";
 import { overviewNextStep } from "@/lib/client-next-step";
 import { clientTabHref, forwardedNoticeHref } from "@/lib/client-tabs";
@@ -71,6 +72,8 @@ export default async function ClientOverviewPage({
             </div>
           )}
         </section>
+
+        <CustomerMirrorPanel client={client} booking={booking} now={now} />
 
         <section aria-labelledby="recent-title">
           <h2 id="recent-title" className={`${SECTION_TITLE} flex items-baseline justify-between`}>

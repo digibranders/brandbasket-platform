@@ -15,7 +15,10 @@ import {
   type StartedAddOnSubscription,
   type StartedChargePayment,
   type StartedCheckout,
+  type RefundPaymentInput,
+  type RefundPaymentResult,
 } from "./provider";
+
 import { chargedAmountCents } from "./tax";
 
 export interface FakeBillingProviderOptions {
@@ -352,5 +355,22 @@ export function createFakeBillingProvider(options: FakeBillingProviderOptions): 
     async findSubscriptionCharge(): Promise<null> {
       return null;
     },
+
+    async getPaymentMethodUpdateUrl(providerSubscriptionId: string): Promise<string> {
+      if (!SUBSCRIPTION_ID_PATTERN.test(providerSubscriptionId)) {
+        throw new Error(`Not a fake provider subscription id: ${providerSubscriptionId}`);
+      }
+      return `${FAKE_CONFIRM_PATH}?payment_method_updated=true`;
+    },
+
+    async refundPayment(input: RefundPaymentInput): Promise<RefundPaymentResult> {
+      if (!Number.isSafeInteger(input.amountCents) || input.amountCents <= 0) {
+        throw new RangeError(`Refund amount must be a positive whole number of minor units, received ${input.amountCents}`);
+      }
+      return {
+        providerRefundId: `fake_rfnd_${randomBytes(12).toString("hex")}`,
+      };
+    },
   };
 }
+

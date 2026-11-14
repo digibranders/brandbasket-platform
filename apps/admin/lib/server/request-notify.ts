@@ -32,7 +32,7 @@ export async function notifyRequester(db: Database, ticketId: string, update: Ch
         to: recipient.email,
         name: recipient.name,
         title: recipient.subject,
-        requestUrl: new URL(`/requests?open=${ticketId}`, serverEnv().APP_ORIGIN).toString(),
+        requestUrl: new URL(`/requests/${ticketId}`, serverEnv().APP_ORIGIN).toString(),
         update,
       }),
     );

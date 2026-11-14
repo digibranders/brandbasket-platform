@@ -2,7 +2,7 @@ import { randomBytes } from "node:crypto";
 import { and, desc, eq, isNull } from "drizzle-orm";
 import type { Database } from "../client";
 import { businessInvites, type BusinessInvite } from "../schema/business-invites";
-import { businessMembers } from "../schema/businesses";
+import { businesses, businessMembers } from "../schema/businesses";
 import type { ScopedTransaction } from "../scope";
 import { hashInviteToken } from "./invites";
 import { currentBusinessId, hasPostgresCode, isUuid, UNIQUE_VIOLATION } from "./tenant";
@@ -91,6 +91,75 @@ export async function revokeBusinessInvite(tx: ScopedTransaction, inviteId: stri
 }
 
 export type BusinessInviteRefusal = "not_found" | "revoked" | "expired" | "used" | "wrong_email";
+
+export interface BusinessInviteDetails {
+  readonly id: string;
+  readonly businessId: string;
+  readonly businessName: string;
+  readonly email: string;
+  readonly role: InvitableRole;
+  readonly expiresAt: Date;
+  readonly acceptedAt: Date | null;
+  readonly revokedAt: Date | null;
+  readonly createdAt: Date;
+}
+
+export type CheckBusinessInviteResult =
+  | { readonly kind: "valid"; readonly invite: BusinessInviteDetails }
+  | { readonly kind: "refused"; readonly reason: BusinessInviteRefusal; readonly invite?: BusinessInviteDetails };
+
+/** Reads an invitation and its business name by token. Returns null when not found. */
+export async function findBusinessInviteByToken(db: Database, token: string): Promise<BusinessInviteDetails | null> {
+  const rows = await db
+    .select({
+      id: businessInvites.id,
+      businessId: businessInvites.businessId,
+      businessName: businesses.name,
+      email: businessInvites.email,
+      role: businessInvites.role,
+      expiresAt: businessInvites.expiresAt,
+      acceptedAt: businessInvites.acceptedAt,
+      revokedAt: businessInvites.revokedAt,
+      createdAt: businessInvites.createdAt,
+    })
+    .from(businessInvites)
+    .innerJoin(businesses, eq(businessInvites.businessId, businesses.id))
+    .where(eq(businessInvites.tokenHash, hashInviteToken(token)))
+    .limit(1);
+  const row = rows[0];
+  if (!row) return null;
+  return {
+    ...row,
+    role: row.role === "viewer" ? "viewer" : "editor",
+  };
+}
+
+/** Pure check of an invite's validity against expiry, revocation, use, and optional email match. */
+export function evaluateBusinessInvite(
+  invite: BusinessInviteDetails | null,
+  options?: { readonly userEmail?: string | null; readonly now?: Date },
+): CheckBusinessInviteResult {
+  if (invite === null) return { kind: "refused", reason: "not_found" };
+  const now = options?.now ?? new Date();
+  if (invite.revokedAt !== null) return { kind: "refused", reason: "revoked", invite };
+  if (invite.acceptedAt !== null) return { kind: "refused", reason: "used", invite };
+  if (invite.expiresAt.getTime() <= now.getTime()) return { kind: "refused", reason: "expired", invite };
+  if (options?.userEmail !== undefined && options.userEmail !== null) {
+    if (invite.email !== options.userEmail.trim().toLowerCase()) {
+      return { kind: "refused", reason: "wrong_email", invite };
+    }
+  }
+  return { kind: "valid", invite };
+}
+
+/** Checks the state of an invitation without mutating it, for the invite landing page or sign-up. */
+export async function checkBusinessInvite(
+  db: Database,
+  input: { readonly token: string; readonly userEmail?: string | null; readonly now?: Date },
+): Promise<CheckBusinessInviteResult> {
+  const invite = await findBusinessInviteByToken(db, input.token);
+  return evaluateBusinessInvite(invite, input);
+}
 
 export type AcceptBusinessInviteResult =
   | { readonly kind: "accepted"; readonly businessId: string; readonly role: InvitableRole }

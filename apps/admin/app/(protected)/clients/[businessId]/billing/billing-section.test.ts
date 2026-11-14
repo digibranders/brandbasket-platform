@@ -21,7 +21,7 @@ vi.mock("@/lib/server/billing-admin", () => ({ loadManualCarriedCode: vi.fn() })
 vi.mock("@brandbasket/shared/server/reactivation-basket", () => ({ loadReactivationBasket: vi.fn() }));
 vi.mock("@/lib/server/client-billing-details", () => ({ clientBillingDetails: () => ({}) }));
 vi.mock("../actions", () => ({ resolvePaymentAttentionAction: vi.fn() }));
-vi.mock("./refund-actions", () => ({ markPaymentRefundedAction: vi.fn() }));
+vi.mock("./refund-actions", () => ({ markPaymentRefundedAction: vi.fn(), refundPaymentAction: vi.fn() }));
 vi.mock("../parts", () => ({ BillingFacts: () => "[billing facts]", ManualPaymentForm: () => "[manual payment]" }));
 vi.mock("@/components/client-charges", () => ({ ClientCharges: () => "[charges]" }));
 vi.mock("@/components/client-invoicing", () => ({ ClientBillingDetails: () => "[billing details]", ClientTaxInvoices: () => "[tax invoices]" }));

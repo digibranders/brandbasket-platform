@@ -4,8 +4,9 @@ import { reportError } from "@/lib/report";
 import { saveBillingDetailsFor } from "../checkout/server/billing-details";
 import { startCustomerChargePayment } from "../checkout/server/charges";
 import { startReactivationFor } from "../checkout/server/checkout";
-import { addServiceAction, cancelServiceAction, reactivateAction, saveBillingDetailsAction } from "./actions";
+import { addServiceAction, cancelServiceAction, changePaymentMethodAction, reactivateAction, saveBillingDetailsAction } from "./actions";
 import { addBundledAddOnFor, removeBundledAddOnFor } from "./server/add-ons";
+import { getPaymentMethodUpdateUrlFor } from "./server/billing";
 
 vi.mock("server-only", () => ({}));
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
@@ -20,6 +21,7 @@ vi.mock("../checkout/server/billing-details", () => ({ saveBillingDetailsFor: vi
 vi.mock("../checkout/server/charges", () => ({ startCustomerChargePayment: vi.fn() }));
 vi.mock("../checkout/server/checkout", () => ({ startReactivationFor: vi.fn() }));
 vi.mock("./server/add-ons", () => ({ addBundledAddOnFor: vi.fn(), removeBundledAddOnFor: vi.fn() }));
+vi.mock("./server/billing", () => ({ getPaymentMethodUpdateUrlFor: vi.fn() }));
 
 const OWNER = { user: { id: "user-1" }, tenant: { businessId: "biz-1" }, role: "owner", billing: { status: "paid" } } as never;
 const CHARGE_ID = "0192f3c4-0000-7000-8000-000000000001";
@@ -119,5 +121,21 @@ describe("reactivateAction", () => {
     vi.mocked(startReactivationFor).mockResolvedValue({ kind: "redirect", url: "/checkout/pay" } as never);
     await expect(reactivateAction(null, form({ service: ["social-media", "free-money"] }))).rejects.toThrow("redirect:/checkout/pay");
     expect(startReactivationFor).toHaveBeenCalledWith(OWNER, expect.any(Date), ["social-media"]);
+  });
+});
+
+describe("changePaymentMethodAction", () => {
+  it("requires owner and redirects to the update URL from provider", async () => {
+    vi.mocked(getPaymentMethodUpdateUrlFor).mockResolvedValue("https://rzp.io/i/sub_test_update");
+    await expect(changePaymentMethodAction()).rejects.toThrow("redirect:https://rzp.io/i/sub_test_update");
+    expect(requireOwner).toHaveBeenCalled();
+    expect(getPaymentMethodUpdateUrlFor).toHaveBeenCalledWith(OWNER);
+  });
+
+  it("returns failure when provider throws", async () => {
+    vi.mocked(getPaymentMethodUpdateUrlFor).mockRejectedValue(new Error("provider unavailable"));
+    const result = await changePaymentMethodAction();
+    expect(result.ok).toBe(false);
+    expect(reportError).toHaveBeenCalled();
   });
 });

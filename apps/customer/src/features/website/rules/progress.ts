@@ -61,7 +61,7 @@ export function progressView(input: ProgressInput): ProgressView {
         return {
           kind: "kickoff",
           title: CUSTOMER_STAGE_HEADLINE.onboarding,
-          line: input.kickoffDay === null ? "Book your call and we start building straight after it." : `Your call is on ${dayLabel(input.kickoffDay)}. We start building straight after it.`,
+          line: input.kickoffDay === null ? "Book your call and we start building straight after it." : `Your kickoff call is booked for ${dayLabel(input.kickoffDay)}. We will start your website right after your call.`,
         };
       }
       return { kind: "setup", title: "Finish your setup", line: "We start building once your setup is in." };

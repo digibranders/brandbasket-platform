@@ -10,10 +10,10 @@ import { currencyForCountry } from "@brandbasket/shared/lib/pricing";
 import Link from "next/link";
 import { useActionState, useState } from "react";
 import { Banner, Button, Checkbox, Field, Input, Select, type SelectOption } from "@/ui";
-import { signUpAction, type SignUpResult } from "../actions";
+import { clearPendingSignupAction, signUpAction, type SignUpResult } from "../actions";
 import { NEXT_FIELD, SIGN_IN_PATH, withInviteReturn } from "../rules/account-entry";
 import { LEGAL_LINKS } from "../rules/brand";
-import { AGREE_FIELD, AGREE_VALUE, JOIN_BUSINESS_NAME_MAX_LENGTH, JOIN_NAME_MAX_LENGTH, START_FIELD } from "../rules/join-form";
+import { AGREE_FIELD, AGREE_VALUE, JOIN_BUSINESS_NAME_MAX_LENGTH, JOIN_NAME_MAX_LENGTH, START_FIELD, type JoinCodeStep } from "../rules/join-form";
 import type { StartPrefill } from "../rules/start-token";
 import { PasswordInput } from "./password-input";
 import { TurnstileWidget } from "./turnstile";
@@ -44,6 +44,21 @@ export interface SignUpFormProps {
   readonly startToken: string | null;
   /** The invite page to return to after signing up (already checked by the page), or null. */
   readonly next?: string | null;
+  /** Restored step from a signed cookie when the user refreshes on the code step. */
+  readonly initialStep?: {
+    readonly otp: JoinCodeStep;
+    readonly input: {
+      readonly businessName?: string;
+      readonly name?: string;
+      readonly email?: string;
+      readonly country?: string;
+      readonly stateCode?: string;
+      readonly phoneCountry?: string;
+      readonly phone?: string;
+      readonly password?: string;
+      readonly agreed?: boolean;
+    };
+  } | null;
 }
 
 const STATE_OPTIONS: readonly SelectOption[] = [...INDIA_STATES]
@@ -56,26 +71,41 @@ const STATE_OPTIONS: readonly SelectOption[] = [...INDIA_STATES]
  * "Change email" returns to the details, and "Send a new code" sends them again without a code. Ported from apps/platform
  * components/panel/join-form.tsx; Brandbasket sells one plan, so the old plan question is never shown.
  */
-export function SignUpForm({ siteKey, services, basket, confirmsCodes, countries, phoneCountries, defaultPhoneCountry, prefill, startToken, next = null }: SignUpFormProps) {
+export function SignUpForm({
+  siteKey,
+  services,
+  basket,
+  confirmsCodes,
+  countries,
+  phoneCountries,
+  defaultPhoneCountry,
+  prefill,
+  startToken,
+  next = null,
+  initialStep = null,
+}: SignUpFormProps) {
   const cooldown = useOtpRetryCooldown();
   const run = async (previous: SignUpResult | null, formData: FormData): Promise<SignUpResult> => {
     const result = await signUpAction(previous, formData);
     if (!result.ok && result.retry !== undefined) cooldown.begin(result.retry);
     return result;
   };
-  const [state, formAction, pending] = useActionState(run, null);
+  const [state, formAction, pending] = useActionState(
+    run,
+    initialStep ? ({ ok: true, data: { otp: initialStep.otp } } as const) : null
+  );
 
-  const [businessName, setBusinessName] = useState("");
-  const [name, setName] = useState(() => prefill?.name.trim().slice(0, JOIN_NAME_MAX_LENGTH) ?? "");
-  const [email, setEmail] = useState(() => prefill?.email ?? "");
+  const [businessName, setBusinessName] = useState(() => initialStep?.input.businessName ?? "");
+  const [name, setName] = useState(() => initialStep?.input.name ?? prefill?.name.trim().slice(0, JOIN_NAME_MAX_LENGTH) ?? "");
+  const [email, setEmail] = useState(() => initialStep?.input.email ?? prefill?.email ?? "");
   // India first: the product is sold there. The state is never filled in for the owner.
-  const [country, setCountry] = useState<string>(HOME_COUNTRY);
-  const [stateCode, setStateCode] = useState("");
-  const [phoneCountry, setPhoneCountry] = useState(() => (prefill !== null && /^\d{10}$/.test(prefill.phone) ? HOME_COUNTRY : defaultPhoneCountry));
-  const [phone, setPhone] = useState(() => (prefill !== null && /^\d{10}$/.test(prefill.phone) ? prefill.phone : ""));
-  const [password, setPassword] = useState("");
+  const [country, setCountry] = useState<string>(() => initialStep?.input.country ?? HOME_COUNTRY);
+  const [stateCode, setStateCode] = useState(() => initialStep?.input.stateCode ?? "");
+  const [phoneCountry, setPhoneCountry] = useState(() => initialStep?.input.phoneCountry ?? (prefill !== null && /^\d{10}$/.test(prefill.phone) ? HOME_COUNTRY : defaultPhoneCountry));
+  const [phone, setPhone] = useState(() => initialStep?.input.phone ?? (prefill !== null && /^\d{10}$/.test(prefill.phone) ? prefill.phone : ""));
+  const [password, setPassword] = useState(() => initialStep?.input.password ?? "");
   // Never ticked for the owner: agreeing to the Terms and Privacy Notice is their own act (DPDP Act s.6).
-  const [agreed, setAgreed] = useState(false);
+  const [agreed, setAgreed] = useState(() => initialStep?.input.agreed ?? false);
   /** The code belongs to the code step that asked for it. */
   const [codeEntry, setCodeEntry] = useState({ otpId: "", value: "" });
   /** The result the owner moved on from with "Change email": its code step and error are left behind. */
@@ -98,7 +128,7 @@ export function SignUpForm({ siteKey, services, basket, confirmsCodes, countries
 
   if (otp !== null) {
     return (
-      <form action={formAction} noValidate className="flex flex-col gap-4">
+      <form action={formAction} noValidate className="relative flex flex-col gap-4 rounded-overlay border border-border border-t-2 border-t-accent-gold bg-surface p-6 shadow-hero sm:p-7">
         {carried}
         {/* The details again: nothing about the owner is kept on the server until the code is confirmed. */}
         <input type="hidden" name="businessName" value={businessName} />
@@ -127,7 +157,7 @@ export function SignUpForm({ siteKey, services, basket, confirmsCodes, countries
             pattern={`[0-9]{${OTP_LENGTH}}`}
             value={code}
             onChange={(event) => setCodeEntry({ otpId: otp.otpId, value: event.target.value })}
-            className="type-mono"
+            className="type-mono font-mono text-center tracking-widest text-xl h-12"
           />
         </Field>
         {errorBanner}
@@ -142,7 +172,15 @@ export function SignUpForm({ siteKey, services, basket, confirmsCodes, countries
               {cooldown.sendSeconds > 0 ? `Send a new code in ${cooldown.sendSeconds}s` : "Send a new code"}
             </Button>
           ) : null}
-          <Button variant="ghost" size="sm" disabled={pending} onClick={() => setLeft(state)}>
+          <Button
+            variant="ghost"
+            size="sm"
+            disabled={pending}
+            onClick={() => {
+              setLeft(state);
+              void clearPendingSignupAction();
+            }}
+          >
             Change email
           </Button>
         </div>
@@ -151,10 +189,10 @@ export function SignUpForm({ siteKey, services, basket, confirmsCodes, countries
   }
 
   return (
-    <form action={formAction} noValidate className="flex flex-col gap-4">
+    <form action={formAction} noValidate className="relative flex flex-col gap-4 rounded-overlay border border-border border-t-2 border-t-accent-gold bg-surface p-6 shadow-hero sm:p-7">
       {carried}
       <p className="type-body text-ink-3">
-        Signing up for <span className="text-ink">{basket.name}</span>
+        Signing up for <span className="text-ink font-semibold">{basket.name}</span>
         {price === null ? null : ` · ${price}`}
       </p>
       <Field label="Business name" name="businessName">

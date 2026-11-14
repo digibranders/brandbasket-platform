@@ -13,6 +13,7 @@ import { startCustomerChargePayment } from "../checkout/server/charges";
 import { startReactivationFor } from "../checkout/server/checkout";
 import { AddServiceForm, BILLING_PATH, CancelServiceForm, PAYMENT_PATH } from "./rules";
 import { addBundledAddOnFor, removeBundledAddOnFor, type AddOnAddResult, type BundledRemovalResult } from "./server/add-ons";
+import { getPaymentMethodUpdateUrlFor } from "./server/billing";
 
 /*
  * Plan & billing's actions, ported from apps/platform app/app-host/(protected)/services/actions.ts and billing/actions.ts. The
@@ -105,4 +106,20 @@ export async function saveBillingDetailsAction(_previous: ActionResult | null, f
     reportError(error, { area: "billing.details" });
     return actionFail("We couldn't save your billing details just now. Please try again in a minute.");
   }
+}
+
+/**
+ * Update payment method through the provider (Razorpay hosted short_url flow).
+ * Open to the business owner to update their card or UPI on Razorpay.
+ */
+export async function changePaymentMethodAction(): Promise<ActionResult> {
+  const customer = await requireOwner();
+  let url: string;
+  try {
+    url = await getPaymentMethodUpdateUrlFor(customer);
+  } catch (error) {
+    reportError(error, { area: "billing.change-payment-method" });
+    return actionFail(TRY_AGAIN);
+  }
+  redirect(url);
 }

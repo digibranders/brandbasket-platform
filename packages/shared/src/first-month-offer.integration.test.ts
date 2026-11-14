@@ -6,6 +6,7 @@ import {
   findPaymentByProviderId,
   findSubscriptionById,
   findTaxInvoiceByPaymentId,
+  listUnpaidCheckouts,
   listUnpaidOfferCheckouts,
   openCheckoutSubscription,
   subscriptions,
@@ -207,5 +208,49 @@ describe("checkouts still waiting for their first-month payment", () => {
     expect(await list(new Date(offer.createdAt.getTime() + 2 * 24 * 60 * MINUTE + MINUTE))).toEqual([]);
     await dbs.owner.db.update(subscriptions).set({ status: "cancelled", cancelledAt: soon }).where(eq(subscriptions.id, offer.id));
     expect(await list(soon)).toEqual([]);
+  });
+});
+
+describe("checkouts still waiting for any first payment (listUnpaidCheckouts)", () => {
+  const MINUTE = 60_000;
+  const listAll = (now: Date) => listUnpaidCheckouts(dbs.staff.db, { provider: "fake", now, settleMs: 10 * MINUTE, limit: 100 });
+
+  it("lists an ordinary checkout as well as an offer checkout once 10 minutes have passed", async () => {
+    const ordinary = await open([line("social-media")]);
+    const rows = await dbs.owner.db.insert(businesses).values({ slug: "harbour-cafe", name: "Harbour Cafe", currency: "INR" }).returning({ id: businesses.id });
+    const businessTwo = rows[0]?.id ?? "";
+    const offer = await openCheckoutSubscription(dbs.staff.db, {
+      businessId: businessTwo,
+      planId: plan.id,
+      provider: "fake",
+      providerSubscriptionId: `fake_sub_${"f".repeat(24)}`,
+      referralCodeId: null,
+      discountAmountCents: 0,
+      bundledAddOns: [line("social-media", TRIAL)],
+      adCreditCents: 0,
+      replacing: null,
+      now: PAID_AT,
+      firstPaymentCents: TRIAL,
+      firstChargeAt: FIRST_CHARGE_AT,
+    });
+    const tooSoon = new Date(offer.createdAt.getTime() + 5 * MINUTE);
+    expect(await listAll(tooSoon)).toEqual([]);
+
+    const ready = new Date(offer.createdAt.getTime() + 11 * MINUTE);
+    const listed = await listAll(ready);
+    expect(listed).toEqual([
+      {
+        subscriptionId: ordinary.id,
+        businessId,
+        providerSubscriptionId: ordinary.providerSubscriptionId,
+        firstPaymentCents: null,
+      },
+      {
+        subscriptionId: offer.id,
+        businessId: businessTwo,
+        providerSubscriptionId: offer.providerSubscriptionId,
+        firstPaymentCents: TRIAL,
+      },
+    ]);
   });
 });

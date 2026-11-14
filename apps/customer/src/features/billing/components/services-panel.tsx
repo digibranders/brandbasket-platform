@@ -2,7 +2,7 @@
 
 import { MONITORING_ID, type MonthlyAddOnId } from "@brandbasket/shared/lib/billing/add-ons";
 import { useActionState, useState } from "react";
-import { Panel, ServiceMark } from "@/components";
+import { ServiceMark } from "@/components";
 import type { ActionResult } from "@/lib/action-result";
 import { Badge, Banner, Button, Dialog, DialogClose, Field, IconButton, LinkButton, Menu, MenuItem, Select, Textarea, useToast } from "@/ui";
 import { PaymentSummaryBody } from "../../checkout/components/confirm-payment";
@@ -164,7 +164,7 @@ function PlansHeld({ held, total }: { readonly held: number; readonly total: num
     <div className="flex flex-col gap-1">
       <div className="flex gap-1" role="img" aria-label={`${held} of ${total} plans`}>
         {Array.from({ length: total }, (_, index) => (
-          <span key={index} className={`h-1.5 flex-1 rounded-mark ${index < held ? "bg-primary" : "bg-neutral-wash"}`} />
+          <span key={index} className={`h-1.5 flex-1 rounded-full ${index < held ? "bg-pos-text" : "bg-neutral-wash"}`} />
         ))}
       </div>
       <span className="type-meta">{`You have ${held} of ${total} plans.`}</span>
@@ -182,18 +182,22 @@ export function ServicesPanel({ view, preselect }: { readonly view: ServicesPane
   return (
     <div className="flex flex-col gap-4">
       <section aria-labelledby="billing-services" className="flex flex-col gap-3">
-        <h2 id="billing-services" className="type-section text-ink">
+        <h2 id="billing-services" className="font-display text-xl font-bold tracking-tight text-ink">
           Your services
         </h2>
         <ul className="grid gap-3 sm:grid-cols-2">
           {view.rows.map((row) => {
             const on = row.status.word !== "Not added";
-            const tile = on ? "border-pos-border bg-surface" : row.offerPrice !== null ? "border-accent-border bg-accent-wash" : "border-border bg-surface";
+            const tile = on
+              ? "border-pos-border bg-surface shadow-card"
+              : row.offerPrice !== null
+                ? "border-accent-border bg-accent-wash/30 shadow-card"
+                : "border-border bg-surface shadow-card";
             return (
-              <li key={row.addOn} className={`flex flex-col gap-2 rounded-panel border p-4 sm:min-h-44 ${tile}`}>
-                <div className="flex items-start gap-2">
-                  {row.service === null ? null : <ServiceMark service={row.service} bought={on} className="mt-1.5" />}
-                  <b className="type-sub min-w-0 flex-1 text-ink">{row.name}</b>
+              <li key={row.addOn} className={`flex flex-col gap-3 rounded-panel border p-5 sm:min-h-44 ${tile}`}>
+                <div className="flex items-start gap-2.5">
+                  {row.service === null ? null : <ServiceMark service={row.service} bought={on} className="mt-0.5" />}
+                  <b className="font-display text-base font-semibold min-w-0 flex-1 text-ink">{row.name}</b>
                   {row.offerPrice === null ? <Badge tone={row.status.tone}>{row.status.word}</Badge> : <Badge tone="accent">{`${row.offerPrice} first month`}</Badge>}
                 </div>
                 <p className="type-meta flex-1">{row.line}</p>
@@ -208,13 +212,13 @@ export function ServicesPanel({ view, preselect }: { readonly view: ServicesPane
                   </p>
                 ) : null}
                 {row.addOn === MONITORING_ID && !on && view.glance !== null ? <PlansHeld held={view.glance.plansHeld} total={view.glance.plansTotal} /> : null}
-                <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center justify-between gap-2 border-t border-border-subtle pt-3">
                   {row.offerPrice === null ? (
-                    <span className="type-sub tabular-nums text-ink">{row.price}</span>
+                    <span className="font-mono text-sm font-semibold tabular-nums text-ink">{row.price}</span>
                   ) : (
-                    <span className="flex items-baseline gap-2 tabular-nums">
-                      <span className="type-sub text-ink">{row.offerPrice}</span>
-                      <span className="type-meta">
+                    <span className="flex items-baseline gap-2 tabular-nums font-mono text-sm">
+                      <span className="font-semibold text-pos-text">{row.offerPrice}</span>
+                      <span className="type-meta font-mono">
                         <span className="sr-only">usually </span>
                         <s>{row.price}</s>
                       </span>
@@ -228,14 +232,15 @@ export function ServicesPanel({ view, preselect }: { readonly view: ServicesPane
         </ul>
       </section>
       {cancel === null ? null : (
-        <Panel title="Cancel a service">
+        <article className="rounded-panel border border-border bg-surface p-6 shadow-card">
+          <h2 className="font-display text-lg font-bold tracking-tight text-ink mb-2">Cancel a service</h2>
           <p className="type-body text-ink-3">You can remove a service from your next billing date. Your website stays live until then. Ad campaigns stop on the same day.</p>
-          <div className="mt-3">
+          <div className="mt-4">
             <Button variant="danger" onClick={() => setCancelling(cancel.options[0]?.addOn ?? null)}>
               Cancel a service
             </Button>
           </div>
-        </Panel>
+        </article>
       )}
       {addRow !== undefined && addRow.action.kind === "add" ? <AddDialog row={{ ...addRow, action: addRow.action }} onClose={() => setAdding(null)} /> : null}
       {cancel === null || cancelling === null ? null : <CancelDialog options={cancel.options} endsOn={cancel.endsOn} initial={cancelling} onClose={() => setCancelling(null)} />}

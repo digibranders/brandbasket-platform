@@ -478,6 +478,28 @@ describe("createRazorpayProvider", () => {
       ).rejects.toThrow("Razorpay answered");
     });
   });
+
+  describe("getPaymentMethodUpdateUrl", () => {
+    function providerFetching(fetchSubscription: ReturnType<typeof vi.fn>) {
+      return createRazorpayProvider({
+        resolveChargeOrder: async () => null,
+        keySecret: KEY_SECRET,
+        client: fakeClient({ fetchSubscription }) as never,
+        resolveBusinessId: async () => null,
+      });
+    }
+
+    it("returns the hosted short_url for the subscription", async () => {
+      const fetchSubscription = vi.fn().mockResolvedValue({ id: "sub_1", status: "active", short_url: "https://rzp.io/i/update123" });
+      await expect(providerFetching(fetchSubscription).getPaymentMethodUpdateUrl("sub_1")).resolves.toBe("https://rzp.io/i/update123");
+      expect(fetchSubscription).toHaveBeenCalledWith("sub_1");
+    });
+
+    it("refuses when the subscription has no short_url", async () => {
+      const fetchSubscription = vi.fn().mockResolvedValue({ id: "sub_1", status: "active" });
+      await expect(providerFetching(fetchSubscription).getPaymentMethodUpdateUrl("sub_1")).rejects.toThrow("no short_url");
+    });
+  });
 });
 
 describe("charge payments", () => {
@@ -682,4 +704,66 @@ describe("add-on subscriptions", () => {
     await expect(provider.confirmAddOnPayment({})).rejects.toThrow(CheckoutVerificationError);
     await expect(provider.confirmAddOnPayment({})).rejects.toThrow(/confirmed by Razorpay's webhook/);
   });
+
+  describe("refundPayment", () => {
+    it("calls client.payments.refund and returns providerRefundId", async () => {
+      const refund = vi.fn().mockResolvedValue({ id: "rfnd_123", amount: 2500, status: "processed" });
+      const client = fakeClient() as any;
+      client.payments.refund = refund;
+      const provider = createRazorpayProvider({
+        resolveChargeOrder: async () => null,
+        keySecret: KEY_SECRET,
+        client,
+        resolveBusinessId: async () => null,
+      });
+
+      const result = await provider.refundPayment({
+        providerPaymentId: "pay_test123",
+        amountCents: 2500,
+        reason: "Customer request",
+      });
+
+      expect(refund).toHaveBeenCalledWith("pay_test123", {
+        amount: 2500,
+        notes: { reason: "Customer request" },
+      });
+      expect(result).toEqual({ providerRefundId: "rfnd_123" });
+    });
+
+    it("propagates provider failures when refund fails", async () => {
+      const refund = vi.fn().mockRejectedValue(new Error("BAD_REQUEST_ERROR: Payment already refunded"));
+      const client = fakeClient() as any;
+      client.payments.refund = refund;
+      const provider = createRazorpayProvider({
+        resolveChargeOrder: async () => null,
+        keySecret: KEY_SECRET,
+        client,
+        resolveBusinessId: async () => null,
+      });
+
+      await expect(
+        provider.refundPayment({
+          providerPaymentId: "pay_test123",
+          amountCents: 2500,
+        }),
+      ).rejects.toThrow("BAD_REQUEST_ERROR: Payment already refunded");
+    });
+
+    it("refuses zero or negative refund amount", async () => {
+      const provider = createRazorpayProvider({
+        resolveChargeOrder: async () => null,
+        keySecret: KEY_SECRET,
+        client: fakeClient() as any,
+        resolveBusinessId: async () => null,
+      });
+
+      await expect(
+        provider.refundPayment({
+          providerPaymentId: "pay_test123",
+          amountCents: 0,
+        }),
+      ).rejects.toThrow(RangeError);
+    });
+  });
 });
+

@@ -1,3 +1,5 @@
+import { LAPSE_HOSTING_PAUSE_DAYS } from "./lapse-policy";
+
 /** What the hosting sync needs to know about one hosted website (docs/plans/57-site-lapse-hosting-enforcement.md). */
 export interface HostedSiteState {
   readonly businessId: string;
@@ -6,7 +8,11 @@ export interface HostedSiteState {
   /** The business has a project that reached `live`. */
   readonly hasLiveProject: boolean;
   /** What the billing rule says; null when the business's billing could not be read. */
-  readonly billing: { readonly hasWebsite: boolean; readonly paymentUnderReview: boolean } | null;
+  readonly billing: {
+    readonly hasWebsite: boolean;
+    readonly paymentUnderReview: boolean;
+    readonly paidThroughAt?: Date | null;
+  } | null;
 }
 
 export interface HostingAction {
@@ -17,7 +23,7 @@ export interface HostingAction {
 /** Why a site that looks lapsed was left alone. A site whose billing could not be read is never touched either way. */
 export interface HostingHold {
   readonly businessId: string;
-  readonly reason: "not-launched" | "payment-under-review" | "billing-unreadable";
+  readonly reason: "not-launched" | "payment-under-review" | "billing-unreadable" | "within-lapse-window";
 }
 
 export interface HostingPlan {
@@ -44,10 +50,11 @@ function pauseLimit(liveSites: number): number {
  * Pausing is refused for a site that was never launched, for a payment waiting on staff, and for any site whose
  * billing could not be read, and if too many pauses are due at once none of them happens.
  */
-export function planHostingActions(sites: readonly HostedSiteState[]): HostingPlan {
+export function planHostingActions(sites: readonly HostedSiteState[], now = new Date()): HostingPlan {
   const unpauses: HostingAction[] = [];
   const pauses: HostingAction[] = [];
   const held: HostingHold[] = [];
+  const pauseThresholdMs = LAPSE_HOSTING_PAUSE_DAYS * 24 * 60 * 60 * 1000;
 
   for (const site of sites) {
     if (site.billing === null) {
@@ -57,7 +64,15 @@ export function planHostingActions(sites: readonly HostedSiteState[]): HostingPl
     } else if (!site.paused) {
       if (!site.hasLiveProject) held.push({ businessId: site.businessId, reason: "not-launched" });
       else if (site.billing.paymentUnderReview) held.push({ businessId: site.businessId, reason: "payment-under-review" });
-      else pauses.push({ businessId: site.businessId, action: "pause" });
+      else if (
+        site.billing.paidThroughAt !== undefined &&
+        site.billing.paidThroughAt !== null &&
+        now.getTime() - site.billing.paidThroughAt.getTime() < pauseThresholdMs
+      ) {
+        held.push({ businessId: site.businessId, reason: "within-lapse-window" });
+      } else {
+        pauses.push({ businessId: site.businessId, action: "pause" });
+      }
     }
   }
 

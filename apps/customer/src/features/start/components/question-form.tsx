@@ -15,7 +15,7 @@ export function QuestionForm({ question, services }: { readonly question: StartQ
       <input type="hidden" name="services" value={services} />
       <fieldset className="flex flex-col gap-4">
         <legend className="mb-4 flex flex-col gap-1">
-          <span className="type-title text-ink">{question.title}</span>
+          <span className="font-display text-2xl font-bold tracking-tight text-ink">{question.title}</span>
           <span className="type-body text-ink-3">{question.hint}</span>
         </legend>
         {question.kind === "url" ? (

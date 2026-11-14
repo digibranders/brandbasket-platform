@@ -84,6 +84,12 @@ describe("the Overview's next step", () => {
   it("links All activity to the Activity fold on Messages", async () => {
     expect(await render("building")).toContain(`href="/clients/${BUSINESS}/requests#activity"`);
   });
+
+  it("renders the mirror panel showing what the customer sees", async () => {
+    const html = await render("building");
+    expect(html).toContain("What the customer sees");
+    expect(html).toContain("We are building your website");
+  });
 });
 
 describe("the Overview's money", () => {

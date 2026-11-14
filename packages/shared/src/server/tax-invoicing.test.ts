@@ -9,7 +9,10 @@ import {
   InvoiceDatedBeforePaymentError,
   issueTaxInvoice,
   issueTaxInvoiceSafely,
+  issueCreditNote,
+  issueCreditNoteSafely,
   planLineDescription,
+
   supplierFor,
   planLineDetail,
   planLineNote,
@@ -35,7 +38,10 @@ vi.mock("@brandbasket/db", async (importOriginal) => ({
   lockPaymentForInvoice: vi.fn(),
   allocateInvoiceSerial: vi.fn(),
   insertTaxInvoice: vi.fn(),
+  findCreditNoteByPaymentId: vi.fn(),
+  insertCreditNote: vi.fn(),
 }));
+
 
 describe("servicePeriod", () => {
   it("reads as the days paid for, in India, ending the day before the next period starts", () => {
@@ -565,4 +571,131 @@ describe("issueTaxInvoice for a payment of services", () => {
       expect(inserted().lines.map((l) => l.note)).toEqual([null, "Coupon SAVE10 applied"]);
     });
   });
+
+  describe("issueCreditNote", () => {
+    const testInvoice: TaxInvoice = {
+      id: "0192f3c4-1111-7000-8000-000000000001",
+      businessId: "0192f3c4-2222-7000-8000-000000000002",
+      paymentId: "0192f3c4-3333-7000-8000-000000000003",
+      prefix: "FY",
+      financialYear: "26-27",
+      serial: 1,
+      number: "FY/26-27/000001",
+      issuedOn: "2026-10-15",
+      paidOn: "2026-10-15",
+      supplier: supplierFor(),
+      recipient: {
+        legalName: "Acme Enterprises",
+        tradeName: null,
+        gstin: "27AAPCA1234A1Z5",
+        cin: null,
+        addressLines: ["Shop 4", "Pune 411037"],
+        stateCode: "mh",
+        email: null,
+        phone: null,
+      },
+      placeOfSupplyStateCode: "mh",
+      placeOfSupplyBasis: "gstin",
+      supplyType: "intra_state",
+      lines: [
+        {
+          description: "Managed Website Subscription",
+          detail: "Monthly plan",
+          note: null,
+          sac: "998361",
+          quantity: 1,
+          unitAmountCents: 353900,
+          grossAmountCents: 353900,
+          discountAmountCents: 0,
+          taxableCents: 299915,
+          taxRateBasisPoints: 1800,
+          cgstCents: 26992,
+          sgstCents: 26992,
+          igstCents: 0,
+          taxCents: 53984,
+        },
+      ],
+      taxableCents: 299915,
+      cgstCents: 26992,
+      sgstCents: 26992,
+      igstCents: 0,
+      roundOffCents: 1,
+      totalCents: 353900,
+      paymentLabel: "Visa ending 4242",
+      paymentReference: "pay_123456",
+      createdAt: new Date("2026-10-15T10:00:00.000Z"),
+    };
+
+    const testPayment: Payment = {
+      id: testInvoice.paymentId,
+      businessId: testInvoice.businessId,
+      provider: "razorpay",
+      providerPaymentId: "pay_123456",
+      kind: "renewal",
+      amountCents: 353900,
+      currency: "INR",
+      status: "captured",
+      paidAt: new Date("2026-10-15T10:00:00.000Z"),
+      subscriptionId: null,
+      failureReason: null,
+      attentionReason: null,
+      attentionResolvedAt: null,
+      createdAt: new Date("2026-10-15T10:00:00.000Z"),
+    };
+
+
+    it("issues a credit note with consecutive CN number for a full refund", async () => {
+      vi.mocked(db.findCreditNoteByPaymentId).mockResolvedValue(null);
+      vi.mocked(db.allocateInvoiceSerial).mockResolvedValue(1);
+      vi.mocked(db.insertCreditNote).mockImplementation(async (_tx, note) => ({
+        ...note,
+        id: "cn-1",
+        createdAt: new Date(),
+      } as any));
+
+      const result = await issueCreditNote(tx, testPayment, testInvoice, 353900, "Customer refund", {
+        issuedAt: new Date("2026-10-20T10:00:00Z"),
+      });
+
+      expect(result.issued).toBe(true);
+      expect(result.creditNote.number).toBe("CN/26-27/000001");
+      expect(result.creditNote.totalCents).toBe(353900);
+      expect(result.creditNote.taxableCents).toBe(299915);
+      expect(result.creditNote.cgstCents).toBe(26992);
+      expect(result.creditNote.sgstCents).toBe(26992);
+      expect(db.allocateInvoiceSerial).toHaveBeenCalledWith(tx, "CN", "26-27");
+    });
+
+    it("returns existing credit note when one was already issued (idempotent)", async () => {
+      const existing = { id: "cn-existing", number: "CN/26-27/000001" } as any;
+      vi.mocked(db.findCreditNoteByPaymentId).mockResolvedValue(existing);
+
+      const result = await issueCreditNote(tx, testPayment, testInvoice, 353900, "Customer refund");
+      expect(result.issued).toBe(false);
+      expect(result.creditNote).toBe(existing);
+      expect(db.allocateInvoiceSerial).not.toHaveBeenCalled();
+    });
+
+    it("issues a credit note with proportional GST reversal for a partial refund", async () => {
+      vi.mocked(db.findCreditNoteByPaymentId).mockResolvedValue(null);
+      vi.mocked(db.allocateInvoiceSerial).mockResolvedValue(2);
+      vi.mocked(db.insertCreditNote).mockImplementation(async (_tx, note) => ({
+        ...note,
+        id: "cn-2",
+        createdAt: new Date(),
+      } as any));
+
+      const result = await issueCreditNote(tx, testPayment, testInvoice, 100000, "Partial compensation", {
+        issuedAt: new Date("2026-10-20T10:00:00Z"),
+      });
+
+      expect(result.issued).toBe(true);
+      expect(result.creditNote.number).toBe("CN/26-27/000002");
+      expect(result.creditNote.totalCents).toBe(100000);
+      expect(result.creditNote.cgstCents).toBe(7627);
+      expect(result.creditNote.sgstCents).toBe(7627);
+      expect(result.creditNote.taxableCents).toBe(84746);
+    });
+  });
 });
+

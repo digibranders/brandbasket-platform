@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { StatusChip } from "@brandbasket/shared/ui/patterns";
 import { PageHeader, Panel, PanelError, TimelineSteps, type TimelineStep } from "@/components";
 import type { Loaded } from "@/lib/loaded";
 import { Banner, Icon, TabLinks } from "@/ui";
@@ -34,12 +35,37 @@ export function WebsiteTabs({ current, hasPages }: { readonly current: string; r
   return <TabLinks items={websiteTabs(hasPages)} current={current} aria-label="Website" />;
 }
 
-/** The header every live Website tab shares: the address, the live date, Visit site and Ask for a change. */
-export function LiveHeader({ description, visitHref, actions, tabs }: { readonly description: string; readonly visitHref: string | null; readonly actions: ReactNode; readonly tabs: ReactNode }) {
+export interface LiveHeaderProps {
+  readonly description: string;
+  readonly visitHref: string | null;
+  readonly actions: ReactNode;
+  readonly tabs: ReactNode;
+  readonly domainBadge?: string;
+  readonly sslStatus?: string;
+}
+
+/** The header every live Website tab shares: the address, the live date, domain badge, SSL status, Visit site and Ask for a change. */
+export function LiveHeader({
+  description,
+  visitHref,
+  actions,
+  tabs,
+  domainBadge,
+  sslStatus = "SSL Active",
+}: LiveHeaderProps) {
   return (
     <PageHeader
       title="Website"
-      description={description}
+      description={
+        <span className="flex flex-col gap-1.5">
+          <span className="flex flex-wrap items-center gap-2">
+            <StatusChip label="Live" variant="active" hasDot />
+            {domainBadge ? <StatusChip label={domainBadge} variant="idle" /> : null}
+            <StatusChip label={sslStatus} variant="active" />
+          </span>
+          <span>{description}</span>
+        </span>
+      }
       actions={
         <>
           {visitHref === null ? null : <ExternalButton href={visitHref}>Visit site</ExternalButton>}

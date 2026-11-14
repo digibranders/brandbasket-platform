@@ -1,0 +1,1169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Settings · BrandBasket</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Red+Hat+Display:wght@500;600;700&family=Red+Hat+Mono:wght@400;500;600&family=Red+Hat+Text:wght@400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --ground: #F6F5F2;
+      --surface: #FFFFFF;
+      --sunken: #EEECE7;
+      --line: #E3E0D9;
+      --line-strong: #CDC9BE;
+      --ink: #15161A;
+      --ink-2: #343741;
+      --ink-3: #5F626A;
+      --ink-4: #8A8D95;
+      --accent: #C48A47;
+      --accent-wash: #F4E6D3;
+      --accent-deep: #8A5524;
+      --sage: #4F7A63;
+      --sage-wash: #E5EFE8;
+      --error: #B42318;
+      --error-wash: #FDECEA;
+      --r-control: 8px;
+      --r-card: 14px;
+      --r-hero: 20px;
+      --r-pill: 9999px;
+      --sh-resting: 0 1px 0 rgba(42,28,16,0.03);
+      --sh-hero: 0 1px 2px rgba(42,28,16,0.05), 0 12px 32px -12px rgba(42,28,16,0.14);
+      --sh-dialog: 0 24px 64px -16px rgba(42,28,16,0.28);
+      --sh-button: 0 1px 2px rgba(42,28,16,0.12);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--ground);
+      color: var(--ink);
+      font-family: "Red Hat Text", -apple-system, BlinkMacSystemFont, sans-serif;
+      font-size: 15px;
+      line-height: 1.5;
+      padding: 24px 16px 80px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    button, input, select, textarea {
+      font-family: inherit;
+      font-size: inherit;
+      color: inherit;
+    }
+    :focus-visible {
+      outline: 2px solid var(--ink);
+      outline-offset: 2px;
+    }
+    .demo-bar {
+      position: sticky;
+      top: 12px;
+      z-index: 50;
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: var(--r-pill);
+      padding: 6px 14px;
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      box-shadow: var(--sh-hero);
+      margin-bottom: 24px;
+      font-size: 13px;
+      flex-wrap: wrap;
+    }
+    .demo-btn {
+      background: var(--sunken);
+      border: 1px solid var(--line);
+      color: var(--ink-2);
+      padding: 4px 12px;
+      border-radius: var(--r-pill);
+      cursor: pointer;
+      font-weight: 500;
+      transition: all 0.15s ease;
+    }
+    .demo-btn:hover {
+      background: var(--line);
+      color: var(--ink);
+    }
+    .demo-btn.active {
+      background: var(--ink);
+      color: #FFFFFF;
+      border-color: var(--ink);
+    }
+    .frame {
+      width: 100%;
+      max-width: 1040px;
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+      transition: max-width 0.2s ease;
+    }
+    .frame.mobile {
+      max-width: 390px;
+    }
+    .header {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .eyebrow {
+      font-size: 11px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      font-weight: 700;
+      color: var(--ink-3);
+    }
+    .title {
+      font-family: "Red Hat Display", sans-serif;
+      font-size: 32px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+    .subtitle {
+      color: var(--ink-2);
+      font-size: 15px;
+    }
+    .tabs-nav {
+      display: flex;
+      gap: 4px;
+      border-bottom: 1px solid var(--line);
+      overflow-x: auto;
+      padding-bottom: 2px;
+      -webkit-overflow-scrolling: touch;
+    }
+    .tab-item {
+      background: none;
+      border: none;
+      padding: 10px 16px;
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--ink-2);
+      cursor: pointer;
+      border-radius: var(--r-control) var(--r-control) 0 0;
+      position: relative;
+      white-space: nowrap;
+      transition: color 0.15s ease;
+    }
+    .tab-item:hover {
+      color: var(--ink);
+      background: var(--sunken);
+    }
+    .tab-item.active {
+      color: var(--ink);
+      font-weight: 600;
+    }
+    .tab-item.active::after {
+      content: "";
+      position: absolute;
+      bottom: -3px;
+      left: 12px;
+      right: 12px;
+      height: 3px;
+      border-radius: 3px 3px 0 0;
+      background: var(--accent);
+    }
+    .tab-item.tab-danger {
+      color: var(--error);
+    }
+    .tab-item.tab-danger.active::after {
+      background: var(--error);
+    }
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: var(--r-card);
+      box-shadow: var(--sh-resting);
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+    .focal-card {
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-top: 3px solid var(--accent);
+      border-radius: var(--r-hero);
+      box-shadow: var(--sh-hero);
+      padding: 28px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+    .focal-card.danger-focal {
+      border-top: 3px solid var(--error);
+    }
+    .mono {
+      font-family: "Red Hat Mono", monospace;
+    }
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 3px 10px;
+      border-radius: var(--r-pill);
+      font-size: 12px;
+      font-weight: 600;
+    }
+    .chip-active {
+      background: var(--sage-wash);
+      color: var(--sage);
+    }
+    .chip-waiting {
+      background: var(--accent-wash);
+      color: var(--accent-deep);
+    }
+    .chip-idle {
+      background: var(--sunken);
+      color: var(--ink-2);
+    }
+    .chip-error {
+      background: var(--error-wash);
+      color: var(--error);
+    }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      height: 38px;
+      padding: 0 16px;
+      border-radius: var(--r-control);
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      text-decoration: none;
+      box-shadow: var(--sh-button);
+      border: none;
+      transition: background-color 0.12s ease, transform 0.05s ease;
+    }
+    .btn:active {
+      transform: translateY(1px);
+    }
+    .btn-primary {
+      background: var(--ink);
+      color: #FFFFFF;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.08), var(--sh-button);
+    }
+    .btn-primary:hover {
+      background: #2A2B31;
+    }
+    .btn-secondary {
+      background: var(--surface);
+      border: 1px solid var(--line);
+      color: var(--ink);
+    }
+    .btn-secondary:hover {
+      background: var(--sunken);
+    }
+    .btn-danger {
+      background: var(--error);
+      color: #FFFFFF;
+    }
+    .btn-danger:hover {
+      background: #981B12;
+    }
+    .btn-quiet-danger {
+      background: var(--surface);
+      border: 1px solid var(--error);
+      color: var(--error);
+    }
+    .btn-quiet-danger:hover {
+      background: var(--error-wash);
+    }
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+    @media (max-width: 760px) {
+      .grid-2 {
+        grid-template-columns: 1fr;
+      }
+    }
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .field-label {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--ink-2);
+    }
+    .field-helper {
+      font-size: 12px;
+      color: var(--ink-3);
+    }
+    .field-error {
+      font-size: 12px;
+      color: var(--error);
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      margin-top: 2px;
+    }
+    .control {
+      height: 42px;
+      border: 1px solid var(--line);
+      border-radius: var(--r-control);
+      padding: 0 12px;
+      font-size: 14px;
+      background: var(--surface);
+      color: var(--ink);
+      transition: border-color 0.15s ease;
+    }
+    .control:hover {
+      border-color: var(--line-strong);
+    }
+    .control.has-error {
+      border-color: var(--error);
+      background: #FFFDFD;
+    }
+    textarea.control {
+      height: 84px;
+      padding: 10px 12px;
+      resize: vertical;
+    }
+    .card-title {
+      font-family: "Red Hat Display", sans-serif;
+      font-size: 20px;
+      font-weight: 700;
+      letter-spacing: -0.01em;
+    }
+    .card-desc {
+      font-size: 14px;
+      color: var(--ink-2);
+    }
+    .brand-tile {
+      width: 64px;
+      height: 64px;
+      border-radius: 12px;
+      background: var(--accent-wash);
+      color: var(--accent-deep);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: "Red Hat Display", sans-serif;
+      font-size: 22px;
+      font-weight: 700;
+      border: 1px solid var(--line);
+      flex-shrink: 0;
+    }
+    .toggle-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 14px 0;
+      border-bottom: 1px solid var(--line);
+    }
+    .toggle-row:last-child {
+      border-bottom: none;
+      padding-bottom: 0;
+    }
+    .toggle-switch {
+      position: relative;
+      width: 44px;
+      height: 24px;
+      flex-shrink: 0;
+    }
+    .toggle-switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+    .toggle-slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: var(--sunken);
+      border: 1px solid var(--line);
+      border-radius: 24px;
+      transition: 0.2s;
+    }
+    .toggle-slider::before {
+      position: absolute;
+      content: "";
+      height: 18px;
+      width: 18px;
+      left: 2px;
+      bottom: 2px;
+      background: #FFFFFF;
+      border-radius: 50%;
+      box-shadow: 0 1px 2px rgba(42,28,16,0.15);
+      transition: 0.2s;
+    }
+    input:checked + .toggle-slider {
+      background: var(--ink);
+      border-color: var(--ink);
+    }
+    input:checked + .toggle-slider::before {
+      transform: translateX(20px);
+    }
+    .team-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+    }
+    .team-table th {
+      text-align: left;
+      padding: 10px 12px;
+      color: var(--ink-3);
+      font-size: 12px;
+      font-weight: 600;
+      border-bottom: 1px solid var(--line);
+    }
+    .team-table td {
+      padding: 14px 12px;
+      border-bottom: 1px solid var(--line);
+      vertical-align: middle;
+    }
+    .team-table tr:last-child td {
+      border-bottom: none;
+    }
+    .alert-banner {
+      border-radius: var(--r-card);
+      padding: 16px 20px;
+      display: flex;
+      gap: 14px;
+      align-items: flex-start;
+    }
+    .alert-error {
+      background: var(--error-wash);
+      border: 1px solid #F4C3BE;
+      color: var(--error);
+    }
+    .alert-info {
+      background: var(--sunken);
+      border: 1px solid var(--line);
+      color: var(--ink);
+    }
+    .alert-warning {
+      background: #FFF9F2;
+      border: 1px solid #F2DEC7;
+      color: var(--accent-deep);
+    }
+    .warning-box {
+      background: #FCF8F3;
+      border: 1px solid #EEDBC5;
+      border-radius: var(--r-card);
+      padding: 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .dialog-scrim {
+      position: fixed;
+      inset: 0;
+      background: rgba(21, 22, 26, 0.40);
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    .dialog-box {
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: var(--r-hero);
+      box-shadow: var(--sh-dialog);
+      width: 100%;
+      max-width: 480px;
+      padding: 28px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+      animation: dialogPop 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    @keyframes dialogPop {
+      from { opacity: 0; transform: scale(0.97); }
+      to { opacity: 1; transform: scale(1); }
+    }
+    .empty-state {
+      text-align: center;
+      padding: 44px 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+      color: var(--ink-2);
+    }
+    .icon-tile {
+      width: 40px;
+      height: 40px;
+      border-radius: 10px;
+      background: var(--sunken);
+      color: var(--ink);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .icon-tile-accent {
+      background: var(--accent-wash);
+      color: var(--accent-deep);
+    }
+    .icon-tile-sage {
+      background: var(--sage-wash);
+      color: var(--sage);
+    }
+    .icon-tile-error {
+      background: var(--error-wash);
+      color: var(--error);
+    }
+    svg.i {
+      width: 18px;
+      height: 18px;
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 1.6;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      flex-shrink: 0;
+    }
+    [hidden] {
+      display: none !important;
+    }
+  </style>
+</head>
+<body>
+
+  
+  <div class="demo-bar" role="toolbar" aria-label="Mock state and viewport toggles">
+    <span style="font-weight:600">State:</span>
+    <button class="demo-btn active" id="btnLive" onclick="setState('live')">Live active</button>
+    <button class="demo-btn" id="btnNew" onclick="setState('new')">New setup</button>
+    <button class="demo-btn" id="btnEmpty" onclick="setState('empty')">Empty</button>
+    <button class="demo-btn" id="btnError" onclick="setState('error')">Validation error</button>
+    <span style="border-left:1px solid var(--line); margin:0 4px; height:16px" aria-hidden="true"></span>
+    <span style="font-weight:600">Viewport:</span>
+    <button class="demo-btn active" id="btnDesktop" onclick="setViewport('desktop')">1440 desktop</button>
+    <button class="demo-btn" id="btnMobile" onclick="setViewport('mobile')">390 mobile</button>
+  </div>
+
+  <div class="frame" id="frame">
+    
+    <header class="header">
+      <div class="eyebrow">Account and Preferences</div>
+      <h1 class="title">Settings</h1>
+      <p class="subtitle">Manage your business profile, security credentials, notification channels, team members, and data privacy.</p>
+    </header>
+
+    
+    <div id="errorBanner" class="alert-banner alert-error" style="display:none">
+      <svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+      <div>
+        <div style="font-weight:700">Unable to save profile changes</div>
+        <div style="font-size:13px; margin-top:2px">Please provide a valid 10-digit Indian phone number starting with +91.</div>
+      </div>
+    </div>
+
+    <div id="newBanner" class="alert-banner alert-info" style="display:none">
+      <svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+      <div>
+        <div style="font-weight:700">Complete your business identity</div>
+        <div style="font-size:13px; margin-top:2px">Please verify your store address and phone number so our designers can build your website footer and enquiry forms accurately.</div>
+      </div>
+    </div>
+
+    
+    <nav class="tabs-nav" aria-label="Settings navigation">
+      <button class="tab-item active" id="tabBtnProfile" onclick="switchTab('profile')">Profile</button>
+      <button class="tab-item" id="tabBtnSecurity" onclick="switchTab('security')">Security</button>
+      <button class="tab-item" id="tabBtnNotifications" onclick="switchTab('notifications')">Notifications</button>
+      <button class="tab-item" id="tabBtnTeam" onclick="switchTab('team')">Team</button>
+      <button class="tab-item" id="tabBtnPrivacy" onclick="switchTab('privacy')">Privacy</button>
+      <button class="tab-item tab-danger" id="tabBtnDelete" onclick="switchTab('delete')">Delete account</button>
+    </nav>
+
+    
+    <div id="tabContentProfile" style="display:flex; flex-direction:column; gap:24px">
+      
+      <section class="focal-card" aria-labelledby="brandIdentityTitle">
+        <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:16px; flex-wrap:wrap">
+          <div>
+            <span class="chip chip-waiting">Focal task</span>
+            <h2 class="card-title" id="brandIdentityTitle" style="margin-top:8px">Brand details</h2>
+            <p class="card-desc">Your public business identity shown on your website, WhatsApp widget, and social profiles.</p>
+          </div>
+          <button class="btn btn-primary" onclick="triggerSave()">Save changes</button>
+        </div>
+
+        <div style="display:flex; gap:20px; align-items:center; padding:16px; background:var(--sunken); border-radius:var(--r-control); border:1px solid var(--line)">
+          <div class="brand-tile">SC</div>
+          <div>
+            <div style="font-weight:600">Store logo mark</div>
+            <div style="font-size:13px; color:var(--ink-2); margin-top:2px">PNG or SVG format, square ratio, minimum 400 by 400 pixels.</div>
+          </div>
+          <button class="btn btn-secondary" style="margin-left:auto; height:34px; font-size:13px">Replace logo</button>
+        </div>
+
+        <div class="grid-2">
+          <div class="field">
+            <label class="field-label" for="bizName">Business trade name</label>
+            <input class="control" id="bizName" value="Sweet Crust Bakery" />
+            <span class="field-helper">Appears in your website header and copyright line.</span>
+          </div>
+
+          <div class="field">
+            <label class="field-label" for="bizCategory">Business category</label>
+            <select class="control" id="bizCategory">
+              <option selected>Bakery and Confectionery</option>
+              <option>Cafe and Restaurant</option>
+              <option>Retail Store</option>
+              <option>Artisanal Producer</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="field">
+          <label class="field-label" for="bizTagline">Brand tagline and summary</label>
+          <textarea class="control" id="bizTagline">Artisanal sourdough and festive confections baked daily in Koregaon Park, Pune. Natural ingredients, traditional fermentation, zero preservatives.</textarea>
+        </div>
+
+        <div class="grid-2">
+          <div class="field">
+            <label class="field-label" for="contactPhone">Primary contact number</label>
+            <input class="control mono" id="contactPhone" value="+91 98765 43210" />
+            <span class="field-helper">Used for customer WhatsApp click to chat button.</span>
+            <span id="phoneErrorMsg" class="field-error" style="display:none">
+              <svg class="i" style="width:14px; height:14px" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+              Please enter 10 digits without spaces or special characters.
+            </span>
+          </div>
+
+          <div class="field">
+            <label class="field-label" for="contactEmail">Public customer email</label>
+            <input class="control mono" id="contactEmail" value="orders@sweetcrust.in" />
+            <span class="field-helper">Displayed in website footer for catering enquiries.</span>
+          </div>
+        </div>
+
+        <div class="grid-2">
+          <div class="field">
+            <label class="field-label" for="bizAddress">Store address</label>
+            <input class="control" id="bizAddress" value="Shop 4, Silver Birch Lane, Koregaon Park, Pune 411001" />
+          </div>
+
+          <div class="field">
+            <label class="field-label" for="bizHours">Operating hours</label>
+            <input class="control" id="bizHours" value="Tue to Sun, 8:00 am to 9:00 pm (Closed Mondays)" />
+          </div>
+        </div>
+      </section>
+
+      
+      <section class="card" aria-labelledby="legalDetailsTitle">
+        <div>
+          <h2 class="card-title" id="legalDetailsTitle">Legal entity and taxation</h2>
+          <p class="card-desc">Information used on customer GST tax invoices and legal disclaimers.</p>
+        </div>
+
+        <div class="grid-2">
+          <div class="field">
+            <label class="field-label" for="legalName">Registered corporate name</label>
+            <input class="control" id="legalName" value="Sweet Crust Foods Private Limited" />
+          </div>
+
+          <div class="field">
+            <label class="field-label" for="gstin">GSTIN (India)</label>
+            <input class="control mono" id="gstin" value="27AADCS1234F1Z8" />
+          </div>
+        </div>
+
+        <div class="grid-2">
+          <div class="field">
+            <label class="field-label" for="fssai">FSSAI license number</label>
+            <input class="control mono" id="fssai" value="11521034000412" />
+          </div>
+
+          <div class="field">
+            <label class="field-label" for="stateJurisdiction">State of registration</label>
+            <input class="control" id="stateJurisdiction" value="Maharashtra (State Code 27)" />
+          </div>
+        </div>
+      </section>
+    </div>
+
+    
+    <div id="tabContentSecurity" style="display:none; flex-direction:column; gap:24px">
+      
+      <section class="focal-card" aria-labelledby="twoFactorTitle">
+        <div style="display:flex; justify-content:space-between; align-items:flex-start">
+          <div>
+            <span class="chip chip-active">Protected</span>
+            <h2 class="card-title" id="twoFactorTitle" style="margin-top:8px">Two-factor authentication</h2>
+            <p class="card-desc">Add a second layer of defense. A 6-digit one-time code is required when signing in on a new device.</p>
+          </div>
+          <button class="btn btn-secondary">Configure</button>
+        </div>
+
+        <div style="display:flex; align-items:center; gap:16px; padding:16px; background:var(--sunken); border-radius:var(--r-control); border:1px solid var(--line)">
+          <div class="icon-tile icon-tile-sage">
+            <svg class="i" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          </div>
+          <div>
+            <div style="font-weight:600">SMS one-time code verification</div>
+            <div style="font-size:13px; color:var(--ink-2); margin-top:2px">Active on mobile <span class="mono" style="font-weight:600">+91 98765 43210</span></div>
+          </div>
+          <span class="chip chip-active" style="margin-left:auto">Enabled</span>
+        </div>
+      </section>
+
+      
+      <section class="card" aria-labelledby="passwordTitle">
+        <div style="display:flex; justify-content:space-between; align-items:flex-start">
+          <div>
+            <h2 class="card-title" id="passwordTitle">Password</h2>
+            <p class="card-desc">Last updated 18 August 2026 (88 days ago).</p>
+          </div>
+          <button class="btn btn-secondary">Change password</button>
+        </div>
+      </section>
+
+      
+      <section class="card" aria-labelledby="sessionsTitle">
+        <div>
+          <h2 class="card-title" id="sessionsTitle">Active sessions</h2>
+          <p class="card-desc">Devices currently authenticated to your BrandBasket business dashboard.</p>
+        </div>
+
+        <div style="display:flex; flex-direction:column; gap:12px">
+          <div style="display:flex; justify-content:space-between; align-items:center; padding:12px 14px; border:1px solid var(--line); border-radius:var(--r-control)">
+            <div style="display:flex; align-items:center; gap:12px">
+              <div class="icon-tile">
+                <svg class="i" viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+              </div>
+              <div>
+                <div style="font-weight:600">Chrome on macOS · Pune, Maharashtra</div>
+                <div class="mono" style="font-size:12px; color:var(--ink-3)">IP 49.36.120.88 · Active right now</div>
+              </div>
+            </div>
+            <span class="chip chip-active">Current session</span>
+          </div>
+
+          <div style="display:flex; justify-content:space-between; align-items:center; padding:12px 14px; border:1px solid var(--line); border-radius:var(--r-control)">
+            <div style="display:flex; align-items:center; gap:12px">
+              <div class="icon-tile">
+                <svg class="i" viewBox="0 0 24 24"><rect x="5" y="2" width="14" height="20" rx="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>
+              </div>
+              <div>
+                <div style="font-weight:600">BrandBasket app on iPhone 15 · Pune, Maharashtra</div>
+                <div class="mono" style="font-size:12px; color:var(--ink-3)">Active 3 hours ago</div>
+              </div>
+            </div>
+            <button class="btn btn-secondary" style="height:32px; font-size:13px; padding:0 12px">Sign out</button>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    
+    <div id="tabContentNotifications" style="display:none; flex-direction:column; gap:24px">
+      
+      <section class="focal-card" aria-labelledby="instantAlertsTitle">
+        <div>
+          <span class="chip chip-waiting">Instant delivery</span>
+          <h2 class="card-title" id="instantAlertsTitle" style="margin-top:8px">Customer lead alerts</h2>
+          <p class="card-desc">Real-time alerts sent the moment a visitor requests a cake quote or submits a contact inquiry.</p>
+        </div>
+
+        <div style="display:flex; flex-direction:column">
+          <div class="toggle-row">
+            <div>
+              <div style="font-weight:600">Instant WhatsApp alerts</div>
+              <div style="font-size:13px; color:var(--ink-2); margin-top:2px">Receive customer lead notifications directly on WhatsApp to <span class="mono" style="font-weight:600">+91 98765 43210</span>.</div>
+            </div>
+            <label class="toggle-switch">
+              <input type="checkbox" checked />
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+
+          <div class="toggle-row">
+            <div>
+              <div style="font-weight:600">SMS approval reminders</div>
+              <div style="font-size:13px; color:var(--ink-2); margin-top:2px">SMS alert when weekly social creatives or website drafts are ready for your review.</div>
+            </div>
+            <label class="toggle-switch">
+              <input type="checkbox" checked />
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+        </div>
+      </section>
+
+      
+      <section class="card" aria-labelledby="emailNotifsTitle">
+        <div>
+          <h2 class="card-title" id="emailNotifsTitle">Email digests and billing</h2>
+          <p class="card-desc">Scheduled updates sent to <span class="mono" style="font-weight:600">anita@sweetcrust.in</span>.</p>
+        </div>
+
+        <div style="display:flex; flex-direction:column">
+          <div class="toggle-row">
+            <div>
+              <div style="font-weight:600">Weekly performance summary</div>
+              <div style="font-size:13px; color:var(--ink-2); margin-top:2px">Delivered every Monday at 9:00 am with website traffic and post impressions.</div>
+            </div>
+            <label class="toggle-switch">
+              <input type="checkbox" checked />
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+
+          <div class="toggle-row">
+            <div>
+              <div style="font-weight:600">Monthly executive reports and GST invoices</div>
+              <div style="font-size:13px; color:var(--ink-2); margin-top:2px">Automated invoice PDF and detailed performance analytics on the 1st of each month.</div>
+            </div>
+            <label class="toggle-switch">
+              <input type="checkbox" checked />
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+
+          <div class="toggle-row">
+            <div>
+              <div style="font-weight:600">Product updates and festive marketing tips</div>
+              <div style="font-size:13px; color:var(--ink-2); margin-top:2px">Occasional emails regarding new BrandBasket features and seasonal calendar templates.</div>
+            </div>
+            <label class="toggle-switch">
+              <input type="checkbox" />
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    
+    <div id="tabContentTeam" style="display:none; flex-direction:column; gap:24px">
+      
+      <section class="focal-card" aria-labelledby="teamMembersTitle">
+        <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:16px; flex-wrap:wrap">
+          <div>
+            <span class="chip chip-waiting">Access control</span>
+            <h2 class="card-title" id="teamMembersTitle" style="margin-top:8px">Team members</h2>
+            <p class="card-desc">Colleagues who can review social posts, answer customer leads, and manage support tickets.</p>
+          </div>
+          <button class="btn btn-primary" id="btnInviteMember">Invite colleague</button>
+        </div>
+
+        <div id="teamTableWrapper">
+          <table class="team-table">
+            <thead>
+              <tr>
+                <th>Member</th>
+                <th>Role</th>
+                <th>Access scope</th>
+                <th style="text-align:right">Action</th>
+              </tr>
+            </thead>
+            <tbody id="teamTbody">
+              <tr>
+                <td>
+                  <div style="font-weight:600">Anita Deshmukh</div>
+                  <div class="mono" style="font-size:12px; color:var(--ink-3)">anita@sweetcrust.in</div>
+                </td>
+                <td><span class="chip chip-active">Owner</span></td>
+                <td style="font-size:13px; color:var(--ink-2)">Full billing, settings, and domain permissions</td>
+                <td style="text-align:right; font-size:13px; color:var(--ink-3)">Primary account</td>
+              </tr>
+              <tr>
+                <td>
+                  <div style="font-weight:600">Rohan Shinde</div>
+                  <div class="mono" style="font-size:12px; color:var(--ink-3)">rohan@sweetcrust.in</div>
+                </td>
+                <td><span class="chip chip-idle">Manager</span></td>
+                <td style="font-size:13px; color:var(--ink-2)">Approve social posts, answer enquiries, submit requests</td>
+                <td style="text-align:right">
+                  <button class="btn btn-secondary" style="height:30px; font-size:12px; padding:0 10px">Edit access</button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        
+        <div id="teamEmptyState" class="empty-state" style="display:none">
+          <div class="icon-tile icon-tile-sage" style="width:48px; height:48px; border-radius:50%">
+            <svg class="i" style="width:24px; height:24px" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          </div>
+          <div style="font-weight:600; font-size:16px">No colleagues invited yet</div>
+          <div style="font-size:14px; max-width:440px; color:var(--ink-2)">Invite your head chef or front-of-house manager to review social media posts and approve website updates with you.</div>
+          <button class="btn btn-secondary" style="margin-top:8px">Send first invitation</button>
+        </div>
+      </section>
+
+      
+      <section class="card" aria-labelledby="rolesTitle">
+        <div>
+          <h2 class="card-title" id="rolesTitle">Role permissions overview</h2>
+          <p class="card-desc">BrandBasket uses two simple role levels to keep operations secure.</p>
+        </div>
+
+        <div class="grid-2">
+          <div style="padding:14px; background:var(--sunken); border-radius:var(--r-control); border:1px solid var(--line)">
+            <div style="font-weight:600">Owner</div>
+            <p style="font-size:13px; color:var(--ink-2); margin-top:4px">Full authority including subscription billing, card management, domain transfers, and account cancellation.</p>
+          </div>
+          <div style="padding:14px; background:var(--sunken); border-radius:var(--r-control); border:1px solid var(--line)">
+            <div style="font-weight:600">Manager</div>
+            <p style="font-size:13px; color:var(--ink-2); margin-top:4px">Can review weekly posts, answer incoming customer leads, create work requests, and view monthly visitor analytics.</p>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    
+    <div id="tabContentPrivacy" style="display:none; flex-direction:column; gap:24px">
+      
+      <section class="focal-card" aria-labelledby="dataExportTitle">
+        <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:16px; flex-wrap:wrap">
+          <div>
+            <span class="chip chip-waiting">Portability</span>
+            <h2 class="card-title" id="dataExportTitle" style="margin-top:8px">Export business data</h2>
+            <p class="card-desc">Download a complete ZIP package containing your website copy, high-resolution media, approved social posts, and customer enquiries.</p>
+          </div>
+          <button class="btn btn-primary">Request data export</button>
+        </div>
+
+        <div style="display:flex; gap:12px; align-items:center; padding:14px 16px; background:var(--sunken); border-radius:var(--r-control); border:1px solid var(--line)">
+          <svg class="i" style="color:var(--ink-2)" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          <div style="font-size:13px; color:var(--ink-2)">
+            Last archive generated on <span class="mono" style="font-weight:600">01 November 2026</span> (Size: 42 MB). Link active for 7 days.
+          </div>
+          <a href="#" style="margin-left:auto; font-size:13px; font-weight:600; color:var(--accent-deep); text-decoration:none">Download ZIP</a>
+        </div>
+      </section>
+
+      
+      <section class="card" aria-labelledby="retentionTitle">
+        <div>
+          <h2 class="card-title" id="retentionTitle">Data storage and privacy compliance</h2>
+          <p class="card-desc">How your business and customer information is protected under Indian data protection principles.</p>
+        </div>
+
+        <div style="display:flex; flex-direction:column; gap:14px; font-size:14px; color:var(--ink-2)">
+          <div style="display:flex; gap:12px">
+            <svg class="i" style="color:var(--sage); margin-top:2px" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+            <div>
+              <strong>Local sovereign storage:</strong> All customer database records and website assets are hosted in certified Tier-4 data centres in Mumbai and Pune.
+            </div>
+          </div>
+          <div style="display:flex; gap:12px">
+            <svg class="i" style="color:var(--sage); margin-top:2px" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+            <div>
+              <strong>Enquiry retention period:</strong> Customer website form inquiries are retained for 24 months to maintain customer order history, after which they are archived or deleted per your instruction.
+            </div>
+          </div>
+          <div style="display:flex; gap:12px">
+            <svg class="i" style="color:var(--sage); margin-top:2px" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+            <div>
+              <strong>Zero third-party monetization:</strong> Your customer phone numbers and business data are never sold, rented, or shared with third-party advertisers.
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    
+    <div id="tabContentDelete" style="display:none; flex-direction:column; gap:24px">
+      
+      <section class="focal-card danger-focal" aria-labelledby="deleteAccountTitle">
+        <div>
+          <span class="chip chip-error">Irreversible after 30 days</span>
+          <h2 class="card-title" id="deleteAccountTitle" style="margin-top:8px; color:var(--error)">Delete BrandBasket account</h2>
+          <p class="card-desc">Permanently cancel your subscription, disconnect domain names, and schedule all account data for deletion.</p>
+        </div>
+
+        
+        <div class="warning-box">
+          <div style="display:flex; gap:10px; align-items:center; font-weight:700; color:var(--accent-deep); font-size:15px">
+            <svg class="i" viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+            Clear 30-day restore period policy
+          </div>
+          <div style="font-size:14px; line-height:1.55; color:var(--ink-2)">
+            When you initiate account deletion:
+            <ul style="margin:8px 0 8px 20px; display:flex; flex-direction:column; gap:4px">
+              <li>Your website <strong class="mono" style="color:var(--ink)">sweetcrust.in</strong> will be taken offline immediately.</li>
+              <li>Automated posting to your connected Instagram and Facebook channels will stop immediately.</li>
+              <li>Your recurring Growth Plan subscription of <strong class="mono" style="color:var(--ink)">Rs 4,999 a month</strong> will be cancelled and will not renew.</li>
+              <li><strong>You have a 30-day restore period:</strong> We keep your website backups, design files, and customer enquiry archives intact for 30 calendar days. If you change your mind within 30 days, simply sign in to restore your account and resume services instantly.</li>
+              <li><strong>After 30 days:</strong> All data, media assets, and server backups are erased permanently and cannot be recovered by our team or anyone else.</li>
+            </ul>
+          </div>
+        </div>
+
+        <div style="display:flex; justify-content:space-between; align-items:center; padding-top:8px; flex-wrap:wrap; gap:12px">
+          <div style="font-size:13px; color:var(--ink-3)">
+            Current plan: Growth Plan · Active until 14 December 2026
+          </div>
+          <button class="btn btn-quiet-danger" onclick="openDeleteDialog()">Delete account...</button>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  
+  <div class="dialog-scrim" id="deleteDialog" style="display:none" role="dialog" aria-modal="true" aria-labelledby="dialogTitle">
+    <div class="dialog-box">
+      <div style="display:flex; justify-content:space-between; align-items:flex-start">
+        <div style="display:flex; align-items:center; gap:12px">
+          <div class="icon-tile icon-tile-error" style="border-radius:50%">
+            <svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+          </div>
+          <h2 id="dialogTitle" style="font-family:'Red Hat Display', sans-serif; font-size:20px; font-weight:700">Delete account?</h2>
+        </div>
+        <button onclick="closeDeleteDialog()" style="background:none; border:none; color:var(--ink-3); cursor:pointer; padding:4px" aria-label="Close dialog">
+          <svg class="i" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+
+      <div style="font-size:14px; color:var(--ink-2); line-height:1.5">
+        Your website will be taken offline immediately and your subscription will be cancelled. Your business data will be held safely during your <strong>30-day restore period</strong>. After 30 days, all files will be permanently erased.
+      </div>
+
+      <div class="field">
+        <label class="field-label" for="confirmDeleteInput">To confirm deletion, please type <span class="mono" style="font-weight:700; color:var(--error)">DELETE</span> below:</label>
+        <input class="control mono" id="confirmDeleteInput" placeholder="Type DELETE" oninput="validateDeleteInput()" />
+      </div>
+
+      <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:8px">
+        <button class="btn btn-secondary" onclick="closeDeleteDialog()">Keep account</button>
+        <button class="btn btn-danger" id="confirmDeleteBtn" disabled style="opacity:0.5; cursor:not-allowed" onclick="executeDelete()">Confirm account deletion</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let currentState = 'live';
+    let currentTab = 'profile';
+
+    const tabs = ['profile', 'security', 'notifications', 'team', 'privacy', 'delete'];
+
+    function switchTab(tabName) {
+      currentTab = tabName;
+      tabs.forEach(t => {
+        const btn = document.getElementById('tabBtn' + t.charAt(0).toUpperCase() + t.slice(1));
+        const content = document.getElementById('tabContent' + t.charAt(0).toUpperCase() + t.slice(1));
+        const isActive = (t === tabName);
+
+        if (btn) btn.classList.toggle('active', isActive);
+        if (content) content.style.display = isActive ? 'flex' : 'none';
+      });
+    }
+
+    function setState(st) {
+      currentState = st;
+      ['btnLive', 'btnNew', 'btnEmpty', 'btnError'].forEach(id => {
+        document.getElementById(id).classList.remove('active');
+      });
+      document.getElementById('btn' + st.charAt(0).toUpperCase() + st.slice(1)).classList.add('active');
+
+      const errorBanner = document.getElementById('errorBanner');
+      const newBanner = document.getElementById('newBanner');
+      const contactPhone = document.getElementById('contactPhone');
+      const phoneErrorMsg = document.getElementById('phoneErrorMsg');
+      const teamTableWrapper = document.getElementById('teamTableWrapper');
+      const teamEmptyState = document.getElementById('teamEmptyState');
+      const teamTbody = document.getElementById('teamTbody');
+
+      // Reset state-dependent elements
+      errorBanner.style.display = (st === 'error') ? 'flex' : 'none';
+      newBanner.style.display = (st === 'new') ? 'flex' : 'none';
+
+      if (st === 'error') {
+        contactPhone.classList.add('has-error');
+        phoneErrorMsg.style.display = 'flex';
+      } else {
+        contactPhone.classList.remove('has-error');
+        phoneErrorMsg.style.display = 'none';
+      }
+
+      if (st === 'empty') {
+        teamTableWrapper.style.display = 'none';
+        teamEmptyState.style.display = 'flex';
+      } else if (st === 'new') {
+        teamTableWrapper.style.display = 'block';
+        teamEmptyState.style.display = 'none';
+        teamTbody.innerHTML = `
+          <tr>
+            <td>
+              <div style="font-weight:600">Anita Deshmukh</div>
+              <div class="mono" style="font-size:12px; color:var(--ink-3)">anita@sweetcrust.in</div>
+            </td>
+            <td><span class="chip chip-active">Owner</span></td>
+            <td style="font-size:13px; color:var(--ink-2)">Full billing, settings, and domain permissions</td>
+            <td style="text-align:right; font-size:13px; color:var(--ink-3)">Primary account</td>
+          </tr>
+        `;
+      } else {
+        teamTableWrapper.style.display = 'block';
+        teamEmptyState.style.display = 'none';
+        teamTbody.innerHTML = `
+          <tr>
+            <td>
+              <div style="font-weight:600">Anita Deshmukh</div>
+              <div class="mono" style="font-size:12px; color:var(--ink-3)">anita@sweetcrust.in</div>
+            </td>
+            <td><span class="chip chip-active">Owner</span></td>
+            <td style="font-size:13px; color:var(--ink-2)">Full billing, settings, and domain permissions</td>
+            <td style="text-align:right; font-size:13px; color:var(--ink-3)">Primary account</td>
+          </tr>
+          <tr>
+            <td>
+              <div style="font-weight:600">Rohan Shinde</div>
+              <div class="mono" style="font-size:12px; color:var(--ink-3)">rohan@sweetcrust.in</div>
+            </td>
+            <td><span class="chip chip-idle">Manager</span></td>
+            <td style="font-size:13px; color:var(--ink-2)">Approve social posts, answer enquiries, submit requests</td>
+            <td style="text-align:right">
+              <button class="btn btn-secondary" style="height:30px; font-size:12px; padding:0 10px">Edit access</button>
+            </td>
+          </tr>
+        `;
+      }
+    }
+
+    function setViewport(vp) {
+      document.getElementById('btnDesktop').classList.toggle('active', vp === 'desktop');
+      document.getElementById('btnMobile').classList.toggle('active', vp === 'mobile');
+      document.getElementById('frame').classList.toggle('mobile', vp === 'mobile');
+    }
+
+    function triggerSave() {
+      alert('Profile updates saved successfully.');
+    }
+
+    function openDeleteDialog() {
+      document.getElementById('deleteDialog').style.display = 'flex';
+      document.getElementById('confirmDeleteInput').value = '';
+      validateDeleteInput();
+      document.getElementById('confirmDeleteInput').focus();
+    }
+
+    function closeDeleteDialog() {
+      document.getElementById('deleteDialog').style.display = 'none';
+    }
+
+    function validateDeleteInput() {
+      const val = document.getElementById('confirmDeleteInput').value.trim();
+      const btn = document.getElementById('confirmDeleteBtn');
+      if (val === 'DELETE') {
+        btn.disabled = false;
+        btn.style.opacity = '1';
+        btn.style.cursor = 'pointer';
+      } else {
+        btn.disabled = true;
+        btn.style.opacity = '0.5';
+        btn.style.cursor = 'not-allowed';
+      }
+    }
+
+    function executeDelete() {
+      closeDeleteDialog();
+      alert('Account scheduled for deletion. Your 30-day restore period is now active.');
+    }
+  </script>
+</body>
+</html>

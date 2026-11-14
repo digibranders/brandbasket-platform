@@ -4,6 +4,7 @@ import {
   DomainNotReadyForDnsError,
   DomainSwitchNotReadyError,
   getConnectingDomain,
+  listDomainMoves,
   markDomainReadyForDns,
   recordDomainDnsCheck,
   requestDomainMove,
@@ -207,3 +208,26 @@ describe("moving a live customer to their own domain", () => {
     await expect(switchToDomain(dbs.staff.db, { businessId })).rejects.toThrow(DomainSwitchNotReadyError);
   });
 });
+
+describe("listDomainMoves", () => {
+  it("lists domain move requests for businesses", async () => {
+    await dbs.staff.db.insert(domains).values({ businessId, hostname: "harbour.brandbasket.in", isPrimary: true, status: "active" });
+    await dbs.staff.db.insert(domains).values({ businessId, hostname: "harbourbakery.com", isPrimary: false, status: "pending" });
+
+    const moves = await listDomainMoves(dbs.staff.db);
+    expect(moves).toHaveLength(1);
+    expect(moves[0]).toMatchObject({
+      businessId,
+      businessName: "Harbour Bakery",
+      hostname: "harbourbakery.com",
+      status: "pending",
+    });
+  });
+
+  it("omits removed domain moves", async () => {
+    await dbs.staff.db.insert(domains).values({ businessId, hostname: "oldmove.com", isPrimary: false, status: "pending", removedAt: new Date() });
+    const moves = await listDomainMoves(dbs.staff.db);
+    expect(moves).toEqual([]);
+  });
+});
+

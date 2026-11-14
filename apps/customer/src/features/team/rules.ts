@@ -71,12 +71,24 @@ export function pendingInvites(invites: readonly BusinessInviteView[], now: Date
     }));
 }
 
+const REFUSAL_TITLES: Readonly<Record<BusinessInviteRefusal, string>> = {
+  not_found: "This invitation link is not valid.",
+  revoked: "This invitation was withdrawn.",
+  expired: "This invitation has expired.",
+  used: "This invitation has already been used.",
+  wrong_email: "This invitation is for a different email address.",
+};
+
+export function refusalTitle(reason: BusinessInviteRefusal): string {
+  return REFUSAL_TITLES[reason];
+}
+
 /** What the accept page says for each way an invitation can be refused. */
 const REFUSALS: Readonly<Record<BusinessInviteRefusal, string>> = {
   not_found: "This invitation link is not valid. Ask the owner to send a new one.",
   revoked: "The owner withdrew this invitation. Ask them to send a new one.",
   expired: "This invitation has expired. Ask the owner to send a new one.",
-  used: "This invitation has already been used.",
+  used: "This invitation has already been used. Ask the owner to send a new one.",
   wrong_email: "This invitation was sent to a different email address. Sign in with that address to accept it.",
 };
 

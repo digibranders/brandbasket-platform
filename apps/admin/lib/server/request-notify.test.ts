@@ -28,7 +28,7 @@ describe("notifyRequester", () => {
     expect(customerEmailTransport).toHaveBeenCalledWith(DB);
     const message = send.mock.calls[0]?.[0];
     expect(message).toMatchObject({ to: "priya@example.com", subject: "Ready to check: Add an Implants page", template: "change-request-ready" });
-    expect(message.bodyText).toContain(`https://app.brandbasket.in/requests?open=${TICKET}`);
+    expect(message.bodyText).toContain(`https://app.brandbasket.in/requests/${TICKET}`);
   });
 
   it("checks the requester's request-reply preference for the ticket's business, and sends nothing when it is off", async () => {

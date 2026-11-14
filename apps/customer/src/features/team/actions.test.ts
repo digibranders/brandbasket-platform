@@ -19,6 +19,14 @@ const mocks = vi.hoisted(() => ({
   withTenantScope: vi.fn(),
   send: vi.fn(),
   report: vi.fn(),
+  cookieSet: vi.fn(),
+}));
+
+vi.mock("next/headers", () => ({
+  cookies: vi.fn(async () => ({
+    get: vi.fn(),
+    set: mocks.cookieSet,
+  })),
 }));
 
 vi.mock("next/navigation", () => ({
@@ -180,10 +188,11 @@ describe("removeMemberAction", () => {
 });
 
 describe("acceptInviteAction", () => {
-  it("accepts for the signed-in person's own id and address, then goes Home", async () => {
+  it("accepts for the signed-in person's own id and address, sets the active business cookie, then goes Home", async () => {
     mocks.acceptBusinessInvite.mockResolvedValue({ kind: "accepted", businessId: TENANT.businessId, role: "viewer" });
     await expect(acceptInviteAction(TOKEN)).rejects.toMatchObject({ to: "/" });
     expect(mocks.acceptBusinessInvite).toHaveBeenCalledWith({ name: "staff" }, { token: TOKEN, userId: "invitee-1", userEmail: "Front@Apex.in" });
+    expect(mocks.cookieSet).toHaveBeenCalledWith("bb_active_business", TENANT.businessId, expect.objectContaining({ path: "/" }));
   });
 
   it.each([

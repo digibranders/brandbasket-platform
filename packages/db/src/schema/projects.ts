@@ -1,5 +1,6 @@
 import { sql } from "drizzle-orm";
 import {
+  boolean,
   check,
   date,
   foreignKey,
@@ -47,6 +48,7 @@ export const projects = pgTable(
       .references(() => businesses.id),
     kind: projectKind("kind").notNull().default("initial_build"),
     status: projectStatus("status").notNull().default("onboarding"),
+    startedWithoutCallConfirmation: boolean("started_without_call_confirmation").notNull().default(false),
     onboardingSubmittedAt: timestamp("onboarding_submitted_at", { withTimezone: true }),
     /** First preview promised by this time: 48 hours after submission. */
     slaDueAt: timestamp("sla_due_at", { withTimezone: true }),

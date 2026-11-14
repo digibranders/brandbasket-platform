@@ -1,13 +1,12 @@
 import Image from "next/image";
 import type { ReactNode } from "react";
 import { SignOutButton } from "@/features/entry/components/sign-out-button";
-import { BRAND } from "@/features/entry/rules/brand";
 import { LinkButton } from "@/ui";
 
 /**
  * The focused frame for the questions, the checkout and the payment pages: the logo, then the page, with no workspace around
- * it (plan 61, section 3). An account that has not paid has no dashboard yet, so the header carries the two ways out: Help
- * (an email to support, since the workspace's Help stays behind the unpaid hold) and Sign out.
+ * it (plan 61, section 3). An account that has not paid has no dashboard yet, so the header carries the ways out: Help,
+ * Settings and Sign out.
  */
 export default function PayLayout({ children }: { readonly children: ReactNode }) {
   return (
@@ -17,8 +16,11 @@ export default function PayLayout({ children }: { readonly children: ReactNode }
           {/* The workspace sidebar's logo, at its size. */}
           <Image src="/brand/brandbasket-logo-horizontal-light.svg" alt="Brandbasket" width={130} height={22} unoptimized priority />
         </div>
-        <LinkButton href={`mailto:${BRAND.contactEmail}`} variant="ghost">
+        <LinkButton href="/help" variant="ghost">
           Help
+        </LinkButton>
+        <LinkButton href="/settings" variant="ghost">
+          Settings
         </LinkButton>
         <SignOutButton />
       </header>

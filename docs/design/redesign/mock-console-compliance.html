@@ -1,0 +1,762 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BrandBasket Staff Console - Compliance & Privacy</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Red+Hat+Display:wght@500;600;700&family=Red+Hat+Text:wght@400;500;600&family=Red+Hat+Mono:wght@400;500;600&display=swap">
+<style>
+:root {
+  --ground: #F6F5F2;
+  --surface: #FFFFFF;
+  --sunken: #EEECE7;
+  --line: #E3E0D9;
+  --ink: #15161A;
+  --text-muted: #343741;
+  --text-faint: #5F626A;
+  --gold: #C48A47;
+  --gold-wash: #F4E6D3;
+  --gold-deep: #8A5524;
+  --gold-text: #A46C2F;
+  --sage: #4F7A63;
+  --sage-wash: #E5EFE8;
+  --error: #B42318;
+  --error-wash: #FDECEA;
+  --rail: #23242A;
+  --rail-text: #F6F5F2;
+  --rail-muted: #9B9EA7;
+  --rail-hover: rgba(255, 255, 255, 0.06);
+  --sh-resting: 0 1px 0 rgba(42, 28, 16, 0.03);
+  --sh-elevation: 0 1px 2px rgba(42, 28, 16, 0.05);
+  --sh-hero: 0 1px 2px rgba(42, 28, 16, 0.05), 0 12px 32px -12px rgba(42, 28, 16, 0.14);
+  --sh-dialog: 0 24px 64px -16px rgba(42, 28, 16, 0.28);
+  --r-control: 8px;
+  --r-card: 14px;
+  --r-hero: 20px;
+  --r-pill: 9999px;
+  color-scheme: light;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  margin: 0;
+  background: var(--ground);
+  color: var(--ink);
+  font-family: 'Red Hat Text', system-ui, -apple-system, sans-serif;
+  font-size: 15px;
+  line-height: 1.5;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+button, input, select { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+
+.demo-bar {
+  position: sticky;
+  top: 12px;
+  z-index: 100;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-pill);
+  padding: 6px 14px;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  box-shadow: var(--sh-hero);
+  margin: 12px 0 16px;
+  font-size: 13px;
+}
+.demo-bar span.label { font-weight: 600; color: var(--ink); }
+.demo-btn {
+  background: var(--sunken);
+  border: 1px solid var(--line);
+  color: var(--text-muted);
+  padding: 4px 10px;
+  border-radius: var(--r-pill);
+  font-weight: 500;
+  font-size: 12px;
+}
+.demo-btn.active {
+  background: var(--ink);
+  color: #FFFFFF;
+  border-color: var(--ink);
+  font-weight: 600;
+}
+.demo-sep {
+  width: 1px;
+  height: 16px;
+  background: var(--line);
+  margin: 0 4px;
+}
+
+.frame {
+  width: 100%;
+  max-width: 1440px;
+  min-height: 100vh;
+  display: flex;
+  background: var(--ground);
+  transition: max-width 0.2s ease;
+  box-shadow: 0 0 40px rgba(42, 28, 16, 0.08);
+}
+.frame.mobile {
+  max-width: 390px;
+  box-shadow: 0 0 24px rgba(42, 28, 16, 0.15);
+}
+
+.shell {
+  display: flex;
+  width: 100%;
+  min-height: 100vh;
+}
+.rail {
+  width: 240px;
+  flex: none;
+  background: var(--rail);
+  color: var(--rail-text);
+  display: flex;
+  flex-direction: column;
+  padding: 20px 14px;
+  border-right: 1px solid rgba(255, 255, 255, 0.06);
+}
+.rail-logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: 'Red Hat Display', sans-serif;
+  font-size: 18px;
+  font-weight: 700;
+  padding: 4px 10px 20px;
+  color: #FFFFFF;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+.rail-logo svg {
+  width: 24px;
+  height: 24px;
+  color: var(--gold);
+}
+.rail-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding-top: 16px;
+  flex: 1;
+}
+.rail-link {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 9px 12px;
+  border-radius: var(--r-control);
+  color: var(--rail-muted);
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 500;
+}
+.rail-link:hover {
+  background: var(--rail-hover);
+  color: var(--rail-text);
+}
+.rail-link.active {
+  background: rgba(196, 138, 71, 0.15);
+  color: #FFFFFF;
+  font-weight: 600;
+}
+.rail-link svg {
+  width: 18px;
+  height: 18px;
+  flex: none;
+}
+.rail-badge {
+  margin-left: auto;
+  font-family: 'Red Hat Mono', monospace;
+  font-size: 11px;
+  font-weight: 600;
+  background: var(--gold);
+  color: #FFFFFF;
+  padding: 1px 7px;
+  border-radius: var(--r-pill);
+}
+
+.main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.topbar {
+  height: 60px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--line);
+  padding: 0 32px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.dpdp-pill {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--sage);
+  background: var(--sage-wash);
+  padding: 4px 10px;
+  border-radius: var(--r-pill);
+}
+
+.content {
+  padding: 24px 32px 64px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  max-width: 1200px;
+}
+
+.content-header {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.eyebrow {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-faint);
+  letter-spacing: 0.02em;
+}
+.page-title {
+  font-family: 'Red Hat Display', sans-serif;
+  font-size: 32px;
+  font-weight: 700;
+  line-height: 36px;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+}
+.page-subtitle {
+  font-size: 14px;
+  color: var(--text-muted);
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+}
+.stat-card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-card);
+  padding: 16px 18px;
+  box-shadow: var(--sh-resting);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.stat-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-faint);
+}
+.stat-val {
+  font-family: 'Red Hat Mono', monospace;
+  font-size: 26px;
+  line-height: 32px;
+  font-weight: 600;
+  color: var(--ink);
+}
+.stat-val.urgent { color: var(--error); }
+.stat-sub {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.compliance-grid {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 24px;
+  align-items: start;
+}
+.compliance-main {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* Focal Card: Privacy & DPDP Requests */
+.focal-card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-top: 3px solid var(--gold);
+  border-radius: var(--r-hero);
+  padding: 22px;
+  box-shadow: var(--sh-hero);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.card-title {
+  font-family: 'Red Hat Display', sans-serif;
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.table-wrap {
+  overflow-x: auto;
+}
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13.5px;
+}
+.table th {
+  text-align: left;
+  padding: 10px 12px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-faint);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  border-bottom: 1px solid var(--line);
+}
+.table td {
+  padding: 12px;
+  border-bottom: 1px solid var(--line);
+  vertical-align: middle;
+}
+.table tr:hover {
+  background: var(--ground);
+}
+.mono {
+  font-family: 'Red Hat Mono', monospace;
+}
+
+/* 30-Day Countdown Timer Chips in Red Hat Mono */
+.timer-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-family: 'Red Hat Mono', monospace;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: var(--r-pill);
+}
+.timer-normal {
+  background: var(--sage-wash);
+  color: var(--sage);
+}
+.timer-urgent {
+  background: var(--error-wash);
+  color: var(--error);
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: var(--r-pill);
+}
+.chip-progress {
+  background: var(--sunken);
+  color: var(--text-muted);
+}
+.chip-pending {
+  background: var(--gold-wash);
+  color: var(--gold-deep);
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 12px;
+  border-radius: var(--r-control);
+  font-size: 13px;
+  font-weight: 600;
+  border: 1px solid transparent;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.btn-primary {
+  background: var(--ink);
+  color: #FFFFFF;
+}
+.btn-secondary {
+  background: var(--surface);
+  border-color: var(--line);
+  color: var(--ink);
+}
+.btn-secondary:hover {
+  background: var(--sunken);
+}
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-card);
+  padding: 20px;
+  box-shadow: var(--sh-resting);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.alert-box {
+  display: none;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px 16px;
+  border-radius: var(--r-card);
+  background: var(--error-wash);
+  border: 1px solid #F4C3BE;
+  color: var(--error);
+  font-size: 13px;
+}
+
+.incident-tile {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  background: var(--ground);
+  border-radius: var(--r-control);
+  border: 1px solid var(--line);
+}
+
+@media (max-width: 860px) {
+  .rail { display: none; }
+  .topbar { padding: 0 16px; }
+  .content { padding: 16px 16px 64px; }
+  .stats-grid { grid-template-columns: repeat(2, 1fr); }
+  .compliance-grid { grid-template-columns: 1fr; }
+}
+
+.frame.mobile .rail { display: none; }
+.frame.mobile .topbar { padding: 0 16px; }
+.frame.mobile .content { padding: 16px 16px 64px; }
+.frame.mobile .stats-grid { grid-template-columns: repeat(2, 1fr); }
+.frame.mobile .compliance-grid { grid-template-columns: 1fr; }
+</style>
+</head>
+<body>
+
+  
+  <div class="demo-bar">
+    <span class="label">State:</span>
+    <button class="demo-btn active" id="btnLive" onclick="setState('live')">Live active</button>
+    <button class="demo-btn" id="btnNew" onclick="setState('new')">New request</button>
+    <button class="demo-btn" id="btnEmpty" onclick="setState('empty')">Empty</button>
+    <button class="demo-btn" id="btnError" onclick="setState('error')">Deadline warning</button>
+    <div class="demo-sep"></div>
+    <span class="label">Viewport:</span>
+    <button class="demo-btn active" id="btn1440" onclick="setViewport('desktop')">1440</button>
+    <button class="demo-btn" id="btn390" onclick="setViewport('mobile')">390</button>
+  </div>
+
+  <div class="frame" id="appFrame">
+    <div class="shell">
+      
+      
+      <aside class="rail">
+        <div class="rail-logo">
+          
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M3.5 9.5h17l-1.6 9a2 2 0 0 1-2 1.5H7.1a2 2 0 0 1-2-1.5z"/>
+            <path d="M8 9.5 11 4M16 9.5 13 4"/>
+            <path d="M9 13v3M12 13v3M15 13v3"/>
+          </svg>
+          BrandBasket
+        </div>
+
+        <nav class="rail-nav">
+          <a href="mock-console-today.html" class="rail-link">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+            Today
+          </a>
+          <a href="mock-console-workspace.html" class="rail-link">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+            Clients
+          </a>
+          <a href="#" class="rail-link">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+            Inbox
+          </a>
+          <a href="mock-console-kickoff-popup.html" class="rail-link">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+            Calls
+          </a>
+          <a href="mock-console-payments.html" class="rail-link">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
+            Money
+          </a>
+          <a href="mock-console-compliance.html" class="rail-link active">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            Compliance
+            
+            <span class="rail-badge" id="compBadge">2</span>
+          </a>
+          <a href="#" class="rail-link">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+            System
+          </a>
+        </nav>
+      </aside>
+
+      
+      <main class="main">
+        <header class="topbar">
+          <div style="font-weight:600; font-size:14px; color:var(--ink)">Data Governance</div>
+          <div class="dpdp-pill">
+            <div style="width:6px; height:6px; border-radius:50%; background:var(--sage)"></div>
+            <span>DPDP & GDPR Compliance Active</span>
+          </div>
+        </header>
+
+        <div class="content">
+          <div class="content-header">
+            <div class="eyebrow">Statutory Compliance</div>
+            <h1 class="page-title">Compliance and privacy</h1>
+            <p class="page-subtitle">DPDP statutory deadlines, erasure requests, audit logs, and account closures.</p>
+          </div>
+
+          
+          <div id="statutoryAlert" class="alert-box">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+            <div>
+              <div style="font-weight:700">Statutory deadline alert: REQ-DPDP-021 has under 72 hours</div>
+              <div>Digital Personal Data Protection rules require data erasure execution within 30 days of client submission. Prompt action required.</div>
+            </div>
+          </div>
+
+          
+          <div class="stats-grid">
+            <div class="stat-card">
+              <span class="stat-label">Privacy requests</span>
+              <span class="stat-val" id="statReqs">02</span>
+              <span class="stat-sub">Pending staff fulfillment</span>
+            </div>
+            <div class="stat-card">
+              <span class="stat-label">Earliest deadline</span>
+              <span class="stat-val urgent" id="statDeadline">03d 14h</span>
+              <span class="stat-sub">Under 30-day DPDP clock</span>
+            </div>
+            <div class="stat-card">
+              <span class="stat-label">Security incidents</span>
+              <span class="stat-val" id="statBreaches">00</span>
+              <span class="stat-sub">Zero reported breaches</span>
+            </div>
+            <div class="stat-card">
+              <span class="stat-label">Pending closures</span>
+              <span class="stat-val" id="statClosures">01</span>
+              <span class="stat-sub">Retention purge scheduled</span>
+            </div>
+          </div>
+
+          
+          <div class="compliance-grid">
+            
+            <div class="compliance-main">
+              
+              
+              
+              <div class="focal-card" id="focalPrivacyCard">
+                <div class="card-header">
+                  <h2 class="card-title">Privacy and data requests</h2>
+                  <span style="font-size:12px; color:var(--text-faint)">30-day statutory response limit</span>
+                </div>
+
+                <div class="table-wrap">
+                  <table class="table" id="reqTable">
+                    <thead>
+                      <tr>
+                        <th>Request ID</th>
+                        <th>Client</th>
+                        <th>Type</th>
+                        <th>Submitted</th>
+                        <th>Time remaining</th>
+                        <th>Status</th>
+                        <th>Action</th>
+                      </tr>
+                    </thead>
+                    <tbody id="reqTbody">
+                      
+                      <tr>
+                        <td class="mono" style="font-weight:600">REQ-DPDP-024</td>
+                        <td><strong>Sweet Crust Bakery</strong></td>
+                        <td>Data Export (Portability)</td>
+                        <td class="mono">01 Nov 2026</td>
+                        <td><span class="timer-pill timer-normal">17d 08h remaining</span></td>
+                        <td><span class="chip chip-progress">In progress</span></td>
+                        <td><button class="btn btn-secondary" onclick="alert('Export archive package generating')">Export archive</button></td>
+                      </tr>
+                      
+                      <tr>
+                        <td class="mono" style="font-weight:600">REQ-DPDP-021</td>
+                        <td><strong>Metro Salon</strong></td>
+                        <td>Right to be Forgotten</td>
+                        <td class="mono">18 Oct 2026</td>
+                        <td><span class="timer-pill timer-urgent">03d 14h remaining</span></td>
+                        <td><span class="chip chip-pending">Pending execution</span></td>
+                        <td><button class="btn btn-primary" onclick="alert('Data erasure protocol initiated')">Execute erasure</button></td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+
+                
+                <div id="reqEmptyMsg" style="display:none; text-align:center; padding:32px 0">
+                  <div style="font-weight:600; font-size:15px">All privacy requests fulfilled</div>
+                  <div style="font-size:13px; color:var(--text-muted); margin-top:4px">Zero open data export or erasure requests under review.</div>
+                </div>
+              </div>
+
+              
+              <div class="card">
+                <div class="card-header" style="margin-bottom:0">
+                  <h3 class="card-title" style="font-size:17px">Account closures & retention</h3>
+                  <span style="font-size:12px; color:var(--text-faint)">Statutory tax retention rules</span>
+                </div>
+
+                <div class="table-wrap">
+                  <table class="table">
+                    <thead>
+                      <tr>
+                        <th>Business</th>
+                        <th>Closure date</th>
+                        <th>Retention rule</th>
+                        <th>Purge date</th>
+                        <th>Status</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td><strong>Royal Spices</strong></td>
+                        <td class="mono">12 Nov 2026</td>
+                        <td>60-day GST invoice record retention</td>
+                        <td class="mono" style="font-weight:600">11 Jan 2027</td>
+                        <td><span class="chip chip-progress">Scheduled purge</span></td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+            </div>
+
+            
+            <div style="display:flex; flex-direction:column; gap:20px">
+              
+              <div class="card">
+                <div class="card-header" style="margin-bottom:0">
+                  <h3 class="card-title" style="font-size:16px">Security incidents</h3>
+                </div>
+
+                <div class="incident-tile">
+                  <div style="width:8px; height:8px; border-radius:50%; background:var(--sage); flex:none"></div>
+                  <div style="display:flex; flex-direction:column; gap:2px">
+                    <span style="font-weight:600; font-size:13px">Zero open incidents</span>
+                    <span style="font-size:12px; color:var(--text-muted)">Quarterly audit passed on 01 Nov 2026</span>
+                  </div>
+                </div>
+
+                <div style="border-top:1px solid var(--line); padding-top:12px; font-size:12px; color:var(--text-muted); display:flex; flex-direction:column; gap:6px">
+                  <span style="font-weight:600; color:var(--ink)">Access & security log</span>
+                  <div class="mono" style="font-size:11px">· 14 Nov 08:30:12 Cloudflare Access token ok</div>
+                  <div class="mono" style="font-size:11px">· 13 Nov 18:45:00 Database backup encrypted</div>
+                  <div class="mono" style="font-size:11px">· 12 Nov 14:10:22 Session key refreshed</div>
+                </div>
+              </div>
+
+              
+              <div class="card" style="font-size:13px; color:var(--text-muted)">
+                <div style="font-weight:600; color:var(--ink); margin-bottom:6px">Statutory response rules</div>
+                <div style="display:flex; flex-direction:column; gap:6px">
+                  <div>1. India DPDP Act requires resolution within 30 calendar days.</div>
+                  <div>2. Erasure includes customer database records and third-party webhooks.</div>
+                  <div>3. Invoices must be retained for 60 days to satisfy GST compliance.</div>
+                </div>
+              </div>
+
+            </div>
+
+          </div>
+
+        </div>
+      </main>
+
+    </div>
+  </div>
+
+  <script>
+    function setState(state) {
+      document.querySelectorAll('.demo-bar .demo-btn').forEach(btn => {
+        if (['btnLive', 'btnNew', 'btnEmpty', 'btnError'].includes(btn.id)) {
+          btn.classList.remove('active');
+        }
+      });
+      document.getElementById('btn' + state.charAt(0).toUpperCase() + state.slice(1)).classList.add('active');
+
+      const statutoryAlert = document.getElementById('statutoryAlert');
+      const reqTable = document.getElementById('reqTable');
+      const reqEmptyMsg = document.getElementById('reqEmptyMsg');
+      const reqTbody = document.getElementById('reqTbody');
+      const statReqs = document.getElementById('statReqs');
+      const statDeadline = document.getElementById('statDeadline');
+      const compBadge = document.getElementById('compBadge');
+
+      if (state === 'live') {
+        statutoryAlert.style.display = 'none';
+        reqTable.style.display = 'table';
+        reqEmptyMsg.style.display = 'none';
+        statReqs.textContent = '02';
+        statDeadline.textContent = '03d 14h';
+        statDeadline.className = 'stat-val urgent';
+        compBadge.textContent = '2';
+        reqTbody.innerHTML = '<tr><td class="mono" style="font-weight:600">REQ-DPDP-024</td><td><strong>Sweet Crust Bakery</strong></td><td>Data Export (Portability)</td><td class="mono">01 Nov 2026</td><td><span class="timer-pill timer-normal">17d 08h remaining</span></td><td><span class="chip chip-progress">In progress</span></td><td><button class="btn btn-secondary" onclick="alert(\'Export archive package generating\')">Export archive</button></td></tr><tr><td class="mono" style="font-weight:600">REQ-DPDP-021</td><td><strong>Metro Salon</strong></td><td>Right to be Forgotten</td><td class="mono">18 Oct 2026</td><td><span class="timer-pill timer-urgent">03d 14h remaining</span></td><td><span class="chip chip-pending">Pending execution</span></td><td><button class="btn btn-primary" onclick="alert(\'Data erasure protocol initiated\')">Execute erasure</button></td></tr>';
+      } else if (state === 'new') {
+        statutoryAlert.style.display = 'none';
+        reqTable.style.display = 'table';
+        reqEmptyMsg.style.display = 'none';
+        statReqs.textContent = '01';
+        statDeadline.textContent = '29d 23h';
+        statDeadline.className = 'stat-val';
+        compBadge.textContent = '1';
+        reqTbody.innerHTML = '<tr><td class="mono" style="font-weight:600">REQ-DPDP-025</td><td><strong>Apex Logistics</strong></td><td>Data Export (Portability)</td><td class="mono">14 Nov 2026</td><td><span class="timer-pill timer-normal">29d 23h remaining</span></td><td><span class="chip chip-progress">New request</span></td><td><button class="btn btn-primary" onclick="alert(\'Export archive package generating\')">Export archive</button></td></tr>';
+      } else if (state === 'empty') {
+        statutoryAlert.style.display = 'none';
+        reqTable.style.display = 'none';
+        reqEmptyMsg.style.display = 'block';
+        statReqs.textContent = '00';
+        statDeadline.textContent = 'All clear';
+        statDeadline.className = 'stat-val';
+        compBadge.textContent = '0';
+      } else if (state === 'error') {
+        statutoryAlert.style.display = 'flex';
+        reqTable.style.display = 'table';
+        reqEmptyMsg.style.display = 'none';
+        statReqs.textContent = '02';
+        statDeadline.textContent = '02d 11h';
+        statDeadline.className = 'stat-val urgent';
+        compBadge.textContent = '2';
+      }
+    }
+
+    function setViewport(mode) {
+      document.getElementById('btn1440').classList.toggle('active', mode === 'desktop');
+      document.getElementById('btn390').classList.toggle('active', mode === 'mobile');
+      document.getElementById('appFrame').classList.toggle('mobile', mode === 'mobile');
+    }
+  </script>
+</body>
+</html>

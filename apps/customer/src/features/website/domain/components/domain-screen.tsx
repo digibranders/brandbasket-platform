@@ -1,10 +1,11 @@
 import type { BillingCurrency } from "@brandbasket/db";
 import { dnsRecordsFor } from "@brandbasket/shared/lib/onboarding/domain-dns";
 import { safeExternalHref } from "@brandbasket/shared/lib/safe-link";
+import { ErrorState, StatusChip } from "@brandbasket/shared/ui/patterns";
 import type { ReactNode } from "react";
 import { PageHeader, Panel, TimelineSteps } from "@/components";
 import { BRAND } from "@/features/entry/rules/brand";
-import { Badge, EmptyState, Icon, LinkButton } from "@/ui";
+import { EmptyState, Icon, LinkButton } from "@/ui";
 import type { WebsiteCore } from "../../loader";
 import { ASK_FOR_CHANGE_HREF, WEBSITE_DOMAIN_PATH } from "../../rules/paths";
 import { LiveHeader, WebsiteTabs, Columns } from "../../components/website-parts";
@@ -69,13 +70,20 @@ export interface DomainScreenProps {
 export function DomainScreen({ core, page, hasPages, currency, canChange }: DomainScreenProps) {
   const { state, moving, locked } = page;
   const domain = core.domain;
+  const isDnsError = domain?.status === "misconfigured" || moving?.status === "misconfigured";
   const header =
     core.live === null ? (
-      <PageHeader title="Your domain" description="Where your website lives, and how to move it to a domain of your own." />
+      <PageHeader
+        title="Your domain"
+        description="Where your website lives, and how to move it to a domain of your own."
+        tabs={<WebsiteTabs current={WEBSITE_DOMAIN_PATH} hasPages={true} />}
+      />
     ) : (
       <LiveHeader
         description={core.live.hostname}
         visitHref={safeExternalHref(`https://${core.live.hostname}`)}
+        domainBadge={core.live.hostname}
+        sslStatus="SSL Active"
         actions={
           <LinkButton href={ASK_FOR_CHANGE_HREF} variant="primary">
             Ask for a change
@@ -165,6 +173,13 @@ export function DomainScreen({ core, page, hasPages, currency, canChange }: Doma
   return (
     <>
       {header}
+      {isDnsError ? (
+        <ErrorState
+          title="Domain verification DNS error"
+          message="Your domain still points somewhere else or records are misconfigured. Check that your DNS settings match the records below, and remove any older record for the same name."
+          className="mb-4"
+        />
+      ) : null}
       <Columns
         main={
           <>
@@ -179,9 +194,9 @@ export function DomainScreen({ core, page, hasPages, currency, canChange }: Doma
                     {note === null ? null : <p className="type-meta">{note}</p>}
                   </div>
                   {state === "own-live" ? (
-                    <Badge tone="pos" icon="Check">
-                      Connected
-                    </Badge>
+                    <StatusChip label="Connected" variant="active" hasDot />
+                  ) : isDnsError ? (
+                    <StatusChip label="DNS Error" variant="failed" />
                   ) : null}
                 </div>
                 {state === "own-live" && target !== null ? (
