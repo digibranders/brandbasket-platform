@@ -27,6 +27,7 @@ import {
 } from "./rules/membership";
 import { CHECKOUT_COPY, CHECKOUT_PLAN_COPY, checkoutLead, checkoutSteps, type CheckoutStep } from "./rules/plans";
 import { loadBusinessEntry } from "./server/entry";
+import { recordFirstPaymentIfHeld } from "./server/first-payment-lookup";
 import { loadMembershipCheckout } from "./server/membership-checkout";
 
 /*
@@ -105,7 +106,11 @@ export async function loadCheckout(customer: CustomerContext, params: Params, no
 
   if (billing.paymentUnderReview) return { kind: "under-review", message: PAYMENT_RECEIVED_MESSAGE };
   const checkout = unsettledCheckout(billing.subscription);
-  if (waiting && checkout !== null) return { kind: "waiting", waitKey: `membership:${checkout.id}` };
+  if (waiting && checkout !== null) {
+    // The provider’s webhook can be late or refused, so ask it directly: a payment it holds is recorded now and the customer moves on.
+    if (await recordFirstPaymentIfHeld(checkout)) redirect(MEMBER_WELCOME_HREF);
+    return { kind: "waiting", waitKey: `membership:${checkout.id}` };
+  }
   const { plan } = view;
   if (plan === null) return { kind: "no-plan" };
 
