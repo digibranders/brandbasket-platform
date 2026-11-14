@@ -443,11 +443,15 @@ describe("ReviewWorkspace new topics", () => {
     expect(screen.getByText("No new topics are left this week.")).toBeTruthy();
   });
 
-  it("points to the new topic once there is one, and marks it", () => {
+  it("puts the new topic in the place of the dropped one, and marks it", () => {
     const groups = open([post("p1", "dropped", "2026-11-16", { replacedBy: "p1-r1" }), post("p1-r1", "pending", "2026-11-16", { replaces: "p1" })], [], "waiting", 2);
     render(<Screen groups={groups} />);
-    expect(screen.getByText(/A new topic was written for this day/)).toBeTruthy();
+    // The day has one topic: the new one. The dropped one is gone, and so is its pointer to the list.
+    expect(screen.getAllByText("Headline p1-r1").length).toBeGreaterThan(0);
+    expect(screen.queryByText("Headline p1")).toBeNull();
+    expect(screen.queryByText(/A new topic was written for this day/)).toBeNull();
     expect(screen.queryByRole("button", { name: "Write a new topic for this day" })).toBeNull();
+    expect(screen.queryByText("Dropped")).toBeNull();
   });
 });
 

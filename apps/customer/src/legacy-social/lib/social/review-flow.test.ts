@@ -34,6 +34,16 @@ describe("flowWeeks", () => {
   });
 });
 
+describe("cardsOfWeek", () => {
+  it("shows the new topic in the place of a dropped topic it replaced, and a dropped one with no new topic stays", () => {
+    const dropped = { ...post("p1", "dropped"), replacedBy: "p1-r1" };
+    const fresh = { ...post("p1-r1", "pending"), replaces: "p1" };
+    const b = batch([dropped, fresh, post("p2", "dropped", "2026-11-17")], [week("2026-11-16", "waiting", ["p1", "p1-r1", "p2"])]);
+    const weeks = flowWeeks([group(b)], []);
+    expect(cardsOfWeek([group(b)], weeks[0]!).map((card) => card.postId)).toEqual(["p1-r1", "p2"]);
+  });
+});
+
 describe("the week to open and what is left in it", () => {
   const b = batch([post("p1", "kept"), post("p2", "pending", "2026-11-23")], [week("2026-11-16", "drawn", ["p1"]), week("2026-11-23", "waiting", ["p2"])]);
   const g = group(b, [poster("x1", "p1", "approved")]);
