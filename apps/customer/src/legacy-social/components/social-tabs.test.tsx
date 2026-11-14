@@ -43,4 +43,19 @@ describe("SocialTabs", () => {
     expect(screen.getByRole("link", { name: "Posts" }).getAttribute("href")).toBe("/social/review?channel=instagram");
     expect(screen.getByRole("link", { name: "Analytics" }).getAttribute("href")).toBe("/social/analytics?channel=instagram");
   });
+
+  it("puts the number waiting for the customer beside Posts, and says what it is", () => {
+    render(<SocialTabs current="calendar" hasNumbers hasPosts waiting={14} />);
+    const posts = screen.getByRole("link", { name: /^Posts/ });
+    expect(posts.textContent).toContain("14");
+    expect(posts.querySelector("[title]")?.getAttribute("title")).toBe("14 waiting for you on Posts");
+  });
+
+  it("shows no number beside Posts when nothing waits, or when it is not known", () => {
+    render(<SocialTabs current="calendar" hasNumbers hasPosts waiting={0} />);
+    expect(screen.getByRole("link", { name: "Posts" }).textContent).toBe("Posts");
+    cleanup();
+    render(<SocialTabs current="calendar" hasNumbers hasPosts />);
+    expect(screen.getByRole("link", { name: "Posts" }).textContent).toBe("Posts");
+  });
 });

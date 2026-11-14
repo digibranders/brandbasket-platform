@@ -1,7 +1,8 @@
 import { FileText } from "@phosphor-icons/react/dist/ssr";
 import type { ReactElement, ReactNode } from "react";
 import { cn } from "@brandbasket/shared/lib/cn";
-import { allPaused, bookedUntil, connectStatus, dayLabel, daysUntilEnd, endingSoon, endsInWords } from "@/legacy-social/lib/social/auto";
+import { allPaused, bookedUntil, connectStatus, dayLabel, daysUntilEnd, endingSoon, endsInWords, type ChannelPlatform } from "@/legacy-social/lib/social/auto";
+import { sortChannels, totalTodo } from "@/legacy-social/lib/social/review-flow";
 import type { LegacySocialData } from "@/legacy-social/server/load";
 import Link from "next/link";
 import { BrandControl } from "./brand-switcher";
@@ -25,16 +26,19 @@ export interface LegacySocialViewProps {
   readonly savedWebsite: string | null;
   /** Where the latest monthly Social media report is, or null when none has been sent. */
   readonly reportHref: string | null;
+  /** What each channel has waiting for the customer, for the number beside its name. */
+  readonly todos?: Partial<Record<ChannelPlatform, number>>;
 }
 
 /** The channels column's rows and its line about how far ahead posts are booked. */
-function channelsColumn(data: LegacySocialData, now: Date): { rows: ChannelRow[]; bookedLine: string } {
-  const rows = data.channels.map((channel): ChannelRow => ({
+function channelsColumn(data: LegacySocialData, now: Date, todos: Partial<Record<ChannelPlatform, number>>): { rows: ChannelRow[]; bookedLine: string } {
+  const rows = sortChannels(data.channels).map((channel): ChannelRow => ({
     id: channel.id,
     platform: channel.platform,
     account: channel.account,
     ending: endingSoon(channel, now) ? endsInWords(daysUntilEnd(channel, now) ?? 0) : null,
     paused: channel.paused === true,
+    todo: todos[channel.platform] ?? 0,
   }));
   const until = bookedUntil(data.posts, data.today);
   return { rows, bookedLine: until === null ? "No posts are booked yet." : `Posts booked until ${dayLabel(until, { day: "numeric", month: "short" })}.` };
@@ -44,11 +48,11 @@ function channelsColumn(data: LegacySocialData, now: Date): { rows: ChannelRow[]
  * Social media as it was in the old dashboard: the channels column against the rail, the title with New post, the Posts and Analytics
  * tabs, and the week calendar. Copied from the old app and left as it was.
  */
-export function LegacySocialView({ data, notice, now, hasNumbers, canChange, reportHref, savedWebsite }: LegacySocialViewProps): ReactElement {
+export function LegacySocialView({ data, notice, now, hasNumbers, canChange, reportHref, savedWebsite, todos = {} }: LegacySocialViewProps): ReactElement {
   const status = connectStatus(data.channels, data.posts, now);
   const canPost = canChange;
   const hasAccounts = data.channels.length > 0;
-  const { rows, bookedLine } = channelsColumn(data, now);
+  const { rows, bookedLine } = channelsColumn(data, now, todos);
   return (
     <NewPostRequestProvider>
       <ChannelFilterProvider>
@@ -73,7 +77,7 @@ export function LegacySocialView({ data, notice, now, hasNumbers, canChange, rep
                   {canPost ? <NewPostButton disabled={!hasAccounts} /> : null}
                 </div>
               </header>
-              <SocialTabs current="calendar" hasNumbers={hasNumbers} onlyWithoutNumbers={!hasNumbers && data.channels.length > 0} hasPosts={canChange} />
+              <SocialTabs current="calendar" hasNumbers={hasNumbers} onlyWithoutNumbers={!hasNumbers && data.channels.length > 0} hasPosts={canChange} waiting={totalTodo(todos)} />
               {notice === null ? null : (
                 <p role={notice.ok ? "status" : "alert"} className={cn("text-[0.8125rem] font-semibold", notice.ok ? "text-sage-deep" : "text-error")}>
                   {notice.text}

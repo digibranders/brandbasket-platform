@@ -26,7 +26,7 @@ export interface ChannelsColumnProps {
  */
 export function ChannelsColumn({ data, selected, hrefFor, canChange }: ChannelsColumnProps) {
   return (
-    <aside aria-labelledby="channels-title" className="flex min-w-0 flex-col gap-3 border-t border-line bg-surface p-4 md:px-8 lg:sticky lg:top-topbar lg:h-channels-column lg:w-60 lg:shrink-0 lg:self-start lg:overflow-y-auto lg:border-t-0 lg:border-r lg:px-4 lg:pt-4 lg:pb-8">
+    <aside aria-labelledby="channels-title" className="flex min-w-0 flex-col gap-3 border-t border-line bg-surface p-4 md:px-8 lg:sticky lg:top-topbar lg:h-channels-column lg:w-52 lg:shrink-0 lg:self-start lg:overflow-y-auto lg:border-t-0 lg:border-r lg:px-4 lg:pt-4 lg:pb-8">
       <h2 id="channels-title" className="type-section">
         Channels
       </h2>
@@ -45,6 +45,7 @@ function Body({ data, selected, hrefFor, canChange }: Omit<ChannelsColumnProps, 
   const { rows, missing, live } = data;
   return (
     <>
+      {rows.some((row) => (row.todo ?? 0) > 0) ? <p className="-mt-2 px-1 text-xs text-ink-3">The number is what waits for you on Posts.</p> : null}
       {rows.length === 0 ? null : (
         <ul className="m-0 flex list-none gap-1 overflow-x-auto p-0 lg:flex-col lg:overflow-visible">
           <li className="shrink-0 lg:shrink">
@@ -66,8 +67,11 @@ function Body({ data, selected, hrefFor, canChange }: Omit<ChannelsColumnProps, 
               >
                 <ChannelLogo platform={row.platform} medium />
                 <span className="min-w-0 flex-1">
-                  <span title={row.account} className="block truncate type-body font-medium text-ink">
-                    {row.account}
+                  <span className="flex items-center gap-1.5">
+                    <span title={row.account} className="min-w-0 truncate type-body font-medium text-ink">
+                      {row.account}
+                    </span>
+                    {row.todo === undefined || row.todo === 0 ? null : <span aria-label={`${row.todo} to do`} className="shrink-0 rounded-full bg-warn-wash px-1.5 text-xs font-semibold leading-5 text-warn">{row.todo}</span>}
                   </span>
                   <span className="sr-only">{CHANNEL_NAMES[row.platform]}</span>
                   {row.paused ? <span className="type-meta">Paused</span> : null}

@@ -11,6 +11,8 @@ import {
 } from "@brandbasket/db";
 import { getAppDb } from "@/lib/db";
 import { loadLiveAccounts } from "./accounts/loader";
+import { loadChannelTodos } from "@/legacy-social/server/channel-todos";
+import { sortChannels } from "@/legacy-social/lib/social/review-flow";
 import { postingServiceSettings, type Platform } from "./analytics/rules";
 import type { CustomerContext } from "@/lib/guards";
 import {
@@ -109,6 +111,8 @@ export interface ChannelsColumnRow {
   /** "Ends in 5 days" when the connection ends soon or has, else null. Only a live connection has an end. */
   readonly ending: string | null;
   readonly paused: boolean;
+  /** How many topics or pictures this channel has waiting for the customer; left out or 0 when none. */
+  readonly todo?: number;
 }
 
 export interface ChannelsColumnData {
@@ -126,12 +130,14 @@ export interface ChannelsColumnData {
 export async function loadChannelsColumn(customer: Reader, now: Date): Promise<ChannelsColumnData> {
   if (postingServiceSettings(process.env) !== null) {
     const live = await loadLiveAccounts(customer, now);
-    return { rows: live.rows.map((row) => ({ id: row.id, platform: row.platform, account: row.account, ending: row.ending, paused: row.paused })), missing: live.missing, live: true };
+    const todos = await loadChannelTodos(customer, live.rows.map((row) => row.platform));
+    // The channels in the same order on every page, each with the number of things waiting for the customer, as on the Posts page.
+    return { rows: sortChannels(live.rows).map((row) => ({ id: row.id, platform: row.platform, account: row.account, ending: row.ending, paused: row.paused, todo: todos[row.platform] ?? 0 })), missing: live.missing, live: true };
   }
   const rows = await loadAccounts(customer);
   const shown = rows.flatMap((row): ChannelsColumnRow[] => {
     const platform = row.platform === "google_business" ? "google" : row.platform;
     return platform === "instagram" || platform === "facebook" || platform === "linkedin" || platform === "google" ? [{ id: row.platform, platform, account: row.handle ?? row.label, ending: null, paused: false }] : [];
   });
-  return { rows: shown, missing: [], live: false };
+  return { rows: sortChannels(shown), missing: [], live: false };
 }
