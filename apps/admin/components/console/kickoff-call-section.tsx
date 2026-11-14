@@ -1,16 +1,28 @@
-import { findSetupCallBooking } from "@brandbasket/db";
+import { findSetupCallBooking, isProjectStartedWithoutCallConfirmation } from "@brandbasket/db";
 import type { ReactElement } from "react";
-import { markCallHeldAction, undoCallHeldAction } from "@/app/(protected)/clients/[businessId]/kickoff-actions";
-import { buttonSecondary } from "@/components/console/buttons";
 import { FactList, Section } from "@/components/console/section";
 import { getStaffDb } from "@/lib/server/db";
 
 const INDIA_TIME = new Intl.DateTimeFormat("en-IN", { timeZone: "Asia/Kolkata", dateStyle: "long", timeStyle: "short" });
 
-/** The kickoff call on the client page: when it was booked for, and the button that marks it held. */
+/**
+ * The kickoff call on the client page: read-only status showing when it was booked for, and whether the call was completed.
+ * The action lives only in the prompt popup and Today.
+ */
 export async function KickoffCallSection({ businessId }: { readonly businessId: string }): Promise<ReactElement> {
-  const booking = await findSetupCallBooking(getStaffDb(), businessId);
+  const db = getStaffDb();
+  const [booking, startedWithoutConfirmation] = await Promise.all([
+    findSetupCallBooking(db, businessId),
+    isProjectStartedWithoutCallConfirmation(db, businessId),
+  ]);
   const held = booking?.heldAt ?? null;
+  const completedText =
+    held !== null
+      ? `${INDIA_TIME.format(held)} India time`
+      : startedWithoutConfirmation
+        ? "Started without call confirmation"
+        : "Not yet";
+
   return (
     <Section title="Kickoff call" id="kickoff-call">
       <FactList
@@ -19,18 +31,12 @@ export async function KickoffCallSection({ businessId }: { readonly businessId: 
             label: "Booked for",
             value: booking?.startsAt ? `${INDIA_TIME.format(booking.startsAt)} India time` : "Not booked through the dashboard",
           },
-          { label: "Marked held", value: held === null ? "Not yet" : `${INDIA_TIME.format(held)} India time` },
+          { label: "Call completed", value: completedText },
         ]}
       />
       <p className="mt-6 max-w-xl text-sm text-ink-soft">
-        Marking the call held ends the customer&apos;s first look and readies their website build. If nobody marks it, the build starts by itself two hours after the call ends and the first look ends two days after.
+        Call confirmation readies the website build. If nobody confirms the call within 24 hours, the build starts automatically.
       </p>
-      <form action={held === null ? markCallHeldAction : undoCallHeldAction} className="mt-4">
-        <input type="hidden" name="businessId" value={businessId} />
-        <button type="submit" className={`${buttonSecondary} !px-4 !py-2`}>
-          {held === null ? "Mark call as held" : "Undo"}
-        </button>
-      </form>
     </Section>
   );
 }

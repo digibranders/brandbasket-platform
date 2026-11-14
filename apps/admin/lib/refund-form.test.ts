@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseRefundForm, readRefundNotice, refundNoticeHref } from "./refund-form";
+import { parseRefundForm, readRefundNotice, refundNoticeHref, REFUND_NOTICES, REFUND_NOTICE_TEXT } from "./refund-form";
 
 const BUSINESS = "01920000-0000-7000-8000-0000000000b1";
 const PAYMENT = "01920000-0000-7000-8000-0000000000a1";
@@ -38,7 +38,20 @@ describe("notices", () => {
   it("links back to the client's payments with the notice, and reads only known notices", () => {
     expect(refundNoticeHref(BUSINESS, "marked")).toBe(`/clients/${BUSINESS}/billing?refund=marked#payments`);
     expect(readRefundNotice("amount-too-high")).toBe("amount-too-high");
+    expect(readRefundNotice("refunded")).toBe("refunded");
+    expect(readRefundNotice("refunded-paid-earning")).toBe("refunded-paid-earning");
+    expect(readRefundNotice("already-refunded")).toBe("already-refunded");
+    expect(readRefundNotice("provider-failed")).toBe("provider-failed");
     expect(readRefundNotice("anything")).toBeNull();
     expect(readRefundNotice(undefined)).toBeNull();
+  });
+
+  it("has notice text for all refund notices with no em or en dashes", () => {
+    for (const notice of REFUND_NOTICES) {
+      const entry = REFUND_NOTICE_TEXT[notice];
+      expect(entry).toBeDefined();
+      expect(entry.text).not.toMatch(/[—–]/);
+      expect(["ok", "problem"]).toContain(entry.tone);
+    }
   });
 });

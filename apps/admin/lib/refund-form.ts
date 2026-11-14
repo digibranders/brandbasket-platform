@@ -4,6 +4,10 @@ import { z } from "zod";
 export const REFUND_NOTICES = [
   "marked",
   "marked-paid-earning",
+  "refunded",
+  "refunded-paid-earning",
+  "already-refunded",
+  "provider-failed",
   "invalid-amount",
   "invalid-reason",
   "unconfirmed",
@@ -18,9 +22,16 @@ export const REFUND_NOTICE_TEXT: Readonly<Record<RefundNotice, { readonly tone: 
     tone: "ok",
     text: "Marked refunded. The affiliate was already paid for this payment: take it off their next payout by hand.",
   },
+  refunded: { tone: "ok", text: "Refund processed. The credit note was issued and the customer was emailed." },
+  "refunded-paid-earning": {
+    tone: "ok",
+    text: "Refund processed. The affiliate was already paid for this payment: take it off their next payout by hand.",
+  },
+  "already-refunded": { tone: "problem", text: "This payment has already been refunded." },
+  "provider-failed": { tone: "problem", text: "The payment provider could not process the refund. Nothing was marked." },
   "invalid-amount": { tone: "problem", text: "Enter the amount given back, like 2999 or 2,999.00." },
   "invalid-reason": { tone: "problem", text: "Say why it was refunded, in 3 to 300 characters." },
-  unconfirmed: { tone: "problem", text: "Tick the box to confirm the money was already given back." },
+  unconfirmed: { tone: "problem", text: "Tick the box to confirm the refund." },
   "not-refundable": { tone: "problem", text: "Only a paid payment can be marked refunded. It may have been marked already." },
   "amount-too-high": { tone: "problem", text: "The amount given back cannot be more than the payment." },
 };

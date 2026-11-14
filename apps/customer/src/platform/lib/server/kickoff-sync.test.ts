@@ -58,7 +58,28 @@ describe("startBuildsAfterKickoff", () => {
     vi.mocked(listKickoffsToStart).mockResolvedValue([{ businessId: "business-held", endsAt: null, heldAt: NOW }]);
     const report = await startBuildsAfterKickoff(NOW);
     expect(report).toEqual({ checked: 1, started: 1, failed: 0 });
-    expect(markProjectReadyAfterKickoff).toHaveBeenCalledWith({}, expect.objectContaining({ businessId: "business-held", now: NOW }));
-    expect(addActivityEvent).toHaveBeenCalledTimes(1);
+    expect(markProjectReadyAfterKickoff).toHaveBeenCalledWith(
+      {},
+      expect.objectContaining({ businessId: "business-held", now: NOW, startedWithoutCallConfirmation: false }),
+    );
+    expect(addActivityEvent).toHaveBeenCalledWith(
+      {},
+      expect.objectContaining({ businessId: "business-held", service: "website", title: "Kickoff call completed" }),
+    );
+  });
+
+  it("labels 24-hour fallback builds as started without call confirmation", async () => {
+    vi.stubEnv("KICKOFF_AUTO_START", "on");
+    vi.mocked(listKickoffsToStart).mockResolvedValue([{ businessId: "business-fallback", endsAt: ENDED_BEFORE, heldAt: null }]);
+    const report = await startBuildsAfterKickoff(NOW);
+    expect(report).toEqual({ checked: 1, started: 1, failed: 0 });
+    expect(markProjectReadyAfterKickoff).toHaveBeenCalledWith(
+      {},
+      expect.objectContaining({ businessId: "business-fallback", now: NOW, startedWithoutCallConfirmation: true }),
+    );
+    expect(addActivityEvent).toHaveBeenCalledWith(
+      {},
+      expect.objectContaining({ businessId: "business-fallback", service: "website", title: "Started without call confirmation" }),
+    );
   });
 });

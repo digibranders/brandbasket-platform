@@ -64,6 +64,85 @@ describe("todayQueue", () => {
       ["Signed up, not paid: Kumar Opticals", "Signed up 29 Nov", "/leads/lead-kumar"],
     ]);
   });
+
+  it("shows the owner on unpaid sign-up rows when assigned (D21)", () => {
+    const queue = todayQueue({
+      ...EMPTY,
+      unpaidSignups: [
+        { id: "lead-1", businessName: "Kumar Opticals", createdAt: new Date("2026-11-29T00:00:00.000Z"), ownerName: "Rohan Mehta" },
+        { id: "lead-2", businessName: "Om Sweets", createdAt: new Date("2026-11-29T00:00:00.000Z"), ownerName: null },
+      ],
+    });
+    expect(queue.map((item) => [item.title, item.detail])).toEqual([
+      ["Signed up, not paid: Kumar Opticals", "Signed up 29 Nov · Rohan Mehta"],
+      ["Signed up, not paid: Om Sweets", "Signed up 29 Nov"],
+    ]);
+  });
+
+  it("adds approved previews with launch action and links to the client website page", () => {
+    const queue = todayQueue({
+      ...EMPTY,
+      approvedPreviews: [
+        { businessId: "biz-1", businessName: "Harbour Bakery", dueAt: new Date("2026-12-01T12:00:00.000Z") },
+      ],
+    });
+    expect(queue).toEqual([
+      {
+        key: "approved:biz-1",
+        kind: "approved",
+        href: "/clients/biz-1/website",
+        title: "Website approved: Harbour Bakery",
+        detail: "Ready to launch",
+        dueAt: new Date("2026-12-01T12:00:00.000Z"),
+        action: "Launch",
+      },
+    ]);
+  });
+
+  it("adds domain moves with due date based on wait limit", () => {
+    const queue = todayQueue({
+      ...EMPTY,
+      domainMoves: [
+        {
+          id: "dom-1",
+          businessId: "biz-1",
+          businessName: "Harbour Bakery",
+          hostname: "harbourbakery.com",
+          status: "pending",
+          createdAt: new Date("2026-11-29T10:00:00.000Z"),
+        },
+      ],
+    });
+    expect(queue).toEqual([
+      {
+        key: "domain:dom-1",
+        kind: "domain",
+        href: "/clients/biz-1/website",
+        title: "Domain move: Harbour Bakery",
+        detail: "harbourbakery.com · pending",
+        dueAt: new Date("2026-11-30T10:00:00.000Z"),
+      },
+    ]);
+  });
+
+  it("lists builds started without call confirmation with the expected label", () => {
+    const queue = todayQueue({
+      ...EMPTY,
+      unconfirmedStarts: [
+        { businessId: "biz-1", businessName: "Auto Start Cafe", startedAt: new Date("2026-11-29T10:00:00.000Z") },
+      ],
+    });
+    expect(queue).toEqual([
+      {
+        key: "unconfirmed_start:biz-1",
+        kind: "unconfirmed_start",
+        href: "/clients/biz-1/website",
+        title: "Started without call confirmation",
+        detail: "Auto Start Cafe",
+        dueAt: null,
+      },
+    ]);
+  });
 });
 
 describe("dueLabel", () => {
@@ -83,6 +162,8 @@ describe("actionLabel", () => {
     expect(actionLabel("payment")).toBe("Check");
     expect(actionLabel("request")).toBe("Reply");
     expect(actionLabel("overdue")).toBe("Open");
+    expect(actionLabel("approved")).toBe("Launch");
+    expect(actionLabel("domain")).toBe("Open");
   });
 });
 

@@ -6,8 +6,8 @@ import { hasValidWebsiteToken } from "@/platform/lib/server/website-api-auth";
 export const dynamic = "force-dynamic";
 
 /**
- * `POST /api/internal/check-first-payments`: asks Razorpay about every first-month offer checkout still waiting for its first payment
- * and records any it holds (plan 63), for a payment whose webhook never arrived. Called every 10 minutes by a scheduled job with
+ * `POST /api/internal/check-first-payments`: asks Razorpay about every checkout still waiting for its first payment
+ * and records any it holds, for a payment whose webhook never arrived. Called every 10 minutes by a scheduled job with
  * `Authorization: Bearer <PAYMENT_RECONCILE_TOKEN>`. It answers 503 when that secret is not configured and 401 for a missing or wrong
  * one. The report is the body; the status is 502 when Razorpay could not be asked about a checkout, so a person looks, and 200
  * otherwise. Lives under /api/, which proxy.ts skips, so it answers on either dashboard host.

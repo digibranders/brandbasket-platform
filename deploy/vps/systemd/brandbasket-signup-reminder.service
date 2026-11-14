@@ -1,0 +1,36 @@
+# Abandoned sign-up reminder (D21): POSTs to the dashboard's own /api/internal/send-signup-reminders on 127.0.0.1 with the
+# bearer token from the environment file. It sends one reminder email to customers who signed up 1 day ago and have not paid.
+# Installed by deploy/vps/install.sh backups but NOT enabled: set SIGNUP_REMINDER_TOKEN in
+# /srv/brandbasket/shared/customer.env.production first, start the service once and read its journal, then enable the timer.
+[Unit]
+Description=Brandbasket reminder for abandoned sign-ups older than 1 day
+After=brandbasket-customer.service
+
+[Service]
+Type=oneshot
+User=brandbasket
+Group=brandbasket
+ExecStart=/usr/local/sbin/brandbasket-signup-reminder-job --env-file /srv/brandbasket/shared/customer.env.production
+TimeoutStartSec=10min
+SyslogIdentifier=brandbasket-signup-reminder
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectKernelLogs=true
+ProtectControlGroups=true
+ProtectClock=true
+ProtectHostname=true
+RestrictNamespaces=true
+RestrictRealtime=true
+RestrictSUIDSGID=true
+LockPersonality=true
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+SystemCallArchitectures=native
+SystemCallFilter=@system-service
+CapabilityBoundingSet=
+UMask=0077
+InaccessiblePaths=-/srv/firstfold -/srv/firstfold-website -/srv/firstfold-media -/srv/firstfold-ci -/etc/firstfold -/var/backups -/var/lib/firstfold -/var/lib/firstfold-ci

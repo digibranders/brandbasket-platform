@@ -1,7 +1,10 @@
 import { describe, expect, it } from "vitest";
+import { firstChargeReminderEmail } from "./first-charge-reminder";
 import { paymentFailedEmail } from "./payment-failed";
 import { paymentReceivedEmail } from "./payment-received";
+import { paymentRefundedEmail } from "./payment-refunded";
 import { CHANGES_QUOTE_LIMIT, clampChangesText, previewChangesReceivedEmail } from "./preview-changes-received";
+
 
 const DASH = /[–—]/;
 const RECEIPT_URL = "https://app.brandbasket.in/billing/receipts?ids=0192f3c4-0000-7000-8000-000000000001";
@@ -158,6 +161,31 @@ describe("paymentFailedEmail", () => {
   });
 });
 
+describe("firstChargeReminderEmail", () => {
+  const input = {
+    to: "asha@example.com",
+    name: "Asha Rao",
+    currency: "INR" as const,
+    amountCents: 299_900,
+    chargeDate: new Date("2026-11-27T05:00:00Z"),
+    items: ["Managed Website"],
+    billingUrl: "https://app.brandbasket.in/billing/payment",
+    businessId: "biz-1",
+  };
+
+  it("states the amount and date in the subject and body without em or en dashes", () => {
+    const email = firstChargeReminderEmail(input);
+    expect(email.template).toBe("first-charge-reminder");
+    expect(email.subject).toBe("Upcoming renewal: ₹2,999 on 27 November 2026");
+    expect(email.bodyText).toContain("Hi Asha,");
+    expect(email.bodyText).toContain("Your next payment of ₹2,999 for Managed Website will be taken on 27 November 2026.");
+    expect(email.bodyText).toContain("https://app.brandbasket.in/billing/payment");
+    expect(email.bodyHtml).toContain("₹2,999");
+    expect(email.bodyHtml).toContain("27 November 2026");
+    expect(`${email.subject}${email.bodyText}${email.bodyHtml}`).not.toMatch(DASH);
+  });
+});
+
 describe("previewChangesReceivedEmail", () => {
   const base = { to: "asha@example.com", name: "Asha Rao", round: 1, rounds: 2, text: "Make the logo bigger.\nChange the phone number.", readyBy: "Thu 5 Nov" } as const;
 
@@ -201,7 +229,68 @@ describe("previewChangesReceivedEmail", () => {
   });
 });
 
+describe("paymentRefundedEmail", () => {
+  const BILLING_URL = "https://app.brandbasket.in/billing#payments";
+
+  const fullRefundInput = {
+    to: "asha@example.com",
+    name: "Asha Rao",
+    currency: "INR" as const,
+    refundedAmountCents: 299_900,
+    originalAmountCents: 299_900,
+    items: ["Managed Website"],
+    creditNoteNumber: "CN/26-27/000001",
+    billingUrl: BILLING_URL,
+  };
+
+  it("says the refunded amount in the subject and writes the approved full refund body", () => {
+    const email = paymentRefundedEmail(fullRefundInput);
+    expect(email.subject).toBe("Refund processed: ₹2,999");
+    expect(email.template).toBe("payment-refunded");
+    expect(email.bodyText).toBe(
+      [
+        "Hi Asha,",
+        "We have processed a full refund of ₹2,999 for Managed Website.",
+        "A credit note has been issued under number CN/26-27/000001.",
+        "The refund has been sent back to your original payment method. Depending on your bank or card issuer, it usually appears on your statement in 5 to 10 business days.",
+        `View billing details: ${BILLING_URL}`,
+        "Brandbasket",
+      ].join("\n\n"),
+    );
+  });
+
+  it("formats a partial refund with the original payment amount", () => {
+    const email = paymentRefundedEmail({
+      ...fullRefundInput,
+      refundedAmountCents: 100_000,
+    });
+    expect(email.subject).toBe("Refund processed: ₹1,000");
+    expect(email.bodyText).toContain("We have processed a partial refund of ₹1,000 for Managed Website (original payment of ₹2,999).");
+  });
+
+  it("renders html with a button linking to billingUrl", () => {
+    const email = paymentRefundedEmail(fullRefundInput);
+    expect(email.bodyHtml).toContain(`href="${BILLING_URL}"`);
+    expect(email.bodyHtml).toContain("Refund processed: ₹2,999");
+    expect(email.bodyHtml).toContain("A credit note has been issued under number CN/26-27/000001.");
+  });
+
+  it("contains no em or en dashes in subject or body", () => {
+    const email = paymentRefundedEmail(fullRefundInput);
+    expect(email.subject).not.toMatch(DASH);
+    expect(email.bodyText).not.toMatch(DASH);
+    expect(email.bodyHtml).not.toMatch(DASH);
+  });
+
+  it("validates inputs", () => {
+    expect(() => paymentRefundedEmail({ ...fullRefundInput, refundedAmountCents: 0 })).toThrow(RangeError);
+    expect(() => paymentRefundedEmail({ ...fullRefundInput, billingUrl: "not-a-url" })).toThrow(/must be an absolute http or https URL/);
+  });
+
+});
+
 describe("clampChangesText", () => {
+
   it("leaves text of exactly 300 characters whole, with no ellipsis", () => {
     const text = "a".repeat(CHANGES_QUOTE_LIMIT);
     expect(clampChangesText(text)).toBe(text);

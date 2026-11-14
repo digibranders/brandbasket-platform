@@ -86,6 +86,8 @@ function provider(overrides: Partial<BillingProvider> = {}): BillingProvider {
     confirmAddOnPayment: vi.fn(),
     findUpfrontPayment: vi.fn(),
     findSubscriptionCharge: vi.fn(),
+    getPaymentMethodUpdateUrl: vi.fn(),
+    refundPayment: vi.fn(),
     ...overrides,
   };
 }

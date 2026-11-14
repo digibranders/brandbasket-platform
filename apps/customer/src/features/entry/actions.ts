@@ -21,6 +21,7 @@ import { parseAccountIdentifier } from "./server/customer-sign-in-form";
 import { landingForSignedInUser } from "./server/entry-access";
 import { leadsApiToken } from "./server/env";
 import { createListingAccount, requestJoinCode } from "./server/listing-account";
+import { clearPendingSignupCookie, setPendingSignupCookie } from "./server/pending-signup-cookie";
 import { InviteNotUsableError, redeemSetupInvite, TermsNotAgreedError, TooManySetupAttemptsError } from "./server/setup";
 import { signInWithPassword } from "./server/sign-in";
 
@@ -75,7 +76,30 @@ export async function signUpAction(previous: SignUpResult | null, formData: Form
 
   if (parsed.data.code === null) {
     const outcome = await requestJoinCode(parsed.data);
-    if (outcome.kind === "code") return { ok: true, data: { otp: outcome.otp } };
+    if (outcome.kind === "code") {
+      await setPendingSignupCookie({
+        otp: outcome.otp,
+        input: {
+          businessName: parsed.data.businessName ?? "",
+          name: parsed.data.name,
+          email: parsed.data.email,
+          country: parsed.data.country,
+          stateCode: parsed.data.stateCode ?? "",
+          phoneCountry: String(formData.get("phoneCountry") ?? ""),
+          phone: String(formData.get("phone") ?? ""),
+          password: parsed.data.password,
+          agreed: true,
+          choice: parsed.data.choice,
+          services: String(formData.get("services") ?? "")
+            .split(",")
+            .map((s) => s.trim())
+            .filter(Boolean),
+          startToken: typeof formData.get("start") === "string" ? String(formData.get("start")) : null,
+          next: inviteReturn(formData.get(NEXT_FIELD)),
+        },
+      });
+      return { ok: true, data: { otp: outcome.otp } };
+    }
     if (outcome.kind === "limited") {
       return fail(otpLimitMessage(outcome, "send"), resend ? current : null, { operation: "send", scope: outcome.scope, retryAfterSeconds: outcome.retryAfterSeconds });
     }
@@ -83,14 +107,25 @@ export async function signUpAction(previous: SignUpResult | null, formData: Form
     return fail(outcome.message, resend ? current : null);
   }
 
-  const outcome = await createListingAccount(parsed.data, attributionFromStart(formData, leadsApiToken()));
+  const nextReturn = inviteReturn(formData.get(NEXT_FIELD));
+  const inviteToken = nextReturn !== null ? nextReturn.slice("/invite/".length) : null;
+  const outcome = await createListingAccount(parsed.data, attributionFromStart(formData, leadsApiToken()), { inviteToken });
   if (outcome.kind === "limited") {
     return fail(otpLimitMessage(outcome, "confirm"), current, { operation: "confirm", scope: outcome.scope, retryAfterSeconds: outcome.retryAfterSeconds });
   }
   if (outcome.kind === "wrong-code") return fail(outcome.message, current);
-  if (outcome.kind === "refused") return fail(outcome.message, null);
+  if (outcome.kind === "refused") {
+    await clearPendingSignupCookie();
+    return fail(outcome.message, null);
+  }
+  await clearPendingSignupCookie();
   // The basket rides along so checkout opens on those services; only catalogue ids survive.
-  redirect(inviteReturn(formData.get(NEXT_FIELD)) ?? startHref(readBundleSelection(String(formData.get("services") ?? "").split(","))));
+  redirect(nextReturn ?? startHref(readBundleSelection(String(formData.get("services") ?? "").split(","))));
+}
+
+/** Clears any pending sign-up cookie so the form can return to the initial details step. */
+export async function clearPendingSignupAction(): Promise<void> {
+  await clearPendingSignupCookie();
 }
 
 /** What the forgot-password form says once it is sent, whether or not there is an account. */

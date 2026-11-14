@@ -3,8 +3,8 @@ import { SUPPORT_CATEGORY_LABELS } from "@brandbasket/shared/lib/support";
 import type { AttentionItem } from "./pipeline";
 import { clock, longDay, shortDate } from "./team-time";
 
-/** Every kind of work Today shows: the pipeline's attention kinds, plus requests, sign-ups, errors, failed deliveries and kickoff calls. */
-export type TodayKind = AttentionItem["kind"] | "request" | "signup" | "error" | "delivery" | "kickoff" | "google";
+/** Every kind of work Today shows: the pipeline's attention kinds, plus requests, sign-ups, errors, failed deliveries, kickoff calls, approved previews, domain moves and unconfirmed starts. */
+export type TodayKind = AttentionItem["kind"] | "request" | "signup" | "error" | "delivery" | "kickoff" | "google" | "approved" | "domain" | "unconfirmed_start";
 
 export interface TodayItem {
   /** Unique across the queue. */
@@ -25,19 +25,50 @@ export interface KickoffNeedingOutcome {
   readonly endsAt: Date;
 }
 
+export interface ApprovedPreviewNeedingLaunch {
+  readonly businessId: string;
+  readonly businessName: string;
+  readonly dueAt: Date | null;
+}
+
+export interface DomainMoveNeedingAction {
+  readonly id: string;
+  readonly businessId: string;
+  readonly businessName: string;
+  readonly hostname: string;
+  readonly status: string;
+  readonly createdAt: Date;
+}
+
+export interface UnconfirmedStartItem {
+  readonly businessId: string;
+  readonly businessName: string;
+  readonly startedAt: Date;
+}
+
 export interface TodayInput {
   /** From attentionItems: payments to sort, add-ons to start, previews overdue and due, new enquiries. */
   readonly attention: readonly AttentionItem[];
   /** Requests nobody on the team has answered yet (status "new"). */
   readonly newTickets: readonly Pick<SupportTicket, "id" | "subject" | "displayRef" | "category" | "createdAt">[];
   /** Sign-ups on the dashboard that have not paid (lead status "account_created"). */
-  readonly unpaidSignups: readonly Pick<Lead, "id" | "businessName" | "createdAt">[];
+  readonly unpaidSignups: readonly (Pick<Lead, "id" | "businessName" | "createdAt"> & {
+    readonly ownerName?: string | null;
+  })[];
   /** Errors nobody has looked at yet (status "new"). */
   readonly newErrors: readonly Pick<ErrorIssue, "id" | "operation" | "route" | "occurrenceCount" | "firstSeenAt">[];
   /** Deliveries that failed in the last 24 hours (the rail's count); null when that count could not be read. */
   readonly failedDeliveries: number | null;
   /** Kickoff calls that are over and not marked held (or as missed); null when they could not be read. One item each. */
   readonly kickoffsNeedingOutcome: readonly KickoffNeedingOutcome[] | null;
+  /** Billing status issues: past_due and lapsed subscriptions for money-capable roles. */
+  readonly billing?: readonly TodayItem[];
+  /** Approved website previews waiting to go live. */
+  readonly approvedPreviews?: readonly ApprovedPreviewNeedingLaunch[];
+  /** Requests from customers to move to their own domain. */
+  readonly domainMoves?: readonly DomainMoveNeedingAction[];
+  /** Projects whose website build started automatically after 24 hours without kickoff call confirmation. */
+  readonly unconfirmedStarts?: readonly UnconfirmedStartItem[];
   /** Google problems: sites that cannot be verified, silent sources, a lost sign-in (lib/google-today.ts). Already built and shown in their own section. */
   readonly google?: readonly TodayItem[];
   /** The end of the team's day: a preview due after it is not today's work. */
@@ -55,6 +86,7 @@ export const WAIT_LIMITS = {
   addOn: DAY_MS,
   error: DAY_MS,
   signup: 2 * DAY_MS,
+  domain: DAY_MS,
 } as const;
 
 function after(date: Date | null, ms: number): Date | null {
@@ -113,7 +145,7 @@ export function todayQueue(input: TodayInput): readonly TodayItem[] {
       kind: "signup",
       href: `/leads/${lead.id}`,
       title: `Signed up, not paid: ${lead.businessName}`,
-      detail: `Signed up ${shortDate(lead.createdAt)}`,
+      detail: lead.ownerName ? `Signed up ${shortDate(lead.createdAt)} · ${lead.ownerName}` : `Signed up ${shortDate(lead.createdAt)}`,
       dueAt: after(lead.createdAt, WAIT_LIMITS.signup),
     }),
   );
@@ -153,7 +185,51 @@ export function todayQueue(input: TodayInput): readonly TodayItem[] {
       dueAt: call.endsAt,
     }),
   );
-  return [...attention, ...requests, ...signups, ...errors, ...deliveries, ...kickoffs, ...(input.google ?? [])].sort(byDue);
+  const approved = (input.approvedPreviews ?? []).map(
+    (item): TodayItem => ({
+      key: `approved:${item.businessId}`,
+      kind: "approved",
+      href: `/clients/${item.businessId}/website`,
+      title: `Website approved: ${item.businessName}`,
+      detail: "Ready to launch",
+      dueAt: item.dueAt,
+      action: "Launch",
+    }),
+  );
+  const domainMoves = (input.domainMoves ?? []).map(
+    (item): TodayItem => ({
+      key: `domain:${item.id}`,
+      kind: "domain",
+      href: `/clients/${item.businessId}/website`,
+      title: `Domain move: ${item.businessName}`,
+      detail: `${item.hostname} · ${item.status}`,
+      dueAt: after(item.createdAt, WAIT_LIMITS.domain),
+    }),
+  );
+  // Projects whose build started automatically after 24h without call confirmation.
+  const unconfirmed = (input.unconfirmedStarts ?? []).map(
+    (item): TodayItem => ({
+      key: `unconfirmed_start:${item.businessId}`,
+      kind: "unconfirmed_start",
+      href: `/clients/${item.businessId}/website`,
+      title: "Started without call confirmation",
+      detail: item.businessName,
+      dueAt: null,
+    }),
+  );
+  return [
+    ...attention,
+    ...requests,
+    ...signups,
+    ...errors,
+    ...deliveries,
+    ...kickoffs,
+    ...(input.billing ?? []),
+    ...approved,
+    ...domainMoves,
+    ...unconfirmed,
+    ...(input.google ?? []),
+  ].sort(byDue);
 }
 
 export const GROUP_HEADINGS = {
@@ -218,6 +294,7 @@ export function dueLabel(dueAt: Date | null, now: Date, endOfToday: Date): DueLa
 export function actionLabel(kind: TodayKind): string {
   if (kind === "payment") return "Check";
   if (kind === "request") return "Reply";
+  if (kind === "approved") return "Launch";
   return "Open";
 }
 

@@ -6,6 +6,7 @@ import {
   businessMembers,
   businessProfiles,
   businesses,
+  creditNotes,
   payments,
   referralCodes,
   taxInvoiceSeries,
@@ -14,10 +15,12 @@ import {
   users,
   type BillingCurrency,
   type BillingProfile,
+  type CreditNote,
   type PaymentInvoiceBasis,
   type ReferralValueKind,
   type TaxInvoice,
 } from "../schema";
+
 import { isUnappliedReason, PAYMENT_COLUMNS, paymentWasApplied, type Payment } from "./billing";
 
 type Runner = Database | ScopedTransaction;
@@ -51,6 +54,44 @@ export async function insertTaxInvoice(db: Runner, invoice: NewTaxInvoice): Prom
   if (row === undefined) throw new Error(`Tax invoice ${invoice.number} was not inserted`);
   return row;
 }
+
+export type NewCreditNote = Omit<typeof creditNotes.$inferInsert, "id" | "createdAt">;
+
+/** Staff connection only. Fails on a second credit note for the same payment (credit_notes_payment_id_idx). */
+export async function insertCreditNote(db: Runner, note: NewCreditNote): Promise<CreditNote> {
+  const rows = await db.insert(creditNotes).values(note).returning();
+  const row = rows[0];
+  if (row === undefined) throw new Error(`Credit note ${note.number} was not inserted`);
+  return row;
+}
+
+/** The credit note issued for a payment, or null. Staff connection or tenant scope. */
+export async function findCreditNoteByPaymentId(db: Runner, paymentId: string): Promise<CreditNote | null> {
+  const rows = await db.select().from(creditNotes).where(eq(creditNotes.paymentId, paymentId)).limit(1);
+  return rows[0] ?? null;
+}
+
+/** The credit note issued for an invoice, or null. Staff connection or tenant scope. */
+export async function findCreditNoteByInvoiceId(db: Runner, invoiceId: string): Promise<CreditNote | null> {
+  const rows = await db.select().from(creditNotes).where(eq(creditNotes.invoiceId, invoiceId)).limit(1);
+  return rows[0] ?? null;
+}
+
+/** One credit note by its id. */
+export async function findCreditNoteById(db: Runner, creditNoteId: string): Promise<CreditNote | null> {
+  const rows = await db.select().from(creditNotes).where(eq(creditNotes.id, creditNoteId)).limit(1);
+  return rows[0] ?? null;
+}
+
+/** Credit notes of one business, newest first. Works through row-level security. */
+export async function listCreditNotesForBusiness(db: Runner, businessId: string): Promise<CreditNote[]> {
+  return db
+    .select()
+    .from(creditNotes)
+    .where(eq(creditNotes.businessId, businessId))
+    .orderBy(desc(creditNotes.issuedOn), desc(creditNotes.serial));
+}
+
 
 /**
  * Holds the payment row until the caller's transaction ends, so two issuers for one payment run one after the other

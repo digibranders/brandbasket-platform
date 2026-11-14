@@ -444,13 +444,12 @@ step_backups() {
   else
     say "  backup timers: not enabled until one manual 'brandbasket-backup --apply' has reached R2 (then run this step again)"
   fi
-  if [[ -d "$SRV/current-customer" ]]; then enable_units brandbasket-maintenance.timer brandbasket-site-rollup.timer brandbasket-kickoff-builds.timer
-  else say "  maintenance, site rollup and kickoff builds timers: not enabled until the first deploy has created $SRV/current-customer"; fi
+  if [[ -d "$SRV/current-customer" ]]; then enable_units brandbasket-maintenance.timer brandbasket-site-rollup.timer brandbasket-kickoff-builds.timer brandbasket-first-payment-check.timer
+  else say "  maintenance, site rollup, kickoff builds and first payment check timers: not enabled until the first deploy has created $SRV/current-customer"; fi
   say "  brandbasket-erase.timer: installed, NOT enabled. It deletes customer data; the owner decides: systemctl enable --now brandbasket-erase.timer"
   say "  brandbasket-site-hosting.timer: installed, NOT enabled. It pauses lapsed websites; set VERCEL_API_TOKEN, read a --dry-run, then: systemctl enable --now brandbasket-site-hosting.timer"
   say "  brandbasket-site-health.timer: installed, NOT enabled. Migrate first (site_checks), run 'systemctl start brandbasket-site-health.service' once and read its journal, then: systemctl enable --now brandbasket-site-health.timer"
   say "  brandbasket-google-provision.timer: installed, NOT enabled. It creates Google properties and changes client sites' environment on Vercel. Needs the Setting up sites sign-in and VERCEL_API_TOKEN (docs/deployment/brandbasket-vps.md, 'Google'); read 'pnpm google:provision -- --dry-run', start the service once and read its journal, then: systemctl enable --now brandbasket-google-provision.timer"
-  say "  brandbasket-first-payment-check.timer: installed, NOT enabled. It records first-month payments whose Razorpay webhook never arrived. Set PAYMENT_RECONCILE_TOKEN in customer.env.production, deploy, run 'systemctl start brandbasket-first-payment-check.service' once and read its journal, then: systemctl enable --now brandbasket-first-payment-check.timer"
   say "  brandbasket-google-sync.timer: installed, NOT enabled. Needs the Google account connected in the console and GOOGLE_OAUTH_CLIENT_ID and GOOGLE_OAUTH_CLIENT_SECRET (docs/deployment/brandbasket-vps.md, 'Google'); run 'systemctl start brandbasket-google-sync.service' once and read its journal, then: systemctl enable --now brandbasket-google-sync.timer"
   say "  brandbasket-monthly-reports.timer: installed, NOT enabled. It only writes drafts for staff to review. Read a --dry-run first (docs/monthly-reports.md), then: systemctl enable --now brandbasket-monthly-reports.timer"
 }

@@ -34,7 +34,7 @@ describe("wrapRazorpaySdkClient", () => {
     };
     const wrapped = wrapRazorpaySdkClient(fakeRealClient as never);
     const result = await wrapped.payments.fetch("pay_1");
-    expect(result).toEqual({ id: "pay_1", amount: 7_500, currency: "USD", created_at: 1_700_000_000 });
+    expect(result).toEqual({ id: "pay_1", amount: 7_500, currency: "USD", created_at: 1_700_000_000, method: null });
   });
 
   it.each(["abc", "", "   ", "0x10", "7.5", "-1", "1e3"])(
@@ -105,4 +105,47 @@ describe("wrapRazorpaySdkClient", () => {
     });
     expect(create).toHaveBeenCalledWith(expect.objectContaining({ start_at: 4_102_444_800 }));
   });
+
+  it("reads the payment method from the real SDK's payment entity", async () => {
+    const fetch = vi.fn().mockResolvedValue({
+      id: "pay_card",
+      amount: 299_900,
+      currency: "INR",
+      created_at: 1_700_000_000,
+      status: "captured",
+      method: "card",
+      card: { network: "Visa", last4: "4366", type: "credit", issuer: "HDFC" },
+    });
+    const fakeRealClient = {
+      subscriptions: { create: vi.fn(), cancel: vi.fn() },
+      payments: { fetch },
+    };
+    const wrapped = wrapRazorpaySdkClient(fakeRealClient as never);
+    const result = await wrapped.payments.fetch("pay_card");
+    expect(result.method).toEqual({
+      method: "card",
+      cardNetwork: "Visa",
+      cardLast4: "4366",
+      cardType: "credit",
+      cardIssuer: "HDFC",
+      upiVpa: null,
+    });
+  });
+
+  it("adapts payments.refund to call real SDK client", async () => {
+    const refund = vi.fn().mockResolvedValue({ id: "rfnd_abc", amount: "5000", status: "processed" });
+    const wrapped = wrapRazorpaySdkClient({ payments: { refund } } as never);
+    const result = await wrapped.payments.refund("pay_xyz", {
+      amount: 5000,
+      notes: { reason: "Customer request" },
+      receipt: "rcpt_1",
+    });
+    expect(refund).toHaveBeenCalledWith("pay_xyz", {
+      amount: 5000,
+      notes: { reason: "Customer request" },
+      receipt: "rcpt_1",
+    });
+    expect(result).toEqual({ id: "rfnd_abc", amount: 5000, status: "processed" });
+  });
 });
+

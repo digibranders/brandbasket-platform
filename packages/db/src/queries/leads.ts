@@ -1,4 +1,4 @@
-import { and, desc, eq, inArray, ne, notInArray, or, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, isNull, lte, ne, notInArray, or, sql } from "drizzle-orm";
 import { uuidv7 } from "uuidv7";
 import type { Database } from "../client";
 import type { ScopedTransaction } from "../scope";
@@ -68,6 +68,8 @@ export interface Lead {
   readonly page: string | null;
   /** The staff member who owns this enquiry, or null. */
   readonly assignedStaffId: string | null;
+  /** When the abandoned sign-up reminder email was sent, or null if not yet sent (D21). */
+  readonly signupReminderSentAt?: Date | null;
   readonly createdAt: Date;
 }
 
@@ -90,6 +92,7 @@ const LEAD_COLUMNS = {
   city: leads.city,
   page: leads.page,
   assignedStaffId: leads.assignedStaffId,
+  signupReminderSentAt: leads.signupReminderSentAt,
   createdAt: leads.createdAt,
 } as const;
 
@@ -279,7 +282,7 @@ export type LeadCurrencyChange = "changed" | "unchanged" | "locked" | "not-found
 
 /**
  * Whether billing has started for a business: any subscription (a checkout opened, paid or not) or any payment. From
- * then on its currency is fixed — every amount recorded so far is in it.
+ * then on its currency is fixed: every amount recorded so far is in it.
  */
 export async function isBillingStarted(db: Runner, businessId: string): Promise<boolean> {
   const [subscription, payment] = await Promise.all([
@@ -290,7 +293,7 @@ export async function isBillingStarted(db: Runner, businessId: string): Promise<
 }
 
 /**
- * Changes the currency a lead is billed in, and — once the customer has signed up — the currency of the business
+ * Changes the currency a lead is billed in, and (once the customer has signed up) the currency of the business
  * their checkout actually reads.
  *
  * This used to update the lead alone. A business takes its currency from the lead at the moment the customer signs
@@ -300,7 +303,7 @@ export async function isBillingStarted(db: Runner, businessId: string): Promise<
  * A referral code applied but not yet paid on is removed: a code is a flat discount in one currency, and the customer
  * can apply one valid in the new currency.
  *
- * Takes the same row lock on the business that every billing change takes (lockBusinessForBilling in ./billing —
+ * Takes the same row lock on the business that every billing change takes (lockBusinessForBilling in ./billing -
  * not imported, because that module imports this one), so a checkout starting at the same moment runs strictly
  * before or after this, never interleaved.
  */
@@ -402,6 +405,42 @@ export async function findLatestWebsiteLeadAt(db: Runner): Promise<Date | null> 
     .orderBy(desc(leads.createdAt))
     .limit(1);
   return rows[0]?.at ?? null;
+}
+
+/**
+ * Abandoned sign-up leads: account created on dashboard, awaiting first payment, not yet sent a reminder,
+ * and created at or before cutoff (typically 24 hours ago, D21).
+ */
+export async function listAbandonedSignupLeads(
+  db: Runner,
+  options: { readonly cutoff: Date; readonly limit?: number },
+): Promise<Lead[]> {
+  const query = db
+    .select(LEAD_COLUMNS)
+    .from(leads)
+    .where(
+      and(
+        eq(leads.status, "account_created"),
+        isNull(leads.signupReminderSentAt),
+        lte(leads.createdAt, options.cutoff),
+      ),
+    )
+    .orderBy(desc(leads.createdAt));
+
+  if (options.limit !== undefined) {
+    return query.limit(options.limit);
+  }
+  return query;
+}
+
+/**
+ * Record that the abandoned sign-up reminder email was sent (D21).
+ */
+export async function recordSignupReminderSent(db: Runner, leadId: string, sentAt: Date): Promise<void> {
+  await db
+    .update(leads)
+    .set({ signupReminderSentAt: sentAt })
+    .where(eq(leads.id, leadId));
 }
 
 

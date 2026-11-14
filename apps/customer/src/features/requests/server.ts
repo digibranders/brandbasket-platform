@@ -1,9 +1,14 @@
 import "server-only";
-import { acceptChangeQuote, ChangeRequestError, consumeRateLimit, getSupportTicket, type Database } from "@brandbasket/db";
-import { createAppEmailTransport, emailTeamInboxDefault, supportReplyAlertEmail, supportTicketAlertEmail, type EmailTransport } from "@brandbasket/email";
+import { acceptChangeQuote, ChangeRequestError, consumeRateLimit, getSupportTicket, isPhoneAccountEmail, type Database } from "@brandbasket/db";
+import { createAppEmailTransport, emailTeamInboxDefault, requestAcknowledgementEmail, supportReplyAlertEmail, supportTicketAlertEmail, type EmailTransport } from "@brandbasket/email";
+import { emailPreferenceAllows } from "@brandbasket/shared/server/email-preference";
+import { errorLogInfo } from "@brandbasket/shared/server/error-log-info";
 import { SUPPORT_CATEGORY_LABELS, SUPPORT_STATUS_LABELS, type SupportCategory } from "@brandbasket/shared/lib/support";
+import { customerEmailTransport } from "@/features/server-common/email";
 import { getStaffDb } from "@/lib/db";
+import { serverEnv } from "@/lib/env";
 import type { CustomerContext } from "@/lib/guards";
+import { requestPath } from "./rules";
 
 /*
  * The writes Requests makes on the staff connection, and the staff alerts. Ported from apps/platform lib/server/
@@ -125,4 +130,43 @@ export async function sendReplyAlert(
       adminUrl: adminUrl(ticketId),
     }),
   );
+}
+
+/**
+ * Acknowledges a customer's new request by email. Sent once when the ticket is created.
+ * Best effort: the caller catches and logs, and never fails the customer's action.
+ */
+export async function sendRequestAcknowledgement(
+  db: Database,
+  ticket: { readonly id: string },
+  request: { readonly subject: string },
+  customer: { readonly user: Requester; readonly businessId: string; readonly businessName: string },
+): Promise<void> {
+  const { user, businessId, businessName } = customer;
+  if (isPhoneAccountEmail(user.email)) return;
+
+  const allowed = await emailPreferenceAllows(
+    db,
+    user.id,
+    businessId,
+    "request_reply",
+    (error) => console.error("[requests] could not read email preference, sending anyway", errorLogInfo(error)),
+  );
+  if (!allowed) return;
+
+  try {
+    const origin = serverEnv().APP_ORIGIN;
+    const requestUrl = new URL(requestPath(ticket.id), origin).toString();
+    await customerEmailTransport(db).send(
+      requestAcknowledgementEmail({
+        to: user.email,
+        name: user.name,
+        title: request.subject,
+        requestUrl,
+        businessName,
+      }),
+    );
+  } catch (error) {
+    console.error("[requests] could not email customer acknowledgement", errorLogInfo(error));
+  }
 }

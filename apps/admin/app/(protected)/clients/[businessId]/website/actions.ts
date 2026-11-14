@@ -73,6 +73,7 @@ export async function assignBuilderAction(formData: FormData): Promise<void> {
 export async function grantRoundAction(formData: FormData): Promise<void> {
   const staff = await requireStaffAccess();
   const { businessId, projectId } = readIds(formData);
+  if (formData.get("confirm") !== "yes") finish(businessId, "confirm-missing");
   const moved = await attempt(businessId, () => grantRevisionRound(getStaffDb(), projectId));
   await recordStaffAction(staff, { businessId: moved.businessId, kind: "project.round_added", summary: "One more round of changes added", visibleToClient: true });
   finish(moved.businessId, "round-added");

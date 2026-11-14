@@ -9,10 +9,11 @@ import { EntryScreen } from "@/features/entry/components/entry-screen";
 import { NoBusiness } from "@/features/entry/components/no-business";
 import { SignUpForm } from "@/features/entry/components/sign-up-form";
 import { inviteReturn, readEntryRequest, type SearchParams } from "@/features/entry/rules/account-entry";
-import { BRAND } from "@/features/entry/rules/brand";
+import { signUpPanelCopy } from "@/features/entry/rules/signup-panel";
 import { openStart, START_PARAM } from "@/features/entry/rules/start-token";
 import { emailCodeBypassed, leadsApiToken } from "@/features/entry/server/env";
 import { signedInEntry } from "@/features/entry/server/entry-access";
+import { getPendingSignupCookie } from "@/features/entry/server/pending-signup-cookie";
 import { loadSignUpBasket } from "@/features/entry/server/signup-prices";
 
 export const metadata: Metadata = { title: "Create your account" };
@@ -32,6 +33,10 @@ export default async function SignUpPage({ searchParams }: { readonly searchPara
   if (signedIn?.kind === "elsewhere") redirect(signedIn.href);
   if (signedIn?.kind === "no-business") return <NoBusiness label={signedIn.label} />;
 
+  const isInvite = inviteReturn(params.next) !== null;
+  const panelCopy = signUpPanelCopy(entry.services, isInvite);
+  const pendingStep = await getPendingSignupCookie();
+
   const basket = await loadSignUpBasket(entry.services);
   // No secret, a repeated parameter or a bad token all mean no prefill.
   const startToken = params[START_PARAM];
@@ -39,7 +44,7 @@ export default async function SignUpPage({ searchParams }: { readonly searchPara
   const prefill = typeof startToken === "string" && secret !== null ? openStart(startToken, secret) : null;
 
   return (
-    <EntryScreen title="Create your account." lede={`One account for your business on ${BRAND.name}.`}>
+    <EntryScreen title={panelCopy.heading.title} lede={panelCopy.heading.lede}>
       <SignUpForm
         siteKey={turnstileSiteKey()}
         services={entry.services}
@@ -52,6 +57,7 @@ export default async function SignUpPage({ searchParams }: { readonly searchPara
         prefill={prefill}
         next={inviteReturn(params.next)}
         startToken={prefill?.attr === undefined || typeof startToken !== "string" ? null : startToken}
+        initialStep={pendingStep}
       />
     </EntryScreen>
   );

@@ -98,4 +98,12 @@ describe("Payments page", () => {
     await expect(PaymentsPage({ searchParams: search({ month: "2026-13" }) })).rejects.toMatchObject({ digest: expect.stringContaining("404") });
     expect(listPaymentsForStaff).not.toHaveBeenCalled();
   });
+
+  it("shows the payment lapse policy summary", async () => {
+    const html = renderToStaticMarkup(await PaymentsPage({ searchParams: search({ month: "2026-11" }) }));
+    expect(html).toContain("Payment lapse policy");
+    expect(html).toContain("7 days grace period");
+    expect(html).toContain("14 days");
+    expect(html).toContain("30 days");
+  });
 });

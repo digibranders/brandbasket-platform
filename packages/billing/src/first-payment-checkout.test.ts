@@ -86,8 +86,15 @@ describe("Razorpay: reading a subscription's first-month payment back", () => {
   }
 
   it("finds the paid invoice of add-on lines and the captured payment that paid it", async () => {
-    const { provider, all, fetch } = providerWith([invoice({ status: "issued", payment_id: null }), invoice()]);
-    expect(await provider.findUpfrontPayment("sub_offer")).toEqual({ providerPaymentId: "pay_up", amountCents: 100, currency: "INR", paidAt: new Date(1_790_000_000 * 1000) });
+    const cardMethod = { method: "card", cardNetwork: "Visa", cardLast4: "4366", cardType: "credit", cardIssuer: "HDFC", upiVpa: null };
+    const { provider, all, fetch } = providerWith([invoice({ status: "issued", payment_id: null }), invoice()], payment({ method: cardMethod }));
+    expect(await provider.findUpfrontPayment("sub_offer")).toEqual({
+      providerPaymentId: "pay_up",
+      amountCents: 100,
+      currency: "INR",
+      paidAt: new Date(1_790_000_000 * 1000),
+      method: cardMethod,
+    });
     expect(all).toHaveBeenCalledWith({ subscription_id: "sub_offer" });
     expect(fetch).toHaveBeenCalledWith("pay_up");
   });
@@ -104,5 +111,45 @@ describe("Razorpay: reading a subscription's first-month payment back", () => {
     expect(await providerWith([invoice()], payment({ status: "authorized" })).provider.findUpfrontPayment("sub_offer")).toBeNull();
     expect(await providerWith([invoice()], payment({ currency: "EUR" })).provider.findUpfrontPayment("sub_offer")).toBeNull();
     expect(await providerWith([invoice()], payment({ amount: Number.NaN })).provider.findUpfrontPayment("sub_offer")).toBeNull();
+  });
+
+  it("finds an ordinary subscription charge with its payment method and billing period", async () => {
+    const cardMethod = { method: "card", cardNetwork: "Visa", cardLast4: "4366", cardType: "credit", cardIssuer: "HDFC", upiVpa: null };
+    const subscriptionFetch = vi.fn().mockResolvedValue({
+      id: "sub_plain",
+      status: "active",
+      paid_count: 1,
+      current_start: 1_700_000_000,
+      current_end: 1_702_592_000,
+    });
+    const fetch = vi.fn().mockResolvedValue({
+      id: "pay_charge",
+      amount: 299_900,
+      currency: "INR",
+      created_at: 1_700_000_000,
+      status: "captured",
+      method: cardMethod,
+    });
+    const all = vi.fn().mockResolvedValue({
+      items: [
+        { status: "paid", payment_id: "pay_charge", line_items: [{ type: "plan" }] },
+      ],
+    });
+    const provider = createRazorpayProvider({
+      keySecret: "a-test-key-secret-at-least-this-long",
+      client: { subscriptions: { fetch: subscriptionFetch }, invoices: { all }, payments: { fetch } } as never,
+      resolveBusinessId: async () => null,
+      resolveChargeOrder: async () => null,
+    });
+
+    expect(await provider.findSubscriptionCharge("sub_plain")).toEqual({
+      providerPaymentId: "pay_charge",
+      amountCents: 299_900,
+      currency: "INR",
+      paidAt: new Date(1_700_000_000 * 1000),
+      currentStart: new Date(1_700_000_000 * 1000),
+      currentEnd: new Date(1_702_592_000 * 1000),
+      method: cardMethod,
+    });
   });
 });

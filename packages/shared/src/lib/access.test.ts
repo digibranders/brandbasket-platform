@@ -19,9 +19,37 @@ describe("decideCustomerAccess", () => {
     expect(decideCustomerAccess(user, [])).toEqual({ kind: "no-business", user });
   });
 
-  it("grants access to the first (oldest) membership", () => {
+  it("grants access to the first (oldest) membership by default", () => {
     const later: BusinessMembership = { ...riverside, businessId: "later", businessName: "Later Co", role: "editor" };
     expect(decideCustomerAccess(user, [riverside, later])).toEqual({
+      kind: "granted",
+      user,
+      tenant: {
+        userId: user.id,
+        businessId: riverside.businessId,
+        businessName: "Riverside Plumbing",
+        role: "owner",
+      },
+    });
+  });
+
+  it("grants access to the chosen active business when specified and member belongs to it", () => {
+    const later: BusinessMembership = { ...riverside, businessId: "later", businessName: "Later Co", role: "editor" };
+    expect(decideCustomerAccess(user, [riverside, later], "later")).toEqual({
+      kind: "granted",
+      user,
+      tenant: {
+        userId: user.id,
+        businessId: "later",
+        businessName: "Later Co",
+        role: "editor",
+      },
+    });
+  });
+
+  it("falls back to the first membership when the active business is not among memberships", () => {
+    const later: BusinessMembership = { ...riverside, businessId: "later", businessName: "Later Co", role: "editor" };
+    expect(decideCustomerAccess(user, [riverside, later], "unknown-business")).toEqual({
       kind: "granted",
       user,
       tenant: {

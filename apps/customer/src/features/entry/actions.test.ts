@@ -6,7 +6,8 @@ import { redirect } from "next/navigation";
 import { createElement } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { SignUpForm } from "./components/sign-up-form";
-import { completeSetupAction, requestPasswordResetAction, resetPasswordAction, signInAction, signUpAction, type SignUpResult } from "./actions";
+import { clearPendingSignupAction, completeSetupAction, requestPasswordResetAction, resetPasswordAction, signInAction, signUpAction, type SignUpResult } from "./actions";
+import { clearPendingSignupCookie, setPendingSignupCookie } from "./server/pending-signup-cookie";
 import { requestPasswordReset, resetPassword } from "./server/account-recovery";
 import { landingForSignedInUser } from "./server/entry-access";
 import { createListingAccount, requestJoinCode } from "./server/listing-account";
@@ -26,6 +27,10 @@ vi.mock("@/features/start/rules", () => ({ startHref: (services: readonly string
 vi.mock("./server/account-recovery", () => ({ requestPasswordReset: vi.fn(), resetPassword: vi.fn() }));
 vi.mock("./server/entry-access", () => ({ landingForSignedInUser: vi.fn() }));
 vi.mock("./server/env", () => ({ leadsApiToken: () => null }));
+vi.mock("./server/pending-signup-cookie", () => ({
+  setPendingSignupCookie: vi.fn(),
+  clearPendingSignupCookie: vi.fn(),
+}));
 vi.mock("./server/listing-account", () => ({ requestJoinCode: vi.fn(), createListingAccount: vi.fn() }));
 vi.mock("./server/setup", async () => {
   const actual = await vi.importActual<typeof import("./server/setup")>("./server/setup");
@@ -63,7 +68,7 @@ const SIGN_UP = {
   services: "managed-website,paid-ads,nonsense",
 };
 const INVITE = `/invite/${"A".repeat(43)}`;
-const OTHER_NEXT = ["//evil.com", "https://evil.com", `https://evil.com${INVITE}`, "/invite/../x", `${INVITE}/extra`, `${INVITE}?x=1`, "/billing", "/", "", "javascript:alert(1)"];
+const OTHER_NEXT = ["//evil.com", "https://evil.com", `https://evil.com${INVITE}`, "/invite/../x", `${INVITE}/extra`, `${INVITE}?x=1`, "", "javascript:alert(1)"];
 const OTP = { otpId: "0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b", emailHint: "m•••@example.test", confirmRequired: true };
 const ON_CODE: SignUpResult = { ok: true, data: { otp: OTP } };
 
@@ -98,6 +103,13 @@ describe("signInAction", () => {
     await expect(signInAction(null, form({ next: INVITE }))).rejects.toThrow(`redirect:${INVITE}`);
   });
 
+  it("returns to a safe app link the person came from", async () => {
+    vi.mocked(signInWithPassword).mockResolvedValue({ status: "signed-in", userId: "user-1" });
+    vi.mocked(landingForSignedInUser).mockResolvedValue("/");
+    await expect(signInAction(null, form({ next: "/billing" }))).rejects.toThrow("redirect:/billing");
+    await expect(signInAction(null, form({ next: "/requests/0192f3c4-0000-7000-8000-000000000001" }))).rejects.toThrow("redirect:/requests/0192f3c4-0000-7000-8000-000000000001");
+  });
+
   it.each(OTHER_NEXT)("ignores the return address %j and lands as usual", async (next) => {
     vi.mocked(signInWithPassword).mockResolvedValue({ status: "signed-in", userId: "user-1" });
     vi.mocked(landingForSignedInUser).mockResolvedValue("/affiliate");
@@ -127,6 +139,7 @@ describe("signUpAction", () => {
   it("emails a code first, and moves to the code step", async () => {
     vi.mocked(requestJoinCode).mockResolvedValue({ kind: "code", otp: OTP });
     expect(await signUpAction(null, form(SIGN_UP))).toEqual(ON_CODE);
+    expect(setPendingSignupCookie).toHaveBeenCalledWith(expect.objectContaining({ otp: OTP }));
   });
 
   it("says how long to wait when a send is limited", async () => {
@@ -154,12 +167,24 @@ describe("signUpAction", () => {
   it("opens the account and goes to the questions on the services the link chose, catalogue ids only", async () => {
     vi.mocked(createListingAccount).mockResolvedValue({ kind: "created" });
     await expect(signUpAction(ON_CODE, form({ ...SIGN_UP, otpId: OTP.otpId, code: "123456" }))).rejects.toThrow("redirect:/start?services=managed-website,paid-ads");
-    expect(createListingAccount).toHaveBeenCalledWith(expect.objectContaining({ email: "meera@example.test", code: { otpId: OTP.otpId, code: "123456" } }), null);
+    expect(createListingAccount).toHaveBeenCalledWith(expect.objectContaining({ email: "meera@example.test", code: { otpId: OTP.otpId, code: "123456" } }), null, { inviteToken: null });
+    expect(clearPendingSignupCookie).toHaveBeenCalled();
+  });
+
+  it("clears the pending sign-up cookie on clearPendingSignupAction", async () => {
+    await clearPendingSignupAction();
+    expect(clearPendingSignupCookie).toHaveBeenCalled();
   });
 
   it("returns to the invitation the person came from instead of the questions", async () => {
     vi.mocked(createListingAccount).mockResolvedValue({ kind: "created" });
     await expect(signUpAction(ON_CODE, form({ ...SIGN_UP, otpId: OTP.otpId, code: "123456", next: INVITE }))).rejects.toThrow(`redirect:${INVITE}`);
+    expect(createListingAccount).toHaveBeenCalledWith(expect.anything(), null, { inviteToken: "A".repeat(43) });
+  });
+
+  it("returns to a safe app link the person came from instead of the questions", async () => {
+    vi.mocked(createListingAccount).mockResolvedValue({ kind: "created" });
+    await expect(signUpAction(ON_CODE, form({ ...SIGN_UP, otpId: OTP.otpId, code: "123456", next: "/billing" }))).rejects.toThrow("redirect:/billing");
   });
 
   it.each(OTHER_NEXT)("ignores the return address %j and goes to the questions", async (next) => {
@@ -212,6 +237,49 @@ describe("the sign-up form through signUpAction", () => {
     });
     await waitFor(() => expect(requestJoinCode).toHaveBeenCalledTimes(1));
     expect(requestJoinCode).toHaveBeenCalledWith(expect.objectContaining({ email: SIGN_UP.email, code: null }));
+  });
+
+  it("renders the code step immediately when initialStep is passed, preserving entered fields across a refresh", () => {
+    const { container } = render(
+      createElement(SignUpForm, {
+        siteKey: null,
+        services: ["managed-website"],
+        basket: { name: "Website Management", prices: { INR: "₹2,999/month", USD: "$65/month" } },
+        confirmsCodes: true,
+        countries: [{ value: "IN", label: "India" }],
+        phoneCountries: [{ code: "IN", label: "India +91", dialCode: "+91" }],
+        defaultPhoneCountry: "IN",
+        prefill: null,
+        startToken: null,
+        initialStep: {
+          otp: OTP,
+          input: {
+            businessName: "Restored Business",
+            name: "Restored Owner",
+            email: "restored@example.com",
+            country: "IN",
+            stateCode: "MH",
+            phoneCountry: "IN",
+            phone: "9820011223",
+            password: "saved-password-123!",
+            agreed: true,
+          },
+        },
+      }),
+    );
+
+    expect(screen.getByLabelText("Code")).toBeDefined();
+    expect(screen.getByText(/We emailed a 6-digit code to/)).toBeDefined();
+
+    const formEl = container.querySelector("form");
+    expect(formEl).not.toBeNull();
+    const data = new FormData(formEl as HTMLFormElement);
+    expect(data.get("businessName")).toBe("Restored Business");
+    expect(data.get("name")).toBe("Restored Owner");
+    expect(data.get("email")).toBe("restored@example.com");
+    expect(data.get("otpId")).toBe(OTP.otpId);
+    expect(data.get("password")).toBe("saved-password-123!");
+    expect(data.get("agree")).toBe("yes");
   });
 });
 

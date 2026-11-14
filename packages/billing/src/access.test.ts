@@ -28,7 +28,7 @@ describe("hasBillingAccess", () => {
     });
   });
 
-  describe.each(["active", "past_due", "cancelled"] as const)("%s: open only inside the paid period", (status) => {
+  describe.each(["active", "cancelled"] as const)("%s: open only inside the paid period", (status) => {
     it("grants access while the paid-through date is ahead", () => {
       expect(hasBillingAccess(subscription(status, FUTURE), NOW)).toBe(true);
     });
@@ -47,6 +47,30 @@ describe("hasBillingAccess", () => {
 
     it("refuses when nothing has been paid through", () => {
       expect(hasBillingAccess(subscription(status, null), NOW)).toBe(false);
+    });
+  });
+
+  describe("past_due: 7 days grace period after paid-through date", () => {
+    const DAY_MS = 24 * 60 * 60 * 1000;
+    const FIVE_DAYS_AGO = new Date(NOW.getTime() - 5 * DAY_MS);
+    const SEVEN_DAYS_AGO = new Date(NOW.getTime() - 7 * DAY_MS);
+    const EIGHT_DAYS_AGO = new Date(NOW.getTime() - 8 * DAY_MS);
+
+    it("grants access while the paid-through date is ahead", () => {
+      expect(hasBillingAccess(subscription("past_due", FUTURE), NOW)).toBe(true);
+    });
+
+    it("grants access inside the 7 days grace period after paid-through date", () => {
+      expect(hasBillingAccess(subscription("past_due", FIVE_DAYS_AGO), NOW)).toBe(true);
+    });
+
+    it("refuses once the 7 days grace period has ended", () => {
+      expect(hasBillingAccess(subscription("past_due", SEVEN_DAYS_AGO), NOW)).toBe(false);
+      expect(hasBillingAccess(subscription("past_due", EIGHT_DAYS_AGO), NOW)).toBe(false);
+    });
+
+    it("refuses when nothing has been paid through", () => {
+      expect(hasBillingAccess(subscription("past_due", null), NOW)).toBe(false);
     });
   });
 });

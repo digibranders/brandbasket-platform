@@ -42,6 +42,6 @@ describe("websiteProgress", () => {
       kickoffFirst: true,
       now: NOW,
     });
-    expect(progress.view).toMatchObject({ kind: "kickoff", line: "Your call is on Thu 5 Nov. We start building straight after it." });
+    expect(progress.view).toMatchObject({ kind: "kickoff", line: "Your kickoff call is booked for Thu 5 Nov. We will start your website right after your call." });
   });
 });

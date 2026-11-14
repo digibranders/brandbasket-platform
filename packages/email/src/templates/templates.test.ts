@@ -19,6 +19,7 @@ import { affiliateLinkEmail } from "./affiliate-link";
 import { businessInviteEmail } from "./business-invite";
 import { staffInviteEmail } from "./staff-invite";
 import { signupCodeEmail } from "./signup-code";
+import { signupReminderEmail } from "./signup-reminder";
 import { supportReplyAlertEmail } from "./support-reply-alert";
 import { supportTicketAlertEmail } from "./support-ticket-alert";
 import { systemErrorAlertEmail } from "./system-error-alert";
@@ -188,22 +189,30 @@ describe("previewReadyEmail", () => {
     to: "owner@example.com",
     businessName: "Riverside Plumbing",
     previewUrl: "https://riverside-plumbing-preview.vercel.app",
+    reviewUrl: "https://app.brandbasket.in/website",
   });
 
-  it("names the business in the subject", () => {
+  it("names the business in the subject and body", () => {
     expect(email.subject).toBe("Your Brandbasket preview is ready");
     expect(email.bodyText).toContain("Riverside Plumbing");
   });
 
-  it("includes the link in both bodies", () => {
-    expect(email.bodyText).toContain("https://riverside-plumbing-preview.vercel.app");
-    expect(email.bodyHtml).toContain('href="https://riverside-plumbing-preview.vercel.app"');
+  it("links to /website and explains the action and email replies", () => {
+    expect(email.bodyText).toContain("https://app.brandbasket.in/website");
+    expect(email.bodyHtml).toContain('href="https://app.brandbasket.in/website"');
+    expect(email.bodyText).toContain("approve");
+    expect(email.bodyText).toContain("changes");
+    expect(email.bodyText).toContain("change request");
   });
 
-  it("refuses a preview link that is not http or https", () => {
+  it("refuses a review link that is not http or https", () => {
     expect(() =>
-      previewReadyEmail({ to: "owner@example.com", businessName: "Riverside Plumbing", previewUrl: "javascript:alert(1)" }),
-    ).toThrow("previewUrl must use http or https");
+      previewReadyEmail({
+        to: "owner@example.com",
+        businessName: "Riverside Plumbing",
+        reviewUrl: "javascript:alert(1)",
+      }),
+    ).toThrow("reviewUrl must use http or https");
   });
 
   it("escapes the business name", () => {
@@ -211,6 +220,7 @@ describe("previewReadyEmail", () => {
       to: "owner@example.com",
       businessName: "<script>alert(1)</script> & Co",
       previewUrl: "https://example.com",
+      reviewUrl: "https://app.brandbasket.in/website",
     });
     expect(risky.bodyHtml).not.toContain("<script>");
     expect(risky.bodyHtml).toContain("&lt;script&gt;");
@@ -879,5 +889,39 @@ describe("domainMovedEmail", () => {
   it("escapes a business name that carries markup", () => {
     const risky = domainMovedEmail({ to: "a@example.com", businessName: "<b>x</b>", websiteUrl: "https://x.com", oldHostname: "x.test" });
     expect(risky.bodyHtml).not.toContain("<b>x");
+  });
+});
+
+describe("signupReminderEmail (D21)", () => {
+  const email = signupReminderEmail({
+    to: "owner@example.com",
+    businessName: "Riverside Plumbing",
+    continueUrl: "https://brandbasket.in/checkout",
+  });
+
+  it("names the business in the subject", () => {
+    expect(email.subject).toContain("Finish setting up Riverside Plumbing");
+  });
+
+  it("contains the continue URL in text and html", () => {
+    expect(email.bodyText).toContain("https://brandbasket.in/checkout");
+    expect(email.bodyHtml).toContain('href="https://brandbasket.in/checkout"');
+    expect(email.bodyHtml).toContain("Complete your setup");
+  });
+
+  it("has no em or en dashes in any customer facing text", () => {
+    expect(email.subject).not.toMatch(/[—–]/);
+    expect(email.bodyText).not.toMatch(/[—–]/);
+    expect(email.bodyHtml).not.toMatch(/[—–]/);
+  });
+
+  it("refuses invalid or non-web URLs", () => {
+    expect(() =>
+      signupReminderEmail({
+        to: "owner@example.com",
+        businessName: "Riverside Plumbing",
+        continueUrl: "javascript:alert(1)",
+      }),
+    ).toThrow();
   });
 });

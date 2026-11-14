@@ -91,9 +91,15 @@ describe("signUpHrefForJoin", () => {
 describe("inviteReturn", () => {
   const invite = `/invite/${"A".repeat(43)}`;
 
-  it("accepts an invite accept page and nothing else", () => {
+  it("accepts an invite accept page and safe app paths", () => {
     expect(inviteReturn(invite)).toBe(invite);
-    for (const next of ["//evil.com", "https://evil.com", "/invite/../x", "/invite/short", "/billing", "", undefined, null, ["/invite/x"]]) {
+    expect(inviteReturn("/billing")).toBe("/billing");
+    expect(inviteReturn("/requests/0192f3c4-0000-7000-8000-000000000001")).toBe("/requests/0192f3c4-0000-7000-8000-000000000001");
+    expect(inviteReturn("/settings")).toBe("/settings");
+  });
+
+  it("rejects open redirects, external URLs, and invalid paths", () => {
+    for (const next of ["//evil.com", "https://evil.com", "/invite/../x", "/invite/short", "", undefined, null, ["/invite/x"]]) {
       expect(inviteReturn(next), String(next)).toBeNull();
     }
   });

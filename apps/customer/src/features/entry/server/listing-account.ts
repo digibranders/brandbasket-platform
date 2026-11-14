@@ -1,6 +1,7 @@
 import "server-only";
 import { AccountAlreadyExistsError, createVerifiedEmailAccountWithGrant } from "@brandbasket/auth";
 import {
+  checkBusinessInvite,
   consumeRateLimit,
   createUnlistedAccountBusiness,
   findUserByEmail,
@@ -108,6 +109,10 @@ export type ListingAccountOutcome =
   | { readonly kind: "wrong-code"; readonly message: string }
   | { readonly kind: "refused"; readonly message: string };
 
+export interface ListingAccountOptions {
+  readonly inviteToken?: string | null;
+}
+
 /**
  * The second step: opens the account for `input` once the code emailed to its address is confirmed, and signs its owner
  * in. Everything the first step checked is checked again, since the form sends it again. The account is created before
@@ -115,8 +120,15 @@ export type ListingAccountOutcome =
  * Ads page. The business is named after its owner until they add it on the Listing page, unless they gave its name (a
  * Premium sign-up). What the owner chose on the entry page is kept on the business: an owner who chose Premium is held
  * on the payment page until they pay (customer-access.ts).
+ *
+ * When the sign-up carries a valid invite for the same address, no personal business is created: the new user will join
+ * the inviter's workspace directly when accepting the invitation.
  */
-export async function createListingAccount(input: JoinInput, attribution: NewSignupAttribution | null = null): Promise<ListingAccountOutcome> {
+export async function createListingAccount(
+  input: JoinInput,
+  attribution: NewSignupAttribution | null = null,
+  options?: ListingAccountOptions,
+): Promise<ListingAccountOutcome> {
   const requestHeaders = await headers();
   const clientIp = clientIpFrom(requestHeaders);
   if (input.code === null) return { kind: "refused", message: "Enter a 6-digit code." };
@@ -170,25 +182,30 @@ export async function createListingAccount(input: JoinInput, attribution: NewSig
   // does not lose it.
   await recordAccountTermsConsent(getStaffDb(), userId);
 
-  const businessName = input.businessName ?? input.name;
-  try {
-    const { businessId } = await createUnlistedAccountBusiness(getStaffDb(), {
-      userId,
-      businessName,
-      signupChoice: input.choice,
-      countryCode: input.country,
-      stateCode: input.stateCode,
-      // A plan is billed in rupees in India and dollars everywhere else; a free listing is in the directory, in India.
-      currency: input.choice === "listing_only" ? "INR" : currencyForCountry(input.country),
-    });
-    await recordLeadForSignup({ name: input.name, businessName, email: signInAddress, businessId, choice: input.choice, phone: phone.e164 });
-    if (attribution !== null) {
-      await recordAttributionForSignup(businessId, attribution);
-      void reportSignUpToAds(attribution);
+  const inviteCheck = options?.inviteToken ? await checkBusinessInvite(getStaffDb(), { token: options.inviteToken, userEmail: input.email }) : null;
+  const joinsInvitedBusiness = inviteCheck !== null && inviteCheck.kind === "valid";
+
+  if (!joinsInvitedBusiness) {
+    const businessName = input.businessName ?? input.name;
+    try {
+      const { businessId } = await createUnlistedAccountBusiness(getStaffDb(), {
+        userId,
+        businessName,
+        signupChoice: input.choice,
+        countryCode: input.country,
+        stateCode: input.stateCode,
+        // A plan is billed in rupees in India and dollars everywhere else; a free listing is in the directory, in India.
+        currency: input.choice === "listing_only" ? "INR" : currencyForCountry(input.country),
+      });
+      await recordLeadForSignup({ name: input.name, businessName, email: signInAddress, businessId, choice: input.choice, phone: phone.e164 });
+      if (attribution !== null) {
+        await recordAttributionForSignup(businessId, attribution);
+        void reportSignUpToAds(attribution);
+      }
+    } catch (error) {
+      // A brand-new account cannot already have a business; if it somehow does, signing in shows it.
+      if (!(error instanceof UserAlreadyHasBusinessError)) throw error;
     }
-  } catch (error) {
-    // A brand-new account cannot already have a business; if it somehow does, signing in shows it.
-    if (!(error instanceof UserAlreadyHasBusinessError)) throw error;
   }
 
   await signInCustomer({ email: signInAddress, password: input.password }, requestHeaders);

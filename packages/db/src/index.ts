@@ -29,6 +29,7 @@ export {
   findPaymentByProviderId,
   findPlanById,
   findSubscriptionById,
+  listUnpaidCheckouts,
   listUnpaidOfferCheckouts,
   openAddedServiceSuccessor,
   recordAddedServiceCharge,
@@ -36,6 +37,7 @@ export {
   findActivatedSuccessor,
   markReplacedBySuccessor,
   type AddedServiceSuccessor,
+  type UnpaidCheckout,
   type UnpaidOfferCheckout,
   planTierForSignupChoice,
   findSubscriptionByProviderId,
@@ -229,9 +231,11 @@ export {
   findUserIdByEmail,
   LeadNotFoundError,
   isSystemLeadStatus,
+  listAbandonedSignupLeads,
   listLeads,
   markLeadPaidForBusiness,
   recordSignupLead,
+  recordSignupReminderSent,
   type SignupLead,
   setLeadStatusUnlessSystemSet,
   SYSTEM_LEAD_STATUSES,
@@ -310,15 +314,30 @@ export {
   DomainNotReadyForDnsError,
   DomainSwitchNotReadyError,
   getConnectingDomain,
+  listDomainMoves,
   markDomainReadyForDns,
   recordDomainDnsCheck,
   requestDomainMove,
   switchToDomain,
   type ConnectingDomain,
   type DnsCheckRecorded,
+  type DomainMoveRow,
   type DomainReadyResult,
   type DomainSwitched,
 } from "./queries/domain-connect";
+export {
+  addDays,
+  addWorkingDays,
+  approvedDueAt,
+  dayKey,
+  REVISION_READY_WORKING_DAYS,
+  revisionDueAt,
+  revisionReadyDay,
+  weekdayIndex,
+  WORKING_TIME_ZONE,
+  workingDayOf,
+  workingDaysAfter,
+} from "./working-days";
 export {
   approveProjectPreview,
   FIRST_PREVIEW_DUE_HOURS,
@@ -738,7 +757,7 @@ export {
   type DirectoryRef,
   type ResolvedDirectoryAsk,
 } from "./queries/directory-refs";
-export { CHECK_VIOLATION, hasPostgresCode, TenantScopeMissingError } from "./queries/tenant";
+export { CHECK_VIOLATION, hasPostgresCode, isUuid, TenantScopeMissingError } from "./queries/tenant";
 export { slugify } from "./slug";
 export {
   PLACE_ID_ALPHABET,
@@ -872,13 +891,16 @@ export * from "./queries/team-calls";
 export { boughtSetupServicesFrom, listBoughtSetupServices, listServiceSetups, saveServiceSetup } from "./queries/service-setup";
 export {
   firstPreviewDueAfterKickoff,
+  isProjectStartedWithoutCallConfirmation,
   KICKOFF_PREVIEW_DUE_HOURS,
   KICKOFF_FALLBACK_START_HOURS,
   listKickoffBoard,
   listKickoffsToStart,
+  listProjectsStartedWithoutCallConfirmation,
   markProjectReadyAfterKickoff,
   type KickoffBoardRow,
   type KickoffToStart,
+  type ProjectStartedWithoutConfirmation,
 } from "./queries/kickoff-build";
 export { completeClientIntake, findClientIntake, saveClientIntakeAnswers, type ClientIntakeAnswers } from "./queries/client-intakes";
 export { addActivityEvent, listActivityEvents, removeActivityEvent } from "./queries/activity-events";
@@ -1079,6 +1101,11 @@ export {
   findTaxInvoiceForBusiness,
   findTaxInvoicesByNumber,
   insertTaxInvoice,
+  findCreditNoteById,
+  findCreditNoteByInvoiceId,
+  findCreditNoteByPaymentId,
+  insertCreditNote,
+  listCreditNotesForBusiness,
   isInvoiceablePayment,
   listMissingTaxInvoices,
   listPaymentsWithoutTaxInvoice,
@@ -1090,11 +1117,14 @@ export {
   savePaymentInvoiceBasis,
   type BillingProfileInput,
   type InvoiceFallbackRecipient,
+
   type MissingTaxInvoice,
+  type NewCreditNote,
   type NewTaxInvoice,
   type PaymentForInvoice,
   type ReferralCodeForInvoice,
 } from "./queries/tax-invoices";
+
 export {
   applyPaidPlanUpgrade,
   cancelOpenPlanUpgrade,
@@ -1124,6 +1154,9 @@ export {
   type PriceChange,
 } from "./queries/pricing";
 export {
+  assertCustomerAppRole,
+  CUSTOMER_ROLE,
+  verifyStartupDatabaseRole,
   withCustomerRole,
   withTenantScope,
   withUserScope,
@@ -1621,11 +1654,16 @@ export {
   acceptBusinessInvite,
   BUSINESS_INVITE_DAYS,
   BusinessInviteOpenError,
+  checkBusinessInvite,
   createBusinessInvite,
+  evaluateBusinessInvite,
+  findBusinessInviteByToken,
   listBusinessInvites,
   revokeBusinessInvite,
   type AcceptBusinessInviteResult,
+  type BusinessInviteDetails,
   type BusinessInviteRefusal,
   type BusinessInviteView,
+  type CheckBusinessInviteResult,
   type InvitableRole,
 } from "./queries/business-invites";

@@ -1,6 +1,14 @@
 import { eq, sql } from "drizzle-orm";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
-import { acceptBusinessInvite, BusinessInviteOpenError, createBusinessInvite, listBusinessInvites, revokeBusinessInvite } from "./queries/business-invites";
+import {
+  acceptBusinessInvite,
+  BusinessInviteOpenError,
+  checkBusinessInvite,
+  createBusinessInvite,
+  findBusinessInviteByToken,
+  listBusinessInvites,
+  revokeBusinessInvite,
+} from "./queries/business-invites";
 import { recordChatbotLead, renameChatbot } from "./queries/chatbots";
 import { listConnectedAccounts, saveConnectedAccount } from "./queries/connected-accounts";
 import { approveDeliverables, insertDeliverable, recordSiteEvent } from "./queries/deliverables";
@@ -395,6 +403,35 @@ describe("business invites", () => {
     const second = await as(OWNER_A, businessA, (tx) => createBusinessInvite(tx, { invitedBy: OWNER_A, email: "late@example.com", role: "editor", now: NOW }));
     await as(OWNER_A, businessA, (tx) => revokeBusinessInvite(tx, second.invite.id, NOW));
     expect(await acceptBusinessInvite(dbs.staff.db, { token: second.token, userId: NEWCOMER, userEmail: "late@example.com", now: NOW })).toEqual({ kind: "refused", reason: "revoked" });
+  });
+
+  it("checks an invite status by token before acceptance without mutating it", async () => {
+    const { token } = await as(OWNER_A, businessA, (tx) => createBusinessInvite(tx, { invitedBy: OWNER_A, email: "check@example.com", role: "editor", now: NOW }));
+
+    expect(await checkBusinessInvite(dbs.staff.db, { token: "non-existent" })).toEqual({ kind: "refused", reason: "not_found" });
+
+    const validCheck = await checkBusinessInvite(dbs.staff.db, { token, userEmail: "check@example.com", now: NOW });
+    expect(validCheck).toMatchObject({
+      kind: "valid",
+      invite: { businessId: businessA, businessName: "Chennai Cafe", email: "check@example.com", role: "editor" },
+    });
+
+    expect(await checkBusinessInvite(dbs.staff.db, { token, userEmail: "different@example.com", now: NOW })).toMatchObject({
+      kind: "refused",
+      reason: "wrong_email",
+    });
+
+    const eightDaysLater = new Date(NOW.getTime() + 8 * 86_400_000);
+    expect(await checkBusinessInvite(dbs.staff.db, { token, now: eightDaysLater })).toMatchObject({
+      kind: "refused",
+      reason: "expired",
+    });
+
+    await acceptBusinessInvite(dbs.staff.db, { token, userId: NEWCOMER, userEmail: "check@example.com", now: NOW });
+    expect(await checkBusinessInvite(dbs.staff.db, { token, now: NOW })).toMatchObject({
+      kind: "refused",
+      reason: "used",
+    });
   });
 });
 

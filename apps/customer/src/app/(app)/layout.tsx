@@ -1,8 +1,10 @@
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import type { ReactNode } from "react";
 import { isAwaitingFirstPayment, loadBusinessEntry } from "@/features/checkout/server/entry";
 import { AppShell } from "@/features/shell/components/app-shell";
 import { loadShell } from "@/features/shell/loader";
+import { unpaidHoldRedirect } from "@/lib/guard-rules";
 import { requireCustomer } from "@/lib/guards";
 
 /**
@@ -11,9 +13,14 @@ import { requireCustomer } from "@/lib/guards";
  */
 export default async function AppLayout({ children }: { readonly children: ReactNode }) {
   const customer = await requireCustomer();
-  // A sign-up that chose Managed Website and has not paid has no workspace yet, only its checkout (the old unpaid hold).
-  // Pages that read or write customer data still run their own guards; this only keeps the empty dashboard out of view.
-  if (isAwaitingFirstPayment(await loadBusinessEntry(customer))) redirect("/checkout");
+  // An unpaid customer can open Help, Settings and Sign out instead of being locked to /start.
+  // Other workspace pages (like the home dashboard) redirect unpaid accounts to checkout.
+  const entry = await loadBusinessEntry(customer);
+  const reqHeaders = await headers();
+  const pathname = reqHeaders.get("x-pathname") ?? "";
+  const away = unpaidHoldRedirect(pathname, isAwaitingFirstPayment(entry));
+  if (away !== null) redirect(away);
+
   const view = await loadShell(customer);
   return <AppShell view={view}>{children}</AppShell>;
 }

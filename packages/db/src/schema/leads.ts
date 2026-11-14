@@ -62,6 +62,8 @@ export const leads = pgTable(
     page: text("page"),
     /** The staff member who owns this enquiry; null while nobody does. */
     assignedStaffId: text("assigned_staff_id").references(() => staffMembers.userId),
+    /** When the abandoned sign-up reminder email was sent. Null if not yet sent (D21). */
+    signupReminderSentAt: timestamp("signup_reminder_sent_at", { withTimezone: true }),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },

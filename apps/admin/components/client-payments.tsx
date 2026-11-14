@@ -15,14 +15,17 @@ import { TableScroll } from "@/components/console/table-scroll";
 interface ClientPaymentsProps {
   readonly businessId: string;
   readonly payments: readonly StaffPaymentRow[];
-  /** Finance and admin: offers Mark refunded on paid payments. The action checks again. */
+  /** Finance and admin: offers Refund on paid payments. The action checks again. */
   readonly canRefund: boolean;
   readonly notice: RefundNotice | null;
+  /** Primary refund action that calls the payment provider, marks refunded, and issues a credit note. */
   readonly refundAction: (formData: FormData) => Promise<void>;
+  /** Secondary action that records a refund made outside BrandBasket (marks only, moves no money). */
+  readonly recordManualRefundAction?: (formData: FormData) => Promise<void>;
 }
 
 /** Every payment the client has made or tried, newest first, each with an anchor the Payments page links to. */
-export function ClientPayments({ businessId, payments, canRefund, notice, refundAction }: ClientPaymentsProps): ReactElement {
+export function ClientPayments({ businessId, payments, canRefund, notice, refundAction, recordManualRefundAction }: ClientPaymentsProps): ReactElement {
   const noticeText = notice === null ? null : REFUND_NOTICE_TEXT[notice];
   return (
     <Section id="payments" title="Payments" aside={`${payments.length} shown`}>
@@ -65,28 +68,57 @@ export function ClientPayments({ businessId, payments, canRefund, notice, refund
                       {canRefund && payment.status === "captured" ? (
                         <tr>
                           <td colSpan={6} className="border-b border-line pb-4">
-                            <details>
-                              <summary className={`${buttonSmall} cursor-pointer list-none`}>Mark refunded</summary>
-                              <form action={refundAction} className="mt-3 grid max-w-xl gap-3">
-                                <input type="hidden" name="businessId" value={businessId} />
-                                <input type="hidden" name="paymentId" value={payment.id} />
-                                <label className={labelClasses}>
-                                  Amount given back ({payment.currency})
-                                  <input name="amount" required inputMode="decimal" defaultValue={rupees(payment.amountCents)} className={fieldClasses} />
-                                </label>
-                                <label className={labelClasses}>
-                                  Why it was refunded
-                                  <textarea name="reason" required minLength={3} maxLength={300} rows={2} className={fieldClasses} />
-                                </label>
-                                <label className="flex items-start gap-2 text-sm">
-                                  <input type="checkbox" name="confirm" value="yes" required className={checkboxClasses} />
-                                  <span>I have already given this money back in Razorpay or by bank transfer. The console moves no money.</span>
-                                </label>
-                                <button type="submit" className={buttonDanger}>
-                                  Mark refunded
-                                </button>
-                              </form>
-                            </details>
+                            <div className="space-y-3">
+                              <details>
+                                <summary className={`${buttonSmall} cursor-pointer list-none`}>Refund</summary>
+                                <form action={refundAction} className="mt-3 grid max-w-xl gap-3">
+                                  <input type="hidden" name="businessId" value={businessId} />
+                                  <input type="hidden" name="paymentId" value={payment.id} />
+                                  <label className={labelClasses}>
+                                    Amount to refund ({payment.currency})
+                                    <input name="amount" required inputMode="decimal" defaultValue={rupees(payment.amountCents)} className={fieldClasses} />
+                                  </label>
+                                  <label className={labelClasses}>
+                                    Why it was refunded
+                                    <textarea name="reason" required minLength={3} maxLength={300} rows={2} className={fieldClasses} />
+                                  </label>
+                                  <label className="flex items-start gap-2 text-sm">
+                                    <input type="checkbox" name="confirm" value="yes" required className={checkboxClasses} />
+                                    <span>I confirm this will refund the customer through the payment provider and issue a credit note.</span>
+                                  </label>
+                                  <button type="submit" className={buttonDanger}>
+                                    Refund
+                                  </button>
+                                </form>
+                              </details>
+
+                              {recordManualRefundAction ? (
+                                <details className="pt-1">
+                                  <summary className="cursor-pointer text-xs text-ink-2 hover:underline">
+                                    Record a refund made outside BrandBasket
+                                  </summary>
+                                  <form action={recordManualRefundAction} className="mt-3 grid max-w-xl gap-3">
+                                    <input type="hidden" name="businessId" value={businessId} />
+                                    <input type="hidden" name="paymentId" value={payment.id} />
+                                    <label className={labelClasses}>
+                                      Amount given back ({payment.currency})
+                                      <input name="amount" required inputMode="decimal" defaultValue={rupees(payment.amountCents)} className={fieldClasses} />
+                                    </label>
+                                    <label className={labelClasses}>
+                                      Why it was refunded
+                                      <textarea name="reason" required minLength={3} maxLength={300} rows={2} className={fieldClasses} />
+                                    </label>
+                                    <label className="flex items-start gap-2 text-sm">
+                                      <input type="checkbox" name="confirm" value="yes" required className={checkboxClasses} />
+                                      <span>I have already given this money back in Razorpay or by bank transfer. The console moves no money.</span>
+                                    </label>
+                                    <button type="submit" className={buttonDanger}>
+                                      Record manual refund
+                                    </button>
+                                  </form>
+                                </details>
+                              ) : null}
+                            </div>
                           </td>
                         </tr>
                       ) : null}
