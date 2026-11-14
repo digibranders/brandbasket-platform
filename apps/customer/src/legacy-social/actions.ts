@@ -12,8 +12,8 @@ import { BRAND_TIME_ZONE } from "@/legacy-social/shims";
 import { actorOf, connectLink, createPost, deletePost, ensureWorkspace, loadChannels, loadSchedule, loadWorkspaceFacts, movePost, saveSchedule, sendPostNow, SocialAutoError, socialAutoSettings, startSiteJob, updatePost } from "@/legacy-social/server/social-auto";
 import { canAddOn, checkNewPost, checkPostEdit, wordsForPostRefusal, isChangeablePostId, isTime, isWrittenPostId, momentHasPassed, type NewPostState } from "@/legacy-social/lib/social/new-post";
 import { wordsForCode } from "@/legacy-social/lib/social/ai";
-import { CHANNEL_PLATFORMS, type ChannelPlatform } from "@/legacy-social/lib/social/auto";
-import { parseDays, withChannelDays } from "@/legacy-social/lib/social/schedule";
+import { CHANNEL_PLATFORMS, PLATFORM_NAMES, type ChannelPlatform } from "@/legacy-social/lib/social/auto";
+import { dayGroups, parseDays, withChannelDays } from "@/legacy-social/lib/social/schedule";
 
 /*
  * The old Social media page's actions, copied as they were and moved onto this app's guards: the business and its name come from the
@@ -248,9 +248,13 @@ export async function startNextMonthAction(formData: FormData): Promise<NewPostS
     const brand = await brandOf(customer);
     const [facts, channels] = await Promise.all([loadWorkspaceFacts(settings, brand.externalId), loadChannels(settings, brand.externalId)]);
     if (facts.website === null) return { status: "error", message: "Start from your website first, then the next month can follow." };
-    const networks = [...new Set(channels.map((channel) => channel.platform))];
-    if (networks.length === 0) return { status: "error", message: wordsForCode("INVALID_NETWORKS") };
-    await startSiteJob(settings, brand.externalId, { site: facts.website, page: false, networks, startDate: parsed.data.startDate }, actorOf(customer.tenant));
+    const connected = [...new Set(channels.map((channel) => channel.platform))];
+    if (connected.length === 0) return { status: "error", message: wordsForCode("INVALID_NETWORKS") };
+    // Channels that post on different days are written one group at a time: the first now, the others when the customer starts them next.
+    const [networks = connected, ...later] = dayGroups(connected, await loadSchedule(settings, brand.externalId));
+    const started = await startSiteJob(settings, brand.externalId, { site: facts.website, page: false, networks, startDate: parsed.data.startDate }, actorOf(customer.tenant));
+    if (!started.created) return { status: "error", message: STILL_WRITING };
+    if (later.length > 0) return { status: "partial", message: laterGroupsMessage(networks, later.flat()) };
   } catch (error) {
     unstable_rethrow(error);
     if (error instanceof SocialAutoError && error.code !== null) return { status: "error", message: wordsForCode(error.code) };
@@ -273,7 +277,9 @@ export async function startSiteJobAction(formData: FormData): Promise<NewPostSta
     if (settings === null) return { status: "error", message: "Posting is not available just now. Try again later." };
     const brand = await brandOf(customer);
     await ensureWorkspace(settings, { id: brand.externalId, name: brand.name, ...(brand.externalId === customer.businessId ? {} : { group: customer.businessId }) });
-    await startSiteJob(settings, brand.externalId, { site: parsed.data.site, page: parsed.data.page, networks: parsed.data.networks satisfies ChannelPlatform[] }, actorOf(customer.tenant));
+    const started = await startSiteJob(settings, brand.externalId, { site: parsed.data.site, page: parsed.data.page, networks: parsed.data.networks satisfies ChannelPlatform[] }, actorOf(customer.tenant));
+    // A batch is already being written: the posting service hands back that one, not a new one for these channels.
+    if (!started.created) return { status: "error", message: STILL_WRITING };
   } catch (error) {
     unstable_rethrow(error);
     if (error instanceof SocialAutoError && error.code !== null) return { status: "error", message: wordsForCode(error.code) };
@@ -282,6 +288,15 @@ export async function startSiteJobAction(formData: FormData): Promise<NewPostSta
   }
   revalidatePath("/social");
   return { status: "saved" };
+}
+
+/** The posting service writes one batch at a time and hands back the one in progress, so a second start has to wait for it. */
+const STILL_WRITING = "Your posts are still being written. When they are ready, you can start the next channel.";
+
+/** What to tell a customer whose channels post on different days: one group is being written now, the rest are started next. */
+function laterGroupsMessage(started: readonly ChannelPlatform[], later: readonly ChannelPlatform[]): string {
+  const names = (list: readonly ChannelPlatform[]): string => list.map((platform) => PLATFORM_NAMES[platform]).join(" and ");
+  return `Started for ${names(started)}. ${names(later)} posts on different days, so it is written separately: start it once these posts are written.`;
 }
 
 const postingDaysSchema = z.object({ channel: z.enum(CHANNEL_PLATFORMS), days: z.string().max(40) });

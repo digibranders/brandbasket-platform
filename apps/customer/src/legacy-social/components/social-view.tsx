@@ -106,7 +106,7 @@ export function LegacySocialView({ data, notice, now, approvals, hasNumbers, can
                   Your posts are paused. Nothing is being sent for now. Posts whose time comes while it is paused are skipped, and new ones go out again when we resume.
                 </p>
               ) : null}
-              {canChange ? <AiStartCard jobs={data.ai.jobs} channels={data.channels} website={data.ai.website} savedWebsite={savedWebsite} unavailable={data.ai.jobsUnavailable} expired={data.ai.expired} nextMonth={data.ai.plan?.canStartNext === true && data.ai.plan.nextStartDate !== null ? { startDate: data.ai.plan.nextStartDate, endsOn: data.ai.plan.endsOn } : null} /> : null}
+              {canChange ? <AiStartCard jobs={data.ai.jobs} channels={data.channels} postingDays={data.postingDays} website={data.ai.website} savedWebsite={savedWebsite} unavailable={data.ai.jobsUnavailable} expired={data.ai.expired} nextMonth={data.ai.plan?.canStartNext === true && data.ai.plan.nextStartDate !== null ? { startDate: data.ai.plan.nextStartDate, endsOn: data.ai.plan.endsOn } : null} /> : null}
               {approvals}
               <SocialCalendar
                 posts={data.posts}

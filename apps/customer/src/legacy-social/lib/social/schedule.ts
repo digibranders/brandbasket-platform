@@ -56,3 +56,18 @@ export function withChannelDays(current: PostingDays, platform: ChannelPlatform,
   }
   return next;
 }
+
+/**
+ * The channels split by the days they post on: channels with the very same days share a group, and every channel with no days of its own
+ * (the usual spread) share one. The posting service writes one batch for channels of one group, so a customer with different days is
+ * written for one group at a time. Groups come in the order of their first channel; unknown days (`null`) are one group.
+ */
+export function dayGroups(platforms: readonly ChannelPlatform[], days: PostingDays | null): ChannelPlatform[][] {
+  const groups = new Map<string, ChannelPlatform[]>();
+  for (const platform of CHANNEL_PLATFORMS) {
+    if (!platforms.includes(platform)) continue;
+    const key = days === null ? "" : (days[platform] ?? []).join(",");
+    groups.set(key, [...(groups.get(key) ?? []), platform]);
+  }
+  return [...groups.values()];
+}

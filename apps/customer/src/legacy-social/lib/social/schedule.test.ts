@@ -38,3 +38,20 @@ describe("the days a channel posts on", () => {
     expect(withChannelDays({}, "linkedin", ["fri"])).toEqual({ linkedin: ["fri"] });
   });
 });
+
+describe("channels grouped by their days", () => {
+  it("keeps channels with the very same days together and those with none together", async () => {
+    const { dayGroups } = await import("./schedule");
+    expect(dayGroups(["instagram", "facebook", "linkedin"], { instagram: ["mon", "tue"], facebook: ["wed"] })).toEqual([["instagram"], ["facebook"], ["linkedin"]]);
+    expect(dayGroups(["instagram", "facebook"], { instagram: ["mon"], facebook: ["mon"] })).toEqual([["instagram", "facebook"]]);
+    expect(dayGroups(["instagram", "facebook", "linkedin"], { instagram: ["mon"] })).toEqual([["instagram"], ["facebook", "linkedin"]]);
+    expect(dayGroups(["instagram", "facebook"], {})).toEqual([["instagram", "facebook"]]);
+  });
+
+  it("treats days nobody knows as one group, and leaves out channels that are not connected", async () => {
+    const { dayGroups } = await import("./schedule");
+    expect(dayGroups(["instagram", "linkedin"], null)).toEqual([["instagram", "linkedin"]]);
+    expect(dayGroups(["facebook"], { instagram: ["mon"], facebook: ["fri"] })).toEqual([["facebook"]]);
+    expect(dayGroups([], {})).toEqual([]);
+  });
+});
