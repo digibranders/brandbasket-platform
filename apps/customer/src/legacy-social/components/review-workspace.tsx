@@ -2,7 +2,7 @@
 
 import { ArrowClockwise, CalendarBlank, CaretDown, CaretLeft, CaretRight, Check, Plus, Prohibit, TextT, X } from "@phosphor-icons/react/dist/ssr";
 import { useSearchParams } from "next/navigation";
-import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, useTransition, type FormEvent, type PointerEvent as ReactPointerEvent, type ReactElement, type ReactNode } from "react";
+import { createContext, useCallback, type ComponentProps, useContext, useEffect, useMemo, useRef, useState, useTransition, type FormEvent, type PointerEvent as ReactPointerEvent, type ReactElement, type ReactNode } from "react";
 import { cn } from "@brandbasket/shared/lib/cn";
 import { askTopicAction, decideBatchAction, decideCarouselAction, drawCarouselAction, moveCarouselAction, decidePosterAction, drawBatchAction, moveTopicAction, replaceTopicAction } from "@/legacy-social/review-actions";
 import { REJECT_REASON_WORDS, TOPIC_NOT_MADE_WORDS, type Poster, type TopicRequest, type WrittenBatch } from "@/legacy-social/lib/social/ai";
@@ -12,6 +12,7 @@ import type { ReviewCard, ReviewGroup } from "@/legacy-social/lib/social/review-
 import { cardsOfWeek, channelTodo, firstOpenWeek, flowWeeks, picturesOn, POST_TIME, postFinal, weekAsked, type FlowWeek, type ReplaceState } from "@/legacy-social/lib/social/review-flow";
 import { ConnectButton } from "./channels-sidebar";
 import { AddChannelChoice } from "./add-channel-choice";
+import { EmptyPosts } from "./empty-posts";
 import { CarouselPictures, CarouselTopic, carouselInWeek, decisionOf, sendBackReason, slideHeadlines, type WeekCarousel } from "./carousel-week";
 import { carouselMovable } from "@/legacy-social/lib/social/carousel";
 import type { PostingDays } from "@/legacy-social/lib/social/schedule";
@@ -948,7 +949,15 @@ function PicturesStage({ cards, week, channel, account, reasons, ownPosters = []
           <p className="text-xs text-ink-3">They will appear here when they are ready.</p>
         </div>
       ) : null}
-      {pictures.length === 0 && week.state !== "drawing" && !drawingNow ? <p className="rounded-xl bg-surface p-4 text-[0.84375rem] text-ink-2 ring-1 ring-line">No picture was drawn for {PLATFORM_NAMES[channel]} this week.</p> : null}
+      {pictures.length === 0 && week.state !== "drawing" && !drawingNow ? (
+        <p className="rounded-xl bg-surface p-4 text-[0.84375rem] text-ink-2 ring-1 ring-line">
+          {only === "approved"
+            ? "Nothing is approved yet. Approve the pictures under Pictures and they show here, ready to go out on their days."
+            : only === "waiting"
+              ? "No pictures are waiting for you. Keep the topics you like under Topics and press Draw pictures: the pictures to approve show here."
+              : `No picture was drawn for ${PLATFORM_NAMES[channel]} this week. Keep the topics you like under Topics and press Draw pictures.`}
+        </p>
+      ) : null}
       {pictures.length === 0 ? null : (
         <div className="flex flex-wrap items-center justify-between gap-2">
           <span className="text-xs text-ink-3">
@@ -1278,7 +1287,7 @@ export function ReviewChannelsColumn(): ReactElement {
  * The part of the review screen beside the channels column: for the channel picked, the topics of a week as headlines to keep or drop,
  * then (once the week is drawn) each picture as it will look on that account, to approve. "All channels" is one table of the week.
  */
-export function ReviewWorkspace(): ReactElement | null {
+export function ReviewWorkspace({ empty }: { /** What the page needs to say, when there are no posts to look over, where to go to get some. */ readonly empty?: Omit<ComponentProps<typeof EmptyPosts>, "channel"> } = {}): ReactElement | null {
   const { channels, reasons, replacing, today, own, carousel, week, cards, channel, weeks, setWeekKey } = useFlow();
   /** A week drawn in rounds has topics still open and pictures drawn: the customer looks at one at a time, the pictures only under Pictures. */
   const [roundView, setRoundView] = useState<"topics" | "pictures">("topics");
@@ -1286,7 +1295,7 @@ export function ReviewWorkspace(): ReactElement | null {
   const [lookAtTopics, setLookAtTopics] = useState(false);
   /** The picture step she picked: the ones waiting for her, or the approved ones. Not picked: all of them. */
   const [pictureStep, setPictureStep] = useState<"waiting" | "approved" | null>(null);
-  if (week === undefined) return null;
+  if (week === undefined) return empty === undefined ? null : <EmptyPosts channel={channel} {...empty} />;
   const asked = weekAsked(week);
   /** The carousel of this week: its topic with the topics, its slides with the pictures once they are drawn. */
   const weekCarousel = carouselInWeek(carousel, week.from, week.to) ? carousel : null;

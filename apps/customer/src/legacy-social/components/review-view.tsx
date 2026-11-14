@@ -92,7 +92,7 @@ export function ReviewView({ review, canChange = true, approvals = null }: { rea
       {review.unavailable && review.batches.length === 0 && review.waiting.length === 0 && review.approved.length === 0 ? null : (
         <>
           <NewChannelChoice unwritten={unwritten} missing={review.missingNetworks} postingDays={review.postingDays} website={review.website} busy={review.jobs.some((job) => jobIsActive(job))} canChange={canChange} />
-          <ReviewWorkspace />
+          <ReviewWorkspace empty={{ connected: review.channels.map((channel) => channel.platform), website: review.website, postingDays: review.postingDays, canChange }} />
           {/* The weekly carousel card (CarouselCard) is hidden for now: it is to move to another place. */}
         </>
       )}
