@@ -2,21 +2,20 @@
   "$schema": "https://unpkg.com/knip@5/schema.json",
   "payload": false,
   "workspaces": {
-    "apps/platform": {
+    "apps/customer": {
       "entry": [
-        "proxy.ts",
-        "instrumentation*.ts",
-        "sentry.*.config.ts",
+        "src/instrumentation*.ts",
+        "src/sentry.*.config.ts",
         "next.config.ts",
         "scripts/*.ts",
-        "app/**/*.{ts,tsx}"
+        "src/app/**/*.{ts,tsx}"
       ],
       "project": [
-        "**/*.{ts,tsx}",
+        "src/**/*.{ts,tsx}",
+        "scripts/*.ts",
         "!.next/**"
       ],
       "ignore": [
-        "payload.config.ts",
         "next-env.d.ts"
       ]
     },

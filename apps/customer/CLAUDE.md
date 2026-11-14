@@ -1,7 +1,10 @@
 # apps/customer: customer app v4
 
-The new customer app (plan 61). It replaces apps/platform's customer pages at cutover; until then it runs on its own host
-(local http://localhost:3197, staging next.brandbasket.in). Repo-wide rules are in `../../CLAUDE.md`.
+The customer app (plan 61), and the only one: apps/platform has been deleted. It is live at app.brandbasket.in as the systemd unit
+`brandbasket-customer` on port 3202 and serves the dashboard, the public APIs the client websites call (`/api/site`, `/api/t`,
+`/api/leads`, `/api/pricing`), the payment and other webhooks (`/api/webhooks/*`), the timer jobs (`/api/internal/*`) and the blog
+image routes. Locally it runs at http://localhost:3197 (`pnpm dev`) with `apps/customer/.env.local` (template `.env.example`).
+Repo-wide rules are in `../../CLAUDE.md`.
 
 Read before writing code, in this order:
 

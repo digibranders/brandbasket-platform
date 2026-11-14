@@ -4,7 +4,7 @@
 # at every boot and send an alert. /srv/brandbasket/current-customer is a symlink to the live release (brandbasket-platform-release
 # moves it and restarts this unit); the release's apps/customer/.env.production is a link to
 # /srv/brandbasket/shared/customer.env.production, which `next start` reads itself. It writes only the releases folder (Next's
-# .next/cache), the uploaded media and the private support files, the same folders as brandbasket-app (the apps share uploads).
+# .next/cache), the uploaded media and the private support files, the same folders as the admin console (the apps share uploads).
 [Unit]
 Description=Brandbasket customer app v4 (apps/customer)
 After=network-online.target postgresql.service
@@ -23,7 +23,7 @@ Environment=NODE_ENV=production
 Environment=NEXT_TELEMETRY_DISABLED=1
 # The V8 heap stays below the cgroup limits so the process is asked to collect garbage before systemd has to act.
 Environment=NODE_OPTIONS=--max-old-space-size=512
-# No -H flag, on purpose (see brandbasket-app.service): port 3202 must stay closed to the outside through ufw.
+# No -H flag, on purpose (see brandbasket-admin.service): port 3202 must stay closed to the outside through ufw.
 ExecStart=/srv/brandbasket/current-customer/apps/customer/node_modules/.bin/next start -p 3202
 Restart=on-failure
 RestartSec=3

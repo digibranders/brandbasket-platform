@@ -4,20 +4,22 @@ The customer dashboard and staff console behind Brandbasket's Local Business pla
 
 Stack: pnpm 10 workspace · Node 24 · Next.js 16 (App Router) · TypeScript · Tailwind CSS v4 · zod · PostgreSQL with row-level security · Drizzle · Better Auth · Payload CMS · Razorpay · Brevo · Sentry · Vitest.
 
-Each app has its own `CLAUDE.md` (`apps/platform/`, `apps/admin/`) with app-specific rules, and its own `DESIGN.md`.
+Each app has its own `CLAUDE.md` (`apps/customer/`, `apps/admin/`) with app-specific rules, and its own `DESIGN.md`.
 
 ## Branches and deploys
 
 - Work on `development`. `main` is production and only changes through a PR from `development`.
 - CI (`.github/workflows/ci.yml`) runs on every PR and on pushes to `development` and `main`: lint, typecheck, unit tests and build, and in parallel a job that creates a Postgres, runs `db:roles`, migrations, Payload migrations and the integration tests.
-- Deploys: `.github/workflows/deploy.yml` builds `main` on a GitHub runner after CI passes and ships it to the Firstfold VPS, which installs, migrates and switches the apps with health checks (`deploy/vps/`, runbook `docs/deployment/brandbasket-vps.md`). The VPS's own pull-based autodeploy and CI timers are paused while this is in use; `docs/deployment/brandbasket-droplet.md` is superseded.
+- Deploys: `.github/workflows/deploy.yml` builds `main` on a GitHub runner after CI passes and ships it to the Firstfold VPS, which installs, migrates and switches `customer` and `admin` with health checks (`deploy/vps/`, runbook `docs/deployment/brandbasket-vps.md`). The VPS's own pull-based autodeploy and CI timers are paused while this is in use; `docs/deployment/brandbasket-droplet.md` is superseded.
 
 | Surface | App | Production | Local (README) |
 |---|---|---|---|
-| Customer dashboard | `apps/platform` | https://app.brandbasket.in | http://app.brandbasket.localhost:3198 |
+| Customer app | `apps/customer` | https://app.brandbasket.in | http://localhost:3197 |
 | Staff console | `apps/admin` | https://console.brandbasket.in (behind Cloudflare Access) | http://console.brandbasket.localhost:3199 |
 
-`pnpm dev` starts both on 3198 and 3199, with the hosts above. Fynix uses `app.localhost:3098` and `staff.localhost:3099`; the different host names keep the two apps from sharing cookies.
+`apps/customer` is the only customer app: the dashboard, the public APIs the client websites call (`/api/site`, `/api/t`, `/api/leads`, `/api/pricing`), the payment and other webhooks (`/api/webhooks/*`), the timer jobs (`/api/internal/*`) and the blog image routes. In production it is the systemd unit `brandbasket-customer` on port 3202, and the console is `brandbasket-admin` on 3203.
+
+`pnpm dev` starts both on 3197 (customer) and 3199 (admin), with the hosts above. Fynix uses `app.localhost:3098` and `staff.localhost:3099`; the different host names keep the two apps from sharing cookies.
 
 ## Packages
 
@@ -34,10 +36,10 @@ The scope is still `@brandbasket/*`; renaming it is planned.
 
 ## Data access rules
 
-- Three database roles, three connections. The dashboard uses the app role for customer work (row-level security, scope every query with `withUserScope` or `withTenantScope` from `@brandbasket/db`), the public role only for lead intake, and the staff role for console and system work. The console has only the staff connection.
+- Three database roles, three connections. The customer app uses the app role for customer work (row-level security, scope every query with `withUserScope` or `withTenantScope` from `@brandbasket/db`), the public role only for lead intake, and the staff role for console and system work. The console has only the staff connection.
 - Every page, route handler and server action checks access itself. Layouts are never the only guard.
 - Accounts are only created by server code: the email-confirmed sign-up and `pnpm staff:create`. There is no public account API.
-- Dashboard and console are separate origins with host-only session cookies. Never add a `Domain=.brandbasket.in` cookie or Better Auth `crossSubDomainCookies` (`docs/STAFF-ACCESS.md`).
+- The customer app and the console are separate origins with host-only session cookies. Never add a `Domain=.brandbasket.in` cookie or Better Auth `crossSubDomainCookies` (`docs/STAFF-ACCESS.md`).
 - Nothing is sent to phones; every code is emailed. Without `BREVO_API_KEY`, mail is only written to the outbox, which staff read in the console. A server with an https `APP_ORIGIN` refuses to start without Brevo or with `EMAIL_CODE_BYPASS`.
 - Unset `BILLING_PROVIDER` means the fake provider: no money moves. Razorpay test mode needs the signed webhook, so run `pnpm dev:tunnel`.
 - Never add invented clients, results, testimonials or logos.
@@ -55,7 +57,8 @@ The dashboard's directory and clinic pages and the public directory and booking 
 
 ```bash
 pnpm install
-pnpm dev                     # both apps (3198, 3199)
+pnpm dev                     # customer (3197) and admin (3199)
+pnpm dev:customer            # customer only; dev:admin for the console only
 pnpm lint
 pnpm typecheck               # next typegen + tsc in every package
 pnpm test
@@ -65,7 +68,7 @@ pnpm --filter @brandbasket/db db:generate   # new migration from the schema
 pnpm db:migrate              # dev database; db:migrate:test for the test database
 pnpm cms:migrate             # Payload migrations; cms:migrate:create to add one
 pnpm staff:create --email you@example.com --name "Your Name" --role admin
-pnpm env:check               # validate a server environment
+pnpm env:check --customer <file> --admin <file>   # validate server env files
 ```
 
 Before calling a change done, run `pnpm lint`, `pnpm typecheck`, `pnpm test` and `pnpm build`, plus `pnpm test:integration` for the areas listed under Tests.

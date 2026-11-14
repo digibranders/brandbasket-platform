@@ -21,7 +21,7 @@ WorkingDirectory=/srv/brandbasket/current-admin/apps/admin
 Environment=NODE_ENV=production
 Environment=NEXT_TELEMETRY_DISABLED=1
 Environment=NODE_OPTIONS=--max-old-space-size=384
-# No -H flag, on purpose (see brandbasket-app.service): port 3203 stays closed to the outside through ufw.
+# No -H flag, on purpose (see brandbasket-customer.service): port 3203 stays closed to the outside through ufw.
 ExecStart=/srv/brandbasket/current-admin/apps/admin/node_modules/.bin/next start -p 3203
 Restart=on-failure
 RestartSec=3

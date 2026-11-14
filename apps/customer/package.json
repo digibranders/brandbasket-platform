@@ -9,6 +9,7 @@
     "lint": "eslint",
     "typecheck": "next typegen && tsc --noEmit",
     "test": "vitest run",
+    "test:integration": "vitest run --config vitest.integration.config.mts",
     "e2e": "playwright test",
     "pictures:backfill-copies": "pnpm --filter @brandbasket/db exec tsx --conditions=react-server --tsconfig ../../apps/customer/tsconfig.json ../../apps/customer/scripts/backfill-picture-copies.ts",
     "retention:run": "pnpm --filter @brandbasket/db exec tsx --tsconfig ../../apps/customer/tsconfig.json ../../apps/customer/scripts/retention-run.ts",

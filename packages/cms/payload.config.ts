@@ -14,7 +14,7 @@ function required(name: string): string {
   const value = process.env[name]?.trim();
   if (value === undefined || value.length === 0) {
     throw new Error(
-      `${name} is not set. The migrate commands read it from apps/platform/.env.local; run "pnpm env:init" if you have not.`,
+      `${name} is not set. The migrate commands read it from apps/customer/.env.local; run "pnpm env:init" if you have not.`,
     );
   }
   return value;

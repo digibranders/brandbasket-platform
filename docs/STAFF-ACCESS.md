@@ -2,7 +2,7 @@
 
 The staff console is its own app (`apps/admin`) on its own address: **https://console.brandbasket.in** in production, beside the
 customer dashboard at https://app.brandbasket.in. Set `ADMIN_ORIGIN=https://console.brandbasket.in` in both apps'
-environments (`apps/admin/.env.production.example`, `apps/platform/.env.production.example`).
+environments (`apps/admin/.env.production.example`, `apps/customer/.env.production.example`).
 
 ## Two origins, no shared cookie
 
@@ -49,7 +49,7 @@ Every sign-in and every opening of personal data in the console writes a row to 
 `access_log.view`, `access.denied`), which record, which business, the result (`ok`, `failed` for a wrong password, `denied`
 for a refused request), the IP address, and a short note with no personal data. It is append-only: the staff database role can
 read and insert, never edit or delete. Rows are deleted by the nightly retention job once they are past 400 days
-(`docs/operations/retention-schedule.md`). A nightly email (`apps/platform/lib/security-review.ts`) lists staff whose activity
+(`docs/operations/retention-schedule.md`). A nightly email (`apps/customer/src/platform/lib/security-review.ts`) lists staff whose activity
 is unusually high; bursts of blocked sign-ins also email the team (`docs/operations/security-alerts.md`).
 
 ## Sign-in protection that exists today

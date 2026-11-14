@@ -72,7 +72,7 @@ The output lists each business and service as `composed`, `nothing-measured`, `f
 failure makes the run exit 1.
 
 `brandbasket-monthly-reports.timer` is installed by `deploy/vps/install.sh` and **not enabled**. To turn it on: deploy a release that has
-this code, run `pnpm reports:run -- --dry-run` in `/srv/brandbasket/current-platform` and read the list, then
+this code, run `pnpm reports:run -- --dry-run` in `/srv/brandbasket/current-customer` and read the list, then
 `systemctl enable --now brandbasket-monthly-reports.timer`. To stop it: `systemctl disable --now brandbasket-monthly-reports.timer`.
 
 ## Not built here
