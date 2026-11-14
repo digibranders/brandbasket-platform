@@ -4,6 +4,7 @@ import {
   countSupportTicketsByStatus,
   listAddOnsToContact,
   listClients,
+  listDomainMoves,
   listErrorIssues,
   listKickoffBoard,
   listLeads,
@@ -15,6 +16,7 @@ import {
   type AddOnToContact,
   type BookedCall,
   type ClientSummary,
+  type DomainMoveRow,
   type ErrorIssue,
   type Lead,
   type PaymentNeedingAttention,
@@ -23,6 +25,7 @@ import {
   type SupportTicket,
 } from "@brandbasket/db";
 import { errorLogInfo } from "@brandbasket/shared/server/error-log-info";
+import { clientPaymentState } from "@brandbasket/shared/lib/billing/client-payment";
 import type { FigureItem } from "@/components/console/figures";
 import { businessFigures, figuresInput } from "@/lib/business-figures";
 import { attentionItems } from "@/lib/pipeline";
@@ -66,6 +69,9 @@ interface QueueSources {
   readonly kickoffsNeedingOutcome: readonly KickoffNeedingOutcome[] | null;
   /** Google problems (a site that cannot be verified, a silent source, a lost sign-in for admins). */
   readonly google: readonly TodayItem[];
+  readonly canSeeMoney: boolean;
+  /** Domain move requests. */
+  readonly domainMoves: readonly DomainMoveRow[];
 }
 
 interface QueueRead {
@@ -81,7 +87,7 @@ interface QueueRead {
 async function readQueueSources(now: Date, canSeeMoney: boolean, canSeeGoogleAccount: boolean): Promise<QueueRead> {
   const db = getStaffDb();
   const failed: string[] = [];
-  const [clients, leads, staff, flagged, addOns, newTickets, newErrors, failedDeliveries, kickoffsNeedingOutcome, google] = await Promise.all([
+  const [clients, leads, staff, flagged, addOns, newTickets, newErrors, failedDeliveries, kickoffsNeedingOutcome, google, domainMoves] = await Promise.all([
     guarded("clients", () => listClients(db), [], failed),
     guarded("leads", () => listLeads(db, {}), [], failed),
     guarded("staff roster", () => listStaffRoster(db), [], failed),
@@ -102,12 +108,43 @@ async function readQueueSources(now: Date, canSeeMoney: boolean, canSeeGoogleAcc
       failed,
     ),
     guarded<readonly TodayItem[]>("Google", () => readGoogleToday(now, canSeeGoogleAccount), [], failed),
+    guarded("domain moves", () => listDomainMoves(db), [], failed),
   ]);
-  return { sources: { clients, leads, staff, flagged, addOns, newTickets, newErrors, failedDeliveries, kickoffsNeedingOutcome, google }, failed };
+  return { sources: { clients, leads, staff, flagged, addOns, newTickets, newErrors, failedDeliveries, kickoffsNeedingOutcome, google, domainMoves, canSeeMoney }, failed };
 }
 
 function queueFrom(sources: QueueSources, now: Date): readonly TodayItem[] {
   const staffById = new Map(sources.staff.map((s) => [s.userId, s.name]));
+  const billing: TodayItem[] = [];
+  if (sources.canSeeMoney) {
+    for (const client of sources.clients) {
+      if (client.billing.subscription?.status === "past_due") {
+        billing.push({
+          key: `billing:past_due:${client.businessId}`,
+          kind: "payment",
+          title: `Payment past due: ${client.businessName}`,
+          detail: "Renewal payment failed",
+          dueAt: client.billing.subscription.paidThroughAt,
+          href: `/clients/${client.businessId}/billing`,
+        });
+      } else if (clientPaymentState(client.billing, now).kind === "lapsed") {
+        billing.push({
+          key: `billing:lapsed:${client.businessId}`,
+          kind: "payment",
+          title: `Plan lapsed: ${client.businessName}`,
+          detail: "Plan has ended",
+          dueAt: client.billing.subscription?.paidThroughAt ?? client.createdAt,
+          href: `/clients/${client.businessId}/billing`,
+        });
+      }
+    }
+  }
+
+  const approvedPreviews = sources.clients.flatMap((client) =>
+    client.project?.status === "approved"
+      ? [{ businessId: client.businessId, businessName: client.businessName, dueAt: client.project.slaDueAt }]
+      : [],
+  );
   return todayQueue({
     attention: attentionItems({
       flagged: sources.flagged,
@@ -128,6 +165,9 @@ function queueFrom(sources: QueueSources, now: Date): readonly TodayItem[] {
     newErrors: sources.newErrors,
     failedDeliveries: sources.failedDeliveries,
     kickoffsNeedingOutcome: sources.kickoffsNeedingOutcome,
+    billing,
+    approvedPreviews,
+    domainMoves: sources.domainMoves,
     google: sources.google,
     endOfToday: todayRange(now).end,
   });

@@ -595,3 +595,14 @@ describe("fake plans", () => {
     ).resolves.toEqual({ providerPlanId: null });
   });
 });
+
+describe("getPaymentMethodUpdateUrl", () => {
+  it("returns the fake confirmation path for a valid fake subscription id", async () => {
+    const fakeSubId = `fake_sub_${"a".repeat(24)}`;
+    await expect(provider().getPaymentMethodUpdateUrl(fakeSubId)).resolves.toBe("/billing/confirm?payment_method_updated=true");
+  });
+
+  it("refuses an invalid subscription id", async () => {
+    await expect(provider().getPaymentMethodUpdateUrl("invalid-id")).rejects.toThrow("Not a fake provider subscription id");
+  });
+});

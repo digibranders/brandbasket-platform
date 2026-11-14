@@ -352,5 +352,12 @@ export function createFakeBillingProvider(options: FakeBillingProviderOptions): 
     async findSubscriptionCharge(): Promise<null> {
       return null;
     },
+
+    async getPaymentMethodUpdateUrl(providerSubscriptionId: string): Promise<string> {
+      if (!SUBSCRIPTION_ID_PATTERN.test(providerSubscriptionId)) {
+        throw new Error(`Not a fake provider subscription id: ${providerSubscriptionId}`);
+      }
+      return `${FAKE_CONFIRM_PATH}?payment_method_updated=true`;
+    },
   };
 }

@@ -3,6 +3,7 @@ import { findClientDetail, recordPreviewVersion, recordProjectPreviewSent, saveP
 import { previewReadyEmail } from "@brandbasket/email";
 import { emailPreferenceAllows } from "@brandbasket/shared/server/email-preference";
 import { customerEmailTransport } from "./email";
+import { serverEnv } from "./env";
 import { captureScreenshot } from "./preview-screenshot";
 import { addWorkingActivity } from "./website-moves";
 
@@ -58,7 +59,8 @@ async function emailPreview(
       console.error("[preview-email] could not read the email preference, sending anyway", { businessId: input.businessId, error }),
     );
     if (!allowed) return "no-email";
-    await customerEmailTransport(db).send(previewReadyEmail({ to: input.to, businessName: input.businessName, previewUrl: input.previewUrl }));
+    const reviewUrl = new URL("/website", serverEnv().APP_ORIGIN).toString();
+    await customerEmailTransport(db).send(previewReadyEmail({ to: input.to, businessName: input.businessName, previewUrl: input.previewUrl, reviewUrl }));
     return "emailed";
   } catch (error) {
     console.error("[preview-email]", { businessId: input.businessId, error });

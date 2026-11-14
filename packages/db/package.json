@@ -20,7 +20,8 @@
     "./place-id": "./src/place-id.ts",
     "./revision-rounds": "./src/revision-rounds.ts",
     "./testing": "./src/testing/index.ts",
-    "./unapplied-reasons": "./src/unapplied-reasons.ts"
+    "./unapplied-reasons": "./src/unapplied-reasons.ts",
+    "./working-days": "./src/working-days.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",

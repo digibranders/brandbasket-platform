@@ -15,7 +15,39 @@ export interface TenantScope {
 }
 
 /** The role customer requests run as. A constant, never input: it is interpolated into SET ROLE. */
-const CUSTOMER_ROLE = "bb_app";
+export const CUSTOMER_ROLE = "bb_app";
+
+/**
+ * Queries current_user from the customer database pool and asserts that it matches
+ * the restricted customer app role (bb_app).
+ * If the role does not match, logs loudly and throws an Error.
+ */
+export async function assertCustomerAppRole(
+  db: Database,
+  expectedRole: string = CUSTOMER_ROLE,
+): Promise<void> {
+  const result = await db.execute<{ current_user: string }>(sql`select current_user`);
+  const currentUser = result.rows[0]?.current_user;
+  if (currentUser !== expectedRole) {
+    const message = `Customer database connection role mismatch: expected role "${expectedRole}", but connected as "${currentUser ?? "unknown"}". Failing startup.`;
+    console.error(message);
+    throw new Error(message);
+  }
+}
+
+/**
+ * At start-up in production (NODE_ENV === "production"), query current_user from the
+ * database pool and refuse to start if the customer connection is not the app role (bb_app);
+ * log and fail loudly.
+ */
+export async function verifyStartupDatabaseRole(
+  db: Database,
+  env: { NODE_ENV?: string } = process.env,
+): Promise<void> {
+  if (env.NODE_ENV === "production") {
+    await assertCustomerAppRole(db);
+  }
+}
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 

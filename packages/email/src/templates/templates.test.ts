@@ -189,22 +189,30 @@ describe("previewReadyEmail", () => {
     to: "owner@example.com",
     businessName: "Riverside Plumbing",
     previewUrl: "https://riverside-plumbing-preview.vercel.app",
+    reviewUrl: "https://app.brandbasket.in/website",
   });
 
-  it("names the business in the subject", () => {
+  it("names the business in the subject and body", () => {
     expect(email.subject).toBe("Your Brandbasket preview is ready");
     expect(email.bodyText).toContain("Riverside Plumbing");
   });
 
-  it("includes the link in both bodies", () => {
-    expect(email.bodyText).toContain("https://riverside-plumbing-preview.vercel.app");
-    expect(email.bodyHtml).toContain('href="https://riverside-plumbing-preview.vercel.app"');
+  it("links to /website and explains the action and email replies", () => {
+    expect(email.bodyText).toContain("https://app.brandbasket.in/website");
+    expect(email.bodyHtml).toContain('href="https://app.brandbasket.in/website"');
+    expect(email.bodyText).toContain("approve");
+    expect(email.bodyText).toContain("changes");
+    expect(email.bodyText).toContain("change request");
   });
 
-  it("refuses a preview link that is not http or https", () => {
+  it("refuses a review link that is not http or https", () => {
     expect(() =>
-      previewReadyEmail({ to: "owner@example.com", businessName: "Riverside Plumbing", previewUrl: "javascript:alert(1)" }),
-    ).toThrow("previewUrl must use http or https");
+      previewReadyEmail({
+        to: "owner@example.com",
+        businessName: "Riverside Plumbing",
+        reviewUrl: "javascript:alert(1)",
+      }),
+    ).toThrow("reviewUrl must use http or https");
   });
 
   it("escapes the business name", () => {
@@ -212,6 +220,7 @@ describe("previewReadyEmail", () => {
       to: "owner@example.com",
       businessName: "<script>alert(1)</script> & Co",
       previewUrl: "https://example.com",
+      reviewUrl: "https://app.brandbasket.in/website",
     });
     expect(risky.bodyHtml).not.toContain("<script>");
     expect(risky.bodyHtml).toContain("&lt;script&gt;");

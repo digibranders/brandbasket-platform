@@ -1,5 +1,5 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
-import { billingCurrency, type BillingCurrency, type BillingInterval } from "@brandbasket/db";
+import { billingCurrency, type BillingCurrency, type BillingInterval, type PaymentMethodDetails } from "@brandbasket/db";
 import {
   CheckoutVerificationError,
   type BillingProvider,
@@ -48,7 +48,7 @@ export interface RazorpaySdkClient {
       input: { readonly plan_id: string; readonly schedule_change_at: "now" | "cycle_end" },
     ): Promise<unknown>;
     /** The subscription as Razorpay holds it now. */
-    fetch(subscriptionId: string): Promise<{ readonly id: string; readonly status: string; readonly paid_count?: number; readonly current_start?: number | null; readonly current_end?: number | null }>;
+    fetch(subscriptionId: string): Promise<{ readonly id: string; readonly status: string; readonly short_url?: string; readonly paid_count?: number; readonly current_start?: number | null; readonly current_end?: number | null }>;
   };
   readonly payments: {
     fetch(paymentId: string): Promise<{
@@ -58,6 +58,7 @@ export interface RazorpaySdkClient {
       readonly created_at: number;
       /** Razorpay's own word for the payment: `captured` is money taken. */
       readonly status?: string;
+      readonly method?: PaymentMethodDetails | null;
     }>;
   };
   /** A subscription's invoices, for finding a first-month payment whose webhook never arrived. */
@@ -351,6 +352,17 @@ export function createRazorpayProvider(options: RazorpayProviderOptions): Razorp
 
     fetchSubscriptionStatus,
 
+    async getPaymentMethodUpdateUrl(providerSubscriptionId: string): Promise<string> {
+      const subscription = await client.subscriptions.fetch(providerSubscriptionId);
+      if (subscription.id !== providerSubscriptionId) {
+        throw new Error(`Razorpay answered with ${subscription.id} when asked for ${providerSubscriptionId}`);
+      }
+      if (!subscription.short_url) {
+        throw new Error(`Razorpay subscription ${providerSubscriptionId} has no short_url`);
+      }
+      return subscription.short_url;
+    },
+
     async findUpfrontPayment(providerSubscriptionId: string): Promise<UpfrontPayment | null> {
       const { items } = await client.invoices.all({ subscription_id: providerSubscriptionId });
       const upfront = items.find(
@@ -363,7 +375,13 @@ export function createRazorpayProvider(options: RazorpayProviderOptions): Razorp
       if (upfront?.payment_id == null) return null;
       const payment = await client.payments.fetch(upfront.payment_id);
       if (payment.status !== "captured" || !isCurrency(payment.currency) || !Number.isSafeInteger(payment.amount) || payment.amount <= 0) return null;
-      return { providerPaymentId: payment.id, amountCents: payment.amount, currency: payment.currency, paidAt: new Date(payment.created_at * 1000) };
+      return {
+        providerPaymentId: payment.id,
+        amountCents: payment.amount,
+        currency: payment.currency,
+        paidAt: new Date(payment.created_at * 1000),
+        method: payment.method ?? null,
+      };
     },
 
     async findSubscriptionCharge(providerSubscriptionId: string): Promise<SubscriptionCharge | null> {
@@ -381,6 +399,7 @@ export function createRazorpayProvider(options: RazorpayProviderOptions): Razorp
         paidAt: new Date(payment.created_at * 1000),
         currentStart: typeof subscription.current_start === "number" ? new Date(subscription.current_start * 1000) : null,
         currentEnd: new Date(subscription.current_end * 1000),
+        method: payment.method ?? null,
       };
     },
 

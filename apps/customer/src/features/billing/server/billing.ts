@@ -5,6 +5,7 @@ import { bundleLines, bundleNetCents, readBundleSelection, type BundleLine } fro
 import { loadCarriedCode, loadReactivationBasket } from "@brandbasket/shared/server/reactivation-basket";
 import { getAppDb, getStaffDb } from "@/lib/db";
 import type { CustomerContext } from "@/lib/guards";
+import { getBillingProvider } from "../../checkout/server/billing";
 import { discountFrom } from "../../checkout/server/referrals";
 import { renewsAutomatically } from "../rules";
 
@@ -68,4 +69,16 @@ export async function findReactivation(customer: Customer, requested: readonly s
   const carried = await loadCarriedCode(getStaffDb(), tenant.businessId, basket);
   const discountCents = carried === null ? 0 : (discountFrom(carried.code, { currency, netCents })?.amountCents ?? 0);
   return { cancelled: basket.cancelled, services: priced.services, lines, netCents, discountCents, billingInterval: basket.billingInterval };
+}
+
+/**
+ * Direct link to update payment method with the provider (Razorpay hosted short_url flow).
+ */
+export async function getPaymentMethodUpdateUrlFor(customer: Pick<CustomerContext, "billing">): Promise<string> {
+  const { billing } = customer;
+  if (billing.subscription === null || !billing.subscription.providerSubscriptionId) {
+    throw new Error("No active subscription found to update payment method.");
+  }
+  const provider = getBillingProvider();
+  return provider.getPaymentMethodUpdateUrl(billing.subscription.providerSubscriptionId);
 }

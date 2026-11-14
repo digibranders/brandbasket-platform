@@ -1,4 +1,5 @@
 import { listPaymentsForStaff } from "@brandbasket/db";
+import { LAPSE_DATA_RETENTION_DAYS, LAPSE_GRACE_PERIOD_DAYS, LAPSE_HOSTING_PAUSE_DAYS } from "@brandbasket/billing";
 import { formatMoney } from "@brandbasket/shared/lib/money";
 import type { Metadata } from "next";
 import Link from "next/link";
@@ -116,6 +117,13 @@ export default async function PaymentsPage({ searchParams }: PaymentsPageProps):
           },
         ]}
       />
+
+      <div className="mt-6 rounded-lg border border-line bg-sunken/40 px-4 py-3">
+        <p className="text-xs font-semibold text-ink-2">Payment lapse policy</p>
+        <p className="mt-1 text-sm text-ink-2">
+          {LAPSE_GRACE_PERIOD_DAYS} days grace period with full service after a missed payment, website hosting paused after {LAPSE_HOSTING_PAUSE_DAYS} days of non-payment, and account data retained for {LAPSE_DATA_RETENTION_DAYS} days before permanent deletion.
+        </p>
+      </div>
 
       {dollars.paymentsCount + dollars.failedCount === 0 ? null : (
         <Notice tone="ok" className="mt-6">

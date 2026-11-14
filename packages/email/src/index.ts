@@ -24,6 +24,7 @@ export { domainRequestedEmail, type DomainRequestedInput } from "./templates/dom
 export { domainReadyEmail, type DomainReadyInput } from "./templates/domain-ready";
 export { onboardingSentEmail, type OnboardingSentInput } from "./templates/onboarding-sent";
 export { assertMinorUnits, emailDate, emailMoney, type EmailCurrency } from "./format";
+export { firstChargeReminderEmail, type FirstChargeReminderInput } from "./templates/first-charge-reminder";
 export { paymentFailedEmail, type PaymentFailedInput, type PaymentFailedPlan } from "./templates/payment-failed";
 export { monthlyReportEmail, type MonthlyReportInput } from "./templates/monthly-report";
 export { paymentReceivedEmail, type PaymentReceivedInput } from "./templates/payment-received";
@@ -43,6 +44,7 @@ export { signupCodeEmail, type SignupCodeInput } from "./templates/signup-code";
 export { signupReminderEmail, type SignupReminderInput } from "./templates/signup-reminder";
 export { siteDownAlertEmail, type SiteDownAlertInput } from "./templates/site-down-alert";
 export { setupLinkEmail, type SetupLinkInput } from "./templates/setup-link";
+export { requestAcknowledgementEmail, type RequestAcknowledgementInput } from "./templates/request-acknowledgement";
 export { supportRequestOpenedEmail, type SupportRequestOpenedInput } from "./templates/support-request-opened";
 export { staffInviteEmail, type StaffInviteInput } from "./templates/staff-invite";
 export { websiteLiveEmail, type WebsiteLiveInput } from "./templates/website-live";

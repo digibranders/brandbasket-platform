@@ -60,7 +60,8 @@ vi.mock("./db", () => {
 });
 const fetchSubscriptionStatus = vi.fn();
 const findUpfrontPayment = vi.fn();
-const razorpay = { name: "razorpay", fetchSubscriptionStatus, findUpfrontPayment };
+const findSubscriptionCharge = vi.fn();
+const razorpay = { name: "razorpay", fetchSubscriptionStatus, findUpfrontPayment, findSubscriptionCharge };
 vi.mock("./billing", () => ({ getRazorpayProvider: () => razorpay }));
 
 import { recordAddedServicePayment } from "@brandbasket/shared/server/added-service";
@@ -95,7 +96,7 @@ import { reportFirstPaymentToAds } from "./conversions";
 import { sendPaymentReceipt } from "./payment-emails";
 import { announcePaymentToTeams, announcePlanStatusToTeams } from "./teams";
 import { syncTenantForBusiness } from "./payload-tenant-sync";
-import { handleRazorpayWebhookEvent, recordUpfrontFromRazorpay } from "./razorpay-webhook-handler";
+import { handleRazorpayWebhookEvent, recordChargeFromRazorpay, recordUpfrontFromRazorpay } from "./razorpay-webhook-handler";
 
 const PLAN = {
   id: "plan_1",
@@ -752,12 +753,13 @@ describe("handleRazorpayWebhookEvent", () => {
       });
 
       it("records a payment Razorpay holds when asked directly, and reports when it holds none", async () => {
+        const cardMethod = { method: "card", cardNetwork: "Visa", cardLast4: "4366", cardType: "credit", cardIssuer: "HDFC", upiVpa: null };
         vi.mocked(findSubscriptionByProviderId).mockResolvedValue(offerSubscription());
         vi.mocked(findPlanById).mockResolvedValue(OFFER_PLAN as never);
-        findUpfrontPayment.mockResolvedValueOnce(PAID_UPFRONT).mockResolvedValueOnce(null);
+        findUpfrontPayment.mockResolvedValueOnce({ ...PAID_UPFRONT, method: cardMethod }).mockResolvedValueOnce(null);
 
         expect(await recordUpfrontFromRazorpay("sub_rzp_offer")).toBe(true);
-        expect(activateFirstPayment).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ providerPaymentId: "pay_up" }));
+        expect(activateFirstPayment).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ providerPaymentId: "pay_up", method: cardMethod }));
         expect(await recordUpfrontFromRazorpay("sub_rzp_offer")).toBe(false);
       });
 
@@ -769,6 +771,56 @@ describe("handleRazorpayWebhookEvent", () => {
         expect(findPaymentByProviderId).toHaveBeenCalledWith(expect.anything(), "razorpay", "pay_up");
         expect(activateFirstPayment).not.toHaveBeenCalled();
         expect(recordUnappliedPayment).not.toHaveBeenCalled();
+      });
+    });
+
+    describe("reading an ordinary subscription's first charge from Razorpay directly (recordChargeFromRazorpay)", () => {
+      const CHARGE = {
+        providerPaymentId: "pay_charge",
+        amountCents: 7_500,
+        currency: "USD" as const,
+        paidAt: new Date("2026-11-13T14:44:14.000Z"),
+        currentStart: new Date("2026-11-13T14:44:14.000Z"),
+        currentEnd: new Date("2026-12-13T14:44:14.000Z"),
+        method: { method: "card", cardNetwork: "Visa", cardLast4: "4366", cardType: "credit", cardIssuer: "HDFC", upiVpa: null },
+      };
+      const ordinarySubscription = (overrides: Record<string, unknown> = {}) => ({
+        id: "sub_row_plain",
+        businessId: "biz_1",
+        planId: "plan_1",
+        status: "incomplete",
+        activatedAt: null,
+        firstPaymentCents: null,
+        continuesId: null,
+        discountAmountCents: 0,
+        retentionDiscountCents: 0,
+        pendingPlanId: null,
+        pendingDiscountAmountCents: 0,
+        bundledAddOnNetCents: 0,
+        pendingBundledAddOnNetCents: null,
+        ...overrides,
+      });
+
+      it("records an ordinary first payment Razorpay holds, passing its payment method to activation", async () => {
+        vi.mocked(findSubscriptionByProviderId).mockResolvedValue(ordinarySubscription() as never);
+        vi.mocked(findPlanById).mockResolvedValue(PLAN as never);
+        findSubscriptionCharge.mockResolvedValueOnce(CHARGE).mockResolvedValueOnce(null);
+
+        expect(await recordChargeFromRazorpay("sub_rzp_plain")).toBe(true);
+        expect(activateFirstPayment).toHaveBeenCalledWith(
+          expect.anything(),
+          expect.objectContaining({ providerPaymentId: "pay_charge", method: CHARGE.method }),
+        );
+        expect(await recordChargeFromRazorpay("sub_rzp_plain")).toBe(false);
+      });
+
+      it("does nothing when the payment was already recorded", async () => {
+        findSubscriptionCharge.mockResolvedValueOnce(CHARGE);
+        vi.mocked(findPaymentByProviderId).mockResolvedValueOnce({ id: "payment_row" } as never);
+
+        expect(await recordChargeFromRazorpay("sub_rzp_plain")).toBe(false);
+        expect(findPaymentByProviderId).toHaveBeenCalledWith(expect.anything(), "razorpay", "pay_charge");
+        expect(activateFirstPayment).not.toHaveBeenCalled();
       });
     });
 

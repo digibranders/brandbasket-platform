@@ -68,7 +68,7 @@ const SIGN_UP = {
   services: "managed-website,paid-ads,nonsense",
 };
 const INVITE = `/invite/${"A".repeat(43)}`;
-const OTHER_NEXT = ["//evil.com", "https://evil.com", `https://evil.com${INVITE}`, "/invite/../x", `${INVITE}/extra`, `${INVITE}?x=1`, "/billing", "/", "", "javascript:alert(1)"];
+const OTHER_NEXT = ["//evil.com", "https://evil.com", `https://evil.com${INVITE}`, "/invite/../x", `${INVITE}/extra`, `${INVITE}?x=1`, "", "javascript:alert(1)"];
 const OTP = { otpId: "0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b", emailHint: "m•••@example.test", confirmRequired: true };
 const ON_CODE: SignUpResult = { ok: true, data: { otp: OTP } };
 
@@ -101,6 +101,13 @@ describe("signInAction", () => {
     vi.mocked(signInWithPassword).mockResolvedValue({ status: "signed-in", userId: "user-1" });
     vi.mocked(landingForSignedInUser).mockResolvedValue("/");
     await expect(signInAction(null, form({ next: INVITE }))).rejects.toThrow(`redirect:${INVITE}`);
+  });
+
+  it("returns to a safe app link the person came from", async () => {
+    vi.mocked(signInWithPassword).mockResolvedValue({ status: "signed-in", userId: "user-1" });
+    vi.mocked(landingForSignedInUser).mockResolvedValue("/");
+    await expect(signInAction(null, form({ next: "/billing" }))).rejects.toThrow("redirect:/billing");
+    await expect(signInAction(null, form({ next: "/requests/0192f3c4-0000-7000-8000-000000000001" }))).rejects.toThrow("redirect:/requests/0192f3c4-0000-7000-8000-000000000001");
   });
 
   it.each(OTHER_NEXT)("ignores the return address %j and lands as usual", async (next) => {
@@ -160,7 +167,7 @@ describe("signUpAction", () => {
   it("opens the account and goes to the questions on the services the link chose, catalogue ids only", async () => {
     vi.mocked(createListingAccount).mockResolvedValue({ kind: "created" });
     await expect(signUpAction(ON_CODE, form({ ...SIGN_UP, otpId: OTP.otpId, code: "123456" }))).rejects.toThrow("redirect:/start?services=managed-website,paid-ads");
-    expect(createListingAccount).toHaveBeenCalledWith(expect.objectContaining({ email: "meera@example.test", code: { otpId: OTP.otpId, code: "123456" } }), null);
+    expect(createListingAccount).toHaveBeenCalledWith(expect.objectContaining({ email: "meera@example.test", code: { otpId: OTP.otpId, code: "123456" } }), null, { inviteToken: null });
     expect(clearPendingSignupCookie).toHaveBeenCalled();
   });
 
@@ -172,6 +179,12 @@ describe("signUpAction", () => {
   it("returns to the invitation the person came from instead of the questions", async () => {
     vi.mocked(createListingAccount).mockResolvedValue({ kind: "created" });
     await expect(signUpAction(ON_CODE, form({ ...SIGN_UP, otpId: OTP.otpId, code: "123456", next: INVITE }))).rejects.toThrow(`redirect:${INVITE}`);
+    expect(createListingAccount).toHaveBeenCalledWith(expect.anything(), null, { inviteToken: "A".repeat(43) });
+  });
+
+  it("returns to a safe app link the person came from instead of the questions", async () => {
+    vi.mocked(createListingAccount).mockResolvedValue({ kind: "created" });
+    await expect(signUpAction(ON_CODE, form({ ...SIGN_UP, otpId: OTP.otpId, code: "123456", next: "/billing" }))).rejects.toThrow("redirect:/billing");
   });
 
   it.each(OTHER_NEXT)("ignores the return address %j and goes to the questions", async (next) => {

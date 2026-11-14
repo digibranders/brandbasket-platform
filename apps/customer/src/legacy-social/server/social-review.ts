@@ -1,11 +1,14 @@
 import "server-only";
 import type { CustomerContext } from "@/lib/guards";
+import { localDateIn } from "@brandbasket/shared/lib/calendar/local-date";
 import { reportError } from "@/lib/report";
+import { BRAND_TIME_ZONE } from "@/legacy-social/shims";
 import { brandOf, type SocialBrand } from "@/features/social/brand";
 import type { BatchPlan, ExpiredBatch, Poster, SiteJob, Topic, TopicRequest, WrittenBatch } from "@/legacy-social/lib/social/ai";
 import type { CarouselDetail, CarouselSummary } from "@/legacy-social/lib/social/carousel";
 import { CHANNEL_PLATFORMS, type ChannelPlatform } from "@/legacy-social/lib/social/auto";
 import type { AutoPostingState } from "@/legacy-social/lib/social/auto-posting";
+import { renewalDay } from "@/legacy-social/lib/social/plan-window";
 import { addableNetworks, type PostingDays } from "@/legacy-social/lib/social/schedule";
 import { loadAutoPosting, loadBatches, loadCarousel, loadCarouselList, loadChannels, loadPictureLimits, loadPosters, loadSchedule, loadSiteJobs, loadTopicRequests, loadTopics, loadWorkspaceFacts, socialAutoSettings, type PictureLimits } from "./social-auto";
 
@@ -46,14 +49,16 @@ export interface SocialReview {
   readonly canMakeCarousel: boolean;
   /** The brand being looked at and all the business's brands, for the switcher. */
   readonly brand?: SocialBrand;
+  /** The day (India time, `YYYY-MM-DD`) the paid period runs out and the plan renews; null when it is not known. The next month starts on it. */
+  readonly renewsOn: string | null;
   /** True when social-auto could not be asked, so the page says so instead of showing nothing as if it were true. */
   readonly unavailable: boolean;
 }
 
-const EMPTY: SocialReview = { jobs: [], batches: [], waiting: [], approved: [], channels: [], topicRequests: [], expired: { batches: [], pictures: [] }, missingNetworks: [], postingDays: null, autoPosting: null, plan: null, website: null, topics: [], reasons: [], limits: null, carousels: [], carousel: null, weeklyCarousel: false, canMakeCarousel: false, unavailable: true };
+const EMPTY: SocialReview = { jobs: [], batches: [], waiting: [], approved: [], channels: [], topicRequests: [], expired: { batches: [], pictures: [] }, missingNetworks: [], postingDays: null, autoPosting: null, plan: null, website: null, topics: [], reasons: [], limits: null, carousels: [], carousel: null, weeklyCarousel: false, canMakeCarousel: false, renewsOn: null, unavailable: true };
 
 /** Asks social-auto for each part. Each is its own failure: what could be read is shown, and the page says the rest could not be. */
-export async function loadSocialReview(customer: Pick<CustomerContext, "businessId" | "businessName">): Promise<SocialReview> {
+export async function loadSocialReview(customer: Pick<CustomerContext, "businessId" | "businessName" | "billing">): Promise<SocialReview> {
   const settings = socialAutoSettings();
   if (settings === null) return EMPTY;
   const brand = await brandOf(customer);
@@ -110,6 +115,7 @@ export async function loadSocialReview(customer: Pick<CustomerContext, "business
     carousel,
     weeklyCarousel: carouselList.weekly,
     canMakeCarousel: facts.website !== null && channels.length > 0,
+    renewsOn: renewalDay(customer.billing.subscription?.paidThroughAt ?? null, (at) => localDateIn(BRAND_TIME_ZONE, at)),
     unavailable: failed,
   };
 }

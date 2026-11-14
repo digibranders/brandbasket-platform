@@ -17,7 +17,7 @@ import {
   type Payment,
   type TaxInvoice,
 } from "@brandbasket/db";
-import { paymentFailedEmail, paymentReceivedEmail, type EmailMessage, type PaymentFailedPlan } from "@brandbasket/email";
+import { firstChargeReminderEmail, paymentFailedEmail, paymentReceivedEmail, type EmailMessage, type PaymentFailedPlan } from "@brandbasket/email";
 import { nextBundledNetCents, nextDiscountCents } from "../lib/billing/bundle";
 import { nextPaymentDate } from "../lib/billing/period";
 import { paymentsContinue } from "../lib/billing/payments-continue";
@@ -26,8 +26,8 @@ import { renewalChargeCents } from "../lib/billing/terms";
 import { emailPreferenceAllows } from "./email-preference";
 import { paymentServiceNames, serviceTitle } from "./payment-alerts";
 
-/** Where the customer pays: Plan and billing on the dashboard. */
-const BILLING_PATH = "/billing";
+/** Where the customer pays: the payment and details step on the dashboard. */
+const PAY_STEP_PATH = "/billing/payment";
 const RECEIPT_TEMPLATE = "payment-received";
 const BASIS_POINTS_PER_PERCENT = 100;
 /** Payments of these kinds pay for a stretch of the plan, so the email can say what it is paid up to. */
@@ -161,10 +161,84 @@ export async function sendPaymentFailed(db: Database, deps: PaymentEmailDeps, in
         amountCents: input.amountCents,
         items,
         plan,
-        payUrl: new URL(BILLING_PATH, deps.dashboardOrigin).toString(),
+        payUrl: new URL(PAY_STEP_PATH, deps.dashboardOrigin).toString(),
       }),
     );
   } catch (error) {
     console.error("[payment-email] A failed-payment email could not be sent.", { businessId: input.businessId, error: error instanceof Error ? error.name : "error" });
+  }
+}
+
+export interface FirstChargeReminderEmail {
+  readonly businessId: string;
+  readonly amountCents: number;
+  readonly currency: BillingCurrency;
+  readonly chargeDate: Date;
+}
+
+const FIRST_CHARGE_REMINDER_TEMPLATE = "first-charge-reminder";
+
+/**
+ * Sends a reminder email before the first full-price charge after an introductory offer period (e.g. ₹1 first month).
+ * Contains the charge date and amount.
+ * Idempotent: checks hasEmailContaining with template "first-charge-reminder" and toAddress so it is sent only once.
+ */
+export async function sendFirstChargeReminder(
+  db: Database,
+  deps: PaymentEmailDeps,
+  input: FirstChargeReminderEmail,
+  now: Date = new Date(),
+): Promise<void> {
+  try {
+    const details = await findBusinessAlertDetails(db, input.businessId);
+    const to = details === null ? null : recipientOf(details.owner);
+    if (details === null || to === null) return;
+
+    const allowed =
+      details.owner.userId === null ||
+      (await emailPreferenceAllows(db, details.owner.userId, input.businessId, "billing", (error) =>
+        console.error("[payment-email] Could not read the email preference, sending anyway.", {
+          businessId: input.businessId,
+          error: error instanceof Error ? error.name : "error",
+        }),
+      ));
+    if (!allowed) return;
+
+    const billingUrl = new URL(PAY_STEP_PATH, deps.dashboardOrigin).toString();
+    const subscription = await findLatestSubscriptionForBusiness(db, input.businessId);
+    const since = subscription?.createdAt ?? new Date(0);
+
+    const alreadySent = await hasEmailContaining(db, {
+      template: FIRST_CHARGE_REMINDER_TEMPLATE,
+      toAddress: to,
+      text: billingUrl,
+      since,
+    });
+    if (alreadySent) return;
+
+    const items =
+      subscription === null
+        ? []
+        : (await findBundledAddOnsForSubscription(db, subscription.id))
+            .filter((line) => line.status !== "removed")
+            .map((line) => serviceTitle(line.addOn));
+
+    await deps.send(
+      firstChargeReminderEmail({
+        to,
+        name: details.owner.name,
+        currency: input.currency,
+        amountCents: input.amountCents,
+        chargeDate: input.chargeDate,
+        items,
+        billingUrl,
+        businessId: input.businessId,
+      }),
+    );
+  } catch (error) {
+    console.error("[payment-email] A first-charge reminder could not be sent.", {
+      businessId: input.businessId,
+      error: error instanceof Error ? error.name : "error",
+    });
   }
 }

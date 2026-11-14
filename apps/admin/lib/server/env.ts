@@ -27,44 +27,69 @@ const optionalClientSiteBaseDomain = z
  * connection) and no `DATABASE_URL_PUBLIC` (insert-only, for the marketing lead form): the admin has no reason to
  * hold either, and a connection an app never needs is a connection that can only ever be a liability.
  */
-const serverEnvSchema = z.object({
-  DATABASE_URL_STAFF: z.url({
-    protocol: POSTGRES_PROTOCOL,
-    error: "DATABASE_URL_STAFF must be a postgresql:// URL",
-  }),
-  DATABASE_URL_PAYLOAD: z.url({
-    protocol: POSTGRES_PROTOCOL,
-    error: "DATABASE_URL_PAYLOAD must be a postgresql:// URL",
-  }),
-  PAYLOAD_SECRET: z.string().min(32, "PAYLOAD_SECRET must be at least 32 characters"),
-  BETTER_AUTH_SECRET: z.string().min(32, "BETTER_AUTH_SECRET must be at least 32 characters"),
-  ADMIN_ORIGIN: z.url({
-    protocol: /^https?$/,
-    error: "ADMIN_ORIGIN must be an absolute http:// or https:// URL",
-  }),
-  /** The customer app's URL. Setup links staff send point there, not here. */
-  APP_ORIGIN: z.url({
-    protocol: /^https?$/,
-    error: "APP_ORIGIN must be an absolute http:// or https:// URL",
-  }),
-  /** The domain free addresses are made on (<name>.<this>). Optional: unset, no free address is offered. */
-  CLIENT_SITE_BASE_DOMAIN: optionalClientSiteBaseDomain,
-  /** The email of the Google service account customers add as a Viewer on their Analytics property. Shown to staff only; the key is the platform's, not this app's. */
-  GA4_SERVICE_ACCOUNT_EMAIL: z
-    .string()
-    .trim()
-    .refine((value) => value === "" || z.email().safeParse(value).success, { error: "GA4_SERVICE_ACCOUNT_EMAIL must be an email address" })
-    .optional(),
-  /** The OAuth client of the Brandbasket Google project (plan 62). All four set means the Google account can be connected from Settings. */
-  GOOGLE_OAUTH_CLIENT_ID: z.string().trim().min(1).optional(),
-  GOOGLE_OAUTH_CLIENT_SECRET: z.string().trim().min(1).optional(),
-  /** The callback Google sends staff back to; it must be one of the client's authorised redirect URIs. */
-  GOOGLE_OAUTH_REDIRECT_URI: z.url({ protocol: /^https?$/, error: "GOOGLE_OAUTH_REDIRECT_URI must be an absolute http:// or https:// URL" }).optional(),
-  /** The one Google account the console accepts a sign-in from. */
-  GOOGLE_ACCOUNT_EMAIL: z.email({ error: "GOOGLE_ACCOUNT_EMAIL must be an email address" }).optional(),
-  /** The same switch the platform's go live job reads: whether the Analytics tag goes on client sites. The Google card only reports it. */
-  GOOGLE_ANALYTICS_TAG_ENABLED: z.string().optional(),
-});
+export const serverEnvSchema = z
+  .object({
+    DATABASE_URL_STAFF: z.url({
+      protocol: POSTGRES_PROTOCOL,
+      error: "DATABASE_URL_STAFF must be a postgresql:// URL",
+    }),
+    DATABASE_URL_PAYLOAD: z.url({
+      protocol: POSTGRES_PROTOCOL,
+      error: "DATABASE_URL_PAYLOAD must be a postgresql:// URL",
+    }),
+    PAYLOAD_SECRET: z.string().min(32, "PAYLOAD_SECRET must be at least 32 characters"),
+    BETTER_AUTH_SECRET: z.string().min(32, "BETTER_AUTH_SECRET must be at least 32 characters"),
+    ADMIN_ORIGIN: z.url({
+      protocol: /^https?$/,
+      error: "ADMIN_ORIGIN must be an absolute http:// or https:// URL",
+    }),
+    /** The customer app's URL. Setup links staff send point there, not here. */
+    APP_ORIGIN: z.url({
+      protocol: /^https?$/,
+      error: "APP_ORIGIN must be an absolute http:// or https:// URL",
+    }),
+    /** The domain free addresses are made on (<name>.<this>). Optional: unset, no free address is offered. */
+    CLIENT_SITE_BASE_DOMAIN: optionalClientSiteBaseDomain,
+    /** The email of the Google service account customers add as a Viewer on their Analytics property. Shown to staff only; the key is the platform's, not this app's. */
+    GA4_SERVICE_ACCOUNT_EMAIL: z
+      .string()
+      .trim()
+      .refine((value) => value === "" || z.email().safeParse(value).success, { error: "GA4_SERVICE_ACCOUNT_EMAIL must be an email address" })
+      .optional(),
+    /** The OAuth client of the Brandbasket Google project (plan 62). All four set means the Google account can be connected from Settings. */
+    GOOGLE_OAUTH_CLIENT_ID: z.string().trim().min(1).optional(),
+    GOOGLE_OAUTH_CLIENT_SECRET: z.string().trim().min(1).optional(),
+    /** The callback Google sends staff back to; it must be one of the client's authorised redirect URIs. */
+    GOOGLE_OAUTH_REDIRECT_URI: z.url({ protocol: /^https?$/, error: "GOOGLE_OAUTH_REDIRECT_URI must be an absolute http:// or https:// URL" }).optional(),
+    /** The one Google account the console accepts a sign-in from. */
+    GOOGLE_ACCOUNT_EMAIL: z.email({ error: "GOOGLE_ACCOUNT_EMAIL must be an email address" }).optional(),
+    /** The same switch the platform's go live job reads: whether the Analytics tag goes on client sites. The Google card only reports it. */
+    GOOGLE_ANALYTICS_TAG_ENABLED: z.string().optional(),
+    /** When "1", requires Cloudflare Access JWT verification on every console request. */
+    REQUIRE_CF_ACCESS: z.enum(["0", "1"]).optional(),
+    /** The Application Audience (AUD) tag from Cloudflare Access. Required when REQUIRE_CF_ACCESS=1. */
+    CF_ACCESS_AUDIENCE: z.string().trim().min(1).optional(),
+    /** The Cloudflare Access team domain (e.g. https://<team>.cloudflareaccess.com). Required when REQUIRE_CF_ACCESS=1. */
+    CF_ACCESS_ISSUER: z.url({ protocol: /^https?$/, error: "CF_ACCESS_ISSUER must be an absolute http:// or https:// URL" }).optional(),
+  })
+  .superRefine((data, ctx) => {
+    if (data.REQUIRE_CF_ACCESS === "1") {
+      if (!data.CF_ACCESS_AUDIENCE) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["CF_ACCESS_AUDIENCE"],
+          message: "CF_ACCESS_AUDIENCE is required when REQUIRE_CF_ACCESS=1",
+        });
+      }
+      if (!data.CF_ACCESS_ISSUER) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["CF_ACCESS_ISSUER"],
+          message: "CF_ACCESS_ISSUER is required when REQUIRE_CF_ACCESS=1",
+        });
+      }
+    }
+  });
 
 export type ServerEnv = z.infer<typeof serverEnvSchema>;
 

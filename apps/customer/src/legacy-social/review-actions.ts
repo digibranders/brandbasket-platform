@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache";
 import { unstable_rethrow } from "next/navigation";
 import { z } from "zod";
 import { requireService, type CustomerContext } from "@/lib/guards";
-import { actorOf, addNetwork, decideBatch, decideCarousel, askTopic, decidePoster, drawBatch, loadTopics, moveTopic, replaceTopic, makeCarousel, setCarouselWeekly, SocialAutoError, socialAutoSettings, type SocialAutoSettings } from "@/legacy-social/server/social-auto";
+import { actorOf, addNetwork, decideBatch, decideCarousel, drawCarousel, moveCarousel, askTopic, decidePoster, drawBatch, loadTopics, moveTopic, replaceTopic, makeCarousel, setCarouselWeekly, SocialAutoError, socialAutoSettings, type SocialAutoSettings } from "@/legacy-social/server/social-auto";
 import { brandOf, type SocialBrand } from "@/features/social/brand";
 import { wordsForCode } from "@/legacy-social/lib/social/ai";
 import { CHANNEL_PLATFORMS, PLATFORM_NAMES } from "@/legacy-social/lib/social/auto";
@@ -85,6 +85,20 @@ export async function moveTopicAction(formData: FormData): Promise<NewPostState>
     // The words are not rewritten for the new day, so a topic that names one (Friday, tomorrow) is flagged for her to check.
     return moved.wordsNameADay ? "Moved. The words of this topic name a day, so read them again to see they still fit." : undefined;
   });
+}
+
+/** Draws the slides of a kept carousel. Nothing is drawn for a carousel she has not kept. */
+export async function drawCarouselAction(formData: FormData): Promise<NewPostState> {
+  const parsed = z.object({ id: ID }).safeParse({ id: formData.get("id") });
+  if (!parsed.success) return badForm();
+  return run("draw the carousel", async ({ settings, brand, actor }) => void (await drawCarousel(settings, brand.externalId, parsed.data.id, actor)));
+}
+
+/** Moves the weekly carousel to another day of its week. Its content is never changed. */
+export async function moveCarouselAction(formData: FormData): Promise<NewPostState> {
+  const parsed = z.object({ id: ID, day: z.string().regex(/^\d{4}-\d{2}-\d{2}$/) }).safeParse({ id: formData.get("id"), day: formData.get("day") });
+  if (!parsed.success) return badForm();
+  return run("move the carousel", async ({ settings, brand, actor }) => void (await moveCarousel(settings, brand.externalId, parsed.data.id, parsed.data.day, actor)));
 }
 
 /** "Write your own": a post about something she wrote in her own words, for the week being looked at. One a week; nothing is drawn until she asks. */
@@ -175,14 +189,14 @@ export async function setWeeklyCarouselAction(formData: FormData): Promise<NewPo
 export async function decideCarouselAction(formData: FormData): Promise<NewPostState> {
   const parsed = z
     .discriminatedUnion("action", [
-      z.object({ id: ID, action: z.literal("approve") }),
+      z.object({ id: ID, action: z.enum(["approve", "keep", "drop", "reset"]) }),
       z.object({ id: ID, action: z.literal("reject"), reason: z.string().trim().min(1).max(40), comment: z.string().trim().max(500).optional() }),
     ])
     .safeParse({ id: formData.get("id"), action: formData.get("action"), reason: formData.get("reason") ?? undefined, comment: formData.get("comment") || undefined });
   if (!parsed.success) return badForm();
   const d = parsed.data;
   return run("decide the carousel", async ({ settings, brand, actor }) => {
-    await decideCarousel(settings, brand.externalId, d.action === "approve" ? { action: "approve", id: d.id } : { action: "reject", id: d.id, reason: d.reason, ...(d.comment === undefined ? {} : { comment: d.comment }) }, actor);
+    await decideCarousel(settings, brand.externalId, d.action !== "reject" ? { action: d.action, id: d.id } : { action: "reject", id: d.id, reason: d.reason, ...(d.comment === undefined ? {} : { comment: d.comment }) }, actor);
     if (d.action === "approve") return "Approved. It goes out on its day.";
   });
 }

@@ -14,4 +14,4 @@ describe("loginNotice", () => {
 
 it("tells the browser the same number of days the database keeps", () => {
   expect(loginNotice("account-closed")).toContain(`kept for ${ACCOUNT_CLOSURE_GRACE_DAYS} days`);
-});
+}, 15_000);

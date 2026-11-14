@@ -1,5 +1,6 @@
 import type Razorpay from "razorpay";
 import type { RazorpaySdkClient } from "./razorpay-provider";
+import { readPaymentMethod } from "./razorpay-webhook";
 
 /**
  * Adapts the real `razorpay` SDK client to the `RazorpaySdkClient` interface `createRazorpayProvider` expects.
@@ -20,7 +21,14 @@ export function wrapRazorpaySdkClient(client: Razorpay): RazorpaySdkClient {
       update: (id, input) => client.subscriptions.update(id, input),
       fetch: async (id) => {
         const subscription = await client.subscriptions.fetch(id);
-        return { id: subscription.id, status: subscription.status, paid_count: subscription.paid_count, current_start: subscription.current_start, current_end: subscription.current_end };
+        return {
+          id: subscription.id,
+          status: subscription.status,
+          short_url: subscription.short_url,
+          paid_count: subscription.paid_count,
+          current_start: subscription.current_start,
+          current_end: subscription.current_end,
+        };
       },
     },
     payments: {
@@ -37,7 +45,7 @@ export function wrapRazorpaySdkClient(client: Razorpay): RazorpaySdkClient {
               ? Number(payment.amount)
               : Number.NaN
             : payment.amount;
-        return { id: payment.id, amount, currency: payment.currency, created_at: payment.created_at, status: payment.status };
+        return { id: payment.id, amount, currency: payment.currency, created_at: payment.created_at, status: payment.status, method: readPaymentMethod(payment) };
       },
     },
     invoices: {

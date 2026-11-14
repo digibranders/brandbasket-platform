@@ -1,9 +1,19 @@
 import "server-only";
 import { findOpenClosureForUser, listMembershipsForUser } from "@brandbasket/db";
+import { ACTIVE_BUSINESS_COOKIE, decideCustomerAccess, type CustomerAccess, type TenantContext } from "@brandbasket/shared/lib/access";
+import { cookies } from "next/headers";
 import { cache } from "react";
-import { decideCustomerAccess, type CustomerAccess, type TenantContext } from "@brandbasket/shared/lib/access";
 import { getAppDb, getStaffDb } from "./db";
 import { getSessionUser } from "./session";
+
+async function readActiveBusinessCookie(): Promise<string | null> {
+  try {
+    const store = await cookies();
+    return store.get(ACTIVE_BUSINESS_COOKIE)?.value ?? null;
+  } catch {
+    return null;
+  }
+}
 
 /**
  * The session and the business it belongs to, read once per request: or that the account is closing (a deletion was
@@ -16,7 +26,8 @@ export const getCustomerAccess = cache(async (): Promise<CustomerAccess> => {
   // An account that asked to be deleted is locked, whatever else is true of it, until it is restored or erased.
   const closure = await findOpenClosureForUser(getStaffDb(), user.id);
   if (closure !== null) return { kind: "closing", user, eraseAfter: closure.eraseAfter };
-  return decideCustomerAccess(user, await listMembershipsForUser(getAppDb(), user.id));
+  const activeBusinessId = await readActiveBusinessCookie();
+  return decideCustomerAccess(user, await listMembershipsForUser(getAppDb(), user.id), activeBusinessId);
 });
 
 /**

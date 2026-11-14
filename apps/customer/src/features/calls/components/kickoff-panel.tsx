@@ -107,7 +107,7 @@ export function KickoffPanel({ services, bookingUrl, canBook, cannotBookLine, bo
         <div className="flex items-start gap-3">
           <Icon name="CheckCircle" className="text-pos-text" />
           <div className="min-w-0">
-            <p className="type-sub text-ink">{starts === null ? "Your kickoff is booked" : ends === null ? formatDateTime(starts) : `${formatDateTime(starts)} to ${formatTime(ends)}`}</p>
+            <p className="type-sub text-ink">{starts === null ? "Your kickoff call is booked" : `Your kickoff call is booked for ${ends === null ? formatDateTime(starts) : `${formatDateTime(starts)} to ${formatTime(ends)}`}`}</p>
             <p className="type-meta">Video call. The link is in your email and calendar invite.</p>
           </div>
         </div>

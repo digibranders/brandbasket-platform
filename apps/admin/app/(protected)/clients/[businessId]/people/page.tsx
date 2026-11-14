@@ -5,7 +5,8 @@ import { staffCan } from "@brandbasket/shared/lib/access";
 import { displayPhoneText } from "@brandbasket/shared/server/phone-display";
 import { GatedSubmitButton } from "@brandbasket/shared/ui/forms/submit-gate";
 import { LocalDate } from "@brandbasket/shared/ui/panel/local-date-time";
-import { buttonSecondary, buttonSmall } from "@/components/console/buttons";
+import { buttonDanger, buttonSecondary, buttonSmall } from "@/components/console/buttons";
+import { ConfirmDialog } from "@/components/console/confirm-dialog";
 import { fieldClasses, labelClasses } from "@/components/console/field-styles";
 import { Notice } from "@/components/console/notice";
 import { Quiet, Section } from "@/components/console/section";
@@ -14,7 +15,7 @@ import { TABLE, TD, TD_TIME, TH } from "@/components/console/table";
 import { PEOPLE_NOTICES, readPeopleNotice } from "@/lib/people-notices";
 import { openClientTab } from "@/lib/server/client-page";
 import { getStaffDb } from "@/lib/server/db";
-import { extendClosureAction, renameOwnerAction, restoreClosureAction } from "./actions";
+import { closeAccountAction, extendClosureAction, renameOwnerAction, restoreClosureAction } from "./actions";
 import { TableScroll } from "@/components/console/table-scroll";
 
 export const metadata: Metadata = { title: "Client people" };
@@ -99,7 +100,29 @@ export default async function ClientPeoplePage({
 
       <Section title="Leaving" id="leaving">
         {closure === null ? (
-          <Quiet>This account is not leaving.</Quiet>
+          <div>
+            <Quiet>This account is not leaving.</Quiet>
+            {isAdmin && owners.length > 0 ? (
+              <details className="mt-4">
+                <summary className="cursor-pointer text-xs font-semibold text-error">Close account</summary>
+                <div className="mt-3">
+                  <ConfirmDialog
+                    title="Close this account"
+                    consequence="This schedules the account for permanent erasure in 30 days. Their active memberships and dashboard access will be closed."
+                    triggerLabel="Schedule closure"
+                    triggerClassName={buttonDanger}
+                    confirmLabel="Close account"
+                    cancelLabel="Cancel"
+                    variant="danger"
+                    formAction={closeAccountAction}
+                  >
+                    <input type="hidden" name="businessId" value={client.businessId} />
+                    <input type="hidden" name="userId" value={owners[0].userId} />
+                  </ConfirmDialog>
+                </div>
+              </details>
+            ) : null}
+          </div>
         ) : (
           <div className="grid max-w-xl gap-4">
             <p className="text-sm">
@@ -107,12 +130,18 @@ export default async function ClientPeoplePage({
             </p>
             {isAdmin ? (
               <div className="flex flex-wrap gap-2">
-                <form action={restoreClosureAction}>
+                <ConfirmDialog
+                  title="Restore closing account"
+                  consequence="The account will be restored and deletion cancelled. The client can sign in again; a plan they cancelled stays cancelled."
+                  triggerLabel="Restore account"
+                  triggerClassName={buttonSmall}
+                  confirmLabel="Restore account"
+                  cancelLabel="Cancel"
+                  variant="default"
+                  formAction={restoreClosureAction}
+                >
                   <input type="hidden" name="businessId" value={client.businessId} />
-                  <button type="submit" className={buttonSmall}>
-                    Restore account
-                  </button>
-                </form>
+                </ConfirmDialog>
                 <form action={extendClosureAction}>
                   <input type="hidden" name="businessId" value={client.businessId} />
                   <button type="submit" className={buttonSmall}>
