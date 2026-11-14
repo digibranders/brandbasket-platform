@@ -29,3 +29,24 @@ export function nextStartDay({ today, earliest, renewsOn }: { readonly today: st
 export function renewalDay(paidThroughAt: Date | null, dayOf: (at: Date) => string): string | null {
   return paidThroughAt === null || Number.isNaN(paidThroughAt.getTime()) ? null : dayOf(paidThroughAt);
 }
+
+/** How many days after the start the posting service lets a plan run at most (the last day of its fourth week). */
+const MOST_DAYS_AFTER_START = 27;
+
+const addDays = (day: string, days: number): string => new Date(Date.parse(`${day}T00:00:00Z`) + days * DAY_MS).toISOString().slice(0, 10);
+
+/**
+ * The last day a post may fall on: the day before the plan renews, so a plan never runs into the next paid month. It is at most four weeks
+ * after the start (the most the posting service writes in one go). Null when the renewal is not known or is not after the start, and the plan
+ * is then written as it was, with no end day.
+ */
+export function planEndDay({ start, renewsOn }: { readonly start: string; readonly renewsOn: string | null }): string | null {
+  if (renewsOn === null) return null;
+  const lastPaidDay = addDays(renewsOn, -1);
+  if (lastPaidDay < start) return null;
+  const latest = addDays(start, MOST_DAYS_AFTER_START);
+  return lastPaidDay < latest ? lastPaidDay : latest;
+}
+
+/** Whether a post on `from` may go to `to`: a post of the paid month stays inside it (before the renewal day), and one already on or past the renewal day is not held back. */
+export const staysInMonth = (from: string | null, to: string, renewsOn: string | null): boolean => renewsOn === null || (from !== null && from >= renewsOn) || to < renewsOn;
