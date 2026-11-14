@@ -9,7 +9,7 @@ Non-goals: no change to prices, offers, billing logic, access rules, data model 
 
 ## 2. Decisions fixed for this release
 
-- Customer app moves to the website brand (near-black primary, rattan gold accent, Red Hat fonts, warm paper). Owner approval of this is a gate for R2-00 (recorded as D32 in `14`).
+- Customer app moves to the website brand (near-black primary, rattan gold accent, Red Hat fonts, warm paper). Owner approved this on 2026-11-14 (D32 in `14`), so R2-00 may start.
 - Premium design language file is binding. The ChatGPT images are inspiration only.
 - Console already uses the warm palette; it adopts the shared component finish.
 - One staff account. No role-based UI variants.
@@ -68,7 +68,7 @@ Antigravity has the capacity; Claude usage is scarce. Claude's role in Release 2
 
 ## 9. Owner actions
 
-1. Approve the brand change (D32), then each mock as it arrives.
-2. Tell Steve which Social areas are frozen during R2-04.
+1. Approve each mock as it arrives (brand change D32 is already approved).
+2. Owner agreed: the `legacy-social` rename stays off during Release 2 unless the owner or Steve later say it is safe; the owner tells Steve which Social areas are frozen during R2-04.
 3. Approve new copy from the reports.
 4. Approve the release PR and deploy. Enable any new timers on the server yourself.
