@@ -8,6 +8,7 @@ import {
   ArrowUpRightIcon,
   BellIcon,
   CalendarBlankIcon,
+  CalendarCheckIcon,
   CaretDownIcon,
   CaretLeftIcon,
   CaretRightIcon,
@@ -74,6 +75,7 @@ import {
   BrowserIcon,
   SidebarSimpleIcon,
   ArrowClockwiseIcon,
+  ArrowsClockwiseIcon,
   ArrowCounterClockwiseIcon,
   ListBulletsIcon,
   ListNumbersIcon,
@@ -96,6 +98,7 @@ const ICONS = {
   ArrowUpRight: ArrowUpRightIcon,
   Bell: BellIcon,
   CalendarBlank: CalendarBlankIcon,
+  CalendarCheck: CalendarCheckIcon,
   CaretDown: CaretDownIcon,
   CaretLeft: CaretLeftIcon,
   CaretRight: CaretRightIcon,
@@ -164,6 +167,7 @@ const ICONS = {
   TextHTwo: TextHTwoIcon,
   TextHThree: TextHThreeIcon,
   ArrowClockwise: ArrowClockwiseIcon,
+  ArrowsClockwise: ArrowsClockwiseIcon,
   ArrowCounterClockwise: ArrowCounterClockwiseIcon,
   ListBullets: ListBulletsIcon,
   ListNumbers: ListNumbersIcon,
@@ -188,12 +192,14 @@ export interface IconProps {
   readonly label?: string;
   /** The filled weight, for the current item in a menu (the rest stay light). */
   readonly filled?: boolean;
+  /** The two-tone weight, for a mark inside a tinted badge (a confirmation's reassurance), where the light weight looks thin. */
+  readonly duotone?: boolean;
   readonly className?: string;
 }
 
 /** A Phosphor icon in the light weight (filled when asked). Hidden from screen readers unless it has a label. Works in server components. */
-export function Icon({ name, size = "md", label, filled = false, className }: IconProps) {
+export function Icon({ name, size = "md", label, filled = false, duotone = false, className }: IconProps) {
   const Glyph = ICONS[name];
   const naming = label === undefined ? { "aria-hidden": true } : { role: "img", "aria-label": label };
-  return <Glyph weight={filled ? "fill" : "light"} size={SIZES[size]} className={cx("shrink-0", className)} {...naming} />;
+  return <Glyph weight={filled ? "fill" : duotone ? "duotone" : "light"} size={SIZES[size]} className={cx("shrink-0", className)} {...naming} />;
 }
