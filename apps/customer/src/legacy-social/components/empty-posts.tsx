@@ -27,8 +27,8 @@ interface EmptyPostsProps {
 export function EmptyPosts({ channel, connected, website, postingDays, canChange, startCardShown = false }: EmptyPostsProps): ReactElement | null {
   const [writing, setWriting] = useState(false);
   const name = channel === "all" ? null : PLATFORM_NAMES[channel];
-  // With an account and a website, what is left to say is "write your posts", and the start card above already says it.
-  if (startCardShown && connected.length > 0 && website !== null) return null;
+  // With an account connected, what is left to say is "write your posts" (the start card asks for the website itself), and the start card above already says it.
+  if (startCardShown && connected.length > 0) return null;
   const view = ((): { title: string; text: string; action: ReactElement | null } => {
     if (connected.length === 0) {
       return { title: "Connect an account first", text: "Connect Instagram, Facebook, LinkedIn or Google on the left. Posts are written for the accounts you connect, and you look them over here.", action: null };

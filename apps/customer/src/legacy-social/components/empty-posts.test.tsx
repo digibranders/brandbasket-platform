@@ -28,9 +28,17 @@ describe("EmptyPosts", () => {
     expect(screen.getByText("start dialog")).toBeTruthy();
   });
 
-  it("does not say it again when the start card is already on the page", () => {
+  it("does not say it again when the start card is already on the page, with or without a website", () => {
     const { container } = render(<EmptyPosts channel="all" {...base} startCardShown />);
     expect(container.textContent).toBe("");
+    cleanup();
+    const again = render(<EmptyPosts channel="all" {...base} website={null} startCardShown />);
+    expect(again.container.textContent).toBe("");
+  });
+
+  it("still says to connect an account first, even with the start card on the page", () => {
+    render(<EmptyPosts channel="all" {...base} connected={[]} startCardShown />);
+    expect(screen.getByText("Connect an account first")).toBeTruthy();
   });
 
   it("offers a viewer nothing to press", () => {
