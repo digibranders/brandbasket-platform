@@ -1,6 +1,6 @@
-import { and, eq, isNotNull, lte, or, sql } from "drizzle-orm";
+import { and, desc, eq, isNotNull, lte, or, sql } from "drizzle-orm";
 import type { Database } from "../client";
-import { projects, setupCallBookings } from "../schema";
+import { businesses, projects, setupCallBookings } from "../schema";
 
 const HOUR_MS = 3_600_000;
 
@@ -33,10 +33,25 @@ export function firstPreviewDueAfterKickoff(input: { readonly endsAt: Date | nul
  * Search-only business are all left alone. The status change is recorded in project_events by its trigger. True when a
  * project moved. Staff connection.
  */
-export async function markProjectReadyAfterKickoff(db: Database, input: { readonly businessId: string; readonly dueAt: Date; readonly now: Date }): Promise<boolean> {
+export async function markProjectReadyAfterKickoff(
+  db: Database,
+  input: {
+    readonly businessId: string;
+    readonly dueAt: Date;
+    readonly now: Date;
+    readonly startedWithoutCallConfirmation?: boolean;
+  },
+): Promise<boolean> {
   const rows = await db
     .update(projects)
-    .set({ status: "submitted", slaDueAt: input.dueAt, updatedAt: input.now })
+    .set({
+      status: "submitted",
+      slaDueAt: input.dueAt,
+      updatedAt: input.now,
+      ...(input.startedWithoutCallConfirmation !== undefined
+        ? { startedWithoutCallConfirmation: input.startedWithoutCallConfirmation }
+        : {}),
+    })
     .where(
       and(
         eq(projects.businessId, input.businessId),
@@ -46,6 +61,52 @@ export async function markProjectReadyAfterKickoff(db: Database, input: { readon
     )
     .returning({ id: projects.id });
   return rows.length > 0;
+}
+
+export async function isProjectStartedWithoutCallConfirmation(db: Database, businessId: string): Promise<boolean> {
+  const rows = await db
+    .select({ startedWithoutCallConfirmation: projects.startedWithoutCallConfirmation })
+    .from(projects)
+    .where(eq(projects.businessId, businessId))
+    .limit(1);
+  return rows[0]?.startedWithoutCallConfirmation === true;
+}
+
+export interface ProjectStartedWithoutConfirmation {
+  readonly projectId: string;
+  readonly businessId: string;
+  readonly businessName: string;
+  readonly startedAt: Date;
+}
+
+/**
+ * Projects whose build started automatically because 24 hours passed without kickoff call confirmation.
+ * Shown on Today until the project finishes or moves on. Staff connection.
+ */
+export async function listProjectsStartedWithoutCallConfirmation(db: Database): Promise<ProjectStartedWithoutConfirmation[]> {
+  const rows = await db
+    .select({
+      projectId: projects.id,
+      businessId: projects.businessId,
+      businessName: businesses.name,
+      startedAt: projects.updatedAt,
+    })
+    .from(projects)
+    .innerJoin(businesses, eq(businesses.id, projects.businessId))
+    .where(
+      and(
+        eq(projects.startedWithoutCallConfirmation, true),
+        or(
+          eq(projects.status, "submitted"),
+          eq(projects.status, "building"),
+          eq(projects.status, "preview"),
+          eq(projects.status, "revisions"),
+          eq(projects.status, "approved"),
+        ),
+      ),
+    )
+    .orderBy(desc(projects.updatedAt));
+  return rows;
 }
 
 /** A kickoff whose project is still waiting in onboarding: the call was held by staff, or ended long enough ago to start without a mark. */

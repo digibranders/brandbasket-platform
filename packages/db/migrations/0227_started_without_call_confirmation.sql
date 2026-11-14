@@ -1,0 +1,1 @@
+ALTER TABLE "projects" ADD COLUMN "started_without_call_confirmation" boolean DEFAULT false NOT NULL;

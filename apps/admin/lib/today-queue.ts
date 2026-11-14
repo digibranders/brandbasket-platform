@@ -3,8 +3,8 @@ import { SUPPORT_CATEGORY_LABELS } from "@brandbasket/shared/lib/support";
 import type { AttentionItem } from "./pipeline";
 import { clock, longDay, shortDate } from "./team-time";
 
-/** Every kind of work Today shows: the pipeline's attention kinds, plus requests, sign-ups, errors, failed deliveries and kickoff calls. */
-export type TodayKind = AttentionItem["kind"] | "request" | "signup" | "error" | "delivery" | "kickoff" | "google" | "approved" | "domain";
+/** Every kind of work Today shows: the pipeline's attention kinds, plus requests, sign-ups, errors, failed deliveries, kickoff calls, approved previews, domain moves and unconfirmed starts. */
+export type TodayKind = AttentionItem["kind"] | "request" | "signup" | "error" | "delivery" | "kickoff" | "google" | "approved" | "domain" | "unconfirmed_start";
 
 export interface TodayItem {
   /** Unique across the queue. */
@@ -40,6 +40,12 @@ export interface DomainMoveNeedingAction {
   readonly createdAt: Date;
 }
 
+export interface UnconfirmedStartItem {
+  readonly businessId: string;
+  readonly businessName: string;
+  readonly startedAt: Date;
+}
+
 export interface TodayInput {
   /** From attentionItems: payments to sort, add-ons to start, previews overdue and due, new enquiries. */
   readonly attention: readonly AttentionItem[];
@@ -61,6 +67,8 @@ export interface TodayInput {
   readonly approvedPreviews?: readonly ApprovedPreviewNeedingLaunch[];
   /** Requests from customers to move to their own domain. */
   readonly domainMoves?: readonly DomainMoveNeedingAction[];
+  /** Projects whose website build started automatically after 24 hours without kickoff call confirmation. */
+  readonly unconfirmedStarts?: readonly UnconfirmedStartItem[];
   /** Google problems: sites that cannot be verified, silent sources, a lost sign-in (lib/google-today.ts). Already built and shown in their own section. */
   readonly google?: readonly TodayItem[];
   /** The end of the team's day: a preview due after it is not today's work. */
@@ -198,6 +206,17 @@ export function todayQueue(input: TodayInput): readonly TodayItem[] {
       dueAt: after(item.createdAt, WAIT_LIMITS.domain),
     }),
   );
+  // Projects whose build started automatically after 24h without call confirmation.
+  const unconfirmed = (input.unconfirmedStarts ?? []).map(
+    (item): TodayItem => ({
+      key: `unconfirmed_start:${item.businessId}`,
+      kind: "unconfirmed_start",
+      href: `/clients/${item.businessId}/website`,
+      title: "Started without call confirmation",
+      detail: item.businessName,
+      dueAt: null,
+    }),
+  );
   return [
     ...attention,
     ...requests,
@@ -208,6 +227,7 @@ export function todayQueue(input: TodayInput): readonly TodayItem[] {
     ...(input.billing ?? []),
     ...approved,
     ...domainMoves,
+    ...unconfirmed,
     ...(input.google ?? []),
   ].sort(byDue);
 }

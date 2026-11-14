@@ -891,13 +891,16 @@ export * from "./queries/team-calls";
 export { boughtSetupServicesFrom, listBoughtSetupServices, listServiceSetups, saveServiceSetup } from "./queries/service-setup";
 export {
   firstPreviewDueAfterKickoff,
+  isProjectStartedWithoutCallConfirmation,
   KICKOFF_PREVIEW_DUE_HOURS,
   KICKOFF_FALLBACK_START_HOURS,
   listKickoffBoard,
   listKickoffsToStart,
+  listProjectsStartedWithoutCallConfirmation,
   markProjectReadyAfterKickoff,
   type KickoffBoardRow,
   type KickoffToStart,
+  type ProjectStartedWithoutConfirmation,
 } from "./queries/kickoff-build";
 export { completeClientIntake, findClientIntake, saveClientIntakeAnswers, type ClientIntakeAnswers } from "./queries/client-intakes";
 export { addActivityEvent, listActivityEvents, removeActivityEvent } from "./queries/activity-events";

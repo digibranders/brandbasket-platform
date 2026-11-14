@@ -21,6 +21,7 @@ const ICONS: Readonly<Record<TodayKind, Icon>> = {
   google: GoogleLogo,
   approved: CheckCircle,
   domain: Globe,
+  unconfirmed_start: HourglassMedium,
 };
 
 const DUE_TONES: Readonly<Record<DueTone, string>> = {

@@ -39,26 +39,52 @@ export async function completeKickoffAction(formData: FormData): Promise<void> {
   if (newlyHeld) await logStaffAccessOrThrow({ staffUserId: user.id, action: "setup_call.held", targetType: "business", targetId: businessId, businessId });
   revalidatePath("/calls");
   revalidatePath(`/clients/${businessId}`);
+  revalidatePath("/");
+}
+
+async function recordOutcomeForBusiness(businessId: string, outcome: NoShowOutcome, staffUserId: string): Promise<void> {
+  const db = getStaffDb();
+  const booking = await findSetupCallBooking(db, businessId);
+  const removed = await clearUnheldKickoffBooking(db, businessId);
+  if (removed) {
+    await recordKickoffOutcome(db, { businessId, outcome, note: null, startsAt: booking?.startsAt ?? null, endsAt: booking?.endsAt ?? null, staffId: staffUserId, now: new Date() });
+    await logStaffAccessOrThrow({ staffUserId, action: `setup_call.${outcome}`, targetType: "business", targetId: businessId, businessId });
+  }
+  revalidatePath("/calls");
+  revalidatePath(`/clients/${businessId}`);
+  revalidatePath("/");
+}
+
+/**
+ * Action 2 from the kickoff prompt: They did not join.
+ * The booking is forgotten so the customer is asked to pick a new time, and the customer_no_show outcome is recorded.
+ */
+export async function theyDidNotJoinAction(formData: FormData): Promise<void> {
+  const { user } = await requireStaffAccess();
+  const businessId = readBusinessId(formData);
+  await recordOutcomeForBusiness(businessId, "customer_no_show", user.id);
+}
+
+/**
+ * Action 3 from the kickoff prompt: Reschedule.
+ * The booking is forgotten so the customer is asked to pick a new time, and the rescheduled outcome is recorded.
+ */
+export async function rescheduleKickoffAction(formData: FormData): Promise<void> {
+  const { user } = await requireStaffAccess();
+  const businessId = readBusinessId(formData);
+  await recordOutcomeForBusiness(businessId, "rescheduled", user.id);
 }
 
 /**
  * The kickoff did not happen, and why: the booking is forgotten (so the customer picks a new time) and the outcome is
- * recorded with the booking's times. A held call is never forgotten, so nothing is recorded for it either. The note is
+ * recorded with the booking's times. A completed call is never forgotten, so nothing is recorded for it either. The note is
  * always null: free text could hold personal data that erasure does not remove.
  */
 export async function recordKickoffOutcomeAction(formData: FormData): Promise<void> {
   const { user } = await requireStaffAccess();
   const businessId = readBusinessId(formData);
   const outcome = readNoShowOutcome(formData);
-  const db = getStaffDb();
-  const booking = await findSetupCallBooking(db, businessId);
-  const removed = await clearUnheldKickoffBooking(db, businessId);
-  if (removed) {
-    await recordKickoffOutcome(db, { businessId, outcome, note: null, startsAt: booking?.startsAt ?? null, endsAt: booking?.endsAt ?? null, staffId: user.id, now: new Date() });
-    await logStaffAccessOrThrow({ staffUserId: user.id, action: `setup_call.${outcome}`, targetType: "business", targetId: businessId, businessId });
-  }
-  revalidatePath("/calls");
-  revalidatePath(`/clients/${businessId}`);
+  await recordOutcomeForBusiness(businessId, outcome, user.id);
 }
 
 /** The kickoff did not happen: the booking is forgotten, so the customer is asked to pick a new time. A held call is never forgotten. */

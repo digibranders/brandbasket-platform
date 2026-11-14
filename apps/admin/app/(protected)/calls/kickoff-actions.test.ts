@@ -5,7 +5,7 @@ import { getStaffDb } from "@/lib/server/db";
 import { completeKickoff } from "@/lib/server/kickoff-complete";
 import { requireStaffAccess, type GrantedStaff } from "@/lib/server/staff-access";
 import { logStaffAccessOrThrow } from "@/lib/server/staff-access-log";
-import { completeKickoffAction, kickoffDidNotHappenAction, recordKickoffOutcomeAction } from "./kickoff-actions";
+import { completeKickoffAction, kickoffDidNotHappenAction, recordKickoffOutcomeAction, rescheduleKickoffAction, theyDidNotJoinAction } from "./kickoff-actions";
 
 vi.mock("server-only", () => ({}));
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
@@ -130,5 +130,34 @@ describe("kickoffDidNotHappenAction", () => {
     vi.mocked(clearUnheldKickoffBooking).mockResolvedValue(false);
     await kickoffDidNotHappenAction(form({ businessId: BUSINESS }));
     expect(logStaffAccessOrThrow).not.toHaveBeenCalled();
+  });
+});
+
+describe("three prompt actions", () => {
+  const BOOKING = { startsAt: new Date("2026-10-30T10:00:00.000Z"), endsAt: new Date("2026-10-30T10:30:00.000Z") };
+
+  beforeEach(() => {
+    vi.mocked(findSetupCallBooking).mockResolvedValue(BOOKING as never);
+    vi.mocked(clearUnheldKickoffBooking).mockResolvedValue(true);
+  });
+
+  it("action 1: Call completed completes the call and starts build", async () => {
+    await completeKickoffAction(form({ businessId: BUSINESS }));
+    expect(completeKickoff).toHaveBeenCalledWith(DB, expect.objectContaining({ businessId: BUSINESS, notes: null }));
+    expect(revalidatePath).toHaveBeenCalledWith("/");
+  });
+
+  it("action 2: They did not join records customer_no_show and forgets the booking", async () => {
+    await theyDidNotJoinAction(form({ businessId: BUSINESS }));
+    expect(recordKickoffOutcome).toHaveBeenCalledWith(DB, expect.objectContaining({ businessId: BUSINESS, outcome: "customer_no_show" }));
+    expect(clearUnheldKickoffBooking).toHaveBeenCalledWith(DB, BUSINESS);
+    expect(revalidatePath).toHaveBeenCalledWith("/");
+  });
+
+  it("action 3: Reschedule records rescheduled and forgets the booking", async () => {
+    await rescheduleKickoffAction(form({ businessId: BUSINESS }));
+    expect(recordKickoffOutcome).toHaveBeenCalledWith(DB, expect.objectContaining({ businessId: BUSINESS, outcome: "rescheduled" }));
+    expect(clearUnheldKickoffBooking).toHaveBeenCalledWith(DB, BUSINESS);
+    expect(revalidatePath).toHaveBeenCalledWith("/");
   });
 });

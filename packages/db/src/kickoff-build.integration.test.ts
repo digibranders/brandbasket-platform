@@ -1,7 +1,7 @@
 import { eq } from "drizzle-orm";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { findActivePlan, insertSubscription } from "./queries/billing";
-import { firstPreviewDueAfterKickoff, KICKOFF_FALLBACK_START_HOURS, listKickoffBoard, listKickoffsToStart, markProjectReadyAfterKickoff } from "./queries/kickoff-build";
+import { firstPreviewDueAfterKickoff, KICKOFF_FALLBACK_START_HOURS, listKickoffBoard, listKickoffsToStart, listProjectsStartedWithoutCallConfirmation, markProjectReadyAfterKickoff } from "./queries/kickoff-build";
 import { recordKickoffOutcome } from "./queries/setup-call-outcomes";
 import { clearUnheldKickoffBooking } from "./queries/setup-calls";
 import { insertOnboardingProject } from "./queries/projects";
@@ -57,6 +57,15 @@ describe("markProjectReadyAfterKickoff", () => {
     const project = await statusOf(siteId);
     expect(project).toMatchObject({ status: "submitted", onboardingSubmittedAt: null });
     expect(project?.slaDueAt?.toISOString()).toBe(DUE.toISOString());
+  });
+
+  it("marks startedWithoutCallConfirmation when requested, and listProjectsStartedWithoutCallConfirmation finds it", async () => {
+    expect(await markProjectReadyAfterKickoff(dbs.staff.db, { businessId: siteId, dueAt: DUE, now: NOW, startedWithoutCallConfirmation: true })).toBe(true);
+    const project = await statusOf(siteId);
+    expect(project).toMatchObject({ status: "submitted", startedWithoutCallConfirmation: true });
+    const list = await listProjectsStartedWithoutCallConfirmation(dbs.staff.db);
+    expect(list).toHaveLength(1);
+    expect(list[0]).toMatchObject({ businessId: siteId, businessName: "site-business" });
   });
 
   it("is recorded in the project's history by the database", async () => {

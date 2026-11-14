@@ -9,6 +9,7 @@ import {
   listKickoffBoard,
   listLeads,
   listPaymentsNeedingAttention,
+  listProjectsStartedWithoutCallConfirmation,
   listSetupCallsBetween,
   listStaffRoster,
   listSupportTicketsForStaff,
@@ -21,6 +22,7 @@ import {
   type Lead,
   type PaymentNeedingAttention,
   type StaffRosterRow,
+  type ProjectStartedWithoutConfirmation,
   type SupportStatus,
   type SupportTicket,
 } from "@brandbasket/db";
@@ -67,6 +69,8 @@ interface QueueSources {
   readonly failedDeliveries: number | null;
   /** Kickoff calls that are over and not marked held; null when the read failed. */
   readonly kickoffsNeedingOutcome: readonly KickoffNeedingOutcome[] | null;
+  /** Projects whose build started automatically after 24h without call confirmation. */
+  readonly unconfirmedStarts: readonly ProjectStartedWithoutConfirmation[];
   /** Google problems (a site that cannot be verified, a silent source, a lost sign-in for admins). */
   readonly google: readonly TodayItem[];
   readonly canSeeMoney: boolean;
@@ -87,7 +91,7 @@ interface QueueRead {
 async function readQueueSources(now: Date, canSeeMoney: boolean, canSeeGoogleAccount: boolean): Promise<QueueRead> {
   const db = getStaffDb();
   const failed: string[] = [];
-  const [clients, leads, staff, flagged, addOns, newTickets, newErrors, failedDeliveries, kickoffsNeedingOutcome, google, domainMoves] = await Promise.all([
+  const [clients, leads, staff, flagged, addOns, newTickets, newErrors, failedDeliveries, kickoffsNeedingOutcome, unconfirmedStarts, google, domainMoves] = await Promise.all([
     guarded("clients", () => listClients(db), [], failed),
     guarded("leads", () => listLeads(db, {}), [], failed),
     guarded("staff roster", () => listStaffRoster(db), [], failed),
@@ -107,10 +111,16 @@ async function readQueueSources(now: Date, canSeeMoney: boolean, canSeeGoogleAcc
       null,
       failed,
     ),
+    guarded<readonly ProjectStartedWithoutConfirmation[]>(
+      "unconfirmed starts",
+      () => listProjectsStartedWithoutCallConfirmation(db),
+      [],
+      failed,
+    ),
     guarded<readonly TodayItem[]>("Google", () => readGoogleToday(now, canSeeGoogleAccount), [], failed),
     guarded("domain moves", () => listDomainMoves(db), [], failed),
   ]);
-  return { sources: { clients, leads, staff, flagged, addOns, newTickets, newErrors, failedDeliveries, kickoffsNeedingOutcome, google, domainMoves, canSeeMoney }, failed };
+  return { sources: { clients, leads, staff, flagged, addOns, newTickets, newErrors, failedDeliveries, kickoffsNeedingOutcome, unconfirmedStarts, google, domainMoves, canSeeMoney }, failed };
 }
 
 function queueFrom(sources: QueueSources, now: Date): readonly TodayItem[] {
@@ -118,7 +128,7 @@ function queueFrom(sources: QueueSources, now: Date): readonly TodayItem[] {
   const billing: TodayItem[] = [];
   if (sources.canSeeMoney) {
     for (const client of sources.clients) {
-      if (client.billing.subscription?.status === "past_due") {
+      if (client.billing?.subscription?.status === "past_due") {
         billing.push({
           key: `billing:past_due:${client.businessId}`,
           kind: "payment",
@@ -127,7 +137,7 @@ function queueFrom(sources: QueueSources, now: Date): readonly TodayItem[] {
           dueAt: client.billing.subscription.paidThroughAt,
           href: `/clients/${client.businessId}/billing`,
         });
-      } else if (clientPaymentState(client.billing, now).kind === "lapsed") {
+      } else if (client.billing && clientPaymentState(client.billing, now).kind === "lapsed") {
         billing.push({
           key: `billing:lapsed:${client.businessId}`,
           kind: "payment",
@@ -168,6 +178,7 @@ function queueFrom(sources: QueueSources, now: Date): readonly TodayItem[] {
     billing,
     approvedPreviews,
     domainMoves: sources.domainMoves,
+    unconfirmedStarts: sources.unconfirmedStarts,
     google: sources.google,
     endOfToday: todayRange(now).end,
   });
@@ -190,6 +201,8 @@ export interface TodayPage {
   readonly figures: readonly FigureItem[];
   readonly calls: readonly BookedCall[];
   readonly systems: readonly SystemLine[];
+  /** Kickoff calls that are over and waiting for staff confirmation. */
+  readonly pendingKickoffs: readonly KickoffNeedingOutcome[];
 }
 
 /** Everything the Today page draws, each source read once. Without `canSeeMoney` the collected figure and flagged payments are neither read nor shown. */
@@ -212,5 +225,6 @@ export async function loadTodayPage(now: Date, canSeeMoney: boolean, canSeeGoogl
     figures: businessFigures(figuresInput({ leads: sources.leads, clients: sources.clients, collected, ticketCounts, activeErrors }, now)),
     calls,
     systems,
+    pendingKickoffs: sources.kickoffsNeedingOutcome ?? [],
   };
 }
