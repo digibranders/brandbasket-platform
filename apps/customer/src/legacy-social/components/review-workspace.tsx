@@ -12,6 +12,7 @@ import type { ReviewCard, ReviewGroup } from "@/legacy-social/lib/social/review-
 import { cardsOfWeek, channelTodo, firstOpenWeek, flowWeeks, picturesOn, POST_TIME, postFinal, weekAsked, type FlowWeek, type ReplaceState } from "@/legacy-social/lib/social/review-flow";
 import { ConnectButton } from "./channels-sidebar";
 import { AddChannelChoice } from "./add-channel-choice";
+import { CarouselPictures, CarouselTopic, carouselInWeek, type WeekCarousel } from "./carousel-week";
 import type { PostingDays } from "@/legacy-social/lib/social/schedule";
 import { ChannelLogo } from "./channel-logo";
 import { imageUrl, pictureWord } from "./poster-tile";
@@ -25,7 +26,7 @@ export interface ReviewChannel {
   readonly account: string;
 }
 
-const ICON_BUTTON = "inline-grid size-7 place-items-center rounded-md border transition-colors disabled:cursor-not-allowed";
+const ICON_BUTTON = "inline-grid size-6 shrink-0 place-items-center rounded-md border transition-colors disabled:cursor-not-allowed";
 const ICON_IDLE = "border-line bg-surface text-ink hover:bg-sunken disabled:opacity-50";
 const ICON_PRESSED = "border-ok bg-ok text-on-primary";
 const ICON_PRESSED_MUTED = "border-ink-3 bg-ink-3 text-on-primary";
@@ -228,7 +229,7 @@ function TopicRow({
           </button>
         ) : post.drawn === true ? <p className="m-0 text-xs text-ink-3">Drawn. Its pictures are below.</p> : locked && !dropped && !kept ? <p className="m-0 text-xs text-ink-3">Not decided. This week was drawn before it could stay open, so it can no longer be changed.</p> : null}
         {notes}
-        {icons === null ? null : <div className="mt-auto flex flex-wrap items-center gap-1.5 pt-1">{icons}</div>}
+        {icons === null ? null : <div className="mt-auto flex flex-nowrap items-center gap-1 pt-1">{icons}</div>}
       </li>
     );
   }
@@ -679,23 +680,23 @@ function PostPreview({ poster, account, day, time }: { readonly poster: Poster; 
     <img src={imageUrl(poster.id)} alt={`Picture for ${PLATFORM_NAMES[poster.network]}: ${poster.headline}`} className="w-full bg-sunken object-cover" style={{ aspectRatio: `${poster.width} / ${poster.height}` }} />
   );
   const head = (
-    <div className="flex items-center gap-2.5 px-3 py-2.5">
+    <div className="flex items-center gap-2 px-2.5 py-2">
       <ChannelLogo platform={poster.network} medium />
       <div className="min-w-0 leading-tight">
-        <p className="truncate text-[0.84375rem] font-semibold text-ink" title={account}>
+        <p className="truncate text-xs font-semibold text-ink" title={account}>
           {account}
         </p>
-        <p className="text-xs text-ink-3">{poster.network === "linkedin" ? `Post · ${when}` : poster.network === "google" ? `Update · ${when}` : when}</p>
+        <p className="text-[0.6875rem] text-ink-3">{poster.network === "linkedin" ? `Post · ${when}` : poster.network === "google" ? `Update · ${when}` : when}</p>
       </div>
     </div>
   );
-  const words = <p className="whitespace-pre-wrap break-words px-3 pb-3 text-[0.84375rem] leading-relaxed text-ink">{poster.caption}</p>;
+  const words = <p className="whitespace-pre-wrap break-words px-2.5 pb-2.5 text-xs leading-snug text-ink">{poster.caption}</p>;
   if (poster.network === "instagram") {
     return (
       <div className="overflow-hidden rounded-xl bg-surface ring-1 ring-line">
         {head}
         {picture}
-        <p className="whitespace-pre-wrap break-words px-3 py-3 text-[0.84375rem] leading-relaxed text-ink">
+        <p className="whitespace-pre-wrap break-words px-2.5 py-2.5 text-xs leading-snug text-ink">
           <b>{account}</b> {poster.caption}
         </p>
       </div>
@@ -729,9 +730,9 @@ function PictureCard({ poster, account, day, time, reasons }: { readonly poster:
   const held = poster.status === "held";
   const putAway = poster.status === "rejected" || poster.status === "expired";
   return (
-    <li id={`picture-${poster.id}`} className="grid content-start gap-3 rounded-xl bg-sunken p-3.5">
-      <div className="flex flex-wrap items-start justify-between gap-x-3 gap-y-2">
-        <h3 className="min-w-0 flex-1 basis-40 break-words text-[0.9375rem] font-semibold leading-snug text-ink">{poster.headline}</h3>
+    <li id={`picture-${poster.id}`} className="grid content-start gap-2 rounded-xl bg-sunken p-2.5">
+      <div className="flex flex-wrap items-start justify-between gap-x-3 gap-y-1">
+        <h3 className="min-w-0 flex-1 basis-32 break-words text-[0.84375rem] font-semibold leading-snug text-ink">{poster.headline}</h3>
         <DateChip day={day} time={time} approved={approved} />
       </div>
       <PostPreview poster={poster} account={account} day={day} time={time} />
@@ -859,7 +860,7 @@ function PicturesStage({ cards, week, channel, account, reasons, ownPosters = []
           {approveError}
         </p>
       )}
-      <ul className="grid items-start gap-4 sm:grid-cols-2 2xl:grid-cols-3">
+      <ul className="grid items-start gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {pictures.map((poster) => (
           <PictureCard key={poster.id} poster={poster} account={account} day={dayOf(poster)} time={timeOf(poster)} reasons={reasons} />
         ))}
@@ -884,7 +885,6 @@ function Overview({ cards, week, channels }: { readonly cards: readonly ReviewCa
           <thead>
             <tr className="bg-sunken text-xs text-ink-2">
               <th className="px-3 py-2 font-semibold">Topic</th>
-              <th className="px-3 py-2 font-semibold">Your choice</th>
               {channels.map((channel) => (
                 <th key={channel.platform} className="px-3 py-2 font-semibold" title={PLATFORM_NAMES[channel.platform]}>
                   <ChannelLogo platform={channel.platform} small />
@@ -894,7 +894,6 @@ function Overview({ cards, week, channels }: { readonly cards: readonly ReviewCa
           </thead>
           <tbody>
             {cards.map((card) => {
-              const choice = card.written === null ? "Kept" : card.written.state === "kept" ? "Kept" : card.written.state === "dropped" ? "Dropped" : "Not decided";
               return (
                 <tr key={card.key} className="border-t border-line align-top">
                   <td className="px-3 py-2.5">
@@ -903,7 +902,6 @@ function Overview({ cards, week, channels }: { readonly cards: readonly ReviewCa
                       <DateChip day={card.written?.date ?? null} time={card.written?.time} />
                     </div>
                   </td>
-                  <td className={cn("px-3 py-2.5", toneOf(choice))}>{choice}</td>
                   {channels.map((channel) => {
                     const poster = card.pictures.find((one) => one.network === channel.platform);
                     const word = poster === undefined ? (weekAsked(week) && card.written?.state === "kept" ? "Drawing" : "Not drawn") : pictureWord(poster);
@@ -1001,6 +999,8 @@ interface ReviewFlowProps {
   readonly today?: string;
   /** The topics she wrote in her own words, with their posts and pictures. */
   readonly own?: OwnTopicsData;
+  /** The newest weekly carousel, shown with the week it is for. */
+  readonly carousel?: WeekCarousel | null;
   readonly children: ReactNode;
 }
 
@@ -1011,6 +1011,7 @@ interface Flow {
   readonly replacing: Readonly<Record<string, ReplaceState>>;
   readonly today: string;
   readonly own: OwnTopicsData;
+  readonly carousel: WeekCarousel | null;
   readonly weeks: readonly FlowWeek[];
   /** The week being looked at, or undefined when there are no posts. */
   readonly week: FlowWeek | undefined;
@@ -1040,7 +1041,7 @@ export function groupIsFor(group: ReviewGroup, channel: ChannelPlatform): boolea
 }
 
 /** Holds which channel and which week the customer is looking at, for the channels column and the workspace beside it. */
-export function ReviewFlowProvider({ groups, drawing = [], reasons, channels, replacing = {}, today = "", own = NO_OWN, children }: ReviewFlowProps): ReactElement {
+export function ReviewFlowProvider({ groups, drawing = [], reasons, channels, replacing = {}, today = "", own = NO_OWN, carousel = null, children }: ReviewFlowProps): ReactElement {
   // The channel she chose on another page is in the address, so this page opens on it (a channel not connected is left out).
   const chosen = channelParamOf(useSearchParams()?.get(CHANNEL_PARAM));
   const [channel, setChannelNow] = useState<"all" | ChannelPlatform>(chosen === "all" || (chosen !== null && channels.some((one) => one.platform === chosen)) ? (chosen as "all" | ChannelPlatform) : (channels[0]?.platform ?? "all"));
@@ -1070,7 +1071,7 @@ export function ReviewFlowProvider({ groups, drawing = [], reasons, channels, re
     },
     [groupsOf, drawing, week],
   );
-  const value = useMemo<Flow>(() => ({ groups: visible, reasons, channels, replacing, today, own, weeks, week, cards, channel, setChannel, setWeekKey, todoOf }), [visible, reasons, channels, replacing, today, own, weeks, week, cards, channel, setChannel, todoOf]);
+  const value = useMemo<Flow>(() => ({ groups: visible, reasons, channels, replacing, today, own, carousel, weeks, week, cards, channel, setChannel, setWeekKey, todoOf }), [visible, reasons, channels, replacing, today, own, carousel, weeks, week, cards, channel, setChannel, todoOf]);
   return <FlowContext value={value}>{children}</FlowContext>;
 }
 
@@ -1116,7 +1117,7 @@ export function ReviewChannelsColumn(): ReactElement {
     <aside
       id="channels"
       aria-labelledby="review-channels-title"
-      className="border-t border-line bg-surface p-4 pb-28 md:px-8 lg:sticky lg:top-topbar lg:h-channels-column lg:self-start lg:w-[13rem] lg:shrink-0 lg:overflow-y-auto lg:border-t-0 lg:border-r lg:px-4 lg:pt-4 lg:pb-8"
+      className="border-t border-line bg-surface p-4 pb-28 md:px-8 lg:sticky lg:top-topbar lg:h-channels-column lg:self-start lg:w-[15rem] lg:shrink-0 lg:overflow-y-auto lg:border-t-0 lg:border-r lg:px-4 lg:pt-4 lg:pb-8"
     >
       <h2 id="review-channels-title" className="px-1 type-section text-ink">
         Channels
@@ -1127,7 +1128,6 @@ export function ReviewChannelsColumn(): ReactElement {
             <span className="grid size-7 place-items-center rounded-md bg-ink text-[0.6875rem] font-bold text-on-primary">All</span>
             <span className="min-w-0">
               <span className="block truncate text-[0.84375rem] font-semibold leading-tight text-ink">All channels</span>
-              <span className="mt-0.5 block text-xs text-ink-2">The whole week</span>
             </span>
           </button>
         </li>
@@ -1138,11 +1138,13 @@ export function ReviewChannelsColumn(): ReactElement {
               <button type="button" aria-pressed={channel === one.platform} onClick={() => setChannel(one.platform)} className={cn("grid w-full grid-cols-[1.75rem_minmax(0,1fr)] items-center gap-2.5 rounded-lg px-1.5 py-1.5 text-left transition-colors hover:bg-sunken", channel === one.platform && "bg-sunken")}>
                 <ChannelLogo platform={one.platform} medium />
                 <span className="min-w-0">
-                  <span title={one.account} className="block truncate text-[0.84375rem] font-semibold leading-tight text-ink">
-                    {one.account}
-                    <span className="sr-only">, {PLATFORM_NAMES[one.platform]}</span>
+                  <span className="flex items-center gap-1.5">
+                    <span title={one.account} className="min-w-0 truncate text-[0.84375rem] font-semibold leading-tight text-ink">
+                      {one.account}
+                      <span className="sr-only">, {PLATFORM_NAMES[one.platform]}</span>
+                    </span>
+                    {todo.count > 0 ? <span aria-label={`${todo.count} to do`} className="shrink-0 rounded-full bg-warn-wash px-1.5 text-xs font-semibold leading-5 text-warn">{todo.count}</span> : null}
                   </span>
-                  <span title={todo.words} className={cn("mt-0.5 block truncate text-xs", todo.count > 0 ? "font-semibold text-rattan-text" : "text-ink-2")}>{todo.words}</span>
                 </span>
               </button>
             </li>
@@ -1171,7 +1173,7 @@ export function ReviewChannelsColumn(): ReactElement {
  * then (once the week is drawn) each picture as it will look on that account, to approve. "All channels" is one table of the week.
  */
 export function ReviewWorkspace(): ReactElement | null {
-  const { channels, reasons, replacing, today, own, week, cards, channel, weeks, setWeekKey } = useFlow();
+  const { channels, reasons, replacing, today, own, carousel, week, cards, channel, weeks, setWeekKey } = useFlow();
   /** A week drawn in rounds has topics still open and pictures drawn: the customer looks at one at a time, the pictures only under Pictures. */
   const [roundView, setRoundView] = useState<"topics" | "pictures">("topics");
   /** A week drawn whole is shown by its pictures; this lets her go back and read its topics (the ones that are final cannot be changed). */
@@ -1212,6 +1214,10 @@ export function ReviewWorkspace(): ReactElement | null {
     pictureList.filter((poster) => poster.status === "pending" || poster.status === "held").length,
     0,
   ];
+  /** The carousel of this week: its topic with the topics, its slides with the pictures once it is kept. */
+  const weekCarousel = carouselInWeek(carousel, week.from, week.to) ? carousel : null;
+  const carouselBlock =
+    weekCarousel === null || channel === "all" ? null : stage === 0 ? <CarouselTopic carousel={weekCarousel} /> : stage === 1 || weekCarousel.summary.status === "approved" ? <CarouselPictures carousel={weekCarousel} channel={channel} /> : null;
   return (
     <section aria-label={picked === undefined ? "All channels" : PLATFORM_NAMES[picked.platform]} className="grid min-w-0 content-start gap-4">
       <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
@@ -1224,6 +1230,7 @@ export function ReviewWorkspace(): ReactElement | null {
         <WeekNav weeks={weeks} week={week} today={today} onPick={setWeekKey} />
       </div>
       {asked || stage !== 0 ? null : <OwnTopics />}
+      {carouselBlock}
       {channel === "all" ? (
         <Overview cards={cards} week={week} channels={channels} />
       ) : asked && !missing && looking ? (

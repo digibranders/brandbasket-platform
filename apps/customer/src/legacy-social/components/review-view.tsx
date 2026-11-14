@@ -39,6 +39,7 @@ export function ReviewView({ review, canChange = true, approvals = null }: { rea
       channels={review.channels}
       replacing={replaceStates(review.jobs)}
       today={localDateIn(BRAND_TIME_ZONE, new Date())}
+      carousel={review.carousels[0] === undefined ? null : { summary: review.carousels[0], detail: review.carousel, canChange }}
       own={{ requests: review.topicRequests, batches: review.batches.filter((batch) => ownBatchIds.has(batch.id)), posters: [...review.waiting, ...review.approved].filter((poster) => ownBatchIds.has(poster.batchId)), canChange }}
     >
       {/* On a wide screen the channels column steps out of the shell's gutter and sits against the menu, as on the Posts and Analytics pages. */}

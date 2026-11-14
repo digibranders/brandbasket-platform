@@ -224,13 +224,13 @@ describe("ReviewWorkspace a week drawn in rounds", () => {
   it("keeps the pictures out of the Topics step, shows them under Pictures, and says what is left to do in the sidebar", () => {
     render(<Screen groups={partlyDrawn()} today="2026-11-13" />);
     expect(screen.queryByText(/instagram caption/)).toBeNull();
-    expect(screen.getByText("1 open · 1 to approve")).toBeTruthy();
+    expect(screen.getAllByLabelText("2 to do").length).toBeGreaterThan(0);
     fireEvent.click(screen.getByRole("button", { name: "Pictures" }));
     expect(screen.getByText(/instagram caption/)).toBeTruthy();
     expect(screen.getByText("1 waiting · 0 approved")).toBeTruthy();
     expect(screen.queryByRole("button", { name: /Draw pictures for/ })).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Topics" }));
-    expect(screen.getByText("1 open · 1 to approve")).toBeTruthy();
+    expect(screen.getAllByLabelText("2 to do").length).toBeGreaterThan(0);
   });
 
   it("does not count a kept topic whose day has passed among the new pictures", () => {

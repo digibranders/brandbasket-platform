@@ -6,6 +6,7 @@ import { cn } from "@brandbasket/shared/lib/cn";
 import { createPostAction, deletePostAction, sendPostNowAction, updatePostAction } from "@/legacy-social/actions";
 import { CAPTION_HINTS, CHANNEL_PLATFORMS, channelIdsOf, dayLabel, time12, PLATFORM_NAMES, type AutoChannel, type CalendarPost, type ChannelPlatform } from "@/legacy-social/lib/social/auto";
 import { canAddOn, earliestDay, isTime, latestDay, MAX_CAPTION_LENGTH, momentHasPassed, pictureProblem } from "@/legacy-social/lib/social/new-post";
+import { postPictureSrc } from "@/legacy-social/lib/social/post-picture";
 import { ChannelLogo } from "./channel-logo";
 import { SMALL_DARK, SMALL_SOFT } from "./small-buttons";
 
@@ -207,7 +208,7 @@ export function NewPostDialog({ day, onDayChange, time: startTime, today, channe
     });
   };
 
-  const previewPicture = picked?.url ?? post?.imageUrl;
+  const previewPicture = picked?.url ?? (post?.imageUrl === undefined ? undefined : postPictureSrc(post.imageUrl));
 
   return (
     // A click on the dimmed background lands on the dialog itself; Escape is the dialog's own cancel, so the keyboard needs nothing here.
