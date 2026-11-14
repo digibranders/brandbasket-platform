@@ -10,6 +10,7 @@ import { NotBoughtScreen } from "./not-bought-screen";
 import { PagesScreen } from "./pages-screen";
 import { SiteHealthPanel } from "./site-health-panel";
 import { WebsiteScreen } from "./website-screen";
+import { DomainScreen } from "../domain/components/domain-screen";
 
 vi.mock("next/navigation", () => ({ usePathname: () => "/website", useRouter: () => ({ refresh: vi.fn(), push: vi.fn() }) }));
 vi.mock("next/link", () => ({ default: ({ href, children, ...rest }: { href: string; children: ReactNode }) => <a href={href} {...rest}>{children}</a> }));
@@ -23,9 +24,11 @@ const ok = <T,>(data: T): Loaded<T> => ({ ok: true, data });
 const owner = { role: "owner", businessName: "Kulkarni Clinic" } as unknown as CustomerContext;
 const LIVE_PROJECT = { status: "live", onHoldReason: null, onboardingSubmittedAt: NOW, slaDueAt: null, previewSentAt: NOW, launchedAt: NOW, launchPlannedOn: null, revisionRoundsIncluded: 2, revisionRoundsGranted: 0, previewUrl: null } as Project;
 const PREVIEW_PROJECT = { ...LIVE_PROJECT, status: "preview", launchedAt: null, previewUrl: "https://preview.example" } as Project;
+const KICKOFF_PROJECT = { ...LIVE_PROJECT, status: "onboarding", launchedAt: null, previewUrl: null } as Project;
 const domain = { hostname: "kulkarni.example", status: "active", isFreeAddress: false } as const;
 const liveCore: WebsiteCore = { project: LIVE_PROJECT, domain, live: { hostname: "kulkarni.example", launchedAt: NOW } };
 const previewCore: WebsiteCore = { project: PREVIEW_PROJECT, domain, live: null };
+const kickoffCore: WebsiteCore = { project: KICKOFF_PROJECT, domain, live: null };
 const PAGE: WebsitePage = { businessId: "b", url: "https://kulkarni.example/menu", title: "Menu", lastSeenAt: NOW, createdAt: NOW };
 const HEALTH: SiteHealthFacts = { latest: { status: "up", checkedAt: NOW }, firstCheckedAt: new Date("2026-10-01T00:00:00Z"), up: 90, down: 0, certificate: null, phoneSpeed: null };
 const HISTORY = ok({ events: [], callStartsAt: null });
@@ -123,5 +126,62 @@ describe("NotBoughtScreen states", () => {
     const { container } = render(<NotBoughtScreen offer={ok(offer)} currency="INR" canAdd />);
     expect(screen.getByRole("link", { name: "Add to plan" })).toBeTruthy();
     expect(container.textContent).not.toMatch(NOISE);
+  });
+});
+
+describe("Release 2: Website re-theme states", () => {
+  it("renders kickoff state with exact D31 wording and 4-stage stepper", () => {
+    showWebsite(kickoffCore, liveOverview({ kickoffFirst: ok(true) }), null);
+    expect(
+      screen.getByText(
+        "Kickoff call booked: Thursday, 14 November at 3:30 PM. We will call the primary contact number.",
+      ),
+    ).toBeTruthy();
+    const progressNav = screen.getByRole("navigation", { name: "Progress" });
+    expect(progressNav).toBeTruthy();
+    expect(screen.getAllByText("Kickoff").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByText("Design preview")).toBeTruthy();
+    expect(screen.getByText("Revisions")).toBeTruthy();
+    expect(screen.getByText("Launch")).toBeTruthy();
+  });
+
+  it("renders preview state with PreviewFrame and 1 round of changes left", () => {
+    showWebsite(
+      previewCore,
+      liveOverview({
+        preview: ok({ versions: [{ version: 1, sentAt: NOW }], pictureUrl: null }),
+        enquiries: null,
+        health: null,
+      }),
+      null,
+    );
+    expect(screen.getByText("1 round of changes left")).toBeTruthy();
+    expect(screen.getAllByText("kulkarni.example").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByRole("navigation", { name: "Progress" })).toBeTruthy();
+  });
+
+  it("renders live state with domain badge, SSL status, and quick update actions", () => {
+    showWebsite(liveCore, liveOverview(), ok([PAGE]));
+    expect(screen.getByText("SSL Active")).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Quick actions" })).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Request a change" })).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Visit live site" })).toBeTruthy();
+  });
+
+  it("renders domain verification DNS error alert state", () => {
+    const errorDomain = { hostname: "kulkarni.example", status: "misconfigured" as const, isFreeAddress: false };
+    const errorCore: WebsiteCore = { project: LIVE_PROJECT, domain: errorDomain, live: null };
+    render(
+      <DomainScreen
+        core={errorCore}
+        page={{ state: "own-connect", moving: null, locked: false }}
+        hasPages={false}
+        currency="INR"
+        canChange
+      />
+    );
+    expect(screen.getByRole("alert")).toBeTruthy();
+    expect(screen.getByText("Domain verification DNS error")).toBeTruthy();
+    expect(screen.getByText(/Your domain still points somewhere else/)).toBeTruthy();
   });
 });

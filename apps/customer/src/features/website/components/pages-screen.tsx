@@ -16,11 +16,17 @@ export function PagesScreen({ core, pages, now }: { readonly core: WebsiteCore; 
   const hasPages = pages.ok && pages.data.length > 0;
   const header =
     core.live === null ? (
-      <PageHeader title="Website" />
+      <PageHeader
+        title="Website"
+        description="All pages tracked on your website."
+        tabs={<WebsiteTabs current={WEBSITE_PAGES_PATH} hasPages={true} />}
+      />
     ) : (
       <LiveHeader
         description={core.live.hostname}
         visitHref={safeExternalHref(`https://${core.live.hostname}`)}
+        domainBadge={core.live.hostname}
+        sslStatus="SSL Active"
         actions={
           <LinkButton href={ASK_FOR_CHANGE_HREF} variant="primary">
             Ask for a change
