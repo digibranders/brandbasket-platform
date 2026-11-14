@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Monthly Reports · BrandBasket</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Red+Hat+Display:wght@500;600;700&family=Red+Hat+Mono:wght@500;600&family=Red+Hat+Text:wght@400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --ground: #F6F5F2; --surface: #FFFFFF; --sunken: #EEECE7; --line: #E3E0D9;
+      --ink: #15161A; --ink-2: #343741; --ink-3: #5F626A; --accent: #C48A47;
+      --accent-wash: #F4E6D3; --accent-deep: #8A5524; --sage: #4F7A63; --sage-wash: #E5EFE8;
+      --error: #B42318; --error-wash: #FDECEA; --r-control: 8px; --r-card: 14px; --r-hero: 20px;
+      --r-pill: 9999px; --sh-resting: 0 1px 0 rgba(42,28,16,0.03);
+      --sh-hero: 0 1px 2px rgba(42,28,16,0.05), 0 12px 32px -12px rgba(42,28,16,0.14);
+      --sh-button: 0 1px 2px rgba(42,28,16,0.12);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: var(--ground); color: var(--ink); font-family: "Red Hat Text", sans-serif; font-size: 15px; padding: 32px 20px 80px; display: flex; flex-direction: column; align-items: center; }
+    .demo-bar { position: sticky; top: 12px; z-index: 50; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-pill); padding: 6px 12px; display: flex; gap: 8px; box-shadow: var(--sh-hero); margin-bottom: 24px; font-size: 13px; }
+    .demo-btn { background: var(--sunken); border: 1px solid var(--line); color: var(--ink-2); padding: 4px 10px; border-radius: var(--r-pill); cursor: pointer; font-weight: 500; }
+    .demo-btn.active { background: var(--ink); color: #FFF; border-color: var(--ink); }
+    .frame { width: 100%; max-width: 960px; display: flex; flex-direction: column; gap: 24px; }
+    .frame.mobile { max-width: 390px; }
+    .card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-card); box-shadow: var(--sh-resting); padding: 24px; }
+    .focal-card { background: var(--surface); border: 1px solid var(--line); border-top: 3px solid var(--accent); border-radius: var(--r-hero); box-shadow: var(--sh-hero); padding: 28px; }
+    .mono { font-family: "Red Hat Mono", monospace; }
+    .grid-kpi { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-top: 20px; }
+    @media (max-width: 768px) { .grid-kpi { grid-template-columns: repeat(2, 1fr); } }
+    .kpi-tile { background: var(--sunken); border: 1px solid var(--line); border-radius: var(--r-control); padding: 16px; }
+    .btn { display: inline-flex; align-items: center; justify-content: center; height: 42px; padding: 0 18px; border-radius: var(--r-control); font-size: 14px; font-weight: 600; cursor: pointer; border: none; box-shadow: var(--sh-button); }
+    .btn-primary { background: var(--ink); color: #FFF; }
+  </style>
+</head>
+<body>
+  <div class="demo-bar">
+    <span style="font-weight:600">State:</span>
+    <button class="demo-btn active" id="btnLive" onclick="setState('live')">October report</button>
+    <button class="demo-btn" id="btnNew" onclick="setState('new')">First month</button>
+    <button class="demo-btn" id="btnEmpty" onclick="setState('empty')">Empty</button>
+    <button class="demo-btn" id="btnError" onclick="setState('error')">Generation error</button>
+    <span style="border-left:1px solid var(--line); margin:0 4px; height:16px"></span>
+    <span style="font-weight:600">Viewport:</span>
+    <button class="demo-btn active" id="btnDesktop" onclick="setViewport('desktop')">1440</button>
+    <button class="demo-btn" id="btnMobile" onclick="setViewport('mobile')">390</button>
+  </div>
+
+  <div class="frame" id="frame">
+    <div>
+      <div style="font-size:11px; text-transform:uppercase; letter-spacing:0.08em; font-weight:700; color:var(--ink-3)">Performance Overview</div>
+      <h1 style="font-family:'Red Hat Display', sans-serif; font-size:32px; font-weight:700; letter-spacing:-0.02em">Monthly Reports</h1>
+    </div>
+
+    <!-- Focal element: Latest monthly executive summary -->
+    <div class="focal-card" id="latestReport">
+      <div style="display:flex; justify-content:space-between; align-items:flex-start">
+        <div>
+          <span style="font-size:12px; font-weight:600; color:var(--accent-deep); background:var(--accent-wash); padding:3px 10px; border-radius:var(--r-pill)">October 2026</span>
+          <h2 style="font-family:'Red Hat Display', sans-serif; font-size:22px; font-weight:700; margin-top:10px">Executive Summary</h2>
+          <p style="color:var(--ink-2); font-size:14px; margin-top:4px">Sweet Crust Bakery saw a 28% increase in organic search visits following the Diwali menu launch.</p>
+        </div>
+        <button class="btn btn-primary" style="height:36px; padding:0 14px; font-size:13px">Download PDF</button>
+      </div>
+
+      <div class="grid-kpi">
+        <div class="kpi-tile">
+          <div style="font-size:12px; color:var(--ink-3); font-weight:600">Website visitors</div>
+          <div class="mono" style="font-size:26px; font-weight:700; margin-top:4px">4,120</div>
+          <div style="font-size:12px; color:var(--sage); font-weight:600; margin-top:2px">+28% vs Sep</div>
+        </div>
+        <div class="kpi-tile">
+          <div style="font-size:12px; color:var(--ink-3); font-weight:600">Enquiries received</div>
+          <div class="mono" style="font-size:26px; font-weight:700; margin-top:4px">64</div>
+          <div style="font-size:12px; color:var(--sage); font-weight:600; margin-top:2px">+12 new calls</div>
+        </div>
+        <div class="kpi-tile">
+          <div style="font-size:12px; color:var(--ink-3); font-weight:600">Social impressions</div>
+          <div class="mono" style="font-size:26px; font-weight:700; margin-top:4px">18.4k</div>
+          <div style="font-size:12px; color:var(--sage); font-weight:600; margin-top:2px">+15% reach</div>
+        </div>
+        <div class="kpi-tile">
+          <div style="font-size:12px; color:var(--ink-3); font-weight:600">Menu clicks</div>
+          <div class="mono" style="font-size:26px; font-weight:700; margin-top:4px">892</div>
+          <div style="font-size:12px; color:var(--ink-3); margin-top:2px">Top: Mawa Cake</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Archive -->
+    <div class="card" id="archiveCard">
+      <h3 style="font-family:'Red Hat Display', sans-serif; font-size:18px; font-weight:700; margin-bottom:14px">Past Reports</h3>
+      <div style="display:flex; flex-direction:column; gap:10px" id="archiveList">
+        <div style="display:flex; justify-content:space-between; align-items:center; padding:12px; border:1px solid var(--line); border-radius:var(--r-control)">
+          <div>
+            <div style="font-weight:600">September 2026 Monthly Report</div>
+            <div class="mono" style="font-size:12px; color:var(--ink-3)">Generated 01 Oct 2026</div>
+          </div>
+          <a href="#" style="color:var(--accent-deep); font-weight:600; text-decoration:none; font-size:13px">Download PDF</a>
+        </div>
+        <div style="display:flex; justify-content:space-between; align-items:center; padding:12px; border:1px solid var(--line); border-radius:var(--r-control)">
+          <div>
+            <div style="font-weight:600">August 2026 Monthly Report</div>
+            <div class="mono" style="font-size:12px; color:var(--ink-3)">Generated 01 Sep 2026</div>
+          </div>
+          <a href="#" style="color:var(--accent-deep); font-weight:600; text-decoration:none; font-size:13px">Download PDF</a>
+        </div>
+      </div>
+      <div id="archiveEmpty" style="display:none; text-align:center; padding:32px 0; color:var(--ink-3)">
+        No past reports generated yet. Your first report will appear on the 1st of next month.
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function setState(st) {
+      document.querySelectorAll('.demo-btn').forEach(b => {
+        if (['btnLive','btnNew','btnEmpty','btnError'].includes(b.id)) b.classList.remove('active');
+      });
+      document.getElementById('btn' + st.charAt(0).toUpperCase() + st.slice(1)).classList.add('active');
+
+      document.getElementById('latestReport').style.display = st === 'empty' ? 'none' : 'block';
+      document.getElementById('archiveList').style.display = (st === 'empty' || st === 'new') ? 'none' : 'flex';
+      document.getElementById('archiveEmpty').style.display = (st === 'empty' || st === 'new') ? 'block' : 'none';
+    }
+
+    function setViewport(vp) {
+      document.getElementById('btnDesktop').classList.toggle('active', vp === 'desktop');
+      document.getElementById('btnMobile').classList.toggle('active', vp === 'mobile');
+      document.getElementById('frame').classList.toggle('mobile', vp === 'mobile');
+    }
+  </script>
+</body>
+</html>

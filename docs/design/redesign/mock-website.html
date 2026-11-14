@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BrandBasket Website Service Mock</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Red+Hat+Display:wght@500;600;700&family=Red+Hat+Text:wght@400;500;600&family=Red+Hat+Mono:wght@400;500&display=swap">
+<style>
+:root {
+  --paper: #F6F5F2; --surface: #FFFFFF; --sunken: #EEECE7; --line: #E3E0D9; --ink: #15161A; --ink2: #4E5057; --muted: #6B6E76;
+  --ink-hover: #2A2B31; --gold: #C48A47; --gold-text: #A46C2F; --gold-wash: #F4E6D3; --gold-deep: #8A5524;
+  --sage: #4F7A63; --sage-wash: #E5EFE8; --sage-ink: #2F5A43; --err: #B42318; --err-wash: #FDECEA;
+  --display: 'Red Hat Display', system-ui, sans-serif; --text: 'Red Hat Text', system-ui, sans-serif; --mono: 'Red Hat Mono', ui-monospace, monospace;
+  color-scheme: light;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--paper); color: var(--ink); font: 15px/1.5 var(--text); padding-left: max(0px, env(safe-area-inset-left, 0px)); padding-right: max(0px, env(safe-area-inset-right, 0px)); }
+button, select { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+svg.i { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+.shell { display: grid; grid-template-columns: 248px minmax(0, 1fr); min-height: 100vh; }
+aside { background: var(--surface); border-right: 1px solid var(--line); padding: 18px 14px; position: sticky; top: 0; height: 100vh; overflow: auto; display: flex; flex-direction: column; }
+.logo { display: flex; align-items: center; gap: 10px; font: 700 21px var(--display); padding: 2px 10px 18px; letter-spacing: -0.01em; }
+.logo svg { width: 28px; height: 28px; color: var(--gold); stroke-width: 1.7; }
+.grp { font: 600 12px var(--text); color: var(--muted); padding: 18px 12px 6px; }
+.nav { display: grid; gap: 2px; }
+.nav a { display: flex; align-items: center; gap: 12px; padding: 9px 12px; border-radius: 9px; color: var(--ink2); text-decoration: none; font-weight: 500; position: relative; }
+.nav a:hover { background: var(--sunken); color: var(--ink); }
+.nav a.on { background: var(--gold-wash); color: var(--ink); font-weight: 600; }
+.nav a.on::before { content: ""; position: absolute; left: -14px; top: 8px; bottom: 8px; width: 3px; border-radius: 0 3px 3px 0; background: var(--gold); }
+.nav a.on svg { color: var(--gold-deep); }
+.nav .badge { margin-left: auto; font: 600 11px var(--mono); background: var(--gold-wash); color: var(--gold-deep); border-radius: 99px; padding: 2px 9px; }
+.main { min-width: 0; }
+.top { display: flex; align-items: center; gap: 12px; padding: 14px 36px; background: var(--surface); border-bottom: 1px solid var(--line); position: sticky; top: 0; z-index: 5; height: 64px; }
+.biz { display: flex; align-items: center; justify-content: space-between; gap: 24px; font-weight: 600; border: 1px solid var(--line); border-radius: 10px; padding: 8px 12px; background: var(--surface); min-width: 220px; }
+.search { flex: 1; max-width: 400px; margin-left: auto; display: flex; align-items: center; gap: 10px; border: 1px solid var(--line); border-radius: 10px; padding: 8px 12px; color: var(--muted); background: var(--surface); font-size: 14px; }
+kbd { font: 500 11px var(--mono); border: 1px solid var(--line); border-radius: 6px; padding: 2px 8px; background: var(--paper); color: var(--ink2); }
+.iconbtn { position: relative; width: 40px; height: 40px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); display: grid; place-items: center; color: var(--ink); }
+.avatar { width: 40px; height: 40px; border-radius: 50%; background: var(--sunken); color: var(--ink); display: grid; place-items: center; font: 600 13px var(--text); }
+.page { padding: 32px 36px 64px; display: grid; gap: 24px; min-width: 0; max-width: 1240px; margin: 0 auto; }
+.eyebrow { font: 600 12px var(--text); color: var(--muted); margin: 0; }
+h1 { font: 700 36px/40px var(--display); margin: 2px 0 0; letter-spacing: -0.02em; }
+.headrow { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; flex-wrap: wrap; }
+.seg { display: inline-flex; background: var(--sunken); border-radius: 10px; padding: 3px; gap: 2px; }
+.seg button { border: 0; background: transparent; padding: 6px 12px; border-radius: 8px; font-weight: 500; font-size: 13px; color: var(--ink2); }
+.seg button[aria-pressed=true] { background: var(--surface); font-weight: 600; color: var(--ink); box-shadow: 0 1px 0 rgba(42,28,16,0.04); }
+/* Tabs bar */
+.tabs { display: flex; gap: 8px; border-bottom: 1px solid var(--line); margin-top: 12px; }
+.tab { padding: 10px 16px; border: 0; background: transparent; font-weight: 500; font-size: 14px; color: var(--ink2); border-bottom: 2px solid transparent; margin-bottom: -1px; }
+.tab.on { color: var(--ink); font-weight: 600; border-bottom-color: var(--gold); }
+/* Stepper timeline */
+.stepper { display: flex; align-items: center; gap: 16px; padding: 18px 24px; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; margin-top: 8px; }
+.step { display: flex; align-items: center; gap: 10px; font-size: 14px; font-weight: 500; color: var(--ink2); }
+.step.done { color: var(--sage-ink); font-weight: 600; }
+.step.active { color: var(--ink); font-weight: 600; }
+.step-num { width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; font: 600 12px var(--mono); border: 1px solid var(--line); background: var(--paper); color: var(--ink2); }
+.step.done .step-num { background: var(--sage-wash); border-color: var(--sage); color: var(--sage-ink); }
+.step.active .step-num { background: var(--gold); border-color: var(--gold); color: #FFFFFF; }
+.step-line { flex: 1; height: 1px; background: var(--line); }
+.step-line.done { background: var(--sage); }
+/* Cards */
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 28px; box-shadow: 0 1px 0 rgba(42,28,16,0.03); }
+.card.focal { border-radius: 20px; border-top: 3px solid var(--gold); box-shadow: 0 1px 2px rgba(42,28,16,0.05), 0 12px 32px -12px rgba(42,28,16,0.14); }
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 42px; padding: 0 18px; border-radius: 8px; border: 1px solid var(--ink); background: var(--ink); color: #fff; font-weight: 600; white-space: nowrap; box-shadow: inset 0 1px 0 rgba(255,255,255,0.08); }
+.btn:hover { background: var(--ink-hover); }
+.btn.sec { background: var(--surface); color: var(--ink); border-color: var(--line); }
+.btn.sec:hover { background: var(--sunken); }
+.btn.sm { height: 34px; padding: 0 14px; font-size: 13.5px; }
+.pill { display: inline-flex; align-items: center; font: 600 12px var(--text); border-radius: 99px; padding: 4px 12px; }
+.pill.ok { background: var(--sage-wash); color: var(--sage-ink); }
+.pill.next { background: var(--gold-wash); color: var(--gold-deep); }
+.pill.idle { background: var(--sunken); color: var(--ink2); }
+.pill.err { background: var(--err-wash); color: var(--err); }
+/* Preview Frame: 16:10 aspect ratio */
+.preview-frame { aspect-ratio: 16/10; width: 100%; border: 1px solid var(--line); border-radius: 14px; background: var(--paper); overflow: hidden; display: flex; flex-direction: column; box-shadow: 0 1px 2px rgba(42,28,16,0.05), 0 12px 32px -12px rgba(42,28,16,0.14); }
+.browser-bar { height: 38px; background: var(--surface); border-bottom: 1px solid var(--line); display: flex; align-items: center; padding: 0 14px; gap: 8px; }
+.browser-dots { display: flex; gap: 6px; }
+.dot-btn { width: 10px; height: 10px; border-radius: 50%; background: var(--line); }
+.browser-url { flex: 1; max-width: 380px; margin: 0 auto; height: 26px; border-radius: 6px; background: var(--paper); border: 1px solid var(--line); display: flex; align-items: center; justify-content: center; font: 500 12px var(--mono); color: var(--ink2); }
+.preview-body { flex: 1; padding: 32px; display: grid; place-items: center; background: #FAF9F6; text-align: center; }
+.preview-body h2 { font: 700 28px var(--display); margin: 0; }
+.preview-body p { color: var(--ink2); max-width: 440px; margin: 8px auto 0; font-size: 15px; }
+.tabbar { display: none; }
+[hidden] { display: none !important; }
+.alert-strip { display: flex; align-items: flex-start; gap: 12px; padding: 14px 18px; border-radius: 10px; background: var(--err-wash); border: 1px solid #F4C3BE; color: var(--err); margin-bottom: 20px; }
+@media (max-width: 860px) {
+  .shell { grid-template-columns: 1fr; } aside { display: none; }
+  .top { padding: 10px 16px; height: 56px; } .search { display: none; } .biz { min-width: 0; flex: 1; }
+  .page { padding: 20px 16px 100px; gap: 20px; }
+  h1 { font-size: 28px; line-height: 34px; } .card { padding: 20px; }
+  .stepper { flex-direction: column; align-items: flex-start; gap: 10px; }
+  .tabbar { display: grid; grid-template-columns: repeat(5, 1fr); position: fixed; left: 0; right: 0; bottom: 0; background: var(--surface); border-top: 1px solid var(--line); padding: 6px 6px calc(6px + env(safe-area-inset-bottom, 0px)); z-index: 9; }
+  .tabbar a { display: grid; justify-items: center; gap: 2px; font-size: 11px; color: var(--ink2); text-decoration: none; padding: 6px 0; min-height: 48px; }
+  .tabbar a.on { color: var(--ink); font-weight: 600; }
+}
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="basket" viewBox="0 0 24 24"><path d="M3.5 9.5h17l-1.6 9a2 2 0 0 1-2 1.5H7.1a2 2 0 0 1-2-1.5z"/><path d="M8 9.5 11 4M16 9.5 13 4"/><path d="M9 13v3M12 13v3M15 13v3"/></symbol>
+    <symbol id="home" viewBox="0 0 24 24"><path d="M4 11 12 4l8 7v8a1 1 0 0 1-1 1h-4v-5H9v5H5a1 1 0 0 1-1-1z"/></symbol>
+    <symbol id="chat" viewBox="0 0 24 24"><path d="M5 5h14a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1h-8l-5 4v-4H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1z"/></symbol>
+    <symbol id="doc" viewBox="0 0 24 24"><path d="M7 3h8l4 4v13a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z"/><path d="M14 3v5h5M9 13h6M9 17h6"/></symbol>
+    <symbol id="monitor" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M9 20h6M12 16v4"/></symbol>
+    <symbol id="share" viewBox="0 0 24 24"><circle cx="6" cy="12" r="2.4"/><circle cx="18" cy="6" r="2.4"/><circle cx="18" cy="18" r="2.4"/><path d="m8.1 11 7.8-4M8.1 13l7.8 4"/></symbol>
+    <symbol id="mega" viewBox="0 0 24 24"><path d="M4 10v4a1 1 0 0 0 1 1h3l8 4V5L8 9H5a1 1 0 0 0-1 1z"/><path d="M19 9.5a3.5 3.5 0 0 1 0 5"/></symbol>
+    <symbol id="card" viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10.5h18M7 15h4"/></symbol>
+    <symbol id="gear" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 3v2.5M12 18.5V21M3 12h2.5M18.5 12H21M5.6 5.6l1.8 1.8M16.6 16.6l1.8 1.8M18.4 5.6l-1.8 1.8M7.4 16.6l-1.8 1.8"/></symbol>
+    <symbol id="phone" viewBox="0 0 24 24"><path d="M6.5 4h3l1.5 4-2 1.3a10 10 0 0 0 5.7 5.7L16 13l4 1.5v3a2 2 0 0 1-2 2A13.5 13.5 0 0 1 4.5 6a2 2 0 0 1 2-2z"/></symbol>
+    <symbol id="search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4 4"/></symbol>
+    <symbol id="bell" viewBox="0 0 24 24"><path d="M6 17V11a6 6 0 0 1 12 0v6l1.5 2h-15z"/><path d="M10 21h4"/></symbol>
+    <symbol id="cal" viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16M8 3v4M16 3v4"/></symbol>
+    <symbol id="check" viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7.5"/></symbol>
+    <symbol id="arrow" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></symbol>
+    <symbol id="alert" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></symbol>
+  </defs>
+</svg>
+
+<div class="shell">
+<aside aria-label="Main">
+  <div class="logo"><svg class="i"><use href="#basket"/></svg>BrandBasket</div>
+  <nav class="nav" aria-label="Primary">
+    <a href="mock-home.html"><svg class="i"><use href="#home"/></svg>Home</a>
+    <a href="#"><svg class="i"><use href="#chat"/></svg>Enquiries</a>
+    <a href="#"><svg class="i"><use href="#doc"/></svg>Requests</a>
+  </nav>
+  <div class="grp">Services</div>
+  <nav class="nav" aria-label="Services">
+    <a href="#" class="on" aria-current="page"><svg class="i"><use href="#monitor"/></svg>Website</a>
+    <a href="mock-social.html"><svg class="i"><use href="#share"/></svg>Social media</a>
+    <a href="#"><svg class="i"><use href="#mega"/></svg>Paid Ads</a>
+  </nav>
+  <div class="spacer"></div>
+  <nav class="nav" aria-label="Account">
+    <a href="mock-billing.html"><svg class="i"><use href="#card"/></svg>Plan and billing</a>
+    <a href="mock-settings.html"><svg class="i"><use href="#gear"/></svg>Settings</a>
+  </nav>
+</aside>
+
+<div class="main">
+  <header class="top">
+    <div class="biz"><span>Sweet Crust Bakery</span></div>
+    <div class="search"><svg class="i" style="width:18px;height:18px"><use href="#search"/></svg><span>Search</span><kbd>Ctrl K</kbd></div>
+    <button class="iconbtn" type="button" aria-label="Notifications"><svg class="i"><use href="#bell"/></svg></button>
+    <div class="avatar">SC</div>
+  </header>
+
+  <main class="page">
+    <div class="headrow">
+      <div>
+        <p class="eyebrow">Services</p>
+        <h1>Website</h1>
+        <p style="margin:6px 0 0;color:var(--ink2)" id="webSub">Your kickoff call is booked for Tue 17 Nov, 3:00 pm</p>
+      </div>
+      <div class="seg" role="group" aria-label="Mock state">
+        <button type="button" id="btnNew" aria-pressed="true">Booked call</button>
+        <button type="button" id="btnPreview" aria-pressed="false">Preview ready</button>
+        <button type="button" id="btnLive" aria-pressed="false">Live website</button>
+        <button type="button" id="btnError" aria-pressed="false">DNS error</button>
+      </div>
+    </div>
+
+    <!-- Stepper Timeline: Booked, Building, Preview, Live -->
+    <div class="stepper" id="stepper">
+      <div class="step active" id="st1"><span class="step-num">1</span><span>Kickoff call</span></div>
+      <div class="step-line" id="sl1"></div>
+      <div class="step" id="st2"><span class="step-num">2</span><span>Design and build</span></div>
+      <div class="step-line" id="sl2"></div>
+      <div class="step" id="st3"><span class="step-num">3</span><span>Preview and review</span></div>
+      <div class="step-line" id="sl3"></div>
+      <div class="step" id="st4"><span class="step-num">4</span><span>Live</span></div>
+    </div>
+
+    <!-- Tabs: Overview, Pages, Blog, Domain -->
+    <div class="tabs" role="tablist">
+      <button class="tab on" type="button">Overview</button>
+      <button class="tab" type="button">Pages</button>
+      <button class="tab" type="button">Blog</button>
+      <button class="tab" type="button">Domain</button>
+    </div>
+
+    <!-- STATE 1: KICKOFF BOOKED -->
+    <div class="stack" id="vNew">
+      <article class="card focal">
+        <div style="display:flex;align-items:center;justify-content:space-between">
+          <span class="pill next">Next step</span>
+          <span class="pill ok">Call confirmed</span>
+        </div>
+        <div style="margin-top:16px">
+          <h2 style="font:600 26px/32px var(--display);margin:0">Your kickoff call is booked for Tue 17 Nov, 3:00 pm</h2>
+          <p style="margin:8px 0 0;color:var(--ink2)">30 minutes on video. We go through your bakery brand, menu items, and customer orders before building your site.</p>
+        </div>
+        <div style="margin-top:24px;padding:16px 20px;border-radius:10px;background:var(--paper);border:1px solid var(--line);display:flex;align-items:center;justify-content:space-between">
+          <div>
+            <b>Video meeting link</b>
+            <div style="font-size:13px;color:var(--ink2);margin-top:2px">meet.brandbasket.in/call/sweet-crust-bakery</div>
+          </div>
+          <button class="btn sm sec" type="button">Reschedule</button>
+        </div>
+        <div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--line);font-size:14px;color:var(--ink2)">
+          <b>Staff status:</b> We will start your website right after your call.
+        </div>
+      </article>
+
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:20px">
+        <div class="card">
+          <h3 style="font:600 16px var(--display);margin:0">Pages</h3>
+          <p style="font-size:13.5px;color:var(--ink2);margin:6px 0 0">Home, Menu, About, and Contact pages will be built for your business.</p>
+        </div>
+        <div class="card">
+          <h3 style="font:600 16px var(--display);margin:0">Blog and news</h3>
+          <p style="font-size:13.5px;color:var(--ink2);margin:6px 0 0">Articles and fresh announcements ready for your customers.</p>
+        </div>
+        <div class="card">
+          <h3 style="font:600 16px var(--display);margin:0">Custom domain</h3>
+          <p style="font-size:13.5px;color:var(--ink2);margin:6px 0 0">Connect your own sweetcrust.in or use a free BrandBasket address.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- STATE 2: PREVIEW READY -->
+    <div class="stack" id="vPreview" hidden>
+      <article class="card focal">
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
+          <div>
+            <span class="pill next">Needs your OK</span>
+            <h2 style="font:600 26px/32px var(--display);margin:6px 0 0">Review your website preview</h2>
+          </div>
+          <div style="display:flex;gap:10px;align-items:center">
+            <button class="btn sec" type="button">Request changes</button>
+            <button class="btn" type="button">Approve and go live</button>
+          </div>
+        </div>
+        <p style="margin:8px 0 0;color:var(--ink2)">Your website draft is ready for review. You have <b>1 round of changes left</b> on this draft.</p>
+
+        <!-- Preview Frame: 16:10 -->
+        <div style="margin-top:24px">
+          <div class="preview-frame">
+            <div class="browser-bar">
+              <div class="browser-dots"><span class="dot-btn"></span><span class="dot-btn"></span><span class="dot-btn"></span></div>
+              <div class="browser-url">preview.sweetcrust.in</div>
+            </div>
+            <div class="preview-body">
+              <div>
+                <h2>Sweet Crust Bakery</h2>
+                <p>Artisanal sourdough, fresh morning croissants, and custom celebration cakes baked daily in Pune.</p>
+                <div style="margin-top:20px"><span class="pill ok">Draft Preview v1</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </article>
+    </div>
+
+    <!-- STATE 3: LIVE WEBSITE -->
+    <div class="stack" id="vLive" hidden>
+      <article class="card">
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
+          <div>
+            <span class="pill ok">Live</span>
+            <h2 style="font:600 24px var(--display);margin:4px 0 0">sweetcrust.in is live on the internet</h2>
+          </div>
+          <a class="btn sm" href="#" target="_blank">Open website <svg class="i" style="width:16px;height:16px"><use href="#arrow"/></svg></a>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-top:24px;padding-top:20px;border-top:1px solid var(--line)">
+          <div><span style="font-size:13px;color:var(--ink2)">Status</span><b style="display:block;font-size:16px;color:var(--sage-ink);margin-top:4px">Healthy and online</b></div>
+          <div><span style="font-size:13px;color:var(--ink2)">Monthly visits</span><b style="display:block;font:500 24px var(--mono);margin-top:2px">412</b></div>
+          <div><span style="font-size:13px;color:var(--ink2)">Enquiries received</span><b style="display:block;font:500 24px var(--mono);margin-top:2px">9</b></div>
+          <div><span style="font-size:13px;color:var(--ink2)">SSL Certificate</span><b style="display:block;font-size:16px;color:var(--sage-ink);margin-top:4px">Valid (Auto-renews)</b></div>
+        </div>
+      </article>
+    </div>
+
+    <!-- STATE 4: ERROR STATE (DNS Failed) -->
+    <div class="stack" id="vError" hidden>
+      <div class="alert-strip" role="alert">
+        <svg class="i" style="width:22px;height:22px"><use href="#alert"/></svg>
+        <div style="flex:1">
+          <b>Domain DNS verification failed</b>
+          <p style="margin:2px 0 0;font-size:13px;color:var(--ink)">We could not verify the A record for sweetcrust.in. Please point your domain DNS to 76.76.21.21 in your domain registrar.</p>
+        </div>
+        <button class="btn sm" type="button">Verify again</button>
+      </div>
+
+      <article class="card focal">
+        <div style="display:flex;align-items:center;justify-content:space-between">
+          <span class="pill err">DNS setup required</span>
+          <span class="pill next">Action needed</span>
+        </div>
+        <h2 style="font:600 24px var(--display);margin:14px 0 0">Update your DNS records to launch sweetcrust.in</h2>
+        <p style="margin:6px 0 0;color:var(--ink2)">Log in to GoDaddy or Namecheap and add the following record:</p>
+        <div style="margin-top:16px;padding:16px;border-radius:10px;background:var(--paper);border:1px solid var(--line);font-family:var(--mono);font-size:13px">
+          Type: <b>A</b> | Host: <b>@</b> | Value: <b>76.76.21.21</b>
+        </div>
+        <div style="margin-top:20px;display:flex;gap:12px">
+          <button class="btn" type="button">Check DNS again</button>
+          <button class="btn sec" type="button">Need help</button>
+        </div>
+      </article>
+    </div>
+  </main>
+</div>
+</div>
+
+<nav class="tabbar" aria-label="Main">
+  <a href="mock-home.html"><svg class="i"><use href="#home"/></svg>Home</a>
+  <a href="#"><svg class="i"><use href="#chat"/></svg>Enquiries</a>
+  <a href="#" class="on"><svg class="i"><use href="#monitor"/></svg>Services</a>
+  <a href="#"><svg class="i"><use href="#doc"/></svg>Requests</a>
+  <a href="mock-settings.html"><svg class="i"><use href="#gear"/></svg>More</a>
+</nav>
+
+<script>
+const $ = id => document.getElementById(id);
+function setWebsiteState(idx) {
+  const views = ['vNew', 'vPreview', 'vLive', 'vError'];
+  const btns = ['btnNew', 'btnPreview', 'btnLive', 'btnError'];
+  views.forEach((v, i) => { $(v).hidden = (i !== idx); });
+  btns.forEach((b, i) => { $(b).setAttribute('aria-pressed', String(i === idx)); });
+  
+  const st = $('stepper');
+  if (idx === 0) {
+    $('st1').className = 'step active'; $('sl1').className = 'step-line';
+    $('st2').className = 'step'; $('sl2').className = 'step-line';
+    $('st3').className = 'step'; $('sl3').className = 'step-line';
+    $('st4').className = 'step';
+    $('webSub').textContent = 'Your kickoff call is booked for Tue 17 Nov, 3:00 pm';
+  } else if (idx === 1) {
+    $('st1').className = 'step done'; $('sl1').className = 'step-line done';
+    $('st2').className = 'step done'; $('sl2').className = 'step-line done';
+    $('st3').className = 'step active'; $('sl3').className = 'step-line';
+    $('st4').className = 'step';
+    $('webSub').textContent = 'Your website draft is ready for review. 1 round of changes left.';
+  } else if (idx === 2) {
+    $('st1').className = 'step done'; $('sl1').className = 'step-line done';
+    $('st2').className = 'step done'; $('sl2').className = 'step-line done';
+    $('st3').className = 'step done'; $('sl3').className = 'step-line done';
+    $('st4').className = 'step done';
+    $('webSub').textContent = 'Your website sweetcrust.in is live on the internet.';
+  } else {
+    $('webSub').textContent = 'Domain connection error: sweetcrust.in DNS check failed.';
+  }
+}
+$('btnNew').onclick = () => setWebsiteState(0);
+$('btnPreview').onclick = () => setWebsiteState(1);
+$('btnLive').onclick = () => setWebsiteState(2);
+$('btnError').onclick = () => setWebsiteState(3);
+</script>
+</body>
+</html>
