@@ -18,6 +18,12 @@ import { SMALL_DARK, SMALL_SOFT } from "./small-buttons";
 /** How often the page asks again while a batch is being written. */
 const POLL_MS = 5000;
 
+/** Whether two website addresses are the same website: the scheme, a leading "www.", the case and a trailing slash do not matter. */
+const sameWebsite = (a: string, b: string): boolean => {
+  const clean = (value: string): string => value.trim().toLowerCase().replace(/^https?:\/\//, "").replace(/^www\./, "").replace(/\/+$/, "");
+  return clean(a) === clean(b);
+};
+
 const FIELD = "h-10 w-full rounded-lg border border-ink-2/65 bg-surface px-3 text-[0.875rem] text-ink placeholder:text-ink-3";
 
 interface AiStartCardProps {
@@ -124,7 +130,7 @@ export function StartDialog({ connected, postingDays = null, startDate = null, w
   const router = useRouter();
   const dialog = useRef<HTMLDialogElement>(null);
   const [mode, setMode] = useState<"site" | "page">("site");
-  const [typedSite, setTypedSite] = useState(savedWebsite ?? "");
+  const [typedSite, setTypedSite] = useState(website ?? savedWebsite ?? "");
   const [pageLink, setPageLink] = useState("");
   const groups = dayGroups([...connected], postingDays);
   const [networks, setNetworks] = useState<ReadonlySet<ChannelPlatform>>(() => new Set(connected.size > 0 ? (groups[0] ?? connected) : CHANNEL_PLATFORMS));
@@ -136,9 +142,9 @@ export function StartDialog({ connected, postingDays = null, startDate = null, w
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
-  // A locked website is the one every batch is written from, so the whole-website choice never asks for it. One page is always a link.
-  const siteLocked = mode === "site" && website !== null;
-  const address = mode === "page" ? pageLink : (website ?? typedSite);
+  // The website on file is filled in for her to keep or change; she is never made to type it again, and never stopped from editing it.
+  const address = mode === "page" ? pageLink : typedSite;
+  const changedSite = mode === "site" && website !== null && address.trim() !== "" && !sameWebsite(address, website);
 
   useEffect(() => {
     const window = dialog.current;
@@ -235,31 +241,30 @@ export function StartDialog({ connected, postingDays = null, startDate = null, w
           </div>
         </fieldset>
 
-        {siteLocked ? (
-          <div className="grid gap-1">
-            <p className="text-xs font-semibold text-ink-2">Your website</p>
-            <p className="break-all text-[0.875rem] font-semibold text-ink">{websiteLabel(website)}</p>
-            <p className="text-xs text-ink-3">Your posts are always written from this website.</p>
-          </div>
-        ) : (
-          <div className="grid gap-1.5">
-            <label htmlFor="ai-start-address" className="text-xs font-semibold text-ink-2">
-              {mode === "site" ? "Your website address" : "Link to the page"}
-            </label>
-            <input
-              id="ai-start-address"
-              type="text"
-              inputMode="url"
-              autoComplete="url"
-              value={address}
-              onChange={(event) => (mode === "page" ? setPageLink : setTypedSite)(event.target.value)}
-              placeholder={mode === "site" ? "yourbusiness.in" : "yourbusiness.in/diwali-gift-boxes"}
-              aria-invalid={error !== null && address.trim() === ""}
-              className={FIELD}
-            />
-            <p className="text-xs text-ink-3">{mode === "site" ? "We keep the first website you give us for your posts." : "Use this for one product, offer or announcement."}</p>
-          </div>
-        )}
+        <div className="grid gap-1.5">
+          <label htmlFor="ai-start-address" className="text-xs font-semibold text-ink-2">
+            {mode === "site" ? "Your website address" : "Link to the page"}
+          </label>
+          <input
+            id="ai-start-address"
+            type="text"
+            inputMode="url"
+            autoComplete="url"
+            value={address}
+            onChange={(event) => (mode === "page" ? setPageLink : setTypedSite)(event.target.value)}
+            placeholder={mode === "site" ? "yourbusiness.in" : "yourbusiness.in/diwali-gift-boxes"}
+            aria-invalid={error !== null && address.trim() === ""}
+            className={FIELD}
+          />
+          <p className="text-xs text-ink-3">
+            {mode === "page"
+              ? "Use this for one product, offer or announcement."
+              : website === null
+                ? "We keep the first website you give us for your posts."
+                : "This is the website your posts are written from. You can change it here."}
+          </p>
+          {changedSite ? <p className="text-xs font-semibold text-warn">This is not the website we have on file ({websiteLabel(website)}). We may need to update it before your posts can be written from it.</p> : null}
+        </div>
 
         <fieldset>
           <legend className="mb-2 text-xs font-semibold text-ink-2">Write for</legend>

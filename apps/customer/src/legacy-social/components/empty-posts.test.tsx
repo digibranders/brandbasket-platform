@@ -41,6 +41,14 @@ describe("EmptyPosts", () => {
     expect(screen.getByText("Connect an account first")).toBeTruthy();
   });
 
+  it("says nothing for a channel the new-channel card is already asking about", () => {
+    const { container } = render(<EmptyPosts channel="linkedin" {...base} newChannelChoice={{ channels: ["linkedin"], writtenFor: ["instagram"] }} />);
+    expect(container.textContent).toBe("");
+    cleanup();
+    render(<EmptyPosts channel="facebook" {...base} newChannelChoice={{ channels: ["linkedin"], writtenFor: ["instagram"] }} />);
+    expect(screen.getByText("No posts for Facebook yet")).toBeTruthy();
+  });
+
   it("says nothing while posts are being written", () => {
     const { container } = render(<EmptyPosts channel="instagram" {...base} busy />);
     expect(container.textContent).toBe("");
