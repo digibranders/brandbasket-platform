@@ -102,7 +102,7 @@ export function useTopicDrag({ allowed, onDrop }: Options): TopicDrag {
 
   const ghost =
     dragging === null ? null : (
-      <div ref={ghostRef} aria-hidden="true" className="pointer-events-none fixed top-0 left-0 z-50 max-w-52 rounded-xl bg-surface px-3 py-2 text-[0.8125rem] font-semibold leading-snug text-ink shadow-[0_12px_30px_-10px_rgb(21_22_26/0.5)] ring-1 ring-line" style={{ transform: "translate(-9999px, -9999px)" }}>
+      <div ref={ghostRef} aria-hidden="true" className="pointer-events-none fixed top-0 left-0 z-50 max-w-52 rounded-xl bg-surface px-3 py-2 text-[0.8125rem] font-semibold leading-snug text-ink shadow-pop ring-1 ring-line" style={{ transform: "translate(-9999px, -9999px)" }}>
         {headline}
       </div>
     );

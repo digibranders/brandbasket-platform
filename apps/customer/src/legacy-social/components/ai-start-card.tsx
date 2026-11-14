@@ -206,7 +206,7 @@ export function StartDialog({ connected, postingDays = null, startDate = null, w
       onClick={(event) => {
         if (event.target === event.currentTarget && !pending) onClose();
       }}
-      className="m-auto max-h-[calc(100dvh-2rem)] w-[min(calc(100%-2rem),34rem)] overflow-y-auto rounded-2xl border-0 bg-surface p-0 text-ink shadow-[0_24px_60px_-20px_rgb(21_22_26/0.5)] backdrop:bg-[rgb(17_20_24/0.5)]"
+      className="m-auto max-h-[calc(100dvh-2rem)] w-[min(calc(100%-2rem),34rem)] overflow-y-auto rounded-2xl border-0 bg-surface p-0 text-ink shadow-dialog backdrop:bg-scrim"
     >
       <form onSubmit={submit} noValidate className="grid gap-5 p-5 sm:p-6">
         <div className="flex items-start justify-between gap-3">

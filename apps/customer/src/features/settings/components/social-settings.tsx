@@ -48,7 +48,7 @@ function Impact({ name, preview, loading }: { readonly name: string; readonly pr
   return (
     <span className="flex items-center gap-4 rounded-control bg-surface-subtle p-3">
       <span className="grid shrink-0 place-items-center">
-        <span className="text-3xl font-bold leading-none text-warn-text">{preview.scheduled}</span>
+        <span className="text-3xl font-bold font-mono leading-none text-warn-text">{preview.scheduled}</span>
         <span className="mt-0.5 text-xs font-semibold text-ink-2">{preview.scheduled === 1 ? "post" : "posts"}</span>
       </span>
       <span className="flex min-w-0 flex-col gap-1.5">
@@ -197,7 +197,7 @@ export function SocialSettingsView({ brandName, channels, unavailable, canChange
   return (
     <div className="flex flex-col gap-4">
       {unavailable ? <Banner tone="warn">We could not read your accounts just now. Try again in a few minutes. Nothing you did is lost.</Banner> : null}
-      <section aria-labelledby="social-accounts" className="rounded-card bg-surface shadow-card-ring">
+      <section aria-labelledby="social-accounts" className="rounded-panel border border-border bg-surface shadow-card">
         <div className="border-b border-border-subtle px-4 py-3">
           <h2 id="social-accounts" className="type-section">
             Connected accounts
@@ -212,7 +212,7 @@ export function SocialSettingsView({ brandName, channels, unavailable, canChange
           : null}
       </section>
 
-      <section aria-labelledby="social-data" className="rounded-card bg-surface shadow-card-ring">
+      <section aria-labelledby="social-data" className="rounded-panel border border-border bg-surface shadow-card">
         <div className="border-b border-border-subtle px-4 py-3">
           <h2 id="social-data" className="type-section">
             Your data

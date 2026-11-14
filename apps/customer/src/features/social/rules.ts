@@ -56,7 +56,7 @@ export function postViews(rows: readonly PostRow[]): PostView[] {
   );
 }
 
-// ---- Dates ----
+// Dates
 
 /** A post's due date (`YYYY-MM-DD`) as a moment: noon in India, so no zone shifts it to another day. */
 export function dueDate(dueOn: string): Date {
@@ -99,7 +99,7 @@ export function postWindow(now: Date): { readonly from: string; readonly to: str
   return { from: monthKey(now), to: weekEnd > end ? weekEnd : end };
 }
 
-// ---- Posts ----
+// Posts
 
 const byDueDate = (a: PostView, b: PostView): number => a.dueOn.localeCompare(b.dueOn) || a.id.localeCompare(b.id);
 
@@ -152,7 +152,7 @@ export function monthCounts(posts: readonly PostView[], now: Date): { readonly p
   return { published: inMonth.filter((post) => post.status === "published").length, total: inMonth.length };
 }
 
-// ---- Approving ----
+// Approving
 
 /** The database function approves between 1 and this many posts at a time. */
 export const MAX_APPROVE = 50;
@@ -216,7 +216,7 @@ export function approvalCards(waiting: readonly PostView[], now: Date): Approval
   }));
 }
 
-// ---- Calendar ----
+// Calendar
 
 export interface CalendarDay {
   readonly date: string;
@@ -247,7 +247,7 @@ export function monthCalendar(posts: readonly PostView[], now: Date): CalendarDa
 /** The weekday names the calendar's header row uses, Monday first. */
 export const WEEKDAY_NAMES = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] as const;
 
-// ---- Ads ----
+// Ads
 
 /**
  * What sits under the ad leads count. It is the figure we report each month from the ad accounts, not a list of enquiries, so it
@@ -297,7 +297,7 @@ export function adsView(input: { readonly snapshot: SnapshotFigures | null; read
   return spend === null && !hasBudget && leads === null && view.adMoney === null ? null : view;
 }
 
-// ---- Ad campaigns ----
+// Ad campaigns
 
 export const CAMPAIGN_PLATFORM_NAMES: Readonly<Record<AdCampaignSnapshot["platform"], string>> = { meta: "Meta", google: "Google" };
 
@@ -337,7 +337,7 @@ export function campaignsUpdatedAt(rows: readonly Pick<CampaignRow, "updatedAt">
   return rows.reduce<Date | null>((latest, row) => (latest === null || row.updatedAt > latest ? row.updatedAt : latest), null);
 }
 
-// ---- Social reach ----
+// Social reach
 
 /** The reach figures staff entered for one month, each null when not entered. */
 export interface ReachView {
@@ -370,7 +370,7 @@ export function reachView(row: ReachSource | null, now: Date): ReachView | null 
   };
 }
 
-// ---- Connected accounts ----
+// Connected accounts
 
 type Platform = ConnectedAccount["platform"];
 
@@ -420,7 +420,7 @@ export function accountRows(accounts: readonly Pick<ConnectedAccount, "platform"
     }));
 }
 
-// ---- Tabs ----
+// Tabs
 
 /**
  * The section's tabs: Calendar, Posts (the written posts to look over, with the number waiting for approval when it is known and not zero) for

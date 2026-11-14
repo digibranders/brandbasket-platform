@@ -485,7 +485,7 @@ function OwnTopicBox({ week, onClose }: { readonly week: string | undefined; rea
         event.preventDefault();
         onClose();
       }}
-      className="m-auto w-[min(calc(100%-2rem),32rem)] rounded-2xl border-0 bg-surface p-6 text-ink shadow-[0_24px_60px_-20px_rgb(21_22_26/0.5)] backdrop:bg-[rgb(17_20_24/0.5)]"
+      className="m-auto w-[min(calc(100%-2rem),32rem)] rounded-2xl border-0 bg-surface p-6 text-ink shadow-dialog backdrop:bg-scrim"
     >
       <form onSubmit={submit} className="grid gap-3">
         <h3 id="own-topic-title" className="type-section text-ink">
@@ -741,7 +741,7 @@ function DrawBar({ week, kept, total, retry, pictures, stay, carousel = null }: 
           event.preventDefault();
           setAsking(false);
         }}
-        className="m-auto w-[min(calc(100%-2rem),28rem)] rounded-2xl border-0 bg-surface p-6 text-ink shadow-[0_24px_60px_-20px_rgb(21_22_26/0.5)] backdrop:bg-[rgb(17_20_24/0.5)]"
+        className="m-auto w-[min(calc(100%-2rem),28rem)] rounded-2xl border-0 bg-surface p-6 text-ink shadow-dialog backdrop:bg-scrim"
       >
         <h3 id={`draw-title-${week.key}`} className="type-section text-ink">
           Draw pictures for {toDrawCount} kept {toDrawCount === 1 ? "topic" : "topics"}?
