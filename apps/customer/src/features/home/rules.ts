@@ -400,9 +400,9 @@ export interface StatusCopy {
 export function websiteCopy(state: WebsiteState, now: Date): StatusCopy {
   switch (state.kind) {
     case "kickoff_unconfirmed":
-      return { title: "We're confirming your call", text: `Your call was at ${formatDateTime(state.callAt, now)}. If you couldn't join, you can book a new time.` };
+      return { title: "We will start your website right after your call", text: "We will start your website right after your call" };
     case "starting":
-      return { title: "We are getting your website started", text: "Your kickoff is done. The date of your first preview appears here as soon as the build starts." };
+      return { title: "Thanks for the call. We are getting your website started", text: "The date of your first preview appears here as soon as the build starts." };
     case "preparing":
     case "building":
       return {
