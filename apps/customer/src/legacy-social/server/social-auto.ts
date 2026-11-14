@@ -580,6 +580,12 @@ export async function decideCarousel(settings: SocialAutoSettings, businessId: s
   if (answer.status !== 200) throw refusal(answer, "the carousel decision");
 }
 
+/** Moves the carousel to another day of its week; it keeps its time and, when approved, stays approved. */
+export async function moveCarousel(settings: SocialAutoSettings, businessId: string, carouselId: string, day: string, actor: string, send: typeof fetch = fetch): Promise<void> {
+  const answer = await call(settings, "/api/v1/carousels", { method: "POST", body: { externalId: businessId, action: "move", id: carouselId, day }, actor }, send);
+  if (answer.status !== 200) throw refusal(answer, "the new day of the carousel");
+}
+
 /** One slide of a carousel as a JPEG; null when it is not there. Asked for with the customer's own brand, so a customer sees only their own slides. */
 export async function fetchCarouselSlide(settings: SocialAutoSettings, businessId: string, carouselId: string, position: number, send: typeof fetch = fetch): Promise<Uint8Array | null> {
   let response: Response;

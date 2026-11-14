@@ -2,6 +2,7 @@
 
 import { Warning } from "@phosphor-icons/react/dist/ssr";
 import type { ReactElement } from "react";
+import { buttonClasses } from "@/ui/button-styles";
 import { cn } from "@brandbasket/shared/lib/cn";
 import { SOFT_BUTTON } from "@/legacy-social/classes";
 import { connectChannelAction } from "@/legacy-social/actions";
@@ -30,7 +31,7 @@ export function ConnectButton({ platform, label, className, logo = false }: { re
   return (
     <form action={connectChannelAction} className="min-w-0">
       <input type="hidden" name="channel" value={platform} />
-      <button type="submit" className={cn(SOFT_BUTTON, "w-full", logo && "h-auto min-h-9 min-w-0 justify-start gap-2 whitespace-normal px-2.5 py-1.5 text-left text-[0.84375rem] leading-tight", className)}>
+      <button type="submit" className={cn(logo ? buttonClasses("secondary", "sm") : SOFT_BUTTON, "w-full", logo && "h-auto min-h-8 min-w-0 justify-start gap-2 whitespace-normal py-1.5 text-left leading-tight", className)}>
         {logo ? <ChannelLogo platform={platform} small /> : null}
         <span className="min-w-0">{label}</span>
       </button>
@@ -49,25 +50,25 @@ export function ChannelsSidebar({ rows, bookedLine }: ChannelsSidebarProps): Rea
     <aside
       id="channels"
       aria-labelledby="channels-title"
-      className="border-t border-line bg-surface p-4 pb-28 md:px-8 lg:sticky lg:top-topbar lg:h-channels-column lg:self-start lg:w-[15rem] lg:shrink-0 lg:overflow-y-auto lg:border-t-0 lg:border-r lg:px-4 lg:pt-4 lg:pb-8"
+      className="border-t border-line bg-surface p-4 pb-28 md:px-8 lg:sticky lg:top-topbar lg:h-channels-column lg:self-start lg:w-60 lg:shrink-0 lg:overflow-y-auto lg:border-t-0 lg:border-r lg:px-4 lg:pt-4 lg:pb-8"
     >
       <h2 id="channels-title" className="px-1 type-section text-ink">
         Channels
       </h2>
 
-      <ul className="mt-3 grid gap-0.5">
+      <ul className="mt-3 grid gap-1">
         {rows.length === 0 ? null : (
           <li>
             <button
               type="button"
               aria-pressed={!filtering}
               onClick={showAll}
-              className={cn("grid w-full grid-cols-[1.75rem_minmax(0,1fr)] items-center gap-2.5 rounded-lg px-1.5 py-1.5 text-left transition-colors hover:bg-sunken", !filtering && "bg-sunken")}
+              className={cn("grid w-full grid-cols-[1.75rem_minmax(0,1fr)] items-center gap-2.5 rounded-control px-2 py-1.5 text-left transition-colors hover:bg-neutral-wash", !filtering && "bg-neutral-wash")}
             >
               <span className="grid size-7 place-items-center rounded-md bg-ink text-[0.6875rem] font-bold text-on-primary" aria-hidden="true">
                 All
               </span>
-              <span className="min-w-0 text-[0.84375rem] font-semibold leading-tight text-ink">All channels</span>
+              <span className="min-w-0 type-body font-medium text-ink">All channels</span>
             </button>
           </li>
         )}
@@ -79,11 +80,11 @@ export function ChannelsSidebar({ rows, bookedLine }: ChannelsSidebarProps): Rea
                 type="button"
                 aria-pressed={selected}
                 onClick={() => only(row.platform)}
-                className={cn("grid w-full grid-cols-[1.75rem_minmax(0,1fr)] items-center gap-2.5 rounded-lg px-1.5 py-1.5 text-left transition-colors hover:bg-sunken", selected && "bg-sunken")}
+                className={cn("grid w-full grid-cols-[1.75rem_minmax(0,1fr)] items-center gap-2.5 rounded-control px-2 py-1.5 text-left transition-colors hover:bg-neutral-wash", selected && "bg-neutral-wash")}
               >
                 <ChannelLogo platform={row.platform} medium />
                 <span className={cn("min-w-0", filtering && !selected && "opacity-60")}>
-                  <span title={row.account} className="block truncate text-[0.84375rem] font-semibold leading-tight text-ink">
+                  <span title={row.account} className="block truncate type-body font-medium text-ink">
                     {row.account}
                     <span className="sr-only">, {PLATFORM_NAMES[row.platform]}</span>
                   </span>
@@ -105,14 +106,14 @@ export function ChannelsSidebar({ rows, bookedLine }: ChannelsSidebarProps): Rea
       </ul>
 
       {missing.length === 0 ? null : (
-        <section aria-labelledby="add-channel-title" className="mt-4 grid gap-2">
-          <h3 id="add-channel-title" className="px-1 text-xs font-semibold text-ink-2">
+        <section aria-labelledby="add-channel-title" className="mt-3 grid gap-2">
+          <h3 id="add-channel-title" className="type-meta font-medium">
             {rows.length === 0 ? "Connect your accounts" : "Add a channel"}
           </h3>
           {missing.map((platform) => (
             <div key={platform} className="grid gap-1">
               <ConnectButton platform={platform} label={`Connect ${platform === "google" ? "Google" : PLATFORM_NAMES[platform]}`} logo />
-              <span className="px-1 text-xs text-ink-3">{PLATFORM_HINTS[platform]}</span>
+              <span className="type-meta">{PLATFORM_HINTS[platform]}</span>
             </div>
           ))}
         </section>

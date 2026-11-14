@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache";
 import { unstable_rethrow } from "next/navigation";
 import { z } from "zod";
 import { requireService, type CustomerContext } from "@/lib/guards";
-import { actorOf, addNetwork, decideBatch, decideCarousel, askTopic, decidePoster, drawBatch, loadTopics, moveTopic, replaceTopic, makeCarousel, setCarouselWeekly, SocialAutoError, socialAutoSettings, type SocialAutoSettings } from "@/legacy-social/server/social-auto";
+import { actorOf, addNetwork, decideBatch, decideCarousel, moveCarousel, askTopic, decidePoster, drawBatch, loadTopics, moveTopic, replaceTopic, makeCarousel, setCarouselWeekly, SocialAutoError, socialAutoSettings, type SocialAutoSettings } from "@/legacy-social/server/social-auto";
 import { brandOf, type SocialBrand } from "@/features/social/brand";
 import { wordsForCode } from "@/legacy-social/lib/social/ai";
 import { CHANNEL_PLATFORMS, PLATFORM_NAMES } from "@/legacy-social/lib/social/auto";
@@ -85,6 +85,13 @@ export async function moveTopicAction(formData: FormData): Promise<NewPostState>
     // The words are not rewritten for the new day, so a topic that names one (Friday, tomorrow) is flagged for her to check.
     return moved.wordsNameADay ? "Moved. The words of this topic name a day, so read them again to see they still fit." : undefined;
   });
+}
+
+/** Moves the weekly carousel to another day of its week. Its content is never changed. */
+export async function moveCarouselAction(formData: FormData): Promise<NewPostState> {
+  const parsed = z.object({ id: ID, day: z.string().regex(/^\d{4}-\d{2}-\d{2}$/) }).safeParse({ id: formData.get("id"), day: formData.get("day") });
+  if (!parsed.success) return badForm();
+  return run("move the carousel", async ({ settings, brand, actor }) => void (await moveCarousel(settings, brand.externalId, parsed.data.id, parsed.data.day, actor)));
 }
 
 /** "Write your own": a post about something she wrote in her own words, for the week being looked at. One a week; nothing is drawn until she asks. */

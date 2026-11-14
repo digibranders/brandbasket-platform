@@ -27,7 +27,7 @@ export interface CarouselDetail {
   readonly id: string;
   readonly count: number;
   readonly status: CarouselStatus;
-  readonly slides: readonly { readonly position: number; readonly status: string }[];
+  readonly slides: readonly { readonly position: number; readonly status: string; /** The slide's headline, when the posting service says it. */ readonly headline?: string }[];
   readonly captions: readonly { readonly network: ChannelPlatform; readonly caption: string; readonly status: string }[];
   /** The reasons a carousel may be sent back with, as the posting service names them. */
   readonly reasons: readonly string[];
@@ -63,7 +63,7 @@ const detailSchema = z.object({
   id: z.string().min(1),
   count: z.number().int().nonnegative(),
   status: statusSchema,
-  slides: z.array(z.object({ position: z.number().int().positive(), status: z.string() })),
+  slides: z.array(z.object({ position: z.number().int().positive(), status: z.string(), headline: z.string().nullish() })),
   captions: z.array(z.object({ network: z.string(), caption: z.string(), status: z.string() })).optional(),
 });
 
@@ -76,7 +76,7 @@ export function readCarousel(body: unknown): CarouselDetail | null {
     id: parsed.data.id,
     count: parsed.data.count,
     status: parsed.data.status,
-    slides: [...parsed.data.slides].sort((a, b) => a.position - b.position),
+    slides: [...parsed.data.slides].sort((a, b) => a.position - b.position).map((slide) => (typeof slide.headline === "string" && slide.headline.trim() !== "" ? { position: slide.position, status: slide.status, headline: slide.headline.trim() } : { position: slide.position, status: slide.status })),
     captions: (parsed.data.captions ?? []).flatMap((entry) => (isChannelPlatform(entry.network) ? [{ network: entry.network, caption: entry.caption, status: entry.status }] : [])),
     reasons: Array.isArray(raw?.reasons) ? raw.reasons.filter((reason): reason is string => typeof reason === "string") : [],
   };

@@ -22,7 +22,7 @@ export const carouselInWeek = (carousel: WeekCarousel | null, from: string, to: 
   carousel !== null && carousel.summary.date !== null && from !== "" && carousel.summary.date >= from && carousel.summary.date <= to;
 
 /** What the customer has decided about the carousel, in the words the other topics use. */
-const decisionOf = (summary: CarouselSummary): { readonly word: string; readonly tone: string } => {
+export const decisionOf = (summary: CarouselSummary): { readonly word: string; readonly tone: string } => {
   if (summary.status === "approved") return { word: "Kept", tone: "font-semibold text-ok" };
   if (summary.status === "rejected") return { word: "Dropped", tone: "text-ink-3" };
   return { word: "Not decided", tone: "font-semibold text-warn" };

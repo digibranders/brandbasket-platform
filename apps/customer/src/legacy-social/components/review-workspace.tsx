@@ -4,7 +4,7 @@ import { ArrowClockwise, CalendarBlank, CaretDown, CaretLeft, CaretRight, Check,
 import { useSearchParams } from "next/navigation";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, useTransition, type FormEvent, type PointerEvent as ReactPointerEvent, type ReactElement, type ReactNode } from "react";
 import { cn } from "@brandbasket/shared/lib/cn";
-import { askTopicAction, decideBatchAction, decidePosterAction, drawBatchAction, moveTopicAction, replaceTopicAction } from "@/legacy-social/review-actions";
+import { askTopicAction, decideBatchAction, decideCarouselAction, moveCarouselAction, decidePosterAction, drawBatchAction, moveTopicAction, replaceTopicAction } from "@/legacy-social/review-actions";
 import { REJECT_REASON_WORDS, TOPIC_NOT_MADE_WORDS, type Poster, type TopicRequest, type WrittenBatch } from "@/legacy-social/lib/social/ai";
 import { CHANNEL_PLATFORMS, dayLabel, PLATFORM_HINTS, PLATFORM_NAMES, type ChannelPlatform } from "@/legacy-social/lib/social/auto";
 import { CHANNEL_PARAM, channelParamOf, rememberChannel } from "@/legacy-social/lib/social/channel-param";
@@ -12,7 +12,7 @@ import type { ReviewCard, ReviewGroup } from "@/legacy-social/lib/social/review-
 import { cardsOfWeek, channelTodo, firstOpenWeek, flowWeeks, picturesOn, POST_TIME, postFinal, weekAsked, type FlowWeek, type ReplaceState } from "@/legacy-social/lib/social/review-flow";
 import { ConnectButton } from "./channels-sidebar";
 import { AddChannelChoice } from "./add-channel-choice";
-import { CarouselPictures, CarouselTopic, carouselInWeek, type WeekCarousel } from "./carousel-week";
+import { CarouselPictures, CarouselTopic, carouselInWeek, decisionOf, type WeekCarousel } from "./carousel-week";
 import type { PostingDays } from "@/legacy-social/lib/social/schedule";
 import { ChannelLogo } from "./channel-logo";
 import { imageUrl, pictureWord } from "./poster-tile";
@@ -229,7 +229,7 @@ function TopicRow({
           </button>
         ) : post.drawn === true ? <p className="m-0 text-xs text-ink-3">Drawn. Its pictures are below.</p> : locked && !dropped && !kept ? <p className="m-0 text-xs text-ink-3">Not decided. This week was drawn before it could stay open, so it can no longer be changed.</p> : null}
         {notes}
-        {icons === null ? null : <div className="mt-auto flex flex-nowrap items-center gap-1 pt-1">{icons}</div>}
+        {icons === null ? null : <div className="mt-auto flex flex-nowrap items-center justify-between gap-1 pt-1">{icons}</div>}
       </li>
     );
   }
@@ -266,7 +266,56 @@ interface WeekGridProps {
   /** The picture to show small inside a topic that has been drawn, and what pressing it does. */
   readonly pictureOf?: (card: ReviewCard) => Poster | undefined;
   readonly onOpenPicture?: (poster: Poster) => void;
+  /** The weekly carousel when it is for this week: it is a card in the column of its day. */
+  readonly carousel?: WeekCarousel | null;
 }
+
+/** The carousel as a topic of its day: its topic, that it is a carousel, and keep or send it back. Its slides show under Pictures once it is kept. */
+function CarouselDayCard({ carousel, dragProps }: { readonly carousel: WeekCarousel; readonly dragProps?: { readonly onPointerDown: (event: ReactPointerEvent) => void; readonly dragging: boolean } }): ReactElement {
+  const { summary, detail, canChange } = carousel;
+  const { pending, error, run } = useReviewAction();
+  const decision = decisionOf(summary);
+  const open = summary.status === "pending" && canChange && detail !== null;
+  const headlines = (detail?.slides ?? []).flatMap((slide) => (slide.headline === undefined ? [] : [{ position: slide.position, headline: slide.headline }]));
+  return (
+    <li
+      {...(dragProps === undefined ? {} : { onPointerDown: dragProps.onPointerDown })}
+      className={cn("grid content-start gap-2 rounded-xl bg-surface p-2.5 ring-1", summary.status === "approved" ? "ring-2 ring-ok" : "ring-line", dragProps !== undefined && "cursor-grab touch-pan-x select-none", dragProps?.dragging === true && "opacity-40")}
+    >
+      <p className="text-[0.6875rem] font-semibold text-ink-3">Carousel · {summary.count} slides</p>
+      <p className="text-[0.84375rem] font-semibold leading-snug text-ink">{summary.topic ?? "Carousel of the week"}</p>
+      {headlines.length === 0 ? null : (
+        <ol className="m-0 grid list-none gap-0.5 p-0 text-xs leading-snug text-ink-2">
+          {headlines.map((slide) => (
+            <li key={slide.position} className="break-words">
+              {slide.position}. {slide.headline}
+            </li>
+          ))}
+        </ol>
+      )}
+      {open ? (
+        <div className="flex flex-nowrap items-center justify-between gap-1 pt-1">
+          <IconButton label="Keep this carousel" disabled={pending} onClick={() => run(decideCarouselAction, { id: detail.id, action: "approve" })}>
+            <Check size={13} weight="bold" aria-hidden="true" />
+          </IconButton>
+          <IconButton label="Send this carousel back" disabled={pending} onClick={() => run(decideCarouselAction, { id: detail.id, action: "reject", reason: detail.reasons.includes("other") ? "other" : (detail.reasons[0] ?? "other") })}>
+            <X size={13} weight="bold" aria-hidden="true" />
+          </IconButton>
+        </div>
+      ) : (
+        <p className={cn("text-[0.8125rem]", decision.tone)}>{decision.word}</p>
+      )}
+      {error === null ? null : (
+        <p role="alert" className="text-xs font-semibold text-error">
+          {error}
+        </p>
+      )}
+    </li>
+  );
+}
+
+/** The key the carousel card is dragged under: no topic has one like it. */
+const CAROUSEL_DRAG_KEY = "carousel";
 
 const nextDay = (day: string): string => new Date(Date.parse(`${day}T00:00:00Z`) + 86_400_000).toISOString().slice(0, 10);
 
@@ -275,13 +324,18 @@ const nextDay = (day: string): string => new Date(Date.parse(`${day}T00:00:00Z`)
  * A topic can be dragged to another day of the week (or moved with its day picker) until the week is drawn. A week whose topics carry no
  * day, or one outside it, is listed one under the other instead, so nothing is hidden.
  */
-function WeekGrid({ cards, week, replacing, today, pictureOf, onOpenPicture }: WeekGridProps): ReactElement {
+function WeekGrid({ cards, week, replacing, today, pictureOf, onOpenPicture, carousel = null }: WeekGridProps): ReactElement {
   const mover = useReviewAction();
   /** Where a topic was just moved to, shown at once while the posting service answers. */
   const [moved, setMoved] = useState<Readonly<Record<string, string>>>({});
   const { pending: moving } = mover;
+  /** Where the carousel was just moved to, shown at once while the posting service answers. */
+  const [carouselMoved, setCarouselMoved] = useState<string | null>(null);
   useEffect(() => {
-    if (!moving) setMoved({});
+    if (!moving) {
+      setMoved({});
+      setCarouselMoved(null);
+    }
   }, [moving]);
   const written = cards.filter((card) => card.written !== null);
   const days = week.from === "" ? [] : daysOfWeek(week.from);
@@ -297,12 +351,23 @@ function WeekGrid({ cards, week, replacing, today, pictureOf, onOpenPicture }: W
     setMoved((current) => ({ ...current, [card.postId]: day }));
     mover.run(moveTopicAction, { batchId: card.batchId, postId: card.postId, day });
   };
+  const carouselDay = carouselMoved ?? carousel?.summary.date ?? null;
+  /** The days the carousel may go to: the other days of its week from tomorrow on, while it is still wanted and no move is on its way. Its content is never changed. */
+  const carouselTargets = (): string[] => (carousel === null || !carousel.canChange || carousel.summary.status === "rejected" || carousel.summary.status === "blocked" || carousel.summary.status === "incomplete" || moving || !placed ? [] : days.filter((day) => day !== carouselDay && day >= earliest));
   const drag = useTopicDrag({
     allowed: (key, day) => {
+      if (key === CAROUSEL_DRAG_KEY) return carouselTargets().includes(day);
       const card = written.find((one) => one.key === key);
       return card !== undefined && targets(card).includes(day);
     },
     onDrop: (key, day) => {
+      if (key === CAROUSEL_DRAG_KEY) {
+        if (carousel !== null) {
+          setCarouselMoved(day);
+          mover.run(moveCarouselAction, { id: carousel.summary.id, day });
+        }
+        return;
+      }
       const card = written.find((one) => one.key === key);
       if (card !== undefined) move(card, day);
     },
@@ -311,7 +376,14 @@ function WeekGrid({ cards, week, replacing, today, pictureOf, onOpenPicture }: W
     const open = targets(card);
     return <TopicRow key={card.key} card={card} compact={compact} locked={postFinal(card, week)} replace={replacing[card.postId]} replacementsLeft={week.replacementsLeft} moveDays={open} onMove={(day) => move(card, day)} {...(compact && pictureOf?.(card) !== undefined && onOpenPicture !== undefined ? { preview: { poster: pictureOf(card) as Poster, open: () => onOpenPicture(pictureOf(card) as Poster) } } : {})} {...(open.length > 0 && compact ? { dragProps: { onPointerDown: (event: ReactPointerEvent) => drag.begin(event, card.key, card.headline), dragging: drag.dragging === card.key } } : {})} />;
   };
-  if (!placed) return <ul className="grid gap-3">{cards.map((card) => row(card, false))}</ul>;
+  if (!placed) {
+    return (
+      <div className="grid gap-3">
+        <ul className="grid gap-3">{cards.map((card) => row(card, false))}</ul>
+        {carousel === null ? null : <CarouselTopic carousel={carousel} />}
+      </div>
+    );
+  }
   return (
     <div className="grid gap-2">
       {mover.error === null ? null : (
@@ -328,6 +400,7 @@ function WeekGrid({ cards, week, replacing, today, pictureOf, onOpenPicture }: W
         <div data-drop-zone="" className="grid grid-cols-[repeat(7,minmax(9.5rem,1fr))] gap-2.5">
           {days.map((day, index) => {
             const here = written.filter((card) => dayOf(card) === day);
+            const carouselHere = carousel !== null && carouselDay === day;
             const landing = drag.dragging !== null && drag.over === day;
             return (
               <div key={day} data-drop-day={day} className={cn("min-w-0 rounded-xl p-1 transition-colors", landing && "bg-rattan-wash/60 ring-2 ring-inset ring-rattan-text")}>
@@ -338,10 +411,13 @@ function WeekGrid({ cards, week, replacing, today, pictureOf, onOpenPicture }: W
                     {here.length === 0 ? "" : ` ${here[0]?.written?.time ?? POST_TIME} IST`}
                   </span>
                 </p>
-                {here.length === 0 ? (
+                {here.length === 0 && !carouselHere ? (
                   <p className="grid min-h-44 place-items-center rounded-xl border border-dashed border-line px-2 text-center text-xs text-ink-3">{index > 4 ? "Weekend, no post" : "No post this day"}</p>
                 ) : (
-                  <ul className="grid gap-2">{here.map((card) => row(card, true))}</ul>
+                  <ul className="grid gap-2">
+                    {here.map((card) => row(card, true))}
+                    {carouselHere ? <CarouselDayCard carousel={carousel} {...(carouselTargets().length > 0 ? { dragProps: { onPointerDown: (event: ReactPointerEvent) => drag.begin(event, CAROUSEL_DRAG_KEY, carousel.summary.topic ?? "Carousel"), dragging: drag.dragging === CAROUSEL_DRAG_KEY } } : {})} /> : null}
+                  </ul>
                 )}
               </div>
             );
@@ -596,12 +672,14 @@ function DrawBar({ week, kept, total, retry, pictures, stay }: { readonly week: 
           <>Change the headline or drop a topic that got no picture, then draw again. Posts that have pictures stay as they are.</>
         ) : (
           rounds ? (
+            kept === 0 ? null : (
             <>
               <b className="text-ink">
                 {kept} kept to draw.
               </b>{" "}
               Drawing makes {pictures} new {picturesWord}. {stay > 0 ? (stay === 1 ? "The other one stays open." : `The other ${stay} stay open.`) : "Nothing else is left open."}
             </>
+            )
           ) : (
             <>
               <b className="text-ink">
@@ -1117,17 +1195,17 @@ export function ReviewChannelsColumn(): ReactElement {
     <aside
       id="channels"
       aria-labelledby="review-channels-title"
-      className="border-t border-line bg-surface p-4 pb-28 md:px-8 lg:sticky lg:top-topbar lg:h-channels-column lg:self-start lg:w-[15rem] lg:shrink-0 lg:overflow-y-auto lg:border-t-0 lg:border-r lg:px-4 lg:pt-4 lg:pb-8"
+      className="border-t border-line bg-surface p-4 pb-28 md:px-8 lg:sticky lg:top-topbar lg:h-channels-column lg:self-start lg:w-60 lg:shrink-0 lg:overflow-y-auto lg:border-t-0 lg:border-r lg:px-4 lg:pt-4 lg:pb-8"
     >
       <h2 id="review-channels-title" className="px-1 type-section text-ink">
         Channels
       </h2>
-      <ul className="mt-3 grid gap-0.5">
+      <ul className="mt-3 grid gap-1">
         <li>
-          <button type="button" aria-pressed={channel === "all"} onClick={() => setChannel("all")} className={cn("grid w-full grid-cols-[1.75rem_minmax(0,1fr)] items-center gap-2.5 rounded-lg px-1.5 py-1.5 text-left transition-colors hover:bg-sunken", channel === "all" && "bg-sunken")}>
+          <button type="button" aria-pressed={channel === "all"} onClick={() => setChannel("all")} className={cn("grid w-full grid-cols-[1.75rem_minmax(0,1fr)] items-center gap-2.5 rounded-control px-2 py-1.5 text-left transition-colors hover:bg-neutral-wash", channel === "all" && "bg-neutral-wash")}>
             <span className="grid size-7 place-items-center rounded-md bg-ink text-[0.6875rem] font-bold text-on-primary">All</span>
             <span className="min-w-0">
-              <span className="block truncate text-[0.84375rem] font-semibold leading-tight text-ink">All channels</span>
+              <span className="block truncate type-body font-medium text-ink">All channels</span>
             </span>
           </button>
         </li>
@@ -1135,11 +1213,11 @@ export function ReviewChannelsColumn(): ReactElement {
           const todo = todoOf(one.platform);
           return (
             <li key={one.platform}>
-              <button type="button" aria-pressed={channel === one.platform} onClick={() => setChannel(one.platform)} className={cn("grid w-full grid-cols-[1.75rem_minmax(0,1fr)] items-center gap-2.5 rounded-lg px-1.5 py-1.5 text-left transition-colors hover:bg-sunken", channel === one.platform && "bg-sunken")}>
+              <button type="button" aria-pressed={channel === one.platform} onClick={() => setChannel(one.platform)} className={cn("grid w-full grid-cols-[1.75rem_minmax(0,1fr)] items-center gap-2.5 rounded-control px-2 py-1.5 text-left transition-colors hover:bg-neutral-wash", channel === one.platform && "bg-neutral-wash")}>
                 <ChannelLogo platform={one.platform} medium />
                 <span className="min-w-0">
                   <span className="flex items-center gap-1.5">
-                    <span title={one.account} className="min-w-0 truncate text-[0.84375rem] font-semibold leading-tight text-ink">
+                    <span title={one.account} className="min-w-0 truncate type-body font-medium text-ink">
                       {one.account}
                       <span className="sr-only">, {PLATFORM_NAMES[one.platform]}</span>
                     </span>
@@ -1152,14 +1230,14 @@ export function ReviewChannelsColumn(): ReactElement {
         })}
       </ul>
       {missing.length === 0 ? null : (
-        <section aria-labelledby="review-add-channel-title" className="mt-4 grid gap-2">
-          <h3 id="review-add-channel-title" className="px-1 text-xs font-semibold text-ink-2">
+        <section aria-labelledby="review-add-channel-title" className="mt-3 grid gap-2">
+          <h3 id="review-add-channel-title" className="type-meta font-medium">
             {channels.length === 0 ? "Connect your accounts" : "Add a channel"}
           </h3>
           {missing.map((platform) => (
             <div key={platform} className="grid gap-1">
               <ConnectButton platform={platform} label={`Connect ${platform === "google" ? "Google" : PLATFORM_NAMES[platform]}`} logo />
-              <span className="px-1 text-xs text-ink-3">{PLATFORM_HINTS[platform]}</span>
+              <span className="type-meta">{PLATFORM_HINTS[platform]}</span>
             </div>
           ))}
         </section>
@@ -1217,7 +1295,7 @@ export function ReviewWorkspace(): ReactElement | null {
   /** The carousel of this week: its topic with the topics, its slides with the pictures once it is kept. */
   const weekCarousel = carouselInWeek(carousel, week.from, week.to) ? carousel : null;
   const carouselBlock =
-    weekCarousel === null || channel === "all" ? null : stage === 0 ? <CarouselTopic carousel={weekCarousel} /> : stage === 1 || weekCarousel.summary.status === "approved" ? <CarouselPictures carousel={weekCarousel} channel={channel} /> : null;
+    weekCarousel === null || channel === "all" || stage === 0 ? null : stage === 1 || weekCarousel.summary.status === "approved" ? <CarouselPictures carousel={weekCarousel} channel={channel} /> : null;
   return (
     <section aria-label={picked === undefined ? "All channels" : PLATFORM_NAMES[picked.platform]} className="grid min-w-0 content-start gap-4">
       <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
@@ -1230,11 +1308,10 @@ export function ReviewWorkspace(): ReactElement | null {
         <WeekNav weeks={weeks} week={week} today={today} onPick={setWeekKey} />
       </div>
       {asked || stage !== 0 ? null : <OwnTopics />}
-      {carouselBlock}
       {channel === "all" ? (
         <Overview cards={cards} week={week} channels={channels} />
       ) : asked && !missing && looking ? (
-        <WeekGrid cards={cards} week={week} replacing={replacing} today={today} pictureOf={pictureOf} onOpenPicture={openPicture} />
+        <WeekGrid cards={cards} week={week} replacing={replacing} today={today} pictureOf={pictureOf} onOpenPicture={openPicture} carousel={weekCarousel} />
       ) : asked && !missing ? (
         picked === undefined ? null : <PicturesStage cards={cards} week={week} channel={picked.platform} account={picked.account} reasons={reasons} ownPosters={ownPosters} {...(pictureStep === null ? {} : { only: pictureStep })} />
       ) : (
@@ -1243,11 +1320,12 @@ export function ReviewWorkspace(): ReactElement | null {
           {partly && roundView === "pictures" && picked !== undefined ? (
             <PicturesStage cards={cards} week={week} channel={picked.platform} account={picked.account} reasons={reasons} ownPosters={ownPosters} settled={false} {...(pictureStep === null ? {} : { only: pictureStep })} />
           ) : (
-            <WeekGrid cards={cards} week={week} replacing={replacing} today={today} pictureOf={pictureOf} onOpenPicture={openPicture} />
+            <WeekGrid cards={cards} week={week} replacing={replacing} today={today} pictureOf={pictureOf} onOpenPicture={openPicture} carousel={weekCarousel} />
           )}
           {partly && roundView === "pictures" ? null : <DrawBar week={week} kept={keptCount} total={cards.length} retry={asked || missing} pictures={newPictures} stay={stay} />}
         </>
       )}
+      {carouselBlock}
     </section>
   );
 }
