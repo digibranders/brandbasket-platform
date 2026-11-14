@@ -42,62 +42,62 @@ Kept from idraft without change: named tokens only, tonal layers and hairlines i
 
 ## 3. Colour tokens
 
-Every colour comes from a token. Hex, `rgb()` and Tailwind palette classes are refused by lint outside the token file. Values are final and match the mock's `style.css`.
+Every colour comes from a token. Hex, `rgb()` and Tailwind palette classes are refused by lint outside the token file. Values match the Release 2 premium design language (`docs/design/redesign/05-PREMIUM-DESIGN-LANGUAGE.md`).
 
 ### Surfaces
 
 | Token | Value | Use |
 |---|---|---|
-| `canvas` | `#F6F7F9` | Page background |
-| `sidebar` | `#F1F3F6` | Left navigation |
+| `canvas` | `#F6F5F2` | Page background (warm paper) |
+| `sidebar` | `#FFFFFF` | Left navigation |
 | `surface` | `#FFFFFF` | Panels, top bar, inputs, overlays |
-| `surface-subtle` | `#F6F7F9` | Table headers, wells |
-| `surface-hover` | `#EFF1F4` | Row and item hover |
-| `surface-selected` | `#EAF1FE` | Current nav item, selected row |
-| `surface-disabled` | `#F0F2F5` | Disabled control fill |
+| `surface-subtle` | `#F6F5F2` | Table headers, wells |
+| `surface-hover` | `#EEECE7` | Row and item hover (sunken) |
+| `surface-selected` | `#F4E6D3` | Current nav item, selected row (gold wash) |
+| `surface-disabled` | `#EEECE7` | Disabled control fill |
 
 ### Text
 
 | Token | Value | Contrast | Use |
 |---|---|---|---|
-| `ink` | `#111418` | 18.47 on surface | Primary text, values |
-| `ink-2` | `#3F4650` | 9.53 on surface | Nav labels, secondary values |
-| `ink-3` | `#5B6370` | 6.06 on surface, 5.66 on canvas, 5.45 on sidebar | Meta, labels, table headers |
-| `ink-muted` | `#8B93A0` | Non-text only | Inactive icons and separators |
-| `ink-disabled` | `#B4BAC4` | Exempt | Disabled text |
-| `on-primary` | `#FFFFFF` | 5.22 on primary, 6.62 on hover | Text on primary fill |
+| `ink` | `#15161A` | 18.08 on surface | Primary text, values |
+| `ink-2` | `#4E5057` | 8.05 on surface | Nav labels, secondary values |
+| `ink-3` | `#5F626A` | 6.10 on surface, 5.66 on canvas, 4.97 on wash | Meta, labels, table headers |
+| `ink-muted` | `#8A8D95` | Non-text only | Inactive icons and separators |
+| `ink-disabled` | `#B4B7BD` | Exempt | Disabled text |
+| `on-primary` | `#FFFFFF` | 18.08 on primary, 14.54 on hover | Text on primary fill |
 
 ### Lines
 
 | Token | Value | Use |
 |---|---|---|
-| `border` | `#E3E6EB` | Panel and overlay outlines |
-| `border-subtle` | `#ECEEF2` | Row dividers |
-| `border-button` / `-hover` | `#D6DAE1` / `#C6CBD4` | Secondary button outlines |
-| `border-control` | `#8B93A0` | Inputs, selects, checkboxes, 3.10 on surface (WCAG 1.4.11) |
+| `border` | `#E3E0D9` | Panel and overlay outlines |
+| `border-subtle` | `#EEECE7` | Row dividers |
+| `border-button` / `-hover` | `#E3E0D9` / `#CFCBC2` | Secondary button outlines |
+| `border-control` | `#8A8D95` | Inputs, selects, checkboxes, 3.32 on surface (WCAG 1.4.11) |
 
 ### Accent and meaning
 
 | Token | Value | Use |
 |---|---|---|
-| `primary` / `-hover` | `#1E65E3` / `#1A56C4` | Primary button, checked controls |
-| `accent-text` | `#175AD0` | Links and active labels, 6.16 on surface, 5.43 on wash |
-| `accent-wash` / `-border` | `#EAF1FE` / `#B5CCF6` | Tints |
-| `ring` | `#1E65E3` | Focus, 5.22 on surface |
-| `pos-text` / `-wash` / `-border` | `#17703F` / `#E6F4EC` / `#B9DFC8` | Done, live, paid, up, 5.40 |
-| `neg-text` / `-wash` / `-border` | `#B42318` / `#FDECEA` / `#F4C3BE` | Failed, destructive, down, 5.75 |
-| `warn-text` / `-wash` / `-border` | `#8A5300` / `#FDF1DC` / `#F0D299` | Waiting for the customer, due soon, 5.66 |
-| `info-text` / `-wash` / `-border` | `#2456A6` / `#E9F0FB` / `#BBD0F0` | In progress, 6.20 |
-| `neutral-text` / `-wash` | `#434B57` / `#EEF0F3` | Neutral badges, 7.72 |
+| `primary` / `-hover` | `#15161A` / `#2A2B31` | Primary button (near-black), checked controls |
+| `accent-text` | `#8A5524` | Links and active labels (gold deep), 6.17 on surface, 5.02 on wash |
+| `accent-wash` / `-border` | `#F4E6D3` / `#C48A47` | Tints and gold borders |
+| `ring` | `#15161A` | Focus ring (2px ink with 2px offset), 18.08 on surface |
+| `pos-text` / `-wash` / `-border` | `#2F5A43` / `#E5EFE8` / `#B2D0C0` | Done, live, paid, up, 7.88 |
+| `neg-text` / `-wash` / `-border` | `#B42318` / `#FDECEA` / `#F4C3BE` | Failed, destructive, down, 6.57 |
+| `warn-text` / `-wash` / `-border` | `#8A5524` / `#F4E6D3` / `#E0C7A8` | Waiting for the customer, due soon, 6.17 |
+| `info-text` / `-wash` / `-border` | `#4E5057` / `#EEECE7` / `#E3E0D9` | In progress, 8.05 |
+| `neutral-text` / `-wash` | `#4E5057` / `#EEECE7` | Neutral badges, 8.05 |
 
 ### Service marks and charts
 
 | Token | Value | Use |
 |---|---|---|
-| `svc-site` | `#B87F3D` | Website mark. The only place the brand's rattan family appears in the app. Its contrast is confirmed by the token test |
-| `svc-social` | `#1F7A74` | Social & Ads mark |
-| `svc-search` | `#3558A0` | Local SEO + AEO mark |
-| `c1` | `#1E65E3` | The customer's own series, always first |
+| `svc-site` | `#A8743C` | Website mark |
+| `svc-social` | `#4F7A63` | Social media mark (sage) |
+| `svc-search` | `#8A5524` | Search and ads mark |
+| `c1` | `#A46C2F` | The customer's own series, always first |
 | `c-ref` | `#8B93A0` | Previous period, dashed |
 | `grid` | `#ECEEF2` | Chart gridlines |
 
