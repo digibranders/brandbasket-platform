@@ -5,6 +5,7 @@ import { describe, expect, it, vi } from "vitest";
 import { NuqsTestingAdapter } from "nuqs/adapters/testing";
 import { ToastProvider } from "@/ui";
 import { ComponentsShowcase } from "./components-showcase";
+import { PatternsShowcase } from "./patterns-showcase";
 import { Showcase } from "./showcase";
 
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn(), push: vi.fn() }) }));
@@ -41,6 +42,13 @@ describe("the design system preview", () => {
       </NuqsTestingAdapter>,
     );
     expect(screen.getByText("Application components")).toBeTruthy();
+  });
+
+  it("renders the patterns showcase", () => {
+    render(<PatternsShowcase />);
+    expect(screen.getByText("Shared Pattern Components")).toBeTruthy();
+    expect(screen.getByText("NextActionCard (Focal element)")).toBeTruthy();
+    expect(screen.getByText("Needs your OK")).toBeTruthy();
   });
 
   it("renders", () => {
