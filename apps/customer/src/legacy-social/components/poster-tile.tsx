@@ -120,11 +120,7 @@ export function PosterTile({ poster, reasons, onNotice }: { readonly poster: Pos
               Change the words
             </button>
           ) : null}
-          {approved ? (
-            <button type="button" disabled={pending} onClick={() => run(decidePosterAction, { action: "withdraw", id: poster.id })} className={SMALL_SOFT}>
-              Take back my approval
-            </button>
-          ) : (
+          {approved ? null : (
             <>
               {blocked || putAway ? null : (
                 <button type="button" disabled={pending} onClick={() => run(decidePosterAction, { action: "approve", id: poster.id })} className={SMALL_SOFT}>

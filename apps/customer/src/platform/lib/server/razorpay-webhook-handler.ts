@@ -717,6 +717,29 @@ export function upfrontChargeEvent(providerSubscriptionId: string, found: Upfron
 }
 
 /**
+ * Asks Razorpay for an ordinary subscription's first charge (the plan's own payment) and, when it holds a captured one, records it through
+ * this same handler, exactly as its `subscription.charged` webhook would have been (once per Razorpay payment id). Returns whether it
+ * recorded one now. For a first payment whose webhook was late or refused.
+ */
+export async function recordChargeFromRazorpay(providerSubscriptionId: string): Promise<boolean> {
+  const found = await getRazorpayProvider().findSubscriptionCharge(providerSubscriptionId);
+  if (found === null) return false;
+  if ((await findPaymentByProviderId(getStaffDb(), "razorpay", found.providerPaymentId)) !== null) return false;
+  await handleRazorpayWebhookEvent({
+    kind: "charged",
+    subscriptionId: providerSubscriptionId,
+    currentStart: found.currentStart,
+    currentEnd: found.currentEnd,
+    paidAt: found.paidAt,
+    paymentId: found.providerPaymentId,
+    amountCents: found.amountCents,
+    currency: found.currency,
+    method: null,
+  });
+  return true;
+}
+
+/**
  * Asks Razorpay for a subscription's first-month payment (plan 63) and, when it holds a captured one, records it through this same
  * handler, exactly as its webhook would have been: once, whatever else delivers it, since a payment is recorded once per Razorpay
  * payment id. Returns whether Razorpay held one. For a payment whose webhook never arrived.

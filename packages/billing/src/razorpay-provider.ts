@@ -13,6 +13,7 @@ import {
   type StartedAddOnSubscription,
   type StartedChargePayment,
   type StartedCheckout,
+  type SubscriptionCharge,
   type UpfrontPayment,
 } from "./provider";
 import { chargedAmountCents } from "./tax";
@@ -47,7 +48,7 @@ export interface RazorpaySdkClient {
       input: { readonly plan_id: string; readonly schedule_change_at: "now" | "cycle_end" },
     ): Promise<unknown>;
     /** The subscription as Razorpay holds it now. */
-    fetch(subscriptionId: string): Promise<{ readonly id: string; readonly status: string }>;
+    fetch(subscriptionId: string): Promise<{ readonly id: string; readonly status: string; readonly paid_count?: number; readonly current_start?: number | null; readonly current_end?: number | null }>;
   };
   readonly payments: {
     fetch(paymentId: string): Promise<{
@@ -363,6 +364,24 @@ export function createRazorpayProvider(options: RazorpayProviderOptions): Razorp
       const payment = await client.payments.fetch(upfront.payment_id);
       if (payment.status !== "captured" || !isCurrency(payment.currency) || !Number.isSafeInteger(payment.amount) || payment.amount <= 0) return null;
       return { providerPaymentId: payment.id, amountCents: payment.amount, currency: payment.currency, paidAt: new Date(payment.created_at * 1000) };
+    },
+
+    async findSubscriptionCharge(providerSubscriptionId: string): Promise<SubscriptionCharge | null> {
+      const subscription = await client.subscriptions.fetch(providerSubscriptionId);
+      if (typeof subscription.current_end !== "number" || (subscription.paid_count ?? 0) < 1) return null;
+      const { items } = await client.invoices.all({ subscription_id: providerSubscriptionId });
+      const charged = items.find((invoice) => invoice.status === "paid" && invoice.payment_id !== null && invoice.line_items.some((line) => line.type === "plan"));
+      if (charged?.payment_id == null) return null;
+      const payment = await client.payments.fetch(charged.payment_id);
+      if (payment.status !== "captured" || !isCurrency(payment.currency) || !Number.isSafeInteger(payment.amount) || payment.amount <= 0) return null;
+      return {
+        providerPaymentId: payment.id,
+        amountCents: payment.amount,
+        currency: payment.currency,
+        paidAt: new Date(payment.created_at * 1000),
+        currentStart: typeof subscription.current_start === "number" ? new Date(subscription.current_start * 1000) : null,
+        currentEnd: new Date(subscription.current_end * 1000),
+      };
     },
 
     async changeSubscriptionPlanAtPeriodEnd(providerSubscriptionId: string, providerPlanId: string): Promise<void> {

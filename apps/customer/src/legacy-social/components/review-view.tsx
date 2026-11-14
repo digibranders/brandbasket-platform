@@ -1,6 +1,4 @@
-import { ArrowLeft } from "@phosphor-icons/react/dist/ssr";
-import Link from "next/link";
-import type { ReactElement } from "react";
+import type { ReactElement, ReactNode } from "react";
 import { localDateIn } from "@brandbasket/shared/lib/calendar/local-date";
 import { BRAND_TIME_ZONE } from "@/legacy-social/shims";
 import type { SocialReview } from "@/legacy-social/server/social-review";
@@ -8,16 +6,24 @@ import { jobIsActive, jobLine } from "@/legacy-social/lib/social/ai";
 import { dayLabel, PLATFORM_NAMES } from "@/legacy-social/lib/social/auto";
 import { groupReview } from "@/legacy-social/lib/social/review-cards";
 import { replaceStates } from "@/legacy-social/lib/social/review-flow";
+import { AiStartCard } from "./ai-start-card";
+import { AutoPostingCard } from "./auto-posting-card";
 import { BrandControl } from "./brand-switcher";
-import { CarouselCard } from "./carousel-card";
 import { DismissibleNotice } from "./dismissible-notice";
-import { NetworksPanel } from "./networks-panel";
-import { ReviewChannelsColumn, ReviewFlowProvider, ReviewWorkspace } from "./review-workspace";
+import { ActiveJobNote, NewChannelChoice, ReviewChannelsColumn, ReviewFlowProvider, ReviewWorkspace } from "./review-workspace";
 import { ReviewRefresher } from "./review-refresher";
+import { SocialTabs } from "./social-tabs";
 
 /** Look over the posts written from the website: the facts they came from, the words for each network, and the pictures. */
-export function ReviewView({ review, canChange = true }: { readonly review: SocialReview; /** False for a viewer, who may look at the carousel but not decide it. */ readonly canChange?: boolean }): ReactElement {
+export function ReviewView({ review, canChange = true, approvals = null }: { readonly review: SocialReview; /** False for a viewer, who may look at the carousel but not decide it. */ readonly canChange?: boolean; /** The posts our team has waiting for her OK, drawn above the written posts when there are any. */ readonly approvals?: ReactNode }): ReactElement {
   const active = review.jobs.find(jobIsActive);
+  // Connected channels no written batch is for yet, once a plan exists (channels on different days are written one batch at a time).
+  const covered = new Set(review.batches.filter((batch) => batch.posts.length > 1).flatMap((batch) => batch.networks));
+  const unwritten = {
+    channels: review.plan?.startsOn == null ? [] : review.channels.map((channel) => channel.platform).filter((platform) => !covered.has(platform)),
+    writtenFor: review.channels.map((channel) => channel.platform).filter((platform) => covered.has(platform)),
+    startDate: review.plan?.startsOn != null && review.plan.startsOn > localDateIn(BRAND_TIME_ZONE, new Date()) ? review.plan.startsOn : null,
+  };
   /** The batches her own topics are written into: each is a batch of one post, shown with the topic and not among the week's topics. */
   const ownBatchIds = new Set(review.topicRequests.flatMap((request) => (request.batchId === null ? [] : [request.batchId])));
   const ownBusy = review.topicRequests.some((request) => request.state === "writing" || request.state === "drawing");
@@ -41,14 +47,9 @@ export function ReviewView({ review, canChange = true }: { readonly review: Soci
         <div className="order-first min-w-0 flex-1 lg:order-none lg:pt-5">
           <div className="mr-auto grid w-full max-w-[97.5rem] grid-cols-[minmax(0,1fr)] gap-6 md:gap-8">
             <header className="flex flex-wrap items-start justify-between gap-4">
-              <div className="flex min-w-0 flex-1 basis-80 items-start gap-2">
-                <Link href="/social" aria-label="Back to Social media" title="Back to Social media" className="mt-0.5 grid size-8 shrink-0 place-items-center rounded-lg text-ink-2 no-underline transition-colors hover:bg-sunken hover:text-ink">
-                  <ArrowLeft size={18} weight="bold" aria-hidden="true" />
-                </Link>
-                <div className="min-w-0">
-                  <h1 className="type-title text-ink">See posts</h1>
-                  <p className="mt-1 type-meta">Check what we found, keep the posts you like, and approve the pictures. Nothing is drawn or posted until you say so.</p>
-                </div>
+              <div className="min-w-0 flex-1 basis-80">
+                <h1 className="type-title text-ink">Content calendar</h1>
+                <p className="mt-1 type-meta">Check what we found, keep the posts you like, and approve the pictures. Nothing is drawn or posted until you say so.</p>
               </div>
               {review.brand == null ? null : (
                 <div className="flex shrink-0 flex-wrap items-center gap-2">
@@ -56,6 +57,7 @@ export function ReviewView({ review, canChange = true }: { readonly review: Soci
                 </div>
               )}
             </header>
+            <SocialTabs current="posts" hasNumbers={review.channels.some((channel) => channel.platform !== "linkedin")} hasPosts />
       {review.unavailable ? (
         <p role="alert" className="text-[0.8125rem] font-semibold text-error">
           We could not reach the posting service just now, so some of this may be missing. Try again in a few minutes.
@@ -76,18 +78,20 @@ export function ReviewView({ review, canChange = true }: { readonly review: Soci
           </ul>
         </DismissibleNotice>
       )}
-      <ReviewRefresher active={active !== undefined || ownBusy} />
-      {active === undefined ? null : (
-        <p role="status" className="rounded-xl bg-warn-wash px-4 py-3 text-[0.84375rem] font-semibold text-warn">
-          {jobLine(active).replace(/\.$/, "")}. This page updates when it is ready.
-        </p>
+      {approvals}
+      {/* Starting the next channel or the next month lives with the written posts. The choice to post automatically is made when posts are started; this card appears only once it is on, to change or switch it off, or when a channel connected since needs a choice. */}
+      {!canChange || active !== undefined ? null : (
+        <AiStartCard jobs={review.jobs} channels={review.channels} postingDays={review.postingDays} website={review.website} expired={{ batches: review.expired.batches.length, pictures: review.expired.pictures.length }} nextMonth={review.plan?.canStartNext === true && review.plan.nextStartDate !== null ? { startDate: review.plan.nextStartDate, endsOn: review.plan.endsOn } : null} />
       )}
+      {review.autoPosting !== null && review.channels.length > 0 && review.autoPosting.channels.length > 0 ? <AutoPostingCard auto={review.autoPosting} channels={review.channels} canChange={canChange} /> : null}
+      <ReviewRefresher active={active !== undefined || ownBusy} />
+      {active === undefined ? null : <ActiveJobNote text={`${jobLine(active).replace(/\.$/, "")}. This page updates when it is ready.`} networks={active.kind === "write" ? active.networks : undefined} />}
       {/* Nothing could be read: say so once, above, and do not also say that nothing is waiting, which would not be true. */}
       {review.unavailable && review.batches.length === 0 && review.waiting.length === 0 && review.approved.length === 0 ? null : (
         <>
-          <NetworksPanel missing={review.missingNetworks} busy={review.jobs.some((job) => job.kind === "network" && jobIsActive(job))} />
+          <NewChannelChoice unwritten={unwritten} missing={review.missingNetworks} postingDays={review.postingDays} website={review.website} busy={review.jobs.some((job) => jobIsActive(job))} canChange={canChange} />
           <ReviewWorkspace />
-          <CarouselCard summary={review.carousels[0]} detail={review.carousel} canMake={review.canMakeCarousel} canChange={canChange} making={review.jobs.some((job) => job.kind === "carousel" && jobIsActive(job))} weekly={review.weeklyCarousel} />
+          {/* The weekly carousel card (CarouselCard) is hidden for now: it is to move to another place. */}
         </>
       )}
           </div>

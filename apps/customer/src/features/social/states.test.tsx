@@ -54,7 +54,7 @@ describe("Social media Overview: one failed panel", () => {
     wrap(await SocialOverview({ customer, now: NOW }));
     expect(screen.getByText(`We could not load ${what}.`)).toBeTruthy();
     expect(screen.getByRole("heading", { name: heading })).toBeTruthy();
-    expect(screen.getByRole("heading", { name: "Social media", level: 1 })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Content calendar", level: 1 })).toBeTruthy();
     expect(screen.getAllByRole("alert")).toHaveLength(1);
   });
 
@@ -82,7 +82,7 @@ describe("Social media Posts", () => {
     vi.mocked(loadPosts).mockRejectedValue(down);
     wrap(await SocialOverview({ customer, now: NOW }));
     expect(screen.getByText("We could not load your posts.")).toBeTruthy();
-    expect(screen.getByRole("heading", { name: "Social media", level: 1 })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Content calendar", level: 1 })).toBeTruthy();
   });
 
   it("no posts says what appears on the calendar", async () => {
@@ -123,7 +123,7 @@ describe("Social media channels column", () => {
     vi.mocked(loadChannelsColumn).mockRejectedValue(down);
     wrap(await SocialOverview({ customer, now: NOW }));
     expect(screen.getByText("We could not load your channels.")).toBeTruthy();
-    expect(screen.getByRole("heading", { name: "Social media", level: 1 })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Content calendar", level: 1 })).toBeTruthy();
   });
 
   it("no accounts shows no empty-state paragraph, only what can be connected", async () => {

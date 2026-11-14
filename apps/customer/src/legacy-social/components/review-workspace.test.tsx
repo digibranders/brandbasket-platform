@@ -3,9 +3,9 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import type { Poster, TopicRequest, WrittenBatch, WrittenPost } from "@/legacy-social/lib/social/ai";
 import type { ReviewGroup } from "@/legacy-social/lib/social/review-cards";
 import { askTopicAction, decideBatchAction, decidePosterAction, drawBatchAction, moveTopicAction, replaceTopicAction } from "@/legacy-social/review-actions";
-import { ReviewChannelsColumn, ReviewFlowProvider, ReviewWorkspace, type OwnTopicsData } from "./review-workspace";
+import { ActiveJobNote, NewChannelChoice, ReviewChannelsColumn, ReviewFlowProvider, ReviewWorkspace, type OwnTopicsData } from "./review-workspace";
 
-vi.mock("@/legacy-social/actions", () => ({ connectChannelAction: vi.fn(async () => undefined) }));
+vi.mock("@/legacy-social/actions", () => ({ connectChannelAction: vi.fn(async () => undefined), }));
 vi.mock("@/legacy-social/review-actions", () => ({
   decideBatchAction: vi.fn(async () => ({ status: "saved" })),
   decidePosterAction: vi.fn(async () => ({ status: "saved" })),
@@ -62,6 +62,15 @@ describe("ReviewWorkspace topics", () => {
     expect(screen.getAllByText("Weekend, no post").length).toBe(2);
   });
 
+  it("takes a kept or dropped topic back to undecided with a second click on the same icon", async () => {
+    render(<Screen groups={groups} />);
+    // p2 is kept: its green check, pressed again, resets it.
+    fireEvent.click(screen.getAllByRole("button", { name: "Keep this topic" })[1] as HTMLElement);
+    await waitFor(() => expect(vi.mocked(decideBatchAction)).toHaveBeenCalledTimes(1));
+    const form = vi.mocked(decideBatchAction).mock.calls[0]?.[0] as FormData;
+    expect([form.get("postId"), form.get("action")]).toEqual(["p2", "reset"]);
+  });
+
   it("keeps and drops a topic with its icons", async () => {
     render(<Screen groups={groups} />);
     fireEvent.click(screen.getAllByRole("button", { name: "Keep this topic" })[0] as HTMLElement);
@@ -112,8 +121,8 @@ const ownData = (requests: TopicRequest[], batches: WrittenBatch[] = [], posters
 describe("ReviewWorkspace her own topic of the week", () => {
   it("offers to write one for the week when she has none, and sends her words with the week", async () => {
     render(<Screen groups={weekGroups()} today="2026-11-13" own={ownData([])} />);
-    expect(screen.getByText(/One a week\./)).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "Write your own for this week." }));
+    expect(screen.getByRole("button", { name: "Write your prompt for this week." }).getAttribute("title")).toContain("One a week");
+    fireEvent.click(screen.getByRole("button", { name: "Write your prompt for this week." }));
     const box = screen.getByRole("textbox", { name: "Your topic" });
     const send = screen.getByRole("button", { name: "Write my post" }) as HTMLButtonElement;
     expect(send.disabled).toBe(true);
@@ -128,7 +137,7 @@ describe("ReviewWorkspace her own topic of the week", () => {
   it("shows the posting service's words when it refuses them", async () => {
     vi.mocked(askTopicAction).mockResolvedValueOnce({ status: "error", message: "Links are not read in this box. Write the details in words." });
     render(<Screen groups={weekGroups()} today="2026-11-13" own={ownData([])} />);
-    fireEvent.click(screen.getByRole("button", { name: "Write your own for this week." }));
+    fireEvent.click(screen.getByRole("button", { name: "Write your prompt for this week." }));
     fireEvent.change(screen.getByRole("textbox", { name: "Your topic" }), { target: { value: "See www.example.com for the menu" } });
     fireEvent.click(screen.getByRole("button", { name: "Write my post" }));
     expect(await screen.findByText(/Links are not read in this box/)).toBeTruthy();
@@ -136,13 +145,13 @@ describe("ReviewWorkspace her own topic of the week", () => {
 
   it("offers nothing to a viewer, for a week that has passed, or when she already wrote one", () => {
     const { unmount } = render(<Screen groups={weekGroups()} today="2026-11-13" own={ownData([], [], [], false)} />);
-    expect(screen.queryByRole("button", { name: "Write your own for this week." })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Write your prompt for this week." })).toBeNull();
     unmount();
     const passed = render(<Screen groups={weekGroups()} today="2026-11-22" own={ownData([])} />);
-    expect(screen.queryByRole("button", { name: "Write your own for this week." })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Write your prompt for this week." })).toBeNull();
     passed.unmount();
     render(<Screen groups={weekGroups()} today="2026-11-13" own={ownData([request()])} />);
-    expect(screen.queryByRole("button", { name: "Write your own for this week." })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Write your prompt for this week." })).toBeNull();
     expect(screen.getByText(/Writing your post from your words/)).toBeTruthy();
   });
 
@@ -199,7 +208,8 @@ describe("ReviewWorkspace a week drawn in rounds", () => {
     render(<Screen groups={partlyDrawn()} today="2026-11-13" />);
     const grid = (name: string) => within(document.querySelector("[data-drop-day=\"2026-11-16\"]")?.parentElement as HTMLElement).getByText(name).closest("li") as HTMLElement;
     expect(within(grid("Headline p1")).queryByRole("button", { name: "Keep this topic" })).toBeNull();
-    expect(within(grid("Headline p1")).getByText("Drawn. Its pictures are below.")).toBeTruthy();
+    // Its picture is drawn: a small preview of it sits in the card, which opens the pictures.
+    expect(within(grid("Headline p1")).getByRole("button", { name: "Open the picture: Headline p1" })).toBeTruthy();
     expect(within(grid("Headline p2")).getByRole("button", { name: "Keep this topic" })).toBeTruthy();
     expect(within(grid("Headline p3")).getByRole("button", { name: "Drop this topic" })).toBeTruthy();
   });
@@ -214,13 +224,13 @@ describe("ReviewWorkspace a week drawn in rounds", () => {
   it("keeps the pictures out of the Topics step, shows them under Pictures, and says what is left to do in the sidebar", () => {
     render(<Screen groups={partlyDrawn()} today="2026-11-13" />);
     expect(screen.queryByText(/instagram caption/)).toBeNull();
-    expect(screen.getByText("1 to decide, 1 to approve")).toBeTruthy();
+    expect(screen.getByText("1 open · 1 to approve")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Pictures" }));
     expect(screen.getByText(/instagram caption/)).toBeTruthy();
     expect(screen.getByText("1 waiting · 0 approved")).toBeTruthy();
     expect(screen.queryByRole("button", { name: /Draw pictures for/ })).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Topics" }));
-    expect(screen.getByText("1 to decide, 1 to approve")).toBeTruthy();
+    expect(screen.getByText("1 open · 1 to approve")).toBeTruthy();
   });
 
   it("does not count a kept topic whose day has passed among the new pictures", () => {
@@ -244,7 +254,7 @@ describe("ReviewWorkspace her own topic in the other steps", () => {
     const drawn = open([post("p1", "kept", "2026-11-16")], [poster("x1", "p1", "instagram", "pending")], "drawn");
     render(<Screen groups={drawn} today="2026-11-13" own={own} />);
     expect(screen.queryByRole("region", { name: "Your own topic" })).toBeNull();
-    expect(screen.queryByRole("button", { name: "Write your own for this week." })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Write your prompt for this week." })).toBeNull();
     expect(screen.getByText(/own words for instagram/)).toBeTruthy();
     expect(screen.getByText("2 waiting · 0 approved")).toBeTruthy();
   });
@@ -453,9 +463,9 @@ describe("ReviewWorkspace pictures", () => {
     expect(screen.queryByRole("button", { name: /Connect Instagram/ })).toBeNull();
   });
 
-  it("says when there is nothing to look over", () => {
+  it("shows nothing in the place of the week when there is nothing to look over", () => {
     render(<Screen groups={[]} channels={[]} />);
-    expect(screen.getByText("No posts are waiting for you.")).toBeTruthy();
+    expect(screen.queryByText("No posts are waiting for you.")).toBeNull();
   });
 });
 
@@ -491,3 +501,108 @@ describe("ReviewWorkspace: channels with a batch of their own", () => {
     expect(screen.queryByText("Headline fb1")).toBeNull();
   });
 });
+
+describe("ActiveJobNote", () => {
+  const groups = open([post("p1", "pending", "2026-11-16")], [], "waiting");
+  const screenWith = (networks: Parameters<typeof ActiveJobNote>[0]["networks"]) => (
+    <ReviewFlowProvider groups={groups} reasons={[]} channels={channels}>
+      <ReviewChannelsColumn />
+      <ActiveJobNote text="We are writing your posts. This page updates when it is ready." networks={networks} />
+    </ReviewFlowProvider>
+  );
+
+  it("speaks for the channels the batch is for, and tells another channel that nothing is being written for it", () => {
+    render(screenWith(["instagram"]));
+    expect(screen.getByText(/We are writing your posts/)).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: /Acme Page/ }));
+    expect(screen.queryByText(/We are writing your posts/)).toBeNull();
+    expect(screen.getByText(/Nothing is being written for Facebook yet/)).toBeTruthy();
+  });
+
+  it("is shown on every channel when the posting service does not say which the batch is for", () => {
+    render(screenWith(undefined));
+    fireEvent.click(screen.getByRole("button", { name: /Acme Page/ }));
+    expect(screen.getByText(/We are writing your posts/)).toBeTruthy();
+  });
+});
+
+describe("NewChannelChoice", () => {
+  const groups = open([post("p1", "pending", "2026-11-16")], [], "waiting");
+  const unwritten = { channels: ["facebook"] as const, startDate: "2026-11-16", writtenFor: ["instagram"] as const };
+  const screenWith = (missing: readonly ("facebook")[]) => (
+    <ReviewFlowProvider groups={groups} reasons={[]} channels={channels}>
+      <ReviewChannelsColumn />
+      <NewChannelChoice unwritten={unwritten} missing={missing} postingDays={{ facebook: ["wed", "fri"] }} website="acme.com" busy={false} canChange />
+    </ReviewFlowProvider>
+  );
+
+  it("shows the two ways for the channel with no posts, and nothing for the channel that has them or in the all-channels view", () => {
+    render(screenWith(["facebook"]));
+    expect(screen.queryByRole("heading", { name: "Posts for Facebook" })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: /All channels/ }));
+    expect(screen.queryByRole("heading", { name: "Posts for Facebook" })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: /Acme Page/ }));
+    expect(screen.getByRole("heading", { name: "Posts for Facebook" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Same topics as Instagram" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "New topics for Facebook" })).toBeTruthy();
+    expect(screen.getByText("Facebook posts on Wed, Fri")).toBeTruthy();
+  });
+
+  it("asks once before copying the topics, and says why it cannot when the days differ", () => {
+    render(screenWith(["facebook"]));
+    fireEvent.click(screen.getByRole("button", { name: /Acme Page/ }));
+    fireEvent.click(screen.getByRole("button", { name: "Use the same topics for Facebook" }));
+    expect(screen.getByRole("button", { name: "Yes, write and draw" })).toBeTruthy();
+    cleanup();
+    render(screenWith([]));
+    fireEvent.click(screen.getByRole("button", { name: /Acme Page/ }));
+    expect(screen.getByText(/posts on other days than Instagram/)).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Use the same topics for Facebook" })).toBeNull();
+    expect(screen.getByRole("button", { name: "Write new topics for Facebook" })).toBeTruthy();
+  });
+});
+
+describe("ReviewWorkspace: the numbers on the steps", () => {
+  it("shows how many topics are left to decide, and none once they are all decided", () => {
+    render(<Screen groups={open([post("p1", "pending", "2026-11-16"), post("p2", "pending", "2026-11-17"), post("p3", "kept", "2026-11-18")], [], "waiting")} />);
+    expect(screen.getByTitle("2 topics to decide")).toBeTruthy();
+    cleanup();
+    render(<Screen groups={open([post("p1", "kept", "2026-11-16")], [], "waiting")} />);
+    expect(screen.queryByTitle(/topics to decide/)).toBeNull();
+  });
+
+  it("shows how many pictures wait for approval, and no number on Approved", () => {
+    const posts = [post("p1", "kept", "2026-11-16"), post("p2", "kept", "2026-11-17")];
+    render(<Screen groups={open(posts, [poster("a", "p1", "instagram", "pending"), poster("b", "p2", "instagram", "approved")], "drawn")} />);
+    expect(screen.getByTitle("1 pictures to approve")).toBeTruthy();
+    expect(screen.queryByTitle(/approved/)).toBeNull();
+  });
+});
+
+describe("ReviewWorkspace: going back to the topics of a drawn week", () => {
+  it("lets her read the topics of a week whose pictures are drawn, and come back to the pictures", () => {
+    const posts = [post("p1", "kept", "2026-11-16"), post("p2", "pending", "2026-11-17")];
+    render(<Screen groups={open(posts, [poster("a", "p1", "instagram", "approved")], "drawn")} />);
+    expect(screen.queryByText("Headline p2")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: /^Topics/ }));
+    expect(screen.getByText("Headline p2")).toBeTruthy();
+    expect(screen.getByText("Headline p1")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: /^Pictures/ }));
+    expect(screen.queryByText("Headline p2")).toBeNull();
+  });
+});
+
+describe("ReviewWorkspace: a small picture inside a drawn topic", () => {
+  it("shows the drawn topic's picture small, and pressing it opens the pictures under Approved", () => {
+    const posts = [post("p1", "kept", "2026-11-16", { drawn: true, locked: true }), post("p2", "pending", "2026-11-17")];
+    render(<Screen groups={open(posts, [poster("a", "p1", "instagram", "approved")], "drawn")} />);
+    // A drawn week opens on its pictures: go back to the topics to see the small picture.
+    fireEvent.click(screen.getByRole("button", { name: /^Topics/ }));
+    const thumb = screen.getByRole("button", { name: "Open the picture: Headline p1" });
+    expect(thumb.querySelector("img")?.getAttribute("src")).toContain("id=a");
+    fireEvent.click(thumb);
+    expect(screen.queryByText("Headline p2")).toBeNull();
+    expect(screen.getByRole("heading", { name: "Headline p1" })).toBeTruthy();
+  });
+});
+

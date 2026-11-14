@@ -159,6 +159,11 @@
 }
 
 /* Type: the only text styles used (plan 60, section 4). Weight comes with the style. */
+/* The channels column beside a Social page: the screen below the top bar, less the page's own bottom padding, so it stays put while the page scrolls. */
+@utility h-channels-column {
+  height: calc(100dvh - var(--spacing-topbar) - 3rem);
+}
+
 @utility type-title {
   font-size: 22px;
   line-height: 28px;

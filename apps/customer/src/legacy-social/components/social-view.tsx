@@ -4,8 +4,6 @@ import { cn } from "@brandbasket/shared/lib/cn";
 import { allPaused, bookedUntil, connectStatus, dayLabel, daysUntilEnd, endingSoon, endsInWords } from "@/legacy-social/lib/social/auto";
 import type { LegacySocialData } from "@/legacy-social/server/load";
 import Link from "next/link";
-import { AiStartCard } from "./ai-start-card";
-import { AutoPostingCard } from "./auto-posting-card";
 import { BrandControl } from "./brand-switcher";
 import { ChannelFilterProvider } from "./channel-filter";
 import { ChannelsSidebar, type ChannelRow } from "./channels-sidebar";
@@ -20,8 +18,6 @@ export interface LegacySocialViewProps {
   /** What the network said when it sent the customer back (`?social=connected` and the like). */
   readonly notice: { readonly ok: boolean; readonly text: string } | null;
   readonly now: Date;
-  /** The posts waiting for the customer's OK, when there are any (this app's own approvals), drawn above the calendar. */
-  readonly approvals?: ReactNode;
   /** Whether the Analytics tab has anything to show. */
   readonly hasNumbers: boolean;
   readonly canChange: boolean;
@@ -39,7 +35,6 @@ function channelsColumn(data: LegacySocialData, now: Date): { rows: ChannelRow[]
     account: channel.account,
     ending: endingSoon(channel, now) ? endsInWords(daysUntilEnd(channel, now) ?? 0) : null,
     paused: channel.paused === true,
-    days: data.postingDays === null ? null : (data.postingDays[channel.platform] ?? []),
   }));
   const until = bookedUntil(data.posts, data.today);
   return { rows, bookedLine: until === null ? "No posts are booked yet." : `Posts booked until ${dayLabel(until, { day: "numeric", month: "short" })}.` };
@@ -49,29 +44,22 @@ function channelsColumn(data: LegacySocialData, now: Date): { rows: ChannelRow[]
  * Social media as it was in the old dashboard: the channels column against the rail, the title with New post, the Posts and Analytics
  * tabs, and the week calendar. Copied from the old app and left as it was.
  */
-export function LegacySocialView({ data, notice, now, approvals, hasNumbers, canChange, reportHref, savedWebsite }: LegacySocialViewProps): ReactElement {
+export function LegacySocialView({ data, notice, now, hasNumbers, canChange, reportHref, savedWebsite }: LegacySocialViewProps): ReactElement {
   const status = connectStatus(data.channels, data.posts, now);
   const canPost = canChange;
   const hasAccounts = data.channels.length > 0;
-  // Once posts have been written from the website, looking them over is a button beside New post, not a card.
-  const hasReview = data.ai.jobs.length > 0;
   const { rows, bookedLine } = channelsColumn(data, now);
-  // Connected channels with no written batch of their own yet, once a plan exists (channels on different days are written one batch at a time).
-  const unwritten = {
-    channels: data.ai.plan?.startsOn == null ? [] : data.channels.map((channel) => channel.platform).filter((platform, index, all) => all.indexOf(platform) === index && !data.ai.covered.includes(platform)),
-    startDate: data.ai.plan?.startsOn != null && data.ai.plan.startsOn > data.today ? data.ai.plan.startsOn : null,
-  };
   return (
     <NewPostRequestProvider>
       <ChannelFilterProvider>
         {/* On a wide screen the channels column steps out of the shell's gutter and sits against the menu, as it did in the old dashboard. */}
         <div className="flex flex-col gap-6 lg:-mt-5 lg:-ml-gutter lg:flex-row lg:gap-8">
-          <ChannelsSidebar rows={rows} bookedLine={bookedLine} canChange={canChange} />
+          <ChannelsSidebar rows={rows} bookedLine={bookedLine} />
           <div className="order-first min-w-0 flex-1 lg:order-none lg:pt-5">
             <div className="mr-auto grid w-full max-w-[97.5rem] grid-cols-[minmax(0,1fr)] gap-6 md:gap-8">
               <header className="flex flex-wrap items-start justify-between gap-4">
                 <div className="min-w-0">
-                  <h1 className="type-title text-ink">Social media</h1>
+                  <h1 className="type-title text-ink">Content calendar</h1>
                   <p className="mt-1 type-meta">Your posts, and what they have brought in.</p>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
@@ -82,15 +70,10 @@ export function LegacySocialView({ data, notice, now, approvals, hasNumbers, can
                       Monthly report
                     </Link>
                   )}
-                  {hasReview ? (
-                    <Link href="/social/review" className={SMALL_SOFT}>
-                      See posts
-                    </Link>
-                  ) : null}
                   {canPost ? <NewPostButton disabled={!hasAccounts} /> : null}
                 </div>
               </header>
-              <SocialTabs current="posts" hasNumbers={hasNumbers} onlyWithoutNumbers={!hasNumbers && data.channels.length > 0} />
+              <SocialTabs current="calendar" hasNumbers={hasNumbers} onlyWithoutNumbers={!hasNumbers && data.channels.length > 0} hasPosts={canChange} />
               {notice === null ? null : (
                 <p role={notice.ok ? "status" : "alert"} className={cn("text-[0.8125rem] font-semibold", notice.ok ? "text-sage-deep" : "text-error")}>
                   {notice.text}
@@ -112,15 +95,11 @@ export function LegacySocialView({ data, notice, now, approvals, hasNumbers, can
                   Your posts are paused. Nothing is being sent for now. Posts whose time comes while it is paused are skipped, and new ones go out again when we resume.
                 </p>
               ) : null}
-              {canChange ? <AiStartCard jobs={data.ai.jobs} channels={data.channels} postingDays={data.postingDays} unwritten={unwritten} website={data.ai.website} savedWebsite={savedWebsite} unavailable={data.ai.jobsUnavailable} expired={data.ai.expired} nextMonth={data.ai.plan?.canStartNext === true && data.ai.plan.nextStartDate !== null ? { startDate: data.ai.plan.nextStartDate, endsOn: data.ai.plan.endsOn } : null} /> : null}
-              {data.autoPosting !== null && data.channels.length > 0 ? <AutoPostingCard auto={data.autoPosting} channels={data.channels.map((channel) => ({ platform: channel.platform, account: channel.account }))} canChange={canChange} /> : null}
-              {approvals}
               <SocialCalendar
                 posts={data.posts}
                 today={data.today}
                 businessName={data.businessName}
                 channels={data.channels}
-                lede={data.posts.length > 0 ? "Every post we write for you, and where it stands." : data.channels.length === 0 ? "Your first posts appear here once your accounts are connected." : "Your first posts appear here once you start them from your website or write one."}
               />
             </div>
           </div>

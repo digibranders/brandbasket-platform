@@ -15,6 +15,8 @@ export const SOCIAL_PATH = "/social";
 /** Paid Ads is its own page and menu item, apart from Social media. */
 export const SOCIAL_ADS_PATH = "/ads";
 export const SOCIAL_ANALYTICS_PATH = "/social/analytics";
+/** The written posts to look over: keep the topics, approve the pictures. */
+export const SOCIAL_REVIEW_PATH = "/social/review";
 /** The New request dialog (owned by Requests) with Social & Ads chosen. */
 export const ASK_FOR_CHANGE_HREF = "/requests?new=1&kind=social";
 /** Plan & billing with Social & Ads ready to add. */
@@ -420,12 +422,18 @@ export function accountRows(accounts: readonly Pick<ConnectedAccount, "platform"
 
 // ---- Tabs ----
 
-/** The section's tabs: Posts, with the number waiting for approval when it is known and not zero, and Analytics where there is a posting service to ask. */
-export function socialTabs(waiting: number | null, analytics = false): readonly TabLink[] {
+/**
+ * The section's tabs: Calendar, Posts (the written posts to look over, with the number waiting for approval when it is known and not zero) for
+ * someone who may decide them, and Analytics where there is a posting service to ask.
+ */
+export function socialTabs(waiting: number | null, analytics = false, posts = false, channel = ""): readonly TabLink[] {
+  // The channel she is looking at goes with her to the next tab.
+  const query = channel === "" ? "" : `?channel=${channel}`;
   return [
-    { href: SOCIAL_PATH, label: "Posts", ...(waiting === null || waiting === 0 ? {} : { count: formatNumber(waiting) }) },
+    { href: `${SOCIAL_PATH}${query}`, label: "Calendar" },
+    ...(posts ? [{ href: `${SOCIAL_REVIEW_PATH}${query}`, label: "Posts", ...(waiting === null || waiting === 0 ? {} : { count: formatNumber(waiting) }) }] : []),
     // Only on a server that has a posting service to ask: a tab with no source behind it is not drawn.
-    ...(analytics ? [{ href: SOCIAL_ANALYTICS_PATH, label: "Analytics" }] : []),
+    ...(analytics ? [{ href: `${SOCIAL_ANALYTICS_PATH}${query}`, label: "Analytics" }] : []),
   ];
 }
 

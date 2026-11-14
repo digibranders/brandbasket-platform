@@ -1,14 +1,18 @@
 "use client";
 
-import { ArrowClockwise, CalendarBlank, CaretLeft, CaretRight, Check, Plus, Prohibit, TextT, X } from "@phosphor-icons/react/dist/ssr";
+import { ArrowClockwise, CalendarBlank, CaretDown, CaretLeft, CaretRight, Check, Plus, Prohibit, TextT, X } from "@phosphor-icons/react/dist/ssr";
+import { useSearchParams } from "next/navigation";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, useTransition, type FormEvent, type PointerEvent as ReactPointerEvent, type ReactElement, type ReactNode } from "react";
 import { cn } from "@brandbasket/shared/lib/cn";
 import { askTopicAction, decideBatchAction, decidePosterAction, drawBatchAction, moveTopicAction, replaceTopicAction } from "@/legacy-social/review-actions";
 import { REJECT_REASON_WORDS, TOPIC_NOT_MADE_WORDS, type Poster, type TopicRequest, type WrittenBatch } from "@/legacy-social/lib/social/ai";
 import { CHANNEL_PLATFORMS, dayLabel, PLATFORM_HINTS, PLATFORM_NAMES, type ChannelPlatform } from "@/legacy-social/lib/social/auto";
+import { CHANNEL_PARAM, channelParamOf, rememberChannel } from "@/legacy-social/lib/social/channel-param";
 import type { ReviewCard, ReviewGroup } from "@/legacy-social/lib/social/review-cards";
 import { cardsOfWeek, channelTodo, firstOpenWeek, flowWeeks, picturesOn, POST_TIME, postFinal, weekAsked, type FlowWeek, type ReplaceState } from "@/legacy-social/lib/social/review-flow";
 import { ConnectButton } from "./channels-sidebar";
+import { AddChannelChoice } from "./add-channel-choice";
+import type { PostingDays } from "@/legacy-social/lib/social/schedule";
 import { ChannelLogo } from "./channel-logo";
 import { imageUrl, pictureWord } from "./poster-tile";
 import { SMALL_DARK, SMALL_SOFT } from "./small-buttons";
@@ -57,6 +61,7 @@ function TopicRow({
   moveDays = [],
   onMove,
   dragProps,
+  preview,
 }: {
   readonly card: ReviewCard;
   readonly locked: boolean;
@@ -69,6 +74,8 @@ function TopicRow({
   readonly onMove?: (day: string) => void;
   /** Makes the card draggable: the pointer press that picks it up, and whether it is the one being dragged now. */
   readonly dragProps?: { readonly onPointerDown: (event: ReactPointerEvent) => void; readonly dragging: boolean };
+  /** The picture drawn for this topic, shown small inside the card; pressing it opens the pictures. */
+  readonly preview?: { readonly poster: Poster; readonly open: () => void };
 }): ReactElement | null {
   const post = card.written;
   const { pending, error, run } = useReviewAction();
@@ -105,10 +112,10 @@ function TopicRow({
   );
   const icons = locked ? null : (
     <>
-      <IconButton label="Keep this topic" pressed={kept} disabled={pending || kept} onClick={() => run(decideBatchAction, { batchId, postId: post.id, action: "keep" })}>
+      <IconButton label="Keep this topic" pressed={kept} disabled={pending} onClick={() => run(decideBatchAction, { batchId, postId: post.id, action: kept ? "reset" : "keep" })}>
         <Check size={13} weight="bold" aria-hidden="true" />
       </IconButton>
-      <IconButton label="Drop this topic" pressed={dropped} muted disabled={pending || dropped} onClick={() => run(decideBatchAction, { batchId, postId: post.id, action: "drop" })}>
+      <IconButton label="Drop this topic" pressed={dropped} muted disabled={pending} onClick={() => run(decideBatchAction, { batchId, postId: post.id, action: dropped ? "reset" : "drop" })}>
         <X size={13} weight="bold" aria-hidden="true" />
       </IconButton>
       <IconButton
@@ -130,6 +137,7 @@ function TopicRow({
   );
   const dayPicker =
     !moving || onMove === undefined ? null : (
+      <span className="relative block">
       <select
         aria-label="Move this topic to"
         defaultValue=""
@@ -138,7 +146,7 @@ function TopicRow({
           setMoving(false);
           onMove(event.target.value);
         }}
-        className="h-8 w-full rounded-lg border border-ink-2/65 bg-surface px-2 text-[0.8125rem] text-ink"
+        className="h-8 w-full appearance-none rounded-lg border border-ink-2/65 bg-surface pr-8 pl-2 text-[0.8125rem] text-ink"
       >
         <option value="" disabled>
           Move to…
@@ -149,6 +157,8 @@ function TopicRow({
           </option>
         ))}
       </select>
+      <CaretDown size={12} weight="bold" aria-hidden="true" className="pointer-events-none absolute top-1/2 right-3 -translate-y-1/2 text-ink-2" />
+      </span>
     );
   const tags = (
     <>
@@ -211,7 +221,12 @@ function TopicRow({
         {editing ? editor : headline}
         {dayPicker}
         {newTopicBlock}
-        {post.drawn === true ? <p className="m-0 text-xs text-ink-3">Drawn. Its pictures are below.</p> : null}
+        {preview !== undefined ? (
+          <button type="button" onClick={preview.open} aria-label={`Open the picture: ${post.headline}`} title="Open the picture" className="mt-auto flex w-full cursor-pointer items-center gap-2 rounded-lg border-0 bg-transparent p-0 text-left">
+            <img src={imageUrl(preview.poster.id)} alt="" loading="lazy" className="size-12 shrink-0 rounded-md object-cover ring-1 ring-line" />
+            <span className={cn("text-xs font-semibold", preview.poster.status === "approved" ? "text-ok" : "text-warn")}>{preview.poster.status === "approved" ? "Approved" : "Drawn"}</span>
+          </button>
+        ) : post.drawn === true ? <p className="m-0 text-xs text-ink-3">Drawn. Its pictures are below.</p> : locked && !dropped && !kept ? <p className="m-0 text-xs text-ink-3">Not decided. This week was drawn before it could stay open, so it can no longer be changed.</p> : null}
         {notes}
         {icons === null ? null : <div className="mt-auto flex flex-wrap items-center gap-1.5 pt-1">{icons}</div>}
       </li>
@@ -247,6 +262,9 @@ interface WeekGridProps {
   readonly replacing: Readonly<Record<string, ReplaceState>>;
   /** Today in India, `YYYY-MM-DD`: a topic cannot be moved to a day that has passed or to today. Empty when not known. */
   readonly today: string;
+  /** The picture to show small inside a topic that has been drawn, and what pressing it does. */
+  readonly pictureOf?: (card: ReviewCard) => Poster | undefined;
+  readonly onOpenPicture?: (poster: Poster) => void;
 }
 
 const nextDay = (day: string): string => new Date(Date.parse(`${day}T00:00:00Z`) + 86_400_000).toISOString().slice(0, 10);
@@ -256,7 +274,7 @@ const nextDay = (day: string): string => new Date(Date.parse(`${day}T00:00:00Z`)
  * A topic can be dragged to another day of the week (or moved with its day picker) until the week is drawn. A week whose topics carry no
  * day, or one outside it, is listed one under the other instead, so nothing is hidden.
  */
-function WeekGrid({ cards, week, replacing, today }: WeekGridProps): ReactElement {
+function WeekGrid({ cards, week, replacing, today, pictureOf, onOpenPicture }: WeekGridProps): ReactElement {
   const mover = useReviewAction();
   /** Where a topic was just moved to, shown at once while the posting service answers. */
   const [moved, setMoved] = useState<Readonly<Record<string, string>>>({});
@@ -290,7 +308,7 @@ function WeekGrid({ cards, week, replacing, today }: WeekGridProps): ReactElemen
   });
   const row = (card: ReviewCard, compact: boolean): ReactElement => {
     const open = targets(card);
-    return <TopicRow key={card.key} card={card} compact={compact} locked={postFinal(card, week)} replace={replacing[card.postId]} replacementsLeft={week.replacementsLeft} moveDays={open} onMove={(day) => move(card, day)} {...(open.length > 0 && compact ? { dragProps: { onPointerDown: (event: ReactPointerEvent) => drag.begin(event, card.key, card.headline), dragging: drag.dragging === card.key } } : {})} />;
+    return <TopicRow key={card.key} card={card} compact={compact} locked={postFinal(card, week)} replace={replacing[card.postId]} replacementsLeft={week.replacementsLeft} moveDays={open} onMove={(day) => move(card, day)} {...(compact && pictureOf?.(card) !== undefined && onOpenPicture !== undefined ? { preview: { poster: pictureOf(card) as Poster, open: () => onOpenPicture(pictureOf(card) as Poster) } } : {})} {...(open.length > 0 && compact ? { dragProps: { onPointerDown: (event: ReactPointerEvent) => drag.begin(event, card.key, card.headline), dragging: drag.dragging === card.key } } : {})} />;
   };
   if (!placed) return <ul className="grid gap-3">{cards.map((card) => row(card, false))}</ul>;
   return (
@@ -306,12 +324,12 @@ function WeekGrid({ cards, week, replacing, today }: WeekGridProps): ReactElemen
         </p>
       )}
       <div className="overflow-x-auto pb-2">
-        <div className="grid grid-cols-[repeat(7,minmax(9.5rem,1fr))] gap-2.5">
+        <div data-drop-zone="" className="grid grid-cols-[repeat(7,minmax(9.5rem,1fr))] gap-2.5">
           {days.map((day, index) => {
             const here = written.filter((card) => dayOf(card) === day);
             const landing = drag.dragging !== null && drag.over === day;
             return (
-              <div key={day} data-drop-day={day} className={cn("min-w-0 rounded-xl transition-colors", landing && "bg-rattan-wash/60 ring-2 ring-rattan-text")}>
+              <div key={day} data-drop-day={day} className={cn("min-w-0 rounded-xl p-1 transition-colors", landing && "bg-rattan-wash/60 ring-2 ring-inset ring-rattan-text")}>
                 <p className="mb-1.5 text-[0.8125rem] font-bold leading-tight text-ink">
                   {dayLabel(day, { weekday: "short" })}
                   <span className="block text-xs font-semibold text-ink-3">
@@ -373,7 +391,7 @@ function OwnTopicBox({ week, onClose }: { readonly week: string | undefined; rea
     >
       <form onSubmit={submit} className="grid gap-3">
         <h3 id="own-topic-title" className="type-section text-ink">
-          Write your own topic for this week
+          Write your prompt for this week
         </h3>
         <p className="text-[0.875rem] text-ink-2">Tell us what the post is about, in your own words: an offer, a new dish, an event. We write the post from your words only, and you read it before any picture is drawn.</p>
         <textarea
@@ -533,21 +551,24 @@ function OwnTopicCard({ request, data, channels, reasons }: { readonly request: 
  * once she has, from being written to its pictures.
  */
 function OwnTopics(): ReactElement | null {
-  const { week, today, own, channels, reasons } = useFlow();
-  const [writing, setWriting] = useState(false);
+  const { week, own, channels, reasons } = useFlow();
   if (week === undefined || week.from === "") return null;
   const request = own.requests.find((one) => one.week.from === week.from);
-  if (request !== undefined) return <OwnTopicCard request={request} data={own} channels={channels} reasons={reasons} />;
-  if (!own.canChange || (today !== "" && week.to <= today)) return null;
+  return request === undefined ? null : <OwnTopicCard request={request} data={own} channels={channels} reasons={reasons} />;
+}
+
+/** "Write your prompt": one small button beside the channel's name, while the week has no topic of her own and its days are still ahead. One a week. */
+function OwnTopicButton(): ReactElement | null {
+  const { week, today, own } = useFlow();
+  const [writing, setWriting] = useState(false);
+  if (week === undefined || week.from === "" || !own.canChange || (today !== "" && week.to <= today)) return null;
+  if (own.requests.some((one) => one.week.from === week.from)) return null;
   return (
     <>
-      <p className="m-0 text-[0.84375rem] text-ink-2">
-        Want a different topic?{" "}
-        <button type="button" onClick={() => setWriting(true)} className="cursor-pointer border-0 bg-transparent p-0 font-semibold text-primary underline">
-          Write your own for this week.
-        </button>{" "}
-        <span className="text-ink-3">One a week.</span>
-      </p>
+      <button type="button" onClick={() => setWriting(true)} aria-label="Write your prompt for this week." title="Write your own prompt for this week. One a week." className={SMALL_SOFT}>
+        <Plus size={14} weight="bold" aria-hidden="true" />
+        Write your prompt
+      </button>
       {writing ? <OwnTopicBox week={week.from} onClose={() => setWriting(false)} /> : null}
     </>
   );
@@ -569,7 +590,7 @@ function DrawBar({ week, kept, total, retry, pictures, stay }: { readonly week: 
   const fields = { batchId: week.batchId, ...(week.whole ? {} : { week: week.from }), ...(retry ? { retry: "1" } : {}) };
   return (
     <div className="sticky bottom-0 z-10 -mx-1 flex flex-wrap items-center justify-between gap-3 border-t border-line bg-canvas/95 px-1 py-3 backdrop-blur">
-      <p className="max-w-2xl text-[0.84375rem] text-ink-2">
+      <p className="min-w-0 flex-1 text-[0.84375rem] text-ink-2">
         {retry ? (
           <>Change the headline or drop a topic that got no picture, then draw again. Posts that have pictures stay as they are.</>
         ) : (
@@ -578,7 +599,7 @@ function DrawBar({ week, kept, total, retry, pictures, stay }: { readonly week: 
               <b className="text-ink">
                 {kept} kept to draw.
               </b>{" "}
-              Drawing makes {pictures} new {picturesWord}. {stay > 0 ? (stay === 1 ? "The other one stays open: you can still keep, change or move it, and draw it later." : `The other ${stay} stay open: you can still keep, change or move them, and draw them later.`) : "Nothing else is left open this week."}
+              Drawing makes {pictures} new {picturesWord}. {stay > 0 ? (stay === 1 ? "The other one stays open." : `The other ${stay} stay open.`) : "Nothing else is left open."}
             </>
           ) : (
             <>
@@ -708,7 +729,7 @@ function PictureCard({ poster, account, day, time, reasons }: { readonly poster:
   const held = poster.status === "held";
   const putAway = poster.status === "rejected" || poster.status === "expired";
   return (
-    <li className="grid content-start gap-3 rounded-xl bg-sunken p-3.5">
+    <li id={`picture-${poster.id}`} className="grid content-start gap-3 rounded-xl bg-sunken p-3.5">
       <div className="flex flex-wrap items-start justify-between gap-x-3 gap-y-2">
         <h3 className="min-w-0 flex-1 basis-40 break-words text-[0.9375rem] font-semibold leading-snug text-ink">{poster.headline}</h3>
         <DateChip day={day} time={time} approved={approved} />
@@ -742,11 +763,7 @@ function PictureCard({ poster, account, day, time, reasons }: { readonly poster:
             {approved ? <Check size={13} weight="bold" aria-hidden="true" /> : null}
             {pictureWord(poster)}
           </span>
-          {approved ? (
-            <button type="button" disabled={pending} onClick={() => run(decidePosterAction, { action: "withdraw", id: poster.id })} className={SMALL_SOFT}>
-              Take back approval
-            </button>
-          ) : blocked || putAway ? null : (
+          {approved || blocked || putAway ? null : (
             <button type="button" disabled={pending} onClick={() => run(decidePosterAction, { action: "approve", id: poster.id })} className={cn(SMALL_DARK, "!bg-ok hover:!bg-ok")}>
               <Check size={14} weight="bold" aria-hidden="true" />
               {held ? "Confirm again" : "Approve"}
@@ -778,11 +795,12 @@ function PictureCard({ poster, account, day, time, reasons }: { readonly poster:
 }
 
 /** The pictures of a week on one channel, or a note that they are on their way. */
-function PicturesStage({ cards, week, channel, account, reasons, ownPosters = [], settled = true }: { readonly cards: readonly ReviewCard[]; readonly week: FlowWeek; readonly channel: ChannelPlatform; readonly account: string; readonly reasons: readonly string[]; /** The pictures of her own topic of this week, listed with the rest. */ readonly ownPosters?: readonly Poster[]; /** False while the week is only partly drawn: the topics still open are not left out, so nothing is said of them. */ readonly settled?: boolean }): ReactElement | null {
+function PicturesStage({ cards, week, channel, account, reasons, ownPosters = [], settled = true, only }: { readonly cards: readonly ReviewCard[]; readonly week: FlowWeek; readonly channel: ChannelPlatform; readonly account: string; readonly reasons: readonly string[]; /** The pictures of her own topic of this week, listed with the rest. */ readonly ownPosters?: readonly Poster[]; /** Which pictures to list when she has picked a step: the ones waiting for her, or the approved ones; all of them when she has not. */ readonly only?: "waiting" | "approved"; /** False while the week is only partly drawn: the topics still open are not left out, so nothing is said of them. */ readonly settled?: boolean }): ReactElement | null {
   const [approvingAll, startApproving] = useTransition();
   const [approveError, setApproveError] = useState<string | null>(null);
-  const pictures = [...picturesOn(cards, channel), ...ownPosters.filter((poster) => poster.network === channel)];
-  const waiting = pictures.filter((poster) => poster.status === "pending" || poster.status === "held");
+  const everyPicture = [...picturesOn(cards, channel), ...ownPosters.filter((poster) => poster.network === channel)];
+  const waiting = everyPicture.filter((poster) => poster.status === "pending" || poster.status === "held");
+  const pictures = only === "approved" ? everyPicture.filter((poster) => poster.status === "approved") : only === "waiting" ? everyPicture.filter((poster) => poster.status !== "approved") : everyPicture;
   const writtenOf = (poster: Poster) => cards.find((card) => card.postId === poster.postId)?.written ?? null;
   /** The day a picture's post goes out: what the posting service says of the picture, else of the written post. */
   const dayOf = (poster: Poster): string | null => poster.date ?? writtenOf(poster)?.date ?? null;
@@ -827,7 +845,7 @@ function PicturesStage({ cards, week, channel, account, reasons, ownPosters = []
       {pictures.length === 0 ? null : (
         <div className="flex flex-wrap items-center justify-between gap-2">
           <span className="text-xs text-ink-3">
-            {waiting.length} waiting · {pictures.length - waiting.length} approved
+            {waiting.length} waiting · {everyPicture.length - waiting.length} approved
           </span>
           {waiting.length > 1 ? (
             <button type="button" disabled={approvingAll} onClick={approveAll} className={SMALL_DARK}>
@@ -854,6 +872,9 @@ function PicturesStage({ cards, week, channel, account, reasons, ownPosters = []
 }
 
 /** Every topic of a week in one table: what was chosen, and where each channel's picture stands. */
+/** The colour of a word in the overview: green for what is kept or approved, amber for anything still to be decided, drawn or approved. */
+const toneOf = (word: string): string => (word === "Kept" || word === "Approved" ? "font-semibold text-ok" : word === "Dropped" ? "text-ink-3" : "font-semibold text-warn");
+
 function Overview({ cards, week, channels }: { readonly cards: readonly ReviewCard[]; readonly week: FlowWeek; readonly channels: readonly ReviewChannel[] }): ReactElement {
   return (
     <div className="grid gap-3">
@@ -865,32 +886,36 @@ function Overview({ cards, week, channels }: { readonly cards: readonly ReviewCa
               <th className="px-3 py-2 font-semibold">Topic</th>
               <th className="px-3 py-2 font-semibold">Your choice</th>
               {channels.map((channel) => (
-                <th key={channel.platform} className="px-3 py-2 font-semibold">
-                  {PLATFORM_NAMES[channel.platform]}
+                <th key={channel.platform} className="px-3 py-2 font-semibold" title={PLATFORM_NAMES[channel.platform]}>
+                  <ChannelLogo platform={channel.platform} small />
                 </th>
               ))}
             </tr>
           </thead>
           <tbody>
-            {cards.map((card) => (
-              <tr key={card.key} className="border-t border-line align-top">
-                <td className="px-3 py-2.5">
-                  <p className="font-semibold text-ink">{card.headline}</p>
-                  <div className="mt-1">
-                    <DateChip day={card.written?.date ?? null} time={card.written?.time} />
-                  </div>
-                </td>
-                <td className="px-3 py-2.5 text-ink-2">{card.written === null ? "Kept" : card.written.state === "kept" ? "Kept" : card.written.state === "dropped" ? "Dropped" : "Not decided"}</td>
-                {channels.map((channel) => {
-                  const poster = card.pictures.find((one) => one.network === channel.platform);
-                  return (
-                    <td key={channel.platform} className="px-3 py-2.5 text-ink-2">
-                      {poster === undefined ? (weekAsked(week) && card.written?.state === "kept" ? "Drawing" : "Not drawn") : pictureWord(poster)}
-                    </td>
-                  );
-                })}
-              </tr>
-            ))}
+            {cards.map((card) => {
+              const choice = card.written === null ? "Kept" : card.written.state === "kept" ? "Kept" : card.written.state === "dropped" ? "Dropped" : "Not decided";
+              return (
+                <tr key={card.key} className="border-t border-line align-top">
+                  <td className="px-3 py-2.5">
+                    <p className="font-semibold text-ink">{card.headline}</p>
+                    <div className="mt-1">
+                      <DateChip day={card.written?.date ?? null} time={card.written?.time} />
+                    </div>
+                  </td>
+                  <td className={cn("px-3 py-2.5", toneOf(choice))}>{choice}</td>
+                  {channels.map((channel) => {
+                    const poster = card.pictures.find((one) => one.network === channel.platform);
+                    const word = poster === undefined ? (weekAsked(week) && card.written?.state === "kept" ? "Drawing" : "Not drawn") : pictureWord(poster);
+                    return (
+                      <td key={channel.platform} className={cn("px-3 py-2.5", toneOf(word))}>
+                        {word}
+                      </td>
+                    );
+                  })}
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
@@ -931,22 +956,26 @@ function WeekNav({ weeks, week, today, onPick }: { readonly weeks: readonly Flow
 
 const STEPS = ["Topics", "Pictures", "Approved"] as const;
 
-/** Where the week stands, drawn like the Posts and Analytics tabs: plain words with a line under the one she is on, and a tick on the ones done. */
-function Steps({ stage, onPick }: { readonly stage: 0 | 1 | 2; /** When the week is drawn in rounds, the customer can switch between the topics and the pictures drawn so far. */ readonly onPick?: (index: 0 | 1) => void }): ReactElement {
+/** Where the week stands, drawn like the Posts and Analytics tabs: plain words with a line under the one she is on. */
+function Steps({ stage, counts, onPick }: { readonly stage: 0 | 1 | 2; /** How many are left in each step: topics not decided, pictures to approve. A step with none shows no number. */ readonly counts?: readonly [number, number, number]; /** When the week is drawn in rounds, the customer can switch between the topics and the pictures drawn so far. */ readonly onPick?: (index: 0 | 1 | 2) => void }): ReactElement {
   return (
     <ol className="m-0 flex list-none flex-wrap gap-1 p-0" aria-label="Where this week stands">
       {STEPS.map((name, index) => {
         const classes = cn("-mb-px inline-flex items-center gap-1.5 border-b-2 px-3.5 py-2 text-[0.875rem] font-semibold", index === stage ? "border-rattan-text text-ink" : index < stage ? "border-transparent text-ink-2" : "border-transparent text-ink-3");
         const body = (
           <>
-            {index < stage ? <Check size={13} weight="bold" aria-hidden="true" /> : null}
             {name}
+            {counts === undefined || counts[index] === 0 ? null : (
+              <span className="rounded-full bg-warn-wash px-1.5 text-[0.6875rem] font-bold leading-5 text-warn" aria-hidden="true" title={`${counts[index]} ${index === 0 ? "topics to decide" : "pictures to approve"}`}>
+                {counts[index]}
+              </span>
+            )}
           </>
         );
         return (
           <li key={name} aria-current={index === stage ? "step" : undefined} className="m-0 p-0">
-            {onPick !== undefined && index < 2 ? (
-              <button type="button" onClick={() => onPick(index === 0 ? 0 : 1)} className={cn(classes, "cursor-pointer")}>
+            {onPick !== undefined ? (
+              <button type="button" onClick={() => onPick(index === 0 ? 0 : index === 1 ? 1 : 2)} className={cn(classes, "cursor-pointer")}>
                 {body}
               </button>
             ) : (
@@ -1012,7 +1041,9 @@ export function groupIsFor(group: ReviewGroup, channel: ChannelPlatform): boolea
 
 /** Holds which channel and which week the customer is looking at, for the channels column and the workspace beside it. */
 export function ReviewFlowProvider({ groups, drawing = [], reasons, channels, replacing = {}, today = "", own = NO_OWN, children }: ReviewFlowProps): ReactElement {
-  const [channel, setChannelNow] = useState<"all" | ChannelPlatform>(channels[0]?.platform ?? "all");
+  // The channel she chose on another page is in the address, so this page opens on it (a channel not connected is left out).
+  const chosen = channelParamOf(useSearchParams()?.get(CHANNEL_PARAM));
+  const [channel, setChannelNow] = useState<"all" | ChannelPlatform>(chosen === "all" || (chosen !== null && channels.some((one) => one.platform === chosen)) ? (chosen as "all" | ChannelPlatform) : (channels[0]?.platform ?? "all"));
   const groupsOf = useCallback((which: "all" | ChannelPlatform): readonly ReviewGroup[] => (which === "all" ? groups : groups.filter((group) => groupIsFor(group, which))), [groups]);
   const visible = useMemo(() => groupsOf(channel), [groupsOf, channel]);
   const weeks = useMemo(() => flowWeeks(visible, drawing), [visible, drawing]);
@@ -1023,6 +1054,7 @@ export function ReviewFlowProvider({ groups, drawing = [], reasons, channels, re
   const setChannel = useCallback(
     (next: "all" | ChannelPlatform): void => {
       setChannelNow(next);
+      rememberChannel(next);
       setWeekKey(firstOpenWeek(groupsOf(next), flowWeeks(groupsOf(next), drawing)));
     },
     [groupsOf, drawing],
@@ -1043,6 +1075,37 @@ export function ReviewFlowProvider({ groups, drawing = [], reasons, channels, re
 }
 
 /**
+ * The card for a channel that has no posts of its own yet, with the two ways to get them (the same topics as the others, or new ones). It is
+ * for the channel being looked at only: the all-channels view and a channel that has posts have none.
+ */
+export function NewChannelChoice({ unwritten, missing, postingDays, website, busy, canChange }: { readonly unwritten: { readonly channels: readonly ChannelPlatform[]; readonly startDate: string | null; readonly writtenFor: readonly ChannelPlatform[] }; readonly missing: readonly ChannelPlatform[]; readonly postingDays: PostingDays | null; readonly website: string | null; readonly busy: boolean; readonly canChange: boolean }): ReactElement | null {
+  const { channel } = useFlow();
+  if (channel === "all" || !unwritten.channels.includes(channel) || unwritten.writtenFor.length === 0) return null;
+  return <AddChannelChoice channel={channel} writtenFor={unwritten.writtenFor} canCopy={missing.includes(channel)} postingDays={postingDays} website={website} startDate={unwritten.startDate} busy={busy} canChange={canChange} />;
+}
+
+/**
+ * The note that a batch is being written. It speaks for the channels the batch is for: another channel is told that nothing is being written
+ * for it, so a customer never thinks posts were started for a channel she has not asked for. When the posting service does not say which
+ * channels the job is for, the note is shown on every channel as before.
+ */
+export function ActiveJobNote({ text, networks }: { readonly text: string; readonly networks: readonly ChannelPlatform[] | undefined }): ReactElement {
+  const { channel } = useFlow();
+  if (channel === "all" || networks === undefined || networks.includes(channel)) {
+    return (
+      <p role="status" className="rounded-xl bg-warn-wash px-4 py-3 text-[0.84375rem] font-semibold text-warn">
+        {text}
+      </p>
+    );
+  }
+  return (
+    <p role="status" className="rounded-xl bg-sunken px-4 py-3 text-[0.84375rem] text-ink-2">
+      Nothing is being written for {PLATFORM_NAMES[channel]} yet. You can add it once the posts being written for {networks.map((network) => PLATFORM_NAMES[network]).join(" and ")} are ready.
+    </p>
+  );
+}
+
+/**
  * The second sidebar of the review page, drawn like the one on the Posts and Analytics pages: against the menu, the channels down it, and a
  * Connect button for each network with no account yet. A row shows what is left to do in the week being looked at.
  */
@@ -1053,7 +1116,7 @@ export function ReviewChannelsColumn(): ReactElement {
     <aside
       id="channels"
       aria-labelledby="review-channels-title"
-      className="border-t border-line bg-surface p-4 pb-28 md:px-8 lg:sticky lg:top-topbar lg:h-dvh lg:w-[13rem] lg:shrink-0 lg:overflow-y-auto lg:border-t-0 lg:border-r lg:px-4 lg:pt-4 lg:pb-8"
+      className="border-t border-line bg-surface p-4 pb-28 md:px-8 lg:sticky lg:top-topbar lg:h-channels-column lg:self-start lg:w-[13rem] lg:shrink-0 lg:overflow-y-auto lg:border-t-0 lg:border-r lg:px-4 lg:pt-4 lg:pb-8"
     >
       <h2 id="review-channels-title" className="px-1 type-section text-ink">
         Channels
@@ -1079,7 +1142,7 @@ export function ReviewChannelsColumn(): ReactElement {
                     {one.account}
                     <span className="sr-only">, {PLATFORM_NAMES[one.platform]}</span>
                   </span>
-                  <span className={cn("mt-0.5 block text-xs", todo.count > 0 ? "font-semibold text-rattan-text" : "text-ink-2")}>{todo.words}</span>
+                  <span title={todo.words} className={cn("mt-0.5 block truncate text-xs", todo.count > 0 ? "font-semibold text-rattan-text" : "text-ink-2")}>{todo.words}</span>
                 </span>
               </button>
             </li>
@@ -1107,11 +1170,15 @@ export function ReviewChannelsColumn(): ReactElement {
  * The part of the review screen beside the channels column: for the channel picked, the topics of a week as headlines to keep or drop,
  * then (once the week is drawn) each picture as it will look on that account, to approve. "All channels" is one table of the week.
  */
-export function ReviewWorkspace(): ReactElement {
+export function ReviewWorkspace(): ReactElement | null {
   const { channels, reasons, replacing, today, own, week, cards, channel, weeks, setWeekKey } = useFlow();
   /** A week drawn in rounds has topics still open and pictures drawn: the customer looks at one at a time, the pictures only under Pictures. */
   const [roundView, setRoundView] = useState<"topics" | "pictures">("topics");
-  if (week === undefined) return <p className="text-[0.84375rem] text-ink-2">No posts are waiting for you.</p>;
+  /** A week drawn whole is shown by its pictures; this lets her go back and read its topics (the ones that are final cannot be changed). */
+  const [lookAtTopics, setLookAtTopics] = useState(false);
+  /** The picture step she picked: the ones waiting for her, or the approved ones. Not picked: all of them. */
+  const [pictureStep, setPictureStep] = useState<"waiting" | "approved" | null>(null);
+  if (week === undefined) return null;
   const asked = weekAsked(week);
   /** The pictures of her own topic of this week: shown with the others once the week's pictures are the thing to look at. */
   const ownPosters = own.requests.filter((request) => request.week.from === week.from && request.batchId !== null).flatMap((request) => own.posters.filter((poster) => poster.batchId === request.batchId));
@@ -1126,31 +1193,50 @@ export function ReviewWorkspace(): ReactElement {
   const stay = cards.filter((card) => card.written !== null && !postFinal(card, week) && !toDraw.includes(card)).length;
   const keptCount = toDraw.length;
   const approvedAll = asked && cards.some((card) => card.pictures.length > 0) && cards.every((card) => card.pictures.every((poster) => poster.status === "approved" || poster.status === "rejected" || poster.status === "expired"));
-  const stage: 0 | 1 | 2 = partly ? (roundView === "pictures" ? 1 : 0) : !asked ? 0 : approvedAll ? 2 : 1;
+  const looking = asked && !partly && lookAtTopics && channel !== "all";
+  const stage: 0 | 1 | 2 = partly ? (roundView === "pictures" ? (pictureStep === "approved" ? 2 : 1) : 0) : looking ? 0 : !asked ? 0 : pictureStep === "approved" ? 2 : pictureStep === "waiting" ? 1 : approvedAll ? 2 : 1;
   const picked = channel === "all" ? undefined : channels.find((one) => one.platform === channel);
+  /** The picture shown small in a drawn topic: the one for the channel being looked at, not one that was replaced. */
+  const pictureOf = (card: ReviewCard): Poster | undefined => card.pictures.find((poster) => (picked === undefined || poster.network === picked.platform) && poster.status !== "superseded");
+  /** Pressing it opens the pictures at that one: under Approved when it is approved, else under Pictures. */
+  const openPicture = (poster: Poster): void => {
+    setLookAtTopics(false);
+    setRoundView("pictures");
+    setPictureStep(poster.status === "approved" ? "approved" : "waiting");
+    window.setTimeout(() => document.getElementById(`picture-${poster.id}`)?.scrollIntoView({ block: "nearest", behavior: "smooth" }), 60);
+  };
+  const pictureList = channel === "all" ? cards.flatMap((card) => card.pictures) : picturesOn(cards, channel);
+  /** What is left in this week, for the numbers on the Topics step (topics not decided yet) and the Pictures step (pictures to approve). Approved has none. */
+  const stepCounts: readonly [number, number, number] = [
+    cards.filter((card) => card.written?.state === "pending").length,
+    pictureList.filter((poster) => poster.status === "pending" || poster.status === "held").length,
+    0,
+  ];
   return (
     <section aria-label={picked === undefined ? "All channels" : PLATFORM_NAMES[picked.platform]} className="grid min-w-0 content-start gap-4">
-      <div>
+      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
         <h2 className="type-section text-ink">{picked === undefined ? "All channels" : `${PLATFORM_NAMES[picked.platform]} · ${picked.account}`}</h2>
-        <p className="mt-1 type-meta">{asked ? "Your pictures and words, as they will look on this account." : partly ? (roundView === "pictures" ? "The pictures drawn so far." : "The topics still open. Pictures drawn so far are under Pictures.") : "First the topics, as headlines. Pictures come after you decide."}</p>
+        {asked || stage !== 0 || picked === undefined ? null : <OwnTopicButton />}
       </div>
       {/* The steps and the week on one line, the week at the right end, over one rule. */}
       <div className="flex flex-wrap items-end justify-between gap-x-4 gap-y-1 border-b border-line">
-        <Steps stage={stage} {...(partly && channel !== "all" ? { onPick: (index: 0 | 1) => setRoundView(index === 1 ? "pictures" : "topics") } : {})} />
+        <Steps stage={stage} counts={stepCounts} {...(partly && channel !== "all" ? { onPick: (index: 0 | 1 | 2) => { setRoundView(index === 0 ? "topics" : "pictures"); setPictureStep(index === 2 ? "approved" : index === 1 ? "waiting" : null); } } : asked && channel !== "all" ? { onPick: (index: 0 | 1 | 2) => { setLookAtTopics(index === 0); setPictureStep(index === 2 ? "approved" : index === 1 ? "waiting" : null); } } : {})} />
         <WeekNav weeks={weeks} week={week} today={today} onPick={setWeekKey} />
       </div>
-      {asked ? null : <OwnTopics />}
+      {asked || stage !== 0 ? null : <OwnTopics />}
       {channel === "all" ? (
         <Overview cards={cards} week={week} channels={channels} />
+      ) : asked && !missing && looking ? (
+        <WeekGrid cards={cards} week={week} replacing={replacing} today={today} pictureOf={pictureOf} onOpenPicture={openPicture} />
       ) : asked && !missing ? (
-        picked === undefined ? null : <PicturesStage cards={cards} week={week} channel={picked.platform} account={picked.account} reasons={reasons} ownPosters={ownPosters} />
+        picked === undefined ? null : <PicturesStage cards={cards} week={week} channel={picked.platform} account={picked.account} reasons={reasons} ownPosters={ownPosters} {...(pictureStep === null ? {} : { only: pictureStep })} />
       ) : (
         <>
-          {asked && picked !== undefined ? <PicturesStage cards={cards} week={week} channel={picked.platform} account={picked.account} reasons={reasons} ownPosters={ownPosters} /> : null}
+          {asked && picked !== undefined ? <PicturesStage cards={cards} week={week} channel={picked.platform} account={picked.account} reasons={reasons} ownPosters={ownPosters} {...(pictureStep === null ? {} : { only: pictureStep })} /> : null}
           {partly && roundView === "pictures" && picked !== undefined ? (
-            <PicturesStage cards={cards} week={week} channel={picked.platform} account={picked.account} reasons={reasons} ownPosters={ownPosters} settled={false} />
+            <PicturesStage cards={cards} week={week} channel={picked.platform} account={picked.account} reasons={reasons} ownPosters={ownPosters} settled={false} {...(pictureStep === null ? {} : { only: pictureStep })} />
           ) : (
-            <WeekGrid cards={cards} week={week} replacing={replacing} today={today} />
+            <WeekGrid cards={cards} week={week} replacing={replacing} today={today} pictureOf={pictureOf} onOpenPicture={openPicture} />
           )}
           {partly && roundView === "pictures" ? null : <DrawBar week={week} kept={keptCount} total={cards.length} retry={asked || missing} pictures={newPictures} stay={stay} />}
         </>

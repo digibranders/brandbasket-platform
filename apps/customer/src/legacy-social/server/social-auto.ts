@@ -351,7 +351,7 @@ export async function addNetwork(settings: SocialAutoSettings, businessId: strin
 }
 
 export type BatchChange =
-  | { readonly action: "keep" | "drop"; readonly postId: string }
+  | { readonly action: "keep" | "drop" | "reset"; readonly postId: string }
   | { readonly action: "edit"; readonly postId: string; readonly headline?: string; readonly caption?: string; readonly network?: ChannelPlatform }
   | { readonly action: "close" };
 
@@ -508,13 +508,6 @@ export async function loadSchedule(settings: SocialAutoSettings, externalId: str
   const answer = await call(settings, `/api/v1/schedule?${new URLSearchParams({ externalId })}`, { method: "GET" }, send);
   if (answer.status === 404 && (answer.body as { code?: unknown } | null)?.code === "WORKSPACE_NOT_FOUND") return {};
   if (answer.status === 404 || answer.status === 405 || answer.status === 501) return null;
-  if (answer.status !== 200) throw refusal(answer, "the posting days");
-  return readSchedule(answer.body);
-}
-
-/** Saves the days of every channel at once (a channel left out goes back to the usual spread) and answers what the service now holds. */
-export async function saveSchedule(settings: SocialAutoSettings, externalId: string, channels: Readonly<Record<string, readonly string[]>>, send: typeof fetch = fetch): Promise<PostingDays> {
-  const answer = await call(settings, "/api/v1/schedule", { method: "PUT", body: { externalId, channels } }, send);
   if (answer.status !== 200) throw refusal(answer, "the posting days");
   return readSchedule(answer.body);
 }

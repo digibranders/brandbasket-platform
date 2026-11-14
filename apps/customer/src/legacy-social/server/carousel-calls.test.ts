@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 
 vi.mock("server-only", () => ({}));
 
-import { askTopic, decideCarousel, fetchCarouselSlide, loadCarousel, loadCarouselList, loadAutoPosting, loadCarousels, loadSchedule, loadTopicRequests, makeCarousel, renameBrand, replaceTopic, saveAutoPosting, saveSchedule, setCarouselWeekly, SocialAutoError, type SocialAutoSettings } from "./social-auto";
+import { askTopic, decideCarousel, fetchCarouselSlide, loadCarousel, loadCarouselList, loadAutoPosting, loadCarousels, loadSchedule, loadTopicRequests, makeCarousel, renameBrand, replaceTopic, saveAutoPosting, setCarouselWeekly, SocialAutoError, type SocialAutoSettings } from "./social-auto";
 
 const settings: SocialAutoSettings = { baseUrl: "http://127.0.0.1:4020", key: "secret", returnUrl: "https://app.example.com/social" };
 const json = (status: number, body: unknown = {}) => vi.fn(async () => new Response(JSON.stringify(body), { status })) as unknown as typeof fetch;
@@ -80,18 +80,6 @@ describe("the carousel calls", () => {
     expect(await loadSchedule(settings, "b1", json(404))).toBeNull();
     expect(await loadSchedule(settings, "b1", json(501))).toBeNull();
     await expect(loadSchedule(settings, "b1", json(500))).rejects.toBeInstanceOf(SocialAutoError);
-  });
-
-  it("saves the posting days with a PUT of every channel's days, and passes on a refusal with its code", async () => {
-    const send = json(200, { schedule: { channels: { instagram: { days: ["mon"], nextWeek: [] } } } });
-    expect(await saveSchedule(settings, "b1", { instagram: ["mon"] }, send)).toEqual({ instagram: ["mon"] });
-    const call = vi.mocked(send).mock.calls[0];
-    expect(String(call?.[0])).toBe("http://127.0.0.1:4020/api/v1/schedule");
-    expect(call?.[1]?.method).toBe("PUT");
-    expect(JSON.parse(String(call?.[1]?.body))).toEqual({ externalId: "b1", channels: { instagram: ["mon"] } });
-    const refused = await saveSchedule(settings, "b1", { instagram: [] }, json(400, { code: "INVALID_DAYS", error: "days must be a list" })).catch((error: unknown) => error);
-    expect(refused).toBeInstanceOf(SocialAutoError);
-    expect((refused as SocialAutoError).code).toBe("INVALID_DAYS");
   });
 
   it("reads automatic posting from the workspace, with none yet for a business with no workspace and null for an older service", async () => {

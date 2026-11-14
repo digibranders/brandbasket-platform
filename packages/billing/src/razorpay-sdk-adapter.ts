@@ -20,7 +20,7 @@ export function wrapRazorpaySdkClient(client: Razorpay): RazorpaySdkClient {
       update: (id, input) => client.subscriptions.update(id, input),
       fetch: async (id) => {
         const subscription = await client.subscriptions.fetch(id);
-        return { id: subscription.id, status: subscription.status };
+        return { id: subscription.id, status: subscription.status, paid_count: subscription.paid_count, current_start: subscription.current_start, current_end: subscription.current_end };
       },
     },
     payments: {

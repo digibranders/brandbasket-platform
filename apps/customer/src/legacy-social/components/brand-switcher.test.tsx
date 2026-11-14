@@ -38,7 +38,7 @@ describe("BrandSwitcher", () => {
     HTMLDialogElement.prototype.showModal = vi.fn();
     render(<BrandSwitcher view={one} current="b1" />);
     fireEvent.click(screen.getByRole("button", { name: "Rename" }));
-    fireEvent.click(screen.getAllByText("Rename", { selector: "button" })[1] as HTMLElement);
+    fireEvent.click(screen.getAllByText("Rename", { selector: "button" })[0] as HTMLElement);
     fireEvent.change(screen.getByLabelText("New name"), { target: { value: "Om Cafe" } });
     fireEvent.click(screen.getByRole("button", { name: "Save", hidden: true }));
     await waitFor(() => expect(vi.mocked(renameBrandAction)).toHaveBeenCalledTimes(1));

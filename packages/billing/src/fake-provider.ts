@@ -348,5 +348,9 @@ export function createFakeBillingProvider(options: FakeBillingProviderOptions): 
     async findUpfrontPayment(): Promise<null> {
       return null;
     },
+
+    async findSubscriptionCharge(): Promise<null> {
+      return null;
+    },
   };
 }
