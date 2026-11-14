@@ -36,6 +36,35 @@ describe("KickoffCallSection", () => {
     expect(html).toContain("3:30");
   });
 
+  it("renders timing window and direct join meeting link when booking has timing and meeting URL", async () => {
+    vi.mocked(findSetupCallBooking).mockResolvedValue({
+      startsAt: new Date("2026-10-28T10:00:00Z"),
+      endsAt: new Date("2026-10-28T10:30:00Z"),
+      inviteeUri: "https://api.cal.com/v2/bookings/cal-uid-456",
+      heldAt: null,
+    } as never);
+    const html = await render();
+    expect(html).toContain("Timing window");
+    expect(html).toContain("3:30 PM to 4:00 PM");
+    expect(html).toContain('href="https://app.cal.com/video/cal-uid-456"');
+    expect(html).toContain('target="_blank"');
+    expect(html).toContain('rel="noopener noreferrer"');
+    expect(html).toContain("Join meeting");
+  });
+
+  it("does not render join meeting link when inviteeUri is not available", async () => {
+    vi.mocked(findSetupCallBooking).mockResolvedValue({
+      startsAt: new Date("2026-10-28T10:00:00Z"),
+      endsAt: new Date("2026-10-28T10:30:00Z"),
+      inviteeUri: null,
+      heldAt: null,
+    } as never);
+    const html = await render();
+    expect(html).toContain("Timing window");
+    expect(html).toContain("3:30 PM to 4:00 PM");
+    expect(html).not.toContain("Join meeting");
+  });
+
   it("shows completed time when the call is completed, without any action buttons", async () => {
     vi.mocked(findSetupCallBooking).mockResolvedValue({ startsAt: null, heldAt: new Date("2026-10-29T10:00:00Z") } as never);
     const html = await render();
