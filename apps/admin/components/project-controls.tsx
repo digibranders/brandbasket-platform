@@ -1,8 +1,8 @@
 import { canMoveProject, findOpenProjectForStaff, listAssignableSupportStaff } from "@brandbasket/db";
 import type { ReactElement } from "react";
-import { GatedSubmitButton } from "@brandbasket/shared/ui/forms/submit-gate";
 import { buttonDanger, buttonSecondary } from "@/components/console/buttons";
-import { checkboxClasses, fieldClasses, labelClasses } from "@/components/console/field-styles";
+import { ConfirmDialog } from "@/components/console/confirm-dialog";
+import { fieldClasses, labelClasses } from "@/components/console/field-styles";
 import { Notice } from "@/components/console/notice";
 import { Section } from "@/components/console/section";
 import { StatusPill } from "@/components/console/status-pill";
@@ -46,10 +46,20 @@ export async function ProjectControls({ businessId, notice }: ProjectControlsPro
         ) : null}
 
         {canMoveProject("grant-round", project.status) ? (
-          <form action={grantRoundAction}>
-            {ids}
-            <GatedSubmitButton className={buttonSecondary}>Add a round of changes</GatedSubmitButton>
-          </form>
+          <div>
+            <ConfirmDialog
+              title="Add a round of changes"
+              consequence="This grants the client one extra round of website revisions without charging them."
+              triggerLabel="Add a round of changes"
+              triggerClassName={buttonSecondary}
+              confirmLabel="Add free round"
+              cancelLabel="Cancel"
+              variant="default"
+              formAction={grantRoundAction}
+            >
+              {ids}
+            </ConfirmDialog>
+          </div>
         ) : null}
 
         {canMoveProject("plan-launch", project.status) ? (
@@ -87,19 +97,20 @@ export async function ProjectControls({ businessId, notice }: ProjectControlsPro
         ) : null}
 
         {canMoveProject("cancel", project.status) ? (
-          <details className="max-w-md">
-            <summary className="cursor-pointer text-sm font-semibold text-error">Cancel this build</summary>
-            <form action={cancelProjectAction} className="mt-3 grid gap-3">
+          <div>
+            <ConfirmDialog
+              title="Cancel this build"
+              consequence="This cancels the open website build. Their plan and billing do not change."
+              triggerLabel="Cancel this build"
+              triggerClassName={buttonDanger}
+              confirmLabel="Cancel build"
+              cancelLabel="Keep build"
+              variant="danger"
+              formAction={cancelProjectAction}
+            >
               {ids}
-              <label className="flex items-start gap-2 text-sm text-ink">
-                <input type="checkbox" name="confirm" value="yes" required className={checkboxClasses} />
-                <span>I want to cancel this build. Their plan and billing do not change.</span>
-              </label>
-              <button type="submit" className={`${buttonDanger} justify-self-start`}>
-                Cancel build
-              </button>
-            </form>
-          </details>
+            </ConfirmDialog>
+          </div>
         ) : null}
       </div>
     </Section>

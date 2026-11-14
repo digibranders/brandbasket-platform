@@ -1,5 +1,6 @@
 import { eq } from "drizzle-orm";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { approvedDueAt, revisionDueAt } from "./working-days";
 import {
   approveProjectPreview,
   markProjectLive,
@@ -129,7 +130,7 @@ describe("approveProjectPreview", () => {
 
     const result = await approveProjectPreview(dbs.staff.db, { businessId, now: SENT_AT });
 
-    expect(result).toMatchObject({ id: projectId, status: "approved" });
+    expect(result).toMatchObject({ id: projectId, status: "approved", slaDueAt: approvedDueAt(SENT_AT) });
   });
 
   it("throws when there is nothing to approve yet", async () => {
@@ -165,7 +166,7 @@ describe("requestProjectRevisions", () => {
 
     const result = await requestProjectRevisions(dbs.staff.db, { businessId, now: SENT_AT });
 
-    expect(result).toMatchObject({ id: projectId, status: "revisions", revisionRoundsGranted: 1 });
+    expect(result).toMatchObject({ id: projectId, status: "revisions", revisionRoundsGranted: 1, slaDueAt: revisionDueAt(SENT_AT) });
   });
 
   it("counts a second round on top of the first", async () => {

@@ -8,7 +8,8 @@ export type DomainConnectNotice =
   | "free-address"
   | "switched"
   | "switched-no-email"
-  | "switch-not-ready";
+  | "switch-not-ready"
+  | "unconfirmed";
 
 /** Fixed messages only: the query parameter picks one, and nothing from it is ever shown. */
 export const DOMAIN_CONNECT_NOTICES: Readonly<Record<DomainConnectNotice, { readonly text: string; readonly ok: boolean }>> = {
@@ -27,6 +28,7 @@ export const DOMAIN_CONNECT_NOTICES: Readonly<Record<DomainConnectNotice, { read
   },
   "switch-not-ready": { text: "Nothing changed: their DNS hasn’t been found connected yet, so there’s nothing to switch to.", ok: false },
   "free-address": { text: "Nothing changed: they are on our free address, so there is no DNS for them to change.", ok: false },
+  unconfirmed: { text: "Nothing changed: confirm the switch to proceed.", ok: false },
 };
 
 export function domainConnectNoticeHref(businessId: string, notice: DomainConnectNotice): string {

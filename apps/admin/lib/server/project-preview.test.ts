@@ -18,6 +18,7 @@ vi.mock("./preview-screenshot", () => ({ captureScreenshot: vi.fn() }));
 vi.mock("./website-moves", () => ({ addWorkingActivity: vi.fn() }));
 vi.mock("@brandbasket/email", () => ({ previewReadyEmail: vi.fn() }));
 vi.mock("./email", () => ({ customerEmailTransport: vi.fn() }));
+vi.mock("./env", () => ({ serverEnv: () => ({ APP_ORIGIN: "https://app.brandbasket.in" }) }));
 
 const mockedRecordSent = vi.mocked(recordProjectPreviewSent);
 const mockedRecordVersion = vi.mocked(recordPreviewVersion);
@@ -75,6 +76,7 @@ describe("sendProjectPreview", () => {
       to: "riley@example.com",
       businessName: "Riverside Plumbing",
       previewUrl: "https://preview.example",
+      reviewUrl: "https://app.brandbasket.in/website",
     });
     expect(send).toHaveBeenCalledTimes(1);
     expect(mockedFindClient.mock.invocationCallOrder[0]).toBeLessThan(mockedRecordSent.mock.invocationCallOrder[0] ?? 0);
@@ -233,6 +235,7 @@ describe("resendPreviewEmail", () => {
       to: "riley@example.com",
       businessName: "Riverside Plumbing",
       previewUrl: "https://preview.example",
+      reviewUrl: "https://app.brandbasket.in/website",
     });
     expect(mockedRecordSent).not.toHaveBeenCalled();
     expect(mockedRecordVersion).not.toHaveBeenCalled();

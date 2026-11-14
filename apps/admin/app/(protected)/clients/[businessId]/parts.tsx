@@ -37,6 +37,7 @@ import { describeStoredDay } from "@brandbasket/shared/lib/onboarding/hours";
 import { registrableDomain } from "@brandbasket/shared/lib/onboarding/domain-dns";
 import { safeExternalHref } from "@brandbasket/shared/lib/safe-link";
 import { buttonPrimary, buttonSecondary } from "@/components/console/buttons";
+import { ConfirmDialog } from "@/components/console/confirm-dialog";
 import { checkboxClasses, fieldClasses, hintClasses, labelClasses } from "@/components/console/field-styles";
 import { FactList, Quiet, type Fact } from "@/components/console/section";
 import {
@@ -737,17 +738,27 @@ export function MoveDomainPanel({
       ) : null}
 
       {movingTo.status === "verifying" ? (
-        <form action={switchDomainAction}>
+        <div>
           <p className="max-w-xl text-ink-soft">
             Their DNS now points at the site. Open <span className="font-medium text-ink">{movingTo.hostname}</span> and check it loads. Then, in
             the Vercel project, redirect <span className="font-medium text-ink">{current}</span> to it, so old links keep working, and switch.
             The client is emailed their new address.
           </p>
-          <input type="hidden" name="businessId" value={businessId} />
-          <GatedSubmitButton className={`${buttonPrimary} mt-5`} pendingLabel="Switching…">
-            Switch to their domain
-          </GatedSubmitButton>
-        </form>
+          <div className="mt-5">
+            <ConfirmDialog
+              title="Switch to client domain"
+              consequence={`The website will switch to ${movingTo.hostname}. Make sure DNS is working and Vercel redirects are set.`}
+              triggerLabel="Switch to their domain"
+              triggerClassName={buttonPrimary}
+              confirmLabel="Switch domain"
+              cancelLabel="Cancel"
+              variant="default"
+              formAction={switchDomainAction}
+            >
+              <input type="hidden" name="businessId" value={businessId} />
+            </ConfirmDialog>
+          </div>
+        </div>
       ) : null}
     </div>
   );
