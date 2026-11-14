@@ -1,6 +1,7 @@
 import "server-only";
 import { addOnById, MONTHLY_ADD_ON_IDS, type MonthlyAddOnId } from "@brandbasket/shared/lib/billing/add-ons";
 import { bundleLines } from "@brandbasket/shared/lib/billing/bundle";
+import { TRIAL_ADD_ON_IDS, trialEligible, trialPriceCents } from "@brandbasket/shared/lib/billing/trial";
 import {
   firstUnanswered,
   intakeServicesOf,
@@ -18,7 +19,7 @@ import { redirect } from "next/navigation";
 import type { CustomerContext } from "@/lib/guards";
 import { formatMoney } from "@/lib/format";
 import { load, type Loaded } from "@/lib/loaded";
-import { ledgerRows, ledgerSummary, type LedgerRow } from "../checkout/rules/ledger";
+import { ledgerOffer, ledgerRows, ledgerSummary, type LedgerRow } from "../checkout/rules/ledger";
 import { readSelectedServices } from "../checkout/rules/membership";
 import { loadBusinessEntry } from "../checkout/server/entry";
 import { loadMembershipCheckout } from "../checkout/server/membership-checkout";
@@ -44,7 +45,7 @@ export interface StartQuestion {
 
 export interface StartSummary {
   readonly rows: readonly IntakeSummaryRow[];
-  /** Each catalogue service's list price a month, formatted, from the shared bundle prices. */
+  /** Each catalogue service's price, formatted, before "a month": its list price, or "₹1 first month, then ₹2,999" on the offer. */
   readonly prices: Readonly<Record<MonthlyAddOnId, string>>;
   readonly unanswered: number;
   readonly firstUnansweredHref: string | null;
@@ -58,6 +59,8 @@ export interface StartAside {
   readonly adCredit: string | null;
   /** Where "Change services" goes, or null on the summary, which has the controls itself. */
   readonly changeHref: string | null;
+  /** The plans this business would get on the first-month offer (plan 63), chosen or not. */
+  readonly firstMonthPlans: readonly MonthlyAddOnId[];
 }
 
 export interface StartView {
@@ -98,9 +101,16 @@ export async function loadStart(customer: CustomerContext, params: Params): Prom
     if (plan === null) return null;
     const pricing = { planInitialAmountCents: plan.initialAmountCents, currency: plan.currency, taxRateBasisPoints: plan.taxRateBasisPoints, forfeited: view.forfeited, hasEverPaid: view.hasEverPaid };
     const summary = ledgerSummary(pricing, view.services, null);
+    // The checkout's own first-month offer, so this aside shows what Pay will take. The start page is always monthly.
+    const firstMonth = ledgerOffer(summary, view.firstMonth, plan.currency, "month");
+    const eligible = view.firstMonth;
     return {
-      rows: ledgerRows(summary, plan.currency, null),
-      total: formatMoney(summary.totalCents, plan.currency),
+      rows: ledgerRows(summary, plan.currency, null, firstMonth),
+      total: formatMoney(firstMonth?.firstPaymentCents ?? summary.totalCents, plan.currency),
+      firstMonthPlans:
+        eligible === null
+          ? []
+          : TRIAL_ADD_ON_IDS.filter((id) => trialEligible({ service: id, interval: "month", provider: eligible.provider, hadService: eligible.hadService[id] ?? true })),
       taxed: plan.taxRateBasisPoints > 0,
       adCredit: summary.adCredit?.label ?? null,
       changeHref: onSummary ? null : startHref(services, INTAKE_SUMMARY_STEP),
@@ -135,8 +145,13 @@ export async function loadStart(customer: CustomerContext, params: Params): Prom
   }
 
   const currency: MoneyCurrency = customer.currency;
+  const loadedAside = await aside;
+  const onOffer: readonly MonthlyAddOnId[] = loadedAside.ok && loadedAside.data !== null ? loadedAside.data.firstMonthPlans : [];
   const prices = Object.fromEntries(
-    MONTHLY_ADD_ON_IDS.map((id) => [id, formatMoney(bundleLines([id], currency)[0]?.listCents ?? 0, currency)]),
+    MONTHLY_ADD_ON_IDS.map((id) => {
+      const list = formatMoney(bundleLines([id], currency)[0]?.listCents ?? 0, currency);
+      return [id, onOffer.includes(id) ? `${formatMoney(trialPriceCents(currency), currency)} first month, then ${list}` : list];
+    }),
   ) as Record<MonthlyAddOnId, string>;
   return {
     services,
@@ -149,6 +164,6 @@ export async function loadStart(customer: CustomerContext, params: Params): Prom
         firstUnansweredHref: open === null ? null : startHref(services, open.field),
       },
     },
-    aside: await aside,
+    aside: loadedAside,
   };
 }

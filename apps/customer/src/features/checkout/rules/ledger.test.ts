@@ -3,7 +3,7 @@ import { discountCentsFor } from "@brandbasket/billing";
 import type { MonthlyAddOnId } from "@brandbasket/shared/lib/billing/add-ons";
 import { bundleLines, bundleNetCents } from "@brandbasket/shared/lib/billing/bundle";
 import { describe, expect, it } from "vitest";
-import { codeDiscountCents, ledgerRows, ledgerSummary, type LedgerCode, type LedgerPricing } from "./ledger";
+import { codeDiscountCents, ledgerOffer, ledgerRows, ledgerSummary, type LedgerCode, type LedgerFirstMonth, type LedgerPricing } from "./ledger";
 import { orderSummary } from "./membership";
 
 const PRICING: LedgerPricing = { planInitialAmountCents: 0, currency: "INR", taxRateBasisPoints: 1800, forfeited: false, hasEverPaid: false };
@@ -137,5 +137,44 @@ describe("paying yearly", () => {
   it("leaves a monthly basket as it was", () => {
     expect(ledgerSummary(PRICING, WEBSITE, null).annual).toBeNull();
     expect(codeDiscountCents(PERCENT_CODE, WEBSITE, "INR")).toBe(59_980);
+  });
+});
+
+describe("the first-month offer (plan 63)", () => {
+  const NEVER_HAD: LedgerFirstMonth = { provider: "razorpay", hadService: { "managed-website": false, "social-media": false, "paid-ads": false } };
+
+  it("charges ₹1 for each offer plan today and the rest at their price, as the checkout does: ₹3,000 for the website and Social Media", () => {
+    const summary = ledgerSummary(PRICING, TWO, null);
+    const offer = ledgerOffer(summary, NEVER_HAD, "INR", "month");
+    expect(offer).toEqual({ firstPaymentCents: 300_000, trialPriceByAddOn: { "social-media": 100 } });
+    expect(ledgerRows(summary, "INR", null, offer)).toEqual([
+      { key: "website", label: "Website", amount: "Free", tone: "free" },
+      { key: "maintenance", label: "Maintenance", amount: "₹2,999", tone: "plain" },
+      { key: "social-media", label: "Social Media Management, first month", amount: "₹1", tone: "plain" },
+    ]);
+  });
+
+  it("puts both Social Media and Paid Ads on the offer: ₹3,001 for all three", () => {
+    expect(ledgerOffer(ledgerSummary(PRICING, THREE, null), NEVER_HAD, "INR", "month")?.firstPaymentCents).toBe(300_100);
+  });
+
+  it("takes a code off the plans at full price only, so the rows still add up to what is due", () => {
+    const summary = ledgerSummary(PRICING, TWO, FLAT_CODE);
+    const offer = ledgerOffer(summary, NEVER_HAD, "INR", "month");
+    expect(offer?.firstPaymentCents).toBe(300_000 - 50_000);
+    expect(ledgerRows(summary, "INR", FLAT_CODE, offer).at(-1)).toEqual({ key: "code", label: "Code FLAT500", amount: "-₹500", tone: "save" });
+  });
+
+  it("is not offered for a plan the business has had, on a yearly payment, by bank transfer, or with nothing to tell", () => {
+    const summary = ledgerSummary(PRICING, TWO, null);
+    expect(ledgerOffer(summary, { ...NEVER_HAD, hadService: { "social-media": true } }, "INR", "month")).toBeNull();
+    expect(ledgerOffer(summary, { ...NEVER_HAD, hadService: {} }, "INR", "month")).toBeNull();
+    expect(ledgerOffer(ledgerSummary({ ...PRICING, interval: "year" }, TWO, null), NEVER_HAD, "INR", "year")).toBeNull();
+    expect(ledgerOffer(summary, { ...NEVER_HAD, provider: "manual" }, "INR", "month")).toBeNull();
+    expect(ledgerOffer(summary, null, "INR", "month")).toBeNull();
+  });
+
+  it("leaves the website alone on the offer: it is not one of the offer's plans", () => {
+    expect(ledgerOffer(ledgerSummary(PRICING, WEBSITE, null), NEVER_HAD, "INR", "month")).toBeNull();
   });
 });

@@ -19,8 +19,8 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const PLATFORM = path.join(ROOT, "apps", "platform");
-const ENV_FILE = path.join(PLATFORM, ".env.local");
+const CUSTOMER = path.join(ROOT, "apps", "customer");
+const ENV_FILE = path.join(CUSTOMER, ".env.local");
 const SCRATCH_SUFFIX = "_migrate_scratch";
 
 const name = process.argv[2];
@@ -61,7 +61,7 @@ function adminPsql(sql) {
 
 function payload(...args) {
   execFileSync("pnpm", ["exec", "payload", ...args], {
-    cwd: PLATFORM,
+    cwd: CUSTOMER,
     stdio: "inherit",
     env: {
       ...process.env,

@@ -59,12 +59,11 @@ export function AppShell({ view, children }: { readonly view: ShellView; readonl
     () =>
       navModel({
         services: view.business.services,
-        kickoffOver: view.kickoffOver,
         enquiries: countOf(view.enquiries),
         requests: countOf(view.requests),
         ...(view.reports.ok ? { reports: view.reports.data } : {}),
       }),
-    [view.business.services, view.kickoffOver, view.enquiries, view.requests, view.reports],
+    [view.business.services, view.enquiries, view.requests, view.reports],
   );
 
   useEffect(() => {
@@ -121,7 +120,7 @@ export function AppShell({ view, children }: { readonly view: ShellView; readonl
           </main>
         </div>
       </div>
-      <TabBar tabs={phoneTabs(model, view.kickoffOver)} pathname={pathname} />
+      <TabBar tabs={phoneTabs(model)} pathname={pathname} />
       <CommandSearch open={searching} onOpenChange={setSearching} targets={searchTargets(model)} />
     </>
   );

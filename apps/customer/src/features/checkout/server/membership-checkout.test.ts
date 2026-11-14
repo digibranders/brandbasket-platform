@@ -1,4 +1,4 @@
-import { findBillingState, isPackageOfferForfeited, type BillingState, type Database, type Plan } from "@brandbasket/db";
+import { businessHasHadService, findBillingState, isPackageOfferForfeited, type BillingState, type Database, type Plan } from "@brandbasket/db";
 import type { ReactivationBasket } from "@brandbasket/shared/lib/billing/bundle";
 import { loadReactivationBasket } from "@brandbasket/shared/server/reactivation-basket";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -9,7 +9,8 @@ import { getMembershipPlan } from "./membership";
 import { findLapsedAppliedCode, resolveAppliedDiscount } from "./referrals";
 
 vi.mock("server-only", () => ({}));
-vi.mock("@brandbasket/db", () => ({ findBillingState: vi.fn(), isPackageOfferForfeited: vi.fn() }));
+vi.mock("@brandbasket/db", () => ({ businessHasHadService: vi.fn(), findBillingState: vi.fn(), isPackageOfferForfeited: vi.fn() }));
+vi.mock("./billing", () => ({ getBillingProvider: () => ({ name: "razorpay" }) }));
 vi.mock("@brandbasket/shared/server/reactivation-basket", () => ({ loadReactivationBasket: vi.fn() }));
 vi.mock("./billing-details", () => ({ loadBillingDetailsView: vi.fn() }));
 vi.mock("./db", () => ({ getStaffDb: vi.fn() }));
@@ -41,6 +42,7 @@ beforeEach(() => {
   vi.mocked(resolveAppliedDiscount).mockResolvedValue(null);
   vi.mocked(findLapsedAppliedCode).mockResolvedValue(null);
   vi.mocked(loadBillingDetailsView).mockResolvedValue(null);
+  vi.mocked(businessHasHadService).mockResolvedValue(false);
 });
 
 describe("loadMembershipCheckout", () => {
@@ -65,6 +67,24 @@ describe("loadMembershipCheckout", () => {
     // Reactivation takes no code, so none is looked for against the basket.
     expect(resolveAppliedDiscount).not.toHaveBeenCalled();
     expect(findLapsedAppliedCode).not.toHaveBeenCalled();
+  });
+
+  it("tells the page what the first-month offer is judged on: the provider and each plan the business has had", async () => {
+    vi.mocked(findBillingState).mockResolvedValue(stateWith(false));
+    vi.mocked(businessHasHadService).mockImplementation(async (_db, _business, addOn) => addOn === "paid-ads");
+
+    const view = await loadMembershipCheckout(customer, "managed", ["social-media", "paid-ads"], NOW);
+
+    expect(view.firstMonth).toEqual({ provider: "razorpay", hadService: { "social-media": false, "paid-ads": true } });
+    expect(businessHasHadService).toHaveBeenCalledWith(staffDb, BUSINESS_ID, "social-media");
+  });
+
+  it("gives a business coming back from a lapse no first-month offer, as the checkout charges it", async () => {
+    vi.mocked(findBillingState).mockResolvedValue(stateWith(true));
+    vi.mocked(loadReactivationBasket).mockResolvedValue({ services: ["social-media"], forfeited: false, adCreditCents: 0, cancelled: false, billingInterval: "month" });
+
+    expect((await loadMembershipCheckout(customer, "managed", ["social-media"], NOW)).firstMonth).toBeNull();
+    expect(businessHasHadService).not.toHaveBeenCalled();
   });
 
   it("looks for a code against a single service for a business that has not paid", async () => {

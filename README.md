@@ -4,7 +4,7 @@ The customer dashboard and staff console behind Brandbasket's Local Business pla
 account with their **email address**, chooses Managed Website, pays, and manages their website, chatbot,
 billing and support from the dashboard. Brandbasket staff run the same data from a separate staff console.
 
-It lives at `app.brandbasket.in`, on Brandbasket's own server, with its own database, its own staff console and its own secrets.
+The customer app (`apps/customer`) lives at `app.brandbasket.in`, on Brandbasket's own server, with its own database, its own staff console and its own secrets.
 It still carries some dormant code (the free-listing account type and the directory tables, see `CLAUDE.md`): the dashboard
 sells Managed Website and its services only, and registers owners by email. Nothing is ever sent to a phone: every code is emailed.
 
@@ -17,29 +17,28 @@ Requires Node 24+, pnpm 10 and a local PostgreSQL where your macOS user can crea
 
 ```bash
 pnpm install
-pnpm env:init                                   # writes both apps' .env.local with fresh secrets
+pnpm env:init                                   # writes both apps' env files (apps/customer/.env.local, apps/admin/.env.local) with fresh secrets
 createdb brandbasket_platform && createdb brandbasket_platform_test
 pnpm db:roles                                   # brandbasket_* roles (cluster-wide) and the Payload database, owned by bb_cms
 pnpm db:migrate && pnpm db:migrate:test && pnpm cms:migrate
 pnpm staff:create --email you@example.com --name "Your Name"
 ```
 
-Then edit `apps/platform/.env.local` (and `apps/admin/.env.local`) so the database URLs name the databases above, and set:
+Then edit `apps/customer/.env.local` (and `apps/admin/.env.local`; the customer template is `apps/customer/.env.example`) so the database URLs name the databases above, and set:
 
 ```
-APP_ORIGIN=http://app.brandbasket.localhost:3198
-NEXT_PUBLIC_APP_URL=http://app.brandbasket.localhost:3198
+APP_ORIGIN=http://localhost:3197
 ADMIN_ORIGIN=http://console.brandbasket.localhost:3199
 EMAIL_CODE_BYPASS=true        # local only: any 6 digits confirm an email sign-up
 ```
 
-Start the dashboard with `cd apps/platform && npx next dev -p 3198`, and the staff console with
-`cd apps/admin && npx next dev -p 3199`. Use Chrome or Firefox, which resolve `*.localhost` to your machine.
+Start both apps with `pnpm dev` (customer on 3197, staff console on 3199), or one of them with `pnpm dev:customer` or
+`pnpm dev:admin`. Use Chrome or Firefox, which resolve `*.localhost` to your machine.
 
 | Surface          | URL                                         |
 | ---------------- | ------------------------------------------- |
-| Customer sign-in | http://app.brandbasket.localhost:3198                   |
-| Staff console    | http://console.brandbasket.localhost:3199                 |
+| Customer sign-in | http://localhost:3197                       |
+| Staff console    | http://console.brandbasket.localhost:3199   |
 
 Payload keeps its own schema in `brandbasket_platform_payload` with its own migrations (`pnpm cms:migrate`); in development
 Payload pushes schema changes itself.
@@ -63,7 +62,7 @@ Payload pushes schema changes itself.
 
 | Command                 | What it does                                                     |
 | ----------------------- | ---------------------------------------------------------------- |
-| `pnpm dev`              | Start both apps (ports 3198 and 3199) |
+| `pnpm dev`              | Start both apps (customer 3197, admin 3199) |
 | `pnpm build`            | Production build of both apps                                    |
 | `pnpm lint`             | ESLint across both apps                                          |
 | `pnpm typecheck`        | Type-check every workspace package                               |
@@ -77,7 +76,7 @@ Payload pushes schema changes itself.
 
 Unset, `BILLING_PROVIDER` is the fake provider: Pay opens a local "Test payment" page and no money moves. To use
 Razorpay's real Checkout instead, set `BILLING_PROVIDER=razorpay` with Razorpay **test** keys in both apps'
-`.env.local`, and `RAZORPAY_WEBHOOK_SECRET` in the platform's (variables in `apps/platform/.env.example`). A plan only
+`.env.local`, and `RAZORPAY_WEBHOOK_SECRET` in the customer app's (variables in `apps/customer/.env.example`). A plan only
 activates when Razorpay's signed webhook arrives, which cannot reach localhost: run `pnpm dev:tunnel` beside the
 dashboard and set the webhook URL in Razorpay's dashboard to the address it prints.
 
@@ -85,7 +84,7 @@ dashboard and set the webhook URL in Razorpay's dashboard to the address it prin
 
 ```
 apps/
-  platform/   customer dashboard and API routes
+  customer/   customer app: dashboard, public APIs, webhooks, timer jobs
   admin/      staff console, its own Next app with its own build and deploy
 packages/
   shared/     UI, helpers and theme CSS

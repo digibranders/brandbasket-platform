@@ -25,7 +25,7 @@ A site is only recorded as offline if the business has a project that reached `l
 3. Read a dry run. It changes nothing:
 
    ```bash
-   runuser -u brandbasket -- /usr/local/sbin/brandbasket-site-hosting-job --env-file /srv/brandbasket/shared/platform.env.local --dry-run
+   runuser -u brandbasket -- /usr/local/sbin/brandbasket-site-hosting-job --env-file /srv/brandbasket/shared/customer.env.production --dry-run
    ```
 
 4. If the list is what you expect, `systemctl enable --now brandbasket-site-hosting.timer`.

@@ -135,6 +135,17 @@ export async function handleRazorpayWebhookEvent(event: RazorpayWebhookEvent): P
         await restoreKeptPlan(tx, known.id, new Date());
       });
     }
+    // A first-month payment (plan 63) is taken when the mandate is authorised, but live Razorpay does not always send the invoice.paid
+    // that carries it: an added service's came as order.paid and subscription.authenticated only. So every status event of a
+    // subscription still waiting for that payment asks Razorpay for it; it is recorded once whatever else delivers it, and kept for
+    // staff to refund when the subscription is cancelled. A failure to ask throws, so Razorpay delivers the event again.
+    const awaitingFirstPayment = known.firstPaymentCents !== null && known.activatedAt === null;
+    if (awaitingFirstPayment) await recordUpfrontFromRazorpay(event.subscriptionId);
+    // A combined subscription cancelled before it took over (its mandate revoked, say) would leave its services pending and their
+    // first-month offer taken: they are removed, so the customer can add the service again.
+    if (awaitingFirstPayment && known.continuesId !== null && status === "cancelled") {
+      await removeBundledAddOnsOf(getStaffDb(), { subscriptionId: known.id, now: new Date() });
+    }
     return;
   }
 
@@ -703,6 +714,29 @@ export function upfrontChargeEvent(providerSubscriptionId: string, found: Upfron
     method: null,
     upfront: true,
   };
+}
+
+/**
+ * Asks Razorpay for an ordinary subscription's first charge (the plan's own payment) and, when it holds a captured one, records it through
+ * this same handler, exactly as its `subscription.charged` webhook would have been (once per Razorpay payment id). Returns whether it
+ * recorded one now. For a first payment whose webhook was late or refused.
+ */
+export async function recordChargeFromRazorpay(providerSubscriptionId: string): Promise<boolean> {
+  const found = await getRazorpayProvider().findSubscriptionCharge(providerSubscriptionId);
+  if (found === null) return false;
+  if ((await findPaymentByProviderId(getStaffDb(), "razorpay", found.providerPaymentId)) !== null) return false;
+  await handleRazorpayWebhookEvent({
+    kind: "charged",
+    subscriptionId: providerSubscriptionId,
+    currentStart: found.currentStart,
+    currentEnd: found.currentEnd,
+    paidAt: found.paidAt,
+    paymentId: found.providerPaymentId,
+    amountCents: found.amountCents,
+    currency: found.currency,
+    method: null,
+  });
+  return true;
 }
 
 /**

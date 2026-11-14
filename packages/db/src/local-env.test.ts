@@ -80,12 +80,12 @@ describe("resolveLocalEnvPath", () => {
     return root;
   }
 
-  it("prefers apps/platform/.env.local", () => {
-    const root = workspaceWith("apps/platform/.env.local", "apps/customer/.env.production");
-    expect(resolveLocalEnvPath(root)).toBe(join(root, "apps", "platform", ".env.local"));
+  it("prefers apps/customer/.env.local", () => {
+    const root = workspaceWith("apps/customer/.env.local", "apps/customer/.env.production");
+    expect(resolveLocalEnvPath(root)).toBe(join(root, "apps", "customer", ".env.local"));
   });
 
-  it("falls back to apps/customer when apps/platform has no file", () => {
+  it("falls back to the production file when there is no .env.local", () => {
     const root = workspaceWith("apps/customer/.env.production");
     expect(resolveLocalEnvPath(root)).toBe(join(root, "apps", "customer", ".env.production"));
   });

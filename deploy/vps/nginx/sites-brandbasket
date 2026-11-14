@@ -1,7 +1,7 @@
-# Brandbasket: app.brandbasket.in (customer dashboard, apps/platform on 3201) and console.brandbasket.in (staff console,
+# Brandbasket: app.brandbasket.in (customer app, apps/customer on 3202) and console.brandbasket.in (staff console,
 # apps/admin on 3203), both proxied by Cloudflare, which reaches this server over IPv6 only (AAAA records, no A record), so
 # every listener has an IPv6 twin. Installed as /etc/nginx/sites-available/brandbasket by deploy/vps/install.sh nginx-https,
-# after the certificate "brandbasket" exists. The apps listen on 3201 and 3203, which ufw keeps off the internet.
+# after the certificate "brandbasket" exists. The apps listen on 3202 and 3203, which ufw keeps off the internet.
 #
 # What lives elsewhere and is NOT repeated here (checked with `nginx -T` on 2026-10-22). This is the whole list of what this
 # file borrows from Firstfold's nginx; if Firstfold renames or moves any of it, `nginx -t` fails and install.sh takes the
@@ -27,8 +27,8 @@ limit_req_zone  $brandbasket_limit_key zone=brandbasket_general:10m rate=50r/s;
 limit_req_zone  $brandbasket_limit_key zone=brandbasket_signin:5m   rate=30r/m;
 limit_conn_zone $brandbasket_limit_key zone=brandbasket_perip:5m;
 
-upstream brandbasket_app   { server 127.0.0.1:3201; keepalive 16; }
-upstream brandbasket_admin { server 127.0.0.1:3203; keepalive 8; }
+upstream brandbasket_customer { server 127.0.0.1:3202; keepalive 16; }
+upstream brandbasket_admin    { server 127.0.0.1:3203; keepalive 8; }
 
 # Plain HTTP only redirects, and answers certificate challenges.
 server {
@@ -77,12 +77,12 @@ server {
     location ~ ^/(login|join|forgot-password|reset-password|restore-account)(/|$) {
         limit_req zone=brandbasket_signin burst=20 nodelay;
         include snippets/brandbasket-proxy.conf;
-        proxy_pass http://brandbasket_app;
+        proxy_pass http://brandbasket_customer;
     }
 
     location / {
         include snippets/brandbasket-proxy.conf;
-        proxy_pass http://brandbasket_app;
+        proxy_pass http://brandbasket_customer;
     }
 }
 

@@ -102,14 +102,30 @@ describe("loadBillingOverview", () => {
       summary: {
         title: "Add Paid Ads Management",
         rows: [
-          { key: "service", label: "Paid Ads Management, first month", amount: "₹1", tone: "plain" },
-          { key: "plan", label: "Your plan, Fri 27 Nov to Fri 11 Dec", amount: "₹967.42", tone: "plain" },
+          { key: "service", label: "Paid Ads Management, first month (Tue 3 Nov to Fri 11 Dec)", amount: "₹1", tone: "plain" },
+          { key: "plan", label: "Current plan, 14 extra days", amount: "₹967.42", tone: "plain" },
         ],
         totalLabel: "Due today",
         total: "₹968.42",
-        notes: ["From Fri 11 Dec, you pay ₹30,398 a month for all your services.", "All prices include GST."],
+        notes: [
+          "All your services will now renew together on Fri 11 Dec. Your current plan is paid until Fri 27 Nov, so today also covers the days in between.",
+          "From Fri 11 Dec, ₹30,398 a month for Website Management, Social Media Management and Paid Ads Management.",
+          "All prices include GST.",
+        ],
       },
     });
+  });
+
+  it("leaves out the extra days and their reason when the plan needs none", async () => {
+    const DEC_11 = new Date("2026-12-11T06:00:00.000Z");
+    const combined = { kind: "combined", upfrontCents: 100, serviceCents: 100, extensionCents: 0, paidThroughAt: DEC_11, newBillingDate: DEC_11, monthlyCents: 3_039_800, offer: true } as const;
+    vi.mocked(loadAddOnsPage).mockResolvedValue({ ...PAGE, addOns: PAGE.addOns.map((entry) => (entry.kind === "available" ? { ...entry, offer: combined } : entry)) });
+    const view = await loadBillingOverview(customerWith("owner"), {}, NOW);
+    if (view.services === null || !view.services.ok) throw new Error("Expected services");
+    const action = view.services.data.rows[2]?.action;
+    if (action?.kind !== "add") throw new Error("Expected an add");
+    expect(action.summary.rows.map((row) => row.key)).toEqual(["service"]);
+    expect(action.summary.notes).toEqual(["From Fri 11 Dec, ₹30,398 a month for Website Management, Social Media Management and Paid Ads Management.", "All prices include GST."]);
   });
 
   it("gives an editor the same figures and no action", async () => {

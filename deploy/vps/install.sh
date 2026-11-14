@@ -154,7 +154,7 @@ step_dirs_env() {
   say "== build env file (public values and placeholders only)"
   put 0644 "$HERE/brandbasket-platform-build.env" /etc/brandbasket-platform-build.env
   say "== env files (generated secrets; Brevo and Razorpay left blank for the owner)"
-  if [[ -e "$SRV/shared/platform.env.local" && -e "$SRV/shared/admin.env.local" ]]; then
+  if [[ -e "$SRV/shared/customer.env.production" && -e "$SRV/shared/admin.env.local" ]]; then
     say "  both env files exist; not touched"
   elif [[ ! -f "$SECRETS" ]]; then
     (( APPLY )) && die "$SECRETS is missing: run install.sh database --apply first"
@@ -164,7 +164,7 @@ step_dirs_env() {
   else
     env -i PATH="$PATH" HOME="$HOME" BRANDBASKET_DEPLOY_USER=brandbasket bash "$REPO/scripts/server/make-env-files.sh" | sed 's/^/  /'
   fi
-  say "Owner: fill $FILL_ME_NAMES in BOTH $SRV/shared/platform.env.local and admin.env.local (the first deploy stops at its env step until you do)."
+  say "Owner: fill $FILL_ME_NAMES in BOTH $SRV/shared/customer.env.production and admin.env.local (the first deploy stops at its env step until you do)."
 }
 
 # --- github -------------------------------------------------------------------------------------------------------------
@@ -305,16 +305,15 @@ step_services() {
   need_root
   need_user
   say "== checking the units before installing anything"
-  verify_units "$HERE/systemd/brandbasket-app.service" "$HERE/systemd/brandbasket-admin.service" "$HERE/systemd/brandbasket-customer.service" "$HERE/systemd/brandbasket-notify-failure@.service"
+  verify_units "$HERE/systemd/brandbasket-admin.service" "$HERE/systemd/brandbasket-customer.service" "$HERE/systemd/brandbasket-notify-failure@.service"
   say "== units (run as brandbasket, sandboxed; Firstfold's folders are invisible to them)"
-  put 0644 "$HERE/systemd/brandbasket-app.service" "$UNIT_DIR/brandbasket-app.service"
   put 0644 "$HERE/systemd/brandbasket-admin.service" "$UNIT_DIR/brandbasket-admin.service"
   # Installed, not enabled: the customer app v4 has no release until the owner sets CUSTOMER_APP_ENABLED (see the runbook).
   put 0644 "$HERE/systemd/brandbasket-customer.service" "$UNIT_DIR/brandbasket-customer.service"
   say "== failure alerts: Brandbasket's own handler (not Firstfold's); logs only while BREVO_API_KEY is blank"
   put 0700 "$HERE/brandbasket-notify-failure" /usr/local/sbin/brandbasket-notify-failure
   put 0644 "$HERE/systemd/brandbasket-notify-failure@.service" "$UNIT_DIR/brandbasket-notify-failure@.service"
-  install_failure_alerts brandbasket-app brandbasket-admin brandbasket-customer
+  install_failure_alerts brandbasket-admin brandbasket-customer
   say "== migration wrapper (reads the database owner's password from a root-only file; takes no arguments)"
   put 0755 "$REPO/scripts/server/brandbasket-migrate" /usr/local/sbin/brandbasket-migrate
   say "== sudo: brandbasket may run the wrapper, restart/stop the three units, and the CI sandbox, nothing else"
@@ -322,7 +321,7 @@ step_services() {
   say "  visudo -cf: ok"
   put_checked 0440 "$HERE/sudoers-brandbasket" /etc/sudoers.d/brandbasket visudo -c
   act "systemctl daemon-reload" systemctl daemon-reload
-  enable_units brandbasket-app brandbasket-admin
+  enable_units brandbasket-customer brandbasket-admin
   say "  brandbasket-customer is installed and NOT enabled: enable it when turning the customer app on (runbook, \"Customer app v4\")"
   say "  ports 3201, 3202 and 3203 stay closed: ufw admits only 22, and 80/443 from Cloudflare"
 }
@@ -341,7 +340,7 @@ step_autodeploy() {
   need_root
   need_user
   say "== checking what the autodeploy needs"
-  need_file "$SRV/shared/platform.env.local" "run install.sh dirs-env first"
+  need_file "$SRV/shared/customer.env.production" "run install.sh dirs-env first"
   need_file "$SRV/shared/admin.env.local" "run install.sh dirs-env first"
   need_file /etc/brandbasket-platform-build.env "run install.sh dirs-env first"
   need_file /usr/local/sbin/brandbasket-migrate "run install.sh services first"
@@ -351,8 +350,8 @@ step_autodeploy() {
   need_file "$BB_HOME/.github-app-id" "run install.sh github first"
   need_file "$BB_HOME/.github-app-key.pem" "run install.sh github first"
   need_file /usr/local/lib/firstfold/github-status.sh "Firstfold's GitHub reporting library"
-  if grep -qE "^($FILL_ME_NAMES)=\s*$" "$SRV/shared/platform.env.local" "$SRV/shared/admin.env.local"; then
-    say "  still blank in the env files: $(grep -hoE "^($FILL_ME_NAMES)=\s*$" "$SRV/shared/platform.env.local" "$SRV/shared/admin.env.local" | sort -u | tr -d '=' | tr '\n' ' ')"
+  if grep -qE "^($FILL_ME_NAMES)=\s*$" "$SRV/shared/customer.env.production" "$SRV/shared/admin.env.local"; then
+    say "  still blank in the env files: $(grep -hoE "^($FILL_ME_NAMES)=\s*$" "$SRV/shared/customer.env.production" "$SRV/shared/admin.env.local" | sort -u | tr -d '=' | tr '\n' ' ')"
     (( APPLY )) && die "fill those in first: the first deploy would stop at its env step and the timer would keep an alert coming"
   fi
   (( MISSING )) || say "  all present"

@@ -3,25 +3,24 @@
   "payload": false,
   "vitest": false,
   "workspaces": {
-    "apps/platform": {
+    "apps/customer": {
       "entry": [
-        "proxy.ts",
         "instrumentation*.ts",
-        "sentry.*.config.ts",
+        "src/instrumentation*.ts",
+        "src/sentry.*.config.ts",
         "next.config.ts",
         "scripts/*.ts",
-        "app/**/{page,layout,loading,error,not-found,global-error,global-not-found,route,default,template}.{ts,tsx}",
-        "app/**/actions.ts",
-        "app/**/commands.ts",
-        "lib/testing/**/*.ts"
+        "src/app/**/{page,layout,loading,error,not-found,global-error,global-not-found,route,default,template,robots,icon}.{ts,tsx}",
+        "src/app/**/actions.ts",
+        "src/app/**/commands.ts"
       ],
       "project": [
-        "**/*.{ts,tsx}",
+        "src/**/*.{ts,tsx}",
+        "scripts/*.ts",
         "!.next/**",
         "!**/*.test.{ts,tsx}"
       ],
       "ignore": [
-        "payload.config.ts",
         "next-env.d.ts"
       ]
     },

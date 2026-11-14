@@ -11,7 +11,7 @@
 #
 # Which apps a commit needs, from the files changed between what that app runs and main:
 #   docs/, deploy/, .github/ and top-level *.md   no app (nothing that runs changed)
-#   apps/platform/                                  platform only
+#   apps/customer/                                  customer only
 #   apps/admin/                                     admin only
 #   anything else (packages/, the lockfile, package.json, pnpm-workspace.yaml, tsconfig.base.json, scripts/, ...)
 #                                                   both: each app uses the shared packages
@@ -43,7 +43,7 @@ readonly REMOTE=git@github-brandbasket-platform:digibranders/brandbasket-platfor
 readonly BRANCH=main
 readonly FAILED="$ROOT/autodeploy-failed"
 readonly PAUSED="$ROOT/autodeploy-paused"
-readonly APPS=(platform admin)
+readonly APPS=(customer admin)
 readonly GH_REPO=digibranders/brandbasket-platform
 readonly REPORTED="$ROOT/autodeploy-reported"
 
@@ -58,7 +58,7 @@ source /usr/local/lib/brandbasket/heavy-lock.sh
 source /usr/local/lib/brandbasket/github-lib.sh
 
 live_release() { if [[ -L "$ROOT/current-$1" ]]; then basename "$(readlink -f "$ROOT/current-$1")"; else echo none; fi; }
-# What each app runs, for log lines: "platform runs <release>, admin runs <release>".
+# What each app runs, for log lines: "customer runs <release>, admin runs <release>".
 running_summary() {
   local app out=""
   for app in "${APPS[@]}"; do out+="${out:+, }$app runs $(live_release "$app")"; done
@@ -67,7 +67,7 @@ running_summary() {
 # A release is <sha> or <sha>+<unix time>.
 live_commit() { local release; release="$(live_release "$1")"; echo "${release%%+*}"; }
 
-host_of() { case "$1" in platform) echo app.brandbasket.in ;; admin) echo console.brandbasket.in ;; esac; }
+host_of() { case "$1" in customer) echo app.brandbasket.in ;; admin) echo console.brandbasket.in ;; esac; }
 
 # The other app's folder, as one grep alternation: a change only there never redeploys this app.
 other_apps_pattern() {

@@ -6,10 +6,10 @@
 #
 # A quick tunnel gets a new address every run, so the webhook's URL in the Razorpay dashboard (Test Mode, Account &
 # Settings, Webhooks) must be edited to match each time. Its secret is RAZORPAY_WEBHOOK_SECRET from
-# apps/platform/.env.local, and its events are the ones listed in apps/platform/.env.example.
+# apps/customer/.env.local, and its events are the ones listed in apps/customer/.env.example.
 set -euo pipefail
 
-PORT="${PORT:-3198}"
+PORT="${PORT:-3197}"
 command -v cloudflared >/dev/null || { echo "cloudflared is not installed: brew install cloudflared" >&2; exit 1; }
 
 log="$(mktemp)"

@@ -5,9 +5,9 @@ import { config } from "dotenv";
 const WORKSPACE_MARKER = "pnpm-workspace.yaml";
 
 /**
- * Next.js reads this file for apps/platform; scripts and tests outside Next.js load the same file.
+ * Next.js reads this file for apps/customer; scripts and tests outside Next.js load the same file.
  */
-export const LOCAL_ENV_RELATIVE_PATH = join("apps", "platform", ".env.local");
+export const LOCAL_ENV_RELATIVE_PATH = join("apps", "customer", ".env.local");
 
 /** Next.js reads this file for apps/admin. The staff console is its own app, so it has its own environment. */
 export const ADMIN_ENV_RELATIVE_PATH = join("apps", "admin", ".env.local");
@@ -28,12 +28,12 @@ export function findWorkspaceRoot(startDir: string = process.cwd()): string {
 }
 
 /**
- * Where scripts look when apps/platform has no env file (its folder is gone, or this is a release without it): apps/customer's
- * file for development, then its production file, which on the server is a link to shared/customer.env.production.
+ * Where scripts look when apps/customer has no .env.local (a release on the server): its production file, which there is a link to
+ * shared/customer.env.production.
  */
-const FALLBACK_ENV_RELATIVE_PATHS = [join("apps", "customer", ".env.local"), join("apps", "customer", ".env.production")];
+const FALLBACK_ENV_RELATIVE_PATHS = [join("apps", "customer", ".env.production")];
 
-/** The env file scripts load: apps/platform/.env.local when it exists, otherwise the first fallback that does. */
+/** The env file scripts load: apps/customer/.env.local when it exists, otherwise the first fallback that does. */
 export function resolveLocalEnvPath(root: string = findWorkspaceRoot()): string | null {
   for (const relative of [LOCAL_ENV_RELATIVE_PATH, ...FALLBACK_ENV_RELATIVE_PATHS]) {
     const path = join(root, relative);
@@ -42,7 +42,7 @@ export function resolveLocalEnvPath(root: string = findWorkspaceRoot()): string 
   return null;
 }
 
-/** Loads apps/platform/.env.local (or the apps/customer file when it is missing) into process.env. Variables already set in the environment win. */
+/** Loads apps/customer/.env.local (or its production file when that is missing) into process.env. Variables already set in the environment win. */
 export function loadLocalEnv(): void {
   const path = resolveLocalEnvPath();
   if (path === null) {

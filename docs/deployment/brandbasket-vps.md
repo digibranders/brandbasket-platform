@@ -1,6 +1,6 @@
 # Brandbasket platform on the Firstfold VPS
 
-`app.brandbasket.in` (customer dashboard, `apps/platform`) and `console.brandbasket.in` (staff console, `apps/admin`) run on the
+`app.brandbasket.in` (customer dashboard, `apps/customer`) and `console.brandbasket.in` (staff console, `apps/admin`) run on the
 Hostinger VPS that already runs Firstfold (`ssh firstfold-vps`, 201.18.196.170, IPv6 `2a02:4780:63:bbcc::1`), the way Firstfold runs
 there: the VPS pulls `main` and every branch from GitHub, runs CI in a sandbox, deploys `main` with health-checked switches, and
 reports both to GitHub's Checks tab. This is staging first: Razorpay test keys, noindex. Plan and decisions:
@@ -11,8 +11,8 @@ This replaces `brandbasket-droplet.md` (a push-from-the-Mac droplet that was nev
 this one points to: Brevo (8), Razorpay (9), environment variables (15) and the free-website-address notes.
 
 ```
- visitor ── Cloudflare (proxied) ──IPv6──▶ nginx :443 ─┬─ app.brandbasket.in      brandbasket-app    :3201  apps/platform
-                                                        └─ console.brandbasket.in  brandbasket-admin  :3203  apps/admin
+ visitor ── Cloudflare (proxied) ──IPv6──▶ nginx :443 ─┬─ app.brandbasket.in      brandbasket-customer :3202  apps/customer
+                                                        └─ console.brandbasket.in  brandbasket-admin    :3203  apps/admin
                                                                   │   (the same nginx serves www/app/admin/sales.firstfold.io)
                                               Postgres 16, localhost:5432 (brandbasket_platform, brandbasket_platform_payload)
 ```
@@ -36,9 +36,9 @@ are made invisible to them (`InaccessiblePaths`, below). The user has no login s
 | What | Where |
 |---|---|
 | User | `brandbasket` (system user, `/home/brandbasket`, shell `nologin`, mode 700). `bbci` runs only the CI sandbox |
-| Apps | `brandbasket-app` (3201) and `brandbasket-admin` (3203), user `brandbasket`, `next start` from `/srv/brandbasket/current-platform/apps/platform` and `current-admin/apps/admin`. Caps: 800M/1000M and 500M/650M (high/max). Sandboxed like Firstfold's apps (see "Unit hardening") |
-| Releases | `/srv/brandbasket/releases/<sha>` with `current-platform`, `current-admin` and `deploying` symlinks; mirror `/srv/brandbasket/repo.git` |
-| Env files | `/srv/brandbasket/shared/{platform,admin}.env.local` (brandbasket, 600; `/srv/brandbasket` is 750, so Firstfold's `deploy` cannot enter it), linked into a release after its build. Build env: `/etc/brandbasket-platform-build.env` (public values and placeholders) |
+| Apps | `brandbasket-customer` (3202) and `brandbasket-admin` (3203), user `brandbasket`, `next start` from `/srv/brandbasket/current-customer/apps/customer` and `current-admin/apps/admin`. Caps: 650M/800M and 500M/650M (high/max). Sandboxed like Firstfold's apps (see "Unit hardening") |
+| Releases | `/srv/brandbasket/releases/<sha>` with `current-customer`, `current-admin` and `deploying` symlinks; mirror `/srv/brandbasket/repo.git` |
+| Env files | `/srv/brandbasket/shared/customer.env.production` and `admin.env.local` (brandbasket, 600; `/srv/brandbasket` is 750, so Firstfold's `deploy` cannot enter it), linked into a release after its build. Build env: `/etc/brandbasket-platform-build.env` (public values and placeholders) |
 | Uploads | `/srv/brandbasket/media`, `/srv/brandbasket/support-private` (outside the releases) |
 | Database | roles `bb_owner` (migrations only), `bb_app`, `bb_staff`, `bb_public`, `bb_cms`; databases `brandbasket_platform` (connection limit 40) and `brandbasket_platform_payload` (20), so neither can take the connections Firstfold's databases need (`max_connections` is 120). Secrets file `/root/brandbasket-secrets.env` |
 | Deploys | `brandbasket-platform-autodeploy.timer` at :20 of every minute; scripts `/usr/local/bin/brandbasket-platform-{autodeploy,release}`; `/usr/local/sbin/brandbasket-migrate` |
@@ -48,7 +48,7 @@ are made invisible to them (`InaccessiblePaths`, below). The user has no login s
 | Backups | `brandbasket-backup.timer` 02:15 UTC, `brandbasket-restore-test.timer` Sunday 05:00 UTC; `/var/backups/brandbasket`; off-site `/etc/brandbasket/offsite.sh` |
 | Upkeep | `brandbasket-maintenance.timer` 03:30 UTC; `brandbasket-erase.timer` 03:50 UTC, installed and **not enabled**; `brandbasket-site-health.timer` every 10 minutes, installed and **not enabled** (see "Site health"); `brandbasket-monthly-reports.timer` on the 1st, installed and **not enabled** (see "Monthly reports"). All run as `brandbasket`, sandboxed |
 | Alerts | `/usr/local/sbin/brandbasket-notify-failure` and `brandbasket-notify-failure@.service` (Brandbasket's own, see "Monitoring") |
-| Sudo | `/etc/sudoers.d/brandbasket`, user `brandbasket` only: `brandbasket-migrate` (no arguments), restart and stop of the two app units, `brandbasket-ci-sandbox`. Nothing else, and `deploy` has no Brandbasket rule |
+| Sudo | `/etc/sudoers.d/brandbasket`, user `brandbasket` only: `brandbasket-migrate` (no arguments), restart and stop of the two app units (`brandbasket-customer`, `brandbasket-admin`), `brandbasket-ci-sandbox`. Nothing else, and `deploy` has no Brandbasket rule |
 
 Timer offsets across the box, so nothing starts together: Firstfold website :00, Brandbasket autodeploy :20, Firstfold platform :30,
 Firstfold CI :45, Brandbasket CI :50; nightly Brandbasket backup 02:15 UTC, Firstfold's at 21:00, 21:30 and 22:00.
@@ -61,7 +61,7 @@ the box. `.github/workflows/deploy.yml` therefore builds on a GitHub runner and 
 ```
  main passes CI ─▶ Deploy workflow (runner) ─ build both apps at /srv/brandbasket/releases/<sha> ─ tar ─▶ ssh (one forced command)
                                                          VPS: brandbasket-gha-deploy ─▶ brandbasket-platform-release --prebuilt
-                                                              install ─ env check ─ migrations ─ switch platform, then admin ─ prune
+                                                              install ─ env check ─ migrations ─ switch customer and admin ─ prune
 ```
 
 - **Trigger:** the workflow runs after the CI workflow succeeds on `main`, or by hand (Actions, Deploy, Run workflow) for the head of `main`.
@@ -76,139 +76,58 @@ the box. `.github/workflows/deploy.yml` therefore builds on a GitHub runner and 
 - **Rollback:** unchanged, `brandbasket-platform-release --activate <app> <release>`.
 - **Install:** `deploy/vps/install.sh` puts `brandbasket-gha-deploy` in `/usr/local/sbin`. Adding the key line is a manual step on purpose.
 
-## Customer app v4 (apps/customer, port 3202)
+## Customer app (apps/customer, port 3202)
 
-The new customer app (plan 61, `docs/customer-app-v4/61-customer-app-v4-implementation-plan.md`) is a third process, `brandbasket-customer`,
-beside `brandbasket-app` and `brandbasket-admin`. **It is off.** Merging to `main` deploys exactly what it deployed before until the
-owner sets the repository variable below; nothing in this section changes `app.brandbasket.in` until the cutover in step 5.
+`apps/customer` is the only customer app. It serves the dashboard at `app.brandbasket.in`, the public APIs the client websites call
+(`/api/site`, `/api/t`, `/api/leads`, `/api/pricing`), the payment and other webhooks (`/api/webhooks/*`), the timer-job endpoints
+(`/api/internal/*`) and the blog image routes. It runs as `brandbasket-customer`, beside `brandbasket-admin`. Every deploy builds and
+ships both apps; there is no switch.
 
 | Thing | Value |
 |---|---|
-| Switch | GitHub repository variable `CUSTOMER_APP_ENABLED`, default unset (off). `1` turns it on; anything else is off |
-| What it does | Deploy builds `@brandbasket/customer` too, sends `deploy <sha> customer`, and the VPS installs, checks the env file, restarts `brandbasket-customer` after platform and admin, and health-checks `/login` on 3202 |
-| Unit | `deploy/vps/systemd/brandbasket-customer.service`: user `brandbasket`, `current-customer/apps/customer`, heap 512M, `MemoryHigh` 650M, `MemoryMax` 800M (starting values, set after step 1), sandboxed like the others, same media folders |
+| Unit | `deploy/vps/systemd/brandbasket-customer.service`: user `brandbasket`, `current-customer/apps/customer`, heap 512M, `MemoryHigh` 650M, `MemoryMax` 800M (starting values, adjust from `MemoryPeak`), sandboxed like the others, same media folders |
 | Env file | `/srv/brandbasket/shared/customer.env.production` (brandbasket, 600), linked to `apps/customer/.env.production` in every release. Template: `apps/customer/.env.production.example` |
-| Health check | `/login` returning 200 (the same path as the other apps). `apps/customer` has no health route; if one is wanted it is a small addition inside `apps/customer/src` |
-| nginx (not applied) | `deploy/vps/nginx/brandbasket-next.conf.example` (staging), `brandbasket-cutover.conf.example` (app host), `brandbasket-split-platform-paths.conf.example` (the public endpoints that stay on platform) |
+| Health check | `/login` returning 200 (the same path as the console). `apps/customer` has no health route |
+| Deploy | The VPS installs, checks the env files, runs migrations, then restarts `brandbasket-customer` and `brandbasket-admin`, each with a `/login` health check |
 
-A customer deploy that fails its health check is switched back (or, on the first deploy, left stopped); platform and admin have
-already switched by then and stay on the new release. The workflow run shows red and the migrations are not undone, as always.
+An app whose health check fails is switched back to its previous release (or, on the first deploy, left stopped). An app that already
+switched stays on the new release. The workflow run shows red and the migrations are not undone, as always.
 
-**1. Check the VPS memory first** (the plan asks for it). The box also runs Firstfold. On the server:
+The deploy refuses a customer env file that is missing, has a short secret, or sets `EMAIL_CODE_BYPASS` or `BRANDBASKET_ALLOW_FAKE_BILLING`.
+`BETTER_AUTH_SECRET`, `ACCOUNT_CODE_SECRET`, `PAYLOAD_SECRET`, `LEADS_API_TOKEN`, `BRANDBASKET_MEDIA_ROOT` and `BRANDBASKET_SUPPORT_ROOT`
+must be equal in `customer.env.production` and `admin.env.local`. Validate both with
+`pnpm env:check --customer <file> --admin <file>` (`--platform` is still accepted as the old name of `--customer`).
 
-```bash
-free -m                                                  # "available" is the figure that counts
-ps -eo rss,comm,args --sort=-rss | head -15              # who holds it
-systemctl show brandbasket-app brandbasket-admin -p MemoryCurrent -p MemoryPeak
-psql -U postgres -tAc "select datname, count(*) from pg_stat_activity group by 1"   # against the connection limits below
-```
+Memory: check `free -m` and `systemctl show brandbasket-customer brandbasket-admin -p MemoryCurrent -p MemoryPeak` before raising a cap.
+The apps' pools add up against `brandbasket_platform`'s limit of 40 connections (`DB_CONN_LIMIT` in `scripts/server/setup-database.sh`,
+`max_connections` 120 shared with Firstfold).
 
-The new process needs about 650M of headroom at `MemoryHigh` with 800M as the hard stop, and there must still be room for Postgres and
-Firstfold's builds. If it does not fit, stop here: raise the VPS, or lower the caps and measure on staging first. Database
-connections: the apps' pools add up against `brandbasket_platform`'s limit of 40 (`DB_CONN_LIMIT` in `scripts/server/setup-database.sh`,
-`max_connections` 120 shared with Firstfold); count the platform's and console's open connections before adding a third pool.
+### How the customer app came to serve everything (history)
 
-**2. Install once, on the VPS, as root** (nothing starts):
+- 2026-11-03: `brandbasket-customer` went live on port 3202 next to the old `brandbasket-app` (port 3201, `apps/platform`), and
+  `app.brandbasket.in` was pointed at it. The old app kept the public endpoints, webhooks and timer jobs for a while through an nginx
+  snippet.
+- 2026-11-14: those paths, the timer jobs and the blog image routes moved to `apps/customer`, and `apps/platform` was deleted from the
+  repository. The `CUSTOMER_APP_ENABLED` repository variable no longer exists (the deploy always builds both apps). The deploy
+  scripts `brandbasket-gha-deploy` and `brandbasket-platform-release` handle `admin` and `customer` only. The nginx examples
+  `brandbasket-cutover.conf.example`, `brandbasket-split-platform-paths.conf.example` and `brandbasket-public-paths.conf.example` were deleted.
+- Not in use any more: the `brandbasket-app` unit, port 3201, `current-platform`, `shared/platform.env.local`, the nginx upstream
+  `brandbasket_app` and `pnpm dev:platform`.
 
-1. Copy this repository's `deploy/` and `scripts/server/` to the server as for any install, then `deploy/vps/install.sh services --apply`
-   (puts `brandbasket-customer.service` in place **without enabling it** and adds the customer unit to the sudoers file) and
-   `deploy/vps/install.sh autodeploy --apply` (updates `brandbasket-platform-release` and `brandbasket-gha-deploy`). The new
-   `brandbasket-gha-deploy` must be in place **before** the variable is set: the old copy refuses `deploy <sha> customer`.
-2. Make the env file: `install -m 600 -o brandbasket -g brandbasket /dev/null /srv/brandbasket/shared/customer.env.production`, then fill
-   it from `apps/customer/.env.production.example`. Most values are copies of `platform.env.local`. For staging, `APP_ORIGIN=https://next.brandbasket.in`.
-   `BETTER_AUTH_SECRET`, `ACCOUNT_CODE_SECRET`, `LEADS_API_TOKEN`, `BRANDBASKET_MEDIA_ROOT` and `BRANDBASKET_SUPPORT_ROOT` must equal platform's.
-   The deploy refuses a release whose file is missing, has a short secret, or sets `EMAIL_CODE_BYPASS` or `BRANDBASKET_ALLOW_FAKE_BILLING`,
-   and warns when the auth secret differs from platform's. `pnpm env:check` does not read this file.
-3. `systemctl enable brandbasket-customer` (it is started by the first deploy, not by this).
-4. In GitHub, Settings, Secrets and variables, Actions, Variables: add `CUSTOMER_APP_ENABLED` = `1`.
+### Server cleanup checklist (owner or operator, on the VPS as root)
 
-**3. First deploy.** The variable takes effect on the next deploy of a new `main` commit (the workflow refuses a commit that an app already
-runs, so re-running the current one will not do). Then check `systemctl status brandbasket-customer`, `journalctl -u brandbasket-customer`,
-and `curl -s -o /dev/null -w '%{http_code}\n' -H 'Host: app.brandbasket.in' http://127.0.0.1:3202/login` (200). Note the real memory
-(`systemctl show brandbasket-customer -p MemoryPeak`) and adjust the unit's limits if needed.
+None of these is marked done yet. Tick each one off here when it is done.
 
-**4. Stage on next.brandbasket.in.**
-
-1. Cloudflare: an AAAA record for `next` (proxied, the same address as `app`) and a Cloudflare Access application for `next.brandbasket.in`,
-   with a bypass policy for `/.well-known/acme-challenge/*` (or issue the certificate before Access goes on).
-2. Certificate in its own lineage, so the `brandbasket` one is never reissued: `certbot certonly --webroot -w /var/www/acme --cert-name brandbasket-next --key-type ecdsa -d next.brandbasket.in`.
-3. Install the nginx files by hand (the headers of the three examples say how): `brandbasket-next.conf.example` as
-   `/etc/nginx/sites-available/brandbasket-next` (link into `sites-enabled`), `brandbasket-split-platform-paths.conf.example` as
-   `/etc/nginx/snippets/brandbasket-split-platform-paths.conf`, then `nginx -t && systemctl reload nginx`.
-4. Everything except the public endpoints goes to the customer app; `/api/site/`, `/api/t`, `/t/`, `/api/leads`, `/api/pricing`, `/api/webhooks/`,
-   `/api/internal/`, `/api/privacy-requests/`, `/api/content-media-uploads` and `/content-media/` go to platform. The platform is sent
-   `Host: app.brandbasket.in` for those, because its `proxy.ts` answers 404 for any other host.
-5. Staging runs on production data. Sign in with a test account only. With live Razorpay keys in the file a checkout takes real money:
-   either use `rzp_test_` keys in the staging file (the plans must exist in the Razorpay mode the keys belong to) or do not pay.
-
-**5. Cut over** (after the owner signs off, plan 61 section 10).
-
-1. In `customer.env.production` set `APP_ORIGIN=https://app.brandbasket.in` and confirm `BETTER_AUTH_SECRET` equals platform's (the deploy warns when
-   it does not). Restart: `systemctl restart brandbasket-customer`. (Add the Turnstile hostname for the app host if Turnstile is on.)
-2. Replace the `app.brandbasket.in` `server { ... }` block in `/etc/nginx/sites-available/brandbasket` with the block in
-   `brandbasket-cutover.conf.example`, `nginx -t && systemctl reload nginx`. Same host, same cookie, so customers stay signed in. Tabs
-   opened on the old app ask for assets that no longer exist and need a reload.
-3. Leave `CUSTOMER_APP_ENABLED` at `1` from now on: with it unset, deploys stop updating the customer app, which keeps serving its last release.
-4. Watch Sentry, the Razorpay webhook log (`journalctl -u brandbasket-app | grep webhooks`) and the first real sign-ins for a day.
-
-**Go-live log, 2026-11-03.** Done on the VPS before the first customer deploy, so the next merge to `main` starts the app:
-
-- Ran `install.sh services --apply` from the release folder (installs `brandbasket-customer.service`, the sudoers entry and the failure alert handler). Did **not** run `install.sh autodeploy --apply`: that step also enables the autodeploy timer, which must stay off while GitHub Actions deploys. The two scripts it installs were copied by hand (`brandbasket-platform-release` to `/usr/local/bin`, `brandbasket-gha-deploy` to `/usr/local/sbin`, backups beside them as `*.bak-<time>`).
-- Made `/srv/brandbasket/shared/customer.env.production` (600, brandbasket) from the keys the template lists, copied from `platform.env.local` (same secrets, `BILLING_PROVIDER=razorpay`, `APP_ORIGIN=https://app.brandbasket.in`).
-- Made `/srv/brandbasket/media/payload` and set `PAYLOAD_MEDIA_DIR=/srv/brandbasket/media/payload` in both `platform.env.local` and the customer file, so blog images no longer live inside release folders. Before this the media folder held only the repository's test images.
-- `systemctl enable brandbasket-customer`; repository variable `CUSTOMER_APP_ENABLED=1`.
-- Memory before: 11.8 GB available of 16 GB; `brandbasket_platform` held 7 of 40 connections.
-- The deploy refuses a commit that platform already runs, so turning the customer app on needs a new commit on `main` (this note is one).
-
-**6. Roll back, one change.** In the `app.brandbasket.in` block put `proxy_pass http://brandbasket_app;` back in both places (the commented line
-beside each), `nginx -t && systemctl reload nginx`. Platform never stopped, and migrations are additive until the old app is retired
-(plan 61 phase 13), so data written by either app is readable by both. Leave `brandbasket-customer` running. To switch the customer app
-itself off afterwards: `systemctl disable --now brandbasket-customer`, then unset the variable.
-
-## Switching the platform paths to apps/customer
-
-State before: `app.brandbasket.in` already serves `apps/customer` (`brandbasket_customer`, 3202), but the sites-enabled file includes
-`snippets/brandbasket-split-platform-paths.conf`, which sends `/api/(site|t|leads|pricing|webhooks|internal|privacy-requests|content-media-uploads)`,
-`/t/` and `/content-media/` to `brandbasket_app` (3201). The code for all of them now lives in `apps/customer` (`src/app/api`,
-`src/platform/lib`), and its job scripts are in `apps/customer/scripts`. The switch moves those paths and the timer jobs to 3202. Nothing
-here is applied by a merge or a deploy: only `install.sh` and the nginx edit change the server.
-
-**Before.** All on the VPS, as root.
-
-1. Deploy this commit to `main` first, with `CUSTOMER_APP_ENABLED=1`. Platform and the console still deploy as before; `brandbasket-customer` now has the routes.
-   Check the routes exist (any answer except 404 or 502 is fine, the token is wrong on purpose):
-   `curl -s -o /dev/null -w '%{http_code}\n' -X POST -H 'Authorization: Bearer x' http://127.0.0.1:3202/api/internal/sync-site-hosting`
-2. Copy what the moved code needs from `platform.env.local` into `customer.env.production`. Names only, no values:
-   `comm -23 <(grep -E '^[A-Z0-9_]+=.' shared/platform.env.local | cut -d= -f1 | sort -u) <(grep -E '^[A-Z0-9_]+=.' shared/customer.env.production | cut -d= -f1 | sort -u)`
-   lists what the customer file lacks. Append the ones that belong (the list is in `apps/customer/.env.production.example`):
-   `for n in PAGESPEED_API_KEY GOOGLE_OAUTH_CLIENT_ID GOOGLE_OAUTH_CLIENT_SECRET GOOGLE_ACCOUNT_EMAIL GOOGLE_SECOND_OWNER_EMAIL GOOGLE_ANALYTICS_TAG_ENABLED GOOGLE_ANALYTICS_ACCOUNT_NAME GA4_SERVICE_ACCOUNT_JSON ACCOUNT_ERASE_TOKEN PAYMENT_RECONCILE_TOKEN KICKOFF_SYNC_TOKEN SITE_HOSTING_SYNC_TOKEN SITE_ANALYTICS_TOKEN; do grep -q "^$n=." shared/customer.env.production || grep -E "^$n=." shared/platform.env.local >> shared/customer.env.production || true; done`
-   Then `restart brandbasket-customer`. The webhook secrets, `LEADS_API_TOKEN`, `BETTER_AUTH_SECRET`, `PAYLOAD_SECRET`, `BRANDBASKET_MEDIA_ROOT` and `BRANDBASKET_SUPPORT_ROOT` must be equal in both files.
-3. Copy the repository's `deploy/` and `scripts/server/` to the server as for any install.
-
-**Switch.**
-
-1. `install -m 644 deploy/vps/nginx/brandbasket-public-paths.conf.example /etc/nginx/snippets/brandbasket-public-paths.conf`. Leave the old snippet where it is.
-2. In `/etc/nginx/sites-available/brandbasket` (and `brandbasket-next`, if installed) change the include from
-   `snippets/brandbasket-split-platform-paths.conf` to `snippets/brandbasket-public-paths.conf` (`sed -i.bak`, keeps the old file as `.bak`).
-   The new snippet sends the same paths to `brandbasket_customer`.
-3. `nginx -t && systemctl reload nginx`.
-4. Move the timer jobs: `deploy/vps/install.sh backups --apply`. It puts the changed units and `/usr/local/sbin/brandbasket-*-job` scripts in place:
-   maintenance, site health, monthly reports and the two Google jobs now run `pnpm --filter @brandbasket/customer <job>` in `current-customer`;
-   erase, kickoff builds, site hosting, site rollup and first payment check call `127.0.0.1:3202` with the token from `customer.env.production`.
-5. Check, in this order: `journalctl -u brandbasket-customer -f` while a Razorpay test webhook or the Cal.com test arrives; `curl -sI https://app.brandbasket.in/t/v1.js`
-   answers 200; a blog image from `/content-media/` loads; the dry runs
-   `runuser -u brandbasket -- /usr/local/sbin/brandbasket-erase-job --env-file /srv/brandbasket/shared/customer.env.production --dry-run` and
-   `cd /srv/brandbasket/current-customer && runuser -u brandbasket -- pnpm --filter @brandbasket/customer reports:run -- --dry-run`;
-   then `systemctl start brandbasket-maintenance.service` and read its journal (a good run prints a line starting `Support maintenance:`).
-6. Watch Sentry and the webhook log for a day before the last step (deleting `apps/platform` and `brandbasket-app`).
-
-**Roll back.** Point the include in the sites-enabled file back at `snippets/brandbasket-split-platform-paths.conf` (or restore the `.bak`),
-`nginx -t && systemctl reload nginx`. For the jobs: from the previous commit's `deploy/` run `install.sh backups --apply` again, which
-restores the units that use `current-platform` and port 3201. Platform keeps running the whole time, so nothing else has to move.
-
-**After it has held.** Delete `apps/platform` and the `brandbasket-app` unit, and do the `# TODO after switch` items in
-`deploy/vps/brandbasket-platform-release`, `deploy/vps/brandbasket-gha-deploy` and `.github/workflows/deploy.yml`. The new snippet is then
-redundant (it goes to the same upstream as `location /`): remove it and its include.
+- [ ] `systemctl disable --now brandbasket-app`
+- [ ] Remove `/etc/systemd/system/brandbasket-app.service`, then `systemctl daemon-reload`
+- [ ] Remove the `brandbasket-app` lines from `/etc/sudoers.d/brandbasket` (check with `visudo -c`)
+- [ ] In `/etc/nginx/sites-available/brandbasket` (and `brandbasket-next`, if installed) remove the `upstream brandbasket_app` block and the
+      `include snippets/brandbasket-public-paths.conf;` line (and the old `brandbasket-split-platform-paths.conf` include if it is still there)
+- [ ] Remove `/etc/nginx/snippets/brandbasket-public-paths.conf` and `brandbasket-split-platform-paths.conf`, then `nginx -t && systemctl reload nginx`
+- [ ] Check that the timer jobs use the new scripts: `deploy/vps/install.sh backups --apply` from the current release, then
+      `systemctl start brandbasket-maintenance.service` and read its journal
+- [ ] After a few days with nothing wrong in Sentry or `journalctl -u brandbasket-customer`: delete `/srv/brandbasket/shared/platform.env.local`
+- [ ] Remove old `/srv/brandbasket/current-platform` and any release folders only it used, when pruning has not already done so
 
 ## One heavy job at a time
 
@@ -304,7 +223,7 @@ Then, on the server, `cd /root/brandbasket-src && bash deploy/vps/install.sh <st
 | 2 | install.sh | `user --apply`: the system user `brandbasket` (home 700, `nologin`), its `~/.ssh`, and the check of Firstfold's three lock files described above. Read the plan first: it says whether a lock file would be created, and stops if a Firstfold directory or file is not readable by others |
 | 3 | install.sh | `database --apply`: the five roles, the two databases with connection limits 40 and 20 (set on every run, reported at the end), passwords into `/root/brandbasket-secrets.env` |
 | 4 | install.sh | `dirs-env --apply`: `/srv/brandbasket/...` owned by `brandbasket`, `/etc/brandbasket`, the build env file, and the two env files with generated secrets |
-| 5 | Owner | In **both** `/srv/brandbasket/shared/platform.env.local` and `admin.env.local` fill `BREVO_API_KEY`, `RAZORPAY_KEY_ID` and `RAZORPAY_KEY_SECRET` (the three `FILL_ME` lines; Razorpay test keys, `rzp_test_...`). Brevo: droplet page section 8 (domain, one merged SPF record, DKIM, DMARC). `autodeploy --apply` refuses to start while any of them is blank |
+| 5 | Owner | In **both** `/srv/brandbasket/shared/customer.env.production` and `admin.env.local` fill `BREVO_API_KEY`, `RAZORPAY_KEY_ID` and `RAZORPAY_KEY_SECRET` (the three `FILL_ME` lines; Razorpay test keys, `rzp_test_...`). Brevo: droplet page section 8 (domain, one merged SPF record, DKIM, DMARC). `autodeploy --apply` refuses to start while any of them is blank |
 | 6 | install.sh | `github --apply`: the read-only deploy key `~brandbasket/.ssh/github-brandbasket-platform`, `known_hosts` (the `github.com` lines copied from Firstfold's), the ssh alias `github-brandbasket-platform` in `~brandbasket/.ssh/config` (Firstfold's `~deploy/.ssh/config` is not touched), the mirror, and a copy of the GitHub App id and key from `~deploy` into `~brandbasket` (mode 600, copied by root). It prints the public key |
 | 7 | Owner | GitHub: add that key to `digibranders/brandbasket-platform` as a **read-only** deploy key (Settings, Deploy keys). Add the repository to the installation of the GitHub App `firstfold-vps-deploy` (App ID 5234124: Settings, Developer settings, GitHub Apps, Install App, Configure). Run `github --apply` again; it reports `the GitHub App ... can report` when both are right |
 | 8 | install.sh | `nginx-http --apply`: port 80 for the two names |
@@ -316,7 +235,7 @@ Then, on the server, `cd /root/brandbasket-src && bash deploy/vps/install.sh <st
 | 14 | install.sh | `ci --apply`: user `bbci` (home on the sandbox disk), the 8 GB sandbox image and its mount unit, the sandbox, the ufw rule, the timer |
 | 15 | install.sh | `backups --apply`: installs the scripts and units. Then run `brandbasket-backup --apply` once by hand and `brandbasket-restore-test --apply`, then `backups --apply` again: the backup, restore-test and maintenance timers are enabled only when those have succeeded and a release exists. `brandbasket-erase.timer` is never enabled by this |
 | 16 | Owner | First staff user (interactive, password typed twice): `ssh -t firstfold-vps "runuser -u brandbasket -- env HOME=/home/brandbasket bash -c 'cd /srv/brandbasket/current-admin && pnpm staff:create --email <you> --name \"Your Name\" --role admin'"` |
-| 17 | Owner | Razorpay test webhook: URL `https://app.brandbasket.in/api/webhooks/razorpay`, the secret is `RAZORPAY_WEBHOOK_SECRET` in `platform.env.local` (enter it in Razorpay at the same moment), the ten events listed in droplet page section 9 |
+| 17 | Owner | Razorpay test webhook: URL `https://app.brandbasket.in/api/webhooks/razorpay`, the secret is `RAZORPAY_WEBHOOK_SECRET` in `customer.env.production` (enter it in Razorpay at the same moment), the ten events listed in droplet page section 9 |
 | 18 | Owner | Smoke tests below |
 
 Housekeeping once it works: delete `DEPLOY_SSH_KEY`, `DEPLOY_KNOWN_HOSTS` and the `droplet` environment in this repository's GitHub
@@ -334,11 +253,11 @@ come through Cloudflare; steps in `cloudflare-access.md`).
 | Releases and which app runs which | `as-bb brandbasket-platform-release --list` |
 | Roll back one app | `as-bb brandbasket-platform-release --activate <platform\|admin> <release>`. Health-checked, and it pauses the autodeploy so `main` does not replace it; `--resume` ends the pause. Runs under a 45 minute limit |
 | CI state | `as-bb brandbasket-ci --status` |
-| Logs | `journalctl -u brandbasket-platform-autodeploy`, `-u brandbasket-ci`, `-u brandbasket-app -u brandbasket-admin`, `-u brandbasket-backup`, `-u brandbasket-maintenance` |
+| Logs | `journalctl -u brandbasket-platform-autodeploy`, `-u brandbasket-ci`, `-u brandbasket-customer -u brandbasket-admin`, `-u brandbasket-backup`, `-u brandbasket-maintenance` |
 | Run a backup now | `brandbasket-backup --apply` |
 | Prove the newest backup restores | `brandbasket-restore-test --apply`, or the off-site copy: `ssh root@firstfold-vps brandbasket-restore-test --apply --r2 < ~/droplet-backups/firstfold-backup-age.key` |
-| Erase deleted accounts, preview | `as-bb /usr/local/sbin/brandbasket-erase-job --env-file /srv/brandbasket/shared/platform.env.local --dry-run` |
-| Change an env value | Edit the file in `/srv/brandbasket/shared/`, then `systemctl restart brandbasket-app` (and `brandbasket-admin` for shared values) one at a time. Keep `BETTER_AUTH_SECRET`, `PAYLOAD_SECRET`, the origins and `BRANDBASKET_MEDIA_ROOT` identical in both files; `pnpm env:check` runs at every deploy |
+| Erase deleted accounts, preview | `as-bb /usr/local/sbin/brandbasket-erase-job --env-file /srv/brandbasket/shared/customer.env.production --dry-run` |
+| Change an env value | Edit the file in `/srv/brandbasket/shared/`, then `systemctl restart brandbasket-customer` (and `brandbasket-admin` for shared values) one at a time. Keep `BETTER_AUTH_SECRET`, `PAYLOAD_SECRET`, the origins and `BRANDBASKET_MEDIA_ROOT` identical in both files; `pnpm env:check` runs at every deploy |
 | Check a commit again in CI | Delete its line from `/srv/brandbasket-ci/state/platform.checked` (as `brandbasket`) |
 | Look at the sandbox disk | `df -h /srv/brandbasket-ci/sandbox` (8 GB; when under 3 GB is free the next run clears pnpm's store and cache) |
 
@@ -348,7 +267,7 @@ forward-only, see the droplet page section 13.
 ## Site health
 
 `brandbasket-site-health.timer` starts `brandbasket-site-health.service` every 10 minutes. It runs `pnpm site-health:run` in the
-current platform release: every live customer website (latest project live, with a primary domain; a site the hosting sync paused
+current customer release: every live customer website (latest project live, with a primary domain; a site the hosting sync paused
 is skipped) is fetched over https with a 10 second limit and its certificate's end date is read. Once a day per site it also asks
 Google PageSpeed Insights for the phone speed score. Each run adds one `site_checks` row per site; the customer app shows them on
 the Website page and on Home. When a site goes from up to down for two checks in a row, one email goes to `SUPPORT_ALERT_EMAIL`
@@ -358,7 +277,7 @@ and fails the run, so the unit's failure alert reaches the team.
 `install.sh backups --apply` installs the unit and timer but never enables them. To turn it on:
 
 1. Deploy a release that has migration 0217 (`site_checks`); the deploy migrates.
-2. Set `PAGESPEED_API_KEY` in `/srv/brandbasket/shared/platform.env.local` (a Google Cloud API key with the PageSpeed Insights
+2. Set `PAGESPEED_API_KEY` in `/srv/brandbasket/shared/customer.env.production` (a Google Cloud API key with the PageSpeed Insights
    API enabled). It is optional in code, but Google's anonymous quota is shared and was used up when this was tested on
    3 Nov 2026, so without a key the phone speed row stays empty. Uptime and the certificate need no key.
 3. Run it once and read the result: `systemctl start brandbasket-site-health.service && journalctl -u brandbasket-site-health -n 20`.
@@ -371,7 +290,7 @@ To stop it: `systemctl disable --now brandbasket-site-health.timer`. The rows st
 
 One Brandbasket Google account (`official.brandbasket@gmail.com`) holds every client's Search Console site and Analytics property
 (plan 62). `brandbasket-google-sync.timer` starts `brandbasket-google-sync.service` every night at 22:30 UTC (04:00 in India). It runs
-`pnpm google:sync` in the current platform release. Through the account connected in the console (Settings, Google account, the
+`pnpm google:sync` in the current customer release. Through the account connected in the console (Settings, Google account, the
 Reading sign-in) it pulls, for every business with a property or site on record:
 
 - **Google Analytics:** daily visits, visitors, page views, engaged seconds and key events, and the month's channels and most viewed
@@ -406,7 +325,7 @@ The Local SEO + AEO screen's "How people find you on Google" panel and Home's "G
 4. Sign in to Analytics as `official.brandbasket@gmail.com` and create the Analytics account "Brandbasket clients". Turn on two step
    sign in with a hardware key and keep the recovery phone and email in the password manager.
 5. Create a second account used only for this and add it as an owner of the Analytics account (plan 62, decision 8).
-6. On the server, add to `/srv/brandbasket/shared/platform.env.local` and to the console's env file:
+6. On the server, add to `/srv/brandbasket/shared/customer.env.production` and to the console's env file:
    `GOOGLE_OAUTH_CLIENT_ID`, `GOOGLE_OAUTH_CLIENT_SECRET`; and to the console's env file also `GOOGLE_OAUTH_REDIRECT_URI`
    (the https callback above) and `GOOGLE_ACCOUNT_EMAIL=official.brandbasket@gmail.com`. Restart the apps. Never paste the secret
    into chat, an issue or the repository.
@@ -432,7 +351,7 @@ does a site taken offline for a lapsed plan) it does these steps, each stored be
    again once, and the Analytics source starts being pulled.
 
 It needs the Setting up sites sign-in connected in the console, `VERCEL_API_TOKEN`, `GOOGLE_ACCOUNT_EMAIL`, `GOOGLE_OAUTH_CLIENT_ID` and
-`GOOGLE_OAUTH_CLIENT_SECRET` in the platform's env file. Optional: `GOOGLE_SECOND_OWNER_EMAIL`, `GOOGLE_ANALYTICS_ACCOUNT_NAME`.
+`GOOGLE_OAUTH_CLIENT_SECRET` in the customer app's env file. Optional: `GOOGLE_SECOND_OWNER_EMAIL`, `GOOGLE_ANALYTICS_ACCOUNT_NAME`.
 It paces itself (three businesses at once, 12 seconds between each lane's businesses) to stay far under Google's write limits, so about
 15 businesses a minute. A refused account stops the run and exits 1. Read what it would do first with
 `pnpm google:provision -- --dry-run`, try one business with `pnpm google:provision -- --only <businessId>`, then
@@ -455,7 +374,7 @@ To stop it: `systemctl disable --now brandbasket-google-sync.timer`. The numbers
 ## Monthly reports
 
 `brandbasket-monthly-reports.timer` starts `brandbasket-monthly-reports.service` at 21:30 UTC on the 1st of each month (03:00 on the 2nd in
-India). It runs `pnpm reports:run` in the current platform release, which writes last month's customer reports as drafts. It sends
+India). It runs `pnpm reports:run` in the current customer release, which writes last month's customer reports as drafts. It sends
 nothing: staff review and send each report in the console (Clients, Reports). `install.sh backups --apply` installs the unit and timer
 but never enables them. Read `pnpm reports:run -- --dry-run` first, then `systemctl enable --now brandbasket-monthly-reports.timer`.
 Details: `docs/monthly-reports.md`.
@@ -535,9 +454,9 @@ VPS checks every push itself.
   shared: the site file defines its own `brandbasket_general`, `brandbasket_signin` and `brandbasket_perip` (and a loopback-exempt key
   `$brandbasket_limit_key`), so Firstfold's traffic can never use up Brandbasket's allowance, nor the reverse. Not repeated either:
   `server_tokens`, `ssl_protocols`, gzip, log format (all in `nginx.conf`). HSTS comes from the apps (an https build); `X-Robots-Tag`
-  from `apps/platform/proxy.ts`, added in nginx only for the console.
+  from `apps/customer` (`next.config.ts`), added in nginx only for the console.
 - Proxy rules: `Host` passed through, `X-Forwarded-For` overwritten with the peer address (never appended), `X-Forwarded-Proto` set.
-- ufw already admits 80 and 443 only from Cloudflare's ranges; 3201 and 3203 stay closed (Next listens on all interfaces on
+- ufw already admits 80 and 443 only from Cloudflare's ranges; 3202 and 3203 stay closed (Next listens on all interfaces on
   purpose, see the unit comment).
 - TLS: Let's Encrypt, ECDSA, lineage `brandbasket` for the two names, HTTP-01 from `/var/www/acme` through Cloudflare. **The lineage
   is renewed by the shared `certbot.timer`** (Firstfold's: it runs `certbot renew` for every lineage in `/etc/letsencrypt/renewal/`,
@@ -573,16 +492,16 @@ VPS checks every push itself.
 ## Monitoring
 
 `systemctl --failed` must be empty. Failure alerts use **Brandbasket's own handler**, not Firstfold's `firstfold-notify-failure`:
-`brandbasket-app`, `brandbasket-admin`, the autodeploy, the backup, the restore test and the maintenance job carry
+`brandbasket-customer`, `brandbasket-admin`, the autodeploy, the backup, the restore test and the maintenance job carry
 `OnFailure=brandbasket-notify-failure@%n.service` (`/usr/local/sbin/brandbasket-notify-failure`, a copy of Firstfold's with every name
 changed). It reads `BREVO_API_KEY`, `BRANDBASKET_MAIL_FROM` (or `ALERTS_FROM_EMAIL`) and `BRANDBASKET_TEAM_EMAIL` (default
-`support@brandbasket.in`; several addresses separated by commas) from `/srv/brandbasket/shared/platform.env.local`, keeps its
+`support@brandbasket.in`; several addresses separated by commas) from `/srv/brandbasket/shared/customer.env.production`, keeps its
 rate-limit state (one mail per unit per 30 minutes) in `/var/lib/brandbasket/notify-failure`, and the subject reads `[Brandbasket
 server] <unit> failed`. While `BREVO_API_KEY` is blank it only logs a line and exits 0.
 
 **No customer data leaves the server in an alert.** The mail carries the unit name, its result and exit status, and the time. Only
 for the units that never handle customer data (autodeploy, backup, restore test, maintenance) does it add the last 30 journal lines,
-with secrets, URLs with passwords and email addresses masked. For `brandbasket-app` and `brandbasket-admin` there are no journal
+with secrets, URLs with passwords and email addresses masked. For `brandbasket-customer` and `brandbasket-admin` there are no journal
 lines at all; look at the journal on the server. The CI unit has no alert, as Firstfold's has none. An external check on
 `https://app.brandbasket.in/login` is still the owner's to add.
 
@@ -595,7 +514,7 @@ curl -sI https://app.brandbasket.in/login | head -1                             
 curl -sI http://app.brandbasket.in/login | head -3                                          # 301 to https
 curl -sI https://console.brandbasket.in/login | head -1                                     # 200 (or Access, once set up)
 curl -sk --resolve console.brandbasket.in:443:201.18.196.170 https://console.brandbasket.in/login -o /dev/null -w '%{http_code}\n'   # blocked: ufw drops it (000)
-curl -m 5 -sI http://201.18.196.170:3201/login; echo "exit $?"                              # times out (28)
+curl -m 5 -sI http://201.18.196.170:3202/login; echo "exit $?"                              # times out (28)
 curl -m 5 -sI http://201.18.196.170:3203/login; echo "exit $?"                              # times out (28)
 ```
 
@@ -639,7 +558,7 @@ empty database; the apps and the maintenance job actually starting under their n
 the maintenance job's pnpm cache under `/var/cache/brandbasket-maintenance` is the least certain); `systemd-run` with the sandbox
 properties on this systemd (`ProtectProc`, `ProcSubset` are new here) and `bbci` actually being unable to see the hidden paths or
 reach service ports (probe it as Firstfold did: a run of the sandbox that tries `/srv/brandbasket`, `/srv/firstfold`, `localhost:5432`
-and `localhost:3201`); that the autodeploy and CI units start with their `InaccessiblePaths` and still reach the lock files; `ufw
+and `localhost:3202`); that the autodeploy and CI units start with their `InaccessiblePaths` and still reach the lock files; `ufw
 reload` with the new block; the GitHub App reporting for the new repository; the first Let's Encrypt issuance for `brandbasket.in`
 through Cloudflare (Firstfold's renewal through its proxy was tested in its own zone; if the HTTP-01 challenge fails, set the zone's
 SSL/TLS mode to Flexible for the minutes it takes, then back to Full (strict)); a real R2 upload and a restore from it; memory and
@@ -651,6 +570,6 @@ timing of a build next to Firstfold's apps.
   has no second factor (`docs/STAFF-ACCESS.md`), so set it up before real staff use it. Steps in `docs/deployment/cloudflare-access.md`.
 - Starting `brandbasket-erase.timer`: it deletes customer data 30 days after a closure. Not enabled by anything here.
 - Starting `brandbasket-site-health.timer` (see "Site health"). Not enabled by anything here.
-- Alert recipients: Brandbasket's handler mails `BRANDBASKET_TEAM_EMAIL` from `platform.env.local`, default `support@brandbasket.in`.
+- Alert recipients: Brandbasket's handler mails `BRANDBASKET_TEAM_EMAIL` from `customer.env.production`, default `support@brandbasket.in`.
   Set it there if the team address differs, and fill `BREVO_API_KEY` (alerts only log until then).
 - The Hostinger snapshot before the first change, and adding the repository to the GitHub App installation, as in the install table.

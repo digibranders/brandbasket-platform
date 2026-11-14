@@ -1,13 +1,11 @@
 # Staging for the customer app v4: https://next.brandbasket.in, behind Cloudflare Access, on production data with a test account.
-# NOT APPLIED. Install by hand when the owner starts staging (docs/deployment/brandbasket-vps.md, "Customer app v4"):
+# NOT APPLIED. Install by hand when the owner starts staging:
 #
 #   cp this file to /etc/nginx/sites-available/brandbasket-next, link it into sites-enabled, then `nginx -t && systemctl reload nginx`.
-#   Also install brandbasket-split-platform-paths.conf.example as /etc/nginx/snippets/brandbasket-split-platform-paths.conf.
 #
 # Nothing here touches app.brandbasket.in or console.brandbasket.in. It relies on what sites-brandbasket already defines for the
 # whole http context: the rate-limit zones brandbasket_general, brandbasket_signin and brandbasket_perip, the map
-# $brandbasket_limit_key and the upstream brandbasket_app (platform, 3201). This file adds the upstream brandbasket_customer (3202),
-# which brandbasket-cutover.conf.example reuses, so install this file first and keep it.
+# $brandbasket_limit_key and the upstream brandbasket_customer (3202).
 #
 # Certificate: its own lineage, so the existing "brandbasket" lineage (app and console) is never reissued with a different name list.
 #   certbot certonly --webroot -w /var/www/acme --cert-name brandbasket-next --key-type ecdsa -d next.brandbasket.in
@@ -16,8 +14,6 @@
 #
 # DNS: an AAAA record for next, proxied, same address as app (IPv6 only). Cloudflare Access protects the name; this file also refuses
 # anything that did not come through Cloudflare, as the console does, so the origin address cannot be used to skip Access.
-
-upstream brandbasket_customer { server 127.0.0.1:3202; keepalive 16; }
 
 server {
     listen 80;
@@ -64,9 +60,6 @@ server {
     limit_conn brandbasket_perip 50;
 
     location ~ /\.(?!well-known) { return 404; }
-
-    # The public endpoints stay on platform (first regex location: it must stay above the sign-in one below).
-    include snippets/brandbasket-split-platform-paths.conf;
 
     # Brute-force guard in front of the app's own database-backed sign-in limits (same paths as app.brandbasket.in).
     location ~ ^/(login|join|forgot-password|reset-password|restore-account)(/|$) {

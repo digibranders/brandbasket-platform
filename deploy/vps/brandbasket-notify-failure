@@ -10,7 +10,7 @@
 # <unit>.service.d/10-notify-failure.conf):  [Unit]  OnFailure=brandbasket-notify-failure@%n.service
 # Put it on the SERVICE, not the timer: the service fails, the timer does not.
 #
-# Settings are read from /srv/brandbasket/shared/platform.env.local: BREVO_API_KEY, BRANDBASKET_MAIL_FROM (the sender the
+# Settings are read from /srv/brandbasket/shared/customer.env.production: BREVO_API_KEY, BRANDBASKET_MAIL_FROM (the sender the
 # app already uses; ALERTS_FROM_EMAIL overrides it), ALERTS_FROM_NAME (optional) and BRANDBASKET_TEAM_EMAIL (one address, or
 # several separated by commas; default support@brandbasket.in). The file is parsed with grep and sed, never sourced, and no
 # value is printed. While BREVO_API_KEY is blank (before the owner has filled it in) this only logs and exits 0, so a server
@@ -21,7 +21,7 @@
 # for the units that never handle customer data (the autodeploy, backup, restore test and maintenance job) does it add the
 # last 30 journal lines, with anything that looks like a secret masked: URLs with passwords, NAME=value for names holding
 # SECRET, TOKEN or PASSWORD or ending in _KEY, bearer tokens, GitHub tokens, age and PEM keys, JWTs, and long mixed-case
-# strings. For brandbasket-app and brandbasket-admin (and any other unit) there are no journal lines at all: their logs can
+# strings. For brandbasket-customer and brandbasket-admin (and any other unit) there are no journal lines at all: their logs can
 # hold requests and names.
 #
 # One alert per unit per 30 minutes (BRANDBASKET_NOTIFY_MIN_INTERVAL seconds), so a unit that fails every minute does not
@@ -30,7 +30,7 @@
 set -euo pipefail
 umask 077
 
-readonly ENV_FILE=/srv/brandbasket/shared/platform.env.local
+readonly ENV_FILE=/srv/brandbasket/shared/customer.env.production
 readonly STATE_DIR=/var/lib/brandbasket/notify-failure
 readonly MIN_INTERVAL="${BRANDBASKET_NOTIFY_MIN_INTERVAL:-1800}"
 readonly API_URL=https://api.brevo.com/v3/smtp/email

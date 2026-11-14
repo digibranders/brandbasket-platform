@@ -10,8 +10,6 @@ import {
   currentPage,
   isCurrent,
   isSearchShortcut,
-  kickoffIsOver,
-  kickoffOverOrAssumed,
   linkIsCurrent,
   navModel,
   phoneTabs,
@@ -24,7 +22,7 @@ import {
   type NavInput,
 } from "./rules";
 
-const LIVE: NavInput = { services: ["website", "social", "search"], kickoffOver: true };
+const LIVE: NavInput = { services: ["website", "social", "search"] };
 
 const shape = (input: NavInput) => navModel(input).sections.map((section) => [section.label, section.links.map((link) => link.label)]);
 const link = (label: string, input: NavInput = LIVE) => {
@@ -33,7 +31,7 @@ const link = (label: string, input: NavInput = LIVE) => {
 };
 
 describe("navModel", () => {
-  it("follows the mock once the kickoff call is over", () => {
+  it("follows the mock from the first day, before the kickoff call too", () => {
     expect(shape(LIVE)).toEqual([
       [null, ["Home", "Enquiries", "Requests"]],
       ["Services", ["Website", "Social media", "Paid Ads", "Local SEO + AEO"]],
@@ -47,15 +45,6 @@ describe("navModel", () => {
     expect(business({ ...LIVE, reports: false })).toEqual(["Business profile"]);
     expect(business({ ...LIVE, reports: true })).toEqual(["Reports", "Business profile"]);
     expect(business(LIVE)).toEqual(["Reports", "Business profile"]);
-  });
-
-  it("is reduced to Home, Requests, Business profile and the foot before the kickoff call", () => {
-    const before = { ...LIVE, kickoffOver: false };
-    expect(shape(before)).toEqual([
-      [null, ["Home", "Requests"]],
-      ["Business", ["Business profile"]],
-    ]);
-    expect(navModel(before).foot.map((entry) => entry.label)).toEqual(["Plan & billing", "Settings", "Help & calls"]);
   });
 
   it("keeps a service not bought, marked as such, still linking to its page", () => {
@@ -117,18 +106,14 @@ describe("current link", () => {
 });
 
 describe("phoneTabs", () => {
-  const labels = (input: NavInput) => phoneTabs(navModel(input), input.kickoffOver).map((tab) => tab.label);
+  const labels = (input: NavInput) => phoneTabs(navModel(input)).map((tab) => tab.label);
 
-  it("is Home, Enquiries, Services, Requests and More once the kickoff call is over", () => {
+  it("is Home, Enquiries, Services, Requests and More", () => {
     expect(labels(LIVE)).toEqual(["Home", "Enquiries", "Services", "Requests", "More"]);
   });
 
-  it("is Home, Requests, Business, Billing and More before it", () => {
-    expect(labels({ ...LIVE, kickoffOver: false })).toEqual(["Home", "Requests", "Business", "Billing", "More"]);
-  });
-
   it("puts the services in the Services menu and every other link in More", () => {
-    const tabs = phoneTabs(navModel(LIVE), true);
+    const tabs = phoneTabs(navModel(LIVE));
     const menu = (id: string) => tabs.find((tab) => tab.kind === "menu" && tab.id === id);
     const links = (id: string) => {
       const found = menu(id);
@@ -157,23 +142,6 @@ describe("search", () => {
     expect(isSearchShortcut({ metaKey: true, ctrlKey: false, key: "k" })).toBe(true);
     expect(isSearchShortcut({ metaKey: false, ctrlKey: true, key: "K" })).toBe(true);
     expect(isSearchShortcut({ metaKey: false, ctrlKey: false, key: "k" })).toBe(false);
-  });
-});
-
-describe("kickoff", () => {
-  const now = new Date("2026-11-03T06:00:00Z");
-
-  it("is over once held, or once its end has passed", () => {
-    expect(kickoffIsOver(null, now)).toBe(false);
-    expect(kickoffIsOver({ endsAt: null, heldAt: null }, now)).toBe(false);
-    expect(kickoffIsOver({ endsAt: new Date("2026-11-04T06:00:00Z"), heldAt: null }, now)).toBe(false);
-    expect(kickoffIsOver({ endsAt: new Date("2026-11-02T06:00:00Z"), heldAt: null }, now)).toBe(true);
-    expect(kickoffIsOver({ endsAt: null, heldAt: new Date("2026-11-01T06:00:00Z") }, now)).toBe(true);
-  });
-
-  it("shows the full sidebar when the booking could not be read", () => {
-    expect(kickoffOverOrAssumed({ ok: false, error: { at: now } }, now)).toBe(true);
-    expect(kickoffOverOrAssumed({ ok: true, data: null }, now)).toBe(false);
   });
 });
 

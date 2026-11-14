@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { loadIntake } from "../start/server";
 import { loadCheckout } from "./loader";
 import { loadBusinessEntry } from "./server/entry";
+import { recordFirstPaymentIfHeld } from "./server/first-payment-lookup";
 import { loadMembershipCheckout, type MembershipCheckoutView } from "./server/membership-checkout";
 
 vi.mock("server-only", () => ({}));
@@ -12,6 +13,7 @@ vi.mock("next/navigation", () => ({
 }));
 vi.mock("../start/server", () => ({ loadIntake: vi.fn() }));
 vi.mock("./server/entry", () => ({ loadBusinessEntry: vi.fn() }));
+vi.mock("./server/first-payment-lookup", () => ({ recordFirstPaymentIfHeld: vi.fn() }));
 vi.mock("./server/membership-checkout", () => ({ loadMembershipCheckout: vi.fn() }));
 
 const PLAN = { initialAmountCents: 0, recurringAmountCents: 0, currency: "INR", taxRateBasisPoints: 1_800, initialTermMonths: 1 };
@@ -30,6 +32,8 @@ function view(overrides: Partial<MembershipCheckoutView> = {}): MembershipChecko
     hasEverPaid: false,
     billingDetails: null,
     offer: { kind: "available" },
+    // A business that has had both offer plans, unless a test says otherwise: every plan at its price.
+    firstMonth: { provider: "razorpay", hadService: { "social-media": true, "paid-ads": true } },
     ...overrides,
   };
 }
@@ -39,6 +43,7 @@ beforeEach(() => {
   vi.mocked(loadBusinessEntry).mockResolvedValue({ kind: "listing", signupChoice: "managed" });
   vi.mocked(loadMembershipCheckout).mockResolvedValue(view());
   vi.mocked(loadIntake).mockResolvedValue({ answers: {} as never, completedAt: new Date() });
+  vi.mocked(recordFirstPaymentIfHeld).mockResolvedValue(false);
 });
 
 describe("loadCheckout", () => {
@@ -76,6 +81,22 @@ describe("loadCheckout", () => {
     expect(result.ledger.changeServicesHref).toBe("/start?services=managed-website,social-media,paid-ads&q=summary");
   });
 
+  it("charges ₹1 for the first month of a plan the business never had, and says what is due today: ₹3,000 for the website and Social Media", async () => {
+    vi.mocked(loadMembershipCheckout).mockResolvedValue(
+      view({ services: ["managed-website", "social-media"], firstMonth: { provider: "razorpay", hadService: { "social-media": false, "paid-ads": false } } }),
+    );
+    const result = await loadCheckout(customer(), { services: "managed-website,social-media" });
+    if (result.kind !== "pay") throw new Error("expected the pay view");
+    expect(result.ledger.rows.map((row) => [row.label, row.amount])).toEqual([
+      ["Website", "Free"],
+      ["Maintenance", "₹2,999"],
+      ["Social Media Management, first month", "₹1"],
+    ]);
+    expect(result.ledger.total).toBe("₹3,000");
+    expect(result.ledger.gstLine).toBe("Includes ₹457.62 of GST at 18%");
+    expect(result.ledger.renewal).toBe("Your first payment covers your first month, then ₹5,998 (GST included) is taken each month for your services.");
+  });
+
   it("names no GST for a dollar plan", async () => {
     vi.mocked(loadMembershipCheckout).mockResolvedValue(view({ plan: { ...PLAN, currency: "USD", taxRateBasisPoints: 0 } as never }));
     const result = await loadCheckout(customer(), {});
@@ -102,6 +123,13 @@ describe("loadCheckout", () => {
     const open = { id: "sub-1", status: "incomplete", activatedAt: null };
     expect(await loadCheckout(customer({ subscription: open }), { payment: "received" })).toEqual({ kind: "waiting", waitKey: "membership:sub-1" });
     expect((await loadCheckout(customer(), { payment: "received" })).kind).toBe("pay");
+  });
+
+  it("moves a customer on at once when the provider already holds the payment its webhook has not delivered", async () => {
+    vi.mocked(recordFirstPaymentIfHeld).mockResolvedValue(true);
+    const open = { id: "sub-1", status: "incomplete", activatedAt: null };
+    await expect(loadCheckout(customer({ subscription: open }), { payment: "received" })).rejects.toThrow("redirect:/?welcome=1");
+    expect(recordFirstPaymentIfHeld).toHaveBeenCalledWith(open);
   });
 
   it("says when no plan is on sale", async () => {

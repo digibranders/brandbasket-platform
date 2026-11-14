@@ -18,7 +18,7 @@ Only a customer's first applied plan payment is reported. Renewals, reactivation
 
 ## Settings
 
-Server environment variables (`apps/platform/.env.example`). A destination is on only when both of its values are set; with none set, nothing is sent.
+Server environment variables (`apps/customer/.env.example`). A destination is on only when both of its values are set; with none set, nothing is sent.
 
 | Variable | Where it comes from |
 |---|---|

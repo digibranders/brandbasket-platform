@@ -3,12 +3,12 @@ import { addMonthsUtc, monthsPerCycle } from "@brandbasket/billing";
 import { findBillingProfile, withTenantScope } from "@brandbasket/db";
 import type { BillingInterval } from "@brandbasket/db";
 import type { MonthlyAddOnId } from "@brandbasket/shared/lib/billing/add-ons";
-import { addOnPrice, addOnById, perCycle, PLAN_ADD_ON_IDS } from "@brandbasket/shared/lib/billing/add-ons";
+import { addOnPrice, addOnById, MONTHLY_ADD_ON_IDS, perCycle, PLAN_ADD_ON_IDS } from "@brandbasket/shared/lib/billing/add-ons";
 import { paymentReturnView, readPaymentReturn, type PaymentReturnView } from "@brandbasket/shared/lib/billing/payment-return";
 import { planLabel } from "@brandbasket/shared/lib/billing/receipt-title";
 import { renewalCharge } from "@brandbasket/shared/lib/billing/terms";
 import { getAppDb } from "@/lib/db";
-import { formatDate, formatMoney, formatQuantity } from "@/lib/format";
+import { formatDate, formatList, formatMoney, formatQuantity } from "@/lib/format";
 import type { CustomerContext } from "@/lib/guards";
 import { load, type Loaded } from "@/lib/loaded";
 import { listCustomerReceipts } from "../checkout/server/billing";
@@ -147,33 +147,45 @@ function quoteSummary(offer: Extract<AddOnOffer, { kind: "quote" }>, entry: AddO
  * Add as one combined subscription (plan 63, Option Y): the service up to the new billing date (₹1 on the first-month offer), the
  * plan's days from its paid-through date to then, and every service at its price a month from then.
  */
-function combinedSummary(offer: Extract<AddOnOffer, { kind: "combined" }>, entry: AddOnPageEntry, now: Date): PaymentSummary {
+function combinedSummary(offer: Extract<AddOnOffer, { kind: "combined" }>, entry: AddOnPageEntry, staying: readonly MonthlyAddOnId[], now: Date): PaymentSummary {
   const { currency } = entry.price;
   const name = serviceName(entry.addOn);
   const until = formatDate(offer.newBillingDate, now);
+  const period = `${formatDate(now, now)} to ${until}`;
+  // Every service in the monthly payment once this one is added, named, so the customer sees what the amount pays for.
+  const paysFor = formatList(MONTHLY_ADD_ON_IDS.filter((id) => id === entry.addOn || staying.includes(id)).map(serviceName));
   const rows: PaymentSummaryRow[] = [
-    { key: "service", label: offer.offer ? `${name}, first month` : `${name}, until ${until}`, amount: formatMoney(offer.serviceCents, currency), tone: "plain" },
+    { key: "service", label: offer.offer ? `${name}, first month (${period})` : `${name}, ${period}`, amount: formatMoney(offer.serviceCents, currency), tone: "plain" },
   ];
-  if (offer.extensionCents > 0) {
-    rows.push({ key: "plan", label: `Your plan, ${formatDate(offer.paidThroughAt, now)} to ${until}`, amount: formatMoney(offer.extensionCents, currency), tone: "plain" });
+  const extended = offer.extensionCents > 0;
+  if (extended) {
+    // Whole days: the two dates fall at the same time of day, so the gap is a whole number of days give or take a clock change.
+    const extraDays = Math.round((offer.newBillingDate.getTime() - offer.paidThroughAt.getTime()) / 86_400_000);
+    rows.push({ key: "plan", label: `Current plan, ${formatQuantity(extraDays, "extra day")}`, amount: formatMoney(offer.extensionCents, currency), tone: "plain" });
   }
   return {
     title: `Add ${name}`,
     rows,
     totalLabel: "Due today",
     total: formatMoney(offer.upfrontCents, currency),
-    notes: [`From ${until}, you pay ${formatMoney(offer.monthlyCents, currency)} a month for all your services.`, ...gstNote(currency)],
+    notes: [
+      ...(extended
+        ? [`All your services will now renew together on ${until}. Your current plan is paid until ${formatDate(offer.paidThroughAt, now)}, so today also covers the days in between.`]
+        : []),
+      `From ${until}, ${formatMoney(offer.monthlyCents, currency)} a month for ${paysFor}.`,
+      ...gstNote(currency),
+    ],
   };
 }
 
 const ASK_THE_TEAM = "Ask the team and we'll add it for you.";
 
-function availableAction(offer: AddOnOffer, entry: AddOnPageEntry, canAdd: boolean, interval: BillingInterval, now: Date): ServiceAction {
+function availableAction(offer: AddOnOffer, entry: AddOnPageEntry, staying: readonly MonthlyAddOnId[], canAdd: boolean, interval: BillingInterval, now: Date): ServiceAction {
   switch (offer.kind) {
     case "quote":
       return canAdd ? { kind: "add", summary: quoteSummary(offer, entry, interval, now) } : { kind: "none" };
     case "combined":
-      return canAdd ? { kind: "add", summary: combinedSummary(offer, entry, now) } : { kind: "none" };
+      return canAdd ? { kind: "add", summary: combinedSummary(offer, entry, staying, now) } : { kind: "none" };
     case "change-pending":
       return { kind: "note", text: planChangesFirst(offer.changesOn, now), ask: false };
     case "renewal-due":
@@ -191,12 +203,12 @@ function availableAction(offer: AddOnOffer, entry: AddOnPageEntry, canAdd: boole
   }
 }
 
-function serviceRow(entry: AddOnPageEntry, canManage: boolean, canAdd: boolean, activatedAt: Date | null, interval: BillingInterval, now: Date): ServiceRowView {
+function serviceRow(entry: AddOnPageEntry, staying: readonly MonthlyAddOnId[], canManage: boolean, canAdd: boolean, activatedAt: Date | null, interval: BillingInterval, now: Date): ServiceRowView {
   const payment = interval === "year" ? "yearly" : "monthly";
   const base = { addOn: entry.addOn, service: SERVICE_KEY_OF[entry.addOn], name: serviceName(entry.addOn), status: addOnStatus(entry), price: formatMoney(entry.price.listCents, entry.price.currency) };
   if (entry.kind === "available") {
     const offerPrice = entry.offer.kind === "combined" && entry.offer.offer ? formatMoney(entry.offer.serviceCents, entry.price.currency) : null;
-    return { ...base, line: addOnById(entry.addOn).line, offerPrice, action: canManage ? availableAction(entry.offer, entry, canAdd, interval, now) : { kind: "none" } };
+    return { ...base, line: addOnById(entry.addOn).line, offerPrice, action: canManage ? availableAction(entry.offer, entry, staying, canAdd, interval, now) : { kind: "none" } };
   }
   const line =
     entry.endsOn !== null
@@ -223,9 +235,11 @@ export async function loadServicesPanel(customer: CustomerContext, canAdd: boole
   const page = await loadAddOnsPage(customer, now);
   const canManage = customer.role === "owner";
   const interval = customer.billing.subscription?.billingInterval ?? "month";
+  // The services that go on in the monthly payment: what an added one joins.
+  const staying = page.addOns.flatMap((entry) => (entry.kind === "included" && entry.endsOn === null ? [entry.addOn] : []));
   const rows = page.addOns.map((entry) => {
     const line = page.lines.find((row) => row.addOn === entry.addOn && row.status === "active");
-    return serviceRow(entry, canManage, canAdd, line?.activatedAt ?? null, interval, now);
+    return serviceRow(entry, staying, canManage, canAdd, line?.activatedAt ?? null, interval, now);
   });
   const nextBillingOn = customer.billing.subscription?.paidThroughAt ?? null;
   const options = page.addOns.flatMap((entry): CancelOption[] =>

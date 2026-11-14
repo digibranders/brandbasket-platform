@@ -13,6 +13,7 @@ const TIME = new Intl.DateTimeFormat("en-GB", { timeZone: APP_TIME_ZONE, hour: "
 const INTEGER = new Intl.NumberFormat("en-IN", { maximumFractionDigits: 0 });
 const DECIMAL = new Intl.NumberFormat("en-IN", { maximumFractionDigits: 1 });
 const SIGNED = new Intl.NumberFormat("en-IN", { maximumFractionDigits: 1, signDisplay: "exceptZero" });
+const LIST = new Intl.ListFormat("en-GB", { style: "long", type: "conjunction" });
 
 /**
  * An amount held in minor units (paise or cents): `₹30,398`, `$350`, with the decimals only when they are not zero. INR
@@ -65,6 +66,11 @@ export function formatNumber(value: number): string {
 /** `9 of 12`. */
 export function formatOutOf(count: number, total: number): string {
   return `${formatNumber(count)} of ${formatNumber(total)}`;
+}
+
+/** Names joined for a sentence: `Website`, `Website and Social`, `Website, Social and Ads`. */
+export function formatList(items: readonly string[]): string {
+  return LIST.format(items);
 }
 
 /** A count with its unit: `1 visit`, `3 visits`. Pass the plural when it is not the singular plus "s". */

@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Banner, Button } from "@/ui";
+import { Button, Icon, type IconName } from "@/ui";
+import { cx } from "@/ui/cx";
 
 /*
  * Ported from apps/platform components/panel/payment-waiting.tsx. Shown when the browser is back from the payment provider
@@ -42,6 +43,19 @@ interface PaymentWaitingProps {
   readonly supportEmail: string;
 }
 
+/** One centred status card for both states, so the page does not change shape when the wait runs long. */
+function StatusCard({ icon, tone, title, children }: { readonly icon: IconName; readonly tone: string; readonly title: string; readonly children: React.ReactNode }) {
+  return (
+    <section role="status" aria-live="polite" className="flex flex-col items-center gap-2 rounded-panel border border-border bg-surface px-6 py-12 text-center">
+      <span className={cx("mb-1 inline-flex size-10 items-center justify-center rounded-full", tone)}>
+        <Icon name={icon} size="lg" />
+      </span>
+      <h2 className="type-sub text-ink">{title}</h2>
+      {children}
+    </section>
+  );
+}
+
 export function PaymentWaiting({ waitKey, waitingText, delayedText, supportEmail }: PaymentWaitingProps) {
   const [gaveUp, setGaveUp] = useState(false);
   const storageKey = `${STORAGE_PREFIX}${waitKey}`;
@@ -59,17 +73,25 @@ export function PaymentWaiting({ waitKey, waitingText, delayedText, supportEmail
     return () => window.clearTimeout(timer);
   }, [storageKey]);
 
-  if (!gaveUp) return <Banner tone="info">{waitingText}</Banner>;
+  if (!gaveUp) {
+    return (
+      <StatusCard icon="CheckCircle" tone="bg-pos-wash text-pos-text" title="Payment received">
+        <p className="max-w-reading type-body text-ink-3">{waitingText}</p>
+        <p className="mt-2 inline-flex items-center gap-2 type-meta">
+          <Icon name="SpinnerGap" size="sm" className="motion-safe:animate-spin" />
+          This page updates by itself. Please keep it open.
+        </p>
+      </StatusCard>
+    );
+  }
   return (
-    <Banner
-      tone="warn"
-      action={
-        <Button size="sm" onClick={() => restartWait(storageKey)}>
-          Check again
-        </Button>
-      }
-    >
-      {delayedText} If you paid, there’s nothing more to pay: email us at <a href={`mailto:${supportEmail}`}>{supportEmail}</a> and we’ll sort it out.
-    </Banner>
+    <StatusCard icon="Warning" tone="bg-warn-wash text-warn-text" title="Still confirming your payment">
+      <p className="max-w-reading type-body text-ink-3">
+        {delayedText} If you paid, there’s nothing more to pay: email us at <a href={`mailto:${supportEmail}`}>{supportEmail}</a> and we’ll sort it out.
+      </p>
+      <Button size="sm" className="mt-2" onClick={() => restartWait(storageKey)}>
+        Check again
+      </Button>
+    </StatusCard>
   );
 }

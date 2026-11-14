@@ -2,7 +2,7 @@
 
 The owner chose the console redesign on 2026-10-26: `docs/plans/40-console-redesign-audit.md`, contract
 `docs/plans/41-console-redesign-plan.md`, mock `docs/design/console-mock.html`. It uses the same palette, type and
-surfaces as the customer dashboard (`apps/platform/DESIGN.md`), made denser for staff.
+surfaces as the customer dashboard (`apps/customer/DESIGN.md`), made denser for staff.
 
 ## Palette
 

@@ -11,12 +11,12 @@ import { ConfirmPaymentDialog, useConfirmPayment } from "./confirm-payment";
 const SUMMARY: PaymentSummary = {
   title: "Add Social Media Management",
   rows: [
-    { key: "service", label: "Social Media Management, first month", amount: "₹1", tone: "plain" },
-    { key: "plan", label: "Your plan, Sun 1 Dec to Wed 11 Dec", amount: "₹967.42", tone: "plain" },
+    { key: "service", label: "Social Media Management, first month offer", amount: "₹1", tone: "plain" },
+    { key: "plan", label: "Current plan, 10 extra days", amount: "₹967.42", tone: "plain" },
   ],
   totalLabel: "Due today",
   total: "₹968.42",
-  notes: ["From Wed 11 Dec, you pay ₹5,998 a month for all your services.", "All prices include GST."],
+  notes: ["Then ₹5,998 a month for all your services, from Wed 11 Dec.", "All prices include GST."],
 };
 
 /** A payment form as the screens build it: Pay asks, the dialog's button sends the form. */
@@ -50,7 +50,7 @@ describe("the payment confirmation", () => {
     await userEvent.click(screen.getByRole("button", { name: "Add" }));
 
     const dialog = await screen.findByRole("dialog", { name: "Add Social Media Management" });
-    for (const text of ["Social Media Management, first month", "₹1", "Your plan, Sun 1 Dec to Wed 11 Dec", "₹967.42", "Due today", "₹968.42", "All prices include GST."]) {
+    for (const text of ["Social Media Management, first month offer", "₹1", "Current plan, 10 extra days", "₹967.42", "Due today", "₹968.42", "All prices include GST."]) {
       expect(dialog.textContent).toContain(text);
     }
     expect(pay).not.toHaveBeenCalled();

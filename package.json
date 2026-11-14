@@ -9,13 +9,12 @@
     "vite": "^8.3.5"
   },
   "scripts": {
-    "dev": "pnpm --parallel --filter @brandbasket/platform --filter @brandbasket/admin dev",
-    "dev:platform": "pnpm --filter @brandbasket/platform dev",
+    "dev": "pnpm --parallel --filter @brandbasket/customer --filter @brandbasket/admin dev",
     "dev:admin": "pnpm --filter @brandbasket/admin dev",
     "dev:customer": "pnpm --filter @brandbasket/customer dev",
     "dev:tunnel": "bash scripts/dev-webhook-tunnel.sh",
-    "build": "pnpm --filter @brandbasket/platform --filter @brandbasket/admin --filter @brandbasket/customer build",
-    "lint": "pnpm --filter @brandbasket/platform --filter @brandbasket/admin --filter @brandbasket/customer lint",
+    "build": "pnpm --filter @brandbasket/admin --filter @brandbasket/customer build",
+    "lint": "pnpm --filter @brandbasket/admin --filter @brandbasket/customer lint",
     "typecheck": "pnpm -r typecheck",
     "dead-code": "bash scripts/dead-code.sh",
     "test": "pnpm -r test",
@@ -27,18 +26,18 @@
     "directory:import-places": "pnpm --filter @brandbasket/db directory:import-places",
     "directory:import-pincodes": "pnpm --filter @brandbasket/db directory:import-pincodes",
     "directory:backfill-places": "pnpm --filter @brandbasket/db directory:backfill-places",
-    "pictures:backfill-copies": "pnpm --filter @brandbasket/db exec tsx --tsconfig ../../apps/platform/tsconfig.json ../../apps/platform/scripts/backfill-picture-copies.ts",
+    "pictures:backfill-copies": "pnpm --filter @brandbasket/customer pictures:backfill-copies",
     "directory:import-listings": "pnpm --filter @brandbasket/db directory:import-listings",
     "cms:migrate": "pnpm --filter @brandbasket/customer cms:migrate",
     "cms:migrate:create": "node scripts/cms-create-migration.mjs",
     "cms:migrate:status": "pnpm --filter @brandbasket/customer cms:migrate:status",
     "env:check": "pnpm --filter @brandbasket/db exec tsx ../../scripts/server/check-env.ts",
     "staff:create": "pnpm --filter @brandbasket/auth staff:create",
-    "retention:run": "pnpm --filter @brandbasket/db exec tsx ../../apps/platform/scripts/retention-run.ts",
-    "support:attachments:maintain": "pnpm --filter @brandbasket/db exec tsx --conditions=react-server ../../apps/platform/scripts/maintain-support-attachments.ts",
-    "google:provision": "pnpm --filter @brandbasket/db exec tsx --conditions=react-server ../../apps/platform/scripts/google-provision-run.ts",
-    "google:sync": "pnpm --filter @brandbasket/db exec tsx --conditions=react-server ../../apps/platform/scripts/google-sync-run.ts",
-    "site-health:run": "pnpm --filter @brandbasket/db exec tsx --conditions=react-server ../../apps/platform/scripts/site-health-run.ts",
-    "reports:run": "pnpm --filter @brandbasket/db exec tsx --conditions=react-server ../../apps/platform/scripts/monthly-reports-run.ts"
+    "retention:run": "pnpm --filter @brandbasket/customer retention:run",
+    "support:attachments:maintain": "pnpm --filter @brandbasket/customer support:attachments:maintain",
+    "google:provision": "pnpm --filter @brandbasket/customer google:provision",
+    "google:sync": "pnpm --filter @brandbasket/customer google:sync",
+    "site-health:run": "pnpm --filter @brandbasket/customer site-health:run",
+    "reports:run": "pnpm --filter @brandbasket/customer reports:run"
   }
 }

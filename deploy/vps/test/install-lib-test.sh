@@ -24,7 +24,7 @@ for p in /srv/firstfold/.release.lock /srv/brandbasket/../firstfold/x /etc/nginx
   /srv/brandbasketx /srv/brandbasket-evil/x /home/deploy/.ssh/config /etc/systemd/system/firstfold-app.service \
   /etc/sudoers.d/brandbasket-deploy /usr/local/bin/other /etc/brandbasket/../firstfold/x /home/brandbasketx/.ssh; do refuses "$p"; done
 for p in /srv/brandbasket /srv/brandbasket/releases/x /srv/brandbasket-ci/sandbox.img /home/brandbasket/.ssh/config \
-  /etc/brandbasket/offsite.sh /etc/brandbasket-platform-build.env /etc/systemd/system/brandbasket-app.service.d/10-notify-failure.conf \
+  /etc/brandbasket/offsite.sh /etc/brandbasket-platform-build.env /etc/systemd/system/brandbasket-customer.service.d/10-notify-failure.conf \
   '/etc/systemd/system/srv-brandbasket\x2dci-sandbox.mount' /etc/sudoers.d/brandbasket /etc/nginx/sites-available/brandbasket \
   /etc/nginx/snippets/brandbasket-proxy.conf /usr/local/bin/brandbasket-ci /usr/local/sbin/brandbasket-migrate \
   /usr/local/lib/brandbasket/heavy-lock.sh /var/lib/brandbasket/last-backup-ok /var/backups/brandbasket/daily; do accepts "$p"; done
