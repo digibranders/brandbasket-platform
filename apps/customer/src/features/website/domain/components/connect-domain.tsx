@@ -1,6 +1,7 @@
 "use client";
 
 import type { DnsRecord, DnsStatus } from "@brandbasket/shared/lib/onboarding/domain-dns";
+import { ErrorState } from "@brandbasket/shared/ui/patterns";
 import { useActionState, useState, type ReactNode } from "react";
 import type { ActionResult } from "@/lib/action-result";
 import { Banner, Button, type BannerTone } from "@/ui";
@@ -98,7 +99,14 @@ export function ConnectDomain({ hostname, records, alreadyConnected, disclosure,
         {state === null && alreadyConnected ? <Banner tone="pos">{VERDICTS.connected.text}</Banner> : null}
         {result === null ? null : (
           <>
-            <Banner tone={VERDICTS[result.overall].tone}>{VERDICTS[result.overall].text}</Banner>
+            {result.overall === "elsewhere" ? (
+              <ErrorState
+                title="Domain verification DNS error"
+                message={VERDICTS.elsewhere.text}
+              />
+            ) : (
+              <Banner tone={VERDICTS[result.overall].tone}>{VERDICTS[result.overall].text}</Banner>
+            )}
             <ul className="m-0 flex list-none flex-col gap-0.5 p-0 type-meta">
               {result.records.map((record) => (
                 <li key={record.host}>
@@ -108,7 +116,12 @@ export function ConnectDomain({ hostname, records, alreadyConnected, disclosure,
             </ul>
           </>
         )}
-        {state !== null && !state.ok ? <Banner tone="neg">{state.message}</Banner> : null}
+        {state !== null && !state.ok ? (
+          <ErrorState
+            title="DNS check failed"
+            message={state.message}
+          />
+        ) : null}
       </div>
     </div>
   );
