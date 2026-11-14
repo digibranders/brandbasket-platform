@@ -26,7 +26,7 @@ export interface ChannelsColumnProps {
  */
 export function ChannelsColumn({ data, selected, hrefFor, canChange }: ChannelsColumnProps) {
   return (
-    <aside aria-labelledby="channels-title" className="flex min-w-0 flex-col gap-3 border-t border-line bg-surface p-4 md:px-8 lg:sticky lg:top-0 lg:h-dvh lg:w-52 lg:shrink-0 lg:self-start lg:overflow-y-auto lg:border-t-0 lg:border-r lg:px-4 lg:py-8">
+    <aside aria-labelledby="channels-title" className="flex min-w-0 flex-col gap-3 border-t border-line bg-surface p-4 md:px-8 lg:sticky lg:top-topbar lg:h-dvh lg:w-52 lg:shrink-0 lg:self-start lg:overflow-y-auto lg:border-t-0 lg:border-r lg:px-4 lg:pt-4 lg:pb-8">
       <h2 id="channels-title" className="type-section">
         Channels
       </h2>

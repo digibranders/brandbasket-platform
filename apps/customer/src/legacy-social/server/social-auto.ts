@@ -2,8 +2,10 @@ import "server-only";
 import { z } from "zod";
 import { readAnalytics, type Analytics } from "@/legacy-social/lib/social/analytics";
 import { readCarousel, readCarouselWeekly, readCarousels, type CarouselDetail, type CarouselSummary } from "@/legacy-social/lib/social/carousel";
+import { readAutoPosting, type AutoPostingState } from "@/legacy-social/lib/social/auto-posting";
+import { readSchedule, type PostingDays } from "@/legacy-social/lib/social/schedule";
 import { brandIdFor, readBrands, type BrandsView } from "@/features/social/brands";
-import { readBatches, readBatchPlan, readExpiredBatches, readFacts, readJob, readJobs, readPosters, readTopics, type BatchPlan, type ExpiredBatch, type FactsView, type Poster, type SiteJob, type Topic, type WrittenBatch } from "@/legacy-social/lib/social/ai";
+import { readBatches, readBatchPlan, readExpiredBatches, readFacts, readJob, readJobs, readPosters, readTopicRequests, readTopics, type BatchPlan, type ExpiredBatch, type FactsView, type Poster, type SiteJob, type Topic, type TopicRequest, type WrittenBatch } from "@/legacy-social/lib/social/ai";
 import { isChannelPlatform, readChannels, readConnectLink, readNotices, readPosts, readWebsite, type AutoChannel, type AutoPost, type ChannelPlatform, type WorkspaceNotice } from "@/legacy-social/lib/social/auto";
 
 /**
@@ -77,7 +79,7 @@ interface Answer {
 }
 
 /** One call. Never follows a redirect (the key must not travel anywhere else) and gives up after ten seconds. */
-async function call(settings: SocialAutoSettings, path: string, init: { readonly method: "GET" | "POST" | "PATCH" | "DELETE"; readonly body?: unknown; readonly picture?: Uint8Array; readonly actor?: string }, send: typeof fetch): Promise<Answer> {
+async function call(settings: SocialAutoSettings, path: string, init: { readonly method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE"; readonly body?: unknown; readonly picture?: Uint8Array; readonly actor?: string }, send: typeof fetch): Promise<Answer> {
   let response: Response;
   try {
     response = await send(`${settings.baseUrl}${path}`, {
@@ -399,6 +401,26 @@ export async function moveTopic(settings: SocialAutoSettings, businessId: string
   return { batch, wordsNameADay: Array.isArray(body?.warnings) && body.warnings.includes("WORDS_NAME_A_DAY") };
 }
 
+/** The topics the customer wrote in her own words, newest first (the last ten); none when the posting service does not have them yet. */
+export async function loadTopicRequests(settings: SocialAutoSettings, businessId: string, send: typeof fetch = fetch): Promise<TopicRequest[]> {
+  const answer = await call(settings, `/api/v1/topic-requests?externalId=${encodeURIComponent(businessId)}`, { method: "GET" }, send);
+  if (answer.status === 404 || answer.status === 501) return [];
+  if (answer.status !== 200) throw refusal(answer, "your own topics");
+  return readTopicRequests(answer.body);
+}
+
+/**
+ * Asks for a post about something she wrote in her own words: an offer, a new dish, an event. It is written only from her words, for the
+ * week asked for (the next day she can still use) or tomorrow's week, and one a week is allowed. Nothing is drawn until she asks.
+ */
+export async function askTopic(settings: SocialAutoSettings, businessId: string, text: string, week: string | undefined, actor: string, send: typeof fetch = fetch): Promise<TopicRequest> {
+  const answer = await call(settings, "/api/v1/topic-requests", { method: "POST", body: { externalId: businessId, text, ...(week === undefined ? {} : { week }) }, actor }, send);
+  if (answer.status !== 200 && answer.status !== 202) throw refusal(answer, "your topic");
+  const asked = readTopicRequests({ requests: [(answer.body as { request?: unknown } | null)?.request] })[0];
+  if (asked === undefined) throw new SocialAutoError("social-auto answered with a topic that could not be read");
+  return asked;
+}
+
 /** The pictures waiting for the customer (`open`: waiting, plus any that need confirming again) or already decided. */
 export async function loadPosters(settings: SocialAutoSettings, businessId: string, status: "open" | "approved" | "expired" | "all" = "open", send: typeof fetch = fetch): Promise<{ readonly posters: Poster[]; readonly reasons: string[] }> {
   const answer = await call(settings, `/api/v1/posters?${new URLSearchParams({ externalId: businessId, status })}`, { method: "GET" }, send);
@@ -476,6 +498,47 @@ export async function loadPictureLimits(settings: SocialAutoSettings, externalId
     restart: parsed.data.week.restart,
     channels: parsed.data.channels.flatMap((channel) => (isChannelPlatform(channel.network) ? [{ network: channel.network, limit: channel.limit, used: channel.used, left: channel.left }] : [])),
   };
+}
+
+/**
+ * The days each channel posts on. Null when the posting service has no schedule to give (an older one), so the page leaves the choice out
+ * instead of offering something that cannot be saved; empty for a brand with no workspace yet.
+ */
+export async function loadSchedule(settings: SocialAutoSettings, externalId: string, send: typeof fetch = fetch): Promise<PostingDays | null> {
+  const answer = await call(settings, `/api/v1/schedule?${new URLSearchParams({ externalId })}`, { method: "GET" }, send);
+  if (answer.status === 404 && (answer.body as { code?: unknown } | null)?.code === "WORKSPACE_NOT_FOUND") return {};
+  if (answer.status === 404 || answer.status === 405 || answer.status === 501) return null;
+  if (answer.status !== 200) throw refusal(answer, "the posting days");
+  return readSchedule(answer.body);
+}
+
+/** Saves the days of every channel at once (a channel left out goes back to the usual spread) and answers what the service now holds. */
+export async function saveSchedule(settings: SocialAutoSettings, externalId: string, channels: Readonly<Record<string, readonly string[]>>, send: typeof fetch = fetch): Promise<PostingDays> {
+  const answer = await call(settings, "/api/v1/schedule", { method: "PUT", body: { externalId, channels } }, send);
+  if (answer.status !== 200) throw refusal(answer, "the posting days");
+  return readSchedule(answer.body);
+}
+
+/**
+ * Which channels the system posts for by itself, and how long before posting it may approve a picture. Null when the posting service has no
+ * automatic posting (an older one) so the page offers no choice; a business with no workspace yet has nothing automatic.
+ */
+export async function loadAutoPosting(settings: SocialAutoSettings, businessId: string, send: typeof fetch = fetch): Promise<AutoPostingState> {
+  const answer = await call(settings, `/api/v1/workspaces?externalId=${encodeURIComponent(businessId)}`, { method: "GET" }, send);
+  if (answer.status === 404) return { channels: [], safetyHours: 24, consentedAt: null, needsChoice: [] };
+  if (answer.status !== 200) throw refusal(answer, "automatic posting");
+  return readAutoPosting(answer.body, readChannels(answer.body).map((channel) => channel.platform));
+}
+
+/**
+ * Chooses the channels the system posts for (the list replaces the old one; none switches it off). Agreeing is part of choosing, so it is
+ * sent with any list that is not empty, with the person who agreed. Nothing is saved when the posting service refuses.
+ */
+export async function saveAutoPosting(settings: SocialAutoSettings, businessId: string, choice: { readonly channels: readonly ChannelPlatform[]; readonly safetyHours: number }, actor: string, send: typeof fetch = fetch): Promise<AutoPostingState> {
+  const autoPosting = choice.channels.length === 0 ? { channels: [] } : { channels: choice.channels, safetyHours: choice.safetyHours, consent: true };
+  const answer = await call(settings, "/api/v1/workspaces", { method: "PATCH", body: { externalId: businessId, autoPosting }, actor }, send);
+  if (answer.status !== 200) throw refusal(answer, "automatic posting");
+  return readAutoPosting(answer.body, readChannels(answer.body).map((channel) => channel.platform));
 }
 
 /** The customer's carousels, newest first, and whether the weekly carousel is on. A business with no workspace, or a posting service that has no carousels yet, has none. */

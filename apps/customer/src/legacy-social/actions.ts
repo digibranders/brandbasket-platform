@@ -9,10 +9,12 @@ import { redirect, unstable_rethrow } from "next/navigation";
 import { requireService } from "@/lib/guards";
 import { brandOf } from "@/features/social/brand";
 import { BRAND_TIME_ZONE } from "@/legacy-social/shims";
-import { actorOf, connectLink, createPost, deletePost, ensureWorkspace, loadChannels, loadWorkspaceFacts, movePost, sendPostNow, SocialAutoError, socialAutoSettings, startSiteJob, updatePost } from "@/legacy-social/server/social-auto";
+import { actorOf, connectLink, createPost, deletePost, ensureWorkspace, loadChannels, loadSchedule, loadWorkspaceFacts, movePost, saveAutoPosting, saveSchedule, sendPostNow, SocialAutoError, socialAutoSettings, startSiteJob, updatePost } from "@/legacy-social/server/social-auto";
 import { canAddOn, checkNewPost, checkPostEdit, wordsForPostRefusal, isChangeablePostId, isTime, isWrittenPostId, momentHasPassed, type NewPostState } from "@/legacy-social/lib/social/new-post";
 import { wordsForCode } from "@/legacy-social/lib/social/ai";
-import { CHANNEL_PLATFORMS, type ChannelPlatform } from "@/legacy-social/lib/social/auto";
+import { CHANNEL_PLATFORMS, PLATFORM_NAMES, type ChannelPlatform } from "@/legacy-social/lib/social/auto";
+import { SAFETY_HOURS } from "@/legacy-social/lib/social/auto-posting";
+import { dayGroups, parseDays, withChannelDays } from "@/legacy-social/lib/social/schedule";
 
 /*
  * The old Social media page's actions, copied as they were and moved onto this app's guards: the business and its name come from the
@@ -247,9 +249,13 @@ export async function startNextMonthAction(formData: FormData): Promise<NewPostS
     const brand = await brandOf(customer);
     const [facts, channels] = await Promise.all([loadWorkspaceFacts(settings, brand.externalId), loadChannels(settings, brand.externalId)]);
     if (facts.website === null) return { status: "error", message: "Start from your website first, then the next month can follow." };
-    const networks = [...new Set(channels.map((channel) => channel.platform))];
-    if (networks.length === 0) return { status: "error", message: wordsForCode("INVALID_NETWORKS") };
-    await startSiteJob(settings, brand.externalId, { site: facts.website, page: false, networks, startDate: parsed.data.startDate }, actorOf(customer.tenant));
+    const connected = [...new Set(channels.map((channel) => channel.platform))];
+    if (connected.length === 0) return { status: "error", message: wordsForCode("INVALID_NETWORKS") };
+    // Channels that post on different days are written one group at a time: the first now, the others when the customer starts them next.
+    const [networks = connected, ...later] = dayGroups(connected, await loadSchedule(settings, brand.externalId));
+    const started = await startSiteJob(settings, brand.externalId, { site: facts.website, page: false, networks, startDate: parsed.data.startDate }, actorOf(customer.tenant));
+    if (!started.created) return { status: "error", message: STILL_WRITING };
+    if (later.length > 0) return { status: "partial", message: laterGroupsMessage(networks, later.flat()) };
   } catch (error) {
     unstable_rethrow(error);
     if (error instanceof SocialAutoError && error.code !== null) return { status: "error", message: wordsForCode(error.code) };
@@ -265,6 +271,7 @@ export async function startSiteJobAction(formData: FormData): Promise<NewPostSta
   const customer = await requireService("social", { write: true });
   if (customer.role === "viewer") return { status: "error", message: "Only owners and editors can change this." };
   const parsed = siteSchema.safeParse({ site: formData.get("site"), page: formData.get("mode") === "page", networks: formData.getAll("network") });
+  const startDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/).safeParse(formData.get("startDate"));
   if (!parsed.success) return { status: "error", message: parsed.error.issues[0]?.message ?? "Check the address and try again." };
   if (parsed.data.networks.length === 0) return { status: "error", message: wordsForCode("INVALID_NETWORKS") };
   try {
@@ -272,11 +279,88 @@ export async function startSiteJobAction(formData: FormData): Promise<NewPostSta
     if (settings === null) return { status: "error", message: "Posting is not available just now. Try again later." };
     const brand = await brandOf(customer);
     await ensureWorkspace(settings, { id: brand.externalId, name: brand.name, ...(brand.externalId === customer.businessId ? {} : { group: customer.businessId }) });
-    await startSiteJob(settings, brand.externalId, { site: parsed.data.site, page: parsed.data.page, networks: parsed.data.networks satisfies ChannelPlatform[] }, actorOf(customer.tenant));
+    const started = await startSiteJob(settings, brand.externalId, { site: parsed.data.site, page: parsed.data.page, networks: parsed.data.networks satisfies ChannelPlatform[], ...(startDate.success ? { startDate: startDate.data } : {}) }, actorOf(customer.tenant));
+    // A batch is already being written: the posting service hands back that one, not a new one for these channels.
+    if (!started.created) return { status: "error", message: STILL_WRITING };
   } catch (error) {
     unstable_rethrow(error);
     if (error instanceof SocialAutoError && error.code !== null) return { status: "error", message: wordsForCode(error.code) };
     reportError(error, { area: "social.start-site-job" });
+    return { status: "error", message: wordsForCode(null) };
+  }
+  revalidatePath("/social");
+  return { status: "saved" };
+}
+
+/** The posting service writes one batch at a time and hands back the one in progress, so a second start has to wait for it. */
+const STILL_WRITING = "Your posts are still being written. When they are ready, you can start the next channel.";
+
+/** What to tell a customer whose channels post on different days: one group is being written now, the rest are started next. */
+function laterGroupsMessage(started: readonly ChannelPlatform[], later: readonly ChannelPlatform[]): string {
+  const names = (list: readonly ChannelPlatform[]): string => list.map((platform) => PLATFORM_NAMES[platform]).join(" and ");
+  return `Started for ${names(started)}. ${names(later)} posts on different days, so it is written separately: start it once these posts are written.`;
+}
+
+const postingDaysSchema = z.object({ channel: z.enum(CHANNEL_PLATFORMS), days: z.string().max(40) });
+
+/**
+ * Saves the days one channel posts on (`mon,tue,sat`; nothing at all takes the channel back to the usual spread). The posting service keeps
+ * every channel's days as one setting, so the channels' other days are read first and sent with it. Only batches written afterwards use
+ * the new days: what is already written never moves. The brand comes from the session, never from the form.
+ */
+export async function setPostingDaysAction(formData: FormData): Promise<NewPostState> {
+  const parsed = postingDaysSchema.safeParse({ channel: formData.get("channel"), days: formData.get("days") ?? "" });
+  const days = parsed.success ? parseDays(parsed.data.days) : null;
+  if (!parsed.success || days === null) return { status: "error", message: "Choose the days from Monday to Sunday." };
+  try {
+    const customer = await requireService("social", { write: true });
+    if (customer.role === "viewer") return { status: "error", message: "Only owners and editors can change this." };
+    const settings = socialAutoSettings();
+    if (settings === null) return { status: "error", message: "Posting is not available just now. Try again later." };
+    const brand = await brandOf(customer);
+    const current = await loadSchedule(settings, brand.externalId);
+    if (current === null) return { status: "error", message: "Choosing days is not available just now. Try again later." };
+    await saveSchedule(settings, brand.externalId, withChannelDays(current, parsed.data.channel, days));
+  } catch (error) {
+    unstable_rethrow(error);
+    if (error instanceof SocialAutoError && error.code !== null) return { status: "error", message: wordsForCode(error.code) };
+    reportError(error, { area: "social.posting-days" });
+    return { status: "error", message: wordsForCode(null) };
+  }
+  revalidatePath("/social");
+  return { status: "saved" };
+}
+
+const autoPostingSchema = z.object({
+  channels: z.string().max(80),
+  hours: z.coerce.number().int().refine((value) => (SAFETY_HOURS as readonly number[]).includes(value), "Choose how long before posting we may approve."),
+  agreed: z.string().optional(),
+});
+
+/**
+ * Lets the system post by itself for the channels chosen (`instagram,facebook`; none switches it off) and approve their pictures inside
+ * the safety wait. Choosing channels means agreeing to the words beside the box, so a list with no agreement is refused here and by the posting
+ * service. Only owners and editors can choose, only for channels that are connected (the posting service checks), and the person who agreed
+ * is the one signed in.
+ */
+export async function setAutoPostingAction(formData: FormData): Promise<NewPostState> {
+  const parsed = autoPostingSchema.safeParse({ channels: formData.get("channels") ?? "", hours: formData.get("hours") ?? "24", agreed: formData.get("agreed") ?? undefined });
+  if (!parsed.success) return { status: "error", message: parsed.error.issues[0]?.message ?? "Check your choice and try again." };
+  const names = parsed.data.channels.split(",").map((name) => name.trim()).filter((name) => name !== "");
+  const chosen = CHANNEL_PLATFORMS.filter((platform) => names.includes(platform));
+  if (chosen.length !== names.length) return { status: "error", message: "Choose from your channels." };
+  if (chosen.length > 0 && parsed.data.agreed !== "yes") return { status: "error", message: wordsForCode("CONSENT_REQUIRED") };
+  try {
+    const customer = await requireService("social", { write: true });
+    if (customer.role === "viewer") return { status: "error", message: "Only owners and editors can change this." };
+    const settings = socialAutoSettings();
+    if (settings === null) return { status: "error", message: "Posting is not available just now. Try again later." };
+    const brand = await brandOf(customer);
+    await saveAutoPosting(settings, brand.externalId, { channels: chosen, safetyHours: parsed.data.hours }, actorOf(customer.tenant));
+  } catch (error) {
+    unstable_rethrow(error);
+    if (error instanceof SocialAutoError && error.code !== null) return { status: "error", message: wordsForCode(error.code) };
+    reportError(error, { area: "social.auto-posting" });
     return { status: "error", message: wordsForCode(null) };
   }
   revalidatePath("/social");

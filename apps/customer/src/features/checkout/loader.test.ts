@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { loadIntake } from "../start/server";
 import { loadCheckout } from "./loader";
 import { loadBusinessEntry } from "./server/entry";
+import { recordFirstPaymentIfHeld } from "./server/first-payment-lookup";
 import { loadMembershipCheckout, type MembershipCheckoutView } from "./server/membership-checkout";
 
 vi.mock("server-only", () => ({}));
@@ -12,6 +13,7 @@ vi.mock("next/navigation", () => ({
 }));
 vi.mock("../start/server", () => ({ loadIntake: vi.fn() }));
 vi.mock("./server/entry", () => ({ loadBusinessEntry: vi.fn() }));
+vi.mock("./server/first-payment-lookup", () => ({ recordFirstPaymentIfHeld: vi.fn() }));
 vi.mock("./server/membership-checkout", () => ({ loadMembershipCheckout: vi.fn() }));
 
 const PLAN = { initialAmountCents: 0, recurringAmountCents: 0, currency: "INR", taxRateBasisPoints: 1_800, initialTermMonths: 1 };
@@ -41,6 +43,7 @@ beforeEach(() => {
   vi.mocked(loadBusinessEntry).mockResolvedValue({ kind: "listing", signupChoice: "managed" });
   vi.mocked(loadMembershipCheckout).mockResolvedValue(view());
   vi.mocked(loadIntake).mockResolvedValue({ answers: {} as never, completedAt: new Date() });
+  vi.mocked(recordFirstPaymentIfHeld).mockResolvedValue(false);
 });
 
 describe("loadCheckout", () => {
@@ -120,6 +123,13 @@ describe("loadCheckout", () => {
     const open = { id: "sub-1", status: "incomplete", activatedAt: null };
     expect(await loadCheckout(customer({ subscription: open }), { payment: "received" })).toEqual({ kind: "waiting", waitKey: "membership:sub-1" });
     expect((await loadCheckout(customer(), { payment: "received" })).kind).toBe("pay");
+  });
+
+  it("moves a customer on at once when the provider already holds the payment its webhook has not delivered", async () => {
+    vi.mocked(recordFirstPaymentIfHeld).mockResolvedValue(true);
+    const open = { id: "sub-1", status: "incomplete", activatedAt: null };
+    await expect(loadCheckout(customer({ subscription: open }), { payment: "received" })).rejects.toThrow("redirect:/?welcome=1");
+    expect(recordFirstPaymentIfHeld).toHaveBeenCalledWith(open);
   });
 
   it("says when no plan is on sale", async () => {

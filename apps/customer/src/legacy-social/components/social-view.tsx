@@ -5,6 +5,7 @@ import { allPaused, bookedUntil, connectStatus, dayLabel, daysUntilEnd, endingSo
 import type { LegacySocialData } from "@/legacy-social/server/load";
 import Link from "next/link";
 import { AiStartCard } from "./ai-start-card";
+import { AutoPostingCard } from "./auto-posting-card";
 import { BrandControl } from "./brand-switcher";
 import { ChannelFilterProvider } from "./channel-filter";
 import { ChannelsSidebar, type ChannelRow } from "./channels-sidebar";
@@ -38,6 +39,7 @@ function channelsColumn(data: LegacySocialData, now: Date): { rows: ChannelRow[]
     account: channel.account,
     ending: endingSoon(channel, now) ? endsInWords(daysUntilEnd(channel, now) ?? 0) : null,
     paused: channel.paused === true,
+    days: data.postingDays === null ? null : (data.postingDays[channel.platform] ?? []),
   }));
   const until = bookedUntil(data.posts, data.today);
   return { rows, bookedLine: until === null ? "No posts are booked yet." : `Posts booked until ${dayLabel(until, { day: "numeric", month: "short" })}.` };
@@ -54,12 +56,17 @@ export function LegacySocialView({ data, notice, now, approvals, hasNumbers, can
   // Once posts have been written from the website, looking them over is a button beside New post, not a card.
   const hasReview = data.ai.jobs.length > 0;
   const { rows, bookedLine } = channelsColumn(data, now);
+  // Connected channels with no written batch of their own yet, once a plan exists (channels on different days are written one batch at a time).
+  const unwritten = {
+    channels: data.ai.plan?.startsOn == null ? [] : data.channels.map((channel) => channel.platform).filter((platform, index, all) => all.indexOf(platform) === index && !data.ai.covered.includes(platform)),
+    startDate: data.ai.plan?.startsOn != null && data.ai.plan.startsOn > data.today ? data.ai.plan.startsOn : null,
+  };
   return (
     <NewPostRequestProvider>
       <ChannelFilterProvider>
         {/* On a wide screen the channels column steps out of the shell's gutter and sits against the menu, as it did in the old dashboard. */}
         <div className="flex flex-col gap-6 lg:-mt-5 lg:-ml-gutter lg:flex-row lg:gap-8">
-          <ChannelsSidebar rows={rows} bookedLine={bookedLine} />
+          <ChannelsSidebar rows={rows} bookedLine={bookedLine} canChange={canChange} />
           <div className="order-first min-w-0 flex-1 lg:order-none lg:pt-5">
             <div className="mr-auto grid w-full max-w-[97.5rem] grid-cols-[minmax(0,1fr)] gap-6 md:gap-8">
               <header className="flex flex-wrap items-start justify-between gap-4">
@@ -77,7 +84,7 @@ export function LegacySocialView({ data, notice, now, approvals, hasNumbers, can
                   )}
                   {hasReview ? (
                     <Link href="/social/review" className={SMALL_SOFT}>
-                      Look over your posts
+                      See posts
                     </Link>
                   ) : null}
                   {canPost ? <NewPostButton disabled={!hasAccounts} /> : null}
@@ -105,7 +112,8 @@ export function LegacySocialView({ data, notice, now, approvals, hasNumbers, can
                   Your posts are paused. Nothing is being sent for now. Posts whose time comes while it is paused are skipped, and new ones go out again when we resume.
                 </p>
               ) : null}
-              {canChange ? <AiStartCard jobs={data.ai.jobs} channels={data.channels} website={data.ai.website} savedWebsite={savedWebsite} unavailable={data.ai.jobsUnavailable} expired={data.ai.expired} nextMonth={data.ai.plan?.canStartNext === true && data.ai.plan.nextStartDate !== null ? { startDate: data.ai.plan.nextStartDate, endsOn: data.ai.plan.endsOn } : null} /> : null}
+              {canChange ? <AiStartCard jobs={data.ai.jobs} channels={data.channels} postingDays={data.postingDays} unwritten={unwritten} website={data.ai.website} savedWebsite={savedWebsite} unavailable={data.ai.jobsUnavailable} expired={data.ai.expired} nextMonth={data.ai.plan?.canStartNext === true && data.ai.plan.nextStartDate !== null ? { startDate: data.ai.plan.nextStartDate, endsOn: data.ai.plan.endsOn } : null} /> : null}
+              {data.autoPosting !== null && data.channels.length > 0 ? <AutoPostingCard auto={data.autoPosting} channels={data.channels.map((channel) => ({ platform: channel.platform, account: channel.account }))} canChange={canChange} /> : null}
               {approvals}
               <SocialCalendar
                 posts={data.posts}

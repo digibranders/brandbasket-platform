@@ -9,6 +9,7 @@ import { startNextMonthAction, startSiteJobAction } from "@/legacy-social/action
 import { LIFT, SECTION_TITLE } from "@/legacy-social/classes";
 import { jobIsActive, jobLine, knownWordsForCode, type SiteJob } from "@/legacy-social/lib/social/ai";
 import { CHANNEL_PLATFORMS, dayLabel, PLATFORM_NAMES, websiteLabel, type AutoChannel, type ChannelPlatform } from "@/legacy-social/lib/social/auto";
+import { dayGroups, type PostingDays } from "@/legacy-social/lib/social/schedule";
 import { ChannelLogo } from "./channel-logo";
 import { DismissibleNotice } from "./dismissible-notice";
 import { SMALL_DARK, SMALL_SOFT } from "./small-buttons";
@@ -32,6 +33,10 @@ interface AiStartCardProps {
   readonly expired?: { readonly batches: number; readonly pictures: number };
   /** Set when the customer's month is nearly over and the next one can be written: the Monday it would start. */
   readonly nextMonth?: { readonly startDate: string; readonly endsOn: string | null } | null;
+  /** The days each channel posts on, or null when the posting service cannot say. Channels with different days are written one group at a time. */
+  readonly postingDays?: PostingDays | null;
+  /** The connected channels that none of her written batches is for yet, and the Monday those batches started on (null once it has passed). */
+  readonly unwritten?: { readonly channels: readonly ChannelPlatform[]; readonly startDate: string | null };
 }
 
 /**
@@ -39,7 +44,7 @@ interface AiStartCardProps {
  * ended. Starting opens a window with the address (the whole website, or one page of it) and the networks to write for; no account
  * has to be connected yet, that comes before anything is booked. While a batch is being written the page asks again every few seconds.
  */
-export function AiStartCard({ jobs, channels, website = null, savedWebsite = null, unavailable = false, expired = { batches: 0, pictures: 0 }, nextMonth = null }: AiStartCardProps): ReactElement | null {
+export function AiStartCard({ jobs, channels, website = null, savedWebsite = null, unavailable = false, expired = { batches: 0, pictures: 0 }, nextMonth = null, postingDays = null, unwritten = { channels: [], startDate: null } }: AiStartCardProps): ReactElement | null {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const active = jobs.find(jobIsActive);
@@ -56,7 +61,9 @@ export function AiStartCard({ jobs, channels, website = null, savedWebsite = nul
   const titleId = "ai-start-title";
   // Posts that are written need no card: looking them over is a button beside New post. What was put away for waiting too long still says so.
   if (active === undefined && latest !== undefined && latest.state === "done") {
-    if (nextMonth !== null) return <NextMonthCard startDate={nextMonth.startDate} endsOn={nextMonth.endsOn} />;
+    const more = unwritten.channels.length === 0 || website === null ? null : <NextChannelCard channels={unwritten.channels} postingDays={postingDays} startDate={unwritten.startDate} website={website} />;
+    if (nextMonth !== null) return more === null ? <NextMonthCard startDate={nextMonth.startDate} endsOn={nextMonth.endsOn} /> : <>{more}<NextMonthCard startDate={nextMonth.startDate} endsOn={nextMonth.endsOn} /></>;
+    if (more !== null) return more;
     return expired.batches + expired.pictures === 0 ? null : (
       <DismissibleNotice id={`expired:${expired.batches}:${expired.pictures}`}>
         Some of your posts were put away because nobody decided within 14 days.{" "}
@@ -97,7 +104,7 @@ export function AiStartCard({ jobs, channels, website = null, savedWebsite = nul
           </button>
         </div>
       )}
-      {open ? <StartDialog connected={connected} website={website} savedWebsite={savedWebsite} onClose={() => setOpen(false)} /> : null}
+      {open ? <StartDialog connected={connected} postingDays={postingDays} website={website} savedWebsite={savedWebsite} onClose={() => setOpen(false)} /> : null}
     </section>
   );
 }
@@ -108,17 +115,24 @@ interface StartDialogProps {
   readonly website?: string | null;
   /** The website from setup, offered in the field while none is locked yet. */
   readonly savedWebsite?: string | null;
+  /** The days each channel posts on; channels with different days cannot be written together. */
+  readonly postingDays?: PostingDays | null;
+  /** The Monday the posts start on, `YYYY-MM-DD`, so a further channel's batch covers the same weeks as the first; left out for the next Monday. */
+  readonly startDate?: string | null;
   readonly onClose: () => void;
 }
 
 /** The window that asks for the networks and how posts go out, and for the address only when none is known. Exported for its test. */
-export function StartDialog({ connected, website = null, savedWebsite = null, onClose }: StartDialogProps): ReactElement {
+export function StartDialog({ connected, postingDays = null, startDate = null, website = null, savedWebsite = null, onClose }: StartDialogProps): ReactElement {
   const router = useRouter();
   const dialog = useRef<HTMLDialogElement>(null);
   const [mode, setMode] = useState<"site" | "page">("site");
   const [typedSite, setTypedSite] = useState(savedWebsite ?? "");
   const [pageLink, setPageLink] = useState("");
-  const [networks, setNetworks] = useState<ReadonlySet<ChannelPlatform>>(() => new Set(connected.size > 0 ? connected : CHANNEL_PLATFORMS));
+  const groups = dayGroups([...connected], postingDays);
+  const [networks, setNetworks] = useState<ReadonlySet<ChannelPlatform>>(() => new Set(connected.size > 0 ? (groups[0] ?? connected) : CHANNEL_PLATFORMS));
+  const groupOf = (platform: ChannelPlatform): number => groups.findIndex((group) => group.includes(platform));
+  const mixedDays = new Set([...networks].map(groupOf).filter((index) => index >= 0)).size > 1;
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
@@ -139,7 +153,7 @@ export function StartDialog({ connected, website = null, savedWebsite = null, on
       return next;
     });
 
-  const problem = address.trim() === "" ? (mode === "site" ? "Write your website address." : "Write the link to the page.") : networks.size === 0 ? "Choose at least one network." : null;
+  const problem = address.trim() === "" ? (mode === "site" ? "Write your website address." : "Write the link to the page.") : networks.size === 0 ? "Choose at least one network." : mixedDays ? "These channels post on different days, so write them one at a time." : null;
 
   const submit = (event: FormEvent): void => {
     event.preventDefault();
@@ -153,6 +167,7 @@ export function StartDialog({ connected, website = null, savedWebsite = null, on
         const form = new FormData();
         form.set("site", address.trim());
         form.set("mode", mode);
+        if (startDate !== null) form.set("startDate", startDate);
         for (const platform of networks) form.append("network", platform);
         const result = await startSiteJobAction(form);
         if (result.status === "error") {
@@ -260,6 +275,11 @@ export function StartDialog({ connected, website = null, savedWebsite = null, on
               );
             })}
           </div>
+          {groups.length > 1 ? (
+            <p className="mt-2 text-xs text-ink-3">
+              Your channels post on different days, so they are written one group at a time. Start with this one, then start {groups.slice(1).map((group) => group.map((platform) => PLATFORM_NAMES[platform]).join(" and ")).join(", then ")} once these posts are written.
+            </p>
+          ) : null}
           <p className="mt-2 text-xs text-ink-3">You do not need to connect an account yet. You do that before anything is booked.</p>
         </fieldset>
 
@@ -277,7 +297,7 @@ export function StartDialog({ connected, website = null, savedWebsite = null, on
               <input type="radio" name="approval" value="automatic" disabled className="peer sr-only" />
               <span className="grid h-full gap-0.5 rounded-xl bg-surface px-3 py-2 text-ink-3 ring-1 ring-ink-2/30">
                 <span className="text-[0.8125rem] font-semibold">Post automatically</span>
-                <span className="text-[0.6875rem] leading-snug">Not available yet. We switch this on once you have approved a few posts yourself.</span>
+                <span className="text-[0.6875rem] leading-snug">After your posts are written, choose it for the channels you want on the Automatic posting card.</span>
               </span>
             </label>
           </div>
@@ -306,14 +326,20 @@ function NextMonthCard({ startDate, endsOn }: { readonly startDate: string; read
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const start = (): void => {
     setError(null);
+    setNotice(null);
     startTransition(async () => {
       const form = new FormData();
       form.set("startDate", startDate);
       const result = await startNextMonthAction(form);
       if (result.status === "error") setError(result.message);
-      else router.refresh();
+      else {
+        // A customer whose channels post on different days has one group started: say which, and that the others follow.
+        if (result.status === "partial") setNotice(result.message);
+        router.refresh();
+      }
     });
   };
   const monday = dayLabel(startDate, { weekday: "long", day: "numeric", month: "long" });
@@ -336,7 +362,36 @@ function NextMonthCard({ startDate, endsOn }: { readonly startDate: string; read
             {error}
           </p>
         )}
+        {notice === null ? null : <p className="text-[0.84375rem] font-semibold text-ok">{notice}</p>}
       </div>
+    </section>
+  );
+}
+
+/**
+ * Channels that post on different days are written as batches of their own, one after the other. Once the first is written, this offers the
+ * next group (starting the same Monday, so the weeks match) until every connected channel has posts written for it.
+ */
+function NextChannelCard({ channels, postingDays, startDate, website }: { readonly channels: readonly ChannelPlatform[]; readonly postingDays: PostingDays | null; readonly startDate: string | null; readonly website: string }): ReactElement {
+  const [open, setOpen] = useState(false);
+  const [first = channels] = dayGroups(channels, postingDays);
+  const names = first.map((platform) => PLATFORM_NAMES[platform]).join(" and ");
+  return (
+    <section aria-labelledby="next-channel-title" className={cn(LIFT, "grid gap-4 p-5")}>
+      <div className="min-w-0">
+        <h2 id="next-channel-title" className={SECTION_TITLE}>
+          Write posts for {names}
+        </h2>
+        <p className="mt-1 text-[0.84375rem] leading-relaxed text-ink-2">
+          {names} {first.length === 1 ? "has" : "have"} no posts written yet. Channels that post on different days are written one at a time, from the same website, for the same weeks. You look the posts over before anything is drawn or posted.
+        </p>
+      </div>
+      <div>
+        <button type="button" onClick={() => setOpen(true)} className={SMALL_DARK}>
+          Write posts for {names}
+        </button>
+      </div>
+      {open ? <StartDialog connected={new Set(channels)} postingDays={postingDays} startDate={startDate} website={website} onClose={() => setOpen(false)} /> : null}
     </section>
   );
 }

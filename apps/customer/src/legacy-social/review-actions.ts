@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache";
 import { unstable_rethrow } from "next/navigation";
 import { z } from "zod";
 import { requireService, type CustomerContext } from "@/lib/guards";
-import { actorOf, addNetwork, decideBatch, decideCarousel, decidePoster, drawBatch, loadTopics, moveTopic, replaceTopic, makeCarousel, setCarouselWeekly, SocialAutoError, socialAutoSettings, type SocialAutoSettings } from "@/legacy-social/server/social-auto";
+import { actorOf, addNetwork, decideBatch, decideCarousel, askTopic, decidePoster, drawBatch, loadTopics, moveTopic, replaceTopic, makeCarousel, setCarouselWeekly, SocialAutoError, socialAutoSettings, type SocialAutoSettings } from "@/legacy-social/server/social-auto";
 import { brandOf, type SocialBrand } from "@/features/social/brand";
 import { wordsForCode } from "@/legacy-social/lib/social/ai";
 import { CHANNEL_PLATFORMS, PLATFORM_NAMES } from "@/legacy-social/lib/social/auto";
@@ -41,7 +41,7 @@ async function run(what: string, work: (g: Extract<Guard, { ok: true }>) => Prom
   } catch (error) {
     unstable_rethrow(error);
     // The posting service words this refusal itself (which channel, and the Monday it starts again), so that sentence is shown as it is.
-    if (error instanceof SocialAutoError && (error.code === "PICTURE_LIMIT_REACHED" || error.code === "CAROUSEL_LIMIT_REACHED") && error.detail !== null) return { status: "error", message: error.detail };
+    if (error instanceof SocialAutoError && (error.code === "PICTURE_LIMIT_REACHED" || error.code === "CAROUSEL_LIMIT_REACHED" || error.code === "TOPIC_LIMIT_REACHED" || error.code === "TEXT_REFUSED" || error.code === "LINK_NOT_ALLOWED") && error.detail !== null) return { status: "error", message: error.detail };
     if (error instanceof SocialAutoError && error.code !== null) return { status: "error", message: wordsForCode(error.code) };
     reportError(error, { area: `social.review.${what}` });
     return { status: "error", message: wordsForCode(null) };
@@ -85,6 +85,15 @@ export async function moveTopicAction(formData: FormData): Promise<NewPostState>
     // The words are not rewritten for the new day, so a topic that names one (Friday, tomorrow) is flagged for her to check.
     return moved.wordsNameADay ? "Moved. The words of this topic name a day, so read them again to see they still fit." : undefined;
   });
+}
+
+/** "Write your own": a post about something she wrote in her own words, for the week being looked at. One a week; nothing is drawn until she asks. */
+export async function askTopicAction(formData: FormData): Promise<NewPostState> {
+  const parsed = z
+    .object({ text: z.string().trim().min(10, "Write a little more: what is it, and when or for how long.").max(1000, "Keep it under 1000 characters."), week: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional() })
+    .safeParse({ text: formData.get("text"), week: formData.get("week") ?? undefined });
+  if (!parsed.success) return { status: "error", message: parsed.error.issues[0]?.message ?? "Write what the post is about." };
+  return run("write her own topic", async ({ settings, brand, actor }) => void (await askTopic(settings, brand.externalId, parsed.data.text, parsed.data.week, actor)));
 }
 
 /** "New topic": asks for a new topic in place of a post the customer dropped. It is written in the background; the page shows it when it is ready. */
