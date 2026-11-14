@@ -4,7 +4,7 @@ import { reportError } from "@/lib/report";
 import { brandOf, type SocialBrand } from "@/features/social/brand";
 import { localDateIn } from "@brandbasket/shared/lib/calendar/local-date";
 import { BRAND_TIME_ZONE } from "@/legacy-social/shims";
-import { loadWindow, toCalendarPost, type AutoChannel, type CalendarPost, type WorkspaceNotice } from "@/legacy-social/lib/social/auto";
+import { loadWindow, toCalendarPost, type AutoChannel, type ChannelPlatform, type CalendarPost, type WorkspaceNotice } from "@/legacy-social/lib/social/auto";
 import type { BatchPlan, SiteJob } from "@/legacy-social/lib/social/ai";
 import type { AutoPostingState } from "@/legacy-social/lib/social/auto-posting";
 import type { PostingDays } from "@/legacy-social/lib/social/schedule";
@@ -35,6 +35,8 @@ export interface LegacySocialData {
     readonly expired: { readonly batches: number; readonly pictures: number };
     /** Where the customer's month stands, or null when the posting service does not say. */
     readonly plan: BatchPlan | null;
+    /** The channels a written batch of her website's posts is for (her own one-post topics do not count). */
+    readonly covered: readonly ChannelPlatform[];
   };
   /** True when the posting service could not be asked, so the page says so instead of showing an empty calendar as if it were true. */
   readonly unavailable: boolean;
@@ -75,6 +77,7 @@ export async function loadLegacySocial(customer: Pick<CustomerContext, "business
       website: facts.status === "fulfilled" ? facts.value.website : null,
       jobsUnavailable: jobs.status === "rejected",
       plan: written.status === "fulfilled" ? written.value.plan : null,
+      covered: written.status === "fulfilled" ? [...new Set(written.value.batches.filter((batch) => batch.posts.length > 1).flatMap((batch) => batch.networks))] : [],
       expired: { batches: written.status === "fulfilled" ? written.value.expired.length : 0, pictures: expiredPictures.status === "fulfilled" ? expiredPictures.value.posters.length : 0 },
     },
     unavailable: channels.status === "rejected" || posts.status === "rejected",

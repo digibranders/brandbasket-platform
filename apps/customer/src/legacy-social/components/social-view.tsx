@@ -56,6 +56,11 @@ export function LegacySocialView({ data, notice, now, approvals, hasNumbers, can
   // Once posts have been written from the website, looking them over is a button beside New post, not a card.
   const hasReview = data.ai.jobs.length > 0;
   const { rows, bookedLine } = channelsColumn(data, now);
+  // Connected channels with no written batch of their own yet, once a plan exists (channels on different days are written one batch at a time).
+  const unwritten = {
+    channels: data.ai.plan?.startsOn == null ? [] : data.channels.map((channel) => channel.platform).filter((platform, index, all) => all.indexOf(platform) === index && !data.ai.covered.includes(platform)),
+    startDate: data.ai.plan?.startsOn != null && data.ai.plan.startsOn > data.today ? data.ai.plan.startsOn : null,
+  };
   return (
     <NewPostRequestProvider>
       <ChannelFilterProvider>
@@ -107,7 +112,7 @@ export function LegacySocialView({ data, notice, now, approvals, hasNumbers, can
                   Your posts are paused. Nothing is being sent for now. Posts whose time comes while it is paused are skipped, and new ones go out again when we resume.
                 </p>
               ) : null}
-              {canChange ? <AiStartCard jobs={data.ai.jobs} channels={data.channels} postingDays={data.postingDays} website={data.ai.website} savedWebsite={savedWebsite} unavailable={data.ai.jobsUnavailable} expired={data.ai.expired} nextMonth={data.ai.plan?.canStartNext === true && data.ai.plan.nextStartDate !== null ? { startDate: data.ai.plan.nextStartDate, endsOn: data.ai.plan.endsOn } : null} /> : null}
+              {canChange ? <AiStartCard jobs={data.ai.jobs} channels={data.channels} postingDays={data.postingDays} unwritten={unwritten} website={data.ai.website} savedWebsite={savedWebsite} unavailable={data.ai.jobsUnavailable} expired={data.ai.expired} nextMonth={data.ai.plan?.canStartNext === true && data.ai.plan.nextStartDate !== null ? { startDate: data.ai.plan.nextStartDate, endsOn: data.ai.plan.endsOn } : null} /> : null}
               {data.autoPosting !== null && data.channels.length > 0 ? <AutoPostingCard auto={data.autoPosting} channels={data.channels.map((channel) => ({ platform: channel.platform, account: channel.account }))} canChange={canChange} /> : null}
               {approvals}
               <SocialCalendar

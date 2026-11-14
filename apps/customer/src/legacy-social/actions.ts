@@ -271,6 +271,7 @@ export async function startSiteJobAction(formData: FormData): Promise<NewPostSta
   const customer = await requireService("social", { write: true });
   if (customer.role === "viewer") return { status: "error", message: "Only owners and editors can change this." };
   const parsed = siteSchema.safeParse({ site: formData.get("site"), page: formData.get("mode") === "page", networks: formData.getAll("network") });
+  const startDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/).safeParse(formData.get("startDate"));
   if (!parsed.success) return { status: "error", message: parsed.error.issues[0]?.message ?? "Check the address and try again." };
   if (parsed.data.networks.length === 0) return { status: "error", message: wordsForCode("INVALID_NETWORKS") };
   try {
@@ -278,7 +279,7 @@ export async function startSiteJobAction(formData: FormData): Promise<NewPostSta
     if (settings === null) return { status: "error", message: "Posting is not available just now. Try again later." };
     const brand = await brandOf(customer);
     await ensureWorkspace(settings, { id: brand.externalId, name: brand.name, ...(brand.externalId === customer.businessId ? {} : { group: customer.businessId }) });
-    const started = await startSiteJob(settings, brand.externalId, { site: parsed.data.site, page: parsed.data.page, networks: parsed.data.networks satisfies ChannelPlatform[] }, actorOf(customer.tenant));
+    const started = await startSiteJob(settings, brand.externalId, { site: parsed.data.site, page: parsed.data.page, networks: parsed.data.networks satisfies ChannelPlatform[], ...(startDate.success ? { startDate: startDate.data } : {}) }, actorOf(customer.tenant));
     // A batch is already being written: the posting service hands back that one, not a new one for these channels.
     if (!started.created) return { status: "error", message: STILL_WRITING };
   } catch (error) {

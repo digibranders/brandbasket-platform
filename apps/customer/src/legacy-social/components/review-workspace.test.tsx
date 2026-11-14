@@ -458,3 +458,36 @@ describe("ReviewWorkspace pictures", () => {
     expect(screen.getByText("No posts are waiting for you.")).toBeTruthy();
   });
 });
+
+describe("ReviewWorkspace: channels with a batch of their own", () => {
+  /** Instagram's batch (Mon and Sat) and Facebook's (Wed and Fri), written separately because the channels post on different days. */
+  const batchFor = (id: string, network: "instagram" | "facebook", posts: WrittenPost[]): ReviewGroup => {
+    const batch: WrittenBatch = { id, createdAt: "2026-11-13T10:00:00Z", networks: [network], posts, rules: {}, weeks: [{ from: "2026-11-16", to: "2026-11-22", state: "waiting", postIds: posts.map((one) => one.id), notDrawn: [], missingDays: [], replacementsLeft: 3 }] } as unknown as WrittenBatch;
+    return { batchId: id, batch, cards: posts.map((one) => ({ key: `${id}/${one.id}`, batchId: id, postId: one.id, headline: one.headline, written: one, pictures: [], states: [] })) };
+  };
+  const groups = [
+    batchFor("bi", "instagram", [post("ig1", "pending", "2026-11-16"), post("ig2", "pending", "2026-11-21")]),
+    batchFor("bf", "facebook", [post("fb1", "pending", "2026-11-18"), post("fb2", "pending", "2026-11-20")]),
+  ];
+
+  it("shows each channel only the topics written for it", () => {
+    render(<Screen groups={groups} />);
+    expect(screen.getByText("Headline ig1")).toBeTruthy();
+    expect(screen.queryByText("Headline fb1")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: /Acme Page/ }));
+    expect(screen.getByText("Headline fb1")).toBeTruthy();
+    expect(screen.getByText("Headline fb2")).toBeTruthy();
+    expect(screen.queryByText("Headline ig1")).toBeNull();
+  });
+
+  it("counts what each channel has to decide in its own batch, and shows nothing for a channel with no batch", () => {
+    render(<Screen groups={groups} channels={[...channels, { platform: "linkedin", account: "Acme Profile" }]} />);
+    const row = (name: RegExp): HTMLElement => screen.getByRole("button", { name }).closest("li") as HTMLElement;
+    expect(row(/acme_foods/).textContent).toContain("2");
+    expect(row(/Acme Page/).textContent).toContain("2");
+    expect(row(/Acme Profile/).textContent).not.toMatch(/\d to decide|\d to approve/);
+    fireEvent.click(screen.getByRole("button", { name: /Acme Profile/ }));
+    expect(screen.queryByText("Headline ig1")).toBeNull();
+    expect(screen.queryByText("Headline fb1")).toBeNull();
+  });
+});

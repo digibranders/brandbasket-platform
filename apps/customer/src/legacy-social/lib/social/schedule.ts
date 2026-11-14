@@ -1,3 +1,4 @@
+import type { Topic, WrittenBatch } from "./ai";
 import { CHANNEL_PLATFORMS, type ChannelPlatform } from "./auto";
 
 /*
@@ -70,4 +71,28 @@ export function dayGroups(platforms: readonly ChannelPlatform[], days: PostingDa
     groups.set(key, [...(groups.get(key) ?? []), platform]);
   }
   return [...groups.values()];
+}
+
+/** The days of the week a list of `YYYY-MM-DD` dates fall on, in week order (a calendar day has the same weekday in every time zone). */
+export function weekdaysOf(dates: readonly string[]): Weekday[] {
+  const used = new Set(dates.map((date) => WEEKDAYS[(new Date(`${date.slice(0, 10)}T00:00:00Z`).getUTCDay() + 6) % 7]));
+  return WEEKDAYS.filter((day) => used.has(day));
+}
+
+/**
+ * The channels a written batch can still be extended to with "Add a channel to these posts". That writes the same topics for the same days,
+ * so a channel with days of its own that differ from the batch's would post on the wrong days: it gets a batch of its own instead.
+ */
+export function addableNetworks(topics: readonly Topic[], batches: readonly WrittenBatch[], days: PostingDays | null): ChannelPlatform[] {
+  const out = new Set<ChannelPlatform>();
+  for (const topic of topics) {
+    const batch = batches.find((one) => one.id === topic.batchId);
+    const batchDays = batch === undefined ? null : weekdaysOf(batch.posts.flatMap((post) => (post.date === null ? [] : [post.date])));
+    for (const platform of topic.missing) {
+      const own = days?.[platform];
+      const same = own === undefined || own.length === 0 || batchDays === null || (own.length === batchDays.length && own.every((day, index) => day === batchDays[index]));
+      if (same) out.add(platform);
+    }
+  }
+  return CHANNEL_PLATFORMS.filter((platform) => out.has(platform));
 }

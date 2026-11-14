@@ -55,3 +55,29 @@ describe("channels grouped by their days", () => {
     expect(dayGroups([], {})).toEqual([]);
   });
 });
+
+describe("adding a channel to written posts", () => {
+  const batch = (id: string, dates: string[]) => ({ id, posts: dates.map((date, index) => ({ id: `p${index}`, date })) }) as unknown as import("./ai").WrittenBatch;
+  const topic = (batchId: string, missing: string[]) => ({ batchId, postId: "p0", headline: "h", networks: [], missing }) as unknown as import("./ai").Topic;
+
+  it("reads the weekdays of a list of dates in week order", async () => {
+    const { weekdaysOf } = await import("./schedule");
+    expect(weekdaysOf(["2026-11-21", "2026-11-16", "2026-11-17", "2026-11-23"])).toEqual(["mon", "tue", "sat"]);
+    expect(weekdaysOf(["2026-11-22"])).toEqual(["sun"]);
+    expect(weekdaysOf([])).toEqual([]);
+  });
+
+  it("offers a channel with no days of its own, or days like the batch's, and not one with different days", async () => {
+    const { addableNetworks } = await import("./schedule");
+    const batches = [batch("b1", ["2026-11-16", "2026-11-17", "2026-11-21"])];
+    const topics = [topic("b1", ["facebook", "linkedin", "google"])];
+    expect(addableNetworks(topics, batches, null)).toEqual(["facebook", "linkedin", "google"]);
+    expect(addableNetworks(topics, batches, { facebook: ["wed", "fri"] })).toEqual(["linkedin", "google"]);
+    expect(addableNetworks(topics, batches, { facebook: ["mon", "tue", "sat"], linkedin: ["mon"] })).toEqual(["facebook", "google"]);
+  });
+
+  it("keeps a channel when the batch is not listed (its days are not known)", async () => {
+    const { addableNetworks } = await import("./schedule");
+    expect(addableNetworks([topic("gone", ["facebook"])], [], { facebook: ["wed"] })).toEqual(["facebook"]);
+  });
+});

@@ -5,7 +5,8 @@ import { brandOf, type SocialBrand } from "@/features/social/brand";
 import type { BatchPlan, ExpiredBatch, Poster, SiteJob, Topic, TopicRequest, WrittenBatch } from "@/legacy-social/lib/social/ai";
 import type { CarouselDetail, CarouselSummary } from "@/legacy-social/lib/social/carousel";
 import { CHANNEL_PLATFORMS, type ChannelPlatform } from "@/legacy-social/lib/social/auto";
-import { loadBatches, loadCarousel, loadCarouselList, loadChannels, loadPictureLimits, loadPosters, loadSiteJobs, loadTopicRequests, loadTopics, loadWorkspaceFacts, socialAutoSettings, type PictureLimits } from "./social-auto";
+import { addableNetworks, type PostingDays } from "@/legacy-social/lib/social/schedule";
+import { loadBatches, loadCarousel, loadCarouselList, loadChannels, loadPictureLimits, loadPosters, loadSchedule, loadSiteJobs, loadTopicRequests, loadTopics, loadWorkspaceFacts, socialAutoSettings, type PictureLimits } from "./social-auto";
 
 /** Everything the review page shows: the customer's batches of written posts and where they stand, and the pictures. */
 export interface SocialReview {
@@ -59,7 +60,7 @@ export async function loadSocialReview(customer: Pick<CustomerContext, "business
     }
   };
   // One read of every picture: the "open" filter leaves out one that did not pass the checks, which the customer must still see.
-  const [jobs, written, pictures, topics, limits, carouselList, facts, channels, topicRequests] = await Promise.all([
+  const [jobs, written, pictures, topics, limits, carouselList, facts, channels, topicRequests, postingDays] = await Promise.all([
     read("the jobs", [] as SiteJob[], () => loadSiteJobs(settings, id)),
     read("the written posts", { batches: [] as WrittenBatch[], expired: [] as ExpiredBatch[], plan: null as BatchPlan | null }, () => loadBatches(settings, id)),
     read("the pictures", { posters: [] as Poster[], reasons: [] as string[] }, () => loadPosters(settings, id, "all")),
@@ -69,6 +70,7 @@ export async function loadSocialReview(customer: Pick<CustomerContext, "business
     read("the website", { website: null as string | null, notices: [] }, () => loadWorkspaceFacts(settings, id)),
     read("the channels", [] as Awaited<ReturnType<typeof loadChannels>>, () => loadChannels(settings, id)),
     read("her own topics", [] as TopicRequest[], () => loadTopicRequests(settings, id)),
+    read("the posting days", null as PostingDays | null, () => loadSchedule(settings, id)),
   ]);
   const carousels = carouselList.carousels;
   const newest = carousels[0];
@@ -86,7 +88,7 @@ export async function loadSocialReview(customer: Pick<CustomerContext, "business
       return found === undefined ? [] : [{ platform, account: found.account }];
     }),
     topicRequests,
-    missingNetworks: [...new Set(topics.flatMap((topic) => topic.missing))],
+    missingNetworks: addableNetworks(topics, written.batches, postingDays),
     topics,
     reasons: pictures.reasons,
     limits,

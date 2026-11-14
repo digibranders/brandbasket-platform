@@ -1,7 +1,7 @@
 "use client";
 
 import { ArrowClockwise, CalendarBlank, CaretLeft, CaretRight, Check, Plus, Prohibit, TextT, X } from "@phosphor-icons/react/dist/ssr";
-import { createContext, useContext, useEffect, useMemo, useRef, useState, useTransition, type FormEvent, type PointerEvent as ReactPointerEvent, type ReactElement, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, useTransition, type FormEvent, type PointerEvent as ReactPointerEvent, type ReactElement, type ReactNode } from "react";
 import { cn } from "@brandbasket/shared/lib/cn";
 import { askTopicAction, decideBatchAction, decidePosterAction, drawBatchAction, moveTopicAction, replaceTopicAction } from "@/legacy-social/review-actions";
 import { REJECT_REASON_WORDS, TOPIC_NOT_MADE_WORDS, type Poster, type TopicRequest, type WrittenBatch } from "@/legacy-social/lib/social/ai";
@@ -988,7 +988,9 @@ interface Flow {
   readonly cards: readonly ReviewCard[];
   readonly channel: "all" | ChannelPlatform;
   readonly setChannel: (channel: "all" | ChannelPlatform) => void;
-  readonly setWeekKey: (key: string) => void;
+  readonly setWeekKey: (key: string | null) => void;
+  /** What one channel has left to do, in its own batch. */
+  readonly todoOf: (platform: ChannelPlatform) => { readonly count: number; readonly words: string };
 }
 
 const FlowContext = createContext<Flow | null>(null);
@@ -999,14 +1001,44 @@ function useFlow(): Flow {
   return value;
 }
 
+/**
+ * Whether a written batch (or, once its posts are gone, its pictures) is for this channel. Channels that post on different days are written
+ * as batches of their own, so a channel looks only at the batches written for it.
+ */
+export function groupIsFor(group: ReviewGroup, channel: ChannelPlatform): boolean {
+  if (group.batch !== null) return group.batch.networks.includes(channel);
+  return group.cards.some((card) => card.pictures.some((poster) => poster.network === channel));
+}
+
 /** Holds which channel and which week the customer is looking at, for the channels column and the workspace beside it. */
 export function ReviewFlowProvider({ groups, drawing = [], reasons, channels, replacing = {}, today = "", own = NO_OWN, children }: ReviewFlowProps): ReactElement {
-  const weeks = useMemo(() => flowWeeks(groups, drawing), [groups, drawing]);
-  const [weekKey, setWeekKey] = useState<string | null>(() => firstOpenWeek(groups, flowWeeks(groups, drawing)));
-  const [channel, setChannel] = useState<"all" | ChannelPlatform>(channels[0]?.platform ?? "all");
-  const week = weeks.find((one) => one.key === weekKey) ?? weeks[0];
-  const cards = useMemo(() => (week === undefined ? [] : cardsOfWeek(groups, week)), [groups, week]);
-  const value = useMemo<Flow>(() => ({ groups, reasons, channels, replacing, today, own, weeks, week, cards, channel, setChannel, setWeekKey }), [groups, reasons, channels, replacing, today, own, weeks, week, cards, channel]);
+  const [channel, setChannelNow] = useState<"all" | ChannelPlatform>(channels[0]?.platform ?? "all");
+  const groupsOf = useCallback((which: "all" | ChannelPlatform): readonly ReviewGroup[] => (which === "all" ? groups : groups.filter((group) => groupIsFor(group, which))), [groups]);
+  const visible = useMemo(() => groupsOf(channel), [groupsOf, channel]);
+  const weeks = useMemo(() => flowWeeks(visible, drawing), [visible, drawing]);
+  const [weekKey, setWeekKey] = useState<string | null>(() => firstOpenWeek(groupsOf(channel), flowWeeks(groupsOf(channel), drawing)));
+  const week = weeks.find((one) => one.key === weekKey) ?? weeks.find((one) => one.key === firstOpenWeek(visible, weeks)) ?? weeks[0];
+  const cards = useMemo(() => (week === undefined ? [] : cardsOfWeek(visible, week)), [visible, week]);
+  /** Changing channel looks at that channel's own batch: the week it has something to do in, else its first. */
+  const setChannel = useCallback(
+    (next: "all" | ChannelPlatform): void => {
+      setChannelNow(next);
+      setWeekKey(firstOpenWeek(groupsOf(next), flowWeeks(groupsOf(next), drawing)));
+    },
+    [groupsOf, drawing],
+  );
+  /** What one channel has left to do, in its own batch's week (the one starting the same Monday as the week being looked at when it has one). */
+  const todoOf = useCallback(
+    (platform: ChannelPlatform): { readonly count: number; readonly words: string } => {
+      const own = groupsOf(platform);
+      const its = flowWeeks(own, drawing);
+      const same = week === undefined ? undefined : its.find((one) => one.from === week.from);
+      const there = same ?? its.find((one) => one.key === firstOpenWeek(own, its));
+      return channelTodo(there === undefined ? [] : cardsOfWeek(own, there), there, platform);
+    },
+    [groupsOf, drawing, week],
+  );
+  const value = useMemo<Flow>(() => ({ groups: visible, reasons, channels, replacing, today, own, weeks, week, cards, channel, setChannel, setWeekKey, todoOf }), [visible, reasons, channels, replacing, today, own, weeks, week, cards, channel, setChannel, todoOf]);
   return <FlowContext value={value}>{children}</FlowContext>;
 }
 
@@ -1015,7 +1047,7 @@ export function ReviewFlowProvider({ groups, drawing = [], reasons, channels, re
  * Connect button for each network with no account yet. A row shows what is left to do in the week being looked at.
  */
 export function ReviewChannelsColumn(): ReactElement {
-  const { channels, week, cards, channel, setChannel } = useFlow();
+  const { channels, channel, setChannel, todoOf } = useFlow();
   const missing = CHANNEL_PLATFORMS.filter((platform) => !channels.some((one) => one.platform === platform));
   return (
     <aside
@@ -1037,7 +1069,7 @@ export function ReviewChannelsColumn(): ReactElement {
           </button>
         </li>
         {channels.map((one) => {
-          const todo = channelTodo(cards, week, one.platform);
+          const todo = todoOf(one.platform);
           return (
             <li key={one.platform}>
               <button type="button" aria-pressed={channel === one.platform} onClick={() => setChannel(one.platform)} className={cn("grid w-full grid-cols-[1.75rem_minmax(0,1fr)] items-center gap-2.5 rounded-lg px-1.5 py-1.5 text-left transition-colors hover:bg-sunken", channel === one.platform && "bg-sunken")}>

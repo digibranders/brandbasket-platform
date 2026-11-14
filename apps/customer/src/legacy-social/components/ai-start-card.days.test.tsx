@@ -56,4 +56,24 @@ describe("writing posts for channels that post on different days", () => {
     expect(await screen.findByText(/Started for Instagram/)).toBeTruthy();
     expect(refresh).toHaveBeenCalled();
   });
+
+  it("offers the next group once the first is written, starting the same Monday and sending only that group", async () => {
+    render(<AiStartCard jobs={[done]} channels={[]} website="acme.com" postingDays={{ instagram: ["mon", "tue", "sat"], facebook: ["wed", "fri"] }} unwritten={{ channels: ["facebook", "linkedin"], startDate: "2026-11-16" }} />);
+    expect(screen.getByRole("heading", { name: "Write posts for Facebook" })).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Write posts for Facebook" }));
+    fireEvent.click(screen.getByRole("button", { name: "Read my website" }));
+    await waitFor(() => expect(vi.mocked(startSiteJobAction)).toHaveBeenCalledTimes(1));
+    const form = vi.mocked(startSiteJobAction).mock.calls[0]?.[0] as FormData;
+    expect(form.getAll("network")).toEqual(["facebook"]);
+    expect(form.get("startDate")).toBe("2026-11-16");
+  });
+
+  it("offers nothing when every channel has its posts written, and no longer says automatic posting is not available", () => {
+    const { container } = render(<AiStartCard jobs={[done]} channels={[]} website="acme.com" unwritten={{ channels: [], startDate: null }} />);
+    expect(container.textContent).toBe("");
+    cleanup();
+    render(<StartDialog connected={new Set(["instagram"] as const)} website="acme.com" onClose={() => undefined} />);
+    expect(screen.queryByText(/Not available yet/)).toBeNull();
+    expect(screen.getByText(/Automatic posting card/)).toBeTruthy();
+  });
 });
