@@ -1,6 +1,7 @@
 import type { ReactElement, ReactNode } from "react";
 import { localDateIn } from "@brandbasket/shared/lib/calendar/local-date";
 import { BRAND_TIME_ZONE } from "@/legacy-social/shims";
+import { nextStartDay } from "@/legacy-social/lib/social/plan-window";
 import type { SocialReview } from "@/legacy-social/server/social-review";
 import { jobIsActive, jobLine } from "@/legacy-social/lib/social/ai";
 import { dayLabel, PLATFORM_NAMES } from "@/legacy-social/lib/social/auto";
@@ -82,7 +83,7 @@ export function ReviewView({ review, canChange = true, approvals = null }: { rea
       {approvals}
       {/* Starting the next channel or the next month lives with the written posts. The choice to post automatically is made when posts are started; this card appears only once it is on, to change or switch it off, or when a channel connected since needs a choice. */}
       {!canChange || active !== undefined ? null : (
-        <AiStartCard jobs={review.jobs} channels={review.channels} postingDays={review.postingDays} website={review.website} expired={{ batches: review.expired.batches.length, pictures: review.expired.pictures.length }} nextMonth={review.plan?.canStartNext === true && review.plan.nextStartDate !== null ? { startDate: review.plan.nextStartDate, endsOn: review.plan.endsOn } : null} />
+        <AiStartCard jobs={review.jobs} channels={review.channels} postingDays={review.postingDays} website={review.website} expired={{ batches: review.expired.batches.length, pictures: review.expired.pictures.length }} nextMonth={review.plan?.canStartNext === true && review.plan.nextStartDate !== null ? { startDate: nextStartDay({ today: localDateIn(BRAND_TIME_ZONE, new Date()), earliest: review.plan.nextStartDate, renewsOn: review.renewsOn }), endsOn: review.plan.endsOn } : null} />
       )}
       {review.autoPosting !== null && review.channels.length > 0 && review.autoPosting.channels.length > 0 ? <AutoPostingCard auto={review.autoPosting} channels={review.channels} canChange={canChange} /> : null}
       <ReviewRefresher active={active !== undefined || ownBusy} />
