@@ -97,9 +97,15 @@ describe("assignBuilderAction", () => {
 });
 
 describe("grantRoundAction", () => {
-  it("adds a round and tells the client", async () => {
+  it("refuses to add a round without confirmation", async () => {
+    await expect(grantRoundAction(form(IDS))).rejects.toThrow("move=confirm-missing");
+    expect(grantRevisionRound).not.toHaveBeenCalled();
+  });
+
+  it("adds a round and tells the client when confirmed", async () => {
     vi.mocked(grantRevisionRound).mockResolvedValue({ ...MOVED, status: "revisions" });
-    await expect(grantRoundAction(form(IDS))).rejects.toThrow("move=round-added");
+    await expect(grantRoundAction(form({ ...IDS, confirm: "yes" }))).rejects.toThrow("move=round-added");
+    expect(grantRevisionRound).toHaveBeenCalledWith(DB, PROJECT);
     expect(recordStaffAction).toHaveBeenCalledWith(STAFF, expect.objectContaining({ kind: "project.round_added", visibleToClient: true }));
   });
 });

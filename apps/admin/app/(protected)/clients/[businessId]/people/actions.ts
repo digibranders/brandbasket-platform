@@ -1,6 +1,6 @@
 "use server";
 
-import { extendAccountClosure, renameBusinessOwner, restoreAccountClosureForBusiness } from "@brandbasket/db";
+import { extendAccountClosure, openAccountClosure, renameBusinessOwner, restoreAccountClosureForBusiness } from "@brandbasket/db";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
@@ -48,12 +48,28 @@ export async function restoreClosureAction(formData: FormData): Promise<void> {
   // "oversight" is the admin-only capability.
   const staff = await requireStaffCan("oversight");
   const businessId = readBusinessId(formData.get("businessId"));
+  if (formData.get("confirm") !== "yes") redirect(peopleNoticeHref(businessId, "unconfirmed"));
   const restored = await restoreAccountClosureForBusiness(getStaffDb(), { businessId, now: new Date() });
   if (!restored) redirect(peopleNoticeHref(businessId, "no-closure"));
   await logStaffAccess({ staffUserId: staff.user.id, action: "client.closure_restore", targetType: "business", targetId: businessId, businessId });
   await recordStaffAction(staff, { businessId, kind: "account.restored", summary: "Restored the account" });
   refresh(businessId);
   redirect(peopleNoticeHref(businessId, "restored"));
+}
+
+/** Schedules an account for closure and erasure. Admins only. */
+export async function closeAccountAction(formData: FormData): Promise<void> {
+  const staff = await requireStaffCan("oversight");
+  const businessId = readBusinessId(formData.get("businessId"));
+  if (formData.get("confirm") !== "yes") redirect(peopleNoticeHref(businessId, "unconfirmed"));
+  const userId = formData.get("userId");
+  if (typeof userId !== "string" || userId === "") redirect(peopleNoticeHref(businessId, "invalid-name"));
+  const now = new Date();
+  const eraseAfter = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+  await openAccountClosure(getStaffDb(), { userId, businessId, now, eraseAfter });
+  await recordStaffAction(staff, { businessId, kind: "account.closed", summary: "Closed the account" });
+  refresh(businessId);
+  redirect(peopleNoticeHref(businessId, "closed"));
 }
 
 /** Gives a leaving account 30 more days before it is erased. Admins only. */
