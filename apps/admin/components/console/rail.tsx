@@ -24,7 +24,7 @@ export function Rail({ links, counts, userName, role, signOut, logo }: RailProps
   const [searching, setSearching] = useState(false);
   const openSearch = useCallback(() => setSearching(true), []);
   return (
-    <aside data-surface="dark" className="sticky top-0 z-20 hidden h-dvh w-[14.75rem] shrink-0 flex-col gap-1 overflow-y-auto px-3 py-4 text-white lg:flex">
+    <aside data-surface="dark" className="sticky top-0 z-20 hidden h-dvh w-[14.75rem] shrink-0 flex-col gap-1 overflow-y-auto bg-[#23242A] px-3 py-4 text-white lg:flex">
       <div className="px-2.5">
         <WordmarkLogo href="/" tone="light" brand={logo} />
       </div>

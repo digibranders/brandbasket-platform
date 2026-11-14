@@ -25,6 +25,7 @@ export interface KickoffPromptPopupProps {
  * 2. They did not join
  * 3. Reschedule
  *
+ * Includes the 24-hour automatic fallback note.
  * If dismissed, a notification banner repeats until answered (every 15 minutes).
  */
 export function KickoffPromptPopup({ pendingKickoffs }: KickoffPromptPopupProps): ReactElement | null {
@@ -59,13 +60,27 @@ export function KickoffPromptPopup({ pendingKickoffs }: KickoffPromptPopupProps)
         role="dialog"
         aria-modal="true"
         aria-labelledby="kickoff-prompt-title"
-        className="fixed inset-0 z-50 flex items-center justify-center bg-ink/40 p-4 backdrop-blur-xs"
+        className="fixed inset-0 z-50 flex items-center justify-center p-4"
       >
-        <div className="relative w-full max-w-lg rounded-2xl border border-line bg-card p-6 shadow-xl">
-          <div className="flex items-start justify-between gap-4">
-            <h2 id="kickoff-prompt-title" className="font-display text-lg font-semibold text-ink">
-              Did the kickoff call with {current.businessName} happen?
-            </h2>
+        <div
+          className="fixed inset-0 bg-[#15161A]/40 backdrop-blur-[2px]"
+          onClick={() => {
+            setDismissedAt(Date.now());
+            setManualOpen(false);
+          }}
+          aria-hidden="true"
+        />
+
+        <div className="relative z-10 w-full max-w-[560px] rounded-[20px] border border-line bg-surface p-7 shadow-[0_24px_64px_-16px_rgba(42,28,16,0.28)]">
+          <header className="flex items-start justify-between gap-4">
+            <div>
+              <h2 id="kickoff-prompt-title" className="font-display text-[22px] font-semibold text-ink">
+                Did the kickoff call with {current.businessName} happen?
+              </h2>
+              <p className="mt-1 font-sans text-sm text-ink-2">
+                Ended {weekdayDate(current.endsAt)}, {clock(current.endsAt)}.
+              </p>
+            </div>
             <button
               type="button"
               onClick={() => {
@@ -73,19 +88,19 @@ export function KickoffPromptPopup({ pendingKickoffs }: KickoffPromptPopupProps)
                 setManualOpen(false);
               }}
               aria-label="Dismiss prompt"
-              className="rounded-lg p-1.5 text-ink-soft hover:bg-sunken hover:text-ink"
+              className="flex h-8 w-8 items-center justify-center rounded-full text-ink-2 hover:bg-sunken hover:text-ink"
             >
               <X size={18} aria-hidden="true" />
             </button>
-          </div>
+          </header>
 
-          <p className="mt-2 text-sm text-ink-soft">
-            Ended {weekdayDate(current.endsAt)}, {clock(current.endsAt)}.
+          <p className="mt-3 rounded-[8px] bg-sunken/50 p-3 font-sans text-xs text-ink-2">
+            Call confirmation readies the website build. If not confirmed within 24 hours of scheduled completion, the build starts automatically.
           </p>
 
-          <form action={completeKickoffAction} className="mt-4 grid gap-3">
+          <form action={completeKickoffAction} className="mt-5 grid gap-3">
             <input type="hidden" name="businessId" value={current.businessId} />
-            <label htmlFor={`kickoff-notes-${current.businessId}`} className="block text-sm font-medium text-ink">
+            <label htmlFor={`kickoff-notes-${current.businessId}`} className="block font-sans text-sm font-medium text-ink">
               What was agreed (optional)
             </label>
             <textarea
@@ -103,7 +118,7 @@ export function KickoffPromptPopup({ pendingKickoffs }: KickoffPromptPopupProps)
             </div>
           </form>
 
-          <div className="mt-4 flex flex-wrap gap-2 border-t border-line pt-4">
+          <div className="mt-5 flex flex-wrap gap-2 border-t border-line pt-4">
             <form action={theyDidNotJoinAction}>
               <input type="hidden" name="businessId" value={current.businessId} />
               <button type="submit" className={buttonSecondary}>
@@ -127,11 +142,11 @@ export function KickoffPromptPopup({ pendingKickoffs }: KickoffPromptPopupProps)
   return (
     <aside
       aria-label="Kickoff call notification"
-      className="fixed bottom-4 right-4 z-40 max-w-md rounded-2xl border border-line bg-card p-4 shadow-lg"
+      className="fixed bottom-4 right-4 z-40 max-w-md rounded-[14px] border border-line bg-surface p-4 shadow-card"
     >
       <div className="flex items-center justify-between gap-3">
         <div className="min-w-0 flex-1">
-          <p className="text-xs font-semibold uppercase tracking-wider text-accent">Kickoff call waiting</p>
+          <p className="text-xs font-semibold text-rattan-text">Kickoff call waiting</p>
           <p className="truncate text-sm font-medium text-ink">
             Did the kickoff call with {current.businessName} happen?
           </p>

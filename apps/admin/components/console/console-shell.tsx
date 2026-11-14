@@ -20,7 +20,7 @@ export async function ConsoleShell({ userName, role, children }: ConsoleShellPro
   const logo = adminBrand().logo;
   const shared = { links, counts, userName, role, signOut, logo };
   return (
-    <div className="flex min-h-dvh bg-bg lg:bg-ink">
+    <div className="flex min-h-dvh bg-bg lg:bg-[#23242A]">
       <a
         href="#main"
         className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-lg focus:bg-ink focus:px-4 focus:py-2 focus:text-sm focus:text-white"
@@ -30,7 +30,7 @@ export async function ConsoleShell({ userName, role, children }: ConsoleShellPro
       <Rail {...shared} />
       <div className="flex min-w-0 flex-1 flex-col">
         <PhoneBar {...shared} />
-        <div className="flex min-w-0 flex-1 flex-col bg-bg lg:my-2 lg:mr-2 lg:rounded-lift">
+        <div className="flex min-w-0 flex-1 flex-col bg-bg lg:my-2 lg:mr-2 lg:rounded-[14px]">
           <main id="main" tabIndex={-1} className="mx-auto w-full max-w-[1400px] flex-1 px-5 pb-16 pt-6 sm:px-8 lg:pt-8">
             {children}
           </main>
