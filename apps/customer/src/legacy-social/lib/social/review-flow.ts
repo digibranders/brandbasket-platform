@@ -80,7 +80,7 @@ export function channelTodo(cards: readonly ReviewCard[], week: FlowWeek | undef
   if (week.state === "partly_drawn") {
     const topics = cards.filter((card) => card.written?.state === "pending" && !postFinal(card, week)).length;
     const pictures = picturesOn(cards, channel).filter((poster) => poster.status === "pending" || poster.status === "held").length;
-    const words = topics > 0 && pictures > 0 ? `${topics} to decide, ${pictures} to approve` : topics > 0 ? `${topics} to decide` : pictures > 0 ? `${pictures} to approve` : "Decided";
+    const words = topics > 0 && pictures > 0 ? `${topics} open · ${pictures} to approve` : topics > 0 ? `${topics} to decide` : pictures > 0 ? `${pictures} to approve` : "Decided";
     return { count: topics + pictures, words };
   }
   if (!weekAsked(week)) {

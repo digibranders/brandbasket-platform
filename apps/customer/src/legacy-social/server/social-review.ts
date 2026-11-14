@@ -5,8 +5,9 @@ import { brandOf, type SocialBrand } from "@/features/social/brand";
 import type { BatchPlan, ExpiredBatch, Poster, SiteJob, Topic, TopicRequest, WrittenBatch } from "@/legacy-social/lib/social/ai";
 import type { CarouselDetail, CarouselSummary } from "@/legacy-social/lib/social/carousel";
 import { CHANNEL_PLATFORMS, type ChannelPlatform } from "@/legacy-social/lib/social/auto";
+import type { AutoPostingState } from "@/legacy-social/lib/social/auto-posting";
 import { addableNetworks, type PostingDays } from "@/legacy-social/lib/social/schedule";
-import { loadBatches, loadCarousel, loadCarouselList, loadChannels, loadPictureLimits, loadPosters, loadSchedule, loadSiteJobs, loadTopicRequests, loadTopics, loadWorkspaceFacts, socialAutoSettings, type PictureLimits } from "./social-auto";
+import { loadAutoPosting, loadBatches, loadCarousel, loadCarouselList, loadChannels, loadPictureLimits, loadPosters, loadSchedule, loadSiteJobs, loadTopicRequests, loadTopics, loadWorkspaceFacts, socialAutoSettings, type PictureLimits } from "./social-auto";
 
 /** Everything the review page shows: the customer's batches of written posts and where they stand, and the pictures. */
 export interface SocialReview {
@@ -21,6 +22,14 @@ export interface SocialReview {
   readonly expired: { readonly batches: readonly ExpiredBatch[]; readonly pictures: readonly Poster[] };
   /** The connected networks some post idea has no version for yet, so the customer can ask for them. */
   readonly missingNetworks: readonly ChannelPlatform[];
+  /** The days each channel posts on, for the topics step; null when the posting service cannot say, so no choice is offered. */
+  readonly postingDays: PostingDays | null;
+  /** Which channels the system posts for by itself; null when the posting service has no automatic posting. */
+  readonly autoPosting: AutoPostingState;
+  /** Where her month stands (the next month, when it can start); null when the posting service does not say. */
+  readonly plan: BatchPlan | null;
+  /** The website her posts are written from, once there is one. */
+  readonly website: string | null;
   /** Each topic with where every channel's picture of it stands. */
   readonly topics: readonly Topic[];
   readonly reasons: readonly string[];
@@ -41,7 +50,7 @@ export interface SocialReview {
   readonly unavailable: boolean;
 }
 
-const EMPTY: SocialReview = { jobs: [], batches: [], waiting: [], approved: [], channels: [], topicRequests: [], expired: { batches: [], pictures: [] }, missingNetworks: [], topics: [], reasons: [], limits: null, carousels: [], carousel: null, weeklyCarousel: false, canMakeCarousel: false, unavailable: true };
+const EMPTY: SocialReview = { jobs: [], batches: [], waiting: [], approved: [], channels: [], topicRequests: [], expired: { batches: [], pictures: [] }, missingNetworks: [], postingDays: null, autoPosting: null, plan: null, website: null, topics: [], reasons: [], limits: null, carousels: [], carousel: null, weeklyCarousel: false, canMakeCarousel: false, unavailable: true };
 
 /** Asks social-auto for each part. Each is its own failure: what could be read is shown, and the page says the rest could not be. */
 export async function loadSocialReview(customer: Pick<CustomerContext, "businessId" | "businessName">): Promise<SocialReview> {
@@ -60,7 +69,7 @@ export async function loadSocialReview(customer: Pick<CustomerContext, "business
     }
   };
   // One read of every picture: the "open" filter leaves out one that did not pass the checks, which the customer must still see.
-  const [jobs, written, pictures, topics, limits, carouselList, facts, channels, topicRequests, postingDays] = await Promise.all([
+  const [jobs, written, pictures, topics, limits, carouselList, facts, channels, topicRequests, postingDays, autoPosting] = await Promise.all([
     read("the jobs", [] as SiteJob[], () => loadSiteJobs(settings, id)),
     read("the written posts", { batches: [] as WrittenBatch[], expired: [] as ExpiredBatch[], plan: null as BatchPlan | null }, () => loadBatches(settings, id)),
     read("the pictures", { posters: [] as Poster[], reasons: [] as string[] }, () => loadPosters(settings, id, "all")),
@@ -71,6 +80,7 @@ export async function loadSocialReview(customer: Pick<CustomerContext, "business
     read("the channels", [] as Awaited<ReturnType<typeof loadChannels>>, () => loadChannels(settings, id)),
     read("her own topics", [] as TopicRequest[], () => loadTopicRequests(settings, id)),
     read("the posting days", null as PostingDays | null, () => loadSchedule(settings, id)),
+    read("automatic posting", null as AutoPostingState, () => loadAutoPosting(settings, id)),
   ]);
   const carousels = carouselList.carousels;
   const newest = carousels[0];
@@ -89,6 +99,10 @@ export async function loadSocialReview(customer: Pick<CustomerContext, "business
     }),
     topicRequests,
     missingNetworks: addableNetworks(topics, written.batches, postingDays),
+    postingDays,
+    autoPosting,
+    plan: written.plan,
+    website: facts.website,
     topics,
     reasons: pictures.reasons,
     limits,

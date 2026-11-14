@@ -362,6 +362,12 @@ export function postToShow<T extends { readonly post: Pick<CalendarPost, "day" |
 /** Whether the customer can still change or remove a post: one they made, that has not started going out (a paused one can still be edited), and whose accounts are known. */
 export const canChange = (post: CalendarPost): boolean => post.manual && (post.state === "scheduled" || post.state === "paused") && post.channels.every((channel) => channel.id !== undefined);
 
+/**
+ * Whether a post can be dragged to another day or hour on the calendar: one the customer made (as `canChange`), or one we wrote for her
+ * that is scheduled and has not gone out. Moving a written post changes only when it goes out, never its words or picture.
+ */
+export const canDrag = (post: CalendarPost): boolean => canChange(post) || (!post.manual && post.state === "scheduled");
+
 /** The ids of the accounts a post goes to. */
 export const channelIdsOf = (post: CalendarPost): string[] => post.channels.flatMap((channel) => (channel.id === undefined ? [] : [channel.id]));
 

@@ -18,6 +18,8 @@ export const jobSchema = z.object({
   /** 1 to 4 while it runs: reading the website, writing, drawing, putting the results in review. */
   step: z.number().int().optional(),
   batchId: z.string().optional(),
+  /** The channels a `write` job is writing for, when the posting service says (an older one does not). */
+  networks: z.array(z.enum(["instagram", "facebook", "linkedin", "google"])).optional(),
   /** The dropped post a `replace` job writes a new topic for. */
   postId: z.string().optional(),
   createdAt: z.string(),
@@ -398,7 +400,7 @@ const CODE_WORDS: Readonly<Record<string, string>> = {
   JOB_LIMIT_REACHED: "You have started as many batches as you can for now. Try again tomorrow.",
   DRAW_LIMIT_REACHED: "You have asked for as many pictures as you can for now. Try again tomorrow.",
   REPLACE_LIMIT_REACHED: "You have asked for as many new topics as you can this week. You can ask for more from Monday.",
-  DAY_PASSED: "The day of this post has passed, so it cannot get a new topic.",
+  DAY_PASSED: "The day of this post has passed, so it can no longer be changed.",
   INVALID_DAY: "A topic can only move to another day of its own week.",
   NOTHING_WRITTEN: "We could not write a new topic this time. You can try again.",
   NOTHING_KEPT: "Keep at least one post first, then ask for the pictures.",

@@ -9,12 +9,12 @@ import { redirect, unstable_rethrow } from "next/navigation";
 import { requireService } from "@/lib/guards";
 import { brandOf } from "@/features/social/brand";
 import { BRAND_TIME_ZONE } from "@/legacy-social/shims";
-import { actorOf, connectLink, createPost, deletePost, ensureWorkspace, loadChannels, loadSchedule, loadWorkspaceFacts, movePost, saveAutoPosting, saveSchedule, sendPostNow, SocialAutoError, socialAutoSettings, startSiteJob, updatePost } from "@/legacy-social/server/social-auto";
+import { actorOf, connectLink, createPost, decidePoster, deletePost, ensureWorkspace, loadAutoPosting, loadChannels, loadPosters, loadSchedule, loadWorkspaceFacts, movePost, saveAutoPosting, sendPostNow, SocialAutoError, socialAutoSettings, startSiteJob, updatePost } from "@/legacy-social/server/social-auto";
 import { canAddOn, checkNewPost, checkPostEdit, wordsForPostRefusal, isChangeablePostId, isTime, isWrittenPostId, momentHasPassed, type NewPostState } from "@/legacy-social/lib/social/new-post";
 import { wordsForCode } from "@/legacy-social/lib/social/ai";
 import { CHANNEL_PLATFORMS, PLATFORM_NAMES, type ChannelPlatform } from "@/legacy-social/lib/social/auto";
 import { SAFETY_HOURS } from "@/legacy-social/lib/social/auto-posting";
-import { dayGroups, parseDays, withChannelDays } from "@/legacy-social/lib/social/schedule";
+import { dayGroups } from "@/legacy-social/lib/social/schedule";
 
 /*
  * The old Social media page's actions, copied as they were and moved onto this app's guards: the business and its name come from the
@@ -272,13 +272,27 @@ export async function startSiteJobAction(formData: FormData): Promise<NewPostSta
   if (customer.role === "viewer") return { status: "error", message: "Only owners and editors can change this." };
   const parsed = siteSchema.safeParse({ site: formData.get("site"), page: formData.get("mode") === "page", networks: formData.getAll("network") });
   const startDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/).safeParse(formData.get("startDate"));
+  const automatic = formData.get("approval") === "automatic";
+  const autoHours = autoHoursSchema.safeParse(formData.get("hours") ?? "24");
+  if (automatic && formData.get("agreed") !== "yes") return { status: "error", message: wordsForCode("CONSENT_REQUIRED") };
+  if (automatic && !autoHours.success) return { status: "error", message: "Choose how long before posting we may approve." };
   if (!parsed.success) return { status: "error", message: parsed.error.issues[0]?.message ?? "Check the address and try again." };
   if (parsed.data.networks.length === 0) return { status: "error", message: wordsForCode("INVALID_NETWORKS") };
   try {
     const settings = socialAutoSettings();
     if (settings === null) return { status: "error", message: "Posting is not available just now. Try again later." };
     const brand = await brandOf(customer);
-    await ensureWorkspace(settings, { id: brand.externalId, name: brand.name, ...(brand.externalId === customer.businessId ? {} : { group: customer.businessId }) });
+    const connectedNow = await ensureWorkspace(settings, { id: brand.externalId, name: brand.name, ...(brand.externalId === customer.businessId ? {} : { group: customer.businessId }) });
+    if (automatic) {
+      // "Post automatically": agreeing is part of choosing, and only channels that are connected can be automatic. The channels she already
+      // chose stay chosen: the posting service keeps one list, which each choice replaces.
+      const current = await loadAutoPosting(settings, brand.externalId);
+      if (current === null) return { status: "error", message: "Automatic posting is not available just now. Try again later." };
+      const wanted = parsed.data.networks.filter((platform) => connectedNow.some((channel) => channel.platform === platform));
+      if (wanted.length === 0) return { status: "error", message: wordsForCode("CHANNEL_NOT_CONNECTED") };
+      const channelsToSave = CHANNEL_PLATFORMS.filter((platform) => wanted.includes(platform) || current.channels.includes(platform));
+      await saveAutoPosting(settings, brand.externalId, { channels: channelsToSave, safetyHours: autoHours.success ? autoHours.data : 24 }, actorOf(customer.tenant));
+    }
     const started = await startSiteJob(settings, brand.externalId, { site: parsed.data.site, page: parsed.data.page, networks: parsed.data.networks satisfies ChannelPlatform[], ...(startDate.success ? { startDate: startDate.data } : {}) }, actorOf(customer.tenant));
     // A batch is already being written: the posting service hands back that one, not a new one for these channels.
     if (!started.created) return { status: "error", message: STILL_WRITING };
@@ -301,35 +315,7 @@ function laterGroupsMessage(started: readonly ChannelPlatform[], later: readonly
   return `Started for ${names(started)}. ${names(later)} posts on different days, so it is written separately: start it once these posts are written.`;
 }
 
-const postingDaysSchema = z.object({ channel: z.enum(CHANNEL_PLATFORMS), days: z.string().max(40) });
-
-/**
- * Saves the days one channel posts on (`mon,tue,sat`; nothing at all takes the channel back to the usual spread). The posting service keeps
- * every channel's days as one setting, so the channels' other days are read first and sent with it. Only batches written afterwards use
- * the new days: what is already written never moves. The brand comes from the session, never from the form.
- */
-export async function setPostingDaysAction(formData: FormData): Promise<NewPostState> {
-  const parsed = postingDaysSchema.safeParse({ channel: formData.get("channel"), days: formData.get("days") ?? "" });
-  const days = parsed.success ? parseDays(parsed.data.days) : null;
-  if (!parsed.success || days === null) return { status: "error", message: "Choose the days from Monday to Sunday." };
-  try {
-    const customer = await requireService("social", { write: true });
-    if (customer.role === "viewer") return { status: "error", message: "Only owners and editors can change this." };
-    const settings = socialAutoSettings();
-    if (settings === null) return { status: "error", message: "Posting is not available just now. Try again later." };
-    const brand = await brandOf(customer);
-    const current = await loadSchedule(settings, brand.externalId);
-    if (current === null) return { status: "error", message: "Choosing days is not available just now. Try again later." };
-    await saveSchedule(settings, brand.externalId, withChannelDays(current, parsed.data.channel, days));
-  } catch (error) {
-    unstable_rethrow(error);
-    if (error instanceof SocialAutoError && error.code !== null) return { status: "error", message: wordsForCode(error.code) };
-    reportError(error, { area: "social.posting-days" });
-    return { status: "error", message: wordsForCode(null) };
-  }
-  revalidatePath("/social");
-  return { status: "saved" };
-}
+const autoHoursSchema = z.coerce.number().int().refine((value) => (SAFETY_HOURS as readonly number[]).includes(value));
 
 const autoPostingSchema = z.object({
   channels: z.string().max(80),
@@ -365,4 +351,35 @@ export async function setAutoPostingAction(formData: FormData): Promise<NewPostS
   }
   revalidatePath("/social");
   return { status: "saved" };
+}
+
+const captionSchema = z.object({ postId: z.string().min(1).max(160), network: z.enum(CHANNEL_PLATFORMS), caption: z.string().trim().min(1, "Write what the post should say.").max(3000, "Those words are too long. Make them shorter.") });
+
+/**
+ * "Change caption" in the details window of a post we wrote: the words of its approved picture are changed, which makes a new version that she
+ * must approve again, so the post is held back until she does. The calendar names a post `<brand>-<post>`; the picture is found from that and
+ * the network. Only the words change: the picture stays.
+ */
+export async function changeWrittenCaptionAction(formData: FormData): Promise<NewPostState> {
+  const parsed = captionSchema.safeParse({ postId: formData.get("postId"), network: formData.get("network"), caption: formData.get("caption") });
+  if (!parsed.success) return { status: "error", message: parsed.error.issues[0]?.message ?? "Write what the post should say." };
+  try {
+    const customer = await requireService("social", { write: true });
+    if (customer.role === "viewer") return VIEWER_STATE;
+    const settings = socialAutoSettings();
+    if (settings === null) return { status: "error", message: "Posting is not available just now. Try again later." };
+    const brand = await brandOf(customer);
+    const { posters } = await loadPosters(settings, brand.externalId, "approved");
+    const poster = posters.find((one) => one.network === parsed.data.network && `${one.id.split(".")[0]}-${one.postId}` === parsed.data.postId);
+    if (poster === undefined) return { status: "error", message: "That post could not be found. Reload the page." };
+    const answer = await decidePoster(settings, brand.externalId, { action: "change-words", id: poster.id, caption: parsed.data.caption }, actorOf(customer.tenant));
+    revalidatePath("/social");
+    revalidatePath("/social/review");
+    return { status: "partial", message: answer.postStopped ? "Saved. This post is held back until you approve its new words in Posts." : "Saved. Approve the new words in Posts and it goes out." };
+  } catch (error) {
+    unstable_rethrow(error);
+    if (error instanceof SocialAutoError && error.code !== null) return { status: "error", message: wordsForCode(error.code) };
+    console.error("[social] could not change the caption", errorLogInfo(error));
+    return { status: "error", message: "The words could not be changed. Try again." };
+  }
 }

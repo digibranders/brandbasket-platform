@@ -1,6 +1,6 @@
 "use client";
 
-import { X } from "@phosphor-icons/react/dist/ssr";
+import { PencilSimple, X } from "@phosphor-icons/react/dist/ssr";
 import { Select } from "@/ui";
 import { useEffect, useRef, useState, type FormEvent, type ReactElement } from "react";
 import { addBrandAction, archiveBrandAction, renameBrandAction, renameFirstBrandAction, selectBrandAction } from "@/legacy-social/brand-actions";
@@ -152,6 +152,18 @@ export function ManageBrands({ view, current, onClose }: BrandSwitcherProps & { 
   );
 }
 
+/** The brand's name, plain, with a quiet pencil beside it to rename it. */
+function BrandChip({ name, onRename }: { readonly name: string; readonly onRename: () => void }): ReactElement {
+  return (
+    <span className="inline-flex max-w-64 items-center gap-1 pr-1">
+      <span className="min-w-0 truncate text-[0.9375rem] font-semibold text-ink">{name}</span>
+      <button type="button" onClick={onRename} aria-label="Rename" title="Rename" className="grid size-7 shrink-0 place-items-center rounded-md text-ink-3 transition-colors hover:bg-sunken hover:text-ink focus-visible:ring-2 focus-visible:ring-ink">
+        <PencilSimple size={14} weight="regular" aria-hidden="true" />
+      </button>
+    </span>
+  );
+}
+
 /**
  * Which brand the customer is looking at, and where she manages them. With one live brand and no more allowed, it is the brand's name and
  * a way to rename it; with room for more, a choice of brand and the window to add, rename and archive.
@@ -164,10 +176,7 @@ export function BrandSwitcher({ view, current }: BrandSwitcherProps): ReactEleme
   if (view.allowed <= 1 && live.length <= 1) {
     return (
       <>
-        <span className="max-w-52 truncate text-[0.875rem] font-semibold text-ink">{live[0]?.name}</span>
-        <button type="button" onClick={() => setManaging(true)} className={SMALL_SOFT}>
-          Rename
-        </button>
+        <BrandChip name={live[0]?.name ?? ""} onRename={() => setManaging(true)} />
         {managing ? <ManageBrands view={view} current={current} onClose={() => setManaging(false)} /> : null}
       </>
     );
@@ -202,10 +211,7 @@ function FirstBrandName({ name }: { readonly name: string }): ReactElement {
   if (draft === null) {
     return (
       <>
-        <span className="max-w-52 truncate text-[0.875rem] font-semibold text-ink">{name}</span>
-        <button type="button" onClick={() => setDraft(name)} className={SMALL_SOFT}>
-          Rename
-        </button>
+        <BrandChip name={name} onRename={() => setDraft(name)} />
       </>
     );
   }
