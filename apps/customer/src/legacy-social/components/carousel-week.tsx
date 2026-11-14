@@ -5,7 +5,7 @@ import { cn } from "@brandbasket/shared/lib/cn";
 import { dayLabel, PLATFORM_NAMES, type ChannelPlatform } from "@/legacy-social/lib/social/auto";
 import { CAROUSEL_STATUS_WORDS, carouselDrawn, carouselSlideUrl, type CarouselDetail, type CarouselSummary } from "@/legacy-social/lib/social/carousel";
 import { decideCarouselAction, drawCarouselAction } from "@/legacy-social/review-actions";
-import { JobProgress } from "./job-progress";
+import { WorkingNote } from "./job-progress";
 import { SMALL_DARK, SMALL_WHITE } from "./small-buttons";
 import { useReviewAction } from "./use-review-action";
 
@@ -164,10 +164,7 @@ export function CarouselPictures({ carousel, channel }: { readonly carousel: Wee
           ) : null}
         </div>
       ) : summary.status === "drawing" ? (
-        <div role="status" className="grid gap-2">
-          <p className="text-[0.84375rem] text-ink-2">Drawing the slides. This page updates when they are ready.</p>
-          <JobProgress />
-        </div>
+        <WorkingNote title="Drawing the carousel's slides" />
       ) : summary.status === "dropped" || summary.status === "rejected" ? (
         <p className="text-[0.84375rem] text-ink-2">{summary.status === "dropped" ? "Dropped, nothing to show." : "Sent back, nothing to show."}</p>
       ) : summary.status === "blocked" ? (

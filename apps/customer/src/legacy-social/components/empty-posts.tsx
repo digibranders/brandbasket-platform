@@ -18,14 +18,17 @@ interface EmptyPostsProps {
   readonly canChange: boolean;
   /** The page already shows the "write your posts from your website" card, so this does not say it again. */
   readonly startCardShown?: boolean;
+  /** Posts are being written or drawn right now, so there is nothing to start: the page says so itself. */
+  readonly busy?: boolean;
 }
 
 /**
  * What the Posts tab says when there is nothing to look over, so it is never a blank page: what is missing (an account, a website, the
  * posts themselves) and the one thing to do next.
  */
-export function EmptyPosts({ channel, connected, website, postingDays, canChange, startCardShown = false }: EmptyPostsProps): ReactElement | null {
+export function EmptyPosts({ channel, connected, website, postingDays, canChange, startCardShown = false, busy = false }: EmptyPostsProps): ReactElement | null {
   const [writing, setWriting] = useState(false);
+  if (busy) return null;
   const name = channel === "all" ? null : PLATFORM_NAMES[channel];
   // With an account connected, what is left to say is "write your posts" (the start card asks for the website itself), and the start card above already says it.
   if (startCardShown && connected.length > 0) return null;

@@ -41,6 +41,11 @@ describe("EmptyPosts", () => {
     expect(screen.getByText("Connect an account first")).toBeTruthy();
   });
 
+  it("says nothing while posts are being written", () => {
+    const { container } = render(<EmptyPosts channel="instagram" {...base} busy />);
+    expect(container.textContent).toBe("");
+  });
+
   it("offers a viewer nothing to press", () => {
     render(<EmptyPosts channel="all" {...base} canChange={false} />);
     expect(screen.getByText("No posts to look over yet")).toBeTruthy();

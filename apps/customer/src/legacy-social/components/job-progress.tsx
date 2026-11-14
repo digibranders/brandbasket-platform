@@ -1,19 +1,17 @@
 import type { ReactElement } from "react";
-import { cn } from "@brandbasket/shared/lib/cn";
-
-/** How many steps a job has: reading the website, writing, drawing, putting it together for review. */
-const STEPS = 4;
 
 /**
- * A loading bar for work that is running in the background. It fills as the job moves on (step 1 to 4); when the posting service does not
- * say the step, it shows a bar that pulses, so something is always seen moving while the page waits.
+ * The card shown while something is being written or drawn in the background: a thin line along its top edge with one short stretch
+ * sliding across it, the title, and a line to say the customer can leave. It says nothing about steps, because the page updates itself.
  */
-export function JobProgress({ step }: { readonly step?: number | undefined }): ReactElement {
-  const known = step !== undefined && step >= 1;
-  const done = known ? Math.min(step, STEPS) : 0;
+export function WorkingNote({ title }: { readonly title: string }): ReactElement {
   return (
-    <div role="progressbar" aria-label="Progress" aria-valuemin={0} aria-valuemax={STEPS} {...(known ? { "aria-valuenow": done } : {})} className="h-2 overflow-hidden rounded-full bg-surface/70">
-      <div className={cn("h-full rounded-full bg-c-growth transition-[width] duration-500", !known && "w-1/3 animate-pulse")} style={known ? { width: `${(done / STEPS) * 100}%` } : undefined} />
+    <div role="status" className="relative overflow-hidden rounded-xl bg-surface px-4 pt-5 pb-4 ring-1 ring-line">
+      <div aria-hidden="true" className="absolute inset-x-0 top-0 h-[3px] bg-sunken">
+        <div className="animate-job-slide absolute inset-y-0 w-[30%] bg-ink" />
+      </div>
+      <p className="text-[0.875rem] font-semibold text-ink">{title}</p>
+      <p className="mt-0.5 text-[0.84375rem] text-ink-2">You can leave this page. They will be here when you are back.</p>
     </div>
   );
 }

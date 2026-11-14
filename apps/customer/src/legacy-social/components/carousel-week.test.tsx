@@ -93,7 +93,7 @@ describe("CarouselPictures", () => {
 
   it("says the slides are being drawn", () => {
     render(<CarouselPictures carousel={make("drawing")} channel="instagram" />);
-    expect(screen.getByText(/Drawing the slides\. This page/)).toBeTruthy();
+    expect(screen.getByText("Drawing the carousel's slides")).toBeTruthy();
     expect(screen.queryByRole("img")).toBeNull();
   });
 

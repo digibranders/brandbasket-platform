@@ -88,12 +88,12 @@ export function ReviewView({ review, canChange = true, approvals = null }: { rea
       )}
       {review.autoPosting !== null && review.channels.length > 0 && review.autoPosting.channels.length > 0 ? <AutoPostingCard auto={review.autoPosting} channels={review.channels} canChange={canChange} /> : null}
       <ReviewRefresher active={active !== undefined || ownBusy} />
-      {active === undefined ? null : <ActiveJobNote text={`${jobLine(active).replace(/\.$/, "")}. This page updates when it is ready.`} networks={active.kind === "write" ? active.networks : undefined} step={active.step} />}
+      {active === undefined ? null : <ActiveJobNote text={jobLine(active).replace(/\.$/, "")} networks={active.kind === "write" ? active.networks : undefined} />}
       {/* Nothing could be read: say so once, above, and do not also say that nothing is waiting, which would not be true. */}
       {review.unavailable && review.batches.length === 0 && review.waiting.length === 0 && review.approved.length === 0 ? null : (
         <>
           <NewChannelChoice unwritten={unwritten} missing={review.missingNetworks} postingDays={review.postingDays} website={review.website} busy={review.jobs.some((job) => jobIsActive(job))} canChange={canChange} />
-          <ReviewWorkspace empty={{ connected: review.channels.map((channel) => channel.platform), website: review.website, postingDays: review.postingDays, canChange, startCardShown: canChange && active === undefined && review.jobs[0]?.state !== "done" }} />
+          <ReviewWorkspace empty={{ connected: review.channels.map((channel) => channel.platform), website: review.website, postingDays: review.postingDays, canChange, busy: active !== undefined, startCardShown: canChange && active === undefined && review.jobs[0]?.state !== "done" }} />
           {/* The weekly carousel card (CarouselCard) is hidden for now: it is to move to another place. */}
         </>
       )}

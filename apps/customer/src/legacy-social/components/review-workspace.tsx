@@ -13,7 +13,7 @@ import { cardsOfWeek, channelTodo, firstOpenWeek, flowWeeks, picturesOn, POST_TI
 import { ConnectButton } from "./channels-sidebar";
 import { AddChannelChoice } from "./add-channel-choice";
 import { EmptyPosts } from "./empty-posts";
-import { JobProgress } from "./job-progress";
+import { WorkingNote } from "./job-progress";
 import { staysInMonth } from "@/legacy-social/lib/social/plan-window";
 import { CarouselPictures, CarouselTopic, carouselFor, carouselInWeek, decisionOf, sendBackReason, slideHeadlines, type WeekCarousel } from "./carousel-week";
 import { carouselMovable } from "@/legacy-social/lib/social/carousel";
@@ -945,15 +945,7 @@ function PicturesStage({ cards, week, channel, account, reasons, ownPosters = []
   if (!settled && pictures.length === 0 && !drawingNow) return null;
   return (
     <div className="grid gap-4">
-      {pictures.length === 0 && (week.state === "drawing" || drawingNow) ? (
-        <div role="status" className="grid gap-2 rounded-xl bg-surface p-4 ring-1 ring-line">
-          <p className="text-[0.84375rem] font-semibold text-ink">Drawing your pictures</p>
-          <div className="h-1.5 overflow-hidden rounded-full bg-sunken" aria-hidden="true">
-            <div className="h-full w-1/3 animate-pulse rounded-full bg-c-growth" />
-          </div>
-          <p className="text-xs text-ink-3">They will appear here when they are ready.</p>
-        </div>
-      ) : null}
+      {pictures.length === 0 && (week.state === "drawing" || drawingNow) ? <WorkingNote title="Drawing your pictures" /> : null}
       {pictures.length === 0 && week.state !== "drawing" && !drawingNow ? (
         <p className="rounded-xl bg-surface p-4 text-[0.84375rem] text-ink-2 ring-1 ring-line">
           {only === "approved"
@@ -1228,16 +1220,9 @@ export function NewChannelChoice({ unwritten, missing, postingDays, website, bus
  * for it, so a customer never thinks posts were started for a channel she has not asked for. When the posting service does not say which
  * channels the job is for, the note is shown on every channel as before.
  */
-export function ActiveJobNote({ text, networks, step }: { readonly text: string; readonly networks: readonly ChannelPlatform[] | undefined; /** 1 to 4 while the job runs (reading the website, writing, drawing, putting it together); not known for every job. */ readonly step?: number | undefined }): ReactElement {
+export function ActiveJobNote({ text, networks }: { readonly text: string; readonly networks: readonly ChannelPlatform[] | undefined }): ReactElement {
   const { channel } = useFlow();
-  if (channel === "all" || networks === undefined || networks.includes(channel)) {
-    return (
-      <div role="status" className="grid gap-2 rounded-xl bg-warn-wash px-4 py-3">
-        <p className="text-[0.84375rem] font-semibold text-warn">{text}</p>
-        <JobProgress step={step} />
-      </div>
-    );
-  }
+  if (channel === "all" || networks === undefined || networks.includes(channel)) return <WorkingNote title={text} />;
   return (
     <p role="status" className="rounded-xl bg-sunken px-4 py-3 text-[0.84375rem] text-ink-2">
       Nothing is being written for {PLATFORM_NAMES[channel]} yet. You can add it once the posts being written for {networks.map((network) => PLATFORM_NAMES[network]).join(" and ")} are ready.
