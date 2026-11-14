@@ -28,6 +28,11 @@ describe("EmptyPosts", () => {
     expect(screen.getByText("start dialog")).toBeTruthy();
   });
 
+  it("does not say it again when the start card is already on the page", () => {
+    const { container } = render(<EmptyPosts channel="all" {...base} startCardShown />);
+    expect(container.textContent).toBe("");
+  });
+
   it("offers a viewer nothing to press", () => {
     render(<EmptyPosts channel="all" {...base} canChange={false} />);
     expect(screen.getByText("No posts to look over yet")).toBeTruthy();

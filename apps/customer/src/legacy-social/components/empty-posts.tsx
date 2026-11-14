@@ -16,15 +16,19 @@ interface EmptyPostsProps {
   readonly website: string | null;
   readonly postingDays: PostingDays | null;
   readonly canChange: boolean;
+  /** The page already shows the "write your posts from your website" card, so this does not say it again. */
+  readonly startCardShown?: boolean;
 }
 
 /**
  * What the Posts tab says when there is nothing to look over, so it is never a blank page: what is missing (an account, a website, the
  * posts themselves) and the one thing to do next.
  */
-export function EmptyPosts({ channel, connected, website, postingDays, canChange }: EmptyPostsProps): ReactElement {
+export function EmptyPosts({ channel, connected, website, postingDays, canChange, startCardShown = false }: EmptyPostsProps): ReactElement | null {
   const [writing, setWriting] = useState(false);
   const name = channel === "all" ? null : PLATFORM_NAMES[channel];
+  // With an account and a website, what is left to say is "write your posts", and the start card above already says it.
+  if (startCardShown && connected.length > 0 && website !== null) return null;
   const view = ((): { title: string; text: string; action: ReactElement | null } => {
     if (connected.length === 0) {
       return { title: "Connect an account first", text: "Connect Instagram, Facebook, LinkedIn or Google on the left. Posts are written for the accounts you connect, and you look them over here.", action: null };
