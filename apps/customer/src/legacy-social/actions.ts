@@ -8,7 +8,7 @@ import { revalidatePath } from "next/cache";
 import { redirect, unstable_rethrow } from "next/navigation";
 import { requireService } from "@/lib/guards";
 import { brandOf } from "@/features/social/brand";
-import { loadBrands } from "@/legacy-social/server/social-auto";
+import { loadBrands, setCarouselWeekly } from "@/legacy-social/server/social-auto";
 import { BRAND_TIME_ZONE } from "@/legacy-social/shims";
 import { actorOf, connectLink, createPost, decidePoster, deletePost, ensureWorkspace, loadAutoPosting, loadBatches, loadChannels, loadPosters, loadSchedule, loadWorkspaceFacts, movePost, saveAutoPosting, sendPostNow, SocialAutoError, socialAutoSettings, startSiteJob, updatePost } from "@/legacy-social/server/social-auto";
 import { canAddOn, checkNewPost, checkPostEdit, wordsForPostRefusal, isChangeablePostId, isTime, isWrittenPostId, momentHasPassed, type NewPostState } from "@/legacy-social/lib/social/new-post";
@@ -341,6 +341,15 @@ export async function startSiteJobAction(formData: FormData): Promise<NewPostSta
     const first = startDate.success ? startDate.data : hasPlan ? undefined : firstStartDay(localDateIn(BRAND_TIME_ZONE, new Date()));
     // The first plan, with no start asked for, stops the day before the paid month renews.
     const end = first === undefined || startDate.success ? null : planEndDay({ start: first, renewsOn: renewalDay(customer.billing.subscription?.paidThroughAt ?? null, (at) => localDateIn(BRAND_TIME_ZONE, at)) });
+    // A week is three single posts and a carousel (the owner's rule). The weekly carousel is off until it is switched on, and the posting service writes
+    // five singles a week while it is off, so it is switched on here, before the posts are written. A failure here only leaves the five singles.
+    if (!parsed.data.page) {
+      try {
+        await setCarouselWeekly(settings, brand.externalId, true, actorOf(customer.tenant));
+      } catch (error) {
+        reportError(error, { area: "social.weekly-carousel" });
+      }
+    }
     const started = await startSiteJob(settings, brand.externalId, { site: parsed.data.site, page: parsed.data.page, networks: parsed.data.networks satisfies ChannelPlatform[], ...(first === undefined ? {} : { startDate: first }), ...(end === null ? {} : { endDate: end }) }, actorOf(customer.tenant));
     // A batch is already being written: the posting service hands back that one, not a new one for these channels.
     if (!started.created) return { status: "error", message: STILL_WRITING };
