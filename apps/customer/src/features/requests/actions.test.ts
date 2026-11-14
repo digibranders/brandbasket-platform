@@ -2,16 +2,16 @@ import { appendSupportReplyWithOutcome, ChangeRequestError, createSupportTicketW
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { acceptQuoteAction, approveChangeAction, declineQuoteAction, markReadAction, reopenRequestAction, replyAction, sendRequestAction } from "./actions";
 import { startCustomerChargePayment } from "@/features/checkout/server/charges";
-import { openQuoteCharge, sendReplyAlert, sendTicketAlert, supportRateLimit } from "./server";
+import { openQuoteCharge, sendReplyAlert, sendRequestAcknowledgement, sendTicketAlert, supportRateLimit } from "./server";
 
 vi.mock("server-only", () => ({}));
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 vi.mock("next/navigation", () => ({ unstable_rethrow: vi.fn() }));
-vi.mock("@/lib/db", () => ({ getAppDb: vi.fn(() => ({ kind: "app-db" })) }));
+vi.mock("@/lib/db", () => ({ getAppDb: vi.fn(() => ({ kind: "app-db" })), getStaffDb: vi.fn(() => ({ kind: "staff-db" })) }));
 vi.mock("@/lib/report", () => ({ reportError: vi.fn() }));
 vi.mock("@/lib/guards", () => ({ requireBilling: vi.fn(), requireCustomer: vi.fn() }));
 vi.mock("@/features/checkout/server/charges", () => ({ startCustomerChargePayment: vi.fn() }));
-vi.mock("./server", () => ({ openQuoteCharge: vi.fn(), sendReplyAlert: vi.fn(), sendTicketAlert: vi.fn(), supportRateLimit: vi.fn() }));
+vi.mock("./server", () => ({ openQuoteCharge: vi.fn(), sendReplyAlert: vi.fn(), sendRequestAcknowledgement: vi.fn(), sendTicketAlert: vi.fn(), supportRateLimit: vi.fn() }));
 vi.mock("@brandbasket/db", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@brandbasket/db")>()),
   appendSupportReplyWithOutcome: vi.fn(),
@@ -55,6 +55,7 @@ beforeEach(() => {
   vi.mocked(supportRateLimit).mockResolvedValue(null);
   vi.mocked(sendTicketAlert).mockResolvedValue(undefined);
   vi.mocked(sendReplyAlert).mockResolvedValue(undefined);
+  vi.mocked(sendRequestAcknowledgement).mockResolvedValue(undefined);
   vi.mocked(createSupportTicketWithOutcome).mockResolvedValue({ ticket: { id: TICKET, displayRef: "FY-1" } as never, created: true });
 });
 
@@ -78,6 +79,7 @@ describe("sendRequestAction", () => {
       }),
     );
     expect(sendTicketAlert).toHaveBeenCalledOnce();
+    expect(sendRequestAcknowledgement).toHaveBeenCalledOnce();
   });
 
   it("files a question as a plain conversation, and does not tell the team again for a retried key", async () => {
@@ -86,6 +88,7 @@ describe("sendRequestAction", () => {
     expect(result.ok).toBe(true);
     expect(vi.mocked(createSupportTicketWithOutcome).mock.calls[0]?.[1]).not.toHaveProperty("changeRequest");
     expect(sendTicketAlert).not.toHaveBeenCalled();
+    expect(sendRequestAcknowledgement).not.toHaveBeenCalled();
   });
 
   it("refuses a viewer, writing nothing", async () => {

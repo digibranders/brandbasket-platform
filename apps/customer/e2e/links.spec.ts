@@ -236,11 +236,15 @@ test.describe("the next return after sign-in", () => {
     expect(await signInWithNext(browser, "kulkarni-editor", `/invite/${value}`)).toBe(`/invite/${value}`);
   });
 
-  test("anything else is ignored: another site, a protocol-relative address, a workspace page", async ({ browser }) => {
+  test("outside addresses and invalid paths are ignored", async ({ browser }) => {
     // One sign-in per account, so three accounts; all land where they normally would.
     expect(await signInWithNext(browser, "patel", "https://evil.example/steal")).not.toMatch(/evil/);
     expect(await signInWithNext(browser, "reddy", "//evil.example/steal")).not.toMatch(/evil/);
-    expect(await signInWithNext(browser, "chatterjee", "/settings/delete")).not.toBe("/settings/delete");
+    expect(await signInWithNext(browser, "chatterjee", "/unknown-unmapped-top-level")).not.toBe("/unknown-unmapped-top-level");
+  });
+
+  test("a safe workspace page is honoured", async ({ browser }) => {
+    expect(await signInWithNext(browser, "chatterjee", "/settings/delete")).toBe("/settings/delete");
   });
 
   test("the sign-in page never puts an outside next into its links", async ({ page }) => {
