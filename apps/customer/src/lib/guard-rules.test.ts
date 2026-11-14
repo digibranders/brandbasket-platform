@@ -1,6 +1,16 @@
 import type { SessionUser } from "@brandbasket/shared/lib/access";
 import { describe, expect, it } from "vitest";
-import { accessRedirect, GUARD_PATHS, requirementRedirect, safeReturnPath, servicesFrom, signInHref, type CustomerFacts } from "./guard-rules";
+import {
+  accessRedirect,
+  GUARD_PATHS,
+  isUnpaidAllowedPath,
+  requirementRedirect,
+  safeReturnPath,
+  servicesFrom,
+  signInHref,
+  unpaidHoldRedirect,
+  type CustomerFacts,
+} from "./guard-rules";
 
 const user: SessionUser = { id: "user-1", email: "owner@example.com", name: "Riley Owner", emailConfirmed: true, phone: null };
 const tenant = { userId: user.id, businessId: "0192f3c4-0000-7000-8000-000000000001", businessName: "Riverside Plumbing", role: "owner" } as const;
@@ -212,5 +222,39 @@ describe("servicesFrom", () => {
 
   it("takes Social and Search only from the db package's rule, not from the plan lines", () => {
     expect(servicesFrom([line("social-media"), line("paid-ads")], [])).toEqual([]);
+  });
+});
+
+describe("unpaidHoldRedirect and isUnpaidAllowedPath", () => {
+  it("allows unpaid customers to visit Help and its subpages", () => {
+    expect(isUnpaidAllowedPath("/help")).toBe(true);
+    expect(isUnpaidAllowedPath("/help/contact")).toBe(true);
+    expect(unpaidHoldRedirect("/help", true)).toBeNull();
+    expect(unpaidHoldRedirect("/help/contact", true)).toBeNull();
+  });
+
+  it("allows unpaid customers to visit Settings and its subpages", () => {
+    expect(isUnpaidAllowedPath("/settings")).toBe(true);
+    expect(isUnpaidAllowedPath("/settings/team")).toBe(true);
+    expect(isUnpaidAllowedPath("/settings/security")).toBe(true);
+    expect(isUnpaidAllowedPath("/settings/notifications")).toBe(true);
+    expect(isUnpaidAllowedPath("/settings/privacy")).toBe(true);
+    expect(isUnpaidAllowedPath("/settings/delete")).toBe(true);
+    expect(unpaidHoldRedirect("/settings", true)).toBeNull();
+    expect(unpaidHoldRedirect("/settings/team", true)).toBeNull();
+  });
+
+  it("redirects unpaid customers on other workspace pages to checkout", () => {
+    expect(isUnpaidAllowedPath("/")).toBe(false);
+    expect(isUnpaidAllowedPath("/website")).toBe(false);
+    expect(isUnpaidAllowedPath("/social")).toBe(false);
+    expect(isUnpaidAllowedPath("/ads")).toBe(false);
+    expect(unpaidHoldRedirect("/", true)).toBe(GUARD_PATHS.checkout);
+    expect(unpaidHoldRedirect("/website", true)).toBe(GUARD_PATHS.checkout);
+  });
+
+  it("never redirects accounts that have already paid", () => {
+    expect(unpaidHoldRedirect("/", false)).toBeNull();
+    expect(unpaidHoldRedirect("/website", false)).toBeNull();
   });
 });

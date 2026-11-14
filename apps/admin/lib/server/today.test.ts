@@ -9,6 +9,7 @@ import {
   listLeads,
   listPaymentsNeedingAttention,
   listSetupCallsBetween,
+  listStaffRoster,
   listSupportTicketsForStaff,
   sumCapturedPaymentsBetween,
   type ClientBilling,
@@ -38,6 +39,7 @@ vi.mock("@brandbasket/db", async () => {
     listLeads: vi.fn(),
     listPaymentsNeedingAttention: vi.fn(),
     listSetupCallsBetween: vi.fn(),
+    listStaffRoster: vi.fn(),
     listSupportTicketsForStaff: vi.fn(),
     sumCapturedPaymentsBetween: vi.fn(),
   };
@@ -72,6 +74,7 @@ beforeEach(() => {
   vi.mocked(readSystemHealth).mockResolvedValue([]);
   vi.mocked(countFailedDeliveries24h).mockResolvedValue(0);
   vi.mocked(listKickoffBoard).mockResolvedValue([]);
+  vi.mocked(listStaffRoster).mockResolvedValue([]);
   vi.mocked(readGoogleToday).mockResolvedValue([]);
 });
 
@@ -105,6 +108,26 @@ describe("loadTodayItems", () => {
     await loadTodayItems(NOW, true);
     expect(listSupportTicketsForStaff).toHaveBeenCalledWith({}, { queue: "needs_reply", limit: 25 });
     expect(listErrorIssues).toHaveBeenCalledWith({}, { status: "new" });
+  });
+
+  it("includes the staff owner on unpaid sign-up items when assigned (D21)", async () => {
+    vi.mocked(listLeads).mockResolvedValue([
+      {
+        id: "lead-unpaid",
+        businessName: "Glow Dental",
+        status: "account_created",
+        assignedStaffId: "staff-1",
+        createdAt: new Date("2026-11-29T10:00:00.000Z"),
+      } as Lead,
+    ]);
+    vi.mocked(listStaffRoster).mockResolvedValue([
+      { userId: "staff-1", name: "Rohan Mehta", email: "rohan@example.test", role: "admin", active: true, lastSignInAt: null },
+    ]);
+
+    const items = await loadTodayItems(NOW, true);
+    const signupItem = items.find((item) => item.key === "signup:lead-unpaid");
+    expect(signupItem).toBeDefined();
+    expect(signupItem?.detail).toBe("Signed up 29 Nov · Rohan Mehta");
   });
 });
 

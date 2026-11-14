@@ -10,6 +10,7 @@ import {
   listLeads,
   listPaymentsNeedingAttention,
   listSetupCallsBetween,
+  listStaffRoster,
   listSupportTicketsForStaff,
   sumCapturedPaymentsBetween,
   type AddOnToContact,
@@ -19,6 +20,7 @@ import {
   type ErrorIssue,
   type Lead,
   type PaymentNeedingAttention,
+  type StaffRosterRow,
   type SupportStatus,
   type SupportTicket,
 } from "@brandbasket/db";
@@ -56,6 +58,7 @@ async function guarded<T>(label: string, read: () => Promise<T>, fallback: T, fa
 interface QueueSources {
   readonly clients: readonly ClientSummary[];
   readonly leads: readonly Lead[];
+  readonly staff: readonly StaffRosterRow[];
   readonly flagged: readonly PaymentNeedingAttention[];
   readonly addOns: readonly AddOnToContact[];
   readonly newTickets: readonly SupportTicket[];
@@ -84,9 +87,10 @@ interface QueueRead {
 async function readQueueSources(now: Date, canSeeMoney: boolean, canSeeGoogleAccount: boolean): Promise<QueueRead> {
   const db = getStaffDb();
   const failed: string[] = [];
-  const [clients, leads, flagged, addOns, newTickets, newErrors, failedDeliveries, kickoffsNeedingOutcome, google, domainMoves] = await Promise.all([
+  const [clients, leads, staff, flagged, addOns, newTickets, newErrors, failedDeliveries, kickoffsNeedingOutcome, google, domainMoves] = await Promise.all([
     guarded("clients", () => listClients(db), [], failed),
     guarded("leads", () => listLeads(db, {}), [], failed),
+    guarded("staff roster", () => listStaffRoster(db), [], failed),
     canSeeMoney ? guarded("flagged payments", () => listPaymentsNeedingAttention(db, { limit: ATTENTION_READ_LIMIT }), [], failed) : Promise.resolve([]),
     guarded("add-ons to contact", () => listAddOnsToContact(db, ATTENTION_READ_LIMIT), [], failed),
     guarded("requests needing a reply", async () => (await listSupportTicketsForStaff(db, { queue: "needs_reply", limit: NEW_TICKETS_READ_LIMIT })).items, [], failed),
@@ -106,10 +110,11 @@ async function readQueueSources(now: Date, canSeeMoney: boolean, canSeeGoogleAcc
     guarded<readonly TodayItem[]>("Google", () => readGoogleToday(now, canSeeGoogleAccount), [], failed),
     guarded("domain moves", () => listDomainMoves(db), [], failed),
   ]);
-  return { sources: { clients, leads, flagged, addOns, newTickets, newErrors, failedDeliveries, kickoffsNeedingOutcome, google, domainMoves, canSeeMoney }, failed };
+  return { sources: { clients, leads, staff, flagged, addOns, newTickets, newErrors, failedDeliveries, kickoffsNeedingOutcome, google, domainMoves, canSeeMoney }, failed };
 }
 
 function queueFrom(sources: QueueSources, now: Date): readonly TodayItem[] {
+  const staffById = new Map(sources.staff.map((s) => [s.userId, s.name]));
   const billing: TodayItem[] = [];
   if (sources.canSeeMoney) {
     for (const client of sources.clients) {
@@ -149,7 +154,14 @@ function queueFrom(sources: QueueSources, now: Date): readonly TodayItem[] {
       now,
     }),
     newTickets: sources.newTickets,
-    unpaidSignups: sources.leads.filter((lead) => lead.status === "account_created"),
+    unpaidSignups: sources.leads
+      .filter((lead) => lead.status === "account_created")
+      .map((lead) => ({
+        id: lead.id,
+        businessName: lead.businessName,
+        createdAt: lead.createdAt,
+        ownerName: lead.assignedStaffId ? (staffById.get(lead.assignedStaffId) ?? null) : null,
+      })),
     newErrors: sources.newErrors,
     failedDeliveries: sources.failedDeliveries,
     kickoffsNeedingOutcome: sources.kickoffsNeedingOutcome,

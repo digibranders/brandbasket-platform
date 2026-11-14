@@ -118,6 +118,25 @@ export function signInHref(next?: string | null): string {
 }
 
 /**
+ * Paths that an unpaid customer is allowed to open inside the signed-in workspace.
+ * An unpaid customer can open Help and Settings (and sign out from the shell) instead of being locked to /start.
+ */
+export const UNPAID_ALLOWED_PATH_PREFIXES = ["/help", "/settings"] as const;
+
+export function isUnpaidAllowedPath(pathname: string): boolean {
+  return UNPAID_ALLOWED_PATH_PREFIXES.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`));
+}
+
+/**
+ * Where to send an unpaid sign-up account that is awaiting first payment:
+ * if they are on an allowed path (Help, Settings), they may stay (null); otherwise, they are sent to /checkout.
+ */
+export function unpaidHoldRedirect(pathname: string, awaitingFirstPayment: boolean): string | null {
+  if (!awaitingFirstPayment) return null;
+  return isUnpaidAllowedPath(pathname) ? null : GUARD_PATHS.checkout;
+}
+
+/**
  * What a page or action needs beyond a signed-in member of a business.
  * - `paid: "ever"`: the business has paid at least once. A lapsed customer keeps read access (plan 60, section 13).
  * - `paid: "live"`: a paid period is running now. Every write that needs the plan asks for this.

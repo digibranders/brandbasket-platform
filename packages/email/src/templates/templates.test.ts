@@ -19,6 +19,7 @@ import { affiliateLinkEmail } from "./affiliate-link";
 import { businessInviteEmail } from "./business-invite";
 import { staffInviteEmail } from "./staff-invite";
 import { signupCodeEmail } from "./signup-code";
+import { signupReminderEmail } from "./signup-reminder";
 import { supportReplyAlertEmail } from "./support-reply-alert";
 import { supportTicketAlertEmail } from "./support-ticket-alert";
 import { systemErrorAlertEmail } from "./system-error-alert";
@@ -888,5 +889,39 @@ describe("domainMovedEmail", () => {
   it("escapes a business name that carries markup", () => {
     const risky = domainMovedEmail({ to: "a@example.com", businessName: "<b>x</b>", websiteUrl: "https://x.com", oldHostname: "x.test" });
     expect(risky.bodyHtml).not.toContain("<b>x");
+  });
+});
+
+describe("signupReminderEmail (D21)", () => {
+  const email = signupReminderEmail({
+    to: "owner@example.com",
+    businessName: "Riverside Plumbing",
+    continueUrl: "https://brandbasket.in/checkout",
+  });
+
+  it("names the business in the subject", () => {
+    expect(email.subject).toContain("Finish setting up Riverside Plumbing");
+  });
+
+  it("contains the continue URL in text and html", () => {
+    expect(email.bodyText).toContain("https://brandbasket.in/checkout");
+    expect(email.bodyHtml).toContain('href="https://brandbasket.in/checkout"');
+    expect(email.bodyHtml).toContain("Complete your setup");
+  });
+
+  it("has no em or en dashes in any customer facing text", () => {
+    expect(email.subject).not.toMatch(/[—–]/);
+    expect(email.bodyText).not.toMatch(/[—–]/);
+    expect(email.bodyHtml).not.toMatch(/[—–]/);
+  });
+
+  it("refuses invalid or non-web URLs", () => {
+    expect(() =>
+      signupReminderEmail({
+        to: "owner@example.com",
+        businessName: "Riverside Plumbing",
+        continueUrl: "javascript:alert(1)",
+      }),
+    ).toThrow();
   });
 });
