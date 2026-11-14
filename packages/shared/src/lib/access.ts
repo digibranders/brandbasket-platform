@@ -29,16 +29,22 @@ export type CustomerAccess =
   | { readonly kind: "closing"; readonly user: SessionUser; readonly eraseAfter: Date }
   | { readonly kind: "granted"; readonly user: SessionUser; readonly tenant: TenantContext };
 
+export const ACTIVE_BUSINESS_COOKIE = "bb_active_business";
+
 /**
- * In Phase 1 a customer belongs to one business. If an account has several, the oldest membership wins
- * until a business switcher exists. `memberships` must be ordered oldest first.
+ * In Phase 1 a customer belongs to one business. If an account has several, the active business choice wins
+ * if specified and present in memberships; otherwise the oldest membership wins. `memberships` must be ordered
+ * oldest first.
  */
 export function decideCustomerAccess(
   user: SessionUser | null,
   memberships: readonly BusinessMembership[],
+  activeBusinessId?: string | null,
 ): CustomerAccess {
   if (user === null) return { kind: "signed-out" };
-  const membership = memberships[0];
+  if (memberships.length === 0) return { kind: "no-business", user };
+  const chosen = activeBusinessId ? memberships.find((m) => m.businessId === activeBusinessId) : undefined;
+  const membership = chosen ?? memberships[0];
   if (membership === undefined) return { kind: "no-business", user };
   return {
     kind: "granted",

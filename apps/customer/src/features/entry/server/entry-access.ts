@@ -1,8 +1,9 @@
 import "server-only";
 import { findAffiliateByUserId, findOpenClosureForUser, listMembershipsForUser } from "@brandbasket/db";
 import { AFFILIATE_PATH } from "@brandbasket/shared/lib/affiliate-links";
-import { decideCustomerAccess, type CustomerAccess, type SessionUser } from "@brandbasket/shared/lib/access";
+import { ACTIVE_BUSINESS_COOKIE, decideCustomerAccess, type CustomerAccess, type SessionUser } from "@brandbasket/shared/lib/access";
 import { displayPhone } from "@brandbasket/shared/server/phone-display";
+import { cookies } from "next/headers";
 import { cache } from "react";
 import { getAppDb, getStaffDb } from "@/lib/db";
 import { getSessionUser } from "@/lib/session";
@@ -14,12 +15,22 @@ import { getSessionUser } from "@/lib/session";
  * already has, for the same rows).
  */
 
+async function readActiveBusinessCookie(): Promise<string | null> {
+  try {
+    const store = await cookies();
+    return store.get(ACTIVE_BUSINESS_COOKIE)?.value ?? null;
+  } catch {
+    return null;
+  }
+}
+
 export const getEntryAccess = cache(async (): Promise<CustomerAccess> => {
   const user = await getSessionUser();
   if (user === null) return decideCustomerAccess(null, []);
   const closure = await findOpenClosureForUser(getStaffDb(), user.id);
   if (closure !== null) return { kind: "closing", user, eraseAfter: closure.eraseAfter };
-  return decideCustomerAccess(user, await listMembershipsForUser(getAppDb(), user.id));
+  const activeBusinessId = await readActiveBusinessCookie();
+  return decideCustomerAccess(user, await listMembershipsForUser(getAppDb(), user.id), activeBusinessId);
 });
 
 /** Whether the user is an affiliate. The id comes from the session or a sign-in that just proved it. */

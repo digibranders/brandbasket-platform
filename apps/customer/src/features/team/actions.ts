@@ -13,7 +13,9 @@ import {
   type RateLimitRule,
 } from "@brandbasket/db";
 import { businessInviteEmail } from "@brandbasket/email";
+import { ACTIVE_BUSINESS_COOKIE } from "@brandbasket/shared/lib/access";
 import { revalidatePath } from "next/cache";
+import { cookies } from "next/headers";
 import { redirect, unstable_rethrow } from "next/navigation";
 import { z } from "zod";
 import { customerEmailTransport } from "@/features/server-common/email";
@@ -152,6 +154,13 @@ export async function acceptInviteAction(token: string): Promise<ActionResult> {
     if (!budget.allowed) return actionFail("Too many tries. Please wait a while and try again.");
     const result = await acceptBusinessInvite(getStaffDb(), { token: checked.data, userId: user.id, userEmail: user.email });
     if (result.kind === "refused") return actionFail(refusalMessage(result.reason));
+    const cookieStore = await cookies();
+    cookieStore.set(ACTIVE_BUSINESS_COOKIE, result.businessId, {
+      httpOnly: true,
+      sameSite: "lax",
+      path: "/",
+      maxAge: 60 * 60 * 24 * 365,
+    });
   } catch (error) {
     unstable_rethrow(error);
     reportError(error, { area: "team.invite.accept" });

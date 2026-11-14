@@ -9,8 +9,9 @@ import {
   type Affiliate,
   type BillingCurrency,
 } from "@brandbasket/db";
-import { decideCustomerAccess, type CustomerAccess, type SessionUser, type TenantContext } from "@brandbasket/shared/lib/access";
+import { ACTIVE_BUSINESS_COOKIE, decideCustomerAccess, type CustomerAccess, type SessionUser, type TenantContext } from "@brandbasket/shared/lib/access";
 import { summariseBilling, type CustomerBilling } from "@brandbasket/shared/lib/billing/status";
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { cache } from "react";
 import { getAppDb, getStaffDb } from "./db";
@@ -62,6 +63,15 @@ export class CustomerBusinessMissingError extends Error {
   }
 }
 
+async function readActiveBusinessCookie(): Promise<string | null> {
+  try {
+    const store = await cookies();
+    return store.get(ACTIVE_BUSINESS_COOKIE)?.value ?? null;
+  } catch {
+    return null;
+  }
+}
+
 /** The session and the business it belongs to, read once per request. A closing account counts as having no workspace. */
 const getCustomerAccess = cache(async (): Promise<CustomerAccess> => {
   const user = await getSessionUser();
@@ -69,7 +79,8 @@ const getCustomerAccess = cache(async (): Promise<CustomerAccess> => {
   // Staff connection: account_closures is staff-only. Sanctioned in ./db.ts.
   const closure = await findOpenClosureForUser(getStaffDb(), user.id);
   if (closure !== null) return { kind: "closing", user, eraseAfter: closure.eraseAfter };
-  return decideCustomerAccess(user, await listMembershipsForUser(getAppDb(), user.id));
+  const activeBusinessId = await readActiveBusinessCookie();
+  return decideCustomerAccess(user, await listMembershipsForUser(getAppDb(), user.id), activeBusinessId);
 });
 
 /** Billing and services for one business, read once per request through row-level security. */
