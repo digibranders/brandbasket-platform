@@ -9,7 +9,7 @@ import { startNextMonthAction, startSiteJobAction } from "@/legacy-social/action
 import { LIFT, SECTION_TITLE } from "@/legacy-social/classes";
 import { jobIsActive, jobLine, knownWordsForCode, type SiteJob } from "@/legacy-social/lib/social/ai";
 import { CHANNEL_PLATFORMS, dayLabel, PLATFORM_NAMES, websiteLabel, type AutoChannel, type ChannelPlatform } from "@/legacy-social/lib/social/auto";
-import { AUTO_POSTING_CONSENT, safetyWords, SAFETY_HOURS } from "@/legacy-social/lib/social/auto-posting";
+import { AUTO_POSTING_CONSENT, AUTO_SAFETY_HOURS } from "@/legacy-social/lib/social/auto-posting";
 import { dayGroups, type PostingDays } from "@/legacy-social/lib/social/schedule";
 import { ChannelLogo } from "./channel-logo";
 import { DismissibleNotice } from "./dismissible-notice";
@@ -42,6 +42,11 @@ interface AiStartCardProps {
   readonly nextMonth?: { readonly startDate: string; readonly endsOn: string | null } | null;
   /** The days each channel posts on, or null when the posting service cannot say. Channels with different days are written one group at a time. */
   readonly postingDays?: PostingDays | null;
+  /**
+   * Whether a kept topic still has no picture asked for. A draw that failed is shown only while that is so: once every kept topic has its pictures
+   * (a later draw worked, or the topics were dropped) the old failure is not news, and "Try again" would only buy pictures twice. Left out, it is shown.
+   */
+  readonly drawWaiting?: boolean;
 }
 
 /**
@@ -49,7 +54,7 @@ interface AiStartCardProps {
  * ended. Starting opens a window with the address (the whole website, or one page of it) and the networks to write for; no account
  * has to be connected yet, that comes before anything is booked. While a batch is being written the page asks again every few seconds.
  */
-export function AiStartCard({ jobs, channels, website = null, savedWebsite = null, unavailable = false, expired = { batches: 0, pictures: 0 }, nextMonth = null, postingDays = null }: AiStartCardProps): ReactElement | null {
+export function AiStartCard({ jobs, channels, website = null, savedWebsite = null, unavailable = false, expired = { batches: 0, pictures: 0 }, nextMonth = null, postingDays = null, drawWaiting = true }: AiStartCardProps): ReactElement | null {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const active = jobs.find(jobIsActive);
@@ -76,6 +81,8 @@ export function AiStartCard({ jobs, channels, website = null, savedWebsite = nul
       </DismissibleNotice>
     );
   }
+  // An old failed draw, when nothing is left to draw, says nothing.
+  if (active === undefined && latest !== undefined && latest.state === "failed" && latest.kind === "draw" && !drawWaiting) return null;
   const connected = new Set<ChannelPlatform>(channels.map((channel) => channel.platform));
   const view = ((): { title: string; text: string; button: string | null } => {
     if (unavailable && jobs.length === 0) return { title: "We cannot check on your posts just now", text: "Try again in a few minutes. Nothing you did is lost.", button: null };
@@ -137,7 +144,6 @@ export function StartDialog({ connected, postingDays = null, startDate = null, w
   const groupOf = (platform: ChannelPlatform): number => groups.findIndex((group) => group.includes(platform));
   const mixedDays = new Set([...networks].map(groupOf).filter((index) => index >= 0)).size > 1;
   const [approval, setApproval] = useState<"manual" | "automatic">("manual");
-  const [hours, setHours] = useState<number>(24);
   const [agreed, setAgreed] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
@@ -179,7 +185,7 @@ export function StartDialog({ connected, postingDays = null, startDate = null, w
         for (const platform of networks) form.append("network", platform);
         form.set("approval", approval);
         if (approval === "automatic") {
-          form.set("hours", String(hours));
+          form.set("hours", String(AUTO_SAFETY_HOURS));
           form.set("agreed", "yes");
         }
         const result = await startSiteJobAction(form);
@@ -309,25 +315,13 @@ export function StartDialog({ connected, postingDays = null, startDate = null, w
               <input type="radio" name="approval" value="automatic" checked={approval === "automatic"} disabled={!canAuto} onChange={() => setApproval("automatic")} className="peer sr-only" />
               <span className={cn("grid h-full gap-0.5 rounded-xl px-3 py-2 peer-focus-visible:ring-2 peer-focus-visible:ring-offset-2", approval === "automatic" ? "bg-ok-wash text-ink ring-1 ring-ok" : canAuto ? "bg-surface text-ink ring-1 ring-ink-2/30" : "bg-surface text-ink-3 ring-1 ring-ink-2/30")}>
                 <span className="text-[0.8125rem] font-semibold">Post automatically</span>
-                <span className="text-[0.6875rem] leading-snug text-ink-2">{canAuto ? "We approve the pictures that pass our checks a set time before they go out. You can still reject any post until then." : "Connect an account for one of these channels first."}</span>
+                <span className="text-[0.6875rem] leading-snug text-ink-2">{canAuto ? "We approve the pictures that pass our checks as soon as they are drawn. You can still reject any post until it goes out." : "Connect an account for one of these channels first."}</span>
               </span>
             </label>
           </div>
           {approval !== "automatic" ? null : (
             <div className="mt-2 grid gap-3 rounded-xl bg-sunken p-3">
-              <div className="grid gap-1">
-                <label htmlFor="start-auto-hours" className="text-xs font-semibold text-ink-2">
-                  We approve a picture
-                </label>
-                <select id="start-auto-hours" value={hours} onChange={(event) => setHours(Number(event.target.value))} className="h-10 w-full max-w-xs rounded-lg border border-ink-2/65 bg-surface px-3 text-[0.875rem] text-ink">
-                  {SAFETY_HOURS.map((value) => (
-                    <option key={value} value={value}>
-                      {safetyWords(value)}
-                    </option>
-                  ))}
-                </select>
-                <p className="text-xs text-ink-3">It applies to the connected channels above. Carousels, topics you ask for yourself, and anything our checks flag stay with you.</p>
-              </div>
+              <p className="text-xs text-ink-3">It applies to the connected channels above. Carousels, topics you ask for yourself, and anything our checks flag stay with you.</p>
               <label className="flex cursor-pointer items-start gap-3 text-[0.78125rem] text-ink-2">
                 <input type="checkbox" checked={agreed} onChange={(event) => setAgreed(event.target.checked)} className="mt-0.5 size-4 shrink-0" />
                 <span>{AUTO_POSTING_CONSENT}</span>

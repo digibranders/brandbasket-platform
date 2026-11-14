@@ -6,9 +6,11 @@ import { CHANNEL_PLATFORMS, type ChannelPlatform } from "./auto";
  * she can still reject one before it goes out. Her own topics, carousels, topics with a warning and blocked pictures stay hers.
  */
 
-/** The hours before posting time in which the system may approve a picture, as the customer can pick them. */
+/** The waits the posting service accepts (hours before posting time in which a picture may be approved); a customer set one before there was no choice. */
 export const SAFETY_HOURS = [0, 6, 12, 24, 48, 72] as const;
 export const DEFAULT_SAFETY_HOURS = 24;
+/** What a customer who chooses automatic gets now: no wait, a picture is approved as soon as it passes our checks. She can still reject a post until it goes out. */
+export const AUTO_SAFETY_HOURS = 0;
 
 export interface AutoPosting {
   /** The channels the system posts for. */
@@ -39,11 +41,11 @@ export function readAutoPosting(body: unknown, connected: readonly ChannelPlatfo
   return { channels: platforms(raw.channels), safetyHours: hours, consentedAt: typeof raw.consentedAt === "string" ? raw.consentedAt : null, needsChoice: platforms(raw.needsChoice) };
 }
 
-/** "24 hours before it goes out", "no wait (right when it is due)". */
+/** What a saved wait means, as the end of a sentence: "as soon as they pass our checks", or for a wait set earlier "24 hours before they go out". */
 export function safetyWords(hours: number): string {
-  return hours === 0 ? "No wait: right before it goes out" : `${hours} ${hours === 1 ? "hour" : "hours"} before it goes out`;
+  return hours === 0 ? "as soon as they pass our checks" : `${hours} ${hours === 1 ? "hour" : "hours"} before they go out`;
 }
 
 /** The words a customer agrees to when she lets us post for her. Shown beside the box she ticks. */
 export const AUTO_POSTING_CONSENT =
-  "I agree that Brandbasket may approve and post for the channels I chose, without me approving each one, when the post passes our checks. Posts go out only after the safety wait I chose, I can reject any post before it goes out, and I can switch this off at any time. I know the posts are written from my website and I stay responsible for what is published on my accounts.";
+  "I agree that Brandbasket may approve and post for the channels I chose, without me approving each one, when the post passes our checks. Posts go out at their time, I can reject any post before it goes out, and I can switch this off at any time. I know the posts are written from my website and I stay responsible for what is published on my accounts.";

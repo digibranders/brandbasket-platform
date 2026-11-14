@@ -26,7 +26,7 @@ describe("AutoPostingCard", () => {
     expect(container.textContent).toBe("");
   });
 
-  it("cannot be saved without a channel and her agreement, and then sends the channels, the wait and the agreement", async () => {
+  it("cannot be saved without a channel and her agreement, and then sends the channels, no wait and the agreement", async () => {
     save.mockResolvedValue({ status: "saved" });
     render(<AutoPostingCard auto={none} channels={channels} canChange />);
     fireEvent.click(screen.getByRole("button", { name: "Choose channels" }));
@@ -36,12 +36,12 @@ describe("AutoPostingCard", () => {
     expect(saveButton.disabled).toBe(true);
     fireEvent.click(screen.getByRole("checkbox", { name: /I agree that Brandbasket may approve/ }));
     expect(saveButton.disabled).toBe(false);
-    fireEvent.change(screen.getByLabelText("We approve a picture"), { target: { value: "48" } });
+    expect(screen.queryByLabelText("We approve a picture")).toBeNull();
     fireEvent.click(saveButton);
     await waitFor(() => expect(save).toHaveBeenCalledTimes(1));
     const form = save.mock.calls[0]?.[0] as FormData;
     expect(form.get("channels")).toBe("instagram");
-    expect(form.get("hours")).toBe("48");
+    expect(form.get("hours")).toBe("0");
     expect(form.get("agreed")).toBe("yes");
   });
 

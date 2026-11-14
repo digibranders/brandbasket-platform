@@ -183,8 +183,9 @@ export async function loadPosts(settings: SocialAutoSettings, businessId: string
 }
 
 /** A link the customer opens to press Allow on a network's own page. Valid for an hour. */
-export async function connectLink(settings: SocialAutoSettings, businessId: string, platform: ChannelPlatform, send: typeof fetch = fetch): Promise<string> {
-  const answer = await call(settings, "/api/v1/connect-link", { method: "POST", body: { externalId: businessId, channel: platform, returnUrl: settings.returnUrl } }, send);
+export async function connectLink(settings: SocialAutoSettings, businessId: string, platform: ChannelPlatform, send: typeof fetch = fetch, moveFrom?: string): Promise<string> {
+  // `moveFrom` is another brand of the same customer that holds the account: the service then moves it here when she presses Allow.
+  const answer = await call(settings, "/api/v1/connect-link", { method: "POST", body: { externalId: businessId, channel: platform, returnUrl: settings.returnUrl, ...(moveFrom === undefined ? {} : { moveFrom }) } }, send);
   if (answer.status !== 200) throw refusal(answer, "the connect link");
   const link = readConnectLink(answer.body);
   if (link === null) throw new SocialAutoError("social-auto answered with a connect link that is not a safe address");

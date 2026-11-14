@@ -53,8 +53,12 @@ export function flowWeeks(groups: readonly ReviewGroup[], drawing: readonly stri
   return weeks.sort((a, b) => a.from.localeCompare(b.from) || a.key.localeCompare(b.key));
 }
 
-/** The cards of a week, in the order of the batch. */
-export const cardsOfWeek = (groups: readonly ReviewGroup[], week: FlowWeek): ReviewCard[] => groups.find((group) => group.batchId === week.batchId)?.cards.filter((card) => week.postIds.includes(card.postId)) ?? [];
+/**
+ * The cards of a week, in the order of the batch. A topic she dropped and asked a new topic for is not shown: the new topic takes its place on
+ * that day, so the day has one topic and not the old one greyed out above the new one.
+ */
+export const cardsOfWeek = (groups: readonly ReviewGroup[], week: FlowWeek): ReviewCard[] =>
+  groups.find((group) => group.batchId === week.batchId)?.cards.filter((card) => week.postIds.includes(card.postId) && !(card.written?.state === "dropped" && card.written.replacedBy != null)) ?? [];
 
 /** The week to open first: the first one with something to decide or approve, else the first. */
 export function firstOpenWeek(groups: readonly ReviewGroup[], weeks: readonly FlowWeek[]): string | null {

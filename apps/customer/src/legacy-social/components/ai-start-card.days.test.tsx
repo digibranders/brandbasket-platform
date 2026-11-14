@@ -66,12 +66,12 @@ describe("writing posts for channels that post on different days", () => {
   });
 
 
-  it("lets her choose Post automatically when a channel is connected, asks for her agreement, and sends it with the wait", async () => {
+  it("lets her choose Post automatically when a channel is connected, asks for her agreement, and sends it with no wait", async () => {
     render(<StartDialog connected={new Set(["instagram"] as const)} website="acme.com" onClose={() => undefined} />);
     const auto = screen.getByRole("radio", { name: /Post automatically/ }) as HTMLInputElement;
     expect(auto.disabled).toBe(false);
     fireEvent.click(auto);
-    fireEvent.change(screen.getByLabelText("We approve a picture"), { target: { value: "48" } });
+    expect(screen.queryByLabelText("We approve a picture")).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Read my website" }));
     expect(screen.getByText(/Tick the box to agree/)).toBeTruthy();
     expect(vi.mocked(startSiteJobAction)).not.toHaveBeenCalled();
@@ -79,7 +79,7 @@ describe("writing posts for channels that post on different days", () => {
     fireEvent.click(screen.getByRole("button", { name: "Read my website" }));
     await waitFor(() => expect(vi.mocked(startSiteJobAction)).toHaveBeenCalledTimes(1));
     const form = vi.mocked(startSiteJobAction).mock.calls[0]?.[0] as FormData;
-    expect([form.get("approval"), form.get("hours"), form.get("agreed")]).toEqual(["automatic", "48", "yes"]);
+    expect([form.get("approval"), form.get("hours"), form.get("agreed")]).toEqual(["automatic", "0", "yes"]);
   });
 
   it("keeps Post automatically off while none of the chosen channels is connected, and sends manual by default", async () => {

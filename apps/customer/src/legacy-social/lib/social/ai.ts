@@ -24,6 +24,11 @@ export const jobSchema = z.object({
   postId: z.string().optional(),
   createdAt: z.string(),
   finishedAt: z.string().optional(),
+  /** A `write` job that writes the plan one week at a time: how many weeks it will have, and how many are saved so far. Left out by a posting service that writes all at once. */
+  weeksTotal: z.number().int().positive().optional(),
+  weeksDone: z.number().int().nonnegative().optional(),
+  /** The job failed after saving some weeks: those stay, and `weeksDone` says how many. */
+  partial: z.boolean().optional(),
   /** Why a job failed, as the posting service's stable code (such as `PAGE_MODE_UNAVAILABLE`), when it says. */
   failure: z.string().optional(),
 });
@@ -365,7 +370,13 @@ export const jobIsActive = (job: Pick<SiteJob, "state">): boolean => job.state =
 const STEP_WORDS: Readonly<Record<number, string>> = { 1: "Reading your website", 2: "Writing your posts", 3: "Drawing your pictures", 4: "Putting it together for you to review" };
 
 /** What to tell the customer about a job, in plain words. */
-export function jobLine(job: Pick<SiteJob, "kind" | "state" | "step">): string {
+export function jobLine(job: Pick<SiteJob, "kind" | "state" | "step" | "weeksTotal" | "weeksDone" | "partial">): string {
+  if (job.kind === "write" && job.weeksTotal !== undefined) {
+    const done = job.weeksDone ?? 0;
+    // Weeks that are saved stay: say how many there are and that she can look at them while the rest is written.
+    if (job.state === "failed" && job.partial === true && done > 0) return `We wrote ${done === 1 ? "week 1" : `${done} of ${job.weeksTotal} weeks`}, and could not write the rest. What was written is saved. You can write the rest.`;
+    if (job.state === "running" && done > 0) return `${done === 1 ? "Week 1" : `${done} weeks`} of ${job.weeksTotal} ${done === 1 ? "is" : "are"} ready to look at. Writing the rest`;
+  }
   if (job.kind === "topic") return job.state === "failed" ? "We could not write your topic. You can try again." : job.state === "done" ? "Your topic is ready to look at." : job.state === "queued" ? "Waiting to start." : "Writing your topic";
   if (job.kind === "replace") return job.state === "failed" ? "We could not write a new topic this time. You can try again." : job.state === "done" ? "Your new topic is ready to look at." : job.state === "queued" ? "Waiting to start." : "Writing a new topic";
   if (job.kind === "carousel") return job.state === "failed" ? "We could not make your carousel. You can try again." : job.state === "done" ? "Your carousel is ready to look at." : job.state === "queued" ? "Waiting to start." : "Making your carousel";
