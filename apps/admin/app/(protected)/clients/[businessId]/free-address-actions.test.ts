@@ -132,10 +132,15 @@ describe("changeFreeAddressAction", () => {
     vi.mocked(findPrimaryHostname).mockResolvedValue(CURRENT);
   });
 
+  it("refuses to change address without confirmation", async () => {
+    await expect(changeFreeAddressAction(form({ businessId: BUSINESS, name: NAME }))).rejects.toThrow("launch=unconfirmed");
+    expect(changeFreeAddressForBusiness).not.toHaveBeenCalled();
+  });
+
   it("changes the address, records both and says so", async () => {
     vi.mocked(changeFreeAddressForBusiness).mockResolvedValue("changed");
 
-    await expect(changeFreeAddressAction(form({ businessId: BUSINESS, name: NAME }))).rejects.toThrow(`redirect:/clients/${BUSINESS}/website?launch=address-changed`);
+    await expect(changeFreeAddressAction(form({ businessId: BUSINESS, name: NAME, confirm: "yes" }))).rejects.toThrow(`redirect:/clients/${BUSINESS}/website?launch=address-changed`);
     expect(changeFreeAddressForBusiness).toHaveBeenCalledWith(DB, { businessId: BUSINESS, hostname: ADDRESS });
     expect(recordStaffAction).toHaveBeenCalledWith(
       STAFF,
@@ -144,7 +149,7 @@ describe("changeFreeAddressAction", () => {
   });
 
   it("refuses a name that cannot be used, before reading the business", async () => {
-    await expect(changeFreeAddressAction(form({ businessId: BUSINESS, name: "www" }))).rejects.toThrow("launch=address-invalid");
+    await expect(changeFreeAddressAction(form({ businessId: BUSINESS, name: "www", confirm: "yes" }))).rejects.toThrow("launch=address-invalid");
     expect(findOpenProjectForStaff).not.toHaveBeenCalled();
     expect(changeFreeAddressForBusiness).not.toHaveBeenCalled();
   });
@@ -155,7 +160,7 @@ describe("changeFreeAddressAction", () => {
   ])("changes nothing with %s", async (_label, project) => {
     vi.mocked(findOpenProjectForStaff).mockResolvedValue(project as Awaited<ReturnType<typeof findOpenProjectForStaff>>);
 
-    await expect(changeFreeAddressAction(form({ businessId: BUSINESS, name: NAME }))).rejects.toThrow("launch=address-locked");
+    await expect(changeFreeAddressAction(form({ businessId: BUSINESS, name: NAME, confirm: "yes" }))).rejects.toThrow("launch=address-locked");
     expect(changeFreeAddressForBusiness).not.toHaveBeenCalled();
   });
 
@@ -165,14 +170,14 @@ describe("changeFreeAddressAction", () => {
   ])("changes nothing when the business has %s", async (_label, hostname) => {
     vi.mocked(findPrimaryHostname).mockResolvedValue(hostname);
 
-    await expect(changeFreeAddressAction(form({ businessId: BUSINESS, name: NAME }))).rejects.toThrow("launch=address-locked");
+    await expect(changeFreeAddressAction(form({ businessId: BUSINESS, name: NAME, confirm: "yes" }))).rejects.toThrow("launch=address-locked");
     expect(changeFreeAddressForBusiness).not.toHaveBeenCalled();
   });
 
   it("says the address is taken when another business holds it, and keeps the old one", async () => {
     vi.mocked(changeFreeAddressForBusiness).mockResolvedValue("taken");
 
-    await expect(changeFreeAddressAction(form({ businessId: BUSINESS, name: NAME }))).rejects.toThrow("launch=address-taken");
+    await expect(changeFreeAddressAction(form({ businessId: BUSINESS, name: NAME, confirm: "yes" }))).rejects.toThrow("launch=address-taken");
     expect(recordStaffAction).not.toHaveBeenCalled();
   });
 });

@@ -2,7 +2,8 @@ import type { StaffPaymentRow } from "@brandbasket/db";
 import { rupees } from "@brandbasket/shared/lib/billing/invoice-register";
 import { Fragment, type ReactElement } from "react";
 import { buttonDanger, buttonSmall } from "@/components/console/buttons";
-import { checkboxClasses, fieldClasses, labelClasses } from "@/components/console/field-styles";
+import { ConfirmDialog } from "@/components/console/confirm-dialog";
+import { fieldClasses, labelClasses } from "@/components/console/field-styles";
 import { EmptyLine } from "@/components/console/hairline-list";
 import { Notice } from "@/components/console/notice";
 import { Section } from "@/components/console/section";
@@ -67,25 +68,31 @@ export function ClientPayments({ businessId, payments, canRefund, notice, refund
                           <td colSpan={6} className="border-b border-line pb-4">
                             <details>
                               <summary className={`${buttonSmall} cursor-pointer list-none`}>Mark refunded</summary>
-                              <form action={refundAction} className="mt-3 grid max-w-xl gap-3">
-                                <input type="hidden" name="businessId" value={businessId} />
-                                <input type="hidden" name="paymentId" value={payment.id} />
-                                <label className={labelClasses}>
-                                  Amount given back ({payment.currency})
-                                  <input name="amount" required inputMode="decimal" defaultValue={rupees(payment.amountCents)} className={fieldClasses} />
-                                </label>
-                                <label className={labelClasses}>
-                                  Why it was refunded
-                                  <textarea name="reason" required minLength={3} maxLength={300} rows={2} className={fieldClasses} />
-                                </label>
-                                <label className="flex items-start gap-2 text-sm">
-                                  <input type="checkbox" name="confirm" value="yes" required className={checkboxClasses} />
-                                  <span>I have already given this money back in Razorpay or by bank transfer. The console moves no money.</span>
-                                </label>
-                                <button type="submit" className={buttonDanger}>
-                                  Mark refunded
-                                </button>
-                              </form>
+                              <div className="mt-3 max-w-xl">
+                                <ConfirmDialog
+                                  title="Mark payment as refunded"
+                                  consequence="This records the refund in the console and issues a credit note. The console moves no money; ensure funds were returned in Razorpay or by bank transfer."
+                                  triggerLabel="Review and mark refunded"
+                                  triggerClassName={buttonDanger}
+                                  confirmLabel="Confirm refund"
+                                  cancelLabel="Cancel"
+                                  variant="danger"
+                                  formAction={refundAction}
+                                >
+                                  <input type="hidden" name="businessId" value={businessId} />
+                                  <input type="hidden" name="paymentId" value={payment.id} />
+                                  <div className="grid gap-3 my-4">
+                                    <label className={labelClasses}>
+                                      Amount given back ({payment.currency})
+                                      <input name="amount" required inputMode="decimal" defaultValue={rupees(payment.amountCents)} className={fieldClasses} />
+                                    </label>
+                                    <label className={labelClasses}>
+                                      Why it was refunded
+                                      <textarea name="reason" required minLength={3} maxLength={300} rows={2} className={fieldClasses} />
+                                    </label>
+                                  </div>
+                                </ConfirmDialog>
+                              </div>
                             </details>
                           </td>
                         </tr>

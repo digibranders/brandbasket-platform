@@ -697,6 +697,7 @@ export async function markDomainReadyAction(formData: FormData): Promise<void> {
 export async function switchDomainAction(formData: FormData): Promise<void> {
   const staff = await requireStaffAccess();
   const businessId = readId(formData.get("businessId"), "Switch domain's business");
+  if (formData.get("confirm") !== "yes") redirect(domainConnectNoticeHref(businessId, "unconfirmed"));
 
   let notified: OwnerNotification;
   try {
@@ -752,6 +753,7 @@ export async function useFreeAddressAction(formData: FormData): Promise<void> {
 export async function changeFreeAddressAction(formData: FormData): Promise<void> {
   const staff = await requireStaffAccess();
   const businessId = readId(formData.get("businessId"), "Free address's business");
+  if (formData.get("confirm") !== "yes") redirect(projectLaunchNoticeHref(businessId, "unconfirmed"));
   const hostname = freeAddressHostname(formData, businessId);
 
   const db = getStaffDb();

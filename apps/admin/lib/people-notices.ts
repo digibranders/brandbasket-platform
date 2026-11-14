@@ -5,6 +5,8 @@ export const PEOPLE_NOTICES = {
   restored: { text: "Account restored. They can sign in again; a plan they cancelled stays cancelled.", ok: true },
   extended: { text: "Erase date moved 30 days later.", ok: true },
   "no-closure": { text: "Nothing changed: this account is not leaving.", ok: false },
+  unconfirmed: { text: "Nothing changed: confirm the action to proceed.", ok: false },
+  closed: { text: "Account closed and scheduled for deletion.", ok: true },
 } as const satisfies Readonly<Record<string, { readonly text: string; readonly ok: boolean }>>;
 
 export type PeopleNotice = keyof typeof PEOPLE_NOTICES;

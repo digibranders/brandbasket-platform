@@ -17,6 +17,7 @@ import { endClientAddOn, markClientAddOnContacted, setClientPressReleaseStatus }
 import { getStaffDb } from "@/lib/server/db";
 import { recordStaffAction } from "@/lib/server/activity";
 import { checkSiteAddress } from "@/lib/server/site-check";
+import { switchDomain } from "@/lib/server/domain-switch";
 import {
   addChargeAction,
   checkAddressAction,
@@ -31,6 +32,7 @@ import {
   resolvePaymentAttentionAction,
   saveListingPlacementAction,
   setPressReleaseStatusAction,
+  switchDomainAction,
   waiveChargeAction,
 } from "./actions";
 
@@ -66,6 +68,10 @@ vi.mock("@/lib/server/project-preview", () => ({}));
 vi.mock("@/lib/server/site-token", () => ({}));
 vi.mock("@/lib/server/activity", () => ({ recordStaffAction: vi.fn() }));
 vi.mock("@/lib/server/site-check", () => ({ checkSiteAddress: vi.fn() }));
+vi.mock("@/lib/server/domain-switch", () => ({
+  switchDomain: vi.fn(),
+  DomainSwitchRecipientMissingError: class extends Error {},
+}));
 
 const BUSINESS = "01a0f71b-8402-7d48-a90a-207e8c8a882c";
 const STAFF = { user: { id: "staff-1" }, staff: { userId: "staff-1", role: "finance" } } as unknown as GrantedStaff;
@@ -403,5 +409,24 @@ describe("checkAddressAction", () => {
   it("refuses an id that is not one", async () => {
     await expect(checkAddressAction(form({ businessId: "not-an-id" }))).rejects.toThrow("must be a valid id");
     expect(checkSiteAddress).not.toHaveBeenCalled();
+  });
+});
+
+describe("switchDomainAction", () => {
+  beforeEach(() => {
+    vi.mocked(redirect).mockImplementation((url: string) => {
+      throw new Error(`redirect:${url}`);
+    });
+  });
+
+  it("refuses to switch domain without confirmation", async () => {
+    await expect(switchDomainAction(form({ businessId: BUSINESS }))).rejects.toThrow("dns=unconfirmed");
+    expect(switchDomain).not.toHaveBeenCalled();
+  });
+
+  it("switches domain and emails client when confirmed", async () => {
+    vi.mocked(switchDomain).mockResolvedValue("emailed");
+    await expect(switchDomainAction(form({ businessId: BUSINESS, confirm: "yes" }))).rejects.toThrow("dns=switched");
+    expect(switchDomain).toHaveBeenCalledWith(getStaffDb(), { businessId: BUSINESS });
   });
 });
