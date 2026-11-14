@@ -42,6 +42,11 @@ interface AiStartCardProps {
   readonly nextMonth?: { readonly startDate: string; readonly endsOn: string | null } | null;
   /** The days each channel posts on, or null when the posting service cannot say. Channels with different days are written one group at a time. */
   readonly postingDays?: PostingDays | null;
+  /**
+   * Whether a kept topic still has no picture asked for. A draw that failed is shown only while that is so: once every kept topic has its pictures
+   * (a later draw worked, or the topics were dropped) the old failure is not news, and "Try again" would only buy pictures twice. Left out, it is shown.
+   */
+  readonly drawWaiting?: boolean;
 }
 
 /**
@@ -49,7 +54,7 @@ interface AiStartCardProps {
  * ended. Starting opens a window with the address (the whole website, or one page of it) and the networks to write for; no account
  * has to be connected yet, that comes before anything is booked. While a batch is being written the page asks again every few seconds.
  */
-export function AiStartCard({ jobs, channels, website = null, savedWebsite = null, unavailable = false, expired = { batches: 0, pictures: 0 }, nextMonth = null, postingDays = null }: AiStartCardProps): ReactElement | null {
+export function AiStartCard({ jobs, channels, website = null, savedWebsite = null, unavailable = false, expired = { batches: 0, pictures: 0 }, nextMonth = null, postingDays = null, drawWaiting = true }: AiStartCardProps): ReactElement | null {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const active = jobs.find(jobIsActive);
@@ -76,6 +81,8 @@ export function AiStartCard({ jobs, channels, website = null, savedWebsite = nul
       </DismissibleNotice>
     );
   }
+  // An old failed draw, when nothing is left to draw, says nothing.
+  if (active === undefined && latest !== undefined && latest.state === "failed" && latest.kind === "draw" && !drawWaiting) return null;
   const connected = new Set<ChannelPlatform>(channels.map((channel) => channel.platform));
   const view = ((): { title: string; text: string; button: string | null } => {
     if (unavailable && jobs.length === 0) return { title: "We cannot check on your posts just now", text: "Try again in a few minutes. Nothing you did is lost.", button: null };
