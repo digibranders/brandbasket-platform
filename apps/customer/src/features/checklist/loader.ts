@@ -5,7 +5,7 @@ import type { Service } from "@/lib/guard-rules";
 import type { CustomerContext } from "@/lib/guards";
 import { checklistRows, type ChecklistRow, type SavedAnswers } from "./rules-items";
 import type { OnboardingSnapshot } from "./rules-snapshot";
-import { readSavedAnswers } from "./server/saved-answers";
+import { postingServiceHasAccounts, readSavedAnswers } from "./server/saved-answers";
 import { readOnboardingSnapshot } from "./server/snapshot";
 
 export interface ChecklistItemView {
@@ -38,9 +38,11 @@ const EMPTY_ANSWERS: SavedAnswers = { social: undefined, search: undefined };
 export async function readChecklistState(customer: CustomerContext): Promise<ChecklistState> {
   const { services } = customer;
   const wantsSetup = services.includes("social") || services.includes("search");
+  // Accounts the customer connected in Social media are in the posting service, not in the database: asked before the transaction, never inside it.
+  const connectedInPostingService = services.includes("social") ? await postingServiceHasAccounts(customer) : false;
   const { snapshot, answers } = await withTenantScope(getAppDb(), customer.tenant, async (tx) => ({
     snapshot: services.includes("website") ? await readOnboardingSnapshot(tx) : null,
-    answers: wantsSetup ? await readSavedAnswers(tx, customer.businessId, new Date()) : EMPTY_ANSWERS,
+    answers: wantsSetup ? await readSavedAnswers(tx, customer.businessId, new Date(), connectedInPostingService) : EMPTY_ANSWERS,
   }));
   return { services, rows: checklistRows(services, snapshot, answers), snapshot, answers };
 }
