@@ -53,6 +53,8 @@ export interface TodayInput {
   readonly failedDeliveries: number | null;
   /** Kickoff calls that are over and not marked held (or as missed); null when they could not be read. One item each. */
   readonly kickoffsNeedingOutcome: readonly KickoffNeedingOutcome[] | null;
+  /** Billing status issues: past_due and lapsed subscriptions for money-capable roles. */
+  readonly billing?: readonly TodayItem[];
   /** Approved website previews waiting to go live. */
   readonly approvedPreviews?: readonly ApprovedPreviewNeedingLaunch[];
   /** Requests from customers to move to their own domain. */
@@ -201,6 +203,7 @@ export function todayQueue(input: TodayInput): readonly TodayItem[] {
     ...errors,
     ...deliveries,
     ...kickoffs,
+    ...(input.billing ?? []),
     ...approved,
     ...domainMoves,
     ...(input.google ?? []),

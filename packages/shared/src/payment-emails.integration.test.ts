@@ -16,7 +16,7 @@ import { execSql, openTestDatabases, querySql, resetTestDatabase, seedPlansFromM
 import { createOutboxTransport, type EmailMessage } from "@brandbasket/email";
 import { packageLines } from "./lib/billing/packages";
 import { activateFirstPayment, activateRenewalPayment } from "./server/billing-activation";
-import { sendPaymentFailed, sendPaymentReceipt, type PaymentEmailDeps } from "./server/payment-emails";
+import { sendFirstChargeReminder, sendPaymentFailed, sendPaymentReceipt, type PaymentEmailDeps } from "./server/payment-emails";
 
 // The email senders are server-only in the app; there is no browser here to keep them out of.
 vi.mock("server-only", () => ({}));
@@ -199,7 +199,7 @@ describe("sendPaymentFailed", () => {
     expect(sent[0]).toMatchObject({ to: "asha@raodental.example", subject: "Your payment did not go through" });
     expect(sent[0]?.bodyText).toContain("We could not take your payment of ₹2,999 for Website Management.");
     expect(sent[0]?.bodyText).toContain("Your plan stays active until 9 November 2026. After that it pauses until the payment is made.");
-    expect(sent[0]?.bodyText).toContain(`Pay now: ${ORIGIN}/billing`);
+    expect(sent[0]?.bodyText).toContain(`Pay now: ${ORIGIN}/billing/payment`);
   });
 
   it("says the plan is paused once the paid-through date has passed", async () => {
@@ -294,5 +294,38 @@ describe("a renewal receipt", () => {
     expect(sent).toHaveLength(2);
     expect(sent[1]?.bodyText).toContain("Your plan is paid up to 9 December 2026.");
     expect(sent[1]?.bodyText).toContain("Your next payment of ₹2,999 is taken on 9 December 2026.");
+  });
+});
+
+describe("sendFirstChargeReminder", () => {
+  it("sends reminder with the first full charge date and amount, only once", async () => {
+    await payFirst(await openSubscription(services), services);
+    const chargeDate = new Date("2026-11-09T09:00:00.000Z");
+
+    await sendFirstChargeReminder(dbs.staff.db, deps(), {
+      businessId,
+      amountCents: 299_900,
+      currency: "INR",
+      chargeDate,
+    });
+
+    expect(sent).toHaveLength(1);
+    expect(sent[0]).toMatchObject({
+      to: "asha@raodental.example",
+      template: "first-charge-reminder",
+      subject: "Upcoming renewal: ₹2,999 on 9 November 2026",
+    });
+    expect(sent[0]?.bodyText).toContain("Your next payment of ₹2,999 for Website Management will be taken on 9 November 2026.");
+    expect(await outboxCount("first-charge-reminder")).toBe(1);
+
+    // Idempotency: second call does not send another reminder
+    await sendFirstChargeReminder(dbs.staff.db, deps(), {
+      businessId,
+      amountCents: 299_900,
+      currency: "INR",
+      chargeDate,
+    });
+    expect(sent).toHaveLength(1);
+    expect(await outboxCount("first-charge-reminder")).toBe(1);
   });
 });

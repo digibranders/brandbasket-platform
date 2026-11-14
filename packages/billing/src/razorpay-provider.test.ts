@@ -478,6 +478,28 @@ describe("createRazorpayProvider", () => {
       ).rejects.toThrow("Razorpay answered");
     });
   });
+
+  describe("getPaymentMethodUpdateUrl", () => {
+    function providerFetching(fetchSubscription: ReturnType<typeof vi.fn>) {
+      return createRazorpayProvider({
+        resolveChargeOrder: async () => null,
+        keySecret: KEY_SECRET,
+        client: fakeClient({ fetchSubscription }) as never,
+        resolveBusinessId: async () => null,
+      });
+    }
+
+    it("returns the hosted short_url for the subscription", async () => {
+      const fetchSubscription = vi.fn().mockResolvedValue({ id: "sub_1", status: "active", short_url: "https://rzp.io/i/update123" });
+      await expect(providerFetching(fetchSubscription).getPaymentMethodUpdateUrl("sub_1")).resolves.toBe("https://rzp.io/i/update123");
+      expect(fetchSubscription).toHaveBeenCalledWith("sub_1");
+    });
+
+    it("refuses when the subscription has no short_url", async () => {
+      const fetchSubscription = vi.fn().mockResolvedValue({ id: "sub_1", status: "active" });
+      await expect(providerFetching(fetchSubscription).getPaymentMethodUpdateUrl("sub_1")).rejects.toThrow("no short_url");
+    });
+  });
 });
 
 describe("charge payments", () => {

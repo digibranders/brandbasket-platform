@@ -50,6 +50,23 @@ describe("planHostingActions", () => {
     expect(plan.held).toEqual([{ businessId: "a", reason: "payment-under-review" }]);
   });
 
+  it("holds a lapsed site within the 14-day lapse window", () => {
+    const now = new Date("2026-11-20T00:00:00.000Z");
+    const tenDaysAgo = new Date("2026-11-10T00:00:00.000Z");
+    const billing = { hasWebsite: false, paymentUnderReview: false, paidThroughAt: tenDaysAgo };
+    const plan = planHostingActions([site("a", { billing })], now);
+    expect(plan.actions).toEqual([]);
+    expect(plan.held).toEqual([{ businessId: "a", reason: "within-lapse-window" }]);
+  });
+
+  it("pauses a lapsed site after the 14-day lapse window has passed", () => {
+    const now = new Date("2026-11-20T00:00:00.000Z");
+    const fifteenDaysAgo = new Date("2026-11-05T00:00:00.000Z");
+    const billing = { hasWebsite: false, paymentUnderReview: false, paidThroughAt: fifteenDaysAgo };
+    const plan = planHostingActions([site("a", { billing })], now);
+    expect(plan.actions).toEqual([{ businessId: "a", action: "pause" }]);
+  });
+
   it("changes nothing for a site whose billing could not be read", () => {
     const plan = planHostingActions([site("a", { billing: null }), site("b", { paused: true, billing: null })]);
     expect(plan.actions).toEqual([]);
