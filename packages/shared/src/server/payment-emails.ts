@@ -17,7 +17,7 @@ import {
   type Payment,
   type TaxInvoice,
 } from "@brandbasket/db";
-import { firstChargeReminderEmail, paymentFailedEmail, paymentReceivedEmail, type EmailMessage, type PaymentFailedPlan } from "@brandbasket/email";
+import { firstChargeReminderEmail, paymentFailedEmail, paymentReceivedEmail, paymentRefundedEmail, type EmailMessage, type PaymentFailedPlan } from "@brandbasket/email";
 import { nextBundledNetCents, nextDiscountCents } from "../lib/billing/bundle";
 import { nextPaymentDate } from "../lib/billing/period";
 import { paymentsContinue } from "../lib/billing/payments-continue";
@@ -28,6 +28,7 @@ import { paymentServiceNames, serviceTitle } from "./payment-alerts";
 
 /** Where the customer pays: the payment and details step on the dashboard. */
 const PAY_STEP_PATH = "/billing/payment";
+const BILLING_PATH = "/billing";
 const RECEIPT_TEMPLATE = "payment-received";
 const BASIS_POINTS_PER_PERCENT = 100;
 /** Payments of these kinds pay for a stretch of the plan, so the email can say what it is paid up to. */
@@ -238,6 +239,64 @@ export async function sendFirstChargeReminder(
   } catch (error) {
     console.error("[payment-email] A first-charge reminder could not be sent.", {
       businessId: input.businessId,
+      error: error instanceof Error ? error.name : "error",
+    });
+  }
+}
+
+export interface RefundEmailInput {
+  readonly paymentId: string;
+  readonly refundedAmountCents: number;
+  readonly reason: string;
+  readonly creditNoteNumber: string | null;
+}
+
+const REFUND_TEMPLATE = "payment-refunded";
+
+/**
+ * Emails the customer that their payment was refunded, with the credit note number if issued.
+ * Idempotent: checks outbox so duplicate sends for the same payment are skipped.
+ */
+export async function sendPaymentRefunded(
+  db: Database,
+  deps: PaymentEmailDeps,
+  input: RefundEmailInput,
+  now: Date = new Date(),
+): Promise<void> {
+  try {
+    const base = await findPaymentAlertBase(db, input.paymentId);
+    if (base === null) return;
+    const { payment, owner } = base;
+    const to = recipientOf(owner);
+    if (to === null) return;
+    const billingUrl = new URL(BILLING_PATH, deps.dashboardOrigin).toString();
+
+    const alreadySent = await hasEmailContaining(db, {
+      template: REFUND_TEMPLATE,
+      toAddress: to,
+      text: input.creditNoteNumber ?? billingUrl,
+      since: payment.createdAt,
+    });
+
+    if (alreadySent) return;
+
+    const items = await paymentServiceNames(db, payment);
+    await deps.send(
+      paymentRefundedEmail({
+        to,
+        name: owner.name,
+        currency: payment.currency,
+        refundedAmountCents: input.refundedAmountCents,
+        originalAmountCents: payment.amountCents,
+        items,
+        reason: input.reason,
+        creditNoteNumber: input.creditNoteNumber,
+        billingUrl,
+      }),
+    );
+  } catch (error) {
+    console.error("[payment-email] A refund email could not be sent.", {
+      paymentId: input.paymentId,
       error: error instanceof Error ? error.name : "error",
     });
   }

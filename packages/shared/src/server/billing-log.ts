@@ -70,7 +70,10 @@ export type BillingLogEvent =
   | "upgrade-renewal-at-old-price"
   | "tax-invoice-issued"
   | "tax-invoice-failed"
+  | "credit-note-issued"
+  | "credit-note-failed"
   | "invoice-register-failed"
+
   | "billing-details-saved-by-staff"
   | "add-on-plan-failed"
   | "add-on-checkout-failed"

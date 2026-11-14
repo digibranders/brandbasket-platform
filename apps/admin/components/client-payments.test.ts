@@ -39,21 +39,33 @@ const PAYMENTS = [
 const action = async (): Promise<void> => undefined;
 
 describe("ClientPayments", () => {
-  it("lists every payment with its anchor, and offers Mark refunded on a paid one only, to money roles", () => {
-    const html = renderToStaticMarkup(createElement(ClientPayments, { businessId: BUSINESS, payments: PAYMENTS, canRefund: true, notice: null, refundAction: action }));
+  it("lists every payment with its anchor, and offers Refund and Record manual refund on a paid one only, to money roles", () => {
+    const manualAction = async (): Promise<void> => undefined;
+    const html = renderToStaticMarkup(createElement(ClientPayments, {
+      businessId: BUSINESS,
+      payments: PAYMENTS,
+      canRefund: true,
+      notice: null,
+      refundAction: action,
+      recordManualRefundAction: manualAction,
+    }));
     expect(html).toContain('id="payment-paid"');
     expect(html).toContain('id="payment-failed"');
     expect(html).toContain("Refunded: Charged twice");
     expect(html).toContain("Failed: Card declined");
-    expect(html.match(/Mark refunded<\/summary>/g)).toHaveLength(1);
+    expect(html.match(/Refund<\/summary>/g)).toHaveLength(1);
+    expect(html).toContain("Record a refund made outside BrandBasket");
     expect(html).toContain('name="amount"');
     expect(html).toContain('value="2999.00"');
     expect(html).toContain('name="paymentId" value="paid"');
+    expect(html).toContain("I confirm this will refund the customer through the payment provider and issue a credit note.");
+    expect(html).toContain("I have already given this money back in Razorpay or by bank transfer. The console moves no money.");
   });
 
   it("hides the form from roles without money access and shows a notice", () => {
     const html = renderToStaticMarkup(createElement(ClientPayments, { businessId: BUSINESS, payments: PAYMENTS, canRefund: false, notice: "marked", refundAction: action }));
-    expect(html).not.toContain("Mark refunded</summary>");
+    expect(html).not.toContain("Refund</summary>");
+    expect(html).not.toContain("Record a refund made outside BrandBasket");
     expect(html).toContain("Marked refunded. Any affiliate earning still owed for it was cancelled.");
   });
 

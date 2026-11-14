@@ -221,3 +221,74 @@ export const taxInvoicingStart = pgTable(
 
 export type BillingProfile = typeof billingProfiles.$inferSelect;
 export type TaxInvoice = typeof taxInvoices.$inferSelect;
+
+/**
+ * An issued GST credit note against an invoice. Insert only: an issued credit note is never edited.
+ * All `*_cents` columns are INR paise.
+ */
+export const creditNotes = pgTable(
+  "credit_notes",
+  {
+    id: uuid("id").primaryKey().$defaultFn(() => uuidv7()),
+    businessId: uuid("business_id").notNull().references(() => businesses.id),
+    paymentId: uuid("payment_id").notNull().references(() => payments.id),
+    invoiceId: uuid("invoice_id").notNull().references(() => taxInvoices.id),
+    /** The series this credit note belongs to ("CN"). Upper-case letters and digits only. */
+    prefix: text("prefix").notNull().default("CN"),
+    /** The Indian financial year (April to March) of `issuedOn`, as two-digit years: "26-27". */
+    financialYear: text("financial_year").notNull(),
+    /** Position in the series for that financial year, from 1 with no gaps. */
+    serial: integer("serial").notNull(),
+    /** What is printed and quoted to the customer: prefix, financial year and the serial padded to six digits, e.g. "CN/26-27/000001". */
+    number: text("number").notNull(),
+    /** The date of the credit note in India (IST). */
+    issuedOn: date("issued_on", { mode: "string" }).notNull(),
+    /** The reason the refund and credit note were issued. */
+    reason: text("reason").notNull(),
+    supplier: jsonb("supplier").$type<TaxInvoicePartyRecord>().notNull(),
+    recipient: jsonb("recipient").$type<TaxInvoicePartyRecord>().notNull(),
+    placeOfSupplyStateCode: text("place_of_supply_state_code").notNull(),
+    supplyType: text("supply_type").$type<TaxInvoiceSupplyType>().notNull(),
+    lines: jsonb("lines").$type<readonly TaxInvoiceLineRecord[]>().notNull(),
+    taxableCents: integer("taxable_cents").notNull(),
+    cgstCents: integer("cgst_cents").notNull(),
+    sgstCents: integer("sgst_cents").notNull(),
+    igstCents: integer("igst_cents").notNull(),
+    roundOffCents: integer("round_off_cents").notNull().default(0),
+    totalCents: integer("total_cents").notNull(),
+    refundedAmountCents: integer("refunded_amount_cents").notNull(),
+    createdAt: createdAt(),
+  },
+  (table) => [
+    uniqueIndex("credit_notes_payment_id_idx").on(table.paymentId),
+    uniqueIndex("credit_notes_number_idx").on(table.number),
+    uniqueIndex("credit_notes_series_serial_idx").on(table.prefix, table.financialYear, table.serial),
+    index("credit_notes_business_id_idx").on(table.businessId, table.issuedOn),
+    index("credit_notes_invoice_id_idx").on(table.invoiceId),
+    check(
+      "credit_notes_tax_check",
+      sql`case ${table.supplyType}
+        when 'intra_state' then ${table.igstCents} = 0 and ${table.cgstCents} = ${table.sgstCents}
+        when 'inter_state' then ${table.cgstCents} = 0 and ${table.sgstCents} = 0
+        else false end`,
+    ),
+    check(
+      "credit_notes_number_check",
+      sql`${table.serial} between 1 and 999999 and ${table.financialYear} ~ '^[0-9]{2}-[0-9]{2}$' and ${table.prefix} ~ '^[A-Z0-9]+$'
+        and length(${table.number}) <= 16
+        and ${table.number} = ${table.prefix} || '/' || ${table.financialYear} || '/' || lpad(${table.serial}::text, 6, '0')`,
+    ),
+    check(
+      "credit_notes_total_check",
+      sql`${table.taxableCents} >= 0 and ${table.cgstCents} >= 0 and ${table.igstCents} >= 0 and ${table.totalCents} > 0
+        and ${table.totalCents} = ${table.taxableCents} + ${table.cgstCents} + ${table.sgstCents} + ${table.igstCents} + ${table.roundOffCents}`,
+    ),
+    check(
+      "credit_notes_amount_match_check",
+      sql`${table.totalCents} = ${table.refundedAmountCents}`,
+    ),
+  ],
+);
+
+export type CreditNote = typeof creditNotes.$inferSelect;
+

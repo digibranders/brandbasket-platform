@@ -1,5 +1,13 @@
 import "server-only";
-import { sendPaymentFailed as sendFailed, sendPaymentReceipt as sendReceipt, type FailedPaymentEmail, type PaymentEmailDeps } from "@brandbasket/shared/server/payment-emails";
+import {
+  sendPaymentFailed as sendFailed,
+  sendPaymentReceipt as sendReceipt,
+  sendPaymentRefunded as sendRefunded,
+  type FailedPaymentEmail,
+  type PaymentEmailDeps,
+  type RefundEmailInput,
+} from "@brandbasket/shared/server/payment-emails";
+
 import { getStaffDb } from "./db";
 import { customerEmailTransport } from "./email";
 import { serverEnv } from "./env";
@@ -30,3 +38,16 @@ export async function sendPaymentFailed(input: FailedPaymentEmail): Promise<void
     console.error("[payment-email] A failed-payment email could not be sent.", { error: error instanceof Error ? error.name : "error" });
   }
 }
+
+/** Emails the customer that their payment was refunded. Best-effort: it never throws. */
+export async function sendPaymentRefunded(input: RefundEmailInput): Promise<void> {
+  try {
+    await sendRefunded(getStaffDb(), deps(), input);
+  } catch (error) {
+    console.error("[payment-email] A refund email could not be sent.", {
+      paymentId: input.paymentId,
+      error: error instanceof Error ? error.name : "error",
+    });
+  }
+}
+

@@ -131,4 +131,21 @@ describe("wrapRazorpaySdkClient", () => {
       upiVpa: null,
     });
   });
+
+  it("adapts payments.refund to call real SDK client", async () => {
+    const refund = vi.fn().mockResolvedValue({ id: "rfnd_abc", amount: "5000", status: "processed" });
+    const wrapped = wrapRazorpaySdkClient({ payments: { refund } } as never);
+    const result = await wrapped.payments.refund("pay_xyz", {
+      amount: 5000,
+      notes: { reason: "Customer request" },
+      receipt: "rcpt_1",
+    });
+    expect(refund).toHaveBeenCalledWith("pay_xyz", {
+      amount: 5000,
+      notes: { reason: "Customer request" },
+      receipt: "rcpt_1",
+    });
+    expect(result).toEqual({ id: "rfnd_abc", amount: 5000, status: "processed" });
+  });
 });
+

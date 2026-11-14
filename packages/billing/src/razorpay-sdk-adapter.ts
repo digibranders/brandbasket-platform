@@ -47,7 +47,20 @@ export function wrapRazorpaySdkClient(client: Razorpay): RazorpaySdkClient {
             : payment.amount;
         return { id: payment.id, amount, currency: payment.currency, created_at: payment.created_at, status: payment.status, method: readPaymentMethod(payment) };
       },
+      refund: async (paymentId, options) => {
+        const refund = await client.payments.refund(paymentId, {
+          amount: options.amount,
+          notes: options.notes ? { ...options.notes } : undefined,
+          receipt: options.receipt,
+        });
+        return {
+          id: refund.id,
+          amount: typeof refund.amount === "string" ? Number(refund.amount) : refund.amount,
+          status: refund.status,
+        };
+      },
     },
+
     invoices: {
       all: async (query) => {
         const listed = await client.invoices.all({ subscription_id: query.subscription_id });

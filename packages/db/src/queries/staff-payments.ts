@@ -1,6 +1,7 @@
 import { and, desc, eq, gte, ilike, isNotNull, isNull, or, sql } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import type { Database } from "../client";
+import type { ScopedTransaction } from "../scope";
 import {
   affiliateEarnings,
   businesses,
@@ -13,7 +14,7 @@ import {
   type PaymentKind,
   type PaymentStatus,
 } from "../schema";
-import { assertMinorUnits } from "./billing";
+import { assertMinorUnits, PAYMENT_COLUMNS, type Payment } from "./billing";
 import { isUuid } from "./tenant";
 
 /*
@@ -82,6 +83,78 @@ export type PaymentRefundOutcome =
   | { readonly kind: "not-refundable" }
   | { readonly kind: "amount-too-high" };
 
+export type PaymentLockResult =
+  | { readonly kind: "locked"; readonly payment: Payment }
+  | { readonly kind: "already-refunded" }
+  | { readonly kind: "not-refundable" };
+
+/**
+ * Locks a payment for a refund transaction using an advisory xact lock and SELECT ... FOR UPDATE.
+ * Returns "already-refunded" if previously refunded, "not-refundable" if not captured or not found.
+ */
+export async function lockPaymentForRefund(
+  tx: ScopedTransaction,
+  paymentId: string,
+  businessId: string,
+): Promise<PaymentLockResult> {
+  if (!isUuid(paymentId) || !isUuid(businessId)) return { kind: "not-refundable" };
+  await tx.execute(sql`select pg_advisory_xact_lock(hashtextextended(${`refund:${paymentId}`}, 0))`);
+
+  const rows = await tx
+    .select(PAYMENT_COLUMNS)
+    .from(payments)
+    .where(and(eq(payments.id, paymentId), eq(payments.businessId, businessId)))
+    .limit(1)
+    .for("update");
+
+  const payment = rows[0];
+  if (payment === undefined) return { kind: "not-refundable" };
+  if (payment.status === "refunded") return { kind: "already-refunded" };
+  if (payment.status !== "captured") return { kind: "not-refundable" };
+
+  return { kind: "locked", payment };
+}
+
+export interface ApplyPaymentRefundInput {
+  readonly paymentId: string;
+  readonly refundedAmountCents: number;
+  readonly reason: string;
+  readonly staffUserId: string;
+  readonly now: Date;
+}
+
+/**
+ * Updates a payment to refunded status, sets refund details, and cancels any owed affiliate earnings.
+ */
+export async function applyPaymentRefund(
+  tx: ScopedTransaction,
+  input: ApplyPaymentRefundInput,
+): Promise<{ readonly cancelledEarnings: number; readonly paidEarnings: number }> {
+  await tx
+    .update(payments)
+    .set({
+      status: "refunded",
+      refundedAt: input.now,
+      refundedByStaffId: input.staffUserId,
+      refundedAmountCents: input.refundedAmountCents,
+      refundReason: input.reason,
+    })
+    .where(eq(payments.id, input.paymentId));
+
+  const cancelled = await tx
+    .update(affiliateEarnings)
+    .set({ status: "cancelled", cancelledAt: input.now, cancelledByStaffId: input.staffUserId })
+    .where(and(eq(affiliateEarnings.paymentId, input.paymentId), eq(affiliateEarnings.status, "owed")))
+    .returning({ id: affiliateEarnings.id });
+
+  const paid = await tx
+    .select({ id: affiliateEarnings.id })
+    .from(affiliateEarnings)
+    .where(and(eq(affiliateEarnings.paymentId, input.paymentId), eq(affiliateEarnings.status, "paid")));
+
+  return { cancelledEarnings: cancelled.length, paidEarnings: paid.length };
+}
+
 /**
  * Marks a paid payment refunded after staff gave the money back outside the console. Cancels any affiliate earning still
  * owed for it, which is how queries/affiliates.ts tells a refunded payment apart. Locks the row, so two staff marking
@@ -90,37 +163,20 @@ export type PaymentRefundOutcome =
 export async function markPaymentRefunded(db: Database, input: PaymentRefundMark): Promise<PaymentRefundOutcome> {
   if (!isUuid(input.paymentId) || !isUuid(input.businessId)) return { kind: "not-refundable" };
   return db.transaction(async (tx): Promise<PaymentRefundOutcome> => {
-    const rows = await tx
-      .select({ amountCents: payments.amountCents, status: payments.status })
-      .from(payments)
-      .where(and(eq(payments.id, input.paymentId), eq(payments.businessId, input.businessId)))
-      .limit(1)
-      .for("update");
-    const payment = rows[0];
-    if (payment === undefined || payment.status !== "captured") return { kind: "not-refundable" };
+    const locked = await lockPaymentForRefund(tx, input.paymentId, input.businessId);
+    if (locked.kind !== "locked") return { kind: "not-refundable" };
+    const payment = locked.payment;
     if (!Number.isInteger(input.refundedAmountCents) || input.refundedAmountCents < 1 || input.refundedAmountCents > payment.amountCents) {
       return { kind: "amount-too-high" };
     }
-    await tx
-      .update(payments)
-      .set({
-        status: "refunded",
-        refundedAt: input.now,
-        refundedByStaffId: input.staffUserId,
-        refundedAmountCents: input.refundedAmountCents,
-        refundReason: input.reason,
-      })
-      .where(eq(payments.id, input.paymentId));
-    const cancelled = await tx
-      .update(affiliateEarnings)
-      .set({ status: "cancelled", cancelledAt: input.now, cancelledByStaffId: input.staffUserId })
-      .where(and(eq(affiliateEarnings.paymentId, input.paymentId), eq(affiliateEarnings.status, "owed")))
-      .returning({ id: affiliateEarnings.id });
-    const paid = await tx
-      .select({ id: affiliateEarnings.id })
-      .from(affiliateEarnings)
-      .where(and(eq(affiliateEarnings.paymentId, input.paymentId), eq(affiliateEarnings.status, "paid")));
-    return { kind: "marked", cancelledEarnings: cancelled.length, paidEarnings: paid.length };
+    const applied = await applyPaymentRefund(tx, {
+      paymentId: payment.id,
+      refundedAmountCents: input.refundedAmountCents,
+      reason: input.reason,
+      staffUserId: input.staffUserId,
+      now: input.now,
+    });
+    return { kind: "marked", cancelledEarnings: applied.cancelledEarnings, paidEarnings: applied.paidEarnings };
   });
 }
 

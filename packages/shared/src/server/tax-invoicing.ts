@@ -1,7 +1,9 @@
 import "server-only";
 import {
   BillingRangeError,
+  buildCreditNoteDraft,
   buildTaxInvoice,
+  CREDIT_NOTE_PREFIX,
   discountCentsFor,
   BRANDBASKET_SAC,
   financialYearOf,
@@ -16,15 +18,18 @@ import {
   findAddOnSubscriptionForPayment,
   findBillingProfile,
   findChargeForBusiness,
+  findCreditNoteByPaymentId,
   findInvoiceFallbackRecipient,
   findPaymentForInvoice,
   findReferralCodeForInvoice,
   findSubscriptionById,
   findTaxInvoiceByPaymentId,
+  insertCreditNote,
   insertTaxInvoice,
   isInvoiceablePayment,
   lockPaymentForInvoice,
   savePaymentInvoiceBasis,
+  type CreditNote,
   type Payment,
   type PaymentInvoiceBasis,
   type Plan,
@@ -33,6 +38,7 @@ import {
   type TaxInvoice,
   type TaxInvoicePartyRecord,
 } from "@brandbasket/db";
+
 import { stateCodeOfIndiaPostName } from "@brandbasket/db/india-states";
 import { addOnById, isMonthlyAddOnId } from "../lib/billing/add-ons";
 import { isPrintableOnInvoice, normaliseInvoiceText } from "../lib/billing/invoice-text";
@@ -568,3 +574,107 @@ export async function issueTaxInvoiceSafely(
     return null;
   }
 }
+
+export interface IssuedCreditNote {
+  readonly creditNote: CreditNote;
+  /** True when inserted just now; false when an existing credit note for this payment was found. */
+  readonly issued: boolean;
+}
+
+export interface IssueCreditNoteOptions {
+  /** When the credit note was issued. Defaults to now. */
+  readonly issuedAt?: Date;
+}
+
+/**
+ * Issues a GST credit note for a refunded payment against its issued tax invoice.
+ * Allocates the next serial in the "CN" series for the financial year and records the credit note.
+ * Idempotent: if a credit note has already been issued for this payment, returns it with issued: false.
+ */
+export async function issueCreditNote(
+  tx: ScopedTransaction,
+  payment: Payment,
+  invoice: TaxInvoice,
+  refundedAmountCents: number,
+  reason: string,
+  options: IssueCreditNoteOptions = {},
+): Promise<IssuedCreditNote> {
+  const existing = await findCreditNoteByPaymentId(tx, payment.id);
+  if (existing !== null) return { creditNote: existing, issued: false };
+
+  const draft = buildCreditNoteDraft({
+    invoice,
+    refundedAmountCents,
+    reason: normaliseInvoiceText(reason),
+  });
+
+  const issuedAt = options.issuedAt ?? new Date();
+  const financialYear = financialYearOf(issuedAt);
+  const prefix = CREDIT_NOTE_PREFIX;
+  const serial = await allocateInvoiceSerial(tx, prefix, financialYear);
+  const number = formatInvoiceNumber(prefix, financialYear, serial);
+
+  const creditNote = await insertCreditNote(tx, {
+    businessId: payment.businessId,
+    paymentId: payment.id,
+    invoiceId: invoice.id,
+    prefix,
+    financialYear,
+    serial,
+    number,
+    issuedOn: indianDate(issuedAt),
+    reason: draft.reason,
+    supplier: draft.supplier,
+    recipient: draft.recipient,
+    placeOfSupplyStateCode: draft.placeOfSupplyStateCode,
+    supplyType: draft.supplyType,
+    lines: draft.lines,
+    taxableCents: draft.taxableCents,
+    cgstCents: draft.cgstCents,
+    sgstCents: draft.sgstCents,
+    igstCents: draft.igstCents,
+    roundOffCents: draft.roundOffCents,
+    totalCents: draft.totalCents,
+    refundedAmountCents: draft.refundedAmountCents,
+  });
+
+  logBillingEvent("info", "credit-note-issued", {
+    businessId: payment.businessId,
+    paymentId: payment.id,
+    invoiceNumber: invoice.number,
+    creditNoteNumber: creditNote.number,
+    refundedAmountCents,
+  });
+
+  return { creditNote, issued: true };
+}
+
+/**
+ * Issues a credit note inside a savepoint, logging on success and catching/logging any failure.
+ */
+export async function issueCreditNoteSafely(
+  tx: ScopedTransaction,
+  payment: Payment,
+  invoice: TaxInvoice,
+  refundedAmountCents: number,
+  reason: string,
+  options: IssueCreditNoteOptions = {},
+): Promise<CreditNote | null> {
+  const fields = {
+    businessId: payment.businessId,
+    paymentId: payment.id,
+    invoiceNumber: invoice.number,
+    refundedAmountCents,
+  };
+  try {
+    const result = await tx.transaction((savepoint) =>
+      issueCreditNote(savepoint, payment, invoice, refundedAmountCents, reason, options),
+    );
+    return result.creditNote;
+  } catch (error) {
+    if (isConnectionFailure(error)) throw error;
+    logBillingEvent("error", "credit-note-failed", { ...fields, ...describeError(error) });
+    return null;
+  }
+}
+
