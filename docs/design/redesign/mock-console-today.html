@@ -1,0 +1,1072 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BrandBasket Staff Console - Today</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Red+Hat+Display:wght@500;600;700&family=Red+Hat+Text:wght@400;500;600&family=Red+Hat+Mono:wght@400;500;600&display=swap">
+<style>
+:root {
+  --ground: #F6F5F2;
+  --surface: #FFFFFF;
+  --sunken: #EEECE7;
+  --line: #E3E0D9;
+  --ink: #15161A;
+  --text-muted: #343741;
+  --text-faint: #5F626A;
+  --gold: #C48A47;
+  --gold-wash: #F4E6D3;
+  --gold-deep: #8A5524;
+  --gold-text: #A46C2F;
+  --sage: #4F7A63;
+  --sage-wash: #E5EFE8;
+  --error: #B42318;
+  --error-wash: #FDECEA;
+  --rail: #23242A;
+  --rail-text: #F6F5F2;
+  --rail-muted: #9B9EA7;
+  --rail-hover: rgba(255, 255, 255, 0.06);
+  --sh-resting: 0 1px 0 rgba(42, 28, 16, 0.03);
+  --sh-elevation: 0 1px 2px rgba(42, 28, 16, 0.05);
+  --sh-hero: 0 1px 2px rgba(42, 28, 16, 0.05), 0 12px 32px -12px rgba(42, 28, 16, 0.14);
+  --sh-dialog: 0 24px 64px -16px rgba(42, 28, 16, 0.28);
+  --r-control: 8px;
+  --r-card: 14px;
+  --r-hero: 20px;
+  --r-pill: 9999px;
+  color-scheme: light;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  margin: 0;
+  background: var(--ground);
+  color: var(--ink);
+  font-family: 'Red Hat Text', system-ui, -apple-system, sans-serif;
+  font-size: 15px;
+  line-height: 1.5;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+button, input, select { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+
+/* In-page interactive demo controls bar */
+.demo-bar {
+  position: sticky;
+  top: 12px;
+  z-index: 100;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-pill);
+  padding: 6px 14px;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  box-shadow: var(--sh-hero);
+  margin: 12px 0 16px;
+  font-size: 13px;
+}
+.demo-bar span.label { font-weight: 600; color: var(--ink); }
+.demo-btn {
+  background: var(--sunken);
+  border: 1px solid var(--line);
+  color: var(--text-muted);
+  padding: 4px 10px;
+  border-radius: var(--r-pill);
+  font-weight: 500;
+  font-size: 12px;
+}
+.demo-btn.active {
+  background: var(--ink);
+  color: #FFFFFF;
+  border-color: var(--ink);
+  font-weight: 600;
+}
+.demo-sep {
+  width: 1px;
+  height: 16px;
+  background: var(--line);
+  margin: 0 4px;
+}
+
+/* Responsive Frame container */
+.frame {
+  width: 100%;
+  max-width: 1440px;
+  min-height: 100vh;
+  display: flex;
+  background: var(--ground);
+  transition: max-width 0.2s ease;
+  box-shadow: 0 0 40px rgba(42, 28, 16, 0.08);
+}
+.frame.mobile {
+  max-width: 390px;
+  box-shadow: 0 0 24px rgba(42, 28, 16, 0.15);
+}
+
+/* Console Layout Shell */
+.shell {
+  display: flex;
+  width: 100%;
+  min-height: 100vh;
+}
+.rail {
+  width: 240px;
+  flex: none;
+  background: var(--rail);
+  color: var(--rail-text);
+  display: flex;
+  flex-direction: column;
+  padding: 20px 14px;
+  border-right: 1px solid rgba(255, 255, 255, 0.06);
+}
+.rail-logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: 'Red Hat Display', sans-serif;
+  font-size: 18px;
+  font-weight: 700;
+  padding: 4px 10px 20px;
+  color: #FFFFFF;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+.rail-logo svg {
+  width: 24px;
+  height: 24px;
+  color: var(--gold);
+}
+.rail-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding-top: 16px;
+  flex: 1;
+}
+.rail-link {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 9px 12px;
+  border-radius: var(--r-control);
+  color: var(--rail-muted);
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 500;
+}
+.rail-link:hover {
+  background: var(--rail-hover);
+  color: var(--rail-text);
+}
+.rail-link.active {
+  background: rgba(196, 138, 71, 0.15);
+  color: #FFFFFF;
+  font-weight: 600;
+}
+.rail-link svg {
+  width: 18px;
+  height: 18px;
+  flex: none;
+}
+.rail-badge {
+  margin-left: auto;
+  font-family: 'Red Hat Mono', monospace;
+  font-size: 11px;
+  font-weight: 600;
+  background: var(--gold);
+  color: #FFFFFF;
+  padding: 1px 7px;
+  border-radius: var(--r-pill);
+}
+.rail-user {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  font-size: 13px;
+}
+.rail-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.12);
+  display: grid;
+  place-items: center;
+  font-weight: 600;
+  color: #FFFFFF;
+  font-size: 12px;
+}
+.rail-user-meta {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.25;
+}
+.rail-user-name { font-weight: 600; color: #FFFFFF; }
+.rail-user-role { font-size: 11px; color: var(--rail-muted); }
+
+/* Main Content Area */
+.main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+.topbar {
+  height: 60px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--line);
+  padding: 0 32px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+.search-box {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--ground);
+  border: 1px solid var(--line);
+  border-radius: var(--r-control);
+  padding: 6px 12px;
+  width: 320px;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+.top-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.status-pill-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--sage);
+  background: var(--sage-wash);
+  padding: 4px 10px;
+  border-radius: var(--r-pill);
+  font-weight: 600;
+}
+.status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--sage);
+}
+.status-dot.red { background: var(--error); }
+
+/* Page Content */
+.content {
+  padding: 28px 32px 48px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  max-width: 1180px;
+}
+.content-header {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.eyebrow {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-faint);
+  letter-spacing: 0.02em;
+}
+.page-title {
+  font-family: 'Red Hat Display', sans-serif;
+  font-size: 32px;
+  font-weight: 700;
+  line-height: 36px;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+}
+.page-subtitle {
+  font-size: 14px;
+  color: var(--text-muted);
+}
+
+/* Stat Tiles Grid (4 figures in Red Hat Mono) */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+}
+.stat-card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-card);
+  padding: 16px 18px;
+  box-shadow: var(--sh-resting);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.stat-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-faint);
+}
+.stat-val {
+  font-family: 'Red Hat Mono', monospace;
+  font-size: 32px;
+  line-height: 36px;
+  font-weight: 600;
+  color: var(--ink);
+}
+.stat-val.late { color: var(--error); }
+.stat-sub {
+  font-size: 11px;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* Layout 2-col (Main 8 cols, Aside 4 cols) */
+.layout-grid {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 24px;
+  align-items: start;
+}
+.task-column {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* Cards */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-card);
+  padding: 22px;
+  box-shadow: var(--sh-resting);
+}
+/* The Single Focal Card on this screen */
+.focal-card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-top: 3px solid var(--gold);
+  border-radius: var(--r-hero);
+  padding: 24px;
+  box-shadow: var(--sh-hero);
+}
+.card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+.card-title-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.card-title {
+  font-family: 'Red Hat Display', sans-serif;
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--ink);
+}
+.tag-pill {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: var(--r-pill);
+}
+.tag-late {
+  background: var(--error-wash);
+  color: var(--error);
+}
+.tag-info {
+  background: var(--sunken);
+  color: var(--text-muted);
+}
+
+/* Dense 44px Task Rows */
+.task-list {
+  display: flex;
+  flex-direction: column;
+}
+.task-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 48px;
+  padding: 8px 12px;
+  border-radius: var(--r-control);
+  border-bottom: 1px solid var(--line);
+  gap: 12px;
+}
+.task-row:last-child {
+  border-bottom: none;
+}
+.task-row:hover {
+  background: var(--ground);
+}
+.task-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+}
+.task-name-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.task-biz {
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--ink);
+}
+.task-type {
+  font-size: 12px;
+  color: var(--text-faint);
+}
+.task-due {
+  font-family: 'Red Hat Mono', monospace;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.task-due.late {
+  color: var(--error);
+  font-weight: 600;
+}
+.task-action {
+  flex: none;
+}
+
+/* Buttons */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 34px;
+  padding: 0 14px;
+  border-radius: var(--r-control);
+  font-size: 13px;
+  font-weight: 600;
+  border: 1px solid transparent;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.btn-primary {
+  background: var(--ink);
+  color: #FFFFFF;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+.btn-primary:hover {
+  background: #2A2B31;
+}
+.btn-secondary {
+  background: var(--surface);
+  border-color: var(--line);
+  color: var(--ink);
+}
+.btn-secondary:hover {
+  background: var(--sunken);
+}
+
+/* Systems Health Block */
+.health-card {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.health-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 12px;
+  background: var(--ground);
+  border-radius: var(--r-control);
+  border: 1px solid var(--line);
+}
+.health-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--sage);
+  margin-top: 5px;
+  flex: none;
+}
+.health-dot.degraded {
+  background: var(--error);
+}
+.health-details {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.health-service {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink);
+}
+.health-desc {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+/* Alert Banner */
+.alert-box {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px 16px;
+  border-radius: var(--r-card);
+  background: var(--error-wash);
+  border: 1px solid #F4C3BE;
+  color: var(--error);
+  font-size: 13px;
+}
+
+/* Empty State Card */
+.empty-box {
+  text-align: center;
+  padding: 36px 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+.empty-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: var(--sage-wash);
+  color: var(--sage);
+  display: grid;
+  place-items: center;
+  margin-bottom: 4px;
+}
+.empty-title {
+  font-weight: 600;
+  font-size: 16px;
+  color: var(--ink);
+}
+.empty-desc {
+  font-size: 13px;
+  color: var(--text-muted);
+  max-width: 380px;
+}
+
+/* Mobile specific styling */
+.mobile-header {
+  display: none;
+  background: var(--rail);
+  color: var(--rail-text);
+  padding: 12px 16px;
+  align-items: center;
+  justify-content: space-between;
+}
+.mobile-nav-bar {
+  display: none;
+  background: var(--surface);
+  border-top: 1px solid var(--line);
+  position: sticky;
+  bottom: 0;
+  padding: 8px 12px;
+  justify-content: space-around;
+  z-index: 40;
+}
+.mobile-nav-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  font-size: 11px;
+  color: var(--text-faint);
+  text-decoration: none;
+}
+.mobile-nav-item.active {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+@media (max-width: 860px) {
+  .rail { display: none; }
+  .mobile-header { display: flex; }
+  .mobile-nav-bar { display: flex; }
+  .topbar { display: none; }
+  .content { padding: 16px 16px 80px; }
+  .stats-grid { grid-template-columns: repeat(2, 1fr); }
+  .layout-grid { grid-template-columns: 1fr; }
+  .focal-card, .card { padding: 18px 14px; }
+  .task-row { flex-direction: column; align-items: flex-start; gap: 8px; }
+  .task-action { width: 100%; }
+  .task-action .btn { width: 100%; }
+}
+
+.frame.mobile .rail { display: none; }
+.frame.mobile .mobile-header { display: flex; }
+.frame.mobile .mobile-nav-bar { display: flex; }
+.frame.mobile .topbar { display: none; }
+.frame.mobile .content { padding: 16px 16px 80px; }
+.frame.mobile .stats-grid { grid-template-columns: repeat(2, 1fr); }
+.frame.mobile .layout-grid { grid-template-columns: 1fr; }
+.frame.mobile .focal-card, .frame.mobile .card { padding: 18px 14px; }
+.frame.mobile .task-row { flex-direction: column; align-items: flex-start; gap: 8px; }
+.frame.mobile .task-action { width: 100%; }
+.frame.mobile .task-action .btn { width: 100%; }
+</style>
+</head>
+<body>
+
+  
+  <div class="demo-bar">
+    <span class="label">State:</span>
+    <button class="demo-btn active" id="btnLive" onclick="setState('live')">Live active</button>
+    <button class="demo-btn" id="btnNew" onclick="setState('new')">New day</button>
+    <button class="demo-btn" id="btnEmpty" onclick="setState('empty')">Empty (caught up)</button>
+    <button class="demo-btn" id="btnError" onclick="setState('error')">System alert</button>
+    <div class="demo-sep"></div>
+    <span class="label">Viewport:</span>
+    <button class="demo-btn active" id="btn1440" onclick="setViewport('desktop')">1440</button>
+    <button class="demo-btn" id="btn390" onclick="setViewport('mobile')">390</button>
+  </div>
+
+  <div class="frame" id="appFrame">
+    <div class="shell">
+      
+      
+      <aside class="rail">
+        <div class="rail-logo">
+          
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M3.5 9.5h17l-1.6 9a2 2 0 0 1-2 1.5H7.1a2 2 0 0 1-2-1.5z"/>
+            <path d="M8 9.5 11 4M16 9.5 13 4"/>
+            <path d="M9 13v3M12 13v3M15 13v3"/>
+          </svg>
+          BrandBasket
+        </div>
+
+        <nav class="rail-nav">
+          <a href="mock-console-today.html" class="rail-link active">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/><path d="m9 16 2 2 4-4"/></svg>
+            Today
+            
+            <span class="rail-badge" id="railBadge">2</span>
+          </a>
+          <a href="mock-console-workspace.html" class="rail-link">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+            Clients
+          </a>
+          <a href="#" class="rail-link">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+            Inbox
+          </a>
+          <a href="mock-console-kickoff-popup.html" class="rail-link">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+            Calls
+          </a>
+          <a href="mock-console-payments.html" class="rail-link">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
+            Money
+          </a>
+          <a href="mock-console-compliance.html" class="rail-link">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            Compliance
+          </a>
+          <a href="#" class="rail-link">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+            System
+          </a>
+        </nav>
+
+        <div class="rail-user">
+          <div class="rail-avatar">OP</div>
+          <div class="rail-user-meta">
+            <span class="rail-user-name">Staff Desk</span>
+            <span class="rail-user-role">Single Operator</span>
+          </div>
+        </div>
+      </aside>
+
+      
+      <main class="main">
+        
+        
+        <div class="mobile-header">
+          <div style="display:flex; align-items:center; gap:8px; font-weight:700">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#C48A47" stroke-width="2">
+              <path d="M3.5 9.5h17l-1.6 9a2 2 0 0 1-2 1.5H7.1a2 2 0 0 1-2-1.5z"/>
+              <path d="M8 9.5 11 4M16 9.5 13 4"/>
+            </svg>
+            BrandBasket Console
+          </div>
+          <div class="status-pill-header">
+            <div class="status-dot"></div>
+            Online
+          </div>
+        </div>
+
+        
+        <header class="topbar">
+          <div class="search-box">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <span>Search tasks, clients, domains...</span>
+          </div>
+          <div class="top-actions">
+            <div class="status-pill-header" id="systemPill">
+              <div class="status-dot" id="systemDot"></div>
+              <span id="systemPillText">Systems Operational</span>
+            </div>
+          </div>
+        </header>
+
+        
+        <div class="content">
+          
+          <div class="content-header">
+            <div class="eyebrow">Staff Operations</div>
+            <h1 class="page-title">Today</h1>
+            <p class="page-subtitle">Single task queue ordered by urgency. Late items are sorted first.</p>
+          </div>
+
+          
+          <div id="errorBanner" class="alert-box" style="display:none">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+            <div>
+              <div style="font-weight:700">Webhook delivery alert: Razorpay retries failing</div>
+              <div>Three webhook notifications have timed out in the last 15 minutes. Check gateway connectivity below.</div>
+            </div>
+          </div>
+
+          
+          <div class="stats-grid">
+            <div class="stat-card">
+              <span class="stat-label">Late</span>
+              <span class="stat-val late" id="statLate">02</span>
+              <span class="stat-sub">Needs immediate action</span>
+            </div>
+            <div class="stat-card">
+              <span class="stat-label">Due today</span>
+              <span class="stat-val" id="statDue">05</span>
+              <span class="stat-sub">Before 6:00 pm IST</span>
+            </div>
+            <div class="stat-card">
+              <span class="stat-label">On track</span>
+              <span class="stat-val" id="statTrack">18</span>
+              <span class="stat-sub">Automatic background flows</span>
+            </div>
+            <div class="stat-card">
+              <span class="stat-label">Active clients</span>
+              <span class="stat-val" id="statClients">42</span>
+              <span class="stat-sub">Under active monthly plans</span>
+            </div>
+          </div>
+
+          
+          <div class="layout-grid">
+            
+            <div class="task-column">
+              
+              
+              
+              <div class="focal-card" id="focalLateCard">
+                <div class="card-header">
+                  <div class="card-title-group">
+                    <h2 class="card-title">Late tasks</h2>
+                    <span class="tag-pill tag-late" id="lateTag">2 urgent</span>
+                  </div>
+                  <span style="font-size:12px; color:var(--text-faint)">Priority queue</span>
+                </div>
+
+                <div class="task-list" id="lateTaskList">
+                  
+                  <div class="task-row">
+                    <div class="task-meta">
+                      <div class="task-name-row">
+                        <span class="task-biz">Sweet Crust Bakery</span>
+                        <span class="task-type">Website Kickoff Call</span>
+                      </div>
+                      <div class="task-due late">Scheduled today 3:30 pm (45 min past call window)</div>
+                    </div>
+                    <div class="task-action">
+                      <a href="mock-console-kickoff-popup.html" class="btn btn-primary" style="text-decoration:none">Call completed</a>
+                    </div>
+                  </div>
+
+                  
+                  <div class="task-row">
+                    <div class="task-meta">
+                      <div class="task-name-row">
+                        <span class="task-biz">Aroma Cafe</span>
+                        <span class="task-type">First Draft Delivery</span>
+                      </div>
+                      <div class="task-due late">Due today 2:00 pm (2 hours overdue)</div>
+                    </div>
+                    <div class="task-action">
+                      <button class="btn btn-secondary" onclick="alert('Opening Aroma Cafe draft builder')">Review draft</button>
+                    </div>
+                  </div>
+                </div>
+
+                
+                <div id="lateEmptyMsg" class="empty-box" style="display:none; padding:16px 0">
+                  <div class="empty-icon" style="width:32px; height:32px">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+                  </div>
+                  <div style="font-weight:600; font-size:14px">Zero late tasks</div>
+                  <div style="font-size:12px; color:var(--text-muted)">All urgent tasks are resolved or on schedule.</div>
+                </div>
+              </div>
+
+              
+              <div class="card" id="cardDueToday">
+                <div class="card-header">
+                  <div class="card-title-group">
+                    <h2 class="card-title">Due today</h2>
+                    <span class="tag-pill tag-info" id="dueTag">3 tasks</span>
+                  </div>
+                  <span style="font-size:12px; color:var(--text-faint)">Ordered by time</span>
+                </div>
+
+                <div class="task-list" id="dueTaskList">
+                  
+                  <div class="task-row">
+                    <div class="task-meta">
+                      <div class="task-name-row">
+                        <span class="task-biz">Urban Dental Care</span>
+                        <span class="task-type">Social Media</span>
+                      </div>
+                      <div class="task-due">Publish approved weekly batch by 5:00 pm</div>
+                    </div>
+                    <div class="task-action">
+                      <button class="btn btn-secondary" onclick="alert('Publishing batch for Urban Dental')">Publish batch</button>
+                    </div>
+                  </div>
+
+                  
+                  <div class="task-row">
+                    <div class="task-meta">
+                      <div class="task-name-row">
+                        <span class="task-biz">Apex Logistics</span>
+                        <span class="task-type">Custom Domain</span>
+                      </div>
+                      <div class="task-due">Verify A-record nameserver check by 6:00 pm</div>
+                    </div>
+                    <div class="task-action">
+                      <button class="btn btn-secondary" onclick="alert('Running DNS verification for Apex Logistics')">Check DNS</button>
+                    </div>
+                  </div>
+
+                  
+                  <div class="task-row">
+                    <div class="task-meta">
+                      <div class="task-name-row">
+                        <span class="task-biz">GreenLeaf Market</span>
+                        <span class="task-type">Onboarding Intake</span>
+                      </div>
+                      <div class="task-due">Confirm logo asset package by 7:30 pm</div>
+                    </div>
+                    <div class="task-action">
+                      <button class="btn btn-secondary" onclick="alert('Confirming GreenLeaf intake assets')">Confirm assets</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              
+              <div class="card" id="fullEmptyState" style="display:none">
+                <div class="empty-box">
+                  <div class="empty-icon">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+                  </div>
+                  <div class="empty-title">All tasks completed for today</div>
+                  <div class="empty-desc">No clients are currently waiting on staff action. Automated social posts and monitoring runs continue in the background.</div>
+                </div>
+              </div>
+
+            </div>
+
+            
+            <div style="display:flex; flex-direction:column; gap:20px">
+              
+              
+              <div class="card health-card">
+                <div class="card-header" style="margin-bottom:4px">
+                  <div class="card-title-group">
+                    <h2 class="card-title" style="font-size:16px">Systems health</h2>
+                  </div>
+                  <span style="font-size:11px; color:var(--text-faint); font-family:'Red Hat Mono',monospace">Live stream</span>
+                </div>
+
+                <div class="health-item">
+                  <div class="health-dot" id="dotPayment"></div>
+                  <div class="health-details">
+                    <span class="health-service">Razorpay & Paytm Gateways</span>
+                    <span class="health-desc" id="descPayment">Webhook delivery normal (0.4s response)</span>
+                  </div>
+                </div>
+
+                <div class="health-item">
+                  <div class="health-dot"></div>
+                  <div class="health-details">
+                    <span class="health-service">Cloudflare DNS Automation</span>
+                    <span class="health-desc">All nameserver verifications active</span>
+                  </div>
+                </div>
+
+                <div class="health-item">
+                  <div class="health-dot"></div>
+                  <div class="health-details">
+                    <span class="health-service">WhatsApp Meta Cloud API</span>
+                    <span class="health-desc">Client message queues operational</span>
+                  </div>
+                </div>
+              </div>
+
+              
+              <div class="card" style="font-size:13px; color:var(--text-muted)">
+                <div style="font-weight:600; color:var(--ink); margin-bottom:8px">Shift guidelines</div>
+                <div style="display:flex; flex-direction:column; gap:6px">
+                  <div>1. Complete late calls first before 4:00 pm.</div>
+                  <div>2. Review customer change tickets within 4 hours.</div>
+                  <div>3. 24-hour fallback applies to unconfirmed calls.</div>
+                </div>
+              </div>
+
+            </div>
+
+          </div>
+
+        </div>
+
+        
+        <nav class="mobile-nav-bar">
+          <a href="mock-console-today.html" class="mobile-nav-item active">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+            Today
+          </a>
+          <a href="mock-console-workspace.html" class="mobile-nav-item">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+            Clients
+          </a>
+          <a href="mock-console-payments.html" class="mobile-nav-item">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
+            Money
+          </a>
+          <a href="mock-console-compliance.html" class="mobile-nav-item">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            Compliance
+          </a>
+        </nav>
+
+      </main>
+    </div>
+  </div>
+
+  <script>
+    function setState(state) {
+      document.querySelectorAll('.demo-bar .demo-btn').forEach(btn => {
+        if (['btnLive', 'btnNew', 'btnEmpty', 'btnError'].includes(btn.id)) {
+          btn.classList.remove('active');
+        }
+      });
+      document.getElementById('btn' + state.charAt(0).toUpperCase() + state.slice(1)).classList.add('active');
+
+      const statLate = document.getElementById('statLate');
+      const statDue = document.getElementById('statDue');
+      const statTrack = document.getElementById('statTrack');
+      const statClients = document.getElementById('statClients');
+      const railBadge = document.getElementById('railBadge');
+      const focalLateCard = document.getElementById('focalLateCard');
+      const cardDueToday = document.getElementById('cardDueToday');
+      const lateTaskList = document.getElementById('lateTaskList');
+      const lateEmptyMsg = document.getElementById('lateEmptyMsg');
+      const fullEmptyState = document.getElementById('fullEmptyState');
+      const errorBanner = document.getElementById('errorBanner');
+      const dotPayment = document.getElementById('dotPayment');
+      const descPayment = document.getElementById('descPayment');
+      const systemDot = document.getElementById('systemDot');
+      const systemPillText = document.getElementById('systemPillText');
+
+      if (state === 'live') {
+        errorBanner.style.display = 'none';
+        focalLateCard.style.display = 'block';
+        cardDueToday.style.display = 'block';
+        lateTaskList.style.display = 'flex';
+        lateEmptyMsg.style.display = 'none';
+        fullEmptyState.style.display = 'none';
+        statLate.textContent = '02';
+        statLate.className = 'stat-val late';
+        statDue.textContent = '05';
+        statTrack.textContent = '18';
+        statClients.textContent = '42';
+        railBadge.textContent = '2';
+        dotPayment.className = 'health-dot';
+        descPayment.textContent = 'Webhook delivery normal (0.4s response)';
+        systemDot.className = 'status-dot';
+        systemPillText.textContent = 'Systems Operational';
+      } else if (state === 'new') {
+        errorBanner.style.display = 'none';
+        focalLateCard.style.display = 'block';
+        cardDueToday.style.display = 'block';
+        lateTaskList.style.display = 'none';
+        lateEmptyMsg.style.display = 'flex';
+        fullEmptyState.style.display = 'none';
+        statLate.textContent = '00';
+        statLate.className = 'stat-val';
+        statDue.textContent = '02';
+        statTrack.textContent = '04';
+        statClients.textContent = '24';
+        railBadge.textContent = '0';
+        dotPayment.className = 'health-dot';
+        descPayment.textContent = 'Webhook delivery normal (0.3s response)';
+        systemDot.className = 'status-dot';
+        systemPillText.textContent = 'Systems Operational';
+      } else if (state === 'empty') {
+        errorBanner.style.display = 'none';
+        focalLateCard.style.display = 'none';
+        cardDueToday.style.display = 'none';
+        fullEmptyState.style.display = 'block';
+        statLate.textContent = '00';
+        statLate.className = 'stat-val';
+        statDue.textContent = '00';
+        statTrack.textContent = '22';
+        statClients.textContent = '42';
+        railBadge.textContent = '0';
+        dotPayment.className = 'health-dot';
+        descPayment.textContent = 'All services quiet';
+        systemDot.className = 'status-dot';
+        systemPillText.textContent = 'Queue Clear';
+      } else if (state === 'error') {
+        errorBanner.style.display = 'flex';
+        focalLateCard.style.display = 'block';
+        cardDueToday.style.display = 'block';
+        lateTaskList.style.display = 'flex';
+        lateEmptyMsg.style.display = 'none';
+        fullEmptyState.style.display = 'none';
+        statLate.textContent = '03';
+        statLate.className = 'stat-val late';
+        statDue.textContent = '04';
+        statTrack.textContent = '16';
+        statClients.textContent = '42';
+        railBadge.textContent = '3';
+        dotPayment.className = 'health-dot degraded';
+        descPayment.textContent = 'Delivery degraded (3 retries queued)';
+        systemDot.className = 'status-dot red';
+        systemPillText.textContent = 'Gateway Degraded';
+      }
+    }
+
+    function setViewport(mode) {
+      document.getElementById('btn1440').classList.toggle('active', mode === 'desktop');
+      document.getElementById('btn390').classList.toggle('active', mode === 'mobile');
+      document.getElementById('appFrame').classList.toggle('mobile', mode === 'mobile');
+    }
+  </script>
+</body>
+</html>

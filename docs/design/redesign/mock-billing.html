@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Plan and billing · BrandBasket</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Red+Hat+Display:wght@500;600;700&family=Red+Hat+Mono:wght@500;600&family=Red+Hat+Text:wght@400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --ground: #F6F5F2;
+      --surface: #FFFFFF;
+      --sunken: #EEECE7;
+      --line: #E3E0D9;
+      --line-strong: #CDC9BE;
+      --ink: #15161A;
+      --ink-2: #343741;
+      --ink-3: #5F626A;
+      --ink-4: #8A8D95;
+      --accent: #C48A47;
+      --accent-wash: #F4E6D3;
+      --accent-deep: #8A5524;
+      --sage: #4F7A63;
+      --sage-wash: #E5EFE8;
+      --error: #B42318;
+      --error-wash: #FDECEA;
+      --r-control: 8px;
+      --r-card: 14px;
+      --r-hero: 20px;
+      --r-pill: 9999px;
+      --sh-resting: 0 1px 0 rgba(42,28,16,0.03);
+      --sh-hero: 0 1px 2px rgba(42,28,16,0.05), 0 12px 32px -12px rgba(42,28,16,0.14);
+      --sh-button: 0 1px 2px rgba(42,28,16,0.12);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--ground);
+      color: var(--ink);
+      font-family: "Red Hat Text", -apple-system, BlinkMacSystemFont, sans-serif;
+      font-size: 15px;
+      line-height: 1.5;
+      padding: 32px 20px 80px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .demo-bar {
+      position: sticky;
+      top: 12px;
+      z-index: 50;
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: var(--r-pill);
+      padding: 6px 12px;
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      box-shadow: var(--sh-hero);
+      margin-bottom: 24px;
+      font-size: 13px;
+    }
+    .demo-btn {
+      background: var(--sunken);
+      border: 1px solid var(--line);
+      color: var(--ink-2);
+      padding: 4px 10px;
+      border-radius: var(--r-pill);
+      cursor: pointer;
+      font-weight: 500;
+    }
+    .demo-btn.active {
+      background: var(--ink);
+      color: #FFFFFF;
+      border-color: var(--ink);
+    }
+    .frame {
+      width: 100%;
+      max-width: 1120px;
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+      transition: max-width 0.2s ease;
+    }
+    .frame.mobile { max-width: 390px; }
+    .header {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .eyebrow {
+      font-size: 11px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      font-weight: 700;
+      color: var(--ink-3);
+    }
+    .title {
+      font-family: "Red Hat Display", sans-serif;
+      font-size: 32px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+    .subtitle {
+      color: var(--ink-2);
+      font-size: 15px;
+    }
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: var(--r-card);
+      box-shadow: var(--sh-resting);
+      padding: 24px;
+    }
+    .focal-card {
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-top: 3px solid var(--accent);
+      border-radius: var(--r-hero);
+      box-shadow: var(--sh-hero);
+      padding: 28px;
+    }
+    .mono { font-family: "Red Hat Mono", monospace; }
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 3px 10px;
+      border-radius: var(--r-pill);
+      font-size: 12px;
+      font-weight: 600;
+    }
+    .chip-active { background: var(--sage-wash); color: var(--sage); }
+    .chip-waiting { background: var(--accent-wash); color: var(--accent-deep); }
+    .chip-failed { background: var(--error-wash); color: var(--error); }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      height: 42px;
+      padding: 0 18px;
+      border-radius: var(--r-control);
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      text-decoration: none;
+      box-shadow: var(--sh-button);
+      border: none;
+    }
+    .btn-primary { background: var(--ink); color: #FFFFFF; }
+    .btn-secondary { background: var(--surface); border: 1px solid var(--line); color: var(--ink); }
+    .grid-2 { display: grid; grid-template-columns: 2fr 1fr; gap: 24px; }
+    @media (max-width: 860px) {
+      .grid-2 { grid-template-columns: 1fr; }
+    }
+    .table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    .table th { text-align: left; padding: 10px 12px; color: var(--ink-3); font-weight: 600; border-bottom: 1px solid var(--line); }
+    .table td { padding: 12px; border-bottom: 1px solid var(--line); }
+    .alert-error {
+      background: var(--error-wash);
+      border: 1px solid var(--error);
+      color: var(--error);
+      border-radius: var(--r-card);
+      padding: 16px;
+      display: flex;
+      gap: 12px;
+      align-items: flex-start;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="demo-bar">
+    <span style="font-weight:600">State:</span>
+    <button class="demo-btn active" id="btnLive" onclick="setState('live')">Live active</button>
+    <button class="demo-btn" id="btnNew" onclick="setState('new')">First invoice</button>
+    <button class="demo-btn" id="btnEmpty" onclick="setState('empty')">Empty</button>
+    <button class="demo-btn" id="btnError" onclick="setState('error')">Payment failed</button>
+    <span style="border-left:1px solid var(--line); margin:0 4px; height:16px"></span>
+    <span style="font-weight:600">Viewport:</span>
+    <button class="demo-btn active" id="btnDesktop" onclick="setViewport('desktop')">1440</button>
+    <button class="demo-btn" id="btnMobile" onclick="setViewport('mobile')">390</button>
+  </div>
+
+  <div class="frame" id="frame">
+    <header class="header">
+      <div class="eyebrow">Billing and Membership</div>
+      <h1 class="title">Plan and billing</h1>
+      <p class="subtitle">Manage your active subscription, payment method, and GST invoices.</p>
+    </header>
+
+    <div id="errorBanner" class="alert-error" style="display:none">
+      <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>
+      <div>
+        <div style="font-weight:700">Payment failed on 12 November</div>
+        <div style="font-size:13px; margin-top:2px">Your bank declined the recurring charge of Rs 4,999. Please update your payment method to avoid service interruption.</div>
+      </div>
+      <button class="btn btn-primary" style="margin-left:auto; height:34px; padding:0 12px; font-size:13px">Update card</button>
+    </div>
+
+    <div class="grid-2">
+      <div style="display:flex; flex-direction:column; gap:24px">
+        <!-- Focal element: Active Plan -->
+        <div class="focal-card" id="planCard">
+          <div style="display:flex; justify-content:space-between; align-items:flex-start">
+            <div>
+              <div class="chip chip-active"><span style="width:6px; height:6px; border-radius:50%; background:currentColor"></span> Active subscription</div>
+              <h2 style="font-family:'Red Hat Display', sans-serif; font-size:24px; font-weight:700; margin-top:12px">Growth Plan</h2>
+              <p style="color:var(--ink-2); font-size:14px; margin-top:4px">Website maintenance, automated social posts, and dedicated expert support.</p>
+            </div>
+            <div style="text-align:right">
+              <div class="mono" style="font-size:28px; font-weight:700; color:var(--ink)">Rs 4,999</div>
+              <div style="font-size:12px; color:var(--ink-3)">per month + GST</div>
+            </div>
+          </div>
+          <div style="margin-top:20px; padding-top:16px; border-top:1px solid var(--line); display:flex; justify-content:space-between; align-items:center; font-size:13px">
+            <span style="color:var(--ink-2)">Next renewal: <strong class="mono" style="color:var(--ink)">14 December 2026</strong></span>
+            <button class="btn btn-secondary" style="height:34px; padding:0 14px; font-size:13px">Change plan</button>
+          </div>
+        </div>
+
+        <!-- Invoices table -->
+        <div class="card" id="invoicesCard">
+          <h3 style="font-family:'Red Hat Display', sans-serif; font-size:18px; font-weight:700; margin-bottom:14px">Tax Invoices</h3>
+          <div id="invoicesList">
+            <table class="table">
+              <thead>
+                <tr>
+                  <th>Invoice</th>
+                  <th>Date</th>
+                  <th>Amount</th>
+                  <th>Status</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody id="invoicesTbody">
+                <tr>
+                  <td class="mono" style="font-weight:600">INV-2026-11-042</td>
+                  <td>14 Nov 2026</td>
+                  <td class="mono">Rs 5,898.82</td>
+                  <td><span class="chip chip-active">Paid</span></td>
+                  <td><a href="#" style="color:var(--accent-deep); font-weight:600; text-decoration:none">Download PDF</a></td>
+                </tr>
+                <tr>
+                  <td class="mono" style="font-weight:600">INV-2026-10-038</td>
+                  <td>14 Oct 2026</td>
+                  <td class="mono">Rs 5,898.82</td>
+                  <td><span class="chip chip-active">Paid</span></td>
+                  <td><a href="#" style="color:var(--accent-deep); font-weight:600; text-decoration:none">Download PDF</a></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div id="invoicesEmpty" style="display:none; text-align:center; padding:32px 0; color:var(--ink-3)">
+            <p>No tax invoices generated yet.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right column: Payment method & GST details -->
+      <div style="display:flex; flex-direction:column; gap:24px">
+        <div class="card">
+          <h3 style="font-family:'Red Hat Display', sans-serif; font-size:16px; font-weight:700; margin-bottom:12px">Payment method</h3>
+          <div style="display:flex; align-items:center; gap:12px">
+            <div style="width:40px; height:28px; border:1px solid var(--line); border-radius:4px; display:flex; align-items:center; justify-content:center; font-size:10px; font-weight:700; background:var(--sunken)">HDFC</div>
+            <div>
+              <div class="mono" style="font-size:14px; font-weight:600">Mastercard ending in 4022</div>
+              <div style="font-size:12px; color:var(--ink-3)">Expires 08/29</div>
+            </div>
+          </div>
+          <button class="btn btn-secondary" style="width:100%; margin-top:16px; height:34px; font-size:13px">Update payment method</button>
+        </div>
+
+        <div class="card">
+          <h3 style="font-family:'Red Hat Display', sans-serif; font-size:16px; font-weight:700; margin-bottom:12px">GST details</h3>
+          <div style="font-size:13px; color:var(--ink-2); display:flex; flex-direction:column; gap:6px">
+            <div><strong>Company:</strong> Sweet Crust Foods Private Limited</div>
+            <div><strong>GSTIN:</strong> <span class="mono">27AADCS1234F1Z8</span></div>
+            <div><strong>Place of supply:</strong> Maharashtra (27)</div>
+          </div>
+          <button class="btn btn-secondary" style="width:100%; margin-top:16px; height:34px; font-size:13px">Edit billing info</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function setState(state) {
+      document.querySelectorAll('.demo-btn').forEach(b => {
+        if (['btnLive','btnNew','btnEmpty','btnError'].includes(b.id)) b.classList.remove('active');
+      });
+      document.getElementById('btn' + state.charAt(0).toUpperCase() + state.slice(1)).classList.add('active');
+
+      const errorBanner = document.getElementById('errorBanner');
+      const invoicesTbody = document.getElementById('invoicesTbody');
+      const invoicesEmpty = document.getElementById('invoicesEmpty');
+
+      if (state === 'error') {
+        errorBanner.style.display = 'flex';
+      } else {
+        errorBanner.style.display = 'none';
+      }
+
+      if (state === 'empty') {
+        invoicesTbody.parentElement.style.display = 'none';
+        invoicesEmpty.style.display = 'block';
+      } else if (state === 'new') {
+        invoicesTbody.parentElement.style.display = 'table';
+        invoicesEmpty.style.display = 'none';
+        invoicesTbody.innerHTML = '<tr><td class="mono" style="font-weight:600">INV-2026-11-001</td><td>14 Nov 2026</td><td class="mono">Rs 5,898.82</td><td><span class="chip chip-active">Paid</span></td><td><a href="#" style="color:var(--accent-deep); font-weight:600; text-decoration:none">Download PDF</a></td></tr>';
+      } else {
+        invoicesTbody.parentElement.style.display = 'table';
+        invoicesEmpty.style.display = 'none';
+        invoicesTbody.innerHTML = '<tr><td class="mono" style="font-weight:600">INV-2026-11-042</td><td>14 Nov 2026</td><td class="mono">Rs 5,898.82</td><td><span class="chip chip-active">Paid</span></td><td><a href="#" style="color:var(--accent-deep); font-weight:600; text-decoration:none">Download PDF</a></td></tr><tr><td class="mono" style="font-weight:600">INV-2026-10-038</td><td>14 Oct 2026</td><td class="mono">Rs 5,898.82</td><td><span class="chip chip-active">Paid</span></td><td><a href="#" style="color:var(--accent-deep); font-weight:600; text-decoration:none">Download PDF</a></td></tr>';
+      }
+    }
+
+    function setViewport(vp) {
+      document.getElementById('btnDesktop').classList.toggle('active', vp === 'desktop');
+      document.getElementById('btnMobile').classList.toggle('active', vp === 'mobile');
+      document.getElementById('frame').classList.toggle('mobile', vp === 'mobile');
+    }
+  </script>
+</body>
+</html>

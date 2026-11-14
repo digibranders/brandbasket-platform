@@ -1,120 +1,145 @@
-<title>BrandBasket Home Mock</title>
-<meta name="claude:viewport-fit-sides" content="cover">
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BrandBasket Home and Needs your OK Mock</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Red+Hat+Display:wght@500;600;700&family=Red+Hat+Text:wght@400;500;600&family=Red+Hat+Mono:wght@400;500&display=swap">
 <style>
-/* Layout: 248px sidebar, top bar, 2 column content (services left, Needs your OK right). Brand: website palette, near-black primary, rattan gold accent. Light only by design. */
-:root{
-  --paper:#F6F5F2; --surface:#FFFFFF; --sunken:#EEECE7; --line:#E3E0D9; --ink:#15161A; --ink2:#4E5057; --muted:#6B6E76;
-  --ink-hover:#2A2B31; --gold:#C48A47; --gold-text:#A46C2F; --gold-wash:#F4E6D3; --gold-deep:#8A5524;
-  --sage:#4F7A63; --sage-wash:#E5EFE8; --sage-ink:#2F5A43; --err:#B42318; --err-wash:#FDECEA;
-  --display:'Red Hat Display',system-ui,sans-serif; --text:'Red Hat Text',system-ui,sans-serif; --mono:'Red Hat Mono',ui-monospace,monospace;
-  color-scheme:light;
+/* Release 2 premium design language: light only, warm palette, tokens only, warm shadows, one focal element. */
+:root {
+  --paper: #F6F5F2; --surface: #FFFFFF; --sunken: #EEECE7; --line: #E3E0D9; --ink: #15161A; --ink2: #4E5057; --muted: #6B6E76;
+  --ink-hover: #2A2B31; --gold: #C48A47; --gold-text: #A46C2F; --gold-wash: #F4E6D3; --gold-deep: #8A5524;
+  --sage: #4F7A63; --sage-wash: #E5EFE8; --sage-ink: #2F5A43; --err: #B42318; --err-wash: #FDECEA;
+  --display: 'Red Hat Display', system-ui, sans-serif; --text: 'Red Hat Text', system-ui, sans-serif; --mono: 'Red Hat Mono', ui-monospace, monospace;
+  color-scheme: light;
 }
-*{box-sizing:border-box}
-body{margin:0;background:var(--paper);color:var(--ink);font:15px/1.5 var(--text);padding-left:max(0px,env(safe-area-inset-left,0px));padding-right:max(0px,env(safe-area-inset-right,0px))}
-button,select{font:inherit;color:inherit}
-button{cursor:pointer}
-:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
-svg.i{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round;flex:none}
-.shell{display:grid;grid-template-columns:248px minmax(0,1fr);min-height:100vh}
-aside{background:var(--surface);border-right:1px solid var(--line);padding:18px 14px;position:sticky;top:0;height:100vh;overflow:auto;display:flex;flex-direction:column}
-.logo{display:flex;align-items:center;gap:10px;font:700 21px var(--display);padding:2px 10px 18px;letter-spacing:-.01em}
-.logo svg{width:28px;height:28px;color:var(--gold);stroke-width:1.7}
-.grp{font:600 12px var(--text);color:var(--muted);padding:18px 12px 6px}
-.nav{display:grid;gap:2px}
-.nav a{display:flex;align-items:center;gap:12px;padding:9px 12px;border-radius:9px;color:var(--ink2);text-decoration:none;font-weight:500;position:relative}
-.nav a:hover{background:var(--sunken);color:var(--ink)}
-.nav a.on{background:var(--gold-wash);color:var(--ink);font-weight:600}
-.nav a.on::before{content:"";position:absolute;left:-14px;top:8px;bottom:8px;width:3px;border-radius:0 3px 3px 0;background:var(--gold)}
-.nav a.on svg{color:var(--gold-deep)}
-.nav .badge{margin-left:auto;font:600 11px var(--mono);background:var(--gold-wash);color:var(--gold-deep);border-radius:99px;padding:2px 9px}
-.nav .soon{margin-left:auto;font-size:11px;color:var(--muted)}
-.spacer{flex:1;min-height:16px}
-.rule{border-top:1px solid var(--line);margin:8px 4px 10px}
-.main{min-width:0}
-.top{display:flex;align-items:center;gap:12px;padding:14px 36px;background:var(--surface);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:5}
-.biz{display:flex;align-items:center;justify-content:space-between;gap:24px;font-weight:600;border:1px solid var(--line);border-radius:10px;padding:8px 12px;background:var(--surface);min-width:220px}
-.search{flex:1;max-width:400px;margin-left:auto;display:flex;align-items:center;gap:10px;border:1px solid var(--line);border-radius:10px;padding:8px 12px;color:var(--muted);background:var(--surface);font-size:14px}
-.search span{flex:1}
-kbd{font:500 11px var(--mono);border:1px solid var(--line);border-radius:6px;padding:2px 8px;background:var(--paper);color:var(--ink2)}
-.iconbtn{position:relative;width:40px;height:40px;border:1px solid var(--line);border-radius:10px;background:var(--surface);display:grid;place-items:center;color:var(--ink)}
-.iconbtn .dot{position:absolute;top:7px;right:8px;width:8px;height:8px;border-radius:50%;background:var(--gold);border:2px solid var(--surface)}
-.avatar{width:40px;height:40px;border-radius:50%;background:var(--sunken);color:var(--ink);display:grid;place-items:center;font:600 13px var(--text)}
-.page{padding:30px 36px 64px;display:grid;gap:26px;min-width:0}
-.eyebrow{font:600 13px var(--text);color:var(--ink2);margin:0}
-h1{font:700 32px/1.1 var(--display);margin:2px 0 0;letter-spacing:-.015em;text-wrap:balance}
-.sub{color:var(--ink2);margin:6px 0 0}
-.headrow{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap}
-.seg{display:inline-flex;background:var(--sunken);border-radius:10px;padding:3px}
-.seg button{border:0;background:transparent;padding:6px 12px;border-radius:8px;font-weight:500;font-size:13px}
-.seg button[aria-pressed=true]{background:var(--surface);font-weight:600;box-shadow:0 0 0 1px var(--line)}
-.grid{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:20px;align-items:start}
-.stack{display:grid;gap:20px;min-width:0}
-.card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:24px;min-width:0}
-.chead{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
-.chead h2{font:600 21px var(--display);margin:0;letter-spacing:-.01em}
-.chead svg{width:22px;height:22px}
-.chead .end{margin-left:auto}
-.pill{display:inline-flex;align-items:center;font:600 12px var(--text);border-radius:99px;padding:4px 12px;white-space:nowrap}
-.pill.ok{background:var(--sage-wash);color:var(--sage-ink)} .pill.next{background:var(--gold-wash);color:var(--gold-deep)} .pill.idle{background:var(--sunken);color:var(--ink2)} .pill.err{background:var(--err-wash);color:var(--err)}
-.task{margin:26px 0 0}
-.task h3{font:600 24px/1.25 var(--display);margin:0;letter-spacing:-.01em}
-.task p{margin:6px 0 0;color:var(--ink2)}
-.pickers{display:flex;gap:14px;flex-wrap:wrap;margin:20px 0 0}
-.field{display:grid;gap:6px;font:600 13px var(--text)}
-.select{position:relative;display:flex;align-items:center;gap:8px;border:1px solid var(--line);border-radius:10px;background:var(--surface);padding:0 10px;height:42px;min-width:170px}
-.select select{appearance:none;border:0;background:transparent;height:100%;flex:1;font-weight:500;outline-offset:6px;padding-right:22px}
-.select .chev{position:absolute;right:10px;pointer-events:none;width:16px;height:16px;color:var(--muted)}
-.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:42px;padding:0 18px;border-radius:10px;border:1px solid var(--ink);background:var(--ink);color:#fff;font-weight:600;white-space:nowrap}
-.btn:hover{background:var(--ink-hover)} .btn:active{transform:translateY(1px)}
-.btn.sec{background:var(--surface);color:var(--ink);border-color:var(--line)} .btn.sec:hover{background:var(--sunken)}
-.btn.sm{height:34px;padding:0 14px;font-size:14px}
-.actions{margin:22px 0 0;display:flex;gap:12px;align-items:center;flex-wrap:wrap}
-.status{margin:24px 0 0;padding-top:16px;border-top:1px solid var(--line);display:flex;align-items:center;gap:10px;font-size:14px;color:var(--ink2)}
-.status b{color:var(--ink)}
-.status .d{width:8px;height:8px;border-radius:50%;background:var(--gold)}
-.status .d.ok{background:var(--sage)}
-.chan{display:grid;gap:10px;margin:20px 0 0}
-.chan li{list-style:none;display:flex;align-items:center;gap:12px;border:1px solid var(--line);border-radius:12px;padding:10px 12px}
-.chan{padding:0}
-.chan .logo-sq{width:34px;height:34px;border-radius:9px;display:grid;place-items:center;background:var(--sunken);color:var(--ink)}
-.chan .nm{font-weight:600;flex:1}
-.panel-h{display:flex;align-items:center;justify-content:space-between}
-.panel-h h2{font:600 20px var(--display);margin:0}
-.count{font:600 12px var(--mono);background:var(--gold-wash);color:var(--gold-deep);border-radius:99px;padding:3px 10px}
-.dashed{margin-top:16px;border:1px dashed var(--line);border-radius:12px;padding:28px 16px;display:grid;justify-items:center;gap:8px;text-align:center;color:var(--ink2);background:var(--paper)}
-.dashed svg{color:var(--sage);width:22px;height:22px}
-.okrow{display:flex;gap:12px;align-items:center;padding:12px 0;border-top:1px solid var(--line)}
-.okrow:first-of-type{border-top:0}
-.okrow .ic{width:36px;height:36px;border-radius:10px;background:var(--gold-wash);color:var(--gold-deep);display:grid;place-items:center;flex:none}
-.okrow .w{flex:1;min-width:0}
-.okrow b{display:block;font-size:14px}
-.okrow span{font-size:13px;color:var(--ink2)}
-.link{display:inline-flex;align-items:center;gap:6px;font-weight:600;color:var(--ink);text-decoration:underline;text-decoration-color:var(--gold);text-underline-offset:4px;text-decoration-thickness:2px}
-.live2{display:grid;grid-template-columns:1fr 1fr;gap:0;margin-top:20px;border-top:1px solid var(--line)}
-.live2>div{padding:18px 0 0}
-.live2>div+div{padding-left:24px;border-left:1px solid var(--line)}
-.lab{font:500 12px var(--mono);color:var(--muted);letter-spacing:.02em}
-.big{font:600 18px var(--display);margin:4px 0 8px}
-.kpis{display:grid;grid-template-columns:repeat(4,1fr);margin-top:16px}
-.kpis div{padding:4px 18px;border-left:1px solid var(--line)} .kpis div:first-child{border-left:0;padding-left:0}
-.kpis b{display:block;font:600 28px var(--mono);margin-top:2px}
-.kpis span{color:var(--ink2);font-size:14px}
-.tabbar{display:none}
-[hidden]{display:none!important}
-.note{font-size:12.5px;color:var(--muted);border:1px dashed var(--line);border-radius:10px;padding:10px 12px;background:var(--surface)}
-@media (max-width:1100px){.grid{grid-template-columns:1fr}}
-@media (max-width:860px){
-  .shell{grid-template-columns:1fr} aside{display:none}
-  .top{padding:10px 16px} .search{display:none} .biz{min-width:0;flex:1} .page{padding:20px 16px 100px}
-  h1{font-size:26px} .card{padding:18px}
-  .live2{grid-template-columns:1fr} .live2>div+div{padding-left:0;border-left:0;border-top:1px solid var(--line);margin-top:16px}
-  .kpis{grid-template-columns:1fr 1fr;row-gap:14px} .kpis div:nth-child(3){border-left:0;padding-left:0}
-  .tabbar{display:grid;grid-template-columns:repeat(5,1fr);position:fixed;left:0;right:0;bottom:0;background:var(--surface);border-top:1px solid var(--line);padding:6px 6px calc(6px + env(safe-area-inset-bottom,0px));z-index:9}
-  .tabbar a{display:grid;justify-items:center;gap:2px;font-size:11px;color:var(--ink2);text-decoration:none;padding:6px 0;min-height:48px}
-  .tabbar a.on{color:var(--ink);font-weight:600}.tabbar a.on svg{color:var(--gold-deep)}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--paper); color: var(--ink); font: 15px/1.5 var(--text); padding-left: max(0px, env(safe-area-inset-left, 0px)); padding-right: max(0px, env(safe-area-inset-right, 0px)); }
+button, select { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+svg.i { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+.shell { display: grid; grid-template-columns: 248px minmax(0, 1fr); min-height: 100vh; }
+aside { background: var(--surface); border-right: 1px solid var(--line); padding: 18px 14px; position: sticky; top: 0; height: 100vh; overflow: auto; display: flex; flex-direction: column; }
+.logo { display: flex; align-items: center; gap: 10px; font: 700 21px var(--display); padding: 2px 10px 18px; letter-spacing: -0.01em; }
+.logo svg { width: 28px; height: 28px; color: var(--gold); stroke-width: 1.7; }
+.grp { font: 600 12px var(--text); color: var(--muted); padding: 18px 12px 6px; }
+.nav { display: grid; gap: 2px; }
+.nav a { display: flex; align-items: center; gap: 12px; padding: 9px 12px; border-radius: 9px; color: var(--ink2); text-decoration: none; font-weight: 500; position: relative; }
+.nav a:hover { background: var(--sunken); color: var(--ink); }
+.nav a.on { background: var(--gold-wash); color: var(--ink); font-weight: 600; }
+.nav a.on::before { content: ""; position: absolute; left: -14px; top: 8px; bottom: 8px; width: 3px; border-radius: 0 3px 3px 0; background: var(--gold); }
+.nav a.on svg { color: var(--gold-deep); }
+.nav .badge { margin-left: auto; font: 600 11px var(--mono); background: var(--gold-wash); color: var(--gold-deep); border-radius: 99px; padding: 2px 9px; }
+.nav .soon { margin-left: auto; font-size: 11px; color: var(--muted); }
+.spacer { flex: 1; min-height: 16px; }
+.rule { border-top: 1px solid var(--line); margin: 8px 4px 10px; }
+.account-block { padding: 10px 12px; border-radius: 10px; background: var(--paper); border: 1px solid var(--line); font-size: 13px; }
+.account-block .pname { font-weight: 600; font-size: 14px; }
+.account-block .pdate { font-family: var(--mono); color: var(--ink2); font-size: 12px; margin-top: 2px; }
+.main { min-width: 0; }
+.top { display: flex; align-items: center; gap: 12px; padding: 14px 36px; background: var(--surface); border-bottom: 1px solid var(--line); position: sticky; top: 0; z-index: 5; height: 64px; }
+.biz { display: flex; align-items: center; justify-content: space-between; gap: 24px; font-weight: 600; border: 1px solid var(--line); border-radius: 10px; padding: 8px 12px; background: var(--surface); min-width: 220px; }
+.search { flex: 1; max-width: 400px; margin-left: auto; display: flex; align-items: center; gap: 10px; border: 1px solid var(--line); border-radius: 10px; padding: 8px 12px; color: var(--muted); background: var(--surface); font-size: 14px; }
+.search span { flex: 1; }
+kbd { font: 500 11px var(--mono); border: 1px solid var(--line); border-radius: 6px; padding: 2px 8px; background: var(--paper); color: var(--ink2); }
+.iconbtn { position: relative; width: 40px; height: 40px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); display: grid; place-items: center; color: var(--ink); }
+.iconbtn .dot { position: absolute; top: 7px; right: 8px; width: 8px; height: 8px; border-radius: 50%; background: var(--gold); border: 2px solid var(--surface); }
+.avatar { width: 40px; height: 40px; border-radius: 50%; background: var(--sunken); color: var(--ink); display: grid; place-items: center; font: 600 13px var(--text); }
+.page { padding: 32px 36px 64px; display: grid; gap: 24px; min-width: 0; max-width: 1240px; margin: 0 auto; }
+.eyebrow { font: 600 12px var(--text); color: var(--muted); margin: 0; }
+h1 { font: 700 36px/40px var(--display); margin: 2px 0 0; letter-spacing: -0.02em; text-wrap: balance; }
+.sub { color: var(--ink2); margin: 6px 0 0; font-size: 15px; }
+.headrow { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; flex-wrap: wrap; }
+.seg { display: inline-flex; background: var(--sunken); border-radius: 10px; padding: 3px; gap: 2px; }
+.seg button { border: 0; background: transparent; padding: 6px 12px; border-radius: 8px; font-weight: 500; font-size: 13px; color: var(--ink2); }
+.seg button[aria-pressed=true] { background: var(--surface); font-weight: 600; color: var(--ink); box-shadow: 0 1px 0 rgba(42,28,16,0.04); }
+.grid { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 24px; align-items: start; }
+.stack { display: grid; gap: 24px; min-width: 0; }
+/* Standard card: 14px radius, resting warm shadow */
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 28px; min-width: 0; box-shadow: 0 1px 0 rgba(42,28,16,0.03); }
+/* Focal card: 20px radius, 3px gold top edge, elevated warm shadow */
+.card.focal { border-radius: 20px; border-top: 3px solid var(--gold); box-shadow: 0 1px 2px rgba(42,28,16,0.05), 0 12px 32px -12px rgba(42,28,16,0.14); }
+.chead { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.tile40 { width: 40px; height: 40px; border-radius: 10px; background: var(--gold-wash); color: var(--gold-deep); display: grid; place-items: center; flex: none; }
+.tile40 svg { width: 22px; height: 22px; }
+.chead h2 { font: 600 20px var(--display); margin: 0; letter-spacing: -0.01em; }
+.chead .end { margin-left: auto; }
+.pill { display: inline-flex; align-items: center; font: 600 12px var(--text); border-radius: 99px; padding: 4px 12px; white-space: nowrap; }
+.pill.ok { background: var(--sage-wash); color: var(--sage-ink); }
+.pill.next { background: var(--gold-wash); color: var(--gold-deep); }
+.pill.idle { background: var(--sunken); color: var(--ink2); }
+.pill.err { background: var(--err-wash); color: var(--err); }
+.task { margin: 20px 0 0; }
+.task h3 { font: 600 26px/32px var(--display); margin: 0; letter-spacing: -0.015em; }
+.task p { margin: 6px 0 0; color: var(--ink2); font-size: 15px; }
+.pickers { display: flex; gap: 14px; flex-wrap: wrap; margin: 20px 0 0; }
+.field { display: grid; gap: 6px; font: 600 13px var(--text); }
+.select { position: relative; display: flex; align-items: center; gap: 8px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); padding: 0 10px; height: 42px; min-width: 170px; }
+.select select { appearance: none; border: 0; background: transparent; height: 100%; flex: 1; font-weight: 500; outline-offset: 4px; padding-right: 22px; }
+.select .chev { position: absolute; right: 10px; pointer-events: none; width: 16px; height: 16px; color: var(--muted); }
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 42px; padding: 0 18px; border-radius: 8px; border: 1px solid var(--ink); background: var(--ink); color: #fff; font-weight: 600; white-space: nowrap; box-shadow: inset 0 1px 0 rgba(255,255,255,0.08); }
+.btn:hover { background: var(--ink-hover); }
+.btn:active { transform: translateY(1px); }
+.btn.sec { background: var(--surface); color: var(--ink); border-color: var(--line); box-shadow: 0 1px 0 rgba(42,28,16,0.03); }
+.btn.sec:hover { background: var(--sunken); }
+.btn.sm { height: 34px; padding: 0 14px; font-size: 13.5px; }
+.actions { margin: 22px 0 0; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+.status { margin: 24px 0 0; padding-top: 16px; border-top: 1px solid var(--line); display: flex; align-items: center; gap: 10px; font-size: 14px; color: var(--ink2); }
+.status b { color: var(--ink); }
+.status .d { width: 8px; height: 8px; border-radius: 50%; background: var(--gold); }
+.status .d.ok { background: var(--sage); }
+.status .d.err { background: var(--err); }
+.chan { display: grid; gap: 10px; margin: 20px 0 0; padding: 0; }
+.chan li { list-style: none; display: flex; align-items: center; gap: 12px; border: 1px solid var(--line); border-radius: 10px; padding: 10px 14px; }
+.chan .logo-sq { width: 34px; height: 34px; border-radius: 8px; display: grid; place-items: center; background: var(--sunken); color: var(--ink); }
+.chan .nm { font-weight: 600; flex: 1; }
+.panel-h { display: flex; align-items: center; justify-content: space-between; }
+.panel-h h2 { font: 600 20px var(--display); margin: 0; }
+.count { font: 600 12px var(--mono); background: var(--gold-wash); color: var(--gold-deep); border-radius: 99px; padding: 3px 10px; }
+.dashed { margin-top: 16px; border: 1px dashed var(--line); border-radius: 12px; padding: 28px 16px; display: grid; justify-items: center; gap: 8px; text-align: center; color: var(--ink2); background: var(--paper); }
+.dashed svg { color: var(--sage); width: 22px; height: 22px; }
+.okrow { display: flex; gap: 12px; align-items: center; padding: 14px 0; border-top: 1px solid var(--line); }
+.okrow:first-of-type { border-top: 0; }
+.okrow .ic { width: 40px; height: 40px; border-radius: 10px; background: var(--gold-wash); color: var(--gold-deep); display: grid; place-items: center; flex: none; }
+.okrow .w { flex: 1; min-width: 0; }
+.okrow b { display: block; font-size: 14px; }
+.okrow span { font-size: 13px; color: var(--ink2); }
+.okrow .age { font-family: var(--mono); font-size: 12px; color: var(--muted); margin-left: 8px; }
+.link { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; color: var(--ink); text-decoration: underline; text-decoration-color: var(--gold); text-underline-offset: 4px; text-decoration-thickness: 2px; }
+.live2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0; margin-top: 20px; border-top: 1px solid var(--line); }
+.live2 > div { padding: 18px 0 0; }
+.live2 > div + div { padding-left: 24px; border-left: 1px solid var(--line); }
+.lab { font: 500 12px var(--mono); color: var(--muted); letter-spacing: 0.02em; }
+.big { font: 600 18px var(--display); margin: 4px 0 8px; }
+.kpis { display: grid; grid-template-columns: repeat(4, 1fr); margin-top: 16px; }
+.kpis div { padding: 4px 18px; border-left: 1px solid var(--line); }
+.kpis div:first-child { border-left: 0; padding-left: 0; }
+.kpis b { display: block; font: 500 32px/36px var(--mono); margin-top: 2px; letter-spacing: -0.01em; }
+.kpis span { color: var(--ink2); font-size: 13px; }
+.tabbar { display: none; }
+[hidden] { display: none !important; }
+.note { font-size: 12.5px; color: var(--muted); border: 1px dashed var(--line); border-radius: 10px; padding: 10px 12px; background: var(--surface); margin-top: 16px; }
+.alert-strip { display: flex; align-items: flex-start; gap: 12px; padding: 14px 18px; border-radius: 10px; background: var(--err-wash); border: 1px solid #F4C3BE; color: var(--err); margin-bottom: 20px; }
+.alert-strip b { display: block; font-size: 14px; }
+.alert-strip p { margin: 2px 0 0; font-size: 13px; color: var(--ink); }
+@media (max-width: 1100px) { .grid { grid-template-columns: 1fr; } }
+@media (max-width: 860px) {
+  .shell { grid-template-columns: 1fr; } aside { display: none; }
+  .top { padding: 10px 16px; height: 56px; } .search { display: none; } .biz { min-width: 0; flex: 1; }
+  .page { padding: 20px 16px 100px; gap: 20px; }
+  h1 { font-size: 28px; line-height: 34px; } .card { padding: 20px; }
+  .task h3 { font-size: 22px; line-height: 28px; }
+  .live2 { grid-template-columns: 1fr; } .live2 > div + div { padding-left: 0; border-left: 0; border-top: 1px solid var(--line); margin-top: 16px; }
+  .kpis { grid-template-columns: 1fr 1fr; row-gap: 14px; } .kpis div:nth-child(3) { border-left: 0; padding-left: 0; }
+  .tabbar { display: grid; grid-template-columns: repeat(5, 1fr); position: fixed; left: 0; right: 0; bottom: 0; background: var(--surface); border-top: 1px solid var(--line); padding: 6px 6px calc(6px + env(safe-area-inset-bottom, 0px)); z-index: 9; }
+  .tabbar a { display: grid; justify-items: center; gap: 2px; font-size: 11px; color: var(--ink2); text-decoration: none; padding: 6px 0; min-height: 48px; }
+  .tabbar a.on { color: var(--ink); font-weight: 600; } .tabbar a.on svg { color: var(--gold-deep); }
 }
 </style>
+</head>
+<body>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
   <defs>
@@ -137,6 +162,7 @@ h1{font:700 32px/1.1 var(--display);margin:2px 0 0;letter-spacing:-.015em;text-w
     <symbol id="check" viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7.5"/></symbol>
     <symbol id="image" viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="14" rx="2"/><circle cx="9" cy="10" r="1.6"/><path d="m5 17 5-4.5 3.5 3 2.5-2L20 16"/></symbol>
     <symbol id="arrow" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></symbol>
+    <symbol id="alert" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></symbol>
   </defs>
 </svg>
 
@@ -160,11 +186,15 @@ h1{font:700 32px/1.1 var(--display);margin:2px 0 0;letter-spacing:-.015em;text-w
     <a href="#"><svg class="i"><use href="#store"/></svg>Business profile</a>
   </nav>
   <div class="spacer"></div>
+  <div class="account-block">
+    <div class="pname">Growth Plan</div>
+    <div class="pdate">Renews 1 Dec, Rs 2,999</div>
+  </div>
   <div class="rule"></div>
   <nav class="nav" aria-label="Account">
-    <a href="#"><svg class="i"><use href="#card"/></svg>Plan &amp; billing</a>
+    <a href="#"><svg class="i"><use href="#card"/></svg>Plan and billing</a>
     <a href="#"><svg class="i"><use href="#gear"/></svg>Settings</a>
-    <a href="#"><svg class="i"><use href="#phone"/></svg>Help &amp; calls</a>
+    <a href="#"><svg class="i"><use href="#phone"/></svg>Help and calls</a>
   </nav>
 </aside>
 
@@ -184,28 +214,66 @@ h1{font:700 32px/1.1 var(--display);margin:2px 0 0;letter-spacing:-.015em;text-w
         <p class="sub" id="sub">Sweet Crust Bakery. Two things to do this week.</p>
       </div>
       <div class="seg" role="group" aria-label="Mock state">
-        <button type="button" id="sNew" aria-pressed="true">New customer</button>
-        <button type="button" id="sLive" aria-pressed="false">Live customer</button>
+        <button type="button" id="btnNew" aria-pressed="true">New customer</button>
+        <button type="button" id="btnLive" aria-pressed="false">Live customer</button>
+        <button type="button" id="btnEmpty" aria-pressed="false">Empty state</button>
+        <button type="button" id="btnError" aria-pressed="false">Error state</button>
       </div>
     </div>
 
-    <!-- NEW CUSTOMER -->
+    <!-- STATE 1: NEW CUSTOMER -->
     <div class="grid" id="vNew">
       <div class="stack">
-        <article class="card" aria-labelledby="w1">
-          <div class="chead"><svg class="i"><use href="#monitor"/></svg><h2 id="w1">Website</h2><span class="pill ok">Active</span><span class="pill next end">Next step</span></div>
-          <div class="task"><h3>Book your kickoff call</h3><p>30 minutes on video. We go through your bakery and plan your website with you.</p></div>
-          <div class="pickers">
-            <label class="field">Day<span class="select"><svg class="i" style="width:18px;height:18px"><use href="#cal"/></svg><select id="day"><option>Mon 16 Nov</option><option selected>Tue 17 Nov</option><option>Wed 18 Nov</option><option>Thu 19 Nov</option></select><svg class="i chev"><use href="#chev"/></svg></span></label>
-            <label class="field">Time<span class="select"><select id="time"><option>10:00 am</option><option>11:00 am</option><option selected>3:00 pm</option><option>4:30 pm</option></select><svg class="i chev"><use href="#chev"/></svg></span></label>
+        <!-- Focal Card: Website Kickoff -->
+        <article class="card focal" aria-labelledby="w1">
+          <div class="chead">
+            <span class="tile40"><svg class="i"><use href="#monitor"/></svg></span>
+            <div>
+              <h2 id="w1">Website</h2>
+              <span class="pill ok">Active</span>
+            </div>
+            <span class="pill next end">Next step</span>
           </div>
-          <div class="actions"><button class="btn" type="button" id="book">Book your kickoff call</button><span style="color:var(--muted);font-size:13px">Times in India</span></div>
+          <div class="task">
+            <h3>Book your kickoff call</h3>
+            <p>30 minutes on video. We go through your bakery and plan your website with you.</p>
+          </div>
+          <div class="pickers">
+            <label class="field">Day
+              <span class="select">
+                <svg class="i" style="width:18px;height:18px"><use href="#cal"/></svg>
+                <select id="day"><option>Mon 16 Nov</option><option selected>Tue 17 Nov</option><option>Wed 18 Nov</option><option>Thu 19 Nov</option></select>
+                <svg class="i chev"><use href="#chev"/></svg>
+              </span>
+            </label>
+            <label class="field">Time
+              <span class="select">
+                <select id="time"><option>10:00 am</option><option>11:00 am</option><option selected>3:00 pm</option><option>4:30 pm</option></select>
+                <svg class="i chev"><use href="#chev"/></svg>
+              </span>
+            </label>
+          </div>
+          <div class="actions">
+            <button class="btn" type="button" id="bookBtn">Book your kickoff call</button>
+            <span style="color:var(--muted);font-size:13px">Times in India</span>
+          </div>
           <div class="status"><b>Status</b><i class="d"></i><span>Waiting for your kickoff call</span></div>
         </article>
 
+        <!-- Standard Service Card: Social Setup -->
         <article class="card" aria-labelledby="s1">
-          <div class="chead"><svg class="i"><use href="#share"/></svg><h2 id="s1">Social media</h2><span class="pill ok">Active</span><span class="pill next end">Next step</span></div>
-          <div class="task"><h3>Set up Social: connect your accounts</h3><p>Connect once and we write and post for you. About 5 minutes, no call needed.</p></div>
+          <div class="chead">
+            <span class="tile40" style="background:var(--sunken);color:var(--ink)"><svg class="i"><use href="#share"/></svg></span>
+            <div>
+              <h2 id="s1">Social media</h2>
+              <span class="pill ok">Active</span>
+            </div>
+            <span class="pill next end">Next step</span>
+          </div>
+          <div class="task">
+            <h3 style="font-size:20px;line-height:26px">Set up Social: connect your accounts</h3>
+            <p>Connect once and we write and post for you. About 5 minutes, no call needed.</p>
+          </div>
           <ul class="chan">
             <li><span class="logo-sq"><svg class="i"><use href="#image"/></svg></span><span class="nm">Instagram</span><span class="pill idle">Not connected</span><button class="btn sm" type="button">Connect</button></li>
             <li><span class="logo-sq"><svg class="i"><use href="#chat"/></svg></span><span class="nm">Facebook Pages</span><span class="pill idle">Not connected</span><button class="btn sec sm" type="button">Connect</button></li>
@@ -217,46 +285,189 @@ h1{font:700 32px/1.1 var(--display);margin:2px 0 0;letter-spacing:-.015em;text-w
 
       <aside class="card" aria-labelledby="ok1">
         <div class="panel-h"><h2 id="ok1">Needs your OK</h2><span class="count">0</span></div>
-        <div class="dashed"><svg class="i"><use href="#check"/></svg><span>Nothing needs your OK right now.</span><span style="font-size:13px;color:var(--muted)">Previews, post pictures and quotes appear here and in the bell.</span></div>
+        <div class="dashed">
+          <svg class="i"><use href="#check"/></svg>
+          <b>Nothing needs your OK right now.</b>
+          <span style="font-size:13px;color:var(--muted)">Previews, post pictures and quotes appear here and in the bell.</span>
+        </div>
         <div class="status" style="margin-top:20px"><b>Paid Ads</b><span class="pill idle">Coming soon</span></div>
       </aside>
     </div>
 
-    <!-- LIVE CUSTOMER -->
+    <!-- STATE 2: LIVE CUSTOMER -->
     <div class="grid" id="vLive" hidden>
       <div class="stack">
+        <!-- Website Live Card -->
         <article class="card" aria-labelledby="w2">
-          <div class="chead"><svg class="i"><use href="#monitor"/></svg><h2 id="w2">Website</h2><span class="pill ok end">Active</span></div>
+          <div class="chead">
+            <span class="tile40" style="background:var(--sage-wash);color:var(--sage-ink)"><svg class="i"><use href="#monitor"/></svg></span>
+            <div>
+              <h2 id="w2">Website</h2>
+              <span class="pill ok">Live</span>
+            </div>
+            <a class="link end" href="#">sweetcrust.in <svg class="i" style="width:16px;height:16px"><use href="#arrow"/></svg></a>
+          </div>
           <div class="live2">
-            <div><span class="pill ok">Live</span><p class="big">Your website is live</p><a class="link" href="#">View website <svg class="i" style="width:16px;height:16px"><use href="#arrow"/></svg></a></div>
-            <div><span class="lab">Latest report</span><p class="big">October is ready</p><a class="link" href="#">View report <svg class="i" style="width:16px;height:16px"><use href="#arrow"/></svg></a></div>
+            <div>
+              <span class="lab">Status</span>
+              <p class="big">Your website is live</p>
+              <a class="link" href="#">Open website preview <svg class="i" style="width:16px;height:16px"><use href="#arrow"/></svg></a>
+            </div>
+            <div>
+              <span class="lab">Latest report</span>
+              <p class="big">October is ready</p>
+              <a class="link" href="#">View report <svg class="i" style="width:16px;height:16px"><use href="#arrow"/></svg></a>
+            </div>
           </div>
         </article>
+
+        <!-- Social Media Running Card -->
         <article class="card" aria-labelledby="s2">
-          <div class="chead"><svg class="i"><use href="#share"/></svg><h2 id="s2">Social media</h2><span class="pill ok end">Active</span></div>
+          <div class="chead">
+            <span class="tile40" style="background:var(--sage-wash);color:var(--sage-ink)"><svg class="i"><use href="#share"/></svg></span>
+            <div>
+              <h2 id="s2">Social media</h2>
+              <span class="pill ok">Running</span>
+            </div>
+          </div>
           <div class="live2">
-            <div><span class="pill ok">Running</span><p class="big">We have started on your Social</p><span style="color:var(--ink2)">5 posts scheduled this week</span></div>
-            <div><span class="lab">Connection</span><p class="big">Instagram needs you</p><button class="btn sm" type="button">Reconnect Instagram</button></div>
+            <div>
+              <span class="lab">Schedule</span>
+              <p class="big">We have started on your Social</p>
+              <span style="color:var(--ink2)">5 posts scheduled this week</span>
+            </div>
+            <div>
+              <span class="lab">Connection</span>
+              <p class="big">Instagram needs you</p>
+              <button class="btn sm" type="button">Reconnect Instagram</button>
+            </div>
           </div>
         </article>
+
+        <!-- Latest Report Card -->
         <article class="card" aria-labelledby="rp">
-          <div class="panel-h"><h2 id="rp">Latest report</h2><button class="btn sec sm" type="button">Open report</button></div>
+          <div class="panel-h">
+            <h2 id="rp">Latest report</h2>
+            <button class="btn sec sm" type="button">Open report</button>
+          </div>
           <p class="sub" style="margin-top:4px">October summary for Sweet Crust Bakery</p>
-          <div class="kpis"><div><span>Website visits</span><b>412</b></div><div><span>Posts published</span><b>18</b></div><div><span>Enquiries</span><b>9</b></div><div><span>Calls</span><b>6</b></div></div>
+          <div class="kpis">
+            <div><span>Website visits</span><b>412</b></div>
+            <div><span>Posts published</span><b>18</b></div>
+            <div><span>Enquiries</span><b>9</b></div>
+            <div><span>Calls</span><b>6</b></div>
+          </div>
         </article>
       </div>
+
+      <!-- Needs your OK section with items -->
       <aside class="card" aria-labelledby="ok2">
         <div class="panel-h"><h2 id="ok2">Needs your OK</h2><span class="count">3</span></div>
         <div style="margin-top:8px">
-          <div class="okrow"><span class="ic"><svg class="i"><use href="#monitor"/></svg></span><div class="w"><b>Website preview</b><span>1 round of changes left</span></div></div>
-          <div class="okrow"><span class="ic"><svg class="i"><use href="#image"/></svg></span><div class="w"><b>3 pictures for next week</b><span>Social media</span></div></div>
-          <div class="okrow"><span class="ic"><svg class="i"><use href="#doc"/></svg></span><div class="w"><b>Quote: Marathi page, Rs 1,500</b><span>Requests</span></div></div>
+          <div class="okrow">
+            <span class="ic"><svg class="i"><use href="#monitor"/></svg></span>
+            <div class="w">
+              <b>Website preview</b>
+              <span>1 round of changes left</span>
+            </div>
+            <button class="btn sm" type="button">Review</button>
+          </div>
+          <div class="okrow">
+            <span class="ic"><svg class="i"><use href="#image"/></svg></span>
+            <div class="w">
+              <b>3 pictures for next week</b>
+              <span>Social media</span>
+            </div>
+            <button class="btn sm" type="button">Review</button>
+          </div>
+          <div class="okrow">
+            <span class="ic"><svg class="i"><use href="#doc"/></svg></span>
+            <div class="w">
+              <b>Quote: Marathi page, Rs 1,500</b>
+              <span>Requests</span>
+            </div>
+            <button class="btn sm" type="button">Review</button>
+          </div>
         </div>
-        <div class="actions" style="margin-top:14px"><a class="link" href="#">Review all <svg class="i" style="width:16px;height:16px"><use href="#arrow"/></svg></a></div>
+        <div class="actions" style="margin-top:16px"><a class="link" href="#">Review all 3 items <svg class="i" style="width:16px;height:16px"><use href="#arrow"/></svg></a></div>
       </aside>
     </div>
 
-    <p class="note">Mock for review. Judge structure, hierarchy and brand. Icons and figures are placeholders; the build uses the app's own icon set and real data.</p>
+    <!-- STATE 3: EMPTY STATE -->
+    <div class="grid" id="vEmpty" hidden>
+      <div class="stack">
+        <article class="card focal" aria-labelledby="emp1">
+          <div class="chead">
+            <span class="tile40"><svg class="i"><use href="#basket"/></svg></span>
+            <h2 id="emp1">Welcome to BrandBasket</h2>
+            <span class="pill next end">Get started</span>
+          </div>
+          <div class="task">
+            <h3>Choose your services to begin</h3>
+            <p>Pick Website, Social Media or both. We build and run everything for your business.</p>
+          </div>
+          <div class="actions">
+            <button class="btn" type="button">Add services to your plan</button>
+          </div>
+        </article>
+      </div>
+      <aside class="card" aria-labelledby="okEmp">
+        <div class="panel-h"><h2 id="okEmp">Needs your OK</h2><span class="count">0</span></div>
+        <div class="dashed">
+          <svg class="i"><use href="#check"/></svg>
+          <b>Nothing needs your OK right now.</b>
+          <span style="font-size:13px;color:var(--muted)">Items will appear once your services start.</span>
+        </div>
+      </aside>
+    </div>
+
+    <!-- STATE 4: ERROR STATE -->
+    <div class="grid" id="vError" hidden>
+      <div class="stack">
+        <div class="alert-strip" role="alert">
+          <svg class="i" style="width:22px;height:22px;color:var(--err)"><use href="#alert"/></svg>
+          <div style="flex:1">
+            <b>Action required on your accounts</b>
+            <p>Instagram disconnected because the connection token expired. Reconnect to keep scheduled posts going out.</p>
+          </div>
+          <button class="btn sm" type="button">Reconnect Instagram</button>
+        </div>
+
+        <article class="card focal" aria-labelledby="errFocal">
+          <div class="chead">
+            <span class="tile40" style="background:var(--err-wash);color:var(--err)"><svg class="i"><use href="#share"/></svg></span>
+            <div>
+              <h2 id="errFocal">Social media</h2>
+              <span class="pill err">Connection paused</span>
+            </div>
+            <span class="pill next end">Needs fix</span>
+          </div>
+          <div class="task">
+            <h3>Reconnect Instagram to resume posting</h3>
+            <p>Your Instagram login token expired. We cannot publish scheduled posts until you sign in again.</p>
+          </div>
+          <div class="actions">
+            <button class="btn" type="button">Sign in to Instagram</button>
+            <button class="btn sec" type="button">Dismiss</button>
+          </div>
+          <div class="status"><b>Status</b><i class="d err"></i><span>Paused until reconnected</span></div>
+        </article>
+      </div>
+
+      <aside class="card" aria-labelledby="okErr">
+        <div class="panel-h"><h2 id="okErr">Needs your OK</h2><span class="count">1</span></div>
+        <div class="okrow" style="margin-top:12px">
+          <span class="ic" style="background:var(--err-wash);color:var(--err)"><svg class="i"><use href="#alert"/></svg></span>
+          <div class="w">
+            <b>Instagram connection expired</b>
+            <span>Social media</span>
+          </div>
+          <button class="btn sm" type="button">Fix</button>
+        </div>
+      </aside>
+    </div>
+
+    <p class="note">Mock for review. Judge structure, hierarchy and brand. Icons and figures are placeholders; the build uses the app icon set and real data.</p>
   </main>
 </div>
 </div>
@@ -270,12 +481,26 @@ h1{font:700 32px/1.1 var(--display);margin:2px 0 0;letter-spacing:-.015em;text-w
 </nav>
 
 <script>
-const $=id=>document.getElementById(id);
-function setState(live){
-  $('vNew').hidden=live;$('vLive').hidden=!live;
-  $('sNew').setAttribute('aria-pressed',String(!live));$('sLive').setAttribute('aria-pressed',String(live));
-  $('sub').textContent=live?'Sweet Crust Bakery. 3 things need your OK.':'Sweet Crust Bakery. Two things to do this week.';
+const $ = id => document.getElementById(id);
+const views = ['vNew', 'vLive', 'vEmpty', 'vError'];
+const btns = ['btnNew', 'btnLive', 'btnEmpty', 'btnError'];
+function setTab(idx) {
+  views.forEach((v, i) => { $(v).hidden = (i !== idx); });
+  btns.forEach((b, i) => { $(b).setAttribute('aria-pressed', String(i === idx)); });
+  const subs = [
+    'Sweet Crust Bakery. Two things to do this week.',
+    'Sweet Crust Bakery. 3 things need your OK.',
+    'Welcome to BrandBasket. Get started below.',
+    'Sweet Crust Bakery. One issue needs your attention.'
+  ];
+  $('sub').textContent = subs[idx];
+  $('bellDot').style.display = (idx === 1 || idx === 3) ? 'block' : 'none';
 }
-$('sNew').onclick=()=>setState(false);$('sLive').onclick=()=>setState(true);
-$('book').onclick=()=>{$('book').textContent='Booked for '+$('day').value+', '+$('time').value};
+$('btnNew').onclick = () => setTab(0);
+$('btnLive').onclick = () => setTab(1);
+$('btnEmpty').onclick = () => setTab(2);
+$('btnError').onclick = () => setTab(3);
+$('bookBtn').onclick = () => { $('bookBtn').textContent = 'Booked for ' + $('day').value + ', ' + $('time').value; };
 </script>
+</body>
+</html>
