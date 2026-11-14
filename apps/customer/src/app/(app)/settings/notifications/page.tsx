@@ -14,7 +14,7 @@ export default async function NotificationsPage() {
   const rows = await load("settings.notifications", () => loadNotificationRows(customer));
   return (
     <>
-      <SettingsHeader current="/settings/notifications" showTeam={customer.role === "owner"} />
+      <SettingsHeader current="/settings/notifications" showTeam={customer.role === "owner"} showSocial={customer.services.includes("social")} />
       <PanelData data={rows} what="your notification settings" flush>
         {(data) => <NotificationTable rows={data} />}
       </PanelData>

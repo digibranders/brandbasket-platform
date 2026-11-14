@@ -14,7 +14,7 @@ export default async function TeamPage() {
   const [members, invites] = await Promise.all([load("team.members", () => loadMembers(customer)), load("team.invites", () => loadInvites(customer, now))]);
   return (
     <>
-      <SettingsHeader current="/settings/team" showTeam />
+      <SettingsHeader current="/settings/team" showTeam showSocial={customer.services.includes("social")} />
       <TeamPanels members={members} invites={invites} />
     </>
   );

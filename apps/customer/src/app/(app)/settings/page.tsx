@@ -11,10 +11,11 @@ export const metadata: Metadata = { title: "Settings" };
 
 /** Settings, Profile. Open to every member of a business, whatever its billing. */
 export default async function SettingsPage() {
-  const { user, role } = await requireCustomer();
+  const customer = await requireCustomer();
+  const { user, role } = customer;
   return (
     <>
-      <SettingsHeader current="/settings" showTeam={role === "owner"} />
+      <SettingsHeader current="/settings" showTeam={role === "owner"} showSocial={customer.services.includes("social")} />
       <Panel title="Your profile">
         <ProfileForm
           name={user.name}

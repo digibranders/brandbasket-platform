@@ -10,7 +10,7 @@ const TYPES = new Set(["image/jpeg", "image/png"]);
 /**
  * The picture of a post on the calendar: `GET /api/social-post-picture?src=<its address on the posting service>`. The posting service serves
  * poster pictures openly (the networks fetch them), but the browser asks here so the page's security rules need not name the posting service.
- * Only a signed-in customer with Social media, and only an address that is a poster picture of the configured posting service.
+ * Only a signed-in customer with Social media, and only an address that is a poster picture of the configured posting service (or of the pictures address, when that is set apart from the API).
  */
 export async function GET(request: Request): Promise<Response> {
   const src = new URL(request.url).searchParams.get("src") ?? "";
@@ -19,7 +19,7 @@ export async function GET(request: Request): Promise<Response> {
   try {
     const settings = socialAutoSettings();
     if (settings === null) return refuse(503);
-    if (!isPostingServicePicture(src, settings.baseUrl)) return refuse(400);
+    if (!isPostingServicePicture(src, settings.baseUrl) && !(settings.pictureUrl !== undefined && isPostingServicePicture(src, settings.pictureUrl))) return refuse(400);
     const answer = await fetch(src, { redirect: "error", cache: "no-store", signal: AbortSignal.timeout(10_000) });
     const type = answer.headers.get("content-type")?.split(";")[0]?.trim().toLowerCase() ?? "";
     if (!answer.ok || !TYPES.has(type)) return refuse(answer.status === 404 ? 404 : 502);

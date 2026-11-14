@@ -394,6 +394,7 @@ const CODE_WORDS: Readonly<Record<string, string>> = {
   CHANNEL_NOT_CONNECTED: "Connect an account for that network first, then try again.",
   NETWORK_ALREADY_THERE: "Your posts are already written for that network.",
   CONFLICT: "Start from your website first. The carousel is made from what it says.",
+  ONLY_CHANNEL: "This is your only connected account. Tick the box to confirm you want to disconnect it.",
   CAROUSEL_LIMIT_REACHED: "You have made this week's carousel already. You can make another next week.",
   CONNECTED_UNKNOWN: "We could not check which of your accounts are connected just now. Try again in a minute.",
   PICTURE_LIMIT_REACHED: "You have used this week's pictures for one of your networks. You can draw more from Monday.",

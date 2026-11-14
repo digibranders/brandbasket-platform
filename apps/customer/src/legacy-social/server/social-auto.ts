@@ -24,6 +24,8 @@ const settingsSchema = z.object({
   SOCIAL_AUTO_KEY: z.string().min(16, "SOCIAL_AUTO_KEY must be at least 16 characters"),
   /** Where social-auto sends the customer back to after a network's Allow page. It must be one of the addresses registered for our key. */
   SOCIAL_AUTO_RETURN_URL: z.url({ error: "SOCIAL_AUTO_RETURN_URL must be an absolute http(s) URL" }),
+  /** Where the posts' pictures are served, when that is not the address of the product API (a local setup serves them from another port). */
+  SOCIAL_AUTO_PICTURE_URL: z.url({ error: "SOCIAL_AUTO_PICTURE_URL must be an absolute http(s) URL" }).optional(),
 });
 
 export interface SocialAutoSettings {
@@ -31,6 +33,8 @@ export interface SocialAutoSettings {
   readonly baseUrl: string;
   readonly key: string;
   readonly returnUrl: string;
+  /** Where the pictures of posts are served when that is a different address from the API's; otherwise they come from `baseUrl`. */
+  readonly pictureUrl?: string;
 }
 
 /**
@@ -43,9 +47,9 @@ export function socialAutoSettings(env: Readonly<Record<string, string | undefin
   const origin = env.APP_ORIGIN?.trim();
   const returnUrl = env.SOCIAL_AUTO_RETURN_URL?.trim() || (origin ? `${origin.replace(/\/+$/, "")}/social` : undefined);
   if (!url && !key) return null;
-  const parsed = settingsSchema.safeParse({ SOCIAL_AUTO_URL: url, SOCIAL_AUTO_KEY: key, SOCIAL_AUTO_RETURN_URL: returnUrl });
+  const parsed = settingsSchema.safeParse({ SOCIAL_AUTO_URL: url, SOCIAL_AUTO_KEY: key, SOCIAL_AUTO_RETURN_URL: returnUrl, SOCIAL_AUTO_PICTURE_URL: env.SOCIAL_AUTO_PICTURE_URL?.trim() || undefined });
   if (!parsed.success) throw new Error(`Invalid social-auto configuration.\n${z.prettifyError(parsed.error)}`);
-  return { baseUrl: baseUrlOf(parsed.data.SOCIAL_AUTO_URL), key: parsed.data.SOCIAL_AUTO_KEY, returnUrl: parsed.data.SOCIAL_AUTO_RETURN_URL };
+  return { baseUrl: baseUrlOf(parsed.data.SOCIAL_AUTO_URL), key: parsed.data.SOCIAL_AUTO_KEY, returnUrl: parsed.data.SOCIAL_AUTO_RETURN_URL, ...(parsed.data.SOCIAL_AUTO_PICTURE_URL === undefined ? {} : { pictureUrl: baseUrlOf(parsed.data.SOCIAL_AUTO_PICTURE_URL) }) };
 }
 
 /**
@@ -590,6 +594,35 @@ export async function drawCarousel(settings: SocialAutoSettings, businessId: str
 export async function moveCarousel(settings: SocialAutoSettings, businessId: string, carouselId: string, day: string, actor: string, send: typeof fetch = fetch): Promise<void> {
   const answer = await call(settings, "/api/v1/carousels", { method: "POST", body: { externalId: businessId, action: "move", id: carouselId, day }, actor }, send);
   if (answer.status !== 200) throw refusal(answer, "the new day of the carousel");
+}
+
+/** What disconnecting a channel would stop: the posts still to go out there, on which days, and the work running for it. */
+export interface ChannelPreview {
+  readonly scheduled: number;
+  /** `YYYY-MM-DD`, oldest first. */
+  readonly days: readonly string[];
+  readonly approved: number;
+  /** The kinds of job running for the channel (`write`, `draw`, ...). */
+  readonly running: readonly string[];
+  /** It is her only connected channel, so disconnecting it needs her explicit confirmation. */
+  readonly onlyChannel: boolean;
+}
+
+/** Reads the posting service's preview of disconnecting a channel; null when it does not know the call (an older service) or the channel. */
+export async function loadChannelPreview(settings: SocialAutoSettings, businessId: string, channelId: string, send: typeof fetch = fetch): Promise<ChannelPreview | null> {
+  const answer = await call(settings, `/api/v1/channels?${new URLSearchParams({ externalId: businessId, channelId })}`, { method: "GET" }, send);
+  if (answer.status === 404 || answer.status === 501) return null;
+  if (answer.status !== 200) throw refusal(answer, "the channel");
+  const body = answer.body as { scheduled?: unknown; days?: unknown; approved?: unknown; running?: unknown; onlyChannel?: unknown } | null;
+  const count = (value: unknown): number => (typeof value === "number" && Number.isFinite(value) && value >= 0 ? Math.floor(value) : 0);
+  const strings = (value: unknown): string[] => (Array.isArray(value) ? value.filter((one): one is string => typeof one === "string") : []);
+  return { scheduled: count(body?.scheduled), days: strings(body?.days).map((day) => day.slice(0, 10)).sort(), approved: count(body?.approved), running: strings(body?.running), onlyChannel: body?.onlyChannel === true };
+}
+
+/** Disconnects one channel of the workspace. `confirmOnly` says she knows it is the only one connected. Idempotent: a channel already gone is fine. */
+export async function disconnectChannel(settings: SocialAutoSettings, businessId: string, channelId: string, confirmOnly: boolean, actor: string, send: typeof fetch = fetch): Promise<void> {
+  const answer = await call(settings, "/api/v1/channels", { method: "POST", body: { externalId: businessId, action: "disconnect", channelId, ...(confirmOnly ? { confirmOnly: true } : {}) }, actor }, send);
+  if (answer.status !== 200) throw refusal(answer, "the disconnect");
 }
 
 /** One slide of a carousel as a JPEG; null when it is not there. Asked for with the customer's own brand, so a customer sees only their own slides. */
