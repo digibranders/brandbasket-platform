@@ -12,10 +12,23 @@ describe("readBatches: the weeks of a plan", () => {
       batches: [batch({ weeks: [{ from: "2026-11-16", to: "2026-11-22", state: "waiting", postIds: ["p1"] }, { from: "2026-11-23", to: "2026-11-29", state: "drawn", postIds: ["p2"] }] })],
     });
     expect(read?.weeks).toEqual([
-      { from: "2026-11-16", to: "2026-11-22", state: "waiting", postIds: ["p1"], notDrawn: [], missingDays: [], replacementsLeft: null },
-      { from: "2026-11-23", to: "2026-11-29", state: "drawn", postIds: ["p2"], notDrawn: [], missingDays: [], replacementsLeft: null },
+      { from: "2026-11-16", to: "2026-11-22", state: "waiting", postIds: ["p1"], notDrawn: [], missingDays: [], replacementsLeft: null, openPostIds: [] },
+      { from: "2026-11-23", to: "2026-11-29", state: "drawn", postIds: ["p2"], notDrawn: [], missingDays: [], replacementsLeft: null, openPostIds: [] },
     ]);
     expect(read?.posts.map((one) => one.date)).toEqual(["2026-11-16", "2026-11-23"]);
+  });
+
+  it("reads a week drawn in rounds: which posts are still open, and which are drawn and final", () => {
+    const [read] = readBatches({
+      batches: [batch({ posts: [post("p1", { date: "2026-11-16", state: "kept", drawn: true, locked: true }), post("p2", { date: "2026-11-17", drawn: false, locked: false })], weeks: [{ from: "2026-11-16", to: "2026-11-22", state: "partly_drawn", postIds: ["p1", "p2"], openPostIds: ["p2"] }] })],
+    });
+    expect(read?.weeks?.[0]).toMatchObject({ state: "partly_drawn", openPostIds: ["p2"] });
+    expect(read?.posts.map((one) => [one.id, one.drawn, one.locked])).toEqual([
+      ["p1", true, true],
+      ["p2", false, false],
+    ]);
+    const [old] = readBatches({ batches: [batch()] });
+    expect(old?.posts[0]?.locked).toBeUndefined();
   });
 
   it("reads which dropped post a new topic replaces, and how many new topics a week still allows", () => {

@@ -182,10 +182,10 @@ export function BrandSwitcher({ view, current }: BrandSwitcherProps): ReactEleme
           if (next !== null && next !== current) select.run(selectBrandAction, { brand: next });
         }}
         options={live.map((brand) => ({ value: brand.externalId, label: brand.name }))}
-        className="w-52"
+        className="w-40 h-8! text-[0.8125rem]"
       />
       <button type="button" onClick={() => setManaging(true)} className={SMALL_SOFT}>
-        Brands
+        Add brands
       </button>
       {managing ? <ManageBrands view={view} current={current} onClose={() => setManaging(false)} /> : null}
     </>

@@ -1,3 +1,4 @@
+import { ArrowLeft } from "@phosphor-icons/react/dist/ssr";
 import Link from "next/link";
 import type { ReactElement } from "react";
 import { localDateIn } from "@brandbasket/shared/lib/calendar/local-date";
@@ -11,21 +12,28 @@ import { BrandControl } from "./brand-switcher";
 import { CarouselCard } from "./carousel-card";
 import { DismissibleNotice } from "./dismissible-notice";
 import { NetworksPanel } from "./networks-panel";
-import { SMALL_SOFT } from "./small-buttons";
 import { ReviewChannelsColumn, ReviewFlowProvider, ReviewWorkspace } from "./review-workspace";
 import { ReviewRefresher } from "./review-refresher";
 
 /** Look over the posts written from the website: the facts they came from, the words for each network, and the pictures. */
 export function ReviewView({ review, canChange = true }: { readonly review: SocialReview; /** False for a viewer, who may look at the carousel but not decide it. */ readonly canChange?: boolean }): ReactElement {
   const active = review.jobs.find(jobIsActive);
+  /** The batches her own topics are written into: each is a batch of one post, shown with the topic and not among the week's topics. */
+  const ownBatchIds = new Set(review.topicRequests.flatMap((request) => (request.batchId === null ? [] : [request.batchId])));
+  const ownBusy = review.topicRequests.some((request) => request.state === "writing" || request.state === "drawing");
   return (
     <ReviewFlowProvider
-      groups={groupReview(review.batches, [...review.waiting, ...review.approved], review.topics)}
+      groups={groupReview(
+        review.batches.filter((batch) => !ownBatchIds.has(batch.id)),
+        [...review.waiting, ...review.approved].filter((poster) => !ownBatchIds.has(poster.batchId)),
+        review.topics.filter((topic) => !ownBatchIds.has(topic.batchId)),
+      )}
       drawing={review.jobs.filter((job) => job.kind === "draw" && jobIsActive(job) && job.batchId !== undefined).map((job) => job.batchId ?? "")}
       reasons={review.reasons}
       channels={review.channels}
       replacing={replaceStates(review.jobs)}
       today={localDateIn(BRAND_TIME_ZONE, new Date())}
+      own={{ requests: review.topicRequests, batches: review.batches.filter((batch) => ownBatchIds.has(batch.id)), posters: [...review.waiting, ...review.approved].filter((poster) => ownBatchIds.has(poster.batchId)), canChange }}
     >
       {/* On a wide screen the channels column steps out of the shell's gutter and sits against the menu, as on the Posts and Analytics pages. */}
       <div className="flex flex-col gap-6 lg:-mt-5 lg:-ml-gutter lg:flex-row lg:gap-8">
@@ -33,16 +41,20 @@ export function ReviewView({ review, canChange = true }: { readonly review: Soci
         <div className="order-first min-w-0 flex-1 lg:order-none lg:pt-5">
           <div className="mr-auto grid w-full max-w-[97.5rem] grid-cols-[minmax(0,1fr)] gap-6 md:gap-8">
             <header className="flex flex-wrap items-start justify-between gap-4">
-              <div className="min-w-0">
-                <h1 className="type-title text-ink">Look over your posts</h1>
-                <p className="mt-1 type-meta">Check what we found, keep the posts you like, and approve the pictures. Nothing is drawn or posted until you say so.</p>
-              </div>
-              <div className="flex flex-wrap items-center gap-2">
-                {review.brand == null ? null : <BrandControl view={review.brand.view} current={review.brand.externalId} name={review.brand.name} />}
-                <Link href="/social" className={SMALL_SOFT}>
-                  Back to Social media
+              <div className="flex min-w-0 flex-1 basis-80 items-start gap-2">
+                <Link href="/social" aria-label="Back to Social media" title="Back to Social media" className="mt-0.5 grid size-8 shrink-0 place-items-center rounded-lg text-ink-2 no-underline transition-colors hover:bg-sunken hover:text-ink">
+                  <ArrowLeft size={18} weight="bold" aria-hidden="true" />
                 </Link>
+                <div className="min-w-0">
+                  <h1 className="type-title text-ink">See posts</h1>
+                  <p className="mt-1 type-meta">Check what we found, keep the posts you like, and approve the pictures. Nothing is drawn or posted until you say so.</p>
+                </div>
               </div>
+              {review.brand == null ? null : (
+                <div className="flex shrink-0 flex-wrap items-center gap-2">
+                  <BrandControl view={review.brand.view} current={review.brand.externalId} name={review.brand.name} />
+                </div>
+              )}
             </header>
       {review.unavailable ? (
         <p role="alert" className="text-[0.8125rem] font-semibold text-error">
@@ -64,7 +76,7 @@ export function ReviewView({ review, canChange = true }: { readonly review: Soci
           </ul>
         </DismissibleNotice>
       )}
-      <ReviewRefresher active={active !== undefined} />
+      <ReviewRefresher active={active !== undefined || ownBusy} />
       {active === undefined ? null : (
         <p role="status" className="rounded-xl bg-warn-wash px-4 py-3 text-[0.84375rem] font-semibold text-warn">
           {jobLine(active).replace(/\.$/, "")}. This page updates when it is ready.

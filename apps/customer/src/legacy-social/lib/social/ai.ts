@@ -13,7 +13,7 @@ const platformSchema = z.enum(CHANNEL_PLATFORMS);
 export const jobSchema = z.object({
   id: z.string().min(1),
   /** `write` is a batch of written posts; `draw` is the pictures for the posts that were kept; `network` is the same posts written for one more network. */
-  kind: z.enum(["write", "draw", "network", "carousel", "replace"]),
+  kind: z.enum(["write", "draw", "network", "carousel", "replace", "topic"]),
   state: z.enum(["queued", "running", "done", "failed"]),
   /** 1 to 4 while it runs: reading the website, writing, drawing, putting the results in review. */
   step: z.number().int().optional(),
@@ -67,6 +67,10 @@ const writtenPostSchema = z.object({
   date: z.string().optional(),
   /** The time of day it goes out, `HH:MM` India time, when the posting service says. */
   time: z.string().regex(/^\d{2}:\d{2}$/).optional(),
+  /** Sent to be drawn, and has (or is getting) pictures. */
+  drawn: z.boolean().optional(),
+  /** Its choice, words and day are final. */
+  locked: z.boolean().optional(),
   /** Why a kept topic got no picture in a finished draw, in the posting service's own sentence; the topic is open again. */
   notDrawn: z.object({ code: z.string(), message: z.string() }).optional(),
   /** The dropped post this post was written to replace. */
@@ -89,6 +93,10 @@ export interface WrittenPost {
   readonly date: string | null;
   /** The time of day it goes out, `HH:MM`, or null when the posting service does not say (then 10:00). */
   readonly time?: string | null;
+  /** Sent to be drawn, and has (or is getting) pictures; undefined when the posting service does not say. */
+  readonly drawn?: boolean;
+  /** Its choice, words and day are final; undefined when the posting service does not say (then the week's own state decides). */
+  readonly locked?: boolean;
   /** Set when this kept topic got no picture in a finished draw: the reason in plain words. The topic is open again to keep, drop and edit. */
   readonly notDrawn: { readonly code: string; readonly message: string } | null;
   /** The id of the dropped post this one replaces, or null. */
@@ -102,8 +110,10 @@ export interface BatchWeek {
   readonly from: string;
   readonly to: string;
   /** waiting: choices open; drawing: pictures being made; drawn: final; not_drawn: the draw ran but no kept topic got a picture; lapsed: the week passed before its pictures were drawn. */
-  readonly state: "waiting" | "drawing" | "drawn" | "not_drawn" | "lapsed" | "empty";
+  readonly state: "waiting" | "drawing" | "partly_drawn" | "drawn" | "not_drawn" | "lapsed" | "empty";
   readonly postIds: readonly string[];
+  /** The posts of this week that can still be kept, dropped, changed or moved; absent when none (or the week is closed). */
+  readonly openPostIds?: readonly string[];
   /** The kept topics of a drawn week that have no picture, each with its reason; empty when every kept topic has one. */
   readonly notDrawn: readonly { readonly postId: string; readonly code: string; readonly message: string }[];
   /** Days of this week with no post, `YYYY-MM-DD`; empty when none is missing. */
@@ -142,8 +152,9 @@ const batchSchema = z.object({
 const batchWeekSchema = z.object({
   from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   to: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-  state: z.enum(["waiting", "drawing", "drawn", "not_drawn", "lapsed", "empty"]),
+  state: z.enum(["waiting", "drawing", "partly_drawn", "drawn", "not_drawn", "lapsed", "empty"]),
   postIds: z.array(z.string()),
+  openPostIds: z.array(z.string()).optional(),
   notDrawn: z.array(z.object({ postId: z.string(), code: z.string(), message: z.string() })).optional(),
   /** Days of the week that were asked for but have no post (the writer could not make one). */
   missingDays: z.array(z.string()).optional(),
@@ -243,11 +254,11 @@ export function readBatches(body: unknown): WrittenBatch[] {
       if (!post.success) return [];
       const captions: Partial<Record<ChannelPlatform, string>> = {};
       for (const network of networks) captions[network] = captionText(post.data.captions?.[network]) ?? post.data.caption;
-      return [{ id: post.data.id, headline: post.data.headline, caption: post.data.caption, captions, state: post.data.state, edited: post.data.edited === true, advice: post.data.advice ?? null, date: post.data.date?.slice(0, 10) ?? null, time: post.data.time ?? null, notDrawn: post.data.notDrawn ?? null, replaces: post.data.replaces ?? null, replacedBy: post.data.replacedBy ?? null }];
+      return [{ id: post.data.id, headline: post.data.headline, caption: post.data.caption, captions, state: post.data.state, edited: post.data.edited === true, advice: post.data.advice ?? null, date: post.data.date?.slice(0, 10) ?? null, time: post.data.time ?? null, ...(post.data.drawn === undefined ? {} : { drawn: post.data.drawn }), ...(post.data.locked === undefined ? {} : { locked: post.data.locked }), notDrawn: post.data.notDrawn ?? null, replaces: post.data.replaces ?? null, replacedBy: post.data.replacedBy ?? null }];
     });
     // Weeks are shown only when every one of them can be read: one unreadable week would hide posts, so the batch is shown as one piece.
     const weeks = batch.data.weeks?.map((entry) => batchWeekSchema.safeParse(entry));
-    const readable = weeks !== undefined && weeks.length > 0 && weeks.every((week) => week.success) ? weeks.flatMap((week) => (week.success ? [{ ...week.data, notDrawn: week.data.notDrawn ?? [], missingDays: week.data.missingDays ?? [], replacementsLeft: week.data.replacementsLeft ?? null }] : [])) : null;
+    const readable = weeks !== undefined && weeks.length > 0 && weeks.every((week) => week.success) ? weeks.flatMap((week) => (week.success ? [{ ...week.data, notDrawn: week.data.notDrawn ?? [], missingDays: week.data.missingDays ?? [], replacementsLeft: week.data.replacementsLeft ?? null, openPostIds: week.data.openPostIds ?? [] }] : [])) : null;
     return [{ id: batch.data.id, createdAt: batch.data.createdAt, networks, posts, rules, weeks: readable }];
   });
 }
@@ -353,6 +364,7 @@ const STEP_WORDS: Readonly<Record<number, string>> = { 1: "Reading your website"
 
 /** What to tell the customer about a job, in plain words. */
 export function jobLine(job: Pick<SiteJob, "kind" | "state" | "step">): string {
+  if (job.kind === "topic") return job.state === "failed" ? "We could not write your topic. You can try again." : job.state === "done" ? "Your topic is ready to look at." : job.state === "queued" ? "Waiting to start." : "Writing your topic";
   if (job.kind === "replace") return job.state === "failed" ? "We could not write a new topic this time. You can try again." : job.state === "done" ? "Your new topic is ready to look at." : job.state === "queued" ? "Waiting to start." : "Writing a new topic";
   if (job.kind === "carousel") return job.state === "failed" ? "We could not make your carousel. You can try again." : job.state === "done" ? "Your carousel is ready to look at." : job.state === "queued" ? "Waiting to start." : "Making your carousel";
   if (job.state === "failed") return job.kind === "draw" ? "The pictures could not be drawn. You can try again." : job.kind === "network" ? "We could not write your posts for the new network. You can try again." : "We could not write your posts. You can try again.";
@@ -370,6 +382,9 @@ const CODE_WORDS: Readonly<Record<string, string>> = {
   INVALID_SITE: "That does not look like a website address. Check it and try again.",
   SITE_MISMATCH: "Your posts are written from the website you gave us first. If your website has changed, ask us and we will update it.",
   INVALID_NETWORKS: "Choose at least one network to write for.",
+  CONSENT_REQUIRED: "Tick the box to agree first, then choose the channels.",
+  INVALID_DAYS: "Choose at least one day of the week.",
+  CHANNEL_DAYS_DIFFER: "Your channels post on different days, so their posts are written one channel at a time. Start them one by one.",
   LAST_BRAND: "Keep at least one brand. Add another before you archive this one.",
   BRAND_LIMIT_REACHED: "You have as many brands as your plan allows. Ask us to allow more.",
   GROUP_MISMATCH: "Something went wrong on our side. Reload the page and try again.",
@@ -421,4 +436,63 @@ export const REJECT_REASON_WORDS: Readonly<Record<string, string>> = {
   repetitive: "It repeats an earlier post",
   style: "It does not sound like us",
   other: "Something else",
+};
+
+const topicRequestSchema = z.object({
+  id: z.string().min(1),
+  week: z.object({ from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/), to: z.string().regex(/^\d{4}-\d{2}-\d{2}$/) }),
+  goesOutOn: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  goesOutAt: z.string().regex(/^\d{2}:\d{2}$/),
+  state: z.enum(["writing", "waiting_for_words", "drawing", "drawn", "not_made"]),
+  reason: z.string().optional(),
+  createdAt: z.string(),
+  batchId: z.string().optional(),
+  postId: z.string().optional(),
+  words: z.object({ headline: z.string(), captions: z.record(z.string(), z.unknown()).optional() }).optional(),
+  picturesToDraw: z.number().int().nonnegative().optional(),
+});
+
+/** A topic the customer wrote in her own words: one extra post for one day, written only from her words. */
+export interface TopicRequest {
+  readonly id: string;
+  /** The Monday and Sunday of the week it falls in. */
+  readonly week: { readonly from: string; readonly to: string };
+  /** The day and time (India) it goes out. */
+  readonly goesOutOn: string;
+  readonly goesOutAt: string;
+  /** writing: being written; waiting_for_words: written, for her to read and keep; drawing: its pictures are being made; drawn: pictures wait for her; not_made: it did not become a post (see `reason`). */
+  readonly state: "writing" | "waiting_for_words" | "drawing" | "drawn" | "not_made";
+  readonly reason: string | null;
+  readonly createdAt: string;
+  /** Where its written post is, to keep, change and draw it with the same calls as any other post. */
+  readonly batchId: string | null;
+  readonly postId: string | null;
+  /** The pictures drawing it would make now: the cost to show before she confirms. */
+  readonly picturesToDraw: number;
+}
+
+/** The requests of a list answer (`{ requests: [...] }`), newest first as social-auto sends them. */
+export function readTopicRequests(body: unknown): TopicRequest[] {
+  const list = (body as { requests?: unknown } | null)?.requests;
+  if (!Array.isArray(list)) return [];
+  return list.flatMap((item): TopicRequest[] => {
+    const parsed = topicRequestSchema.safeParse(item);
+    if (!parsed.success) return [];
+    const one = parsed.data;
+    return [{ id: one.id, week: one.week, goesOutOn: one.goesOutOn, goesOutAt: one.goesOutAt, state: one.state, reason: one.reason ?? null, createdAt: one.createdAt, batchId: one.batchId ?? null, postId: one.postId ?? null, picturesToDraw: one.picturesToDraw ?? 0 }];
+  });
+}
+
+/** The customer's words for why a topic did not become a post. */
+export const TOPIC_NOT_MADE_WORDS: Readonly<Record<string, string>> = {
+  NOT_WRITTEN: "We could not write a post from those words. You can try again with a few more details.",
+  TEXT_REFUSED: "We could not use those words as they are. Say it in plain words, without claims we cannot check.",
+  DROPPED: "You dropped this topic.",
+  PUT_AWAY: "This topic was put away.",
+  WEEK_PASSED: "Its week has passed.",
+  DRAW_FAILED: "The pictures could not be drawn. You can ask again.",
+  NO_PICTURE_ROOM: "No pictures are left this week for one of your channels. You can draw it from Monday.",
+  NO_PICTURE: "No picture could be made for it.",
+  HEADLINE_TOO_WEAK: "Its headline is too weak to draw. Change the headline and draw again.",
+  FACT_OUT_OF_DATE: "Something in it is out of date. Write it again with the new details.",
 };

@@ -2,10 +2,11 @@ import "server-only";
 import type { CustomerContext } from "@/lib/guards";
 import { reportError } from "@/lib/report";
 import { brandOf, type SocialBrand } from "@/features/social/brand";
-import type { BatchPlan, ExpiredBatch, Poster, SiteJob, Topic, WrittenBatch } from "@/legacy-social/lib/social/ai";
+import type { BatchPlan, ExpiredBatch, Poster, SiteJob, Topic, TopicRequest, WrittenBatch } from "@/legacy-social/lib/social/ai";
 import type { CarouselDetail, CarouselSummary } from "@/legacy-social/lib/social/carousel";
 import { CHANNEL_PLATFORMS, type ChannelPlatform } from "@/legacy-social/lib/social/auto";
-import { loadBatches, loadCarousel, loadCarouselList, loadChannels, loadPictureLimits, loadPosters, loadSiteJobs, loadTopics, loadWorkspaceFacts, socialAutoSettings, type PictureLimits } from "./social-auto";
+import { addableNetworks, type PostingDays } from "@/legacy-social/lib/social/schedule";
+import { loadBatches, loadCarousel, loadCarouselList, loadChannels, loadPictureLimits, loadPosters, loadSchedule, loadSiteJobs, loadTopicRequests, loadTopics, loadWorkspaceFacts, socialAutoSettings, type PictureLimits } from "./social-auto";
 
 /** Everything the review page shows: the customer's batches of written posts and where they stand, and the pictures. */
 export interface SocialReview {
@@ -14,6 +15,8 @@ export interface SocialReview {
   /** The pictures waiting for the customer, plus any that need confirming again. */
   readonly waiting: readonly Poster[];
   readonly approved: readonly Poster[];
+  /** The topics she wrote in her own words, newest first. */
+  readonly topicRequests: readonly TopicRequest[];
   /** What was put away because nobody decided within 14 days, so the customer is told. */
   readonly expired: { readonly batches: readonly ExpiredBatch[]; readonly pictures: readonly Poster[] };
   /** The connected networks some post idea has no version for yet, so the customer can ask for them. */
@@ -38,7 +41,7 @@ export interface SocialReview {
   readonly unavailable: boolean;
 }
 
-const EMPTY: SocialReview = { jobs: [], batches: [], waiting: [], approved: [], channels: [], expired: { batches: [], pictures: [] }, missingNetworks: [], topics: [], reasons: [], limits: null, carousels: [], carousel: null, weeklyCarousel: false, canMakeCarousel: false, unavailable: true };
+const EMPTY: SocialReview = { jobs: [], batches: [], waiting: [], approved: [], channels: [], topicRequests: [], expired: { batches: [], pictures: [] }, missingNetworks: [], topics: [], reasons: [], limits: null, carousels: [], carousel: null, weeklyCarousel: false, canMakeCarousel: false, unavailable: true };
 
 /** Asks social-auto for each part. Each is its own failure: what could be read is shown, and the page says the rest could not be. */
 export async function loadSocialReview(customer: Pick<CustomerContext, "businessId" | "businessName">): Promise<SocialReview> {
@@ -57,7 +60,7 @@ export async function loadSocialReview(customer: Pick<CustomerContext, "business
     }
   };
   // One read of every picture: the "open" filter leaves out one that did not pass the checks, which the customer must still see.
-  const [jobs, written, pictures, topics, limits, carouselList, facts, channels] = await Promise.all([
+  const [jobs, written, pictures, topics, limits, carouselList, facts, channels, topicRequests, postingDays] = await Promise.all([
     read("the jobs", [] as SiteJob[], () => loadSiteJobs(settings, id)),
     read("the written posts", { batches: [] as WrittenBatch[], expired: [] as ExpiredBatch[], plan: null as BatchPlan | null }, () => loadBatches(settings, id)),
     read("the pictures", { posters: [] as Poster[], reasons: [] as string[] }, () => loadPosters(settings, id, "all")),
@@ -66,6 +69,8 @@ export async function loadSocialReview(customer: Pick<CustomerContext, "business
     read("the carousels", { carousels: [] as CarouselSummary[], weekly: false }, () => loadCarouselList(settings, id)),
     read("the website", { website: null as string | null, notices: [] }, () => loadWorkspaceFacts(settings, id)),
     read("the channels", [] as Awaited<ReturnType<typeof loadChannels>>, () => loadChannels(settings, id)),
+    read("her own topics", [] as TopicRequest[], () => loadTopicRequests(settings, id)),
+    read("the posting days", null as PostingDays | null, () => loadSchedule(settings, id)),
   ]);
   const carousels = carouselList.carousels;
   const newest = carousels[0];
@@ -82,7 +87,8 @@ export async function loadSocialReview(customer: Pick<CustomerContext, "business
       const found = channels.find((channel) => channel.platform === platform);
       return found === undefined ? [] : [{ platform, account: found.account }];
     }),
-    missingNetworks: [...new Set(topics.flatMap((topic) => topic.missing))],
+    topicRequests,
+    missingNetworks: addableNetworks(topics, written.batches, postingDays),
     topics,
     reasons: pictures.reasons,
     limits,

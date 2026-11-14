@@ -6,7 +6,7 @@ import { loadSocialReview } from "@/legacy-social/server/social-review";
 import { requirePaid } from "@/lib/guards";
 import { notFound } from "next/navigation";
 
-export const metadata: Metadata = { title: "Look over your posts" };
+export const metadata: Metadata = { title: "See posts" };
 
 /** The posts written from the customer's website, to look over: the facts, the words for each network, the pictures. */
 export default async function SocialReviewPage() {

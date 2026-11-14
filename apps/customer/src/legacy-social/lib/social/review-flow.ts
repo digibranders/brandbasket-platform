@@ -65,12 +65,24 @@ export function firstOpenWeek(groups: readonly ReviewGroup[], weeks: readonly Fl
 /** Whether the pictures of this week are asked for, so its choices are final. A kept topic that got no picture stays open. */
 export const weekAsked = (week: FlowWeek): boolean => week.state === "drawing" || week.state === "drawn";
 
+/**
+ * Whether a topic's choice, words and day are final: the posting service says so per post; for one that does not (an older answer), the
+ * whole week is final once its pictures were asked for, except a kept topic that got no picture.
+ */
+export const postFinal = (card: ReviewCard, week: FlowWeek): boolean => card.written?.locked ?? (weekAsked(week) && card.written?.notDrawn == null);
+
 /** The pictures of one channel among a week's cards. */
 export const picturesOn = (cards: readonly ReviewCard[], channel: ChannelPlatform): Poster[] => cards.flatMap((card) => card.pictures.filter((poster) => poster.network === channel));
 
 /** What a channel has left to do in a week, for its row in the sidebar: topics to decide while the week is open, pictures to approve once it is drawn. */
 export function channelTodo(cards: readonly ReviewCard[], week: FlowWeek | undefined, channel: ChannelPlatform): { readonly count: number; readonly words: string } {
   if (week === undefined) return { count: 0, words: "Nothing yet" };
+  if (week.state === "partly_drawn") {
+    const topics = cards.filter((card) => card.written?.state === "pending" && !postFinal(card, week)).length;
+    const pictures = picturesOn(cards, channel).filter((poster) => poster.status === "pending" || poster.status === "held").length;
+    const words = topics > 0 && pictures > 0 ? `${topics} to decide, ${pictures} to approve` : topics > 0 ? `${topics} to decide` : pictures > 0 ? `${pictures} to approve` : "Decided";
+    return { count: topics + pictures, words };
+  }
   if (!weekAsked(week)) {
     const count = cards.filter((card) => card.written?.state === "pending").length;
     return { count, words: count === 0 ? "Decided" : `${count} to decide` };

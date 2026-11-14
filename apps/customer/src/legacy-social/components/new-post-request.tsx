@@ -1,7 +1,8 @@
 "use client";
 
 import { Plus } from "@phosphor-icons/react/dist/ssr";
-import { createContext, useCallback, useContext, useMemo, useState, type ReactElement, type ReactNode } from "react";
+import { useSearchParams } from "next/navigation";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactElement, type ReactNode } from "react";
 import { SMALL_ACCENT } from "./small-buttons";
 
 interface NewPostRequests {
@@ -16,6 +17,14 @@ const RequestContext = createContext<NewPostRequests | null>(null);
 export function NewPostRequestProvider({ children }: { readonly children: ReactNode }): ReactElement {
   const [count, setCount] = useState(0);
   const request = useCallback((): void => setCount((value) => value + 1), []);
+  // The Analytics page's New post sends her here with ?newpost=1: the window opens once, as if New post had been pressed on this page.
+  const wanted = useSearchParams().get("newpost") === "1";
+  const opened = useRef(false);
+  useEffect(() => {
+    if (!wanted || opened.current) return;
+    opened.current = true;
+    request();
+  }, [wanted, request]);
   const value = useMemo(() => ({ count, request }), [count, request]);
   return <RequestContext value={value}>{children}</RequestContext>;
 }

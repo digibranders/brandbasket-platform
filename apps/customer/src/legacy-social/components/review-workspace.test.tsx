@@ -1,9 +1,9 @@
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { Poster, WrittenBatch, WrittenPost } from "@/legacy-social/lib/social/ai";
+import type { Poster, TopicRequest, WrittenBatch, WrittenPost } from "@/legacy-social/lib/social/ai";
 import type { ReviewGroup } from "@/legacy-social/lib/social/review-cards";
-import { decideBatchAction, decidePosterAction, drawBatchAction, moveTopicAction, replaceTopicAction } from "@/legacy-social/review-actions";
-import { ReviewChannelsColumn, ReviewFlowProvider, ReviewWorkspace } from "./review-workspace";
+import { askTopicAction, decideBatchAction, decidePosterAction, drawBatchAction, moveTopicAction, replaceTopicAction } from "@/legacy-social/review-actions";
+import { ReviewChannelsColumn, ReviewFlowProvider, ReviewWorkspace, type OwnTopicsData } from "./review-workspace";
 
 vi.mock("@/legacy-social/actions", () => ({ connectChannelAction: vi.fn(async () => undefined) }));
 vi.mock("@/legacy-social/review-actions", () => ({
@@ -12,6 +12,7 @@ vi.mock("@/legacy-social/review-actions", () => ({
   drawBatchAction: vi.fn(async () => ({ status: "saved" })),
   replaceTopicAction: vi.fn(async () => ({ status: "saved" })),
   moveTopicAction: vi.fn(async () => ({ status: "saved" })),
+  askTopicAction: vi.fn(async () => ({ status: "saved" })),
 }));
 
 const post = (id: string, state: WrittenPost["state"], date: string, extra: Partial<WrittenPost> = {}): WrittenPost => ({ id, headline: `Headline ${id}`, caption: "Words", captions: { instagram: "IG words", facebook: "FB words" }, state, edited: false, advice: null, date, notDrawn: null, ...extra });
@@ -22,9 +23,9 @@ const channels = [
 ] as const;
 
 /** The channels column and the workspace beside it, as the review page lays them out. */
-function Screen({ groups, channels: rows = channels, replacing, today }: { readonly groups: ReviewGroup[]; readonly today?: string; readonly replacing?: Record<string, "writing" | "failed">; readonly channels?: ReadonlyArray<{ readonly platform: "instagram" | "facebook" | "linkedin" | "google"; readonly account: string }> }) {
+function Screen({ groups, channels: rows = channels, replacing, today, own }: { readonly own?: OwnTopicsData; readonly groups: ReviewGroup[]; readonly today?: string; readonly replacing?: Record<string, "writing" | "failed">; readonly channels?: ReadonlyArray<{ readonly platform: "instagram" | "facebook" | "linkedin" | "google"; readonly account: string }> }) {
   return (
-    <ReviewFlowProvider groups={groups} reasons={[]} channels={rows} {...(replacing === undefined ? {} : { replacing })} {...(today === undefined ? {} : { today })}>
+    <ReviewFlowProvider groups={groups} reasons={[]} channels={rows} {...(replacing === undefined ? {} : { replacing })} {...(today === undefined ? {} : { today })} {...(own === undefined ? {} : { own })}>
       <ReviewChannelsColumn />
       <ReviewWorkspace />
     </ReviewFlowProvider>
@@ -67,6 +68,8 @@ describe("ReviewWorkspace topics", () => {
     await waitFor(() => expect(vi.mocked(decideBatchAction)).toHaveBeenCalledTimes(1));
     const form = vi.mocked(decideBatchAction).mock.calls[0]?.[0] as FormData;
     expect([form.get("batchId"), form.get("postId"), form.get("action")]).toEqual(["b1", "p1", "keep"]);
+    // A choice is ignored while the one before it is still on its way, so wait for the buttons to come back on before the next click.
+    await waitFor(() => expect((screen.getAllByRole("button", { name: "Drop this topic" })[0] as HTMLButtonElement).disabled).toBe(false));
     fireEvent.click(screen.getAllByRole("button", { name: "Drop this topic" })[0] as HTMLElement);
     await waitFor(() => expect(vi.mocked(decideBatchAction)).toHaveBeenCalledTimes(2));
     expect((vi.mocked(decideBatchAction).mock.calls[1]?.[0] as FormData).get("action")).toBe("drop");
@@ -92,12 +95,158 @@ describe("ReviewWorkspace topics", () => {
     render(<Screen groups={groups} />);
     fireEvent.click(screen.getByRole("button", { name: "Draw pictures for 1 kept" }));
     const dialog = await screen.findByRole("dialog");
-    expect(within(dialog).getByText(/It locks this week/)).toBeTruthy();
+    expect(within(dialog).getByText(/It locks only this topic/)).toBeTruthy();
     expect(vi.mocked(drawBatchAction)).not.toHaveBeenCalled();
     fireEvent.click(within(dialog).getByRole("button", { name: "Draw pictures" }));
     await waitFor(() => expect(vi.mocked(drawBatchAction)).toHaveBeenCalledTimes(1));
     const form = vi.mocked(drawBatchAction).mock.calls[0]?.[0] as FormData;
     expect([form.get("batchId"), form.get("week")]).toEqual(["b1", "2026-11-16"]);
+  });
+});
+
+const request = (over: Partial<TopicRequest> = {}): TopicRequest => ({ id: "t-1", week: { from: "2026-11-16", to: "2026-11-22" }, goesOutOn: "2026-11-16", goesOutAt: "10:00", state: "writing", reason: null, createdAt: "2026-11-13T10:00:00Z", batchId: null, postId: null, picturesToDraw: 0, ...over });
+const ownBatch = (state: WrittenPost["state"] = "pending"): WrittenBatch => ({ id: "own-1", createdAt: "2026-11-13T10:00:00Z", networks: ["instagram", "facebook"], posts: [post("o1", state, "2026-11-16", { headline: "Diwali thali special", captions: { instagram: "20% off all thalis until 2 Nov.", facebook: "20% off all thalis until 2 Nov, Facebook." } })], rules: {}, weeks: null });
+const weekGroups = () => open([post("p1", "pending", "2026-11-16")], [], "waiting");
+const ownData = (requests: TopicRequest[], batches: WrittenBatch[] = [], posters: Poster[] = [], canChange = true): OwnTopicsData => ({ requests, batches, posters, canChange });
+
+describe("ReviewWorkspace her own topic of the week", () => {
+  it("offers to write one for the week when she has none, and sends her words with the week", async () => {
+    render(<Screen groups={weekGroups()} today="2026-11-13" own={ownData([])} />);
+    expect(screen.getByText(/One a week\./)).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Write your own for this week." }));
+    const box = screen.getByRole("textbox", { name: "Your topic" });
+    const send = screen.getByRole("button", { name: "Write my post" }) as HTMLButtonElement;
+    expect(send.disabled).toBe(true);
+    fireEvent.change(box, { target: { value: "Diwali special: 20% off all thalis until 2 Nov." } });
+    expect(send.disabled).toBe(false);
+    fireEvent.click(send);
+    await waitFor(() => expect(vi.mocked(askTopicAction)).toHaveBeenCalledTimes(1));
+    const form = vi.mocked(askTopicAction).mock.calls[0]?.[0] as FormData;
+    expect([form.get("text"), form.get("week")]).toEqual(["Diwali special: 20% off all thalis until 2 Nov.", "2026-11-16"]);
+  });
+
+  it("shows the posting service's words when it refuses them", async () => {
+    vi.mocked(askTopicAction).mockResolvedValueOnce({ status: "error", message: "Links are not read in this box. Write the details in words." });
+    render(<Screen groups={weekGroups()} today="2026-11-13" own={ownData([])} />);
+    fireEvent.click(screen.getByRole("button", { name: "Write your own for this week." }));
+    fireEvent.change(screen.getByRole("textbox", { name: "Your topic" }), { target: { value: "See www.example.com for the menu" } });
+    fireEvent.click(screen.getByRole("button", { name: "Write my post" }));
+    expect(await screen.findByText(/Links are not read in this box/)).toBeTruthy();
+  });
+
+  it("offers nothing to a viewer, for a week that has passed, or when she already wrote one", () => {
+    const { unmount } = render(<Screen groups={weekGroups()} today="2026-11-13" own={ownData([], [], [], false)} />);
+    expect(screen.queryByRole("button", { name: "Write your own for this week." })).toBeNull();
+    unmount();
+    const passed = render(<Screen groups={weekGroups()} today="2026-11-22" own={ownData([])} />);
+    expect(screen.queryByRole("button", { name: "Write your own for this week." })).toBeNull();
+    passed.unmount();
+    render(<Screen groups={weekGroups()} today="2026-11-13" own={ownData([request()])} />);
+    expect(screen.queryByRole("button", { name: "Write your own for this week." })).toBeNull();
+    expect(screen.getByText(/Writing your post from your words/)).toBeTruthy();
+  });
+
+  it("shows the written words to read, and keeps and draws the post in one go", async () => {
+    render(<Screen groups={weekGroups()} today="2026-11-13" own={ownData([request({ state: "waiting_for_words", batchId: "own-1", postId: "o1", picturesToDraw: 2 })], [ownBatch()])} />);
+    expect(screen.getByText("Diwali thali special")).toBeTruthy();
+    expect(screen.getByText("20% off all thalis until 2 Nov.")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Keep and draw 2 pictures" }));
+    await waitFor(() => expect(vi.mocked(drawBatchAction)).toHaveBeenCalledTimes(1));
+    const keep = vi.mocked(decideBatchAction).mock.calls[0]?.[0] as FormData;
+    expect([keep.get("batchId"), keep.get("postId"), keep.get("action")]).toEqual(["own-1", "o1", "keep"]);
+    expect((vi.mocked(drawBatchAction).mock.calls[0]?.[0] as FormData).get("batchId")).toBe("own-1");
+  });
+
+  it("does not ask to keep again a post that is kept, and stops at a refusal", async () => {
+    vi.mocked(drawBatchAction).mockResolvedValueOnce({ status: "error", message: "You have used this week's pictures for one of your networks." });
+    render(<Screen groups={weekGroups()} today="2026-11-13" own={ownData([request({ state: "waiting_for_words", batchId: "own-1", postId: "o1", picturesToDraw: 2 })], [ownBatch("kept")])} />);
+    fireEvent.click(screen.getByRole("button", { name: "Keep and draw 2 pictures" }));
+    expect(await screen.findByText(/used this week's pictures/)).toBeTruthy();
+    expect(vi.mocked(decideBatchAction)).not.toHaveBeenCalled();
+  });
+
+  it("changes the headline of the written post", async () => {
+    render(<Screen groups={weekGroups()} today="2026-11-13" own={ownData([request({ state: "waiting_for_words", batchId: "own-1", postId: "o1", picturesToDraw: 2 })], [ownBatch()])} />);
+    const card = within(screen.getByRole("region", { name: "Your own topic" }));
+    fireEvent.click(card.getByRole("button", { name: "Change the headline" }));
+    fireEvent.change(card.getByLabelText(/Headline \(it is printed/), { target: { value: "Thali week" } });
+    fireEvent.click(card.getByRole("button", { name: "Save headline" }));
+    await waitFor(() => expect(vi.mocked(decideBatchAction)).toHaveBeenCalledTimes(1));
+    const form = vi.mocked(decideBatchAction).mock.calls[0]?.[0] as FormData;
+    expect([form.get("action"), form.get("headline"), form.get("batchId")]).toEqual(["edit-headline", "Thali week", "own-1"]);
+  });
+
+  it("shows the pictures once drawn, with their day, and says why a topic was not made", () => {
+    const pic = { ...poster("op1", "o1", "instagram", "pending"), batchId: "own-1" };
+    const drawn = render(<Screen groups={weekGroups()} today="2026-11-13" own={ownData([request({ state: "drawn", batchId: "own-1", postId: "o1" })], [], [pic])} />);
+    expect(screen.getByText("instagram caption", { exact: false })).toBeTruthy();
+    expect(screen.getAllByText("Mon 16 Nov").length).toBeGreaterThan(0);
+    drawn.unmount();
+    render(<Screen groups={weekGroups()} today="2026-11-13" own={ownData([request({ state: "not_made", reason: "HEADLINE_TOO_WEAK" })])} />);
+    expect(screen.getByText(/headline is too weak to draw/)).toBeTruthy();
+  });
+});
+
+describe("ReviewWorkspace a week drawn in rounds", () => {
+  /** p1 was drawn and is final; p2 is undecided and p3 kept but not drawn: both still open. */
+  const partlyDrawn = (): ReviewGroup[] => {
+    const posts = [post("p1", "kept", "2026-11-16", { drawn: true, locked: true }), post("p2", "pending", "2026-11-17", { drawn: false, locked: false }), post("p3", "kept", "2026-11-18", { drawn: false, locked: false })];
+    const batch: WrittenBatch = { id: "b1", createdAt: "2026-11-13T10:00:00Z", networks: ["instagram", "facebook"], posts, rules: {}, weeks: [{ from: "2026-11-16", to: "2026-11-22", state: "partly_drawn", postIds: ["p1", "p2", "p3"], openPostIds: ["p2", "p3"], notDrawn: [], missingDays: [] }] };
+    return [{ batchId: "b1", batch, cards: posts.map((one) => ({ key: `b1/${one.id}`, batchId: "b1", postId: one.id, headline: one.headline, written: one, pictures: one.id === "p1" ? [poster("x1", "p1", "instagram", "pending")] : [], states: [] })) }];
+  };
+
+  it("keeps the open topics editable and locks only the one that was drawn", () => {
+    render(<Screen groups={partlyDrawn()} today="2026-11-13" />);
+    const grid = (name: string) => within(document.querySelector("[data-drop-day=\"2026-11-16\"]")?.parentElement as HTMLElement).getByText(name).closest("li") as HTMLElement;
+    expect(within(grid("Headline p1")).queryByRole("button", { name: "Keep this topic" })).toBeNull();
+    expect(within(grid("Headline p1")).getByText("Drawn. Its pictures are below.")).toBeTruthy();
+    expect(within(grid("Headline p2")).getByRole("button", { name: "Keep this topic" })).toBeTruthy();
+    expect(within(grid("Headline p3")).getByRole("button", { name: "Drop this topic" })).toBeTruthy();
+  });
+
+  it("says how many new pictures the next draw makes, and that the others stay open", async () => {
+    render(<Screen groups={partlyDrawn()} today="2026-11-13" />);
+    expect(screen.getByText(/1 kept to draw\./)).toBeTruthy();
+    expect(screen.getByText(/Drawing makes 2 new pictures\. The other one stays open/)).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Draw pictures for 1 kept" })).toBeTruthy();
+  });
+
+  it("keeps the pictures out of the Topics step, shows them under Pictures, and says what is left to do in the sidebar", () => {
+    render(<Screen groups={partlyDrawn()} today="2026-11-13" />);
+    expect(screen.queryByText(/instagram caption/)).toBeNull();
+    expect(screen.getByText("1 to decide, 1 to approve")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Pictures" }));
+    expect(screen.getByText(/instagram caption/)).toBeTruthy();
+    expect(screen.getByText("1 waiting · 0 approved")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: /Draw pictures for/ })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Topics" }));
+    expect(screen.getByText("1 to decide, 1 to approve")).toBeTruthy();
+  });
+
+  it("does not count a kept topic whose day has passed among the new pictures", () => {
+    render(<Screen groups={partlyDrawn()} today="2026-11-18" />);
+    expect(screen.getByRole("button", { name: "Draw pictures for 0 kept" }).hasAttribute("disabled")).toBe(true);
+  });
+});
+
+describe("ReviewWorkspace topics left untouched when the week is drawn", () => {
+  it("says which topics were not decided, so nothing was drawn for them and they are final", () => {
+    const groups = open([post("p1", "kept", "2026-11-16"), post("p2", "pending", "2026-11-17"), post("p3", "dropped", "2026-11-18")], [poster("x1", "p1", "instagram", "approved")], "drawn");
+    render(<Screen groups={groups} today="2026-11-13" />);
+    expect(screen.getByText(/Not decided before the pictures were drawn.*Headline p2/)).toBeTruthy();
+    expect(screen.getByText(/Dropped, nothing drawn: Headline p3/)).toBeTruthy();
+  });
+});
+
+describe("ReviewWorkspace her own topic in the other steps", () => {
+  it("is shown with the topics only: once the week is drawn her topic's pictures are listed with the others", () => {
+    const own = ownData([request({ state: "drawn", batchId: "own-1", postId: "o1" })], [], [{ ...poster("op1", "o1", "instagram", "pending"), batchId: "own-1", caption: "own words for instagram" }]);
+    const drawn = open([post("p1", "kept", "2026-11-16")], [poster("x1", "p1", "instagram", "pending")], "drawn");
+    render(<Screen groups={drawn} today="2026-11-13" own={own} />);
+    expect(screen.queryByRole("region", { name: "Your own topic" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Write your own for this week." })).toBeNull();
+    expect(screen.getByText(/own words for instagram/)).toBeTruthy();
+    expect(screen.getByText("2 waiting · 0 approved")).toBeTruthy();
   });
 });
 
@@ -307,5 +456,38 @@ describe("ReviewWorkspace pictures", () => {
   it("says when there is nothing to look over", () => {
     render(<Screen groups={[]} channels={[]} />);
     expect(screen.getByText("No posts are waiting for you.")).toBeTruthy();
+  });
+});
+
+describe("ReviewWorkspace: channels with a batch of their own", () => {
+  /** Instagram's batch (Mon and Sat) and Facebook's (Wed and Fri), written separately because the channels post on different days. */
+  const batchFor = (id: string, network: "instagram" | "facebook", posts: WrittenPost[]): ReviewGroup => {
+    const batch: WrittenBatch = { id, createdAt: "2026-11-13T10:00:00Z", networks: [network], posts, rules: {}, weeks: [{ from: "2026-11-16", to: "2026-11-22", state: "waiting", postIds: posts.map((one) => one.id), notDrawn: [], missingDays: [], replacementsLeft: 3 }] } as unknown as WrittenBatch;
+    return { batchId: id, batch, cards: posts.map((one) => ({ key: `${id}/${one.id}`, batchId: id, postId: one.id, headline: one.headline, written: one, pictures: [], states: [] })) };
+  };
+  const groups = [
+    batchFor("bi", "instagram", [post("ig1", "pending", "2026-11-16"), post("ig2", "pending", "2026-11-21")]),
+    batchFor("bf", "facebook", [post("fb1", "pending", "2026-11-18"), post("fb2", "pending", "2026-11-20")]),
+  ];
+
+  it("shows each channel only the topics written for it", () => {
+    render(<Screen groups={groups} />);
+    expect(screen.getByText("Headline ig1")).toBeTruthy();
+    expect(screen.queryByText("Headline fb1")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: /Acme Page/ }));
+    expect(screen.getByText("Headline fb1")).toBeTruthy();
+    expect(screen.getByText("Headline fb2")).toBeTruthy();
+    expect(screen.queryByText("Headline ig1")).toBeNull();
+  });
+
+  it("counts what each channel has to decide in its own batch, and shows nothing for a channel with no batch", () => {
+    render(<Screen groups={groups} channels={[...channels, { platform: "linkedin", account: "Acme Profile" }]} />);
+    const row = (name: RegExp): HTMLElement => screen.getByRole("button", { name }).closest("li") as HTMLElement;
+    expect(row(/acme_foods/).textContent).toContain("2");
+    expect(row(/Acme Page/).textContent).toContain("2");
+    expect(row(/Acme Profile/).textContent).not.toMatch(/\d to decide|\d to approve/);
+    fireEvent.click(screen.getByRole("button", { name: /Acme Profile/ }));
+    expect(screen.queryByText("Headline ig1")).toBeNull();
+    expect(screen.queryByText("Headline fb1")).toBeNull();
   });
 });

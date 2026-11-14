@@ -19,6 +19,7 @@ const STATE_WORDS = { pending: "Not decided", kept: "Kept", dropped: "Dropped" }
 const WEEK_WORDS: Readonly<Record<BatchWeek["state"], string>> = {
   waiting: "Open: keep or drop, then draw",
   drawing: "Drawing its pictures",
+  partly_drawn: "Partly drawn: the rest is still open",
   drawn: "Drawn, choices are final",
   not_drawn: "No picture was made: change or drop the topics, then draw again",
   lapsed: "Passed before its pictures were drawn",
