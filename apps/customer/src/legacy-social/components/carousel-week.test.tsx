@@ -2,7 +2,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/re
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { CarouselDetail, CarouselSummary } from "@/legacy-social/lib/social/carousel";
 import { decideCarouselAction, drawCarouselAction } from "@/legacy-social/review-actions";
-import { CarouselPictures, CarouselTopic, carouselInWeek, slideHeadlines, type WeekCarousel } from "./carousel-week";
+import { CarouselPictures, CarouselTopic, carouselFor, carouselInWeek, slideHeadlines, type WeekCarousel } from "./carousel-week";
 
 vi.mock("@/legacy-social/review-actions", () => ({ decideCarouselAction: vi.fn(async () => ({ status: "saved" })), drawCarouselAction: vi.fn(async () => ({ status: "saved" })) }));
 
@@ -24,6 +24,16 @@ describe("carouselInWeek", () => {
     expect(carouselInWeek(make("topic"), "2026-11-16", "2026-11-22")).toBe(true);
     expect(carouselInWeek(make("topic"), "2026-11-23", "2026-11-29")).toBe(false);
     expect(carouselInWeek(null, "2026-11-16", "2026-11-22")).toBe(false);
+  });
+});
+
+describe("carouselFor", () => {
+  it("is for every channel it was written for, and for every channel when that is not known", () => {
+    const written = make("topic");
+    expect(carouselFor(written, "instagram")).toBe(true);
+    expect(carouselFor(written, "facebook")).toBe(false);
+    expect(carouselFor(written, "all")).toBe(true);
+    expect(carouselFor({ ...written, detail: null }, "facebook")).toBe(true);
   });
 });
 

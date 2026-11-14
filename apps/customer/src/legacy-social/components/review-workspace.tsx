@@ -13,7 +13,8 @@ import { cardsOfWeek, channelTodo, firstOpenWeek, flowWeeks, picturesOn, POST_TI
 import { ConnectButton } from "./channels-sidebar";
 import { AddChannelChoice } from "./add-channel-choice";
 import { EmptyPosts } from "./empty-posts";
-import { CarouselPictures, CarouselTopic, carouselInWeek, decisionOf, sendBackReason, slideHeadlines, type WeekCarousel } from "./carousel-week";
+import { staysInMonth } from "@/legacy-social/lib/social/plan-window";
+import { CarouselPictures, CarouselTopic, carouselFor, carouselInWeek, decisionOf, sendBackReason, slideHeadlines, type WeekCarousel } from "./carousel-week";
 import { carouselMovable } from "@/legacy-social/lib/social/carousel";
 import type { PostingDays } from "@/legacy-social/lib/social/schedule";
 import { ChannelLogo } from "./channel-logo";
@@ -270,7 +271,10 @@ interface WeekGridProps {
   readonly onOpenPicture?: (poster: Poster) => void;
   /** The weekly carousel when it is for this week: it is a card in the column of its day. */
   readonly carousel?: WeekCarousel | null;
+  /** The day the paid month renews, `YYYY-MM-DD`: a post of this month cannot be moved to it or past it. Null when not known. */
+  readonly renewsOn?: string | null;
 }
+
 
 /** The carousel as a topic of its day: its topic and slide headlines, and the same choices a topic has (keep, drop, undo). Its slides show under Pictures once drawn. */
 function CarouselDayCard({ carousel, dragProps }: { readonly carousel: WeekCarousel; readonly dragProps?: { readonly onPointerDown: (event: ReactPointerEvent) => void; readonly dragging: boolean } }): ReactElement {
@@ -339,7 +343,7 @@ const nextDay = (day: string): string => new Date(Date.parse(`${day}T00:00:00Z`)
  * A topic can be dragged to another day of the week (or moved with its day picker) until the week is drawn. A week whose topics carry no
  * day, or one outside it, is listed one under the other instead, so nothing is hidden.
  */
-function WeekGrid({ cards, week, replacing, today, pictureOf, onOpenPicture, carousel = null }: WeekGridProps): ReactElement {
+function WeekGrid({ cards, week, replacing, today, pictureOf, onOpenPicture, carousel = null, renewsOn = null }: WeekGridProps): ReactElement {
   const mover = useReviewAction();
   /** Where a topic was just moved to, shown at once while the posting service answers. */
   const [moved, setMoved] = useState<Readonly<Record<string, string>>>({});
@@ -360,7 +364,7 @@ function WeekGrid({ cards, week, replacing, today, pictureOf, onOpenPicture, car
   /** The days a topic may go to: the other days of its week, from tomorrow on, while the week is open and no move is on its way. */
   const targets = (card: ReviewCard): string[] => {
     if (postFinal(card, week) || moving || !placed) return [];
-    return days.filter((day) => day !== dayOf(card) && day >= earliest);
+    return days.filter((day) => day !== dayOf(card) && day >= earliest && staysInMonth(dayOf(card), day, renewsOn));
   };
   const move = (card: ReviewCard, day: string): void => {
     setMoved((current) => ({ ...current, [card.postId]: day }));
@@ -368,7 +372,7 @@ function WeekGrid({ cards, week, replacing, today, pictureOf, onOpenPicture, car
   };
   const carouselDay = carouselMoved ?? carousel?.summary.date ?? null;
   /** The days the carousel may go to: the other days of its week from tomorrow on, while it is still wanted and no move is on its way. Its content is never changed. */
-  const carouselTargets = (): string[] => (carousel === null || !carousel.canChange || !carouselMovable(carousel.summary.status) || moving || !placed ? [] : days.filter((day) => day !== carouselDay && day >= earliest));
+  const carouselTargets = (): string[] => (carousel === null || !carousel.canChange || !carouselMovable(carousel.summary.status) || moving || !placed ? [] : days.filter((day) => day !== carouselDay && day >= earliest && staysInMonth(carouselDay, day, renewsOn)));
   const drag = useTopicDrag({
     allowed: (key, day) => {
       if (key === CAROUSEL_DRAG_KEY) return carouselTargets().includes(day);
@@ -991,7 +995,7 @@ function PicturesStage({ cards, week, channel, account, reasons, ownPosters = []
 /** The colour of a word in the overview: green for what is kept or approved, amber for anything still to be decided, drawn or approved. */
 const toneOf = (word: string): string => (word === "Kept" || word === "Approved" ? "font-semibold text-ok" : word === "Dropped" ? "text-ink-3" : "font-semibold text-warn");
 
-function Overview({ cards, week, channels }: { readonly cards: readonly ReviewCard[]; readonly week: FlowWeek; readonly channels: readonly ReviewChannel[] }): ReactElement {
+function Overview({ cards, week, channels, carousel = null }: { readonly cards: readonly ReviewCard[]; readonly week: FlowWeek; readonly channels: readonly ReviewChannel[]; /** The week's carousel: one more line, the same on every channel it was written for. */ readonly carousel?: WeekCarousel | null }): ReactElement {
   return (
     <div className="grid gap-3">
       <p className="text-[0.84375rem] text-ink-2">One line for each topic. Pick a channel on the left to see its posts the way they will look there.</p>
@@ -1029,6 +1033,21 @@ function Overview({ cards, week, channels }: { readonly cards: readonly ReviewCa
                 </tr>
               );
             })}
+            {carousel === null ? null : (
+              <tr className="border-t border-line align-top">
+                <td className="px-3 py-2.5">
+                  <p className="font-semibold text-ink">Carousel{carousel.summary.topic === null ? "" : `: ${carousel.summary.topic}`}</p>
+                  <div className="mt-1">
+                    <DateChip day={carousel.summary.date} />
+                  </div>
+                </td>
+                {channels.map((channel) => (
+                  <td key={channel.platform} className={cn("px-3 py-2.5", carouselFor(carousel, channel.platform) ? decisionOf(carousel.summary).tone : "text-ink-3")}>
+                    {carouselFor(carousel, channel.platform) ? decisionOf(carousel.summary).word : "Not for this channel"}
+                  </td>
+                ))}
+              </tr>
+            )}
           </tbody>
         </table>
       </div>
@@ -1116,6 +1135,8 @@ interface ReviewFlowProps {
   readonly own?: OwnTopicsData;
   /** The newest weekly carousel, shown with the week it is for. */
   readonly carousel?: WeekCarousel | null;
+  /** The day the paid month renews. */
+  readonly renewsOn?: string | null;
   readonly children: ReactNode;
 }
 
@@ -1127,6 +1148,7 @@ interface Flow {
   readonly today: string;
   readonly own: OwnTopicsData;
   readonly carousel: WeekCarousel | null;
+  readonly renewsOn: string | null;
   readonly weeks: readonly FlowWeek[];
   /** The week being looked at, or undefined when there are no posts. */
   readonly week: FlowWeek | undefined;
@@ -1156,7 +1178,7 @@ export function groupIsFor(group: ReviewGroup, channel: ChannelPlatform): boolea
 }
 
 /** Holds which channel and which week the customer is looking at, for the channels column and the workspace beside it. */
-export function ReviewFlowProvider({ groups, drawing = [], reasons, channels, replacing = {}, today = "", own = NO_OWN, carousel = null, children }: ReviewFlowProps): ReactElement {
+export function ReviewFlowProvider({ groups, drawing = [], reasons, channels, replacing = {}, today = "", own = NO_OWN, carousel = null, renewsOn = null, children }: ReviewFlowProps): ReactElement {
   // The channel she chose on another page is in the address, so this page opens on it (a channel not connected is left out).
   const chosen = channelParamOf(useSearchParams()?.get(CHANNEL_PARAM));
   const [channel, setChannelNow] = useState<"all" | ChannelPlatform>(chosen === "all" || (chosen !== null && channels.some((one) => one.platform === chosen)) ? (chosen as "all" | ChannelPlatform) : (channels[0]?.platform ?? "all"));
@@ -1186,7 +1208,7 @@ export function ReviewFlowProvider({ groups, drawing = [], reasons, channels, re
     },
     [groupsOf, drawing, week],
   );
-  const value = useMemo<Flow>(() => ({ groups: visible, reasons, channels, replacing, today, own, carousel, weeks, week, cards, channel, setChannel, setWeekKey, todoOf }), [visible, reasons, channels, replacing, today, own, carousel, weeks, week, cards, channel, setChannel, todoOf]);
+  const value = useMemo<Flow>(() => ({ groups: visible, reasons, channels, replacing, today, own, carousel, renewsOn, weeks, week, cards, channel, setChannel, setWeekKey, todoOf }), [visible, reasons, channels, replacing, today, own, carousel, renewsOn, weeks, week, cards, channel, setChannel, todoOf]);
   return <FlowContext value={value}>{children}</FlowContext>;
 }
 
@@ -1288,17 +1310,26 @@ export function ReviewChannelsColumn(): ReactElement {
  * then (once the week is drawn) each picture as it will look on that account, to approve. "All channels" is one table of the week.
  */
 export function ReviewWorkspace({ empty }: { /** What the page needs to say, when there are no posts to look over, where to go to get some. */ readonly empty?: Omit<ComponentProps<typeof EmptyPosts>, "channel"> } = {}): ReactElement | null {
-  const { channels, reasons, replacing, today, own, carousel, week, cards, channel, weeks, setWeekKey } = useFlow();
+  const { channels, reasons, replacing, today, own, carousel, renewsOn, week, cards, channel, weeks, setWeekKey } = useFlow();
   /** A week drawn in rounds has topics still open and pictures drawn: the customer looks at one at a time, the pictures only under Pictures. */
   const [roundView, setRoundView] = useState<"topics" | "pictures">("topics");
   /** A week drawn whole is shown by its pictures; this lets her go back and read its topics (the ones that are final cannot be changed). */
   const [lookAtTopics, setLookAtTopics] = useState(false);
   /** The picture step she picked: the ones waiting for her, or the approved ones. Not picked: all of them. */
   const [pictureStep, setPictureStep] = useState<"waiting" | "approved" | null>(null);
-  if (week === undefined) return empty === undefined ? null : <EmptyPosts channel={channel} {...empty} />;
+  if (week === undefined) {
+    // A channel with no written posts yet still shows the carousel: it is the same on every channel it was written for.
+    const shown = carousel !== null && channel !== "all" && carouselFor(carousel, channel) ? carousel : null;
+    return (
+      <div className="grid min-w-0 content-start gap-4">
+        {shown === null ? null : <CarouselTopic carousel={shown} />}
+        {empty === undefined ? null : <EmptyPosts channel={channel} {...empty} />}
+      </div>
+    );
+  }
   const asked = weekAsked(week);
   /** The carousel of this week: its topic with the topics, its slides with the pictures once they are drawn. */
-  const weekCarousel = carouselInWeek(carousel, week.from, week.to) ? carousel : null;
+  const weekCarousel = carouselInWeek(carousel, week.from, week.to) && carouselFor(carousel, channel) ? carousel : null;
   /** A kept carousel waiting to be drawn, whose day is still ahead; it is drawn with the Draw bar. */
   const carouselToDraw = weekCarousel !== null && weekCarousel.canChange && weekCarousel.summary.status === "kept" && (today === "" || (weekCarousel.summary.date ?? "") > today) ? { id: weekCarousel.summary.id, count: weekCarousel.summary.count } : null;
   /** The pictures of her own topic of this week: shown with the others once the week's pictures are the thing to look at. */
@@ -1348,9 +1379,9 @@ export function ReviewWorkspace({ empty }: { /** What the page needs to say, whe
       </div>
       {asked || stage !== 0 ? null : <OwnTopics />}
       {channel === "all" ? (
-        <Overview cards={cards} week={week} channels={channels} />
+        <Overview cards={cards} week={week} channels={channels} carousel={weekCarousel} />
       ) : asked && !missing && looking ? (
-        <WeekGrid cards={cards} week={week} replacing={replacing} today={today} pictureOf={pictureOf} onOpenPicture={openPicture} carousel={weekCarousel} />
+        <WeekGrid cards={cards} week={week} replacing={replacing} today={today} pictureOf={pictureOf} onOpenPicture={openPicture} carousel={weekCarousel} renewsOn={renewsOn} />
       ) : asked && !missing ? (
         picked === undefined ? null : <PicturesStage cards={cards} week={week} channel={picked.platform} account={picked.account} reasons={reasons} ownPosters={ownPosters} {...(pictureStep === null ? {} : { only: pictureStep })} />
       ) : (
@@ -1359,7 +1390,7 @@ export function ReviewWorkspace({ empty }: { /** What the page needs to say, whe
           {partly && roundView === "pictures" && picked !== undefined ? (
             <PicturesStage cards={cards} week={week} channel={picked.platform} account={picked.account} reasons={reasons} ownPosters={ownPosters} settled={false} {...(pictureStep === null ? {} : { only: pictureStep })} />
           ) : (
-            <WeekGrid cards={cards} week={week} replacing={replacing} today={today} pictureOf={pictureOf} onOpenPicture={openPicture} carousel={weekCarousel} />
+            <WeekGrid cards={cards} week={week} replacing={replacing} today={today} pictureOf={pictureOf} onOpenPicture={openPicture} carousel={weekCarousel} renewsOn={renewsOn} />
           )}
           {partly && roundView === "pictures" ? null : <DrawBar week={week} kept={keptCount} total={cards.length} retry={asked || missing} pictures={newPictures} stay={stay} carousel={carouselToDraw} />}
         </>

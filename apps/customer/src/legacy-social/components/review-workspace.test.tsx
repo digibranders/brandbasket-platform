@@ -3,6 +3,8 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import type { Poster, TopicRequest, WrittenBatch, WrittenPost } from "@/legacy-social/lib/social/ai";
 import type { ReviewGroup } from "@/legacy-social/lib/social/review-cards";
 import { askTopicAction, decideBatchAction, decidePosterAction, drawBatchAction, moveTopicAction, replaceTopicAction } from "@/legacy-social/review-actions";
+import type { CarouselSummary } from "@/legacy-social/lib/social/carousel";
+import type { WeekCarousel } from "./carousel-week";
 import { ActiveJobNote, NewChannelChoice, ReviewChannelsColumn, ReviewFlowProvider, ReviewWorkspace, type OwnTopicsData } from "./review-workspace";
 
 vi.mock("@/legacy-social/actions", () => ({ connectChannelAction: vi.fn(async () => undefined), }));
@@ -22,10 +24,17 @@ const channels = [
   { platform: "facebook", account: "Acme Page" },
 ] as const;
 
+/** The week\'s carousel, written for Instagram only, dated on the Friday of the test week. */
+const weekCarousel = (status: CarouselSummary["status"]): WeekCarousel => ({
+  summary: { id: "c1", topic: "Diwali boxes", date: "2026-11-20", count: 3, status, headlines: ["One", "Two", "Three"] },
+  detail: { id: "c1", count: 3, status, slides: [1, 2, 3].map((position) => ({ position, status })), captions: [{ network: "instagram", caption: "Fresh sweets.", status }], reasons: [] },
+  canChange: true,
+});
+
 /** The channels column and the workspace beside it, as the review page lays them out. */
-function Screen({ groups, channels: rows = channels, replacing, today, own }: { readonly own?: OwnTopicsData; readonly groups: ReviewGroup[]; readonly today?: string; readonly replacing?: Record<string, "writing" | "failed">; readonly channels?: ReadonlyArray<{ readonly platform: "instagram" | "facebook" | "linkedin" | "google"; readonly account: string }> }) {
+function Screen({ groups, channels: rows = channels, replacing, today, own, carousel }: { readonly carousel?: WeekCarousel; readonly own?: OwnTopicsData; readonly groups: ReviewGroup[]; readonly today?: string; readonly replacing?: Record<string, "writing" | "failed">; readonly channels?: ReadonlyArray<{ readonly platform: "instagram" | "facebook" | "linkedin" | "google"; readonly account: string }> }) {
   return (
-    <ReviewFlowProvider groups={groups} reasons={[]} channels={rows} {...(replacing === undefined ? {} : { replacing })} {...(today === undefined ? {} : { today })} {...(own === undefined ? {} : { own })}>
+    <ReviewFlowProvider groups={groups} reasons={[]} channels={rows} {...(replacing === undefined ? {} : { replacing })} {...(today === undefined ? {} : { today })} {...(own === undefined ? {} : { own })} {...(carousel === undefined ? {} : { carousel })}>
       <ReviewChannelsColumn />
       <ReviewWorkspace />
     </ReviewFlowProvider>
@@ -454,6 +463,21 @@ describe("ReviewWorkspace pictures", () => {
     expect(screen.getByText("0 waiting · 1 approved")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: /All channels/ }));
     expect(screen.getByRole("columnheader", { name: "Instagram" })).toBeTruthy();
+  });
+
+  it("lists the carousel in the all-channels table, and says which channels it is not for", () => {
+    render(<Screen groups={groups} carousel={weekCarousel("topic")} />);
+    fireEvent.click(screen.getByRole("button", { name: /All channels/ }));
+    expect(screen.getByText("Carousel: Diwali boxes")).toBeTruthy();
+    expect(screen.getByText("Not decided")).toBeTruthy();
+    expect(screen.getByText("Not for this channel")).toBeTruthy();
+  });
+
+  it("shows the carousel for a channel it was written for, and not for another", () => {
+    render(<Screen groups={groups} carousel={weekCarousel("topic")} />);
+    expect(screen.getByText("Carousel: Diwali boxes")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: /Acme Page/ }));
+    expect(screen.queryByText("Carousel: Diwali boxes")).toBeNull();
   });
 
   it("offers to connect the networks that have no account yet, like the Posts page does", () => {

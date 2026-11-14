@@ -20,6 +20,12 @@ export interface WeekCarousel {
 export const carouselInWeek = (carousel: WeekCarousel | null, from: string, to: string): carousel is WeekCarousel =>
   carousel !== null && carousel.summary.date !== null && from !== "" && carousel.summary.date >= from && carousel.summary.date <= to;
 
+/**
+ * Whether the carousel is for this channel. It is the same carousel on every channel it was written for, so each of those channels shows it;
+ * when the posting service does not say which channels it was written for, every channel does.
+ */
+export const carouselFor = (carousel: WeekCarousel, channel: "all" | ChannelPlatform): boolean => channel === "all" || carousel.detail === null || carousel.detail.captions.length === 0 || carousel.detail.captions.some((caption) => caption.network === channel);
+
 /** The headlines of the slides: from the list answer when it has them, else from the slides of the detail. */
 export function slideHeadlines(carousel: WeekCarousel): { readonly position: number; readonly headline: string }[] {
   const fromList = carousel.summary.headlines.flatMap((headline, index) => (headline === "" ? [] : [{ position: index + 1, headline }]));
