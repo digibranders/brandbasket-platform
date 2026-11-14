@@ -157,7 +157,7 @@ export function usePostDrag({ allowed, onDrop }: Options): PostDrag {
           place();
         }}
         aria-hidden="true"
-        className="pointer-events-none fixed left-0 top-0 z-[100] w-48 rounded-lg border border-ink-3 bg-surface px-2.5 py-2 text-xs shadow-[0_12px_28px_-10px_rgb(21_22_26/0.45)]"
+        className="pointer-events-none fixed left-0 top-0 z-[100] w-48 rounded-lg border border-ink-3 bg-surface px-2.5 py-2 text-xs shadow-pop"
       >
         <span className="block font-bold text-ink">{time12(dragging.time)}</span>
         <span className="line-clamp-2 break-words leading-snug text-ink-2">{dragging.caption}</span>
