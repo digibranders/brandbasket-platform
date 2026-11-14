@@ -6,8 +6,8 @@ import { addDays, localDateIn } from "@brandbasket/shared/lib/calendar/local-dat
 import { cn } from "@brandbasket/shared/lib/cn";
 import { LIFT } from "@/legacy-social/classes";
 import { BRAND_TIME_ZONE } from "@/legacy-social/shims";
-import { canChange, dayLabel, hourLabel, initialOf, monthGrid, nextPostDay, platformsOf, postStatus, postToShow, shiftMonth, time12, weekOf, type AutoChannel, type CalendarPost, type PostState, type PostStatus } from "@/legacy-social/lib/social/auto";
-import { movePostAction } from "@/legacy-social/actions";
+import { canChange, canDrag, dayLabel, hourLabel, initialOf, monthGrid, nextPostDay, platformsOf, postStatus, postToShow, shiftMonth, time12, weekOf, type AutoChannel, type CalendarPost, type PostState, type PostStatus } from "@/legacy-social/lib/social/auto";
+import { changeWrittenPostTimeAction, movePostAction } from "@/legacy-social/actions";
 import { canAddOn, DEFAULT_TIME, earliestDay, momentHasPassed } from "@/legacy-social/lib/social/new-post";
 import { ChannelLogo } from "./channel-logo";
 import { useChannelFilter } from "./channel-filter";
@@ -104,7 +104,7 @@ const openOnKey = (action: () => void) => (event: ReactKeyboardEvent): void => {
 
 /** What a post box needs to be picked up: a press starts the drag (it begins only once the pointer moves), and the box says so with a grab cursor. */
 function dragProps(dnd: Dnd | undefined, post: CalendarPost): object {
-  if (dnd === undefined || !canChange(post)) return {};
+  if (dnd === undefined || !canDrag(post)) return {};
   return { onPointerDown: (event: React.PointerEvent) => dnd.drag.begin(event, post) };
 }
 
@@ -128,7 +128,7 @@ function Slot({ entry, large, fallback, onOpen, dnd }: { readonly entry: Entry; 
   );
   const box = cn("relative z-10 flex min-w-0 items-center gap-2 rounded-lg border border-line px-1.5 py-1.5 text-left", GROUND[status.state], large && "gap-3 p-2.5");
   const label = `${canChange(post) ? "Edit" : "Open"} the post on ${dayLabel(post.day, { weekday: "long", day: "numeric", month: "long" })} at ${time12(post.time)}`;
-  const movable = dnd !== undefined && canChange(post);
+  const movable = dnd !== undefined && canDrag(post);
   return onOpen !== undefined ? (
     <div
       role="button"
@@ -317,7 +317,7 @@ function Month({ cursor, today, on, openDay, onAdd, onOpen, dnd }: MonthProps): 
                 </>
               );
               const box = cn("relative flex min-w-0 items-center gap-1.5 rounded-md border border-line px-1.5 py-0.5 text-left text-xs", GROUND[status.state]);
-              const movable = dnd !== undefined && canChange(post);
+              const movable = dnd !== undefined && canDrag(post);
               return onOpen !== undefined ? (
                 <div
                   key={post.id}
@@ -356,7 +356,7 @@ interface SocialCalendarProps {
   /** Today in India, `YYYY-MM-DD`. */
   readonly today: string;
   /** What to say under the title. */
-  readonly lede: string;
+  readonly lede?: string;
   /** The business's name: its first letter marks a post that has no account yet. */
   readonly businessName: string;
   /** The accounts a new post can go to. With none, posts cannot be added from here. */
@@ -367,7 +367,7 @@ interface SocialCalendarProps {
  * The calendar as the team sees it in social-auto: Day and Week as an hourly grid, Month as day cells with chips, and a list.
  * A phone gets the list by day instead of the grid. It shows the networks switched on in the channels column.
  */
-export function SocialCalendar({ posts, today, lede, businessName, channels }: SocialCalendarProps): ReactElement {
+export function SocialCalendar({ posts, today, lede = "", businessName, channels }: SocialCalendarProps): ReactElement {
   const { shown } = useChannelFilter();
   const [view, setView] = useState<View>("week");
   // It opens on the day of the next post, so a customer sees what is coming, not an empty week behind it.
@@ -429,7 +429,8 @@ export function SocialCalendar({ posts, today, lede, businessName, channels }: S
           form.set("postId", post.id);
           form.set("day", day);
           form.set("time", time);
-          const result = await movePostAction(form);
+          // A post she made moves in place; one we wrote for her keeps its words and picture and changes only when it goes out.
+          const result = await (post.manual ? movePostAction(form) : changeWrittenPostTimeAction(form));
           if (result.status === "error") setMoveError(result.message);
         } catch {
           setMoveError("The post could not be moved. Check your connection and try again.");
@@ -492,10 +493,12 @@ export function SocialCalendar({ posts, today, lede, businessName, channels }: S
         </div>
       </div>
       {drag.ghost}
-      <p className="-mt-1 text-[0.84375rem] text-ink-2">
-        {lede}
-        {canAdd ? " Drag a post you made to another day or hour to move it." : ""}
-      </p>
+      {lede === "" ? null : (
+        <p className="-mt-1 text-[0.84375rem] text-ink-2">
+          {lede}
+          {canAdd ? " Drag a post you made to another day or hour to move it." : ""}
+        </p>
+      )}
       {adding === null || !canAdd ? null : <NewPostDialog day={adding.day} onDayChange={(day) => setAdding({ day, time: adding.time })} time={adding.time} today={today} channels={channels} onClose={() => setAdding(null)} />}
       {reading === null ? null : <PostDetailsDialog key={reading.id} post={reading} onClose={() => setReading(null)} />}
       {moveError === null ? null : (

@@ -45,6 +45,7 @@ export function SocialHeader({
   reportHref = null,
   extra = null,
   askForChange = true,
+  channel = "",
 }: {
   readonly customer: Pick<CustomerContext, "role">;
   readonly current: string;
@@ -55,12 +56,14 @@ export function SocialHeader({
   readonly extra?: ReactNode;
   /** Ask for a change beside the buttons: off on the page that has its own actions. */
   readonly askForChange?: boolean;
+  /** The channel being looked at (`instagram`, or `all`), which the tabs carry to the next page. */
+  readonly channel?: string;
 }) {
   return (
     <PageHeader
-      title="Social media"
+      title="Content calendar"
       description={description}
-      tabs={<TabLinks items={socialTabs(waiting, postingServiceSettings(process.env) !== null)} current={current} aria-label="Social media" />}
+      tabs={<TabLinks items={socialTabs(waiting, postingServiceSettings(process.env) !== null, customer.role !== "viewer", channel)} current={channel === "" ? current : `${current}?channel=${channel}`} aria-label="Content calendar" />}
       actions={
         <>
           {extra}

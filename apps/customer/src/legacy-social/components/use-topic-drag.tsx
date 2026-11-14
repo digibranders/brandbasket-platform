@@ -1,11 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactElement } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactElement } from "react";
 
 /**
  * Moving a topic to another day by dragging its card, the way the calendar moves a post: the card is picked up after a few pixels of
  * movement (so a click on an icon still works), a small copy follows the pointer, the day column underneath lights up when the topic may
- * land there, and Escape puts it back. Columns say where a topic can land with `data-drop-day`. A finger scrolls the week sideways, so a
+ * land there, and Escape puts it back. Columns say where a topic can land with `data-drop-day`, and the grid around them says so with
+ * `data-drop-zone`, so the pointer crossing the gap between two columns keeps the one it just left lit instead of flickering off. A finger scrolls the week sideways, so a
  * touch does not drag: the card has its own day picker for that.
  */
 
@@ -33,11 +34,16 @@ export function useTopicDrag({ allowed, onDrop }: Options): TopicDrag {
   const [over, setOver] = useState<string | null>(null);
   const [headline, setHeadline] = useState("");
   const ghostRef = useRef<HTMLDivElement | null>(null);
+  const pointer = useRef({ x: 0, y: 0 });
   const latest = useRef({ allowed, onDrop });
   const stop = useRef<(() => void) | null>(null);
   useEffect(() => {
     latest.current = { allowed, onDrop };
   });
+  // The small copy is put under the pointer the moment it appears, not at the next move, so it never sits in the page's top corner first.
+  useLayoutEffect(() => {
+    if (dragging !== null && ghostRef.current !== null) ghostRef.current.style.transform = `translate(${pointer.current.x + 12}px, ${pointer.current.y + 12}px)`;
+  }, [dragging]);
   // A drag still going when the screen goes away must not leave its listeners behind.
   useEffect(() => () => stop.current?.(), []);
 
@@ -49,9 +55,12 @@ export function useTopicDrag({ allowed, onDrop }: Options): TopicDrag {
     const startY = event.clientY;
     let started = false;
     let overDay: string | null = null;
-    const dayAt = (x: number, y: number): string | null => {
-      const day = document.elementFromPoint(x, y)?.closest<HTMLElement>("[data-drop-day]")?.dataset["dropDay"];
-      return day !== undefined && latest.current.allowed(key, day) ? day : null;
+    /** The day under the pointer; `undefined` when the pointer is in the gap between two columns of the grid, so the last one stays lit. */
+    const dayAt = (x: number, y: number): string | null | undefined => {
+      const here = document.elementFromPoint(x, y);
+      const day = here?.closest<HTMLElement>("[data-drop-day]")?.dataset["dropDay"];
+      if (day === undefined) return here?.closest("[data-drop-zone]") === null || here === null ? null : undefined;
+      return latest.current.allowed(key, day) ? day : null;
     };
     const move = (moved: PointerEvent): void => {
       if (!started) {
@@ -60,9 +69,10 @@ export function useTopicDrag({ allowed, onDrop }: Options): TopicDrag {
         setDragging(key);
         setHeadline(text);
       }
+      pointer.current = { x: moved.clientX, y: moved.clientY };
       if (ghostRef.current !== null) ghostRef.current.style.transform = `translate(${moved.clientX + 12}px, ${moved.clientY + 12}px)`;
       const day = dayAt(moved.clientX, moved.clientY);
-      if (day !== overDay) {
+      if (day !== undefined && day !== overDay) {
         overDay = day;
         setOver(day);
       }

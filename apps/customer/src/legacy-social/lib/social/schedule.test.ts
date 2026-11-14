@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { daysWords, parseDays, readSchedule, tidyDays, withChannelDays } from "./schedule";
+import { daysWords, readSchedule, tidyDays } from "./schedule";
 
 describe("the days a channel posts on", () => {
   it("puts days in week order, each once, and refuses anything that is not a day", () => {
@@ -7,14 +7,6 @@ describe("the days a channel posts on", () => {
     expect(tidyDays([])).toBeNull();
     expect(tidyDays(["mon", "funday"])).toBeNull();
     expect(tidyDays(["mon", 3])).toBeNull();
-  });
-
-  it("reads the days a form sends, and an empty text as the usual spread", () => {
-    expect(parseDays("sat, Mon ,tue")).toEqual(["mon", "tue", "sat"]);
-    expect(parseDays("")).toEqual([]);
-    expect(parseDays("   ")).toEqual([]);
-    expect(parseDays("mon,xyz")).toBeNull();
-    expect(parseDays("mon,,tue")).toBeNull();
   });
 
   it("reads what the posting service holds, keeping only channels with valid days", () => {
@@ -31,12 +23,6 @@ describe("the days a channel posts on", () => {
     expect(daysWords(undefined)).toBe("Usual spread");
   });
 
-  it("builds the whole setting with one channel changed, since the posting service replaces everything it is sent", () => {
-    const current = { instagram: ["mon", "tue", "sat"], facebook: ["wed", "fri"] } as const;
-    expect(withChannelDays(current, "facebook", ["thu"])).toEqual({ instagram: ["mon", "tue", "sat"], facebook: ["thu"] });
-    expect(withChannelDays(current, "facebook", [])).toEqual({ instagram: ["mon", "tue", "sat"] });
-    expect(withChannelDays({}, "linkedin", ["fri"])).toEqual({ linkedin: ["fri"] });
-  });
 });
 
 describe("channels grouped by their days", () => {

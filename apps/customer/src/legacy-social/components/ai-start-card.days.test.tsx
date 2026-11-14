@@ -57,23 +57,44 @@ describe("writing posts for channels that post on different days", () => {
     expect(refresh).toHaveBeenCalled();
   });
 
-  it("offers the next group once the first is written, starting the same Monday and sending only that group", async () => {
-    render(<AiStartCard jobs={[done]} channels={[]} website="acme.com" postingDays={{ instagram: ["mon", "tue", "sat"], facebook: ["wed", "fri"] }} unwritten={{ channels: ["facebook", "linkedin"], startDate: "2026-11-16" }} />);
-    expect(screen.getByRole("heading", { name: "Write posts for Facebook" })).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "Write posts for Facebook" }));
-    fireEvent.click(screen.getByRole("button", { name: "Read my website" }));
-    await waitFor(() => expect(vi.mocked(startSiteJobAction)).toHaveBeenCalledTimes(1));
-    const form = vi.mocked(startSiteJobAction).mock.calls[0]?.[0] as FormData;
-    expect(form.getAll("network")).toEqual(["facebook"]);
-    expect(form.get("startDate")).toBe("2026-11-16");
-  });
-
   it("offers nothing when every channel has its posts written, and no longer says automatic posting is not available", () => {
-    const { container } = render(<AiStartCard jobs={[done]} channels={[]} website="acme.com" unwritten={{ channels: [], startDate: null }} />);
+    const { container } = render(<AiStartCard jobs={[done]} channels={[]} website="acme.com" />);
     expect(container.textContent).toBe("");
     cleanup();
     render(<StartDialog connected={new Set(["instagram"] as const)} website="acme.com" onClose={() => undefined} />);
     expect(screen.queryByText(/Not available yet/)).toBeNull();
-    expect(screen.getByText(/Automatic posting card/)).toBeTruthy();
+  });
+
+
+  it("lets her choose Post automatically when a channel is connected, asks for her agreement, and sends it with the wait", async () => {
+    render(<StartDialog connected={new Set(["instagram"] as const)} website="acme.com" onClose={() => undefined} />);
+    const auto = screen.getByRole("radio", { name: /Post automatically/ }) as HTMLInputElement;
+    expect(auto.disabled).toBe(false);
+    fireEvent.click(auto);
+    fireEvent.change(screen.getByLabelText("We approve a picture"), { target: { value: "48" } });
+    fireEvent.click(screen.getByRole("button", { name: "Read my website" }));
+    expect(screen.getByText(/Tick the box to agree/)).toBeTruthy();
+    expect(vi.mocked(startSiteJobAction)).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("checkbox", { name: /I agree that Brandbasket may approve/ }));
+    fireEvent.click(screen.getByRole("button", { name: "Read my website" }));
+    await waitFor(() => expect(vi.mocked(startSiteJobAction)).toHaveBeenCalledTimes(1));
+    const form = vi.mocked(startSiteJobAction).mock.calls[0]?.[0] as FormData;
+    expect([form.get("approval"), form.get("hours"), form.get("agreed")]).toEqual(["automatic", "48", "yes"]);
+  });
+
+  it("keeps Post automatically off while none of the chosen channels is connected, and sends manual by default", async () => {
+    render(<StartDialog connected={new Set()} website="acme.com" onClose={() => undefined} />);
+    expect((screen.getByRole("radio", { name: /Post automatically/ }) as HTMLInputElement).disabled).toBe(true);
+    expect(screen.getByText(/Connect an account for one of these channels first/)).toBeTruthy();
+    cleanup();
+    render(<StartDialog connected={new Set(["instagram"] as const)} website="acme.com" onClose={() => undefined} />);
+    fireEvent.click(screen.getByRole("button", { name: "Read my website" }));
+    await waitFor(() => expect(vi.mocked(startSiteJobAction)).toHaveBeenCalledTimes(1));
+    expect((vi.mocked(startSiteJobAction).mock.calls[0]?.[0] as FormData).get("approval")).toBe("manual");
+  });
+
+  it("is the first start card when nothing is written yet, with its button", () => {
+    render(<AiStartCard jobs={[]} channels={[]} website={null} />);
+    expect(screen.getByRole("button", { name: "Start from my website" })).toBeTruthy();
   });
 });

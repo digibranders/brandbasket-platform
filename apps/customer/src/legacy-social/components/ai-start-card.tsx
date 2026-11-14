@@ -9,6 +9,7 @@ import { startNextMonthAction, startSiteJobAction } from "@/legacy-social/action
 import { LIFT, SECTION_TITLE } from "@/legacy-social/classes";
 import { jobIsActive, jobLine, knownWordsForCode, type SiteJob } from "@/legacy-social/lib/social/ai";
 import { CHANNEL_PLATFORMS, dayLabel, PLATFORM_NAMES, websiteLabel, type AutoChannel, type ChannelPlatform } from "@/legacy-social/lib/social/auto";
+import { AUTO_POSTING_CONSENT, safetyWords, SAFETY_HOURS } from "@/legacy-social/lib/social/auto-posting";
 import { dayGroups, type PostingDays } from "@/legacy-social/lib/social/schedule";
 import { ChannelLogo } from "./channel-logo";
 import { DismissibleNotice } from "./dismissible-notice";
@@ -22,7 +23,7 @@ const FIELD = "h-10 w-full rounded-lg border border-ink-2/65 bg-surface px-3 tex
 interface AiStartCardProps {
   readonly jobs: readonly SiteJob[];
   /** The accounts connected so far: the networks to write for start as these, or as all of them when none is connected yet. */
-  readonly channels: readonly AutoChannel[];
+  readonly channels: readonly Pick<AutoChannel, "platform">[];
   /** The website social-auto has locked this business to: shown as text and never asked for again. Null before the first job. */
   readonly website?: string | null;
   /** The website given in setup: filled in for the customer to confirm while nothing is locked yet. */
@@ -35,8 +36,6 @@ interface AiStartCardProps {
   readonly nextMonth?: { readonly startDate: string; readonly endsOn: string | null } | null;
   /** The days each channel posts on, or null when the posting service cannot say. Channels with different days are written one group at a time. */
   readonly postingDays?: PostingDays | null;
-  /** The connected channels that none of her written batches is for yet, and the Monday those batches started on (null once it has passed). */
-  readonly unwritten?: { readonly channels: readonly ChannelPlatform[]; readonly startDate: string | null };
 }
 
 /**
@@ -44,7 +43,7 @@ interface AiStartCardProps {
  * ended. Starting opens a window with the address (the whole website, or one page of it) and the networks to write for; no account
  * has to be connected yet, that comes before anything is booked. While a batch is being written the page asks again every few seconds.
  */
-export function AiStartCard({ jobs, channels, website = null, savedWebsite = null, unavailable = false, expired = { batches: 0, pictures: 0 }, nextMonth = null, postingDays = null, unwritten = { channels: [], startDate: null } }: AiStartCardProps): ReactElement | null {
+export function AiStartCard({ jobs, channels, website = null, savedWebsite = null, unavailable = false, expired = { batches: 0, pictures: 0 }, nextMonth = null, postingDays = null }: AiStartCardProps): ReactElement | null {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const active = jobs.find(jobIsActive);
@@ -61,9 +60,7 @@ export function AiStartCard({ jobs, channels, website = null, savedWebsite = nul
   const titleId = "ai-start-title";
   // Posts that are written need no card: looking them over is a button beside New post. What was put away for waiting too long still says so.
   if (active === undefined && latest !== undefined && latest.state === "done") {
-    const more = unwritten.channels.length === 0 || website === null ? null : <NextChannelCard channels={unwritten.channels} postingDays={postingDays} startDate={unwritten.startDate} website={website} />;
-    if (nextMonth !== null) return more === null ? <NextMonthCard startDate={nextMonth.startDate} endsOn={nextMonth.endsOn} /> : <>{more}<NextMonthCard startDate={nextMonth.startDate} endsOn={nextMonth.endsOn} /></>;
-    if (more !== null) return more;
+    if (nextMonth !== null) return <NextMonthCard startDate={nextMonth.startDate} endsOn={nextMonth.endsOn} />;
     return expired.batches + expired.pictures === 0 ? null : (
       <DismissibleNotice id={`expired:${expired.batches}:${expired.pictures}`}>
         Some of your posts were put away because nobody decided within 14 days.{" "}
@@ -83,25 +80,25 @@ export function AiStartCard({ jobs, channels, website = null, savedWebsite = nul
   })();
 
   return (
-    <section aria-labelledby={titleId} className={cn(LIFT, "grid gap-4 p-5")}>
-      <div className="min-w-0">
-        <h2 id={titleId} className={SECTION_TITLE}>
-          {view.title}
-        </h2>
-        <p role={active === undefined ? undefined : "status"} className="mt-1 text-[0.84375rem] leading-relaxed text-ink-2">
-          {view.text}
-        </p>
+    <section aria-labelledby={titleId} className={cn(LIFT, "grid gap-3 p-4")}>
+      <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3">
+        <div className="min-w-0 flex-1 basis-80">
+          <h2 id={titleId} className={SECTION_TITLE}>
+            {view.title}
+          </h2>
+          <p role={active === undefined ? undefined : "status"} className="mt-1 text-[0.84375rem] leading-relaxed text-ink-2">
+            {view.text}
+          </p>
+        </div>
+        {view.button === null ? null : (
+          <button type="button" onClick={() => setOpen(true)} className={SMALL_DARK}>
+            {view.button}
+          </button>
+        )}
       </div>
       {active === undefined ? null : (
         <div className="h-2 overflow-hidden rounded-full bg-sunken" aria-hidden="true">
           <div className="h-full rounded-full bg-c-growth transition-[width] duration-500" style={{ width: `${Math.min(100, ((active.step ?? 1) / 4) * 100)}%` }} />
-        </div>
-      )}
-      {view.button === null ? null : (
-        <div>
-          <button type="button" onClick={() => setOpen(true)} className={SMALL_SOFT}>
-            {view.button}
-          </button>
         </div>
       )}
       {open ? <StartDialog connected={connected} postingDays={postingDays} website={website} savedWebsite={savedWebsite} onClose={() => setOpen(false)} /> : null}
@@ -133,6 +130,9 @@ export function StartDialog({ connected, postingDays = null, startDate = null, w
   const [networks, setNetworks] = useState<ReadonlySet<ChannelPlatform>>(() => new Set(connected.size > 0 ? (groups[0] ?? connected) : CHANNEL_PLATFORMS));
   const groupOf = (platform: ChannelPlatform): number => groups.findIndex((group) => group.includes(platform));
   const mixedDays = new Set([...networks].map(groupOf).filter((index) => index >= 0)).size > 1;
+  const [approval, setApproval] = useState<"manual" | "automatic">("manual");
+  const [hours, setHours] = useState<number>(24);
+  const [agreed, setAgreed] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
@@ -153,7 +153,9 @@ export function StartDialog({ connected, postingDays = null, startDate = null, w
       return next;
     });
 
-  const problem = address.trim() === "" ? (mode === "site" ? "Write your website address." : "Write the link to the page.") : networks.size === 0 ? "Choose at least one network." : mixedDays ? "These channels post on different days, so write them one at a time." : null;
+  /** Only a channel that is connected can be automatic. */
+  const canAuto = [...networks].some((platform) => connected.has(platform));
+  const problem = approval === "automatic" && !agreed ? "Tick the box to agree to automatic posting, or choose to approve every post." : approval === "automatic" && !canAuto ? "Connect an account first to post automatically." : address.trim() === "" ? (mode === "site" ? "Write your website address." : "Write the link to the page.") : networks.size === 0 ? "Choose at least one network." : mixedDays ? "These channels post on different days, so write them one at a time." : null;
 
   const submit = (event: FormEvent): void => {
     event.preventDefault();
@@ -169,6 +171,11 @@ export function StartDialog({ connected, postingDays = null, startDate = null, w
         form.set("mode", mode);
         if (startDate !== null) form.set("startDate", startDate);
         for (const platform of networks) form.append("network", platform);
+        form.set("approval", approval);
+        if (approval === "automatic") {
+          form.set("hours", String(hours));
+          form.set("agreed", "yes");
+        }
         const result = await startSiteJobAction(form);
         if (result.status === "error") {
           setError(result.message);
@@ -287,20 +294,41 @@ export function StartDialog({ connected, postingDays = null, startDate = null, w
           <legend className="mb-1 text-xs font-semibold text-ink-2">How should posts go out</legend>
           <div className="grid gap-2 sm:grid-cols-2">
             <label className="cursor-pointer">
-              <input type="radio" name="approval" value="manual" checked readOnly className="peer sr-only" />
-              <span className="grid h-full gap-0.5 rounded-xl bg-ok-wash px-3 py-2 text-ink ring-1 ring-ok peer-focus-visible:ring-2 peer-focus-visible:ring-offset-2">
+              <input type="radio" name="approval" value="manual" checked={approval === "manual"} onChange={() => setApproval("manual")} className="peer sr-only" />
+              <span className={cn("grid h-full gap-0.5 rounded-xl px-3 py-2 text-ink peer-focus-visible:ring-2 peer-focus-visible:ring-offset-2", approval === "manual" ? "bg-ok-wash ring-1 ring-ok" : "bg-surface ring-1 ring-ink-2/30")}>
                 <span className="text-[0.8125rem] font-semibold">I approve every post first</span>
                 <span className="text-[0.6875rem] leading-snug text-ink-2">Nothing goes out until you say yes to its words and its picture.</span>
               </span>
             </label>
-            <label aria-disabled="true" className="cursor-not-allowed">
-              <input type="radio" name="approval" value="automatic" disabled className="peer sr-only" />
-              <span className="grid h-full gap-0.5 rounded-xl bg-surface px-3 py-2 text-ink-3 ring-1 ring-ink-2/30">
+            <label className={canAuto ? "cursor-pointer" : "cursor-not-allowed"} aria-disabled={!canAuto}>
+              <input type="radio" name="approval" value="automatic" checked={approval === "automatic"} disabled={!canAuto} onChange={() => setApproval("automatic")} className="peer sr-only" />
+              <span className={cn("grid h-full gap-0.5 rounded-xl px-3 py-2 peer-focus-visible:ring-2 peer-focus-visible:ring-offset-2", approval === "automatic" ? "bg-ok-wash text-ink ring-1 ring-ok" : canAuto ? "bg-surface text-ink ring-1 ring-ink-2/30" : "bg-surface text-ink-3 ring-1 ring-ink-2/30")}>
                 <span className="text-[0.8125rem] font-semibold">Post automatically</span>
-                <span className="text-[0.6875rem] leading-snug">After your posts are written, choose it for the channels you want on the Automatic posting card.</span>
+                <span className="text-[0.6875rem] leading-snug text-ink-2">{canAuto ? "We approve the pictures that pass our checks a set time before they go out. You can still reject any post until then." : "Connect an account for one of these channels first."}</span>
               </span>
             </label>
           </div>
+          {approval !== "automatic" ? null : (
+            <div className="mt-2 grid gap-3 rounded-xl bg-sunken p-3">
+              <div className="grid gap-1">
+                <label htmlFor="start-auto-hours" className="text-xs font-semibold text-ink-2">
+                  We approve a picture
+                </label>
+                <select id="start-auto-hours" value={hours} onChange={(event) => setHours(Number(event.target.value))} className="h-10 w-full max-w-xs rounded-lg border border-ink-2/65 bg-surface px-3 text-[0.875rem] text-ink">
+                  {SAFETY_HOURS.map((value) => (
+                    <option key={value} value={value}>
+                      {safetyWords(value)}
+                    </option>
+                  ))}
+                </select>
+                <p className="text-xs text-ink-3">It applies to the connected channels above. Carousels, topics you ask for yourself, and anything our checks flag stay with you.</p>
+              </div>
+              <label className="flex cursor-pointer items-start gap-3 text-[0.78125rem] text-ink-2">
+                <input type="checkbox" checked={agreed} onChange={(event) => setAgreed(event.target.checked)} className="mt-0.5 size-4 shrink-0" />
+                <span>{AUTO_POSTING_CONSENT}</span>
+              </label>
+            </div>
+          )}
         </fieldset>
 
         {error === null ? null : (
@@ -364,34 +392,6 @@ function NextMonthCard({ startDate, endsOn }: { readonly startDate: string; read
         )}
         {notice === null ? null : <p className="text-[0.84375rem] font-semibold text-ok">{notice}</p>}
       </div>
-    </section>
-  );
-}
-
-/**
- * Channels that post on different days are written as batches of their own, one after the other. Once the first is written, this offers the
- * next group (starting the same Monday, so the weeks match) until every connected channel has posts written for it.
- */
-function NextChannelCard({ channels, postingDays, startDate, website }: { readonly channels: readonly ChannelPlatform[]; readonly postingDays: PostingDays | null; readonly startDate: string | null; readonly website: string }): ReactElement {
-  const [open, setOpen] = useState(false);
-  const [first = channels] = dayGroups(channels, postingDays);
-  const names = first.map((platform) => PLATFORM_NAMES[platform]).join(" and ");
-  return (
-    <section aria-labelledby="next-channel-title" className={cn(LIFT, "grid gap-4 p-5")}>
-      <div className="min-w-0">
-        <h2 id="next-channel-title" className={SECTION_TITLE}>
-          Write posts for {names}
-        </h2>
-        <p className="mt-1 text-[0.84375rem] leading-relaxed text-ink-2">
-          {names} {first.length === 1 ? "has" : "have"} no posts written yet. Channels that post on different days are written one at a time, from the same website, for the same weeks. You look the posts over before anything is drawn or posted.
-        </p>
-      </div>
-      <div>
-        <button type="button" onClick={() => setOpen(true)} className={SMALL_DARK}>
-          Write posts for {names}
-        </button>
-      </div>
-      {open ? <StartDialog connected={new Set(channels)} postingDays={postingDays} startDate={startDate} website={website} onClose={() => setOpen(false)} /> : null}
     </section>
   );
 }

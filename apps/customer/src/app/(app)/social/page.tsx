@@ -6,7 +6,7 @@ import { SocialOverview } from "@/features/social/components/social-screens";
 import { LegacySocialPage } from "@/legacy-social/components/legacy-social-page";
 import { requirePaid } from "@/lib/guards";
 
-export const metadata: Metadata = { title: "Social media" };
+export const metadata: Metadata = { title: "Content calendar" };
 
 interface SocialPageProps {
   readonly searchParams: Promise<{ readonly social?: string | readonly string[]; readonly channel?: string | readonly string[] }>;

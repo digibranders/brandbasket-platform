@@ -1,9 +1,10 @@
 "use client";
 
+import { Clock, PencilSimple } from "@phosphor-icons/react/dist/ssr";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useTransition, type FormEvent, type ReactElement } from "react";
-import { changeWrittenPostTimeAction } from "@/legacy-social/actions";
+import { changeWrittenCaptionAction, changeWrittenPostTimeAction } from "@/legacy-social/actions";
 import { ASK_FOR_A_CHANGE_PATH } from "@/legacy-social/shims";
 import { CHANNEL_PLATFORMS, dayLabel, PLATFORM_NAMES, postStatus, time12, type CalendarPost } from "@/legacy-social/lib/social/auto";
 import { localDateIn } from "@brandbasket/shared/lib/calendar/local-date";
@@ -22,7 +23,7 @@ function changeNote(post: CalendarPost): string {
   if (post.state === "skipped") return "This post was skipped, so it will not be sent.";
   if (post.state === "held") return "This post is on hold because an account it goes to is not connected. Connect it again and it goes out if its time has not passed.";
   if (post.state === "paused") return "This post is paused, so it is not going out right now. It goes out when the pause ends, unless its time comes first.";
-  if (!post.manual) return canChangeTime(post) ? "We wrote this post for you. You can change when it goes out. To change the words or the picture, look over your posts." : "We wrote this post for you. To change it, ask us and we will.";
+  if (!post.manual) return canChangeTime(post) ? "We wrote this post for you. You can change when it goes out, or its words. To change the picture, look over your posts." : "We wrote this post for you. To change it, ask us and we will.";
   if (post.state === "published") return "This post has gone out, so it can no longer be changed.";
   if (post.state === "missed") return "This post could not be sent to every account, so it can no longer be changed.";
   return "This post is going out now, so it can no longer be changed.";
@@ -33,10 +34,9 @@ const FIELD = "h-10 rounded-lg border border-ink-2/65 bg-surface px-3 text-[0.87
 /** Only a post we wrote that is still waiting for its time can be moved; once it is paused, skipped, due or sent it cannot. */
 const canChangeTime = (post: CalendarPost): boolean => !post.manual && post.state === "scheduled" && !momentHasPassed(post.day, post.time, new Date());
 
-/** The day and time of a post we wrote, with a button to move it: the words and picture stay as the customer approved them. */
-function ChangeTime({ post }: { readonly post: CalendarPost }): ReactElement {
+/** The day and time of a post we wrote, to move it: the words and picture stay as the customer approved them. */
+function TimePanel({ post, onClose }: { readonly post: CalendarPost; readonly onClose: () => void }): ReactElement {
   const router = useRouter();
-  const [open, setOpen] = useState(false);
   const [day, setDay] = useState(post.day);
   const [time, setTime] = useState(post.time);
   const [error, setError] = useState<string | null>(null);
@@ -58,20 +58,13 @@ function ChangeTime({ post }: { readonly post: CalendarPost }): ReactElement {
         const result = await changeWrittenPostTimeAction(form);
         if (result.status === "error") return setError(result.message);
         router.refresh();
-        setOpen(false);
+        onClose();
       } catch {
         setError("The time could not be changed. Check your connection and try again.");
       }
     });
   };
 
-  if (!open) {
-    return (
-      <button type="button" onClick={() => setOpen(true)} className={SMALL_SOFT}>
-        Change time
-      </button>
-    );
-  }
   return (
     <form onSubmit={submit} noValidate className="grid gap-3 rounded-xl bg-sunken p-3">
       <div className="flex flex-wrap gap-3">
@@ -98,11 +91,98 @@ function ChangeTime({ post }: { readonly post: CalendarPost }): ReactElement {
         <button type="submit" disabled={pending} className={SMALL_DARK}>
           {pending ? "Saving" : "Save time"}
         </button>
-        <button type="button" onClick={() => setOpen(false)} disabled={pending} className={SMALL_SOFT}>
+        <button type="button" onClick={onClose} disabled={pending} className={SMALL_SOFT}>
           Cancel
         </button>
       </div>
     </form>
+  );
+}
+
+
+/** The words of a post we wrote, to change: it is held back until she approves the new words again. */
+function CaptionPanel({ post, onClose }: { readonly post: CalendarPost; readonly onClose: () => void }): ReactElement {
+  const router = useRouter();
+  const channel = post.channels[0];
+  const [caption, setCaption] = useState(post.caption);
+  const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+  const [pending, startTransition] = useTransition();
+  const submit = (event: FormEvent): void => {
+    event.preventDefault();
+    if (pending || channel === undefined) return;
+    if (caption.trim() === "") return setError("Write what the post should say.");
+    setError(null);
+    startTransition(async () => {
+      try {
+        const form = new FormData();
+        form.set("postId", post.id);
+        form.set("network", channel.platform);
+        form.set("caption", caption);
+        const result = await changeWrittenCaptionAction(form);
+        if (result.status === "error") return setError(result.message);
+        if (result.status === "partial") setNotice(result.message);
+        router.refresh();
+      } catch {
+        setError("The words could not be changed. Check your connection and try again.");
+      }
+    });
+  };
+  if (notice !== null) {
+    return (
+      <div className="grid gap-2 rounded-xl bg-sunken p-3">
+        <p role="status" className="text-[0.84375rem] font-semibold text-ink">
+          {notice}
+        </p>
+        <div>
+          <button type="button" onClick={onClose} className={SMALL_SOFT}>
+            Close
+          </button>
+        </div>
+      </div>
+    );
+  }
+  return (
+    <form onSubmit={submit} noValidate className="grid gap-3 rounded-xl bg-sunken p-3">
+      <label htmlFor="written-post-caption" className="text-xs font-semibold text-ink-2">
+        Caption
+      </label>
+      <textarea id="written-post-caption" value={caption} onChange={(event) => setCaption(event.target.value)} rows={6} maxLength={3000} className="w-full rounded-lg border border-ink-2/65 bg-surface px-3 py-2 text-[0.875rem] text-ink" />
+      <p className="text-xs text-ink-3">The words are checked against what is on your website. The post is held back until you approve the new words in Posts.</p>
+      {error === null ? null : (
+        <p role="alert" className="text-[0.84375rem] font-semibold text-error">
+          {error}
+        </p>
+      )}
+      <div className="flex flex-wrap gap-2">
+        <button type="submit" disabled={pending} className={SMALL_DARK}>
+          {pending ? "Saving" : "Save caption"}
+        </button>
+        <button type="button" onClick={onClose} disabled={pending} className={SMALL_SOFT}>
+          Cancel
+        </button>
+      </div>
+    </form>
+  );
+}
+
+/** Change time and Change caption of a post we wrote, side by side on one line, each opening its own form below. */
+function ChangeBar({ post }: { readonly post: CalendarPost }): ReactElement {
+  const [mode, setMode] = useState<"time" | "caption" | null>(null);
+  return (
+    <div className="grid gap-3">
+      <div className="flex flex-wrap items-center gap-2">
+        <button type="button" aria-pressed={mode === "time"} onClick={() => setMode(mode === "time" ? null : "time")} className={SMALL_SOFT}>
+          <Clock size={14} weight="bold" aria-hidden="true" />
+          Change time
+        </button>
+        <button type="button" aria-pressed={mode === "caption"} onClick={() => setMode(mode === "caption" ? null : "caption")} className={SMALL_SOFT}>
+          <PencilSimple size={14} weight="bold" aria-hidden="true" />
+          Change caption
+        </button>
+      </div>
+      {mode === "time" ? <TimePanel post={post} onClose={() => setMode(null)} /> : mode === "caption" ? <CaptionPanel post={post} onClose={() => setMode(null)} /> : null}
+    </div>
   );
 }
 
@@ -193,11 +273,8 @@ export function PostDetailsDialog({ post, onClose }: PostDetailsDialogProps): Re
         )}
 
         <p className="text-[0.84375rem] text-ink-2">{changeNote(post)}</p>
-        {canChangeTime(post) ? <ChangeTime post={post} /> : null}
         {post.manual ? null : canChangeTime(post) ? (
-          <Link href={`${ASK_FOR_A_CHANGE_PATH}&kind=social`} className={SMALL_SOFT}>
-            Ask for a change
-          </Link>
+          <ChangeBar post={post} />
         ) : (
           <Link href={`${ASK_FOR_A_CHANGE_PATH}&kind=social`} className={SMALL_SOFT}>
             Ask for a change

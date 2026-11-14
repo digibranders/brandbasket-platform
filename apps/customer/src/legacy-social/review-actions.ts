@@ -54,12 +54,12 @@ async function run(what: string, work: (g: Extract<Guard, { ok: true }>) => Prom
 
 const badForm = (): NewPostState => ({ status: "error", message: "That could not be read. Reload the page and try again." });
 
-/** Keep, drop or change the words of one written post. A change to one network's words names the network. */
+/** Keep, drop, take a choice back to undecided (`reset`), or change the words of one written post. A change to one network's words names the network. */
 export async function decideBatchAction(formData: FormData): Promise<NewPostState> {
   const shared = { batchId: ID, postId: ID };
   const parsed = z
     .discriminatedUnion("action", [
-      z.object({ ...shared, action: z.enum(["keep", "drop"]) }),
+      z.object({ ...shared, action: z.enum(["keep", "drop", "reset"]) }),
       // The headline alone: it is printed on the picture, so it can only change before the picture is drawn.
       z.object({ ...shared, action: z.literal("edit-headline"), headline: z.string().trim().min(1, "Write a headline.").max(120, "Keep the headline under 120 characters.") }),
       z.object({ ...shared, action: z.literal("edit"), network: z.enum(CHANNEL_PLATFORMS).optional(), caption: z.string().trim().min(1, "Write what the post should say.").max(2200), headline: z.string().trim().min(1).max(120).optional() }),

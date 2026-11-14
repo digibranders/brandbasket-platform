@@ -23,13 +23,6 @@ export function tidyDays(days: readonly unknown[]): Weekday[] | null {
   return WEEKDAYS.filter((day) => days.includes(day));
 }
 
-/** The days a form sends as one text, `mon,tue,sat`. Null for anything that is not a list of days; an empty text is `[]` (the usual spread). */
-export function parseDays(text: string): Weekday[] | null {
-  const trimmed = text.trim();
-  if (trimmed === "") return [];
-  return tidyDays(trimmed.split(",").map((part) => part.trim().toLowerCase()));
-}
-
 /** What the posting service answers for the schedule (`{schedule: {channels: {instagram: {days: [...]}}}}`), keeping only channels with valid days. */
 export function readSchedule(body: unknown): PostingDays {
   const channels = (body as { schedule?: { channels?: unknown } } | null)?.schedule?.channels;
@@ -46,16 +39,6 @@ export function readSchedule(body: unknown): PostingDays {
 /** "Mon, Tue, Sat", or "Usual spread" for a channel with no days of its own. */
 export function daysWords(days: readonly Weekday[] | undefined): string {
   return days === undefined || days.length === 0 ? "Usual spread" : days.map((day) => WEEKDAY_SHORT[day]).join(", ");
-}
-
-/** The whole setting as the posting service wants it (`PUT` replaces everything): the saved days with one channel changed or, for `[]`, taken back to the usual spread. */
-export function withChannelDays(current: PostingDays, platform: ChannelPlatform, days: readonly Weekday[]): Record<string, readonly Weekday[]> {
-  const next: Record<string, readonly Weekday[]> = {};
-  for (const channel of CHANNEL_PLATFORMS) {
-    const chosen = channel === platform ? days : current[channel];
-    if (chosen !== undefined && chosen.length > 0) next[channel] = chosen;
-  }
-  return next;
 }
 
 /**

@@ -8,10 +8,11 @@ import { Banner, Icon, Meter, Table, TableBody, TableCell, TableHead, TableHeade
 import { ConnectButton } from "../../accounts/components/connect-button";
 import { SOCIAL_ANALYTICS_PATH } from "../../rules";
 import { BrandControl } from "@/legacy-social/components/brand-switcher";
-import { SMALL_ACCENT, SMALL_SOFT } from "@/legacy-social/components/small-buttons";
+import { SMALL_ACCENT } from "@/legacy-social/components/small-buttons";
 import { brandOf } from "../../brand";
 import { ChannelsColumn } from "../../components/channels-column";
-import { SocialHeader, SocialLayout, Stack } from "../../components/parts";
+import { SocialLayout, Stack } from "../../components/parts";
+import { SocialTabs } from "@/legacy-social/components/social-tabs";
 import { loadChannelsColumn } from "../../loader";
 import { loadAnalytics, type AnalyticsData } from "../loader";
 import { ANALYTICS_CHANNELS, CHANNEL_NAMES, DEFAULT_RANGE, RANGES, type Analytics, type AnalyticsChannel, type Range } from "../rules";
@@ -231,24 +232,23 @@ export async function SocialAnalytics({ customer, range, channel, now = new Date
   const hrefFor = (next: "all" | AnalyticsChannel | "linkedin") => (next === "all" ? SOCIAL_ANALYTICS_PATH : `${SOCIAL_ANALYTICS_PATH}?channel=${next}&range=${range}`);
   return (
     <SocialLayout column={<ChannelsColumn data={column} selected={channel} hrefFor={hrefFor} canChange={customer.role !== "viewer"} />}>
-      <SocialHeader customer={customer} current={SOCIAL_ANALYTICS_PATH} waiting={null} description={DESCRIPTION} askForChange={false}
-        extra={
-          <>
+      <div className="flex min-w-0 flex-col gap-6 md:gap-8">
+        <header className="flex flex-wrap items-start justify-between gap-4">
+          <div className="min-w-0">
+            <h1 className="type-title text-ink">Content calendar</h1>
+            <p className="mt-1 type-meta">{DESCRIPTION}</p>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
             <BrandControl view={brand.view} current={brand.externalId} name={brand.name} />
             {customer.role === "viewer" ? null : (
-              <>
-                <Link href="/social/review" className={SMALL_SOFT}>
-                  See posts
-                </Link>
-                <Link href="/social?newpost=1" className={SMALL_ACCENT}>
-                  <Icon name="Plus" size="sm" />
-                  New post
-                </Link>
-              </>
+              <Link href="/social?newpost=1" className={SMALL_ACCENT}>
+                <Icon name="Plus" size="sm" />
+                New post
+              </Link>
             )}
-          </>
-        }
-      />
+          </div>
+        </header>
+        <SocialTabs current="analytics" hasNumbers hasPosts={customer.role !== "viewer"} />
       <Stack>
         {!data.ok ? (
           <Panel title="Analytics">
@@ -260,6 +260,7 @@ export async function SocialAnalytics({ customer, range, channel, now = new Date
           <Body analytics={data.data.analytics} data={data.data} channel={channel} now={now} />
         )}
       </Stack>
+      </div>
     </SocialLayout>
   );
 }

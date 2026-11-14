@@ -221,11 +221,13 @@ describe("accountRows", () => {
 
 describe("socialTabs", () => {
   it("shows the number waiting on Posts only when it is known and not zero", () => {
-    expect(socialTabs(3)[0]).toMatchObject({ href: "/social", count: "3" });
-    expect(socialTabs(0)[0]).not.toHaveProperty("count");
-    expect(socialTabs(null)[0]).not.toHaveProperty("count");
+    expect(socialTabs(3, false, true)[1]).toMatchObject({ href: "/social/review", label: "Posts", count: "3" });
+    expect(socialTabs(0, false, true)[1]).not.toHaveProperty("count");
+    expect(socialTabs(null, false, true)[1]).not.toHaveProperty("count");
+    expect(socialTabs(null)[0]).toMatchObject({ href: "/social", label: "Calendar" });
     expect(socialTabs(null).map((tab) => tab.href)).toEqual(["/social"]);
     expect(socialTabs(null, true).map((tab) => tab.href)).toEqual(["/social", "/social/analytics"]);
+    expect(socialTabs(null, true, true).map((tab) => tab.href)).toEqual(["/social", "/social/review", "/social/analytics"]);
   });
 });
 
