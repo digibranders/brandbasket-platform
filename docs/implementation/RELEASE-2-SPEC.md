@@ -35,7 +35,7 @@ Keep the sidebar labels: Home, Enquiries, Requests, Services (Website, Social me
 |---|---|
 | Home | One "Next step" card per service in priority order, status lines, "Needs your OK" list, latest report for live customers. See the mock |
 | Website | State header with timeline (booked, building, preview, live). Kickoff wording from D31. Preview with Approve and go live. Tabs Overview, Pages, Blog, Domain visible from day one with explanations before launch |
-| Social | Guided setup list, then calendar, approvals strip, per-channel automatic posting with consent, banner for Reconnect Instagram, failure notices. Brand and layout moved onto the design system |
+| Social | **Keep Steve's layouts as they are; polish only** (tokens, spacing rhythm, chips, buttons, states). No restructuring. See `RELEASE-2-PLAN.md` section 5b |
 | Paid Ads | Information page with "Coming soon" and Add to plan |
 | Requests | List with status chips; request page with thread, quote card, stepper. One canonical URL |
 | Plan & billing | Services, next payment, invoices, failed payment banner with Pay now, lapsed state with Reactivate, cancel confirmation |

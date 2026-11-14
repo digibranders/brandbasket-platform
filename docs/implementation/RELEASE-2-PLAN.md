@@ -41,7 +41,7 @@ Common to all: worktree `../bb-r2-NN`, branch `r2/NN-name` from current `origin/
 | R2-01 | `packages/shared/src/ui/patterns/`: NextActionCard (focal), ServiceCard, StatusTimeline, Stepper, NeedsYourOkList, ApprovalCard, ConfirmDialog, PromptPopup, EmptyState, ErrorState, Skeleton, StatusChip, StatTile, SettingsTabs, PageHeader, PreviewFrame, ThumbStrip | Each has unit tests (render, props, keyboard, reduced motion) and an entry in `/design-system` for both apps; follows the language file exactly |
 | R2-02 | Home per approved mock; Needs your OK section and bell dropdown | All journey states (new, live, lapsed, unpaid, viewer, per service combination); matches mock; existing tests pass |
 | R2-03 | `/website` and sub-pages per mock: kickoff states with D31 wording, preview, live, tabs from day one | Wording exact; approvals unchanged in behaviour |
-| R2-04 | Social per mock; rename `legacy-social` to `social-auto` only after confirming with Steve; connect, write, approve, calendar, failure banner | No behaviour change; Steve's latest changes preserved; states for not connected, writing, review, scheduled, failed |
+| R2-04 | **Social: keep Steve's layouts, polish only.** Do not redesign or restructure the Social pages (Calendar, Posts, Pictures, Analytics, channels column, Settings Social tab). Re-read the current code first. Allowed: token-level polish that follows the premium language (type scale, spacing rhythm, warm shadows, chips, buttons, focus, icon weight, empty and error states, consistent card padding and radius). Not allowed: moving sections, changing flows, renaming routes or `legacy-social`, changing behaviour or data | Layouts and flows identical to `origin/development` at start; visual diff is polish only; all existing Social tests pass untouched; screenshots before and after at 1440 and 390 in the report; Steve's latest commits preserved |
 | R2-05 | Plan and billing, checkout, sign up, intake, payment states | Offers and prices unchanged; failed and lapsed states; unpaid access fixes from Release 1 intact |
 | R2-06 | Requests, request page and quote, Reports, Business, Enquiries, Help | Patterns reused; empty states |
 | R2-07 | Settings family (tabs), sign in, forgot and reset, invite states, setup link, restore | Invite states shown before Join (Release 1 behaviour kept) |
@@ -49,6 +49,10 @@ Common to all: worktree `../bb-r2-NN`, branch `r2/NN-name` from current `origin/
 | R2-09 | Console Money (payments, refund dialog), Compliance, System | Refund and destructive dialogs use ConfirmDialog; behaviour unchanged |
 | R2-10 | Route `loading.tsx`, skeletons, error and permission states, forms keep input across both apps | Rejected action keeps input; every list has an empty state |
 | R2-11 | Playwright journeys (customer and console) at 1440, 768, 390; axe sweep; keyboard pass; screenshot set | Journey scenarios in `13` pass; zero serious axe issues on real screens |
+
+## 5b. Social decision (owner, 2026-11-14)
+
+Steve designed the Social layouts and the owner wants them kept. Release 2 only polishes them (R2-04) so they sit comfortably in the new brand. Anyone changing a Social layout must have Steve's and the owner's agreement first. Shared patterns may be reused in Social only where they replace identical existing markup without changing appearance or behaviour. Before R2-04 starts and again before it merges, the agent merges the latest `origin/steve` and `origin/development` so Steve's work is never overwritten.
 
 ## 6. Quality bar (all packages)
 
