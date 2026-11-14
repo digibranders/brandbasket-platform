@@ -1,5 +1,5 @@
 import type { BatchWeek, Poster } from "./ai";
-import type { ChannelPlatform } from "./auto";
+import { CHANNEL_PLATFORMS, type ChannelPlatform } from "./auto";
 import type { ReviewCard, ReviewGroup } from "./review-cards";
 
 /**
@@ -111,3 +111,34 @@ export function replaceStates(jobs: readonly { readonly kind: string; readonly s
   }
   return states;
 }
+
+/**
+ * Whether a written batch (or, once its posts are gone, its pictures) is for this channel. Channels that post on different days are written
+ * as batches of their own, so a channel looks only at the batches written for it.
+ */
+export function groupIsFor(group: ReviewGroup, channel: ChannelPlatform): boolean {
+  if (group.batch !== null) return group.batch.networks.includes(channel);
+  return group.cards.some((card) => card.pictures.some((poster) => poster.network === channel));
+}
+
+/**
+ * How many things each channel has waiting for the customer in the week she would be shown first: topics to decide while the week is open,
+ * pictures to approve once it is drawn. It is the number beside a channel's name, on every page that has the channels column.
+ */
+export function channelTodoCounts(groups: readonly ReviewGroup[], platforms: readonly ChannelPlatform[]): Partial<Record<ChannelPlatform, number>> {
+  const counts: Partial<Record<ChannelPlatform, number>> = {};
+  for (const platform of platforms) {
+    const its = groups.filter((group) => groupIsFor(group, platform));
+    const weeks = flowWeeks(its, []);
+    const key = firstOpenWeek(its, weeks);
+    const week = weeks.find((one) => one.key === key);
+    counts[platform] = channelTodo(week === undefined ? [] : cardsOfWeek(its, week), week, platform).count;
+  }
+  return counts;
+}
+
+/** The channels in one fixed order (Instagram, Facebook, LinkedIn, Google) on every page, whatever order the posting service lists them in. */
+export const sortChannels = <T extends { readonly platform: ChannelPlatform }>(rows: readonly T[]): T[] => [...rows].sort((a, b) => CHANNEL_PLATFORMS.indexOf(a.platform) - CHANNEL_PLATFORMS.indexOf(b.platform));
+
+/** The channel numbers added up: what waits for the customer on the Posts tab. */
+export const totalTodo = (counts: Partial<Record<ChannelPlatform, number>>): number => Object.values(counts).reduce<number>((total, count) => total + (count ?? 0), 0);

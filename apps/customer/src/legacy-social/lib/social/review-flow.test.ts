@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { Poster, WrittenBatch, WrittenPost } from "./ai";
 import type { ReviewGroup } from "./review-cards";
-import { cardsOfWeek, channelTodo, firstOpenWeek, flowWeeks, picturesOn, replaceStates, weekAsked } from "./review-flow";
+import { cardsOfWeek, channelTodo, channelTodoCounts, firstOpenWeek, flowWeeks, groupIsFor, picturesOn, replaceStates, sortChannels, weekAsked } from "./review-flow";
 
 const post = (id: string, state: WrittenPost["state"], date: string | null = "2026-11-16"): WrittenPost => ({ id, headline: `Headline ${id}`, caption: "Words", captions: {}, state, edited: false, advice: null, date, notDrawn: null });
 const poster = (id: string, postId: string, status: Poster["status"], network: Poster["network"] = "instagram"): Poster => ({ id, batchId: "b1", postId, network, shape: "square", width: 1080, height: 1080, headline: `Headline ${postId}`, caption: "Words", versionNumber: 1, status, canRedraw: true, redrawsLeft: 2, createdAt: "2026-11-13T10:00:00Z" });
@@ -81,5 +81,35 @@ describe("new topics for dropped posts", () => {
     const b = batch([post("p1", "dropped")], [{ ...week("2026-11-16", "waiting", ["p1"]), replacementsLeft: 2 }]);
     expect(flowWeeks([group(b)], [])[0]?.replacementsLeft).toBe(2);
     expect(flowWeeks([group(batch([post("p1", "dropped")], null))], [])[0]?.replacementsLeft).toBeNull();
+  });
+});
+
+describe("channelTodoCounts", () => {
+  it("counts the topics waiting for the customer in the batch each channel is written for, and nothing for a channel with no batch", () => {
+    const b = batch([post("p1", "pending"), post("p2", "pending"), post("p3", "kept")], [week("2026-11-16", "waiting", ["p1", "p2", "p3"])]);
+    expect(channelTodoCounts([group(b)], ["instagram", "facebook"])).toEqual({ instagram: 2, facebook: 0 });
+  });
+
+  it("is the number the Posts page shows for the first week with something to do", () => {
+    const b = batch([post("p1", "kept"), post("p2", "pending", "2026-11-23")], [week("2026-11-16", "waiting", ["p1"]), week("2026-11-23", "waiting", ["p2"])]);
+    expect(channelTodoCounts([group(b)], ["instagram"])).toEqual({ instagram: 1 });
+  });
+});
+
+describe("groupIsFor", () => {
+  it("is for the networks of the batch, or of the pictures once its posts are gone", () => {
+    const b = batch([post("p1", "pending")], null);
+    expect(groupIsFor(group(b), "instagram")).toBe(true);
+    expect(groupIsFor(group(b), "facebook")).toBe(false);
+    const gone: ReviewGroup = { batchId: "b2", batch: null, cards: [{ key: "b2/p1", batchId: "b2", postId: "p1", headline: "H", written: null, pictures: [poster("x", "p1", "approved", "linkedin")], states: [] }] };
+    expect(groupIsFor(gone, "linkedin")).toBe(true);
+    expect(groupIsFor(gone, "instagram")).toBe(false);
+  });
+});
+
+describe("sortChannels", () => {
+  it("puts the channels in one fixed order whatever order they came in", () => {
+    const rows = [{ platform: "facebook" as const }, { platform: "google" as const }, { platform: "instagram" as const }, { platform: "linkedin" as const }];
+    expect(sortChannels(rows).map((row) => row.platform)).toEqual(["instagram", "facebook", "linkedin", "google"]);
   });
 });

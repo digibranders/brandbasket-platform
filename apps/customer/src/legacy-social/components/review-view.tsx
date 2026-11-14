@@ -6,7 +6,7 @@ import type { SocialReview } from "@/legacy-social/server/social-review";
 import { jobIsActive, jobLine } from "@/legacy-social/lib/social/ai";
 import { dayLabel, PLATFORM_NAMES } from "@/legacy-social/lib/social/auto";
 import { groupReview } from "@/legacy-social/lib/social/review-cards";
-import { replaceStates } from "@/legacy-social/lib/social/review-flow";
+import { channelTodoCounts, replaceStates, totalTodo } from "@/legacy-social/lib/social/review-flow";
 import { AiStartCard } from "./ai-start-card";
 import { AutoPostingCard } from "./auto-posting-card";
 import { BrandControl } from "./brand-switcher";
@@ -28,13 +28,16 @@ export function ReviewView({ review, canChange = true, approvals = null }: { rea
   /** The batches her own topics are written into: each is a batch of one post, shown with the topic and not among the week's topics. */
   const ownBatchIds = new Set(review.topicRequests.flatMap((request) => (request.batchId === null ? [] : [request.batchId])));
   const ownBusy = review.topicRequests.some((request) => request.state === "writing" || request.state === "drawing");
+  const groups = groupReview(
+    review.batches.filter((batch) => !ownBatchIds.has(batch.id)),
+    [...review.waiting, ...review.approved].filter((poster) => !ownBatchIds.has(poster.batchId)),
+    review.topics.filter((topic) => !ownBatchIds.has(topic.batchId)),
+  );
+  /** The channel numbers added up: the number beside Posts in the tabs, on every Social page. */
+  const waitingForYou = totalTodo(channelTodoCounts(groups, review.channels.map((channel) => channel.platform)));
   return (
     <ReviewFlowProvider
-      groups={groupReview(
-        review.batches.filter((batch) => !ownBatchIds.has(batch.id)),
-        [...review.waiting, ...review.approved].filter((poster) => !ownBatchIds.has(poster.batchId)),
-        review.topics.filter((topic) => !ownBatchIds.has(topic.batchId)),
-      )}
+      groups={groups}
       drawing={review.jobs.filter((job) => job.kind === "draw" && jobIsActive(job) && job.batchId !== undefined).map((job) => job.batchId ?? "")}
       reasons={review.reasons}
       channels={review.channels}
@@ -62,7 +65,7 @@ export function ReviewView({ review, canChange = true, approvals = null }: { rea
                 </div>
               )}
             </header>
-            <SocialTabs current="posts" hasNumbers={review.channels.some((channel) => channel.platform !== "linkedin")} hasPosts />
+            <SocialTabs current="posts" hasNumbers={review.channels.some((channel) => channel.platform !== "linkedin")} hasPosts waiting={waitingForYou} />
       {review.unavailable ? (
         <p role="alert" className="text-[0.8125rem] font-semibold text-error">
           We could not reach the posting service just now, so some of this may be missing. Try again in a few minutes.

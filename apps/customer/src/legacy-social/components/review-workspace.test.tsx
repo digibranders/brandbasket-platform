@@ -223,6 +223,19 @@ describe("ReviewWorkspace a week drawn in rounds", () => {
     expect(within(grid("Headline p3")).getByRole("button", { name: "Drop this topic" })).toBeTruthy();
   });
 
+  it("says what to do on the Pictures step when no picture was drawn yet, and when none is waiting or approved", () => {
+    const none = partlyDrawn().map((group) => ({ ...group, cards: group.cards.map((card) => ({ ...card, pictures: [], written: card.written === null ? null : { ...card.written, drawn: false, locked: false } })) }));
+    const first = render(<Screen groups={none} today="2026-11-13" />);
+    fireEvent.click(screen.getByRole("button", { name: /^Pictures/ }));
+    expect(screen.getByText(/No pictures yet\. Keep the topics you like under Topics and press Draw pictures/)).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Approved" }));
+    expect(screen.getByText(/Nothing is approved yet/)).toBeTruthy();
+    first.unmount();
+    render(<Screen groups={partlyDrawn().map((group) => ({ ...group, cards: group.cards.map((card) => ({ ...card, pictures: card.pictures.map((one) => ({ ...one, status: "approved" as const })) })) }))} today="2026-11-13" />);
+    fireEvent.click(screen.getByRole("button", { name: /^Pictures/ }));
+    expect(screen.getByText(/Nothing is waiting for you to approve/)).toBeTruthy();
+  });
+
   it("says how many new pictures the next draw makes, and that the others stay open", async () => {
     render(<Screen groups={partlyDrawn()} today="2026-11-13" />);
     expect(screen.getByText(/1 kept to draw\./)).toBeTruthy();

@@ -9,7 +9,7 @@ import { REJECT_REASON_WORDS, TOPIC_NOT_MADE_WORDS, type Poster, type SiteJob, t
 import { CHANNEL_PLATFORMS, dayLabel, PLATFORM_HINTS, PLATFORM_NAMES, type ChannelPlatform } from "@/legacy-social/lib/social/auto";
 import { CHANNEL_PARAM, channelParamOf, rememberChannel } from "@/legacy-social/lib/social/channel-param";
 import type { ReviewCard, ReviewGroup } from "@/legacy-social/lib/social/review-cards";
-import { cardsOfWeek, channelTodo, firstOpenWeek, flowWeeks, picturesOn, POST_TIME, postFinal, weekAsked, type FlowWeek, type ReplaceState } from "@/legacy-social/lib/social/review-flow";
+import { cardsOfWeek, channelTodo, groupIsFor, firstOpenWeek, flowWeeks, picturesOn, POST_TIME, postFinal, weekAsked, type FlowWeek, type ReplaceState } from "@/legacy-social/lib/social/review-flow";
 import { ConnectButton } from "./channels-sidebar";
 import { AddChannelChoice } from "./add-channel-choice";
 import { EmptyPosts } from "./empty-posts";
@@ -943,16 +943,15 @@ function PicturesStage({ cards, week, channel, account, reasons, ownPosters = []
   const dropped = cards.filter((card) => card.written?.state === "dropped");
   const undecided = cards.filter((card) => card.written?.state === "pending");
   const drawingNow = cards.some((card) => card.written?.drawn === true && card.pictures.length === 0 && card.written.notDrawn === null);
-  if (!settled && pictures.length === 0 && !drawingNow) return null;
   return (
     <div className="grid gap-4">
       {pictures.length === 0 && week.state !== "drawing" && !drawingNow ? (
         <p className="rounded-xl bg-surface p-4 text-[0.84375rem] text-ink-2 ring-1 ring-line">
           {only === "approved"
             ? "Nothing is approved yet. Approve the pictures under Pictures and they show here, ready to go out on their days."
-            : only === "waiting"
-              ? "No pictures are waiting for you. Keep the topics you like under Topics and press Draw pictures: the pictures to approve show here."
-              : `No picture was drawn for ${PLATFORM_NAMES[channel]} this week. Keep the topics you like under Topics and press Draw pictures.`}
+            : everyPicture.length > 0
+              ? "Nothing is waiting for you to approve. Keep more topics under Topics and press Draw pictures: their pictures show here."
+              : `No pictures yet. Keep the topics you like under Topics and press Draw pictures: their pictures show here for you to approve${only === undefined ? ` on ${PLATFORM_NAMES[channel]}` : ""}.`}
         </p>
       ) : null}
       {pictures.length === 0 ? null : (
@@ -1169,14 +1168,6 @@ function useFlow(): Flow {
   return value;
 }
 
-/**
- * Whether a written batch (or, once its posts are gone, its pictures) is for this channel. Channels that post on different days are written
- * as batches of their own, so a channel looks only at the batches written for it.
- */
-export function groupIsFor(group: ReviewGroup, channel: ChannelPlatform): boolean {
-  if (group.batch !== null) return group.batch.networks.includes(channel);
-  return group.cards.some((card) => card.pictures.some((poster) => poster.network === channel));
-}
 
 /** Holds which channel and which week the customer is looking at, for the channels column and the workspace beside it. */
 export function ReviewFlowProvider({ groups, drawing = [], reasons, channels, replacing = {}, today = "", own = NO_OWN, carousel = null, renewsOn = null, jobs = [], brandId = "brand", children }: ReviewFlowProps): ReactElement {
@@ -1263,11 +1254,12 @@ export function ReviewChannelsColumn(): ReactElement {
     <aside
       id="channels"
       aria-labelledby="review-channels-title"
-      className="border-t border-line bg-surface p-4 pb-28 md:px-8 lg:sticky lg:top-topbar lg:h-channels-column lg:self-start lg:w-60 lg:shrink-0 lg:overflow-y-auto lg:border-t-0 lg:border-r lg:px-4 lg:pt-4 lg:pb-8"
+      className="border-t border-line bg-surface p-4 pb-28 md:px-8 lg:sticky lg:top-topbar lg:h-channels-column lg:self-start lg:w-52 lg:shrink-0 lg:overflow-y-auto lg:border-t-0 lg:border-r lg:px-4 lg:pt-4 lg:pb-8"
     >
       <h2 id="review-channels-title" className="px-1 type-section text-ink">
         Channels
       </h2>
+      {channels.some((one) => todoOf(one.platform).count > 0) ? <p className="mt-1 px-1 text-xs text-ink-3">The number is what waits for you on Posts.</p> : null}
       <ul className="mt-3 grid gap-1">
         <li>
           <button type="button" aria-pressed={channel === "all"} onClick={() => setChannel("all")} className={cn("grid w-full grid-cols-[1.75rem_minmax(0,1fr)] items-center gap-2.5 rounded-control px-2 py-1.5 text-left transition-colors hover:bg-neutral-wash", channel === "all" && "bg-neutral-wash")}>

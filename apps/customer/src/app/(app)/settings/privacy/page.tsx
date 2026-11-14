@@ -14,7 +14,7 @@ export default async function PrivacyPage() {
   const nominee = await load("settings.nominee", () => loadNominee(customer));
   return (
     <>
-      <SettingsHeader current="/settings/privacy" showTeam={customer.role === "owner"} />
+      <SettingsHeader current="/settings/privacy" showTeam={customer.role === "owner"} showSocial={customer.services.includes("social")} />
       <PrivacyPanels nominee={nominee} measuring={GTM_ID !== null} canDelete={customer.role === "owner"} />
     </>
   );

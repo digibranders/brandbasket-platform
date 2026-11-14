@@ -9,10 +9,11 @@ export const metadata: Metadata = { title: "Sign-in and security" };
 
 /** Settings, Sign-in and security: change the password, and sign every other device out. */
 export default async function SecurityPage() {
-  const { role } = await requireCustomer();
+  const customer = await requireCustomer();
+  const { role } = customer;
   return (
     <>
-      <SettingsHeader current="/settings/security" showTeam={role === "owner"} />
+      <SettingsHeader current="/settings/security" showTeam={role === "owner"} showSocial={customer.services.includes("social")} />
       <div className="flex flex-col gap-4">
         <Panel title="Change password">
           <ChangePasswordForm />

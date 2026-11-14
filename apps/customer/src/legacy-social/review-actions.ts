@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache";
 import { unstable_rethrow } from "next/navigation";
 import { z } from "zod";
 import { requireService, type CustomerContext } from "@/lib/guards";
-import { actorOf, addNetwork, decideBatch, decideCarousel, drawCarousel, moveCarousel, askTopic, decidePoster, drawBatch, loadTopics, moveTopic, replaceTopic, makeCarousel, setCarouselWeekly, SocialAutoError, socialAutoSettings, type SocialAutoSettings } from "@/legacy-social/server/social-auto";
+import { actorOf, addNetwork, decideBatch, decideCarousel, disconnectChannel, drawCarousel, loadChannelPreview, moveCarousel, askTopic, decidePoster, drawBatch, loadTopics, moveTopic, replaceTopic, makeCarousel, setCarouselWeekly, SocialAutoError, socialAutoSettings, type ChannelPreview, type SocialAutoSettings } from "@/legacy-social/server/social-auto";
 import { brandOf, type SocialBrand } from "@/features/social/brand";
 import { wordsForCode } from "@/legacy-social/lib/social/ai";
 import { CHANNEL_PLATFORMS, PLATFORM_NAMES } from "@/legacy-social/lib/social/auto";
@@ -41,7 +41,7 @@ async function run(what: string, work: (g: Extract<Guard, { ok: true }>) => Prom
   } catch (error) {
     unstable_rethrow(error);
     // The posting service words this refusal itself (which channel, and the Monday it starts again), so that sentence is shown as it is.
-    if (error instanceof SocialAutoError && (error.code === "PICTURE_LIMIT_REACHED" || error.code === "CAROUSEL_LIMIT_REACHED" || error.code === "TOPIC_LIMIT_REACHED" || error.code === "TEXT_REFUSED" || error.code === "LINK_NOT_ALLOWED") && error.detail !== null) return { status: "error", message: error.detail };
+    if (error instanceof SocialAutoError && (error.code === "PICTURE_LIMIT_REACHED" || error.code === "CAROUSEL_LIMIT_REACHED" || error.code === "TOPIC_LIMIT_REACHED" || error.code === "TEXT_REFUSED" || error.code === "LINK_NOT_ALLOWED" || error.code === "CONFLICT") && error.detail !== null) return { status: "error", message: error.detail };
     if (error instanceof SocialAutoError && error.code !== null) return { status: "error", message: wordsForCode(error.code) };
     reportError(error, { area: `social.review.${what}` });
     return { status: "error", message: wordsForCode(null) };
@@ -199,4 +199,28 @@ export async function decideCarouselAction(formData: FormData): Promise<NewPostS
     await decideCarousel(settings, brand.externalId, d.action !== "reject" ? { action: d.action, id: d.id } : { action: "reject", id: d.id, reason: d.reason, ...(d.comment === undefined ? {} : { comment: d.comment }) }, actor);
     if (d.action === "approve") return "Approved. It goes out on its day.";
   });
+}
+
+/** What disconnecting a channel would stop, for the confirmation: how many posts, on which days, and whether something is being written for it. */
+export async function previewDisconnectAction(channelId: string): Promise<{ readonly ok: true; readonly preview: ChannelPreview | null } | { readonly ok: false; readonly message: string }> {
+  const parsed = ID.safeParse(channelId);
+  if (!parsed.success) return { ok: false, message: "That could not be read. Reload the page and try again." };
+  const g = await guard();
+  if (!g.ok) return { ok: false, message: g.state.status === "error" ? g.state.message : "That could not be done just now." };
+  try {
+    return { ok: true, preview: await loadChannelPreview(g.settings, g.brand.externalId, parsed.data) };
+  } catch (error) {
+    unstable_rethrow(error);
+    reportError(error, { area: "social.settings.disconnect-preview" });
+    return { ok: false, message: wordsForCode(error instanceof SocialAutoError ? error.code : null) };
+  }
+}
+
+/** Disconnects one channel. The business and the person come from the session; `onlyChannel` is her tick for the last account. */
+export async function disconnectChannelAction(formData: FormData): Promise<NewPostState> {
+  const parsed = z.object({ channelId: ID, onlyChannel: z.enum(["1"]).optional() }).safeParse({ channelId: formData.get("channelId"), onlyChannel: formData.get("onlyChannel") ?? undefined });
+  if (!parsed.success) return badForm();
+  const result = await run("disconnect a channel", async ({ settings, brand, actor }) => void (await disconnectChannel(settings, brand.externalId, parsed.data.channelId, parsed.data.onlyChannel === "1", actor)));
+  if (result.status !== "error") revalidatePath("/settings/social-media");
+  return result;
 }
