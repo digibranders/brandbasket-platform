@@ -8,7 +8,7 @@ export interface NextActionCardProps {
   readonly title: string;
   readonly description: string;
   readonly children?: ReactNode;
-  readonly primaryAction: {
+  readonly primaryAction?: {
     readonly label: string;
     readonly onClick?: () => void;
     readonly href?: string;
@@ -66,29 +66,33 @@ export function NextActionCard({
 
       {children ? <div className="mt-5">{children}</div> : null}
 
-      <div className="mt-6 flex flex-wrap items-center gap-3">
-        {primaryAction.href ? (
-          <a
-            href={primaryAction.href}
-            className="inline-flex h-[42px] items-center justify-center rounded-[8px] bg-ink px-5 font-sans text-sm font-semibold text-white shadow-button hover:bg-primary-hover active:translate-y-[1px]"
-          >
-            {primaryAction.label}
-          </a>
-        ) : (
-          <button
-            type="button"
-            disabled={primaryAction.disabled}
-            onClick={primaryAction.onClick}
-            className="inline-flex h-[42px] items-center justify-center rounded-[8px] bg-ink px-5 font-sans text-sm font-semibold text-white shadow-button hover:bg-primary-hover active:translate-y-[1px] disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            {primaryAction.label}
-          </button>
-        )}
-        {secondaryAction}
-        {asideNote ? (
-          <span className="font-sans text-[13px] text-ink-3">{asideNote}</span>
-        ) : null}
-      </div>
+      {primaryAction || secondaryAction || asideNote ? (
+        <div className="mt-6 flex flex-wrap items-center gap-3">
+          {primaryAction ? (
+            primaryAction.href ? (
+              <a
+                href={primaryAction.href}
+                className="inline-flex h-[42px] items-center justify-center rounded-[8px] bg-ink px-5 font-sans text-sm font-semibold text-white shadow-button hover:bg-primary-hover active:translate-y-[1px]"
+              >
+                {primaryAction.label}
+              </a>
+            ) : (
+              <button
+                type="button"
+                disabled={primaryAction.disabled}
+                onClick={primaryAction.onClick}
+                className="inline-flex h-[42px] items-center justify-center rounded-[8px] bg-ink px-5 font-sans text-sm font-semibold text-white shadow-button hover:bg-primary-hover active:translate-y-[1px] disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {primaryAction.label}
+              </button>
+            )
+          ) : null}
+          {secondaryAction}
+          {asideNote ? (
+            <span className="font-sans text-[13px] text-ink-3">{asideNote}</span>
+          ) : null}
+        </div>
+      ) : null}
 
       {statusText ? (
         <footer className="mt-6 flex items-center gap-2.5 border-t border-border pt-4 text-sm text-ink-2">
