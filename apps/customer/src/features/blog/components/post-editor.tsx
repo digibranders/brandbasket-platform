@@ -6,6 +6,7 @@ import type { ActionResult } from "@/lib/action-result";
 import { formatDateTime } from "@/lib/format";
 import { buttonClasses } from "@/ui/button-styles";
 import { AlertDialog, Banner, Button, Field, IconButton, Input, Menu, MenuItem, Textarea } from "@/ui";
+import { useUnsavedChangesWarning } from "@/lib/use-unsaved-changes-warning";
 import { shownAddress, siteHost } from "../rules/address";
 import { bodyJsonOf, countWords, lexicalOutline, lexicalToPlainText } from "../rules/body";
 import { BLOG_MEDIA_PATH, BLOG_PATH, postPreviewPath } from "../rules/paths";
@@ -184,12 +185,7 @@ export function PostEditor({ post, websiteUrl, categories, authors, canWrite, sa
     return () => document.removeEventListener("keydown", onKey);
   }, []);
 
-  useEffect(() => {
-    if (!dirty) return;
-    const onBeforeUnload = (event: BeforeUnloadEvent) => event.preventDefault();
-    window.addEventListener("beforeunload", onBeforeUnload);
-    return () => window.removeEventListener("beforeunload", onBeforeUnload);
-  }, [dirty]);
+  useUnsavedChangesWarning(dirty);
 
   const fieldError = (name: string): string | undefined => error?.fieldErrors?.[name];
   const savedLine = pending ? "Saving" : dirty ? "Unsaved changes" : `Saved ${formatDateTime(new Date(post.updatedAt), new Date(now))}`;

@@ -2,7 +2,8 @@
 
 import { receiptDownloadHref } from "@brandbasket/shared/lib/billing/receipt-download";
 import { StatusChip } from "@brandbasket/shared/ui/patterns";
-import { useActionState, useId } from "react";
+import { useId } from "react";
+import { useGuardedActionState } from "@/lib/use-guarded-action-state";
 import { DataTable, type DataTableColumn } from "@/components";
 import { formatDate, formatQuantity } from "@/lib/format";
 import { Badge, Banner, Button, LinkButton } from "@/ui";
@@ -28,7 +29,7 @@ interface InvoicesTableProps {
 /** Pay shows what is paid, then posts the charge id; the action checks it is the customer's own open charge. */
 function PayForm({ chargeId, summary }: { readonly chargeId: string; readonly summary: PaymentSummary }) {
   const formId = useId();
-  const [state, action, pending] = useActionState(payChargeAction, null);
+  const [state, action, pending] = useGuardedActionState(payChargeAction, null);
   const opening = useOpeningPayment(pending, state);
   const confirm = useConfirmPayment(state, pending);
   const failure = state !== null && !state.ok && !pending ? state.message : null;

@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useRef, useState, type ReactElement, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactElement, type ReactNode } from "react";
 import {
   discountCentsFor,
   isChargeableDiscount,
@@ -25,6 +25,7 @@ import { GatedSubmitButton } from "@brandbasket/shared/ui/forms/submit-gate";
 import { SelectField, type SelectOption } from "@brandbasket/shared/ui/select-field";
 import type { ReferralField } from "@/lib/server/referral-admin";
 import { buttonDanger, buttonPrimary } from "@/components/console/buttons";
+import { typedValues, useGuardedFormState } from "@/lib/use-guarded-form-state";
 import { ConfirmDialog } from "@/components/console/confirm-dialog";
 import { checkboxClasses, fieldClasses, hintClasses, labelClasses } from "@/components/console/field-styles";
 
@@ -39,6 +40,9 @@ export type ReferralFormState =
     };
 
 export const initialReferralFormState: ReferralFormState = { status: "idle" };
+
+/** A request that never got an answer: the form's own error, with what was typed kept. */
+const referralDropped = (message: string, formData: FormData): ReferralFormState => ({ status: "error", message, field: null, values: typedValues(formData) });
 
 type ReferralAction = (state: ReferralFormState, formData: FormData) => Promise<ReferralFormState>;
 
@@ -562,8 +566,8 @@ function FormError({
 
 /** The shared behaviour of both forms: values echoed back on error, the failing field focused and marked. */
 function useReferralForm(action: ReferralAction) {
-  const [state, formAction, isPending] = useActionState(action, initialReferralFormState);
   const formRef = useRef<HTMLFormElement>(null);
+  const [state, formAction, isPending] = useGuardedFormState(action, initialReferralFormState, referralDropped, formRef);
   const errorRef = useRef<HTMLParagraphElement>(null);
 
   useEffect(() => {

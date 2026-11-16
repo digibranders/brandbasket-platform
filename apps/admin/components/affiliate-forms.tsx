@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useRef, useState, type ReactElement, type ReactNode, type RefObject } from "react";
+import { useEffect, useRef, useState, type ReactElement, type ReactNode, type RefObject } from "react";
 import type { BillingCurrency, ReferralValueKind } from "@brandbasket/db";
 import { cn } from "@brandbasket/shared/lib/cn";
 import { FIELD_PATTERNS } from "@brandbasket/shared/lib/forms/input-rules";
@@ -12,6 +12,7 @@ import {
 import { RequiredMark } from "@brandbasket/shared/ui/forms/required-mark";
 import { RuleInput } from "@brandbasket/shared/ui/forms/rule-input";
 import { GatedSubmitButton } from "@brandbasket/shared/ui/forms/submit-gate";
+import { typedValues, useGuardedFormState } from "@/lib/use-guarded-form-state";
 import { SelectField, type SelectOption } from "@brandbasket/shared/ui/select-field";
 import type { AffiliateField } from "@/lib/server/affiliate-admin";
 import { buttonPrimary, buttonSecondary } from "@/components/console/buttons";
@@ -29,6 +30,9 @@ export type AffiliateFormState =
     };
 
 export const initialAffiliateFormState: AffiliateFormState = { status: "idle" };
+
+/** A request that never got an answer: the form's own error, with what was typed kept. */
+const affiliateDropped = (message: string, formData: FormData): AffiliateFormState => ({ status: "error", message, field: null, values: typedValues(formData) });
 
 type AffiliateAction = (state: AffiliateFormState, formData: FormData) => Promise<AffiliateFormState>;
 
@@ -98,8 +102,8 @@ function FormMessage({
 
 /** Values echoed back on error, the failing field focused and marked. */
 function useAffiliateForm(action: AffiliateAction) {
-  const [state, formAction, isPending] = useActionState(action, initialAffiliateFormState);
   const formRef = useRef<HTMLFormElement>(null);
+  const [state, formAction, isPending] = useGuardedFormState(action, initialAffiliateFormState, affiliateDropped, formRef);
   const errorRef = useRef<HTMLParagraphElement>(null);
 
   useEffect(() => {
@@ -449,7 +453,7 @@ export function PayoutForm({
 
 /** "Cancel" beside an owed earning, for a payment that was refunded. */
 export function CancelEarningButton({ action }: { readonly action: AffiliateAction }): ReactElement {
-  const [state, formAction, isPending] = useActionState(action, initialAffiliateFormState);
+  const [state, formAction, isPending] = useGuardedFormState(action, initialAffiliateFormState, affiliateDropped);
   return (
     <form action={formAction} className="inline">
       <button type="submit" disabled={isPending} className={cn(buttonSecondary, "px-3 py-1 text-xs")}>

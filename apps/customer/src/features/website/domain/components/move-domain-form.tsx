@@ -1,18 +1,19 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useState } from "react";
+import { useGuardedActionState } from "@/lib/use-guarded-action-state";
 import { Banner, Button, Checkbox, Field, Input } from "@/ui";
 import { requestOwnDomainAction } from "../actions";
 
 /** "I’ve got my own domain": the name and the ownership box. Ported from apps/platform components/panel/move-domain-form.tsx. */
 export function MoveDomainForm() {
-  const [state, send, pending] = useActionState(requestOwnDomainAction, null);
+  const [state, send, pending, formRef] = useGuardedActionState(requestOwnDomainAction, null);
   const [domain, setDomain] = useState("");
   const failure = state !== null && !state.ok ? state : null;
   const domainError = failure?.fieldErrors?.domain;
   const ownerError = failure?.fieldErrors?.ownerConfirmed;
   return (
-    <form action={send} noValidate className="flex max-w-reading flex-col gap-4">
+    <form ref={formRef} action={send} noValidate className="flex max-w-reading flex-col gap-4">
       <Field label="Your domain" name="domain" hint="Paste it however you have it. We only need the name, for example yourbusiness.com." {...(domainError === undefined ? {} : { error: domainError })}>
         <Input
           name="domain"

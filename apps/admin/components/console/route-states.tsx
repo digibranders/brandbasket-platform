@@ -1,6 +1,9 @@
 "use client";
 
-import type { ReactElement } from "react";
+import { useEffect, type ReactElement } from "react";
+import { reportBrowserError } from "@brandbasket/shared/lib/error-report";
+import { isStaleDeployError } from "@brandbasket/shared/lib/stale-deploy";
+import { DeploymentUpdate } from "@brandbasket/shared/ui/panel/deployment-update";
 import { ErrorState } from "@brandbasket/shared/ui/patterns";
 import { Skeleton } from "@brandbasket/shared/ui/patterns";
 
@@ -28,9 +31,16 @@ interface RouteErrorProps {
 
 /**
  * The error screen of a console section: what happened, the next step, and a button that tries again. The shell stays,
- * so staff can leave through the rail. Only the digest is shown, never the message (apps/admin/DESIGN.md).
+ * so staff can leave through the rail. Only the digest is shown, never the message (apps/admin/DESIGN.md). The error is
+ * reported like the root boundary does, and a request to an action the new deployment lacks gets the "reload" notice.
  */
 export function RouteError({ error, reset }: RouteErrorProps): ReactElement {
+  const stale = isStaleDeployError(error);
+  useEffect(() => {
+    if (stale) return;
+    reportBrowserError(error, { app: "admin", operation: "error_boundary", route: window.location.pathname, release: process.env.NEXT_PUBLIC_BRANDBASKET_RELEASE });
+  }, [error, stale]);
+  if (stale) return <DeploymentUpdate />;
   return (
     <ErrorState
       title="This page could not load"

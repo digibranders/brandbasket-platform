@@ -1,7 +1,7 @@
 "use client";
 
 import { MAX_REFERRAL_CODE_LENGTH } from "@brandbasket/billing/referral";
-import { useActionState } from "react";
+import { useGuardedActionState } from "@/lib/use-guarded-action-state";
 import { Banner, Button, Field, Input } from "@/ui";
 import { applyCodeAction, removeCodeAction } from "../actions";
 
@@ -24,10 +24,10 @@ export function CodeForm({ services, code, lapsedCode }: CodeFormProps) {
 }
 
 function ApplyCode({ services, lapsedCode }: { readonly services: readonly string[]; readonly lapsedCode: string | null }) {
-  const [state, action, pending] = useActionState(applyCodeAction, null);
+  const [state, action, pending, formRef] = useGuardedActionState(applyCodeAction, null);
   const error = state !== null && !state.ok && !pending ? state : null;
   return (
-    <form action={action} className="flex flex-col gap-3">
+    <form ref={formRef} action={action} className="flex flex-col gap-3">
       {lapsedCode === null ? null : (
         <Banner tone="info">
           Code <span className="type-mono">{lapsedCode}</span> can’t be used any more, so the full price applies. You can try another code.
@@ -50,7 +50,7 @@ function ApplyCode({ services, lapsedCode }: { readonly services: readonly strin
 }
 
 function RemoveCode({ code }: { readonly code: { readonly code: string; readonly worth: string | null } }) {
-  const [state, action, pending] = useActionState(removeCodeAction, null);
+  const [state, action, pending] = useGuardedActionState(removeCodeAction, null);
   return (
     <form action={action} className="flex flex-col gap-2">
       <Banner
