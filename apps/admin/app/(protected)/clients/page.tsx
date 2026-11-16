@@ -8,7 +8,8 @@ import { STAFF_STAGE_LABELS, type StaffStage } from "@brandbasket/shared/lib/pro
 import { SearchIcon } from "@brandbasket/shared/ui/icons";
 import { LocalDate } from "@brandbasket/shared/ui/panel/local-date-time";
 import { FilterPills } from "@/components/console/filter-pills";
-import { EmptyLine } from "@/components/console/hairline-list";
+import { EmptyState } from "@brandbasket/shared/ui/patterns";
+import { FOCAL_CARD } from "@/components/console/classes";
 import { PageHeader } from "@/components/console/page-header";
 import { SectionTabs } from "@/components/console/section-tabs";
 import { StatusPill } from "@/components/console/status-pill";
@@ -151,15 +152,25 @@ export default async function ClientsPage({
       </div>
 
       {visible.length === 0 ? (
-        <EmptyLine>
-          {clients.length === 0
-            ? "No clients yet."
-            : rawSearch !== "" && found.length === 0
-              ? `No client matches “${rawSearch}”.`
-              : "Nobody here right now."}
-        </EmptyLine>
+        <div className="mt-6">
+          <EmptyState
+            title={
+              clients.length === 0
+                ? "No clients yet."
+                : rawSearch !== "" && found.length === 0
+                  ? `No client matches “${rawSearch}”.`
+                  : "Nobody here right now."
+            }
+            description={
+              clients.length === 0
+                ? "Clients appear here as soon as someone signs up."
+                : "Clear the search or the filters to see every client again."
+            }
+          />
+        </div>
       ) : (
-        <TableScroll label="Clients" className="mt-6">
+        <section aria-label="Clients" className={`${FOCAL_CARD} mt-6`}>
+        <TableScroll label="Clients">
           <table className={TABLE}>
             <thead>
               <tr>
@@ -218,6 +229,7 @@ export default async function ClientsPage({
             </tbody>
           </table>
         </TableScroll>
+        </section>
       )}
     </>
   );

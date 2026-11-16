@@ -3,8 +3,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import type { ReactElement } from "react";
 import { buttonSmall } from "@/components/console/buttons";
-import { LIFT } from "@/components/console/classes";
-import { EmptyLine } from "@/components/console/hairline-list";
+import { FOCAL_CARD } from "@/components/console/classes";
+import { EmptyState } from "@brandbasket/shared/ui/patterns";
 import { PageHeader } from "@/components/console/page-header";
 import { SectionTabs } from "@/components/console/section-tabs";
 import { StatusPill } from "@/components/console/status-pill";
@@ -36,10 +36,10 @@ export default async function ReportsPage(): Promise<ReactElement> {
       <SectionTabs role={viewer.role} page="/reports" />
       {rows.length === 0 ? (
         <div className="mt-6">
-          <EmptyLine>No reports are waiting. The drafts for a month are written on the 1st of the next month.</EmptyLine>
+          <EmptyState title="No reports are waiting." description="The drafts for a month are written on the 1st of the next month." />
         </div>
       ) : (
-        <section aria-label="Reports to review" className={`${LIFT} mt-6 overflow-x-auto px-4`}>
+        <section aria-label="Reports to review" className={`${FOCAL_CARD} mt-6`}>
           <TableScroll label="Reports to review">
             <table className={TABLE}>
               <thead>

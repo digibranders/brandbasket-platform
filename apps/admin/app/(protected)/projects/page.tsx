@@ -2,7 +2,8 @@ import { listAssignableSupportStaff, listOpenProjectsForStaff } from "@brandbask
 import type { Metadata } from "next";
 import Link from "next/link";
 import type { ReactElement } from "react";
-import { EmptyLine } from "@/components/console/hairline-list";
+import { FOCAL_CARD } from "@/components/console/classes";
+import { EmptyState } from "@brandbasket/shared/ui/patterns";
 import { FilterPills, type FilterOption } from "@/components/console/filter-pills";
 import { PageHeader } from "@/components/console/page-header";
 import { SectionTabs } from "@/components/console/section-tabs";
@@ -98,7 +99,7 @@ export default async function ProjectsPage({ searchParams }: ProjectsPageProps):
 
       {cards.length === 0 ? (
         <div className="mt-8">
-          <EmptyLine>No builds to show.</EmptyLine>
+          <EmptyState title="No builds to show." description="A website build appears here from the moment a client pays for a website." />
         </div>
       ) : view === "board" ? (
         <div className="mt-8 grid grid-flow-col auto-cols-[minmax(11rem,1fr)] items-start gap-3 overflow-x-auto">
@@ -117,7 +118,8 @@ export default async function ProjectsPage({ searchParams }: ProjectsPageProps):
           ))}
         </div>
       ) : (
-        <TableScroll label="Projects" className="mt-8">
+        <section aria-label="Projects" className={`${FOCAL_CARD} mt-8`}>
+        <TableScroll label="Projects">
           <table className={TABLE}>
             <thead>
               <tr>
@@ -145,6 +147,7 @@ export default async function ProjectsPage({ searchParams }: ProjectsPageProps):
             </tbody>
           </table>
         </TableScroll>
+        </section>
       )}
     </>
   );

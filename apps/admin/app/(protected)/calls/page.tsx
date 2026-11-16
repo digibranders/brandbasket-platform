@@ -2,7 +2,8 @@ import { listSetupCallsForStaff } from "@brandbasket/db";
 import type { Metadata } from "next";
 import Link from "next/link";
 import type { ReactElement } from "react";
-import { EmptyLine } from "@/components/console/hairline-list";
+import { FOCAL_CARD } from "@/components/console/classes";
+import { EmptyState } from "@brandbasket/shared/ui/patterns";
 import { PageHeader } from "@/components/console/page-header";
 import { Section } from "@/components/console/section";
 import { TABLE, TD, TD_TIME, TH } from "@/components/console/table";
@@ -21,9 +22,9 @@ const DAY_MS = 86_400_000;
 const PAST_DAYS = 7;
 const AHEAD_DAYS = 28;
 
-function CallTable({ lines }: { readonly lines: readonly CallLine[] }): ReactElement {
+function CallTable({ lines, focal = false }: { readonly lines: readonly CallLine[]; readonly focal?: boolean }): ReactElement {
   return (
-    <TableScroll label="Calls">
+    <TableScroll label="Calls" className={focal ? FOCAL_CARD : undefined}>
       <table className={TABLE}>
         <thead>
           <tr>
@@ -63,9 +64,9 @@ export default async function CallsPage(): Promise<ReactElement> {
     <>
       <PageHeader title="Calls" meta={`${groups.today.length} today · ${groups.upcoming.length} coming up`} />
       <KickoffWrapUp now={now} />
-      <Section title="Today">{groups.today.length === 0 ? <EmptyLine>No calls today.</EmptyLine> : <CallTable lines={groups.today} />}</Section>
-      <Section title="Coming up">{groups.upcoming.length === 0 ? <EmptyLine>Nothing booked in the next four weeks.</EmptyLine> : <CallTable lines={groups.upcoming} />}</Section>
-      <Section title="Last 7 days">{groups.past.length === 0 ? <EmptyLine>No calls in the last week.</EmptyLine> : <CallTable lines={groups.past} />}</Section>
+      <Section title="Today">{groups.today.length === 0 ? <EmptyState title="No calls today." description="Kickoff calls booked for today appear here." /> : <CallTable lines={groups.today} focal />}</Section>
+      <Section title="Coming up">{groups.upcoming.length === 0 ? <EmptyState title="Nothing booked in the next four weeks." description="New bookings appear here as customers make them." /> : <CallTable lines={groups.upcoming} />}</Section>
+      <Section title="Last 7 days">{groups.past.length === 0 ? <EmptyState title="No calls in the last week." description="Calls from the last seven days appear here." /> : <CallTable lines={groups.past} />}</Section>
       {groups.noTime.length === 0 ? null : (
         <Section title="Booked, time not reported">
           <CallTable lines={groups.noTime} />

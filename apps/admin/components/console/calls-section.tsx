@@ -22,7 +22,7 @@ export async function CallsSection({ businessId, notice }: { readonly businessId
   const line = notice === null ? null : callNoticeLine(notice);
   return (
     <Section title="Calls" id="calls">
-      <p className="max-w-xl text-sm text-ink-soft">
+      <p className="max-w-xl text-sm text-ink-2">
         Calls the customer booked after the kickoff. Mark a call held once it has happened, then write what was agreed in a line or two: the customer reads it on their
         Calls page.
       </p>
@@ -43,7 +43,7 @@ export async function CallsSection({ businessId, notice }: { readonly businessId
                 <p className="text-base text-ink">
                   <span className="tabular-nums">{INDIA_TIME.format(row.startsAt)}</span> India time
                 </p>
-                <p className="mt-1 text-sm text-ink-soft">
+                <p className="mt-1 text-sm text-ink-2">
                   {row.about} · {row.status}
                   {row.from === null ? "" : ` · Booked from the ${row.from}`}
                 </p>
