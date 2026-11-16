@@ -155,11 +155,11 @@ function PriceHistory({ changes }: { readonly changes: readonly PriceChange[] })
                   {change.tier === null ? FIELD_LABELS[change.field] : FIELD_LABELS[change.field].toLowerCase()} ({change.currency})
                 </span>
                 {": "}
-                <span className="tabular-nums text-ink-soft line-through">{formatMoney(change.oldAmountCents, change.currency)}</span>
+                <span className="tabular-nums text-ink-2 line-through">{formatMoney(change.oldAmountCents, change.currency)}</span>
                 {" → "}
                 <span className="font-semibold tabular-nums">{formatMoney(change.newAmountCents, change.currency)}</span>
               </span>
-              <span className="tabular-nums text-ink-soft">
+              <span className="tabular-nums text-ink-2">
                 {change.changedByName ?? "Staff"} · <LocalDateTime iso={change.createdAt.toISOString()} variant="timestamp" />
               </span>
             </li>

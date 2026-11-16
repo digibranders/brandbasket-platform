@@ -5,7 +5,7 @@ import type { ReactElement } from "react";
 import { LocalDate, LocalDateTime } from "@brandbasket/shared/ui/panel/local-date-time";
 import { buttonSecondary, buttonSmall } from "@/components/console/buttons";
 import { fieldClasses, labelClasses } from "@/components/console/field-styles";
-import { EmptyLine } from "@/components/console/hairline-list";
+import { EmptyState } from "@brandbasket/shared/ui/patterns";
 import { PageHeader } from "@/components/console/page-header";
 import { SectionTabs } from "@/components/console/section-tabs";
 import { Section } from "@/components/console/section";
@@ -137,7 +137,9 @@ export default async function CompliancePage({
         </form>
 
         {result.rows.length === 0 ? (
-          <EmptyLine>Nothing matches these filters.</EmptyLine>
+          <div className="mt-4">
+            <EmptyState title="Nothing matches these filters." description="Clear the filters to see every record again." />
+          </div>
         ) : (
           <TableScroll label="Access log" className="mt-4">
             <table className={TABLE}>

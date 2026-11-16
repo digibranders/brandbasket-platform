@@ -90,13 +90,13 @@ export function ConfirmDialog({
           event.preventDefault();
           closeDialog();
         }}
-        className="m-auto w-[calc(100%-2rem)] max-w-md rounded-2xl border border-line bg-surface p-6 text-ink shadow-2xl backdrop:bg-ink/40 backdrop:backdrop-blur-xs"
+        className="m-auto max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] max-w-[520px] overflow-y-auto rounded-[20px] border border-line bg-surface p-7 text-ink shadow-dialog backdrop:bg-ink/40"
       >
-        <div className="grid gap-2">
-          <h2 id={titleId} className="text-base font-semibold text-ink">
+        <div className="grid gap-2.5">
+          <h2 id={titleId} className="font-display text-[22px] font-semibold leading-7 text-ink">
             {title}
           </h2>
-          <p id={descId} className="text-sm text-ink-2">
+          <p id={descId} className="text-[0.9375rem] leading-relaxed text-ink-2">
             {consequence}
           </p>
         </div>

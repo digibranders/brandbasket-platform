@@ -53,18 +53,21 @@ describe("ClientPayments", () => {
     expect(html).toContain('id="payment-failed"');
     expect(html).toContain("Refunded: Charged twice");
     expect(html).toContain("Failed: Card declined");
-    expect(html.match(/Refund<\/summary>/g)).toHaveLength(1);
+    expect(html.match(/>Refund<\/button>/g)).toHaveLength(1);
     expect(html).toContain("Record a refund made outside BrandBasket");
     expect(html).toContain('name="amount"');
     expect(html).toContain('value="2999.00"');
     expect(html).toContain('name="paymentId" value="paid"');
-    expect(html).toContain("I confirm this will refund the customer through the payment provider and issue a credit note.");
+    // The refund is now confirmed in the shared dialog, which states the consequence instead of a tick box.
+    expect(html).toContain("Confirm refund of ₹2,999 for Om Sweets");
+    expect(html).toContain("a credit note is issued and the customer is emailed. This cannot be undone.");
+    expect(html).toContain("What the customer is emailed");
     expect(html).toContain("I have already given this money back in Razorpay or by bank transfer. The console moves no money.");
   });
 
   it("hides the form from roles without money access and shows a notice", () => {
     const html = renderToStaticMarkup(createElement(ClientPayments, { businessId: BUSINESS, payments: PAYMENTS, canRefund: false, notice: "marked", refundAction: action }));
-    expect(html).not.toContain("Refund</summary>");
+    expect(html).not.toContain(">Refund</button>");
     expect(html).not.toContain("Record a refund made outside BrandBasket");
     expect(html).toContain("Marked refunded. Any affiliate earning still owed for it was cancelled.");
   });

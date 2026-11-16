@@ -4,9 +4,9 @@ import Link from "next/link";
 import type { ReactElement } from "react";
 import { listErrorIssues, type ErrorIssueStatus } from "@brandbasket/db";
 import { LocalDateTime } from "@brandbasket/shared/ui/panel/local-date-time";
-import { LIFT } from "@/components/console/classes";
+import { FOCAL_CARD } from "@/components/console/classes";
 import { FilterPills } from "@/components/console/filter-pills";
-import { EmptyLine } from "@/components/console/hairline-list";
+import { EmptyState } from "@brandbasket/shared/ui/patterns";
 import { PageHeader } from "@/components/console/page-header";
 import { SectionTabs } from "@/components/console/section-tabs";
 import { StatusPill, type PillTone } from "@/components/console/status-pill";
@@ -43,10 +43,10 @@ export default async function AutomaticErrorsPage({ searchParams }: { readonly s
       </div>
       {issues.length === 0 ? (
         <div className="mt-6">
-          <EmptyLine>No errors in this view.</EmptyLine>
+          <EmptyState title="No errors in this view." description="Unexpected failures in the apps appear here, grouped, as they happen." />
         </div>
       ) : (
-        <section aria-label="Error issues" className={`${LIFT} mt-6 overflow-x-auto px-4`}>
+        <section aria-label="Error issues" className={`${FOCAL_CARD} mt-6`}>
           <TableScroll label="Errors">
             <table className={TABLE}>
               <thead>
