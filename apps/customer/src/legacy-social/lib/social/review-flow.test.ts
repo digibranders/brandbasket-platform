@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { Poster, WrittenBatch, WrittenPost } from "./ai";
 import type { ReviewGroup } from "./review-cards";
-import { cardsOfWeek, channelTodo, channelTodoCounts, firstOpenWeek, flowWeeks, groupIsFor, picturesOn, replaceStates, sortChannels, weekAsked } from "./review-flow";
+import { cardsOfWeek, channelTodo, isReplacedOriginal, channelTodoCounts, firstOpenWeek, flowWeeks, groupIsFor, picturesOn, replaceStates, sortChannels, weekAsked } from "./review-flow";
 
 const post = (id: string, state: WrittenPost["state"], date: string | null = "2026-11-16"): WrittenPost => ({ id, headline: `Headline ${id}`, caption: "Words", captions: {}, state, edited: false, advice: null, date, notDrawn: null });
 const poster = (id: string, postId: string, status: Poster["status"], network: Poster["network"] = "instagram"): Poster => ({ id, batchId: "b1", postId, network, shape: "square", width: 1080, height: 1080, headline: `Headline ${postId}`, caption: "Words", versionNumber: 1, status, canRedraw: true, redrawsLeft: 2, createdAt: "2026-11-13T10:00:00Z" });
@@ -34,13 +34,13 @@ describe("flowWeeks", () => {
   });
 });
 
-describe("cardsOfWeek", () => {
-  it("shows the new topic in the place of a dropped topic it replaced, and a dropped one with no new topic stays", () => {
+describe("isReplacedOriginal", () => {
+  it("is true for a dropped topic whose new topic has come, and for nothing else", () => {
     const dropped = { ...post("p1", "dropped"), replacedBy: "p1-r1" };
     const fresh = { ...post("p1-r1", "pending"), replaces: "p1" };
-    const b = batch([dropped, fresh, post("p2", "dropped", "2026-11-17")], [week("2026-11-16", "waiting", ["p1", "p1-r1", "p2"])]);
-    const weeks = flowWeeks([group(b)], []);
-    expect(cardsOfWeek([group(b)], weeks[0]!).map((card) => card.postId)).toEqual(["p1-r1", "p2"]);
+    const b = batch([dropped, fresh, post("p2", "dropped", "2026-11-17"), post("p3", "pending", "2026-11-18")], [week("2026-11-16", "waiting", ["p1", "p1-r1", "p2", "p3"])]);
+    const cards = cardsOfWeek([group(b)], flowWeeks([group(b)], [])[0]!);
+    expect(cards.map((card) => [card.postId, isReplacedOriginal(card)])).toEqual([["p1", true], ["p1-r1", false], ["p2", false], ["p3", false]]);
   });
 });
 

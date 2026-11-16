@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { Poster, TopicRequest, WrittenBatch, WrittenPost } from "@/legacy-social/lib/social/ai";
 import type { ReviewGroup } from "@/legacy-social/lib/social/review-cards";
@@ -418,7 +418,7 @@ describe("ReviewWorkspace new topics", () => {
 
   it("offers a new topic for a dropped post, and asks for it", async () => {
     render(<Screen groups={dropped(2)} />);
-    expect(screen.getByText("2 left this week.")).toBeTruthy();
+    expect(screen.getByText("2 left this week")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Write a new topic for this day" }));
     await waitFor(() => expect(vi.mocked(replaceTopicAction)).toHaveBeenCalledTimes(1));
     const form = vi.mocked(replaceTopicAction).mock.calls[0]?.[0] as FormData;
@@ -440,7 +440,7 @@ describe("ReviewWorkspace new topics", () => {
   it("turns the button off when none are left this week", () => {
     render(<Screen groups={dropped(0)} />);
     expect((screen.getByRole("button", { name: "Write a new topic for this day" }) as HTMLButtonElement).disabled).toBe(true);
-    expect(screen.getByText("No new topics are left this week.")).toBeTruthy();
+    expect(screen.getByText("No new topics left this week.")).toBeTruthy();
   });
 
   it("puts the new topic in the place of the dropped one, and marks it", () => {
@@ -452,6 +452,45 @@ describe("ReviewWorkspace new topics", () => {
     expect(screen.queryByText(/A new topic was written for this day/)).toBeNull();
     expect(screen.queryByRole("button", { name: "Write a new topic for this day" })).toBeNull();
     expect(screen.queryByText("Dropped")).toBeNull();
+  });
+});
+
+describe("ReviewWorkspace the swap of a rejected topic", () => {
+  const before = () => open([post("p1", "dropped", "2026-11-16"), post("p2", "kept", "2026-11-17")], [], "waiting", 2);
+  const after = () => open([post("p1", "dropped", "2026-11-16", { replacedBy: "p1-r1" }), post("p1-r1", "pending", "2026-11-16", { replaces: "p1" }), post("p2", "kept", "2026-11-17")], [], "waiting", 1);
+
+  it("rolls a reel under the rejected topic while the new one is written, with a line through the old words and no words about it", () => {
+    render(<Screen groups={before()} replacing={{ p1: "writing" }} />);
+    const old = screen.getByLabelText("Headline p1");
+    expect(old.querySelectorAll(".line-through").length).toBeGreaterThan(5);
+    expect(screen.getByRole("status").textContent).toContain("Writing a new topic for this day");
+    expect(screen.getByRole("status").getAttribute("class")).toContain("overflow-hidden");
+  });
+
+  it("plays the swap for a topic seen being written: the old card stays while the reel lands and the letters scatter, then the new topic is alone", () => {
+    vi.useFakeTimers();
+    window.matchMedia = vi.fn().mockReturnValue({ matches: false, addEventListener: vi.fn(), removeEventListener: vi.fn() }) as never;
+    try {
+      const view = render(<Screen groups={before()} replacing={{ p1: "writing" }} />);
+      view.rerender(<Screen groups={after()} />);
+      // The old words are still there, with the new topic's words on the reel; the new card has not come yet.
+      expect(screen.getByLabelText("Headline p1")).toBeTruthy();
+      expect(screen.queryByText("Headline p1-r1", { selector: "h3" })).toBeNull();
+      act(() => void vi.advanceTimersByTime(1200));
+      const letters = screen.getByLabelText("Headline p1").querySelectorAll(".line-through");
+      expect((letters[0] as HTMLElement).style.opacity).toBe("0");
+      act(() => void vi.advanceTimersByTime(1400));
+      expect(screen.queryByLabelText("Headline p1")).toBeNull();
+      expect(screen.getAllByText("Headline p1-r1").length).toBeGreaterThan(0);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("shows only the new topic when the page is opened after it came", () => {
+    render(<Screen groups={after()} />);
+    expect(screen.queryByLabelText("Headline p1")).toBeNull();
+    expect(screen.getAllByText("Headline p1-r1").length).toBeGreaterThan(0);
   });
 });
 

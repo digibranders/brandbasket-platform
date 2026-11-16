@@ -27,6 +27,8 @@ import { loadSearchPresence } from "@/features/search/loader";
 import { pageOne, type PageOne } from "@/features/search/rules";
 import type { SearchPresence } from "@/features/search/rules/search-presence";
 import { loadChecklistSummary, type ChecklistSummary } from "@/features/checklist/loader";
+import { loadLiveAccounts } from "@/features/social/accounts/loader";
+import type { LiveAccounts } from "@/features/social/accounts/rules";
 import { loadSiteHealth, loadVisits, type VisitsData } from "@/features/website/loader";
 import { homeHealthLine } from "@/features/website/rules/health";
 import { getAppDb } from "@/lib/db";
@@ -376,6 +378,8 @@ export interface HomePanels {
   readonly activity: Loaded<readonly ActivityRow[]> | null;
   readonly coming: Loaded<ComingUp> | null;
   readonly included: Loaded<IncludedEdits | null> | null;
+  /** The accounts connected for posting, for the Social media card's rows. Absent when the plan has no social media or the card is not shown. */
+  readonly social?: Loaded<LiveAccounts> | null;
 }
 
 const KICKOFF_KINDS: readonly string[] = ["kickoff_unbooked", "kickoff_booked", "kickoff_unconfirmed"];
@@ -388,7 +392,8 @@ export async function loadHomePanels(customer: CustomerContext, view: HomeStateV
   const none: HomePanels = { booking: await loadBooking(customer), checklist: null, needs: null, enquiries: null, figures: null, visits: null, search: null, services: null, activity: null, coming: null, included: null };
   if (view.layout === "task") {
     if (!KICKOFF_KINDS.includes(view.state.kind)) return none;
-    return { ...none, checklist: view.state.kind === "kickoff_booked" ? await loadChecklist(customer) : null };
+    const social = customer.services.includes("social") ? await load("home.social", () => loadLiveAccounts(customer, now)) : null;
+    return { ...none, checklist: view.state.kind === "kickoff_booked" ? await loadChecklist(customer) : null, social };
   }
   const checklist = await loadChecklist(customer);
   const overview = view.layout === "overview";

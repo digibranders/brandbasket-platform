@@ -9,7 +9,7 @@ import { REJECT_REASON_WORDS, TOPIC_NOT_MADE_WORDS, type Poster, type SiteJob, t
 import { CHANNEL_PLATFORMS, dayLabel, PLATFORM_HINTS, PLATFORM_NAMES, type ChannelPlatform } from "@/legacy-social/lib/social/auto";
 import { CHANNEL_PARAM, channelParamOf, rememberChannel } from "@/legacy-social/lib/social/channel-param";
 import type { ReviewCard, ReviewGroup } from "@/legacy-social/lib/social/review-cards";
-import { cardsOfWeek, channelTodo, groupIsFor, firstOpenWeek, flowWeeks, picturesOn, POST_TIME, postFinal, weekAsked, type FlowWeek, type ReplaceState } from "@/legacy-social/lib/social/review-flow";
+import { cardsOfWeek, channelTodo, groupIsFor, isReplacedOriginal, firstOpenWeek, flowWeeks, picturesOn, POST_TIME, postFinal, weekAsked, type FlowWeek, type ReplaceState } from "@/legacy-social/lib/social/review-flow";
 import { ConnectButton } from "./channels-sidebar";
 import { AddChannelChoice } from "./add-channel-choice";
 import { EmptyPosts } from "./empty-posts";
@@ -22,6 +22,7 @@ import type { PostingDays } from "@/legacy-social/lib/social/schedule";
 import { ChannelLogo, ChannelRing } from "./channel-logo";
 import { imageUrl, pictureWord } from "./poster-tile";
 import { SMALL_DARK, SMALL_SOFT } from "./small-buttons";
+import { SplashText, TopicReel } from "./topic-reel";
 import { useReviewAction } from "./use-review-action";
 import { useTopicDrag } from "./use-topic-drag";
 
@@ -30,6 +31,9 @@ export interface ReviewChannel {
   readonly platform: ChannelPlatform;
   readonly account: string;
 }
+
+/** Stand-in lines for the reel to roll through beside the week's own topics. */
+const REEL_STAND_INS = ["Why clear answers win trust", "What a good first call covers", "Small steps toward steady leads", "Answers buyers ask before buying"] as const;
 
 const ICON_BUTTON = "inline-grid size-6 shrink-0 place-items-center rounded-md border transition-colors disabled:cursor-not-allowed";
 const ICON_IDLE = "border-line bg-surface text-ink hover:bg-sunken disabled:opacity-50";
@@ -68,6 +72,8 @@ function TopicRow({
   onMove,
   dragProps,
   preview,
+  reel,
+  fresh = false,
 }: {
   readonly card: ReviewCard;
   readonly locked: boolean;
@@ -82,6 +88,10 @@ function TopicRow({
   readonly dragProps?: { readonly onPointerDown: (event: ReactPointerEvent) => void; readonly dragging: boolean };
   /** The picture drawn for this topic, shown small inside the card; pressing it opens the pictures. */
   readonly preview?: { readonly poster: Poster; readonly open: () => void };
+  /** A dropped topic whose new one is being written (`arrived` is null), or has just come: the reel under it, and the splash of its letters once it has. */
+  readonly reel?: { readonly lines: readonly string[]; readonly arrived: string | null; readonly splash: boolean };
+  /** The topic has just taken the place of a rejected one: it slides up into it. */
+  readonly fresh?: boolean;
 }): ReactElement | null {
   const post = card.written;
   const { pending, error, run } = useReviewAction();
@@ -96,18 +106,54 @@ function TopicRow({
   const replaced = post.replacedBy != null;
   const inputId = `headline-${batchId}-${post.id}`;
   const headline = (
-    <h3 className={cn("min-w-0 break-words", compact ? "text-[0.875rem] font-semibold leading-snug" : "flex-1 basis-64 type-section", dropped ? "text-ink-3" : "text-ink")}>{post.headline}</h3>
+    <h3 className={cn("min-w-0 break-words", compact ? "text-[0.875rem] font-semibold leading-snug" : "flex-1 basis-64 type-section", dropped ? "text-ink-3" : "text-ink", dropped && reel === undefined && "line-through")}>
+      {reel === undefined ? post.headline : <SplashText text={post.headline} splash={reel.splash} />}
+    </h3>
   );
-  const editor = !editing ? null : (
-    <div className="grid gap-2">
-      <label htmlFor={inputId} className={compact ? "sr-only" : "text-xs font-semibold text-ink-2"}>
+  const saveHeadline = (): void => {
+    if (pending || draft.trim() === "") return;
+    run(decideBatchAction, { batchId, postId: post.id, action: "edit-headline", headline: draft }, () => setEditing(false));
+  };
+  // In a day card there is little room: the headline is a few lines of small text and the two buttons are small and side by side. On a wide row it is one line.
+  const editor = !editing ? null : compact ? (
+    <div className="grid gap-1.5">
+      <label htmlFor={inputId} className="sr-only">
         Headline (it is printed on the picture)
       </label>
-      <div className={cn("flex gap-2", compact ? "flex-col" : "flex-wrap")}>
-        <input id={inputId} type="text" value={draft} maxLength={120} onChange={(event) => setDraft(event.target.value)} className={cn("min-w-0 rounded-lg border border-ink-2/65 bg-surface px-3 text-[0.875rem] text-ink", compact ? "h-9 w-full" : "h-10 flex-1")} />
+      <textarea
+        id={inputId}
+        value={draft}
+        rows={3}
+        maxLength={120}
+        autoFocus
+        onChange={(event) => setDraft(event.target.value.replace(/\n/g, " "))}
+        onKeyDown={(event) => {
+          if (event.key === "Enter") {
+            event.preventDefault();
+            saveHeadline();
+          }
+        }}
+        className="w-full resize-none rounded-md border border-ink-2/65 bg-surface px-2 py-1.5 text-[0.8125rem] leading-snug text-ink"
+      />
+      <div className="flex gap-1.5">
+        <button type="button" disabled={pending || draft.trim() === ""} onClick={saveHeadline} className={cn(SMALL_DARK, "!h-7 !px-2.5 !text-xs")}>
+          Save
+        </button>
+        <button type="button" onClick={() => setEditing(false)} className={cn(SMALL_SOFT, "!h-7 !px-2.5 !text-xs")}>
+          Cancel
+        </button>
+      </div>
+    </div>
+  ) : (
+    <div className="grid gap-2">
+      <label htmlFor={inputId} className="text-xs font-semibold text-ink-2">
+        Headline (it is printed on the picture)
+      </label>
+      <div className="flex flex-wrap gap-2">
+        <input id={inputId} type="text" value={draft} maxLength={120} onChange={(event) => setDraft(event.target.value)} className="h-10 min-w-0 flex-1 rounded-lg border border-ink-2/65 bg-surface px-3 text-[0.875rem] text-ink" />
         <div className="flex gap-2">
-          <button type="button" disabled={pending || draft.trim() === ""} onClick={() => run(decideBatchAction, { batchId, postId: post.id, action: "edit-headline", headline: draft }, () => setEditing(false))} className={SMALL_DARK}>
-            {compact ? "Save" : "Save headline"}
+          <button type="button" disabled={pending || draft.trim() === ""} onClick={saveHeadline} className={SMALL_DARK}>
+            Save headline
           </button>
           <button type="button" onClick={() => setEditing(false)} className={SMALL_SOFT}>
             Cancel
@@ -173,7 +219,9 @@ function TopicRow({
     </>
   );
   const newTopicBlock =
-    !dropped || locked ? null : replaced ? (
+    !dropped || locked ? null : reel !== undefined ? (
+      <TopicReel lines={reel.lines} arrived={reel.arrived} />
+    ) : replaced ? (
       <p className="text-xs text-ink-3">A new topic was written for this day. Look for it in the list.</p>
     ) : replace === "writing" ? (
       <p role="status" className="flex items-center gap-2 text-xs font-semibold text-ink-2">
@@ -181,24 +229,24 @@ function TopicRow({
         Writing a new topic for this day. It appears here when it is ready.
       </p>
     ) : (
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="grid justify-items-start gap-1">
         <button
           type="button"
           title="Write a new topic for this day"
           aria-label="Write a new topic for this day"
           disabled={newTopic.pending || replacementsLeft === 0}
           onClick={() => newTopic.run(replaceTopicAction, { batchId, postId: post.id })}
-          className={cn(SMALL_SOFT, "gap-1.5")}
+          className={cn(SMALL_SOFT, "!h-7 gap-1 !px-2 !text-xs")}
         >
-          <Plus size={14} weight="bold" aria-hidden="true" />
+          <Plus size={12} weight="bold" aria-hidden="true" />
           New topic
         </button>
-        <span className="text-xs text-ink-3">
+        <span className="text-[0.6875rem] leading-snug text-ink-3">
           {replace === "failed" ? "We could not write one this time. You can try again. " : ""}
-          {replacementsLeft === null ? "" : replacementsLeft === 0 ? "No new topics are left this week." : `${replacementsLeft} left this week.`}
+          {replacementsLeft === null ? "" : replacementsLeft === 0 ? "No new topics left this week." : `${replacementsLeft} left this week`}
         </span>
         {newTopic.error === null ? null : (
-          <p role="alert" className="w-full text-[0.84375rem] font-semibold text-error">
+          <p role="alert" className="text-[0.84375rem] font-semibold text-error">
             {newTopic.error}
           </p>
         )}
@@ -222,7 +270,7 @@ function TopicRow({
     return (
       <li
         {...(dragProps === undefined ? {} : { onPointerDown: dragProps.onPointerDown })}
-        className={cn("flex min-h-44 flex-col gap-2 rounded-xl p-2.5 ring-1", kept ? "bg-surface ring-ok" : dropped ? "bg-surface-subtle ring-line" : "bg-surface ring-line", dragProps !== undefined && "cursor-grab touch-pan-x select-none", dragProps?.dragging === true && "opacity-40")}
+        className={cn("flex min-h-44 flex-col gap-2 rounded-xl p-2.5 ring-1", fresh && "animate-topic-in", kept ? "bg-surface ring-ok" : dropped ? "bg-surface-subtle ring-line" : "bg-surface ring-line", dragProps !== undefined && "cursor-grab touch-pan-x select-none", dragProps?.dragging === true && "opacity-40")}
       >
         {editing ? editor : headline}
         {dayPicker}
@@ -239,7 +287,7 @@ function TopicRow({
     );
   }
   return (
-    <li className={cn("grid gap-2.5 rounded-xl bg-surface p-4 ring-1 ring-line", kept && "ring-ok", dropped && "bg-surface-subtle")}>
+    <li className={cn("grid gap-2.5 rounded-xl bg-surface p-4 ring-1 ring-line", fresh && "animate-topic-in", kept && "ring-ok", dropped && "bg-surface-subtle")}>
       <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-2">
         {headline}
         <DateChip day={post.date} time={post.time} />
@@ -359,6 +407,61 @@ function WeekGrid({ cards, week, replacing, today, pictureOf, onOpenPicture, car
     }
   }, [moving]);
   const written = cards.filter((card) => card.written !== null);
+  /*
+   * A rejected topic is swapped for its new one with a little play: while the new topic is written a reel rolls under the old one; when it arrives the reel
+   * lands on it, the old letters splash away, and the new topic slides in. The old card stays on screen only for that, and only for a swap seen from
+   * here: a page opened after the new topic came shows just the new topic.
+   */
+  const [arriving, setArriving] = useState<ReadonlySet<string>>(new Set());
+  const [splashing, setSplashing] = useState<ReadonlySet<string>>(new Set());
+  const [fresh, setFresh] = useState<ReadonlySet<string>>(new Set());
+  const sawWriting = useRef(new Set<string>());
+  const played = useRef(new Set<string>());
+  const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
+  useEffect(() => {
+    const open = timers.current;
+    return () => open.forEach(clearTimeout);
+  }, []);
+  useEffect(() => {
+    const without = (current: ReadonlySet<string>, id: string): ReadonlySet<string> => new Set([...current].filter((one) => one !== id));
+    for (const card of written) {
+      const id = card.postId;
+      if (replacing[id] === "writing") sawWriting.current.add(id);
+      if (!isReplacedOriginal(card) || !sawWriting.current.has(id) || played.current.has(id)) continue;
+      played.current.add(id);
+      if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) continue;
+      const next = card.written?.replacedBy ?? "";
+      setArriving((current) => new Set(current).add(id));
+      timers.current.push(setTimeout(() => setSplashing((current) => new Set(current).add(id)), 1100));
+      timers.current.push(
+        setTimeout(() => {
+          setArriving((current) => without(current, id));
+          setSplashing((current) => without(current, id));
+          setFresh((current) => new Set(current).add(next));
+        }, 2300),
+      );
+      timers.current.push(setTimeout(() => setFresh((current) => without(current, next)), 3100));
+    }
+  }, [written, replacing]);
+  /** The old topic is shown only while its swap plays; the new topic waits until the old one is gone. */
+  const shown = (card: ReviewCard): boolean => {
+    if (isReplacedOriginal(card)) return arriving.has(card.postId);
+    const original = card.written?.replaces;
+    return original == null || !arriving.has(original);
+  };
+  /** What the reel rolls through: the other topics of the week, then a few stand-ins. */
+  const reelLines = (card: ReviewCard): string[] =>
+    [...written.filter((other) => other.postId !== card.postId && !isReplacedOriginal(other)).map((other) => other.written?.headline ?? ""), ...REEL_STAND_INS].filter((line) => line !== "").slice(0, 8);
+  const swapOf = (card: ReviewCard): Pick<ComponentProps<typeof TopicRow>, "reel" | "fresh"> => {
+    const id = card.postId;
+    const fresher = fresh.has(id);
+    if (card.written?.state === "dropped" && !isReplacedOriginal(card) && replacing[id] === "writing") return { reel: { lines: reelLines(card), arrived: null, splash: false } };
+    if (isReplacedOriginal(card) && arriving.has(id)) {
+      const next = written.find((other) => other.postId === card.written?.replacedBy);
+      return { reel: { lines: reelLines(card), arrived: next?.written?.headline ?? "…", splash: splashing.has(id) } };
+    }
+    return fresher ? { fresh: true } : {};
+  };
   const days = week.from === "" ? [] : daysOfWeek(week.from);
   const placed = days.length > 0 && written.every((card) => card.written?.date != null && days.includes(card.written.date));
   const dayOf = (card: ReviewCard): string | null => moved[card.postId] ?? card.written?.date ?? null;
@@ -395,12 +498,12 @@ function WeekGrid({ cards, week, replacing, today, pictureOf, onOpenPicture, car
   });
   const row = (card: ReviewCard, compact: boolean): ReactElement => {
     const open = targets(card);
-    return <TopicRow key={card.key} card={card} compact={compact} locked={postFinal(card, week)} replace={replacing[card.postId]} replacementsLeft={week.replacementsLeft} moveDays={open} onMove={(day) => move(card, day)} {...(compact && pictureOf?.(card) !== undefined && onOpenPicture !== undefined ? { preview: { poster: pictureOf(card) as Poster, open: () => onOpenPicture(pictureOf(card) as Poster) } } : {})} {...(open.length > 0 && compact ? { dragProps: { onPointerDown: (event: ReactPointerEvent) => drag.begin(event, card.key, card.headline), dragging: drag.dragging === card.key } } : {})} />;
+    return <TopicRow key={card.key} card={card} compact={compact} {...swapOf(card)} locked={postFinal(card, week)} replace={replacing[card.postId]} replacementsLeft={week.replacementsLeft} moveDays={open} onMove={(day) => move(card, day)} {...(compact && pictureOf?.(card) !== undefined && onOpenPicture !== undefined ? { preview: { poster: pictureOf(card) as Poster, open: () => onOpenPicture(pictureOf(card) as Poster) } } : {})} {...(open.length > 0 && compact ? { dragProps: { onPointerDown: (event: ReactPointerEvent) => drag.begin(event, card.key, card.headline), dragging: drag.dragging === card.key } } : {})} />;
   };
   if (!placed) {
     return (
       <div className="grid gap-3">
-        <ul className="grid gap-3">{cards.map((card) => row(card, false))}</ul>
+        <ul className="grid gap-3">{cards.filter(shown).map((card) => row(card, false))}</ul>
         {carousel === null ? null : <CarouselTopic carousel={carousel} />}
       </div>
     );
@@ -420,7 +523,7 @@ function WeekGrid({ cards, week, replacing, today, pictureOf, onOpenPicture, car
       <div className="overflow-x-auto pb-2">
         <div data-drop-zone="" className="grid grid-cols-[repeat(7,minmax(9.5rem,1fr))] gap-2.5">
           {days.map((day, index) => {
-            const here = written.filter((card) => dayOf(card) === day);
+            const here = written.filter((card) => dayOf(card) === day && shown(card));
             const carouselHere = carousel !== null && carouselDay === day;
             const landing = drag.dragging !== null && drag.over === day;
             return (

@@ -208,6 +208,41 @@
   animation: channel-run 1.6s linear infinite;
 }
 
+/* The reel under a rejected topic while a new one is written: its lines roll past in a loop (the loop's length and speed are set on the element). */
+@keyframes reel-spin {
+  to {
+    transform: translateY(calc(var(--reel-loop) * -1));
+  }
+}
+
+@utility animate-reel-spin {
+  animation: reel-spin var(--reel-time, 1s) linear infinite;
+
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
+  }
+}
+
+/** A new topic arriving in the place of a rejected one slides up into it. */
+@keyframes topic-in {
+  from {
+    opacity: 0;
+    transform: translateY(1.5rem);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@utility animate-topic-in {
+  animation: topic-in 600ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
+  }
+}
+
 @utility animate-channel-zoom {
   animation: channel-zoom 1.6s ease-in-out infinite;
 }
