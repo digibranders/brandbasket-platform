@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { useGuardedActionState } from "@/lib/use-guarded-action-state";
 import { Panel } from "@/components";
 import type { ActionResult } from "@/lib/action-result";
 import { Banner, Button, Field, Input } from "@/ui";
@@ -16,11 +16,11 @@ export interface CreateFormProps {
 
 /** A short form with one primary button (plan 60, section 14): the name of the new thing, then its own page opens. */
 export function CreateForm({ title, field, submitLabel, action }: CreateFormProps) {
-  const [state, formAction, pending] = useActionState(action, null);
+  const [state, formAction, pending, formRef] = useGuardedActionState(action, null);
   const failed = state !== null && !state.ok ? state : null;
   return (
     <Panel title={title}>
-      <form action={formAction} className="flex max-w-xl flex-col gap-4">
+      <form ref={formRef} action={formAction} className="flex max-w-xl flex-col gap-4">
         {failed === null || failed.fieldErrors?.[field.name] !== undefined ? null : <Banner tone="neg">{failed.message}</Banner>}
         <Field label={field.label} name={field.name} hint={field.hint} error={failed?.fieldErrors?.[field.name]}>
           <Input name={field.name} required maxLength={field.maxLength} autoFocus />

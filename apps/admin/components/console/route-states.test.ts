@@ -26,4 +26,10 @@ describe("route states", () => {
     const html = renderToStaticMarkup(createElement(RouteError, { error: new Error("x"), reset: vi.fn() }));
     expect(html).not.toContain("give them this code");
   });
+
+  it("shows the reload notice, not an error, when the action no longer exists on the server", () => {
+    const error = Object.assign(new Error("x"), { name: "UnrecognizedActionError" });
+    const html = renderToStaticMarkup(createElement(RouteError, { error, reset: vi.fn() }));
+    expect(html).not.toContain("This page could not load");
+  });
 });

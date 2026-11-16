@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useActionState, useMemo, useState, type ReactElement } from "react";
+import { useMemo, useState, type ReactElement } from "react";
 import type { SupportTicket } from "@brandbasket/db";
 import { canTransitionSupportStatus, SUPPORT_CATEGORIES, SUPPORT_PRIORITIES, SUPPORT_STATUSES, SUPPORT_STATUS_LABELS } from "@brandbasket/shared/lib/support";
 import { RequiredMark } from "@brandbasket/shared/ui/forms/required-mark";
@@ -10,7 +10,8 @@ import { GatedSubmitButton } from "@brandbasket/shared/ui/forms/submit-gate";
 import { SelectField, type SelectOption } from "@brandbasket/shared/ui/select-field";
 import { buttonPrimary, buttonSecondary } from "@/components/console/buttons";
 import { fieldClasses, labelClasses } from "@/components/console/field-styles";
-import { STAFF_SUPPORT_CATEGORY_LABELS, STAFF_SUPPORT_INITIAL_STATE, type StaffSupportActionState } from "@/lib/support-admin-state";
+import { staffSupportDropped, STAFF_SUPPORT_CATEGORY_LABELS, STAFF_SUPPORT_INITIAL_STATE, type StaffSupportActionState } from "@/lib/support-admin-state";
+import { useGuardedFormState } from "@/lib/use-guarded-form-state";
 import { addMessage, linkError, unlinkError, updateTicket } from "./actions";
 
 const UUID_PATTERN = "[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}";
@@ -41,7 +42,7 @@ export function TicketEditor({ ticket, staff }: { readonly ticket: SupportTicket
   const [assignee, setAssignee] = useState(ticket.assigneeStaffId ?? "");
   const statusOptions = useMemo((): readonly SelectOption[] => SUPPORT_STATUSES.filter((value) => canTransitionSupportStatus(ticket.status, value)).map((value) => ({ value, label: SUPPORT_STATUS_LABELS[value] })), [ticket.status]);
   const assigneeOptions = useMemo((): readonly SelectOption[] => [{ value: "", label: "Unassigned" }, ...staff.map((person) => ({ value: person.userId, label: person.name }))], [staff]);
-  const [state, action, pending] = useActionState(updateTicket.bind(null, ticket.id), STAFF_SUPPORT_INITIAL_STATE);
+  const [state, action, pending] = useGuardedFormState(updateTicket.bind(null, ticket.id), STAFF_SUPPORT_INITIAL_STATE, staffSupportDropped);
   return <form action={action} aria-busy={pending}>
     <input type="hidden" name="expectedVersion" value={ticket.version} />
     <fieldset disabled={pending} className="grid gap-5 sm:grid-cols-2">
@@ -61,11 +62,11 @@ export function TicketMessageForm({ ticketId, closed, submissionKey }: { readonl
   const [visibility, setVisibility] = useState<"public" | "internal">(closed ? "internal" : "public");
   const visibilityOptions = useMemo((): readonly SelectOption[] => [{ value: "public", label: "Public reply to requester", disabled: closed }, { value: "internal", label: "Internal note for staff" }], [closed]);
   const bound = addMessage.bind(null, ticketId);
-  const [state, action, pending] = useActionState(async (previous: StaffSupportActionState, form: FormData): Promise<StaffSupportActionState> => {
+  const [state, action, pending] = useGuardedFormState(async (previous: StaffSupportActionState, form: FormData): Promise<StaffSupportActionState> => {
     const next = await bound(previous, form);
     if (next.kind === "saved") setBody("");
     return next;
-  }, STAFF_SUPPORT_INITIAL_STATE);
+  }, STAFF_SUPPORT_INITIAL_STATE, staffSupportDropped);
   return <form action={action} aria-busy={pending}>
     <input type="hidden" name="submissionKey" value={state.submissionKey ?? submissionKey} />
     <div className="max-w-sm"><label htmlFor="message-visibility" className={labelClasses}>Who can see this<RequiredMark /></label><SelectField id="message-visibility" name="visibility" required options={visibilityOptions} value={visibility} onChange={(value) => setVisibility(value === "internal" ? "internal" : "public")} disabled={pending} className={fieldClasses} /></div>
@@ -78,11 +79,11 @@ export function TicketMessageForm({ ticketId, closed, submissionKey }: { readonl
 
 export function ErrorLinkForm({ ticketId }: { readonly ticketId: string }): ReactElement {
   const [issueId, setIssueId] = useState("");
-  const [state, action, pending] = useActionState(async (previous: StaffSupportActionState, form: FormData): Promise<StaffSupportActionState> => {
+  const [state, action, pending] = useGuardedFormState(async (previous: StaffSupportActionState, form: FormData): Promise<StaffSupportActionState> => {
     const next = await linkError(ticketId, previous, form);
     if (next.kind === "saved") setIssueId("");
     return next;
-  }, STAFF_SUPPORT_INITIAL_STATE);
+  }, STAFF_SUPPORT_INITIAL_STATE, staffSupportDropped);
   return <form action={action} aria-busy={pending} className="mt-6">
     <label htmlFor="automatic-issue-id" className={labelClasses}>Automatic error issue reference<RequiredMark /></label>
     <input id="automatic-issue-id" name="issueId" value={issueId} onChange={(event) => setIssueId(event.target.value)} required minLength={36} maxLength={36} pattern={UUID_PATTERN} title="The issue's 36-character UUID reference" spellCheck={false} autoCapitalize="none" autoComplete="off" disabled={pending} aria-invalid={state.kind === "invalid"} className={fieldClasses} placeholder="Paste the issue’s UUID reference" />
@@ -92,6 +93,6 @@ export function ErrorLinkForm({ ticketId }: { readonly ticketId: string }): Reac
 }
 
 export function RemoveErrorLink({ ticketId, issueId }: { readonly ticketId: string; readonly issueId: string }): ReactElement {
-  const [state, action, pending] = useActionState(unlinkError.bind(null, ticketId), STAFF_SUPPORT_INITIAL_STATE);
+  const [state, action, pending] = useGuardedFormState(unlinkError.bind(null, ticketId), STAFF_SUPPORT_INITIAL_STATE, staffSupportDropped);
   return <form action={action} aria-busy={pending}><input type="hidden" name="issueId" value={issueId} /><button type="submit" disabled={pending} className={buttonSecondary}>{pending ? "Removing…" : "Remove link"}</button><ActionNotice state={state} /></form>;
 }

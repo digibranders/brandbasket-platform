@@ -2,6 +2,7 @@
 
 import { createContext, useCallback, useContext, useMemo, useRef, useState, type ReactNode } from "react";
 import { SaveBar } from "@/components";
+import { useUnsavedChangesWarning } from "@/lib/use-unsaved-changes-warning";
 
 /** What a section form tells the host: whether it has unsaved changes, whether it is saving, and how to throw its changes away. */
 export interface FormReport {
@@ -55,6 +56,8 @@ export function SaveBarHost({ children }: { readonly children: ReactNode }) {
   const active = Object.entries(entries)
     .filter(([, entry]) => entry.dirty)
     .sort(([, a], [, b]) => b.since - a.since)[0];
+
+  useUnsavedChangesWarning(active !== undefined);
 
   return (
     <HostContext.Provider value={api}>

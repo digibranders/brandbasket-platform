@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState, useId } from "react";
+import { useId } from "react";
+import { useGuardedActionState } from "@/lib/use-guarded-action-state";
 import { StatusChip } from "@brandbasket/shared/ui/patterns";
 import { Banner, Button, Icon } from "@/ui";
 import { ConfirmPaymentDialog, useConfirmPayment } from "../../checkout/components/confirm-payment";
@@ -17,7 +18,7 @@ import type { ReactivationCardView } from "../loader";
  */
 export function ReactivateCard({ view, canManage }: { readonly view: ReactivationCardView; readonly canManage: boolean }) {
   const formId = useId();
-  const [state, action, pending] = useActionState(reactivateAction, null);
+  const [state, action, pending] = useGuardedActionState(reactivateAction, null);
   const opening = useOpeningPayment(pending, state);
   const confirm = useConfirmPayment(state, pending);
   const failure = state !== null && !state.ok && !pending ? state : null;

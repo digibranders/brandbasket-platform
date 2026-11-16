@@ -8,7 +8,8 @@ import type { MoneyCurrency } from "@brandbasket/shared/lib/money";
 import { PHONE_COUNTRY_FIELD } from "@brandbasket/shared/lib/phone/fields";
 import { currencyForCountry } from "@brandbasket/shared/lib/pricing";
 import Link from "next/link";
-import { useActionState, useState } from "react";
+import { useState } from "react";
+import { useGuardedActionState } from "@/lib/use-guarded-action-state";
 import { Banner, Button, Checkbox, Field, Input, Select, type SelectOption } from "@/ui";
 import { clearPendingSignupAction, signUpAction, type SignUpResult } from "../actions";
 import { NEXT_FIELD, SIGN_IN_PATH, withInviteReturn } from "../rules/account-entry";
@@ -90,7 +91,7 @@ export function SignUpForm({
     if (!result.ok && result.retry !== undefined) cooldown.begin(result.retry);
     return result;
   };
-  const [state, formAction, pending] = useActionState(
+  const [state, formAction, pending] = useGuardedActionState(
     run,
     initialStep ? ({ ok: true, data: { otp: initialStep.otp } } as const) : null
   );

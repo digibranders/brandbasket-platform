@@ -1,6 +1,7 @@
 "use client";
 
-import { useActionState, useEffect, useId, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
+import { useGuardedActionState } from "@/lib/use-guarded-action-state";
 import type { ActionResult } from "@/lib/action-result";
 import { Banner, Button, Dialog, Field, LinkButton, Textarea } from "@/ui";
 import { approvePreviewAction, sendPreviewFeedbackAction } from "../actions";
@@ -21,7 +22,7 @@ const FEEDBACK_FORM_ID = "preview-feedback";
 /** Approve, with an in-page confirm (never a modal, as before), and the question it asks moved into focus. */
 function Approve() {
   const [asking, setAsking] = useState(false);
-  const [state, approve, pending] = useActionState(async (): Promise<ActionResult> => approvePreviewAction(), null);
+  const [state, approve, pending] = useGuardedActionState(async (): Promise<ActionResult> => approvePreviewAction(), null);
   const question = useRef<HTMLParagraphElement>(null);
   const questionId = useId();
 
@@ -58,7 +59,7 @@ function Approve() {
 function AskForChanges({ roundsLine, feedbackKey }: { readonly roundsLine: string; readonly feedbackKey: string }) {
   const [open, setOpen] = useState(false);
   const [body, setBody] = useState("");
-  const [state, send, pending] = useActionState(sendPreviewFeedbackAction, null);
+  const [state, send, pending] = useGuardedActionState(sendPreviewFeedbackAction, null);
   const failure = state !== null && !state.ok ? state : null;
   const bodyError = failure?.fieldErrors?.body;
 
