@@ -121,6 +121,7 @@
   --color-surface-hover: #eeece7;
   --color-border: #e3e0d9;
   --color-ink-muted: #8a8d95;
+  --color-on-primary: #ffffff;
   --color-primary-hover: #2a2b31;
   --color-accent-text: #8a5524;
   --color-accent-gold: #c48a47;
@@ -489,6 +490,12 @@ html[data-brand="brandbasket"]:is([data-app="customer"], [data-app="console"]) {
 
 html[data-brand="brandbasket"]:is([data-app="customer"], [data-app="console"]) :where(.heading-display, .panel-title) em {
   color: #a46c2f;
+}
+
+/* The console's small muted text (figure labels, hints, placeholders) sits on paper, card and sunken surfaces. The shared
+   #8a8d95 is 2.8:1 on the sunken one; this is ink-3 (5.2:1 on sunken, 6.1:1 on white). The customer app keeps its own token. */
+html[data-app="console"] {
+  --color-ink-muted: #5f626a;
 }
 
 /*

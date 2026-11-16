@@ -1,8 +1,27 @@
 "use client";
 
-import { useId, useRef, type ReactElement, type ReactNode } from "react";
+import { useId, useRef, type KeyboardEvent, type ReactElement, type ReactNode } from "react";
 import { GatedSubmitButton } from "@brandbasket/shared/ui/forms/submit-gate";
 import { buttonDanger, buttonPrimary, buttonSecondary } from "@/components/console/buttons";
+
+const TABBABLE = 'a[href], button:not([disabled]), input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
+/** A native modal dialog lets Tab move on to the browser's own controls; keep it cycling between the dialog's first and last control. */
+function keepTabInside(event: KeyboardEvent<HTMLDialogElement>): void {
+  if (event.key !== "Tab") return;
+  const tabbable = Array.from(event.currentTarget.querySelectorAll<HTMLElement>(TABBABLE)).filter((element) => element.offsetParent !== null);
+  const first = tabbable[0];
+  const last = tabbable[tabbable.length - 1];
+  if (first === undefined || last === undefined) return;
+  const active = document.activeElement;
+  if (event.shiftKey && (active === first || active === event.currentTarget)) {
+    event.preventDefault();
+    last.focus();
+  } else if (!event.shiftKey && active === last) {
+    event.preventDefault();
+    first.focus();
+  }
+}
 
 export interface ConfirmDialogProps {
   /** The dialog title, naming the action clearly. Plain words, no dashes. */
@@ -86,6 +105,7 @@ export function ConfirmDialog({
         onClick={(event) => {
           if (event.target === dialogRef.current) closeDialog();
         }}
+        onKeyDown={keepTabInside}
         onCancel={(event) => {
           event.preventDefault();
           closeDialog();

@@ -17,6 +17,8 @@ export interface LocalEnvSecrets {
   readonly leadsApiToken: string;
   /** Payload's own signing secret. Both apps open the same CMS database, so both need it. */
   readonly payloadSecret: string;
+  /** Signs sign-up codes in the customer app; without it the sign-up form cannot send a code. */
+  readonly accountCodeSecret: string;
 }
 
 const DATABASE_HOST = "localhost:5432";
@@ -65,6 +67,7 @@ export function buildLocalEnvFile(secrets: LocalEnvSecrets): string {
     "",
     "# Auth",
     `BETTER_AUTH_SECRET=${secrets.authSecret}`,
+    `ACCOUNT_CODE_SECRET=${secrets.accountCodeSecret}`,
     "",
     "# Payload CMS. Its own database, owned by bb_cms, which it migrates itself.",
     `DATABASE_URL_PAYLOAD=${roleUrl("bb_cms", secrets.cmsPassword, PAYLOAD_DATABASE)}`,

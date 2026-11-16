@@ -72,6 +72,8 @@ export async function dialogKeyboard(page: Page, trigger: Locator, dialog: () =>
   await expect(dialog()).toBeVisible();
   for (let index = 0; index < 12; index += 1) {
     await page.keyboard.press("Tab");
+    // Base UI's focus guards take focus for one animation frame and hand it back to the dialog; wait that frame out.
+    await page.evaluate(() => new Promise<void>((done) => requestAnimationFrame(() => requestAnimationFrame(() => done()))));
     const inside = await dialog().evaluate((element) => element.contains(document.activeElement));
     expect(inside, "focus stays in the dialog").toBe(true);
   }

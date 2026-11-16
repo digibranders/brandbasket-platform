@@ -76,7 +76,7 @@ export function NextActionCard({
                 href={primaryAction.href}
                 target={primaryAction.target}
                 rel={primaryAction.rel}
-                className="inline-flex h-[42px] items-center justify-center rounded-[8px] bg-ink px-5 font-sans text-sm font-semibold text-white shadow-button hover:bg-primary-hover active:translate-y-[1px]"
+                className="inline-flex h-[42px] items-center justify-center rounded-[8px] bg-ink px-5 font-sans text-sm font-semibold text-on-primary shadow-button hover:bg-primary-hover active:translate-y-[1px]"
               >
                 {primaryAction.label}
               </a>
@@ -85,7 +85,7 @@ export function NextActionCard({
                 type="button"
                 disabled={primaryAction.disabled}
                 onClick={primaryAction.onClick}
-                className="inline-flex h-[42px] items-center justify-center rounded-[8px] bg-ink px-5 font-sans text-sm font-semibold text-white shadow-button hover:bg-primary-hover active:translate-y-[1px] disabled:cursor-not-allowed disabled:opacity-50"
+                className="inline-flex h-[42px] items-center justify-center rounded-[8px] bg-ink px-5 font-sans text-sm font-semibold text-on-primary shadow-button hover:bg-primary-hover active:translate-y-[1px] disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {primaryAction.label}
               </button>

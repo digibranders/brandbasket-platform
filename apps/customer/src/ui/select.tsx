@@ -41,7 +41,7 @@ export function Select({ options, value, defaultValue, onValueChange, name, plac
         aria-label={aria["aria-label"]}
         className={cx(CONTROL, controlWidth(className), "flex h-control items-center justify-between gap-2 pr-2 pl-3 text-left", className)}
       >
-        <BaseSelect.Value placeholder={placeholder} className="truncate data-placeholder:text-ink-muted" />
+        <BaseSelect.Value placeholder={placeholder} className="truncate data-placeholder:text-ink-3" />
         <BaseSelect.Icon className="text-ink-3">
           <Icon name="CaretUpDown" size="sm" />
         </BaseSelect.Icon>
