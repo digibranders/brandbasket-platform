@@ -1,3 +1,4 @@
+import { StatTile } from "@brandbasket/shared/ui/patterns";
 import { notFound } from "next/navigation";
 import type { MonthKey } from "@brandbasket/shared/lib/reports/period";
 import { PageHeader, Panel, PanelError } from "@/components";
@@ -16,13 +17,14 @@ function Report({ view }: { readonly view: ReportMonthView }) {
   return (
     <div className="flex flex-col gap-4">
       {readable.length === 0 ? null : (
-        <Panel title="The month in short">
-          <ul className="m-0 flex list-disc flex-col gap-2 pl-5 type-body">
+        <article className="rounded-overlay border border-border border-t-2 border-t-accent-gold bg-surface p-6 shadow-hero sm:p-7">
+          <h2 className="type-section text-ink">The month in short</h2>
+          <ul className="m-0 mt-3 flex list-disc flex-col gap-2 pl-5 type-body">
             {readable.map(({ service, content }) => (
               <li key={service.service}>{content.headline}</li>
             ))}
           </ul>
-        </Panel>
+        </article>
       )}
       <div className="grid gap-4 md:grid-cols-3">
         {view.services.map((service) =>
@@ -42,14 +44,11 @@ function Report({ view }: { readonly view: ReportMonthView }) {
                 ) : undefined
               }
             >
-              <dl className="m-0 flex flex-col gap-2 type-body">
+              <div className="grid grid-cols-2 gap-x-4 gap-y-5">
                 {service.content.figures.map((figure) => (
-                  <div key={figure.label} className="flex justify-between gap-4">
-                    <dt className="text-ink-3">{figure.label}</dt>
-                    <dd className="m-0 text-right font-medium">{figure.value}</dd>
-                  </div>
+                  <StatTile key={figure.label} label={figure.label} value={figure.value} />
                 ))}
-              </dl>
+              </div>
             </Panel>
           ),
         )}

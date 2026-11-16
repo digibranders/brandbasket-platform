@@ -1,5 +1,6 @@
 import { FilterBar, MetricStrip, PageHeader, Panel, PanelError, type Metric } from "@/components";
 import { formatNumber, formatOutOf, formatQuantity } from "@/lib/format";
+import { ASK_OWNER } from "@/lib/ask-owner";
 import type { CustomerContext } from "@/lib/guards";
 import { load } from "@/lib/loaded";
 import { LinkButton, TabLinks, Icon, type ChipOption } from "@/ui";
@@ -93,6 +94,7 @@ function List({ view, filters, customer }: { readonly view: EnquiriesView; reado
   const note = footnote(view);
   return (
     <>
+      {customer.role === "viewer" ? <p className="type-meta">{ASK_OWNER}</p> : null}
       <MetricStrip label="Enquiries at a glance" metrics={metricsOf(view)} />
       <Panel flush>
         <div className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-border-subtle px-4 py-3">
