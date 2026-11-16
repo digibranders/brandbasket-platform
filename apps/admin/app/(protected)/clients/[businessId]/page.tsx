@@ -60,7 +60,7 @@ export default async function ClientOverviewPage({
 
   return (
     <div className="grid items-start gap-8 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
-      <div className="grid gap-8">
+      <div className="grid grid-cols-1 gap-8">
         <section aria-labelledby="next-step-title" className={`${LIFT} p-5`}>
           <h2 id="next-step-title" className="font-display text-[0.9375rem] font-semibold text-ink">
             Next step
@@ -92,7 +92,7 @@ export default async function ClientOverviewPage({
         </section>
       </div>
 
-      <div className="grid gap-8">
+      <div className="grid grid-cols-1 gap-8">
         <Section title="Owner">
           <Facts
             items={[

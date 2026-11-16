@@ -14,13 +14,13 @@ import { AUTH_DIR, fixture, recordPath, settle, type FixtureKey, type FixtureRec
 
 export * from "./lite";
 
-const ALLOWED_DATABASE = "brandbasket_platform_r211";
+const ALLOWED_DATABASES = ["brandbasket_platform_r211", "brandbasket_platform_r213"] as const;
 let handle: DatabaseHandle | null = null;
 
 /** The staff connection. Refuses to run unless it points at the r211 database. */
 export async function sql<T extends object = Record<string, unknown>>(text: string, params: readonly unknown[] = []): Promise<T[]> {
   const url = process.env.DATABASE_URL_STAFF;
-  if (url === undefined || !url.endsWith(`/${ALLOWED_DATABASE}`)) throw new Error(`DATABASE_URL_STAFF must end in /${ALLOWED_DATABASE}.`);
+  if (url === undefined || !ALLOWED_DATABASES.some((name) => url.endsWith(`/${name}`))) throw new Error(`DATABASE_URL_STAFF must end in one of ${ALLOWED_DATABASES.join(", ")}.`);
   handle ??= createDatabase(url, { max: 2 });
   const result = await handle.db.$client.query(text, [...params]);
   return result.rows as T[];

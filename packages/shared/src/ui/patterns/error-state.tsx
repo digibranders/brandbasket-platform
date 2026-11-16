@@ -45,7 +45,7 @@ export function ErrorState({
             <button
               type="button"
               onClick={retryAction.onClick}
-              className="inline-flex h-9 items-center justify-center rounded-[8px] bg-ink px-4 font-sans text-[13.5px] font-semibold text-white shadow-button hover:bg-primary-hover active:translate-y-[1px]"
+              className="inline-flex h-9 items-center justify-center rounded-[8px] bg-ink px-4 font-sans text-[13.5px] font-semibold text-on-primary shadow-button hover:bg-primary-hover active:translate-y-[1px]"
             >
               {retryAction.label}
             </button>

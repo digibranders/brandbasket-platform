@@ -37,9 +37,6 @@ const WEBSITE_STEPS: readonly StepItem[] = [
   { id: "launch", label: "Launch" },
 ];
 
-const KICKOFF_CALL_D31_WORDING =
-  "Kickoff call booked: Thursday, 14 November at 3:30 PM. We will call the primary contact number.";
-
 function websiteStepperIndex(kind: string): number {
   switch (kind) {
     case "setup":
@@ -119,7 +116,7 @@ export function WebsiteScreen({ context, core, overview, pages, notice, feedback
       : null;
     const description = kickoffTiming
       ? `Kickoff call booked for ${kickoffTiming}. We will call the primary contact number or join on video.`
-      : KICKOFF_CALL_D31_WORDING;
+      : (view.line ?? view.title);
 
     return (
       <>
@@ -137,7 +134,7 @@ export function WebsiteScreen({ context, core, overview, pages, notice, feedback
                 serviceName="Website"
                 serviceIcon={<Icon name="Globe" size="md" />}
                 serviceBadge="Kickoff"
-                title="Kickoff call booked"
+                title={kickoffTiming ? "Kickoff call booked" : view.title}
                 description={description}
                 statusText="We will call the primary contact number."
                 statusTone="waiting"

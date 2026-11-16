@@ -65,7 +65,7 @@ test.describe("Social-only", () => {
   as("social");
   test("Home and /social show setup states, not a Website card", async ({ page }) => {
     await page.goto("/");
-    await expect(page.getByText("Not connected").first()).toBeVisible();
+    await expect(page.getByText("We need this to start").first()).toBeVisible();
     // Journey 6.3: Social has no setup call, and a Social-only business has no Website service.
     await expect(page.getByRole("heading", { name: "Book your kickoff call" }), "no kickoff call for Social").toHaveCount(0);
     await expect(page.getByText("Your Website service is active"), "no Website card on a Social-only plan").toHaveCount(0);
@@ -214,7 +214,8 @@ test.describe("Plan and billing", () => {
       await page.getByRole("dialog").getByRole("button", { name: /^Pay / }).click();
       await payOnTestCheckout(page);
       await page.goto("/billing");
-      await page.getByRole("button", { name: /^Options for / }).first().click();
+      // Cancel the service just added. The first row is the Website, and cancelling it would leave the shared account without one.
+      await page.getByRole("button", { name: /^Options for Social/ }).first().click();
       await page.getByRole("menuitem", { name: "Cancel this service" }).click();
       const dialog = page.getByRole("dialog", { name: "Cancel a service" });
       await expect(dialog).toBeVisible();

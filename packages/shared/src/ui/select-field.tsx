@@ -391,7 +391,7 @@ export function SelectField({
       >
         {/* The layout lives on this span, so a caller's display class on the button (block, inline-flex) cannot break it. */}
         <span className="flex w-full min-w-0 items-center justify-between gap-2">
-          <span className={cn("min-w-0 truncate", triggerContent === null && "text-ink-soft/70")}>
+          <span className={cn("min-w-0 truncate", triggerContent === null && "text-ink-muted")}>
             {triggerContent ?? placeholder}
           </span>
           <ChevronDownIcon
