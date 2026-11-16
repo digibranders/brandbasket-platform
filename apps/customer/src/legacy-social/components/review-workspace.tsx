@@ -1205,7 +1205,7 @@ function Steps({ stage, counts, onPick }: { readonly stage: 0 | 1 | 2; /** How m
           <>
             {name}
             {counts === undefined || counts[index] === 0 ? null : (
-              <span className="rounded-full bg-warn-wash px-1.5 text-[0.6875rem] font-bold leading-5 text-warn" aria-hidden="true" title={`${counts[index]} ${index === 0 ? "topics to decide" : "pictures to approve"}`}>
+              <span className="rounded-full bg-primary px-1.5 text-[0.6875rem] font-bold leading-5 text-on-primary" aria-hidden="true" title={`${counts[index]} ${index === 0 ? "topics to decide" : "pictures to approve"}`}>
                 {counts[index]}
               </span>
             )}
@@ -1415,7 +1415,7 @@ export function ReviewChannelsColumn(): ReactElement {
                       {one.account}
                       <span className="sr-only">, {PLATFORM_NAMES[one.platform]}</span>
                     </span>
-                    {todo.count > 0 ? <span aria-label={`${todo.count} to do`} className="shrink-0 rounded-full bg-warn-wash px-1.5 text-xs font-semibold leading-5 text-warn">{todo.count}</span> : null}
+                    {todo.count > 0 ? <span aria-label={`${todo.count} to do`} className="shrink-0 rounded-full bg-primary px-1.5 text-xs font-semibold leading-5 text-on-primary">{todo.count}</span> : null}
                   </span>
                   {doing === "working" ? <span className="mt-0.5 block truncate text-xs text-ink-2">Writing posts</span> : ready ? <span className="mt-0.5 block truncate text-xs font-semibold text-ok">Posts are ready</span> : null}
                 </span>

@@ -43,7 +43,7 @@ export function ChannelLabel({ platform, account, todo, work, dim = false, child
             {account}
             <span className="sr-only">, {PLATFORM_NAMES[platform]}</span>
           </span>
-          {todo === undefined || todo === 0 ? null : <span aria-label={`${todo} to do`} className="shrink-0 rounded-full bg-warn-wash px-1.5 text-xs font-semibold leading-5 text-warn">{todo}</span>}
+          {todo === undefined || todo === 0 ? null : <span aria-label={`${todo} to do`} className="shrink-0 rounded-full bg-primary px-1.5 text-xs font-semibold leading-5 text-on-primary">{todo}</span>}
         </span>
         {work.working ? <span className="mt-0.5 block truncate text-xs text-ink-2">Writing posts</span> : ready ? <span className="mt-0.5 block truncate text-xs font-semibold text-ok">Posts are ready</span> : null}
         {children}
