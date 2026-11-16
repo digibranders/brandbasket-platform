@@ -1,10 +1,10 @@
 "use client";
 
-import { ArrowClockwise, CalendarBlank, CaretDown, CaretLeft, CaretRight, Check, Plus, Prohibit, TextT, X } from "@phosphor-icons/react/dist/ssr";
+import { ArrowClockwise, CalendarBlank, CaretLeft, CaretRight, Check, Plus, Prohibit, TextT, X } from "@phosphor-icons/react/dist/ssr";
 import { useSearchParams } from "next/navigation";
 import { createContext, useCallback, type ComponentProps, useContext, useEffect, useMemo, useRef, useState, useTransition, type FormEvent, type PointerEvent as ReactPointerEvent, type ReactElement, type ReactNode } from "react";
 import { cn } from "@brandbasket/shared/lib/cn";
-import { askTopicAction, decideBatchAction, decideCarouselAction, drawCarouselAction, moveCarouselAction, decidePosterAction, drawBatchAction, moveTopicAction, replaceTopicAction } from "@/legacy-social/review-actions";
+import { askTopicAction, decideBatchAction, decideCarouselAction, drawCarouselAction, moveCarouselAction, decidePosterAction, drawBatchAction, moveTopicAction, replaceTopicAction, applyDaysEveryWeekAction } from "@/legacy-social/review-actions";
 import { REJECT_REASON_WORDS, TOPIC_NOT_MADE_WORDS, type Poster, type SiteJob, type TopicRequest, type WrittenBatch } from "@/legacy-social/lib/social/ai";
 import { CHANNEL_PLATFORMS, dayLabel, PLATFORM_HINTS, PLATFORM_NAMES, type ChannelPlatform } from "@/legacy-social/lib/social/auto";
 import { CHANNEL_PARAM, channelParamOf, rememberChannel } from "@/legacy-social/lib/social/channel-param";
@@ -21,6 +21,8 @@ import { carouselMovable } from "@/legacy-social/lib/social/carousel";
 import type { PostingDays } from "@/legacy-social/lib/social/schedule";
 import { ChannelLogo, ChannelRing } from "./channel-logo";
 import { imageUrl, pictureWord } from "./poster-tile";
+import { planEveryWeek } from "@/legacy-social/lib/social/week-days";
+import { DayMenu } from "./day-menu";
 import { SMALL_DARK, SMALL_SOFT } from "./small-buttons";
 import { SplashText, TopicReel } from "./topic-reel";
 import { useReviewAction } from "./use-review-action";
@@ -69,6 +71,7 @@ function TopicRow({
   replacementsLeft,
   compact = false,
   moveDays = [],
+  dayChoices,
   onMove,
   dragProps,
   preview,
@@ -83,6 +86,8 @@ function TopicRow({
   readonly compact?: boolean;
   /** The days this topic may be moved to, for the day picker beside its icons; empty when it cannot move. */
   readonly moveDays?: readonly string[];
+  /** Every other day of its week for the picker, each with why it cannot be chosen (null when it can); the picker lists these when given. */
+  readonly dayChoices?: readonly { readonly day: string; readonly why: string | null }[];
   readonly onMove?: (day: string) => void;
   /** Makes the card draggable: the pointer press that picks it up, and whether it is the one being dragged now. */
   readonly dragProps?: { readonly onPointerDown: (event: ReactPointerEvent) => void; readonly dragging: boolean };
@@ -97,7 +102,6 @@ function TopicRow({
   const { pending, error, run } = useReviewAction();
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState("");
-  const [moving, setMoving] = useState(false);
   const newTopic = useReviewAction();
   if (post === null) return null;
   const batchId = card.batchId;
@@ -180,38 +184,9 @@ function TopicRow({
       >
         <TextT size={13} weight="bold" aria-hidden="true" />
       </IconButton>
-      {moveDays.length === 0 || onMove === undefined ? null : (
-        <IconButton label="Change the day" pressed={moving} disabled={pending} onClick={() => setMoving(!moving)}>
-          <CalendarBlank size={13} weight="bold" aria-hidden="true" />
-        </IconButton>
-      )}
+      {moveDays.length === 0 || onMove === undefined ? null : <DayMenu choices={dayChoices ?? moveDays.map((day) => ({ day, why: null }))} disabled={pending} onMove={onMove} />}
     </>
   );
-  const dayPicker =
-    !moving || onMove === undefined ? null : (
-      <span className="relative block">
-      <select
-        aria-label="Move this topic to"
-        defaultValue=""
-        onChange={(event) => {
-          if (event.target.value === "") return;
-          setMoving(false);
-          onMove(event.target.value);
-        }}
-        className="h-8 w-full appearance-none rounded-lg border border-ink-2/65 bg-surface pr-8 pl-2 text-[0.8125rem] text-ink"
-      >
-        <option value="" disabled>
-          Move to…
-        </option>
-        {moveDays.map((day) => (
-          <option key={day} value={day}>
-            {dayLabel(day)}
-          </option>
-        ))}
-      </select>
-      <CaretDown size={12} weight="bold" aria-hidden="true" className="pointer-events-none absolute top-1/2 right-3 -translate-y-1/2 text-ink-2" />
-      </span>
-    );
   const tags = (
     <>
       <span className={cn("text-xs font-semibold", kept ? "text-ok" : "text-ink-2")}>{kept ? "Kept" : dropped ? "Dropped" : "Not decided"}</span>
@@ -273,7 +248,6 @@ function TopicRow({
         className={cn("flex min-h-44 flex-col gap-2 rounded-xl p-2.5 ring-1", fresh && "animate-topic-in", kept ? "bg-surface ring-ok" : dropped ? "bg-surface-subtle ring-line" : "bg-surface ring-line", dragProps !== undefined && "cursor-grab touch-pan-x select-none", dragProps?.dragging === true && "opacity-40")}
       >
         {editing ? editor : headline}
-        {dayPicker}
         {newTopicBlock}
         {preview !== undefined ? (
           <button type="button" onClick={preview.open} aria-label={`Open the picture: ${post.headline}`} title="Open the picture" className="mt-auto flex w-full cursor-pointer items-center gap-2 rounded-lg border-0 bg-transparent p-0 text-left">
@@ -282,7 +256,7 @@ function TopicRow({
           </button>
         ) : post.drawn === true ? <p className="m-0 text-xs text-ink-3">Drawn. Its pictures are below.</p> : locked && !dropped && !kept ? <p className="m-0 text-xs text-ink-3">Not decided. This week was drawn before it could stay open, so it can no longer be changed.</p> : null}
         {notes}
-        {icons === null ? null : <div className="mt-auto flex flex-nowrap items-center justify-between gap-1 pt-1">{icons}</div>}
+        {icons === null ? null : <div data-tour="topic-actions" className="mt-auto flex flex-nowrap items-center justify-between gap-1 pt-1">{icons}</div>}
       </li>
     );
   }
@@ -293,7 +267,7 @@ function TopicRow({
         <DateChip day={post.date} time={post.time} />
       </div>
       {editor}
-      <div className="flex flex-wrap items-center gap-2">
+      <div data-tour="topic-actions" className="flex flex-wrap items-center gap-2">
         {icons}
         {tags}
         <span className="text-xs text-ink-3">Written for {CHANNEL_PLATFORMS.filter((one) => post.captions[one] !== undefined).map((one) => PLATFORM_NAMES[one]).join(", ")}</span>
@@ -395,6 +369,18 @@ const nextDay = (day: string): string => new Date(Date.parse(`${day}T00:00:00Z`)
  */
 function WeekGrid({ cards, week, replacing, today, pictureOf, onOpenPicture, carousel = null, renewsOn = null }: WeekGridProps): ReactElement {
   const mover = useReviewAction();
+  /*
+   * After a topic is moved she is asked once whether these days should be the days of every week. The question is for the week she moved in, and
+   * only when there is another week it would change.
+   */
+  const { groups: allGroups } = useFlow();
+  const [offerFor, setOfferFor] = useState<string | null>(null);
+  const every = useReviewAction();
+  const everyPlan = useMemo(
+    () => (offerFor === week.from ? planEveryWeek({ batches: allGroups.flatMap((group) => (group.batch === null ? [] : [group.batch])), batchId: week.batchId, weekFrom: week.from, today, renewsOn }) : null),
+    [offerFor, week.from, week.batchId, allGroups, today, renewsOn],
+  );
+  const changing = everyPlan?.weeksChanged.length ?? 0;
   /** Where a topic was just moved to, shown at once while the posting service answers. */
   const [moved, setMoved] = useState<Readonly<Record<string, string>>>({});
   const { pending: moving } = mover;
@@ -473,7 +459,7 @@ function WeekGrid({ cards, week, replacing, today, pictureOf, onOpenPicture, car
   };
   const move = (card: ReviewCard, day: string): void => {
     setMoved((current) => ({ ...current, [card.postId]: day }));
-    mover.run(moveTopicAction, { batchId: card.batchId, postId: card.postId, day });
+    mover.run(moveTopicAction, { batchId: card.batchId, postId: card.postId, day }, () => setOfferFor(week.from));
   };
   const carouselDay = carouselMoved ?? carousel?.summary.date ?? null;
   /** The days the carousel may go to: the other days of its week from tomorrow on, while it is still wanted and no move is on its way. Its content is never changed. */
@@ -498,7 +484,8 @@ function WeekGrid({ cards, week, replacing, today, pictureOf, onOpenPicture, car
   });
   const row = (card: ReviewCard, compact: boolean): ReactElement => {
     const open = targets(card);
-    return <TopicRow key={card.key} card={card} compact={compact} {...swapOf(card)} locked={postFinal(card, week)} replace={replacing[card.postId]} replacementsLeft={week.replacementsLeft} moveDays={open} onMove={(day) => move(card, day)} {...(compact && pictureOf?.(card) !== undefined && onOpenPicture !== undefined ? { preview: { poster: pictureOf(card) as Poster, open: () => onOpenPicture(pictureOf(card) as Poster) } } : {})} {...(open.length > 0 && compact ? { dragProps: { onPointerDown: (event: ReactPointerEvent) => drag.begin(event, card.key, card.headline), dragging: drag.dragging === card.key } } : {})} />;
+    const dayChoices = open.length === 0 ? [] : days.filter((day) => day !== dayOf(card)).map((day) => ({ day, why: open.includes(day) ? null : today !== "" && day === today ? "Today" : today !== "" && day < today ? "Passed" : "After this month" }));
+    return <TopicRow key={card.key} card={card} compact={compact} {...swapOf(card)} locked={postFinal(card, week)} replace={replacing[card.postId]} replacementsLeft={week.replacementsLeft} moveDays={open} dayChoices={dayChoices} onMove={(day) => move(card, day)} {...(compact && pictureOf?.(card) !== undefined && onOpenPicture !== undefined ? { preview: { poster: pictureOf(card) as Poster, open: () => onOpenPicture(pictureOf(card) as Poster) } } : {})} {...(open.length > 0 && compact ? { dragProps: { onPointerDown: (event: ReactPointerEvent) => drag.begin(event, card.key, card.headline), dragging: drag.dragging === card.key } } : {})} />;
   };
   if (!placed) {
     return (
@@ -518,6 +505,31 @@ function WeekGrid({ cards, week, replacing, today, pictureOf, onOpenPicture, car
       {mover.notice === null ? null : (
         <p role="status" className="rounded-lg bg-warn-wash px-3 py-2 text-xs font-semibold text-warn">
           {mover.notice}
+        </p>
+      )}
+      {changing === 0 ? null : (
+        <div role="group" aria-label="Use these days every week" className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-xl bg-sunken px-3 py-2">
+          <p className="m-0 min-w-0 flex-1 basis-56 text-[0.84375rem] text-ink">
+            Use these days every week? <span className="text-ink-2">{changing} other {changing === 1 ? "week" : "weeks"} will change.</span>
+          </p>
+          <div className="flex gap-1.5">
+            <button type="button" disabled={every.pending} onClick={() => every.run(applyDaysEveryWeekAction, { batchId: week.batchId, weekFrom: week.from }, () => setOfferFor(null))} className={cn(SMALL_DARK, "!h-7 !px-2.5 !text-xs")}>
+              {every.pending ? "Changing" : "Yes, every week"}
+            </button>
+            <button type="button" disabled={every.pending} onClick={() => setOfferFor(null)} className={cn(SMALL_SOFT, "!h-7 !px-2.5 !text-xs")}>
+              Just this week
+            </button>
+          </div>
+        </div>
+      )}
+      {every.error === null ? null : (
+        <p role="alert" className="text-[0.84375rem] font-semibold text-error">
+          {every.error}
+        </p>
+      )}
+      {every.notice === null ? null : (
+        <p role="status" className="rounded-lg bg-sunken px-3 py-2 text-[0.84375rem] text-ink">
+          {every.notice}
         </p>
       )}
       <div className="overflow-x-auto pb-2">

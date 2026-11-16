@@ -5,11 +5,14 @@ import { revalidatePath } from "next/cache";
 import { unstable_rethrow } from "next/navigation";
 import { z } from "zod";
 import { requireService, type CustomerContext } from "@/lib/guards";
-import { actorOf, addNetwork, decideBatch, decideCarousel, disconnectChannel, drawCarousel, loadChannelPreview, moveCarousel, askTopic, decidePoster, drawBatch, loadTopics, moveTopic, replaceTopic, makeCarousel, setCarouselWeekly, SocialAutoError, socialAutoSettings, type ChannelPreview, type SocialAutoSettings } from "@/legacy-social/server/social-auto";
+import { actorOf, addNetwork, loadBatches, loadChannels, loadTopicRequests, saveSchedule, decideBatch, decideCarousel, disconnectChannel, drawCarousel, loadChannelPreview, moveCarousel, askTopic, decidePoster, drawBatch, loadTopics, moveTopic, replaceTopic, makeCarousel, setCarouselWeekly, SocialAutoError, socialAutoSettings, type ChannelPreview, type SocialAutoSettings } from "@/legacy-social/server/social-auto";
 import { brandOf, type SocialBrand } from "@/features/social/brand";
 import { wordsForCode } from "@/legacy-social/lib/social/ai";
 import { CHANNEL_PLATFORMS, PLATFORM_NAMES } from "@/legacy-social/lib/social/auto";
 import type { NewPostState } from "@/legacy-social/lib/social/new-post";
+import { BRAND_TIME_ZONE } from "@/legacy-social/shims";
+import { localDateIn } from "@brandbasket/shared/lib/calendar/local-date";
+import { addDays, everyWeekSummary, planEveryWeek } from "@/legacy-social/lib/social/week-days";
 
 /**
  * The customer's choices on the review page: the written posts and the pictures. The business and the person come from
@@ -84,6 +87,48 @@ export async function moveTopicAction(formData: FormData): Promise<NewPostState>
     const moved = await moveTopic(settings, brand.externalId, parsed.data.batchId, parsed.data.postId, parsed.data.day, actor);
     // The words are not rewritten for the new day, so a topic that names one (Friday, tomorrow) is flagged for her to check.
     return moved.wordsNameADay ? "Moved. The words of this topic name a day, so read them again to see they still fit." : undefined;
+  });
+}
+
+/**
+ * "Use these days every week": the days of the week she has just arranged become the days of every other week that can still change, and of the
+ * plans written from now on. What is moved is worked out here from what the posting service holds, never from the page, so a week drawn a moment
+ * ago is left alone. A week already drawn stays whole; the answer says which weeks changed, which stayed, and which topics name a day.
+ */
+export async function applyDaysEveryWeekAction(formData: FormData): Promise<NewPostState> {
+  const parsed = z.object({ batchId: ID, weekFrom: z.string().regex(/^\d{4}-\d{2}-\d{2}$/) }).safeParse({ batchId: formData.get("batchId"), weekFrom: formData.get("weekFrom") });
+  if (!parsed.success) return badForm();
+  return run("use these days every week", async ({ settings, brand, actor }) => {
+    const [{ batches, plan }, requests, channels] = await Promise.all([loadBatches(settings, brand.externalId), loadTopicRequests(settings, brand.externalId), loadChannels(settings, brand.externalId)]);
+    // The one-topic batches of topics she wrote herself are not part of the weeks.
+    const own = new Set(requests.flatMap((request) => (request.batchId === null ? [] : [request.batchId])));
+    const found = planEveryWeek({ batches: batches.filter((batch) => !own.has(batch.id)), batchId: parsed.data.batchId, weekFrom: parsed.data.weekFrom, today: localDateIn(BRAND_TIME_ZONE, new Date()), renewsOn: plan?.endsOn == null ? null : addDays(plan.endsOn, 1) });
+    if (found === null) return "There is nothing to change here.";
+    // The days for the plans written next: one set for every connected channel, so they are still written together.
+    let saved = true;
+    try {
+      if (channels.length > 0) await saveSchedule(settings, brand.externalId, Object.fromEntries(channels.map((channel) => [channel.platform, found.days])), actor);
+    } catch (error) {
+      unstable_rethrow(error);
+      reportError(error, { area: "social.review.save the days" });
+      saved = false;
+    }
+    const changed = new Set<string>();
+    let namesADay = 0;
+    let failed = 0;
+    for (const move of found.moves) {
+      try {
+        const moved = await moveTopic(settings, brand.externalId, move.batchId, move.postId, move.day, actor);
+        changed.add(move.weekFrom);
+        if (moved.wordsNameADay) namesADay += 1;
+      } catch (error) {
+        unstable_rethrow(error);
+        // A week drawn or a day passed since the page was drawn: that topic stays, and the answer says how many.
+        if (!(error instanceof SocialAutoError)) reportError(error, { area: "social.review.move for every week" });
+        failed += 1;
+      }
+    }
+    return everyWeekSummary(found, { weeksChanged: changed.size, namesADay, failed, saved });
   });
 }
 
