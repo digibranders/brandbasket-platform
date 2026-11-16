@@ -183,14 +183,13 @@ describe("loadAddOnsPage", () => {
     expect(readAddOnAssessment).toHaveBeenCalledWith(appTx, expect.objectContaining({ addOn: "social-media", code }));
   });
 
-  it("offers the three plans and monitoring at list price, GST included, when none is in the plan payment, the website included", async () => {
+  it("offers the plans on sale (not the paused Paid Ads) and monitoring at list price, GST included, when none is in the plan payment, the website included", async () => {
     const page = await loadAddOnsPage(customer, NOW);
 
     expect(page.currency).toBe("INR");
     expect(page.addOns).toEqual([
       { kind: "available", addOn: "managed-website", price: expect.objectContaining({ listCents: 299_900, discountCents: 0, netCents: 299_900, chargedCents: 299_900 }), offer: { kind: "write" } },
       { kind: "available", addOn: "social-media", price: expect.objectContaining({ listCents: 299_900, discountCents: 0, netCents: 299_900, chargedCents: 299_900 }), offer: { kind: "write" } },
-      { kind: "available", addOn: "paid-ads", price: expect.objectContaining({ listCents: 299_900, discountCents: 0, netCents: 299_900, chargedCents: 299_900 }), offer: { kind: "write" } },
       { kind: "available", addOn: "expert-monitoring", price: expect.objectContaining({ listCents: 600_000, discountCents: 0, netCents: 600_000, chargedCents: 600_000 }), offer: { kind: "write" } },
     ]);
   });
@@ -224,7 +223,6 @@ describe("loadAddOnsPage", () => {
     expect(page.addOns.map((entry) => entry.price)).toEqual([
       expect.objectContaining({ currency: "USD", listCents: 5_900, taxRateBasisPoints: 0, chargedCents: 5_900 }),
       expect.objectContaining({ currency: "USD", listCents: 5_900, taxRateBasisPoints: 0, chargedCents: 5_900 }),
-      expect.objectContaining({ currency: "USD", listCents: 5_900, taxRateBasisPoints: 0, chargedCents: 5_900 }),
       expect.objectContaining({ currency: "USD", listCents: 9_900, taxRateBasisPoints: 0, chargedCents: 9_900 }),
     ]);
   });
@@ -244,7 +242,8 @@ describe("loadAddOnsPage", () => {
       keepable: false,
       drop: null,
     });
-    expect(page.addOns[2]).toMatchObject({ kind: "available", addOn: "paid-ads" });
+    // Paid Ads is paused: a business that does not have it is not offered it.
+    expect(page.addOns.map((entry) => entry.addOn)).not.toContain("paid-ads");
   });
 
   describe("what dropping a service leaves", () => {
@@ -286,12 +285,13 @@ describe("loadAddOnsPage", () => {
       vi.mocked(findLiveBundledAddOns).mockResolvedValue([line("managed-website", 299_900), line("social-media", 999_900)]);
       vi.mocked(findWaitingSuccessor).mockResolvedValue({ startAt: PAID_THROUGH } as never);
       vi.mocked(readAddOnAssessment).mockImplementation(async (_tx, input) =>
-        input.addOn === "paid-ads" ? { kind: "plan-kept", startsOn: PAID_THROUGH } : null,
+        input.addOn === "expert-monitoring" ? { kind: "plan-kept", startsOn: PAID_THROUGH } : null,
       );
 
       const { addOns } = await loadAddOnsPage(subscribed, NOW);
 
-      expect(addOns.map((entry) => (entry.kind === "included" ? entry.drop : "available"))).toEqual([null, null, "available", "available"]);
+      // Paid Ads is paused, so only monitoring is left to add.
+      expect(addOns.map((entry) => (entry.kind === "included" ? entry.drop : "available"))).toEqual([null, null, "available"]);
       expect(addOns[2]).toMatchObject({ kind: "available", offer: { kind: "plan-kept", startsOn: PAID_THROUGH } });
     });
 

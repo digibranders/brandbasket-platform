@@ -86,8 +86,14 @@ export const ADD_ONS: readonly AddOn[] = [
 /** Every service, in the catalogue's order. */
 export const MONTHLY_ADD_ON_IDS: readonly MonthlyAddOnId[] = ADD_ONS.map((addOn) => addOn.id);
 
-/** The three plans on sale. */
+/** The three plans in the catalogue. */
 export const PLAN_ADD_ON_IDS: readonly PlanAddOnId[] = ["managed-website", "social-media", "paid-ads"];
+
+/** Services switched off for sale for now (owner, 2026-11-16). Whoever already has one keeps it; nobody can add it. */
+export const PAUSED_ADD_ON_IDS: readonly AddOnId[] = ["paid-ads"];
+
+/** The plans a customer can choose today: the catalogue's plans less the paused ones. */
+export const SOLD_PLAN_ADD_ON_IDS: readonly PlanAddOnId[] = PLAN_ADD_ON_IDS.filter((id) => !PAUSED_ADD_ON_IDS.includes(id));
 
 const BY_ID: ReadonlyMap<string, AddOn> = new Map(ADD_ONS.map((addOn) => [addOn.id, addOn]));
 

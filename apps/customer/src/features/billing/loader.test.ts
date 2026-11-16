@@ -68,7 +68,7 @@ describe("loadBillingOverview", () => {
     const view = await loadBillingOverview(customerWith("owner"), {}, NOW);
     if (view.services === null || !view.services.ok) throw new Error("Expected services");
     const { rows, cancel, bill, headerLine, glance } = view.services.data;
-    expect(glance).toEqual({ nextAmount: "₹11,699", nextOn: "Fri 27 Nov", plansHeld: 2, plansTotal: 3 });
+    expect(glance).toEqual({ nextAmount: "₹11,699", nextOn: "Fri 27 Nov", plansHeld: 2, plansTotal: 2 });
     expect(rows.map((row) => [row.name, row.status.word, row.action.kind])).toEqual([
       ["Website Management", "Active", "cancel"],
       ["Social Media Management", "Active", "cancel"],
