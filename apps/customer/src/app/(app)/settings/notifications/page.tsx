@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
-import { PanelData } from "@/components";
+import { PanelError } from "@/components";
 import { loadNotificationRows } from "@/features/settings/loader";
 import { NotificationTable } from "@/features/settings/components/notification-table";
+import { SettingsCard } from "@/features/settings/components/settings-card";
 import { SettingsHeader } from "@/features/settings/components/settings-header";
 import { requireCustomer } from "@/lib/guards";
 import { load } from "@/lib/loaded";
@@ -15,9 +16,9 @@ export default async function NotificationsPage() {
   return (
     <>
       <SettingsHeader current="/settings/notifications" showTeam={customer.role === "owner"} showSocial={customer.services.includes("social")} />
-      <PanelData data={rows} what="your notification settings" flush>
-        {(data) => <NotificationTable rows={data} />}
-      </PanelData>
+      <SettingsCard title="Email notifications" description="Choose which emails we send you." tone="focal" flush>
+        {rows.ok ? <NotificationTable rows={rows.data} /> : <div className="px-5 pb-5 sm:px-7 sm:pb-7"><PanelError failure={rows.error} what="your notification settings" /></div>}
+      </SettingsCard>
     </>
   );
 }

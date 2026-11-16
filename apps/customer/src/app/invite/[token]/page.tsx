@@ -4,6 +4,7 @@ import { SignOutButton } from "@/features/entry/components/sign-out-button";
 import { AcceptInvite } from "@/features/team/components/accept-invite";
 import { loadInviteForToken } from "@/features/team/loader";
 import {
+  inviteChip,
   inviteSignInHref,
   inviteSignUpHref,
   inviteTokenSchema,
@@ -30,7 +31,7 @@ export default async function InvitePage({ params }: { readonly params: Promise<
   const { token } = await params;
   if (!inviteTokenSchema.safeParse(token).success) {
     return (
-      <EntryScreen title={refusalTitle("not_found")} lede={refusalMessage("not_found")}>
+      <EntryScreen framed chip={inviteChip("not_found")} title={refusalTitle("not_found")} lede={refusalMessage("not_found")}>
         <LinkButton href="/login" size="lg">
           Go to sign in
         </LinkButton>
@@ -44,7 +45,7 @@ export default async function InvitePage({ params }: { readonly params: Promise<
   if (user === null) {
     if (inviteCheck.kind === "refused") {
       return (
-        <EntryScreen title={refusalTitle(inviteCheck.reason)} lede={refusalMessage(inviteCheck.reason)}>
+        <EntryScreen framed chip={inviteChip(inviteCheck.reason)} title={refusalTitle(inviteCheck.reason)} lede={refusalMessage(inviteCheck.reason)}>
           <LinkButton href="/login" size="lg">
             Go to sign in
           </LinkButton>
@@ -54,6 +55,8 @@ export default async function InvitePage({ params }: { readonly params: Promise<
 
     return (
       <EntryScreen
+        framed
+        chip={inviteChip("valid")}
         title="You have been invited to join a team."
         lede="Sign in with the email address the invitation was sent to, or create an account with it."
       >
@@ -71,7 +74,7 @@ export default async function InvitePage({ params }: { readonly params: Promise<
 
   if (inviteCheck.kind === "refused") {
     return (
-      <EntryScreen title={refusalTitle(inviteCheck.reason)} lede={refusalMessage(inviteCheck.reason)}>
+      <EntryScreen framed chip={inviteChip(inviteCheck.reason)} title={refusalTitle(inviteCheck.reason)} lede={refusalMessage(inviteCheck.reason)}>
         <div className="flex flex-col gap-2">
           <LinkButton href="/" size="lg">
             Go to dashboard
@@ -84,6 +87,8 @@ export default async function InvitePage({ params }: { readonly params: Promise<
 
   return (
     <EntryScreen
+      framed
+      chip={inviteChip("right_address")}
       title="Join the team."
       lede={`You are signed in as ${user.email}. The invitation only works for the address it was sent to.`}
     >

@@ -26,7 +26,7 @@ export default async function RestoreAccountPage({ searchParams }: { readonly se
   const refusal = keepPlanRefusal((await searchParams).keep);
 
   return (
-    <EntryScreen title="Welcome back" lede="This account is set to be deleted. Restore it to carry on where you left off.">
+    <EntryScreen framed title="Welcome back" lede="This account is set to be deleted. Restore it to carry on where you left off.">
       <p className="type-body text-ink-3">
         If you do nothing, it is deleted after {formatDate(closing.eraseAfter)}. A paid plan that was ending still ends with its paid month
         {keepOffered ? "." : ": email us if you’d like to keep it going."}

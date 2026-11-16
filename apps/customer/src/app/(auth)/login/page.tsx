@@ -24,7 +24,7 @@ export default async function LoginPage({ searchParams }: { readonly searchParam
   if (signedIn?.kind === "elsewhere") redirect(signedIn.href);
   if (signedIn?.kind === "no-business") return <NoBusiness label={signedIn.label} />;
   return (
-    <EntryScreen title="Sign in" lede="Use the email or mobile number you signed up with.">
+    <EntryScreen framed title="Sign in" lede="Use the email or mobile number you signed up with.">
       <SignInForm siteKey={turnstileSiteKey()} notice={loginNotice(params.notice)} next={next} />
     </EntryScreen>
   );
