@@ -19,6 +19,7 @@ import {
   teamIsWaiting,
   type NoticeLine,
 } from "../rules";
+import { ASK_OWNER } from "@/lib/ask-owner";
 import type { Loaded } from "@/lib/loaded";
 import { DetailsList } from "./details-list";
 import { NextStepPanel } from "./next-step-panel";
@@ -105,7 +106,9 @@ export function RequestDetail({ customer, ticketId, thread, change, notice, now 
             <Panel title="Conversation">
               <Thread messages={messages} attachments={loadedThread?.attachments ?? []} customerName={customer.user.name} />
               {last === undefined ? null : <ReadReceipt ticketId={ticketId} messageId={last.id} />}
-              {!writable ? null : closed ? (
+              {!writable ? (
+                <p className="mt-4 type-meta">{ASK_OWNER}</p>
+              ) : closed ? (
                 <p className="mt-4 type-body text-ink-2">
                   This conversation is closed. <Link href={NEW_REQUEST_PATH}>Start a new request</Link> to continue.
                 </p>
