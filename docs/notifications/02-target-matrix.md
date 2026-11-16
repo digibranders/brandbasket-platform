@@ -112,3 +112,12 @@ Console prompt rules: one popup, one action place. The Today card and the queue 
 3. `List-Unsubscribe` header on optional mail only.
 4. Mandatory flag on topics, fail closed for mandatory mail, preferences for each member for member specific mail.
 5. Install and enable the sign-up reminder timer, add failure alerts for erase and sign-up reminder, schedule the first charge reminder.
+
+## Owner answers (2026-11-16)
+
+1. Push scope: console and customer app both get web push.
+2. Kickoff reminder: the popup repeats every 15 minutes until answered (state kept on the server). Push and email go once at call end, plus one push if still open after 2 hours.
+3. After the 24 hour fallback the customer sees "We started your website" (draft wording, still to be approved). Staff keep "Started without call confirmation".
+4. Payment failed, lapse, refund and account closure notices are mandatory. Preview ready, requests, reports, social and call reminders stay optional per channel.
+
+Still open: approval of the full matrix above and of every draft line of copy. Read the social-auto repo (read only) for event payloads and signing before building the receiver.
