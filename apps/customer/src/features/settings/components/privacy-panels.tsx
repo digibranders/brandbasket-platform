@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { Panel, PanelData } from "@/components";
+import { PanelError } from "@/components";
 import { CookieSettingsButton } from "@/features/consent/components/cookie-settings-button";
 import { MEASUREMENT_TOOLS } from "@/features/consent/consent";
 import type { Loaded } from "@/lib/loaded";
@@ -9,10 +9,11 @@ import { ACCOUNT_CLOSURE_GRACE_DAYS } from "../rules/account-closure-grace";
 import { DELETE_ACCOUNT_PATH } from "../rules/account-settings-form";
 import { PRIVACY_EXPORT_PATH, privacyRequestHref } from "../rules/privacy";
 import { NomineeDialog } from "./nominee-dialog";
+import { SettingsCard } from "./settings-card";
 
 function Row({ title, text, action }: { readonly title: string; readonly text: ReactNode; readonly action: ReactNode }) {
   return (
-    <div className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-border-subtle px-4 py-3 last:border-b-0">
+    <div className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-border-subtle px-5 py-3 last:border-b-0 sm:px-7">
       <div className="min-w-60 flex-1">
         <p className="type-sub">{title}</p>
         <p className="type-meta">{text}</p>
@@ -36,8 +37,8 @@ export interface PrivacyPanelsProps {
  */
 export function PrivacyPanels({ nominee, measuring, canDelete }: PrivacyPanelsProps) {
   return (
-    <div className="flex flex-col gap-4">
-      <Panel title="Your data" flush>
+    <div className="flex flex-col gap-6">
+      <SettingsCard title="Your data" tone="focal" flush>
         <Row
           title="Download your data"
           text="A copy of your account, your business’s details, what you have been billed, your requests, where you signed in from and who we share your data with, as one file. It does not include your password."
@@ -47,29 +48,33 @@ export function PrivacyPanels({ nominee, measuring, canDelete }: PrivacyPanelsPr
             </LinkButton>
           }
         />
-      </Panel>
+      </SettingsCard>
 
-      <PanelData title="Nominee" data={nominee} what="your nominee" flush>
-        {(current) => (
+      <SettingsCard title="Nominee" flush>
+        {nominee.ok ? (
           <Row
             title="Someone who can act for you"
-            text={current === null ? "Someone who can take over the account if you cannot." : `${current.name}, ${current.phoneText}`}
-            action={<NomineeDialog current={current} />}
+            text={nominee.data === null ? "Someone who can take over the account if you cannot." : `${nominee.data.name}, ${nominee.data.phoneText}`}
+            action={<NomineeDialog current={nominee.data} />}
           />
+        ) : (
+          <div className="px-5 pb-5 sm:px-7 sm:pb-7">
+            <PanelError failure={nominee.error} what="your nominee" />
+          </div>
         )}
-      </PanelData>
+      </SettingsCard>
 
       {measuring ? (
-        <Panel title="Measuring how you use the dashboard" flush>
+        <SettingsCard title="Measuring how you use the dashboard" flush>
           <Row
             title="Your choice"
             text={`With your yes, ${MEASUREMENT_TOOLS.join(" and ")} count visits and record how pages are used. You can turn this on or off at any time.`}
             action={<CookieSettingsButton />}
           />
-        </Panel>
+        </SettingsCard>
       ) : null}
 
-      <Panel title="Correct, delete or complain" flush>
+      <SettingsCard title="Correct, delete or complain" flush>
         <Row
           title="Send us a privacy request"
           text="To correct something, have your data deleted, or make a complaint, email us. We reply within 30 days."
@@ -79,18 +84,22 @@ export function PrivacyPanels({ nominee, measuring, canDelete }: PrivacyPanelsPr
             </LinkButton>
           }
         />
-      </Panel>
+      </SettingsCard>
 
-      {canDelete ? (
-        <Panel title="Delete account">
-          <p className="type-body text-ink-2">This removes your account and stops every service. You have {ACCOUNT_CLOSURE_GRACE_DAYS} days to change your mind.</p>
-          <div className="mt-3">
-            <LinkButton href={DELETE_ACCOUNT_PATH} variant="danger">
-              Delete my account
-            </LinkButton>
-          </div>
-        </Panel>
-      ) : null}
+      <SettingsCard title="Delete account">
+        {canDelete ? (
+          <>
+            <p className="type-body text-ink-2">This removes your account and stops every service. You have {ACCOUNT_CLOSURE_GRACE_DAYS} days to change your mind.</p>
+            <div className="mt-3">
+              <LinkButton href={DELETE_ACCOUNT_PATH} variant="danger">
+                Delete my account
+              </LinkButton>
+            </div>
+          </>
+        ) : (
+          <p className="type-body text-ink-2">Ask your owner to do this.</p>
+        )}
+      </SettingsCard>
     </div>
   );
 }

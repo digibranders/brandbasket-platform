@@ -1,8 +1,8 @@
 import { displayPhone } from "@brandbasket/shared/server/phone-display";
 import type { Metadata } from "next";
-import { Panel } from "@/components";
 import { BRAND } from "@/features/entry/rules/brand";
 import { ProfileForm } from "@/features/settings/components/profile-form";
+import { SettingsCard } from "@/features/settings/components/settings-card";
 import { SettingsHeader } from "@/features/settings/components/settings-header";
 import { roleLabel } from "@/features/team/rules";
 import { requireCustomer } from "@/lib/guards";
@@ -16,7 +16,7 @@ export default async function SettingsPage() {
   return (
     <>
       <SettingsHeader current="/settings" showTeam={role === "owner"} showSocial={customer.services.includes("social")} />
-      <Panel title="Your profile">
+      <SettingsCard title="Your profile" description="Your name and how you sign in." tone="focal">
         <ProfileForm
           name={user.name}
           // An account opened with a number holds only a placeholder address, which is never shown.
@@ -25,7 +25,7 @@ export default async function SettingsPage() {
           role={roleLabel(role)}
           supportEmail={BRAND.contactEmail}
         />
-      </Panel>
+      </SettingsCard>
     </>
   );
 }

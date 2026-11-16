@@ -1,6 +1,7 @@
 import type { BusinessInviteRefusal, BusinessInviteView } from "@brandbasket/db";
 import { describe, expect, it } from "vitest";
 import {
+  inviteChip,
   inviteSchema,
   invitePath,
   inviteSignInHref,
@@ -106,5 +107,16 @@ describe("the accept link", () => {
     expect(safeInviteReturn("/settings")).toBeNull();
     expect(safeInviteReturn(null)).toBeNull();
     expect(safeInviteReturn(undefined)).toBeNull();
+  });
+});
+
+describe("inviteChip", () => {
+  const STATES = ["valid", "right_address", "expired", "used", "revoked", "not_found", "wrong_email"] as const;
+
+  it("names every state of an invitation, so each is read before the Join button", () => {
+    expect(new Set(STATES.map((state) => inviteChip(state).label)).size).toBe(STATES.length);
+    expect(inviteChip("expired")).toEqual({ label: "Expired", variant: "waiting" });
+    expect(inviteChip("wrong_email").variant).toBe("failed");
+    expect(inviteChip("valid").variant).toBe("active");
   });
 });
