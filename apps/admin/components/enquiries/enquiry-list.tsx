@@ -5,7 +5,8 @@ import { cn } from "@brandbasket/shared/lib/cn";
 import { LEAD_SOURCE_LABELS, LEAD_SOURCE_ORDER, websitePlanLabels } from "@brandbasket/shared/lib/lead-source";
 import { fieldClasses } from "@/components/console/field-styles";
 import { FilterPills } from "@/components/console/filter-pills";
-import { EmptyLine } from "@/components/console/hairline-list";
+import { EmptyState } from "@brandbasket/shared/ui/patterns";
+import { FOCAL_CARD } from "@/components/console/classes";
 import { TABLE, TD, TH, TR_SELECTED } from "@/components/console/table";
 import { ENQUIRY_BUCKETS, ENQUIRY_BUCKET_LABELS, enquiryHref, inBucket, OWNER_FILTERS, OWNER_FILTER_LABELS, waitingOf, type EnquiryQuery } from "@/lib/enquiries";
 import { TableScroll } from "@/components/console/table-scroll";
@@ -66,9 +67,12 @@ export function EnquiryList({ all, rows, query, selectedId, ownerNames, now }: E
       </div>
 
       {rows.length === 0 ? (
-        <EmptyLine>{all.length === 0 ? "No enquiries yet." : "No enquiries match this."}</EmptyLine>
+        <EmptyState
+          title={all.length === 0 ? "No enquiries yet." : "No enquiries match this."}
+          description={all.length === 0 ? "People who ask about a plan appear here with how long they have waited." : "Clear the search or the filters to see every enquiry again."}
+        />
       ) : (
-        <TableScroll label="Enquiries">
+        <TableScroll label="Enquiries" className={selectedId === null ? FOCAL_CARD : undefined}>
           <table className={TABLE}>
             <thead>
               <tr>

@@ -27,7 +27,7 @@ const PRIORITY_OPTIONS: readonly SelectOption[] = SUPPORT_PRIORITIES.map((value)
 function ActionNotice({ state }: { readonly state: StaffSupportActionState }): ReactElement | null {
   const router = useRouter();
   if (state.kind === "idle") return null;
-  return <div role={state.kind === "saved" ? "status" : "alert"} className={`mt-4 text-sm ${state.kind === "saved" ? "text-ink-soft" : "text-accent"}`}>
+  return <div role={state.kind === "saved" ? "status" : "alert"} className={`mt-4 text-sm ${state.kind === "saved" ? "text-ink-2" : "text-accent"}`}>
     <p>{state.message}</p>
     {state.reference === undefined ? null : <p className="mt-2">Reference: <Link href={`/support/errors/${state.reference}`} className="break-all underline">{state.reference}</Link></p>}
     {state.kind === "conflict" ? <button className={`${buttonSecondary} mt-3`} type="button" onClick={() => router.refresh()}>Refresh ticket</button> : null}
@@ -69,7 +69,7 @@ export function TicketMessageForm({ ticketId, closed, submissionKey }: { readonl
   return <form action={action} aria-busy={pending}>
     <input type="hidden" name="submissionKey" value={state.submissionKey ?? submissionKey} />
     <div className="max-w-sm"><label htmlFor="message-visibility" className={labelClasses}>Who can see this<RequiredMark /></label><SelectField id="message-visibility" name="visibility" required options={visibilityOptions} value={visibility} onChange={(value) => setVisibility(value === "internal" ? "internal" : "public")} disabled={pending} className={fieldClasses} /></div>
-    <p id="message-visibility-hint" className="mt-3 text-sm text-ink-soft">{visibility === "internal" ? "Only staff can see this note. It is never shown to the requester." : "This reply appears in the requester’s conversation, and they are emailed."}</p>
+    <p id="message-visibility-hint" className="mt-3 text-sm text-ink-2">{visibility === "internal" ? "Only staff can see this note. It is never shown to the requester." : "This reply appears in the requester’s conversation, and they are emailed."}</p>
     <div className="mt-5"><label htmlFor="message-body" className={labelClasses}>{visibility === "internal" ? "Internal note" : "Reply"}<RequiredMark /></label><textarea id="message-body" name="body" rows={6} minLength={1} maxLength={5000} required value={body} onChange={(event) => setBody(event.target.value)} disabled={pending} aria-describedby="message-visibility-hint" aria-invalid={state.kind === "invalid" && state.field === "body"} className={fieldClasses} /></div>
     <GatedSubmitButton className={`${buttonPrimary} mt-5`} pendingLabel="Saving…">{visibility === "internal" ? "Save internal note" : "Add public reply"}</GatedSubmitButton>
     <ActionNotice state={state} />

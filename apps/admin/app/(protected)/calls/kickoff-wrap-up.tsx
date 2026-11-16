@@ -3,7 +3,7 @@ import Link from "next/link";
 import type { ReactElement } from "react";
 import { addOnById, isAddOnId } from "@brandbasket/shared/lib/billing/add-ons";
 import { buttonPrimary, buttonSecondary } from "@/components/console/buttons";
-import { EmptyLine } from "@/components/console/hairline-list";
+import { EmptyState } from "@brandbasket/shared/ui/patterns";
 import { Section } from "@/components/console/section";
 import { getStaffDb } from "@/lib/server/db";
 import { clock, weekdayDate } from "@/lib/team-time";
@@ -33,7 +33,7 @@ export async function KickoffWrapUp({ now }: { readonly now: Date }): Promise<Re
   return (
     <Section title="Just finished">
       {finished.length === 0 ? (
-        <EmptyLine>No calls waiting for a word from you.</EmptyLine>
+        <EmptyState title="No calls waiting for a word from you." description="A call that has ended and is not yet recorded appears here." />
       ) : (
         <ul className="grid gap-6">
           {finished.map((row) => (
