@@ -3,7 +3,7 @@ import { addMonthsUtc, monthsPerCycle } from "@brandbasket/billing";
 import { findBillingProfile, withTenantScope } from "@brandbasket/db";
 import type { BillingInterval } from "@brandbasket/db";
 import type { MonthlyAddOnId } from "@brandbasket/shared/lib/billing/add-ons";
-import { addOnPrice, addOnById, MONTHLY_ADD_ON_IDS, perCycle, PLAN_ADD_ON_IDS } from "@brandbasket/shared/lib/billing/add-ons";
+import { addOnPrice, addOnById, MONTHLY_ADD_ON_IDS, perCycle, SOLD_PLAN_ADD_ON_IDS } from "@brandbasket/shared/lib/billing/add-ons";
 import { paymentReturnView, readPaymentReturn, type PaymentReturnView } from "@brandbasket/shared/lib/billing/payment-return";
 import { planLabel } from "@brandbasket/shared/lib/billing/receipt-title";
 import { renewalCharge } from "@brandbasket/shared/lib/billing/terms";
@@ -260,8 +260,8 @@ export async function loadServicesPanel(customer: CustomerContext, canAdd: boole
         : {
             nextAmount: bill.total,
             nextOn: formatDate(nextBillingOn, now),
-            plansHeld: PLAN_ADD_ON_IDS.filter((addOn) => page.addOns.some((entry) => entry.kind === "included" && entry.addOn === addOn)).length,
-            plansTotal: PLAN_ADD_ON_IDS.length,
+            plansHeld: SOLD_PLAN_ADD_ON_IDS.filter((addOn) => page.addOns.some((entry) => entry.kind === "included" && entry.addOn === addOn)).length,
+            plansTotal: SOLD_PLAN_ADD_ON_IDS.length,
           },
   };
 }
@@ -271,7 +271,7 @@ export async function loadReactivationCard(customer: CustomerContext, params: Pa
   const [plan, reactivation] = await Promise.all([findReactivationPlan(customer), findReactivation(customer, readServicesParam(params.services))]);
   if (plan === null || reactivation === null) return null;
   const picker = reactivation.cancelled
-    ? PLAN_ADD_ON_IDS.map((addOn) => ({
+    ? SOLD_PLAN_ADD_ON_IDS.map((addOn) => ({
         addOn,
         name: serviceName(addOn),
         price: formatMoney(addOnPrice(addOnById(addOn), plan.currency).chargedCents, plan.currency),

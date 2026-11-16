@@ -11,7 +11,7 @@ import {
   type RateLimitRule,
   type ScopedTransaction,
 } from "@brandbasket/db";
-import { isMonthlyAddOnId, MONTHLY_ADD_ON_IDS, servicesToList, type AddOnPrice, type MonthlyAddOnId } from "@brandbasket/shared/lib/billing/add-ons";
+import { isMonthlyAddOnId, MONTHLY_ADD_ON_IDS, PAUSED_ADD_ON_IDS, servicesToList, type AddOnPrice, type MonthlyAddOnId } from "@brandbasket/shared/lib/billing/add-ons";
 import { bundledLinePrice } from "@brandbasket/shared/lib/billing/bundle";
 import { packageLineWith } from "@brandbasket/shared/lib/billing/packages";
 import { planCombinedAddOn, startCombinedAddOn } from "@brandbasket/shared/server/added-service";
@@ -178,10 +178,9 @@ export async function loadAddOnsPage(customer: Customer, now: Date): Promise<Add
   const stayingLines = bundled.filter((row) => row.status === "active" && row.endRequestedAt === null);
   const listedLines = stayingLines.flatMap((row) => (isMonthlyAddOnId(row.addOn) ? [{ addOn: row.addOn, listCents: row.listAmountCents }] : []));
   const nextBillingOn = customer.billing.subscription?.paidThroughAt ?? null;
-  const listed = servicesToList(
-    bundled.filter((row) => row.status === "active").map((row) => row.addOn),
-    listedLines.map((line) => line.addOn),
-  );
+  const activeServices = bundled.filter((row) => row.status === "active").map((row) => row.addOn);
+  // A paused service (PAUSED_ADD_ON_IDS) is listed only to a business that already has it: nobody can add it.
+  const listed = servicesToList(activeServices, listedLines.map((line) => line.addOn)).filter((id) => !PAUSED_ADD_ON_IDS.includes(id) || activeServices.includes(id));
   const addOns = await Promise.all(listed.map(async (addOn): Promise<AddOnPageEntry> => {
     const assessment = assessments.get(addOn) ?? null;
     const included = bundled.find((row) => row.addOn === addOn && row.status === "active");

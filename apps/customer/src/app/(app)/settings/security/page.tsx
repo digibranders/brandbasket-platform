@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
-import { Panel } from "@/components";
 import { ChangePasswordForm } from "@/features/settings/components/change-password-form";
+import { SettingsCard } from "@/features/settings/components/settings-card";
 import { SettingsHeader } from "@/features/settings/components/settings-header";
 import { SignOutOtherDevices } from "@/features/settings/components/sign-out-other-devices";
 import { requireCustomer } from "@/lib/guards";
@@ -14,16 +14,16 @@ export default async function SecurityPage() {
   return (
     <>
       <SettingsHeader current="/settings/security" showTeam={role === "owner"} showSocial={customer.services.includes("social")} />
-      <div className="flex flex-col gap-4">
-        <Panel title="Change password">
+      <div className="flex flex-col gap-6">
+        <SettingsCard title="Change password" tone="focal">
           <ChangePasswordForm />
-        </Panel>
-        <Panel title="Where you are signed in">
+        </SettingsCard>
+        <SettingsCard title="Where you are signed in">
           <div className="flex flex-col items-start gap-3">
             <p className="type-body text-ink-2">Sign out of every device except this one.</p>
             <SignOutOtherDevices />
           </div>
-        </Panel>
+        </SettingsCard>
       </div>
     </>
   );

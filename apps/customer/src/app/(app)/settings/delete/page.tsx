@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
-import { Panel, PanelError, PageHeader } from "@/components";
+import { PanelError } from "@/components";
 import { DeleteAccountFlow } from "@/features/settings/components/delete-account-flow";
+import { SettingsCard } from "@/features/settings/components/settings-card";
+import { SettingsHeader } from "@/features/settings/components/settings-header";
 import { loadDeleteFacts } from "@/features/settings/loader";
 import { requireOwner } from "@/lib/guards";
 import { load } from "@/lib/loaded";
@@ -13,10 +15,10 @@ export default async function DeleteAccountPage() {
   const facts = await load("settings.delete", () => loadDeleteFacts(customer));
   return (
     <>
-      <PageHeader title="Delete account" description="Close your account and end your plan." back={{ href: "/settings/privacy", label: "Privacy and data" }} />
-      <Panel>
+      <SettingsHeader current="/settings/delete" showTeam showSocial={customer.services.includes("social")} />
+      <SettingsCard title="Delete account" description="Close your account and end your plan." tone="danger">
         {facts.ok ? <DeleteAccountFlow facts={facts.data} /> : <PanelError failure={facts.error} what="what deleting your account ends" />}
-      </Panel>
+      </SettingsCard>
     </>
   );
 }

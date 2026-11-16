@@ -2,7 +2,8 @@
 
 import type { DnsRecord, DnsStatus } from "@brandbasket/shared/lib/onboarding/domain-dns";
 import { ErrorState } from "@brandbasket/shared/ui/patterns";
-import { useActionState, useState, type ReactNode } from "react";
+import { useState, type ReactNode } from "react";
+import { useGuardedActionState } from "@/lib/use-guarded-action-state";
 import type { ActionResult } from "@/lib/action-result";
 import { Banner, Button, type BannerTone } from "@/ui";
 import { checkDomainAction } from "../actions";
@@ -85,7 +86,7 @@ export interface ConnectDomainProps {
 
 /** The domain check, its verdict, and the records to add with a copy button on each value. */
 export function ConnectDomain({ hostname, records, alreadyConnected, disclosure, live, emailUs }: ConnectDomainProps) {
-  const [state, check, pending] = useActionState(async (): Promise<ActionResult<DomainCheck>> => checkDomainAction(), null);
+  const [state, check, pending] = useGuardedActionState(async (): Promise<ActionResult<DomainCheck>> => checkDomainAction(), null);
   const result = state !== null && state.ok ? (state.data ?? null) : null;
 
   const checker = (

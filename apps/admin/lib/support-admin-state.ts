@@ -21,6 +21,11 @@ export const OPENED_REQUEST_MESSAGES: Readonly<Record<OpenedRequestOutcome, stri
   failed: "Request opened, but the email to the owner did not go. Tell them yourself.",
   replayed: "This request was already opened.",
 };
+/** A request that never got an answer: the form's own error, keeping the submission key so pressing Save again cannot repeat the work. */
+export function staffSupportDropped(message: string, formData?: FormData): StaffSupportActionState {
+  const key = formData?.get("submissionKey");
+  return { kind: "error", message, ...(typeof key === "string" && key !== "" ? { submissionKey: key } : {}) };
+}
 export const STAFF_SUPPORT_INITIAL_STATE: StaffSupportActionState = { kind: "idle" };
 export const STAFF_SUPPORT_CATEGORY_LABELS: Readonly<Record<SupportCategory, string>> = { bug: "Bug", support: "Support", feature: "Feature", billing: "Billing", website_change: "Website change", account_access: "Account access", general: "General feedback", other: "Other" };
 export const staffSupportUpdateSchema = z.strictObject({

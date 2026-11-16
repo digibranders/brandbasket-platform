@@ -19,7 +19,7 @@ export default async function SetupPage({ params }: { readonly params: Promise<{
 
   if (invite === null) {
     return (
-      <EntryScreen title="This link no longer works." lede="Setup links work once and expire after 7 days. Ask us for a new one and we'll send it straight away.">
+      <EntryScreen framed chip={{ label: "Link used or expired", variant: "waiting" }} title="This link no longer works." lede="Setup links work once and expire after 7 days. Ask us for a new one and we'll send it straight away.">
         <Link href="/login" className="type-body">
           Go to sign in
         </Link>
@@ -30,7 +30,7 @@ export default async function SetupPage({ params }: { readonly params: Promise<{
   if ("kind" in invite) {
     const minutes = Math.max(1, Math.ceil(invite.retryAfterSeconds / 60));
     return (
-      <EntryScreen title="Try this link again soon." lede={`Too many setup links have been opened from this network. Try again in ${minutes} minute${minutes === 1 ? "" : "s"}.`}>
+      <EntryScreen framed title="Try this link again soon." lede={`Too many setup links have been opened from this network. Try again in ${minutes} minute${minutes === 1 ? "" : "s"}.`}>
         <a href={`/setup/${encodeURIComponent(token)}`} className="type-body">
           Try this link again
         </a>
@@ -39,7 +39,7 @@ export default async function SetupPage({ params }: { readonly params: Promise<{
   }
 
   return (
-    <EntryScreen title={`Welcome to ${BRAND.shortName}.`} lede={`Finish setting up ${invite.businessName} with ${invite.email}.`}>
+    <EntryScreen framed title={`Welcome to ${BRAND.shortName}.`} lede={`Finish setting up ${invite.businessName} with ${invite.email}.`}>
       <SetupForm siteKey={turnstileSiteKey()} token={token} />
     </EntryScreen>
   );

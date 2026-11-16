@@ -7,8 +7,12 @@ import { LocalDateTime } from "@brandbasket/shared/ui/panel/local-date-time";
 import { SelectField, type SelectOption } from "@brandbasket/shared/ui/select-field";
 import type { Metadata } from "next";
 import type { ReactElement } from "react";
-import { EmptyLine } from "@/components/console/hairline-list";
+import { EmptyState, StatusChip } from "@brandbasket/shared/ui/patterns";
+import { ConfirmDialog } from "@/components/console/confirm-dialog";
+import { Notice } from "@/components/console/notice";
 import { PageHeader } from "@/components/console/page-header";
+import { StatTiles } from "@/components/console/stat-tiles";
+import { requestClock } from "@/lib/deadline-clock";
 import { PRIVACY_REQUEST_FORM_MESSAGES, REQUEST_KIND_LABELS, REQUEST_OUTCOME_LABELS } from "@/lib/privacy-request-form";
 import { getStaffDb } from "@/lib/server/db";
 import { logStaffAccess } from "@/lib/server/staff-access-log";
@@ -49,24 +53,33 @@ function urgencyWords(urgency: RequestUrgency, dueAt: Date, now: Date): string {
   }
 }
 
+/** The timer chip: red only once it is late, gold when it is close, a quiet grey otherwise. */
+function RequestTimer({ request, urgency, now }: { readonly request: StoredPrivacyRequest; readonly urgency: RequestUrgency; readonly now: Date }): ReactElement {
+  if (request.status === "closed") {
+    return <StatusChip label={urgencyWords(urgency, request.dueAt, now)} variant={urgency === "done_late" ? "failed" : "active"} />;
+  }
+  const clock = requestClock(request.dueAt, now);
+  const variant = clock.late ? "failed" : urgency === "urgent" || urgency === "reminder" ? "waiting" : "idle";
+  return <StatusChip label={clock.text} variant={variant} className="font-figure tabular-nums" />;
+}
+
 function RequestRow({ request, now }: { readonly request: StoredPrivacyRequest; readonly now: Date }): ReactElement {
   const urgency = requestUrgency(request, now);
-  const worry = urgency === "urgent" || urgency === "overdue" || urgency === "done_late";
   const closed = request.status === "closed";
   return (
     <li className="border-b border-line py-5 pl-1 pr-2">
-      <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1">
+      <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-2">
         <p className="min-w-0 break-words font-semibold">
-          {REQUEST_KIND_LABELS[request.kind]} <span className="font-normal text-ink-soft">· {request.reference}</span>
+          {REQUEST_KIND_LABELS[request.kind]} <span className="font-normal text-ink-2">· <span className="font-figure text-xs">{request.reference}</span></span>
         </p>
-        <p className={`text-sm font-medium tabular-nums ${worry ? "text-accent-deep" : "text-ink-soft"}`}>{urgencyWords(urgency, request.dueAt, now)}</p>
+        <RequestTimer request={request} urgency={urgency} now={now} />
       </div>
-      <p className="mt-1 break-words text-sm text-ink-soft">
+      <p className="mt-1 break-words text-sm text-ink-2">
         {request.subjectName === null ? "" : `${request.subjectName} · `}
         {request.subjectContact} · by {request.channel}
       </p>
       {request.details === null ? null : <p className="mt-2 max-w-2xl whitespace-pre-line break-words text-sm">{request.details}</p>}
-      <p className="mt-2 text-sm tabular-nums text-ink-soft">
+      <p className="mt-2 text-sm tabular-nums text-ink-2">
         {STATUS_WORDS[request.status]} · received <LocalDateTime iso={request.receivedAt.toISOString()} variant="timestamp" />
         {closed && request.closedAt !== null ? (
           <>
@@ -109,24 +122,33 @@ function RequestRow({ request, now }: { readonly request: StoredPrivacyRequest; 
               </button>
             ) : null}
           </form>
-          <form action={closePrivacyRequestAction} className="mt-3 grid max-w-2xl gap-2 sm:grid-cols-[12rem_1fr_auto] sm:items-end">
-            <input type="hidden" name="id" value={request.id} />
-            <div>
-              <label htmlFor={`outcome-${request.id}`} className="block text-xs font-medium text-ink-soft">
-                How it ended<RequiredMark />
-              </label>
-              <SelectField id={`outcome-${request.id}`} name="outcome" required options={OUTCOME_OPTIONS} placeholder="Choose" className={INPUT} />
-            </div>
-            <div>
-              <label htmlFor={`resolution-${request.id}`} className="block text-xs font-medium text-ink-soft">
-                What was done<RequiredMark />
-              </label>
-              <input id={`resolution-${request.id}`} name="resolution" required maxLength={2000} className={INPUT} />
-            </div>
-            <GatedSubmitButton className={BUTTON} pendingLabel="Closing…">
-              Close
-            </GatedSubmitButton>
-          </form>
+          <div className="mt-3">
+            <ConfirmDialog
+              title={`Close ${request.reference}`}
+              consequence="The request is recorded as closed now, with the outcome and note you give. Nothing here can be deleted."
+              triggerLabel="Close"
+              triggerClassName={BUTTON}
+              confirmLabel="Close request"
+              cancelLabel="Keep open"
+              formAction={closePrivacyRequestAction}
+            >
+              <input type="hidden" name="id" value={request.id} />
+              <div className="mb-5 grid gap-4">
+                <div>
+                  <label htmlFor={`outcome-${request.id}`} className="block text-sm font-medium">
+                    How it ended<RequiredMark />
+                  </label>
+                  <SelectField id={`outcome-${request.id}`} name="outcome" required options={OUTCOME_OPTIONS} placeholder="Choose" className={INPUT} />
+                </div>
+                <div>
+                  <label htmlFor={`resolution-${request.id}`} className="block text-sm font-medium">
+                    What was done<RequiredMark />
+                  </label>
+                  <input id={`resolution-${request.id}`} name="resolution" required maxLength={2000} className={INPUT} />
+                </div>
+              </div>
+            </ConfirmDialog>
+          </div>
         </>
       )}
     </li>
@@ -150,6 +172,20 @@ export default async function PrivacyRequestsPage({ searchParams }: { readonly s
       <PageHeader
         title={<>Privacy <em>requests</em></>}
         meta={`Every rights request and grievance, with the day it is due. Our target is 30 days from the day it arrived; the Act allows 90 at most. ${open.length} open${needAttention.length === 0 ? "" : `, ${needAttention.length} urgent or overdue`}. Nothing here can be deleted.`}
+      />
+
+      <StatTiles
+        label="Privacy request figures"
+        items={[
+          { value: open.length, label: "Open requests", note: open.length === 0 ? "All closed" : "Being worked on" },
+          {
+            value: needAttention.length,
+            label: "Urgent or overdue",
+            note: needAttention.length === 0 ? "None" : "Past day 25 or late",
+            tone: needAttention.length === 0 ? "good" : "bad",
+          },
+          { value: requests.length - open.length, label: "Closed" },
+        ]}
       />
 
       <section className="mt-8 max-w-2xl">
@@ -187,7 +223,7 @@ export default async function PrivacyRequestsPage({ searchParams }: { readonly s
                 When it arrived (India time)
               </label>
               <input id="request-received" name="receivedAt" type="datetime-local" className={INPUT} />
-              <p className="mt-1 text-xs text-ink-soft">Leave empty for now. The 30 days count from this moment.</p>
+              <p className="mt-1 text-xs text-ink-2">Leave empty for now. The 30 days count from this moment.</p>
             </div>
           </div>
           <div>
@@ -196,11 +232,7 @@ export default async function PrivacyRequestsPage({ searchParams }: { readonly s
             </label>
             <textarea id="request-details" name="details" rows={3} maxLength={4000} className={INPUT} />
           </div>
-          {shownProblem === null ? null : (
-            <p role="alert" className="rounded-control bg-accent-pale px-4 py-3 text-sm text-accent-deep">
-              {shownProblem}
-            </p>
-          )}
+          {shownProblem === null ? null : <Notice tone="problem">{shownProblem}</Notice>}
           <div>
             <GatedSubmitButton className={BUTTON} pendingLabel="Logging…">
               Log it
@@ -210,7 +242,9 @@ export default async function PrivacyRequestsPage({ searchParams }: { readonly s
       </section>
 
       {requests.length === 0 ? (
-        <EmptyLine>No requests yet.</EmptyLine>
+        <div className="mt-10">
+          <EmptyState title="No requests yet." description="Rights requests and grievances appear here with their 30 day clock once they are logged." />
+        </div>
       ) : (
         <ul aria-label="Privacy requests" className="mt-10 border-t border-line">
           {requests.map((request) => (

@@ -11,7 +11,7 @@ import type { ReactElement } from "react";
 import { Avatar } from "@/components/console/avatar";
 import { buttonPrimary, buttonSecondary } from "@/components/console/buttons";
 import { fieldClasses, labelClasses } from "@/components/console/field-styles";
-import { Figures } from "@/components/console/figures";
+import { StatTiles } from "@/components/console/stat-tiles";
 import { FilterPills } from "@/components/console/filter-pills";
 import { HairlineList, HairlineRow } from "@/components/console/hairline-list";
 import { PageHeader } from "@/components/console/page-header";
@@ -162,7 +162,7 @@ export default async function InvoicesPage({ searchParams }: InvoicesPageProps):
           tone="attention"
           aside={`${missing.length > MISSING_LIMIT ? `${MISSING_LIMIT}+` : missingRows.length} to issue`}
         >
-          <p className="max-w-2xl text-ink-soft">
+          <p className="max-w-2xl text-ink-2">
             These payments came in without a tax invoice, across every client. Open the client to issue it. It is dated the day it is issued.
           </p>
           <HairlineList label="Payments missing an invoice">
@@ -177,12 +177,12 @@ export default async function InvoicesPage({ searchParams }: InvoicesPageProps):
             ))}
           </HairlineList>
           {missing.length > MISSING_LIMIT ? (
-            <p className="mt-3 text-sm text-ink-soft">Showing the oldest {MISSING_LIMIT}. The rest appear once these are issued.</p>
+            <p className="mt-3 text-sm text-ink-2">Showing the oldest {MISSING_LIMIT}. The rest appear once these are issued.</p>
           ) : null}
         </Section>
       )}
 
-      <Figures
+      <StatTiles
         items={[
           { value: totalsView.count, label: "Invoices", note: label, long: true },
           { value: totalsView.figures.taxable, label: "Taxable value", long: true },

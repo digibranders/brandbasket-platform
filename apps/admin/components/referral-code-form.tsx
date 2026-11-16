@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useRef, useState, type ReactElement, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactElement, type ReactNode } from "react";
 import {
   discountCentsFor,
   isChargeableDiscount,
@@ -25,6 +25,8 @@ import { GatedSubmitButton } from "@brandbasket/shared/ui/forms/submit-gate";
 import { SelectField, type SelectOption } from "@brandbasket/shared/ui/select-field";
 import type { ReferralField } from "@/lib/server/referral-admin";
 import { buttonDanger, buttonPrimary } from "@/components/console/buttons";
+import { typedValues, useGuardedFormState } from "@/lib/use-guarded-form-state";
+import { ConfirmDialog } from "@/components/console/confirm-dialog";
 import { checkboxClasses, fieldClasses, hintClasses, labelClasses } from "@/components/console/field-styles";
 
 /** What a code form's action hands back. A successful create redirects, so only errors are ever seen. */
@@ -38,6 +40,9 @@ export type ReferralFormState =
     };
 
 export const initialReferralFormState: ReferralFormState = { status: "idle" };
+
+/** A request that never got an answer: the form's own error, with what was typed kept. */
+const referralDropped = (message: string, formData: FormData): ReferralFormState => ({ status: "error", message, field: null, values: typedValues(formData) });
 
 type ReferralAction = (state: ReferralFormState, formData: FormData) => Promise<ReferralFormState>;
 
@@ -207,7 +212,7 @@ function DiscountField({
                 key={option}
                 className={cn(
                   "cursor-pointer rounded-full px-4 py-1.5 text-sm font-semibold transition-colors duration-300 ease-calm has-[:focus-visible]:outline has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-accent",
-                  choice === option ? "bg-ink text-paper" : "text-ink-soft hover:text-ink",
+                  choice === option ? "bg-ink text-paper" : "text-ink-2 hover:text-ink",
                 )}
               >
                 <input
@@ -239,7 +244,7 @@ function DiscountField({
           <span
             aria-hidden="true"
             className={cn(
-              "pointer-events-none absolute bottom-0 top-2 flex items-center text-base text-ink-soft",
+              "pointer-events-none absolute bottom-0 top-2 flex items-center text-base text-ink-2",
               percent ? "right-4" : "left-4",
             )}
           >
@@ -380,7 +385,7 @@ export function NewReferralCodeForm({
         Create {noun}
       </GatedSubmitButton>
 
-      <p className="text-sm leading-relaxed text-ink-soft">
+      <p className="text-sm leading-relaxed text-ink-2">
         The discount, its length and the currency are fixed once the {noun} exists. If one is wrong, turn it off and make another.
       </p>
     </form>
@@ -506,11 +511,11 @@ export function DeleteReferralCodeForm({
   /** True once any subscription points at the code, paid or mid-checkout. Deleting is not offered then. */
   readonly redeemed: boolean;
 }): ReactElement {
-  const { formRef, errorRef, formAction, errorMessage } = useReferralForm(action);
+  const { errorRef, formAction, errorMessage } = useReferralForm(action);
 
   if (redeemed) {
     return (
-      <p className="text-sm leading-relaxed text-ink-soft">
+      <p className="text-sm leading-relaxed text-ink-2">
         This code cannot be deleted: customers are on it, and it is the only record of where their discount came
         from. Turn it off above to stop anyone new applying it.
       </p>
@@ -518,23 +523,23 @@ export function DeleteReferralCodeForm({
   }
 
   return (
-    <form ref={formRef} action={formAction} noValidate className="space-y-4">
+    // No outer form: the dialog is the form, and a form inside a form is not allowed.
+    <div className="space-y-4">
       <FormError message={errorMessage} errorRef={errorRef} />
-      <p className="text-sm leading-relaxed text-ink-soft">
+      <p className="text-sm leading-relaxed text-ink-2">
         Nobody is on <span className="font-semibold tracking-[0.06em] text-ink">{code}</span> yet, so it can be
         removed for good. Anyone who has applied it without paying will simply lose it.
       </p>
-      <label className="flex items-start gap-3 text-sm font-medium">
-        <input type="checkbox" name="confirm" required className={checkboxClasses} />
-        <span>
-          Yes, delete this code. This cannot be undone.
-          <RequiredMark />
-        </span>
-      </label>
-      <GatedSubmitButton className={buttonDanger} pendingLabel="Deleting…">
-        Delete code
-      </GatedSubmitButton>
-    </form>
+      <ConfirmDialog
+        title={`Delete ${code}`}
+        consequence="The code is removed for good and cannot be brought back. Anyone who has applied it without paying loses it."
+        triggerLabel="Delete code"
+        triggerClassName={buttonDanger}
+        confirmLabel="Delete code"
+        cancelLabel="Keep the code"
+        formAction={formAction}
+      />
+    </div>
   );
 }
 
@@ -561,8 +566,8 @@ function FormError({
 
 /** The shared behaviour of both forms: values echoed back on error, the failing field focused and marked. */
 function useReferralForm(action: ReferralAction) {
-  const [state, formAction, isPending] = useActionState(action, initialReferralFormState);
   const formRef = useRef<HTMLFormElement>(null);
+  const [state, formAction, isPending] = useGuardedFormState(action, initialReferralFormState, referralDropped, formRef);
   const errorRef = useRef<HTMLParagraphElement>(null);
 
   useEffect(() => {

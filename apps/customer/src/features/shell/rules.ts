@@ -88,6 +88,9 @@ const SERVICE_CHILDREN: Readonly<Record<Service, readonly NavTarget[]>> = {
 /** Paid Ads is its own menu item, apart from Social media. It has no service key of its own yet, so it is shown, and marked bought, with Social media. */
 const ADS_LINK: Omit<NavLink, "bought" | "children"> = { href: SHELL_PATHS.ads, label: "Paid Ads", icon: "ChartLineUp", service: "social" };
 
+/** Paid Ads is paused for now (PAUSED_ADD_ON_IDS in the shared add-ons, which this browser-safe file cannot import), so its menu item is hidden. */
+const SHOWS_ADS = false;
+
 const SERVICES_IN_ORDER: readonly Service[] = ["website", "social", "search"];
 
 const withCount = (link: NavLink, count: number | undefined): NavLink => (count !== undefined && count > 0 ? { ...link, count } : link);
@@ -115,7 +118,7 @@ export function navModel(input: NavInput): NavModel {
   const services = SERVICES_IN_ORDER.filter((service) => service !== "search" || input.services.includes(service)).map((service): NavLink => {
     const bought = input.services.includes(service);
     return { ...SERVICE_LINKS[service], bought, children: bought ? SERVICE_CHILDREN[service] : [] };
-  }).flatMap((link): NavLink[] => (link.service === "social" ? [link, { ...ADS_LINK, bought: link.bought === true, children: [] }] : [link]));
+  }).flatMap((link): NavLink[] => (link.service === "social" && SHOWS_ADS ? [link, { ...ADS_LINK, bought: link.bought === true, children: [] }] : [link]));
   return {
     sections: [
       { label: null, links: [HOME, withCount(ENQUIRIES, input.enquiries), requests] },

@@ -1,6 +1,7 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useState } from "react";
+import { useGuardedActionState } from "@/lib/use-guarded-action-state";
 import type { ActionResult } from "@/lib/action-result";
 import { Button, Dialog, DialogClose, Field, Input, useToast } from "@/ui";
 import { renameChatbotAction } from "../actions";
@@ -10,7 +11,7 @@ import { CHATBOT_NAME_MAX } from "../rules";
 export function RenameAssistant({ chatbotId, name }: { readonly chatbotId: string; readonly name: string }) {
   const [open, setOpen] = useState(false);
   const toast = useToast();
-  const [state, action, pending] = useActionState(async (previous: ActionResult | null, formData: FormData): Promise<ActionResult> => {
+  const [state, action, pending, formRef] = useGuardedActionState(async (previous: ActionResult | null, formData: FormData): Promise<ActionResult> => {
     const result = await renameChatbotAction(previous, formData);
     if (result.ok) {
       setOpen(false);
@@ -40,7 +41,7 @@ export function RenameAssistant({ chatbotId, name }: { readonly chatbotId: strin
         </>
       }
     >
-      <form id={`rename-${chatbotId}`} action={action} className="flex flex-col gap-4">
+      <form ref={formRef} id={`rename-${chatbotId}`} action={action} className="flex flex-col gap-4">
         <input type="hidden" name="chatbotId" value={chatbotId} />
         <Field label="Assistant name" name="name" error={state?.ok === false ? (state.fieldErrors?.name ?? state.message) : undefined}>
           <Input name="name" defaultValue={name} maxLength={CHATBOT_NAME_MAX} required autoComplete="off" />

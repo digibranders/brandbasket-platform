@@ -2,8 +2,8 @@ import { listExitFeedback, summariseExitFeedback, type ExitFeedbackRow } from "@
 import type { Metadata } from "next";
 import type { ReactElement } from "react";
 import { EXIT_REASON_OPTIONS } from "@brandbasket/shared/lib/account-exit";
-import { Figures } from "@/components/console/figures";
-import { EmptyLine } from "@/components/console/hairline-list";
+import { StatTiles } from "@/components/console/stat-tiles";
+import { EmptyState } from "@brandbasket/shared/ui/patterns";
 import { PageHeader } from "@/components/console/page-header";
 import { StatusDot } from "@/components/console/status-dot";
 import { getStaffDb } from "@/lib/server/db";
@@ -40,7 +40,7 @@ export default async function LeavingPage(): Promise<ReactElement> {
     <>
       <PageHeader title="Leaving" meta="What people told us on the way out." />
 
-      <Figures
+      <StatTiles
         items={[
           { value: summary.total, label: "Left or nearly left" },
           { value: summary.keptWithOffer, label: "Stayed with the offer" },
@@ -55,14 +55,14 @@ export default async function LeavingPage(): Promise<ReactElement> {
       />
 
       {summary.total === 0 ? (
-        <EmptyLine>Nobody has left yet.</EmptyLine>
+        <EmptyState title="Nobody has left yet." description="What people say when they close or nearly close an account appears here, with no name attached." />
       ) : (
         <>
           <ul aria-label="Reasons" className="mt-10 border-t border-line">
             {summary.byReason.map((entry) => (
               <li key={entry.reason} className="flex items-baseline justify-between gap-4 border-b border-line py-3">
                 <span>{REASON_LABELS.get(entry.reason) ?? entry.reason}</span>
-                <span className="font-serif text-xl tabular-nums">{entry.count}</span>
+                <span className="font-figure text-xl tabular-nums">{entry.count}</span>
               </li>
             ))}
           </ul>
@@ -72,9 +72,9 @@ export default async function LeavingPage(): Promise<ReactElement> {
               <li key={row.id} className="grid gap-x-6 gap-y-1 border-b border-line py-4 sm:grid-cols-[minmax(0,1fr)_auto]">
                 <div className="min-w-0">
                   <p className="font-semibold">{REASON_LABELS.get(row.reason) ?? row.reason}</p>
-                  {row.comment === null ? null : <p className="mt-1 max-w-2xl whitespace-pre-wrap break-words text-ink-soft">{row.comment}</p>}
+                  {row.comment === null ? null : <p className="mt-1 max-w-2xl whitespace-pre-wrap break-words text-ink-2">{row.comment}</p>}
                 </div>
-                <div className="flex items-center gap-4 text-sm tabular-nums text-ink-soft sm:justify-end">
+                <div className="flex items-center gap-4 text-sm tabular-nums text-ink-2 sm:justify-end">
                   {outcomeLine(row)}
                   <span>{row.planCode ?? "Free listing"}</span>
                   <time dateTime={row.createdAt.toISOString()}>{dateFormat.format(row.createdAt)}</time>

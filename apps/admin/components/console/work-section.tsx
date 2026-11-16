@@ -88,7 +88,7 @@ function EditForm({ businessId, row, today }: { readonly businessId: string; rea
   const isPost = row.kind === "post";
   return (
     <details className="mt-2">
-      <summary className="cursor-pointer text-sm text-ink-soft">Edit</summary>
+      <summary className="cursor-pointer text-sm text-ink-2">Edit</summary>
       <form action={saveDeliverableAction} className="mt-3 grid max-w-xl gap-4">
         <Hidden businessId={businessId} id={row.id} />
         <div>
@@ -132,12 +132,12 @@ function Row({ businessId, row, today }: { readonly businessId: string; readonly
         <img src={`/deliverable-images/${row.id}`} alt="" width={48} height={60} className="h-15 w-12 shrink-0 rounded-control bg-paper-deep object-cover" />
       )}
       <div className="min-w-0 flex-1">
-        <p className="text-sm tabular-nums text-ink-soft">
+        <p className="text-sm tabular-nums text-ink-2">
           {row.dueOn === null ? "No date" : DAY.format(new Date(`${row.dueOn}T12:00:00Z`))}, {KIND_LABELS[row.kind]}, {STATE_LABELS[row.status]}
         </p>
         <p className="mt-1 break-words text-base text-ink">{row.title}</p>
         {row.status === "approved" && row.approvedAt !== null ? (
-          <p className="mt-1 text-sm text-ink-soft">Approved by the customer on {APPROVED_DAY.format(row.approvedAt)}</p>
+          <p className="mt-1 text-sm text-ink-2">Approved by the customer on {APPROVED_DAY.format(row.approvedAt)}</p>
         ) : null}
         <div className="mt-3 flex flex-wrap items-start gap-2">
           {isPost && row.status === "planned" ? <MoveForm businessId={businessId} row={row} move="send" label="Send for approval" /> : null}
@@ -308,7 +308,7 @@ export async function WorkSection({ businessId, notice }: { readonly businessId:
       )}
       {services.map((service, index) => (
         <div key={service} className={index === 0 ? "" : "mt-10"}>
-          <h3 className="font-serif text-lg">{SERVICE_TITLES[service]}</h3>
+          <h3 className="font-display text-lg">{SERVICE_TITLES[service]}</h3>
           <h4 className="mt-4 text-sm font-medium text-ink">{service === "social" ? "Add a post" : "Add a page or listing"}</h4>
           <AddForm businessId={businessId} service={service} today={today} />
           <Rows businessId={businessId} rows={rows.filter((row) => row.service === service)} today={today} />

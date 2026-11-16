@@ -1,10 +1,11 @@
 "use client";
 
-import { useActionState, useEffect, useRef, useState, type ReactElement, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactElement, type ReactNode } from "react";
 import { cn } from "@brandbasket/shared/lib/cn";
 import { RequiredMark } from "@brandbasket/shared/ui/forms/required-mark";
 import { GatedSubmitButton } from "@brandbasket/shared/ui/forms/submit-gate";
 import { buttonPrimary, buttonSecondary } from "@/components/console/buttons";
+import { useGuardedFormState } from "@/lib/use-guarded-form-state";
 import { initialGeoFormState, type GeoFormState } from "@/lib/geo-form-state";
 
 type GeoAction = (state: GeoFormState, formData: FormData) => Promise<GeoFormState>;
@@ -25,8 +26,8 @@ interface GeoFormProps {
  * dot and a sentence, no box).
  */
 export function GeoForm({ action, children, submitLabel, tone = "quiet", clearOnSave = false, className }: GeoFormProps): ReactElement {
-  const [state, formAction, pending] = useActionState(action, initialGeoFormState);
   const formRef = useRef<HTMLFormElement>(null);
+  const [state, formAction, pending] = useGuardedFormState(action, initialGeoFormState, (message): GeoFormState => ({ status: "error", message }), formRef);
   useEffect(() => {
     if (clearOnSave && state.status === "saved") formRef.current?.reset();
   }, [clearOnSave, state]);

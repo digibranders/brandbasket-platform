@@ -11,6 +11,7 @@ const secrets = {
   authSecret: "c2VjcmV0K3dpdGgvc2xhc2g=",
   leadsApiToken: "leads-token",
   payloadSecret: "payload-secret",
+  accountCodeSecret: "account-code-secret",
 };
 
 describe("buildLocalEnvFile", () => {
@@ -41,6 +42,11 @@ describe("buildLocalEnvFile", () => {
     expect(env.NEXT_PUBLIC_APP_URL).toBe("http://app.brandbasket.localhost:3198");
     expect(env.NEXT_PUBLIC_SITE_URL).toBe("http://localhost:3130");
     expect(env.MARKETING_ORIGIN).toBeUndefined();
+  });
+
+  it("includes the secret that signs sign-up codes", () => {
+    expect(env.ACCOUNT_CODE_SECRET).toBe("account-code-secret");
+    expect(parse(buildAdminEnvFile(secrets)).ACCOUNT_CODE_SECRET).toBeUndefined();
   });
 
   it("includes the Payload connection, which both apps read", () => {

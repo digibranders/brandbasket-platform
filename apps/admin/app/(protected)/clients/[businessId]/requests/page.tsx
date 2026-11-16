@@ -7,7 +7,7 @@ import { LocalDateTime } from "@brandbasket/shared/ui/panel/local-date-time";
 import { ActivityList } from "@/components/activity-list";
 import { CallsSection } from "@/components/console/calls-section";
 import { Fold } from "@/components/console/fold";
-import { EmptyLine } from "@/components/console/hairline-list";
+import { EmptyState } from "@brandbasket/shared/ui/patterns";
 import { RequestsSection } from "@/components/console/requests-section";
 import { Section } from "@/components/console/section";
 import { TABLE, TD, TD_TIME, TH } from "@/components/console/table";
@@ -48,7 +48,7 @@ export default async function ClientRequestsPage({
     <CallsSection businessId={client.businessId} notice={readCallsNotice(sp.calls)} />
     <Section title="Requests" aside={page.nextCursor === null ? undefined : `The ${REQUESTS_SHOWN} newest`}>
       {page.items.length === 0 ? (
-        <EmptyLine>No requests from this client.</EmptyLine>
+        <EmptyState title="No requests from this client." description="Their requests appear here as they send them." />
       ) : (
         <TableScroll label="Requests">
           <table className={TABLE}>

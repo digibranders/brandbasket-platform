@@ -9,7 +9,8 @@ import { SelectField, type SelectOption } from "@brandbasket/shared/ui/select-fi
 import { buttonSecondary } from "@/components/console/buttons";
 import { fieldClasses } from "@/components/console/field-styles";
 import { FilterPills } from "@/components/console/filter-pills";
-import { EmptyLine } from "@/components/console/hairline-list";
+import { EmptyState } from "@brandbasket/shared/ui/patterns";
+import { FOCAL_CARD } from "@/components/console/classes";
 import { PageHeader } from "@/components/console/page-header";
 import { SectionTabs } from "@/components/console/section-tabs";
 import { TABLE, TD, TD_TIME, TH } from "@/components/console/table";
@@ -89,9 +90,12 @@ export default async function RequestsPage({ searchParams }: RequestsPageProps):
       </div>
 
       {page.items.length === 0 ? (
-        <EmptyLine>No requests here.</EmptyLine>
+        <div className="mt-6">
+          <EmptyState title="No requests here." description="Requests from customers appear here with how long each has been waiting." />
+        </div>
       ) : (
-        <TableScroll label="Requests" className="mt-6">
+        <section aria-label="Requests" className={`${FOCAL_CARD} mt-6`}>
+        <TableScroll label="Requests">
           <table className={TABLE}>
             <thead>
               <tr>
@@ -126,6 +130,7 @@ export default async function RequestsPage({ searchParams }: RequestsPageProps):
             </tbody>
           </table>
         </TableScroll>
+        </section>
       )}
 
       {page.nextCursor === null ? null : (

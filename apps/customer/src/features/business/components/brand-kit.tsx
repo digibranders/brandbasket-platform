@@ -10,6 +10,7 @@ import { useState, useTransition } from "react";
 import { Panel } from "@/components";
 import { formatBytes } from "@/lib/format";
 import { Banner, Button, FileDrop, type FileDropItem } from "@/ui";
+import { useUnsavedChangesWarning } from "@/lib/use-unsaved-changes-warning";
 import { removeBrandAssetAction } from "../actions";
 import type { BrandImage } from "../brand-media";
 import { MAX_PHOTOS, MAX_UPLOAD_SIZE_LABEL, planUpload } from "../rules";
@@ -53,6 +54,7 @@ export function BrandKit({ logo, photos, readOnly }: BrandKitProps) {
   const [problems, setProblems] = useState<Readonly<Record<UploadPurpose, readonly FileDropItem[]>>>({ logo: [], photo: [] });
   const [removeError, setRemoveError] = useState<string | undefined>(undefined);
   const busy = uploading || removing;
+  useUnsavedChangesWarning(uploading);
 
   async function handleFiles(purpose: UploadPurpose, chosen: readonly File[]): Promise<void> {
     const { accepted, turnedAway } = planUpload(purpose, chosen, photos.length);

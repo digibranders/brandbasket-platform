@@ -15,7 +15,7 @@ export const dynamic = "force-dynamic";
 export default async function ResetPasswordPage({ params }: { readonly params: Promise<{ readonly token: string }> }) {
   const { token } = await params;
   return (
-    <EntryScreen title="Choose a new password." lede="You'll be signed out everywhere else, then sign in with the new one.">
+    <EntryScreen framed title="Choose a new password." lede="You'll be signed out everywhere else, then sign in with the new one.">
       <ResetPasswordForm siteKey={turnstileSiteKey()} token={token} />
     </EntryScreen>
   );

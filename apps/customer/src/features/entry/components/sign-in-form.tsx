@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState, useState } from "react";
+import { useState } from "react";
+import { useGuardedActionState } from "@/lib/use-guarded-action-state";
 import { Banner, Button, Field, Input } from "@/ui";
 import { signInAction } from "../actions";
 import { NEXT_FIELD, SIGN_UP_PATH, withInviteReturn } from "../rules/account-entry";
@@ -19,7 +20,7 @@ export interface SignInFormProps {
 
 /** Sign in with the email or mobile number the account was opened with, and its password. */
 export function SignInForm({ siteKey, notice, next = null }: SignInFormProps) {
-  const [state, formAction, pending] = useActionState(signInAction, null);
+  const [state, formAction, pending] = useGuardedActionState(signInAction, null);
   // Held here so a refused sign-in keeps what was typed (the form is reset after every send).
   const [identifier, setIdentifier] = useState("");
   const error = state !== null && !state.ok && !pending ? state.message : null;

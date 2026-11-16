@@ -8,6 +8,7 @@ import {
   servicesPhrase,
   MEMBERSHIP_PATH,
   isWaitingOnPayment,
+  readSelectedServices,
   membershipPriceParts,
   orderSummary,
   renewalTerms,
@@ -336,5 +337,13 @@ describe("paying yearly", () => {
     expect(renewalTerms(coded, { currency: "INR", taxRateBasisPoints: 1800, initialTermMonths: 1, interval: "year" }, 1, "Thu 11 Nov 2027")).toBe(
       "Your payment covers 12 months, to Thu 11 Nov 2027. Then ₹32,389 (GST included) is taken each year for your service.",
     );
+  });
+});
+
+describe("a paused service", () => {
+  it("cannot be put in the basket by an old link or a typed address", () => {
+    expect(readSelectedServices({ services: "managed-website,paid-ads" })).toEqual(["managed-website"]);
+    expect(readSelectedServices({ services: "paid-ads" })).toEqual(["managed-website"]);
+    expect(readSelectedServices({ services: "managed-website,social-media" })).toEqual(["managed-website", "social-media"]);
   });
 });

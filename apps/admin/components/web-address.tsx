@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useId, useRef, type ReactElement } from "react";
+import { useEffect, useId, useRef, type ReactElement } from "react";
 import { changeWebAddressAction } from "@/app/(protected)/clients/[businessId]/actions";
 import { RequiredMark } from "@brandbasket/shared/ui/forms/required-mark";
 import { GatedSubmitButton } from "@brandbasket/shared/ui/forms/submit-gate";
@@ -8,7 +8,8 @@ import { SelectField, type SelectOption } from "@brandbasket/shared/ui/select-fi
 import { buttonPrimary } from "@/components/console/buttons";
 import { fieldClasses, hintClasses, labelClasses } from "@/components/console/field-styles";
 import { Notice } from "@/components/console/notice";
-import { INITIAL_WEB_ADDRESS_STATE, type WebAddressField } from "@/lib/web-address-form";
+import { useGuardedFormState } from "@/lib/use-guarded-form-state";
+import { INITIAL_WEB_ADDRESS_STATE, webAddressValuesFrom, type WebAddressField, type WebAddressFormState } from "@/lib/web-address-form";
 
 /** One directory business's URL label, as the page that shows it read it. */
 export interface WebAddressPlace {
@@ -55,8 +56,13 @@ export function WebAddress({
   nameMaxLength,
   reasonMaxLength,
 }: WebAddressProps): ReactElement {
-  const [state, formAction, isPending] = useActionState(changeWebAddressAction, INITIAL_WEB_ADDRESS_STATE);
   const formRef = useRef<HTMLFormElement>(null);
+  const [state, formAction, isPending] = useGuardedFormState(
+    changeWebAddressAction,
+    INITIAL_WEB_ADDRESS_STATE,
+    (message, formData): WebAddressFormState => ({ status: "error", field: null, message, values: webAddressValuesFrom((name) => formData.get(name)) }),
+    formRef,
+  );
   const errorRef = useRef<HTMLParagraphElement>(null);
   const prefix = useId();
   const errorId = `${prefix}-error`;

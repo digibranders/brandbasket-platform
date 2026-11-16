@@ -6,8 +6,9 @@ import { LocalDate } from "@brandbasket/shared/ui/panel/local-date-time";
 import { TagIcon } from "@brandbasket/shared/ui/icons";
 import { describeDiscountMonths, describeReferralDiscount } from "@brandbasket/shared/lib/billing/referral-value";
 import { buttonPrimary } from "@/components/console/buttons";
-import { Figures } from "@/components/console/figures";
-import { EmptyLine, HairlineList, HairlineRow } from "@/components/console/hairline-list";
+import { StatTiles } from "@/components/console/stat-tiles";
+import { EmptyState } from "@brandbasket/shared/ui/patterns";
+import { HairlineList, HairlineRow } from "@/components/console/hairline-list";
 import { PageHeader } from "@/components/console/page-header";
 import { SectionTabs } from "@/components/console/section-tabs";
 import { StatusDot } from "@/components/console/status-dot";
@@ -53,7 +54,7 @@ export default async function CouponsPage(): Promise<ReactElement> {
       />
       <SectionTabs role={viewer.role} page="/coupons" />
 
-      <Figures
+      <StatTiles
         items={[
           { value: codes.length, label: "Coupons" },
           { value: usable, label: "Usable now" },
@@ -62,7 +63,7 @@ export default async function CouponsPage(): Promise<ReactElement> {
       />
 
       {codes.length === 0 ? (
-        <EmptyLine>No coupons yet.</EmptyLine>
+        <EmptyState title="No coupons yet." description="A coupon appears here once you create one, with how many members are using it." />
       ) : (
         <div className="mt-6">
           <HairlineList label="Coupons">

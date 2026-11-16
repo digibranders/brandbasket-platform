@@ -52,7 +52,7 @@ export default async function AutomaticErrorPage({ params, searchParams }: { rea
   return (
     <>
       <PageHeader title={issue.errorClass} back={{ href: "/support/errors", label: "App errors" }} meta={`${issue.app} · ${issue.route}`} />
-      {search.updated === "saved" ? <p role="status" className="mt-6 text-sm text-ink-soft">Status saved.</p> : search.updated === "stale" ? <p role="status" className="mt-6 text-sm text-error">This issue changed while you reviewed it. Check the latest counts before updating again.</p> : search.updated === "invalid" ? <p role="alert" className="mt-6 text-sm text-error">Choose a valid status and try again.</p> : null}
+      {search.updated === "saved" ? <p role="status" className="mt-6 text-sm text-ink-2">Status saved.</p> : search.updated === "stale" ? <p role="status" className="mt-6 text-sm text-error">This issue changed while you reviewed it. Check the latest counts before updating again.</p> : search.updated === "invalid" ? <p role="alert" className="mt-6 text-sm text-error">Choose a valid status and try again.</p> : null}
       <div className="mt-10">
         <Section title="Occurrences">
           <FactList items={[
@@ -63,7 +63,7 @@ export default async function AutomaticErrorPage({ params, searchParams }: { rea
             { label: "Regressions", value: issue.regressionCount },
             { label: "Severity", value: issue.severity === "fatal" ? "Fatal" : "Error" },
           ]} />
-          <p className="mt-5 text-sm text-ink-soft">User counts are approximate and exclude anonymous visitors. No user list is recorded.</p>
+          <p className="mt-5 text-sm text-ink-2">User counts are approximate and exclude anonymous visitors. No user list is recorded.</p>
         </Section>
         <Section title="Diagnostic context">
           <FactList items={[
@@ -74,8 +74,8 @@ export default async function AutomaticErrorPage({ params, searchParams }: { rea
             { label: "Issue reference", value: <span className="break-all">{issue.id}</span> },
           ]} />
           <h3 className="mt-7 text-sm font-semibold">Safe source locations</h3>
-          {issue.frames.length === 0 ? <p className="mt-2 text-sm text-ink-soft">No allowlisted source location was available.</p> : <ol className="mt-3 space-y-2 font-mono text-sm tabular-nums">{issue.frames.map((frame, index) => <li key={`${frame.file}:${frame.line}:${frame.column}:${index}`} className="break-all">{frame.file}:{frame.line}:{frame.column}</li>)}</ol>}
-          <p className="mt-4 max-w-2xl text-sm text-ink-soft">Production locations may refer to compiled JavaScript. Native capture does not upload or resolve source maps. Messages, stack text, request data and console logs are never recorded.</p>
+          {issue.frames.length === 0 ? <p className="mt-2 text-sm text-ink-2">No allowlisted source location was available.</p> : <ol className="mt-3 space-y-2 font-mono text-sm tabular-nums">{issue.frames.map((frame, index) => <li key={`${frame.file}:${frame.line}:${frame.column}:${index}`} className="break-all">{frame.file}:{frame.line}:{frame.column}</li>)}</ol>}
+          <p className="mt-4 max-w-2xl text-sm text-ink-2">Production locations may refer to compiled JavaScript. Native capture does not upload or resolve source maps. Messages, stack text, request data and console logs are never recorded.</p>
         </Section>
         <Section title="Review status">
           <form action={updateStatus} className="flex flex-wrap items-end gap-4">
@@ -90,7 +90,7 @@ export default async function AutomaticErrorPage({ params, searchParams }: { rea
             </div>
             <GatedSubmitButton className={buttonPrimary} pendingLabel="Saving…">Save status</GatedSubmitButton>
           </form>
-          <p className="mt-4 text-sm text-ink-soft">A new occurrence reopens a resolved issue. Ignored issues continue counting without reopening.</p>
+          <p className="mt-4 text-sm text-ink-2">A new occurrence reopens a resolved issue. Ignored issues continue counting without reopening.</p>
         </Section>
       </div>
     </>

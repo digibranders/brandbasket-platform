@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { addOnById, PLAN_ADD_ON_IDS } from "@brandbasket/shared/lib/billing/add-ons";
+import { addOnById, SOLD_PLAN_ADD_ON_IDS } from "@brandbasket/shared/lib/billing/add-ons";
 import { StatusChip } from "@brandbasket/shared/ui/patterns";
 import { PanelError } from "@/components";
 import { Meter } from "@/ui";
@@ -65,7 +65,7 @@ function SummaryStep({ summary, services, basket }: { readonly summary: StartSum
         <h2 id="start-services" className="type-section text-ink">Your services</h2>
         <p className="type-body text-ink-3">Already chosen by you. Add another before checkout and any package saving updates by itself.</p>
         <ul className="divide-y divide-border-subtle rounded-control border border-border">
-          {PLAN_ADD_ON_IDS.map((id) => {
+          {SOLD_PLAN_ADD_ON_IDS.map((id) => {
             const on = services.includes(id);
             const onlyOne = on && servicesAfterToggle(services, id) === services;
             const title = addOnById(id).title;

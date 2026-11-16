@@ -93,7 +93,7 @@ export function NeedsYourOkList({
               {item.href ? (
                 <a
                   href={item.href}
-                  className="inline-flex h-[34px] items-center justify-center rounded-[8px] bg-ink px-3.5 font-sans text-xs font-semibold text-white hover:bg-primary-hover active:translate-y-[1px]"
+                  className="inline-flex h-[34px] items-center justify-center rounded-[8px] bg-ink px-3.5 font-sans text-xs font-semibold text-on-primary hover:bg-primary-hover active:translate-y-[1px]"
                 >
                   {item.actionLabel ?? "Review"}
                 </a>
@@ -101,7 +101,7 @@ export function NeedsYourOkList({
                 <button
                   type="button"
                   onClick={item.onAction}
-                  className="inline-flex h-[34px] items-center justify-center rounded-[8px] bg-ink px-3.5 font-sans text-xs font-semibold text-white hover:bg-primary-hover active:translate-y-[1px]"
+                  className="inline-flex h-[34px] items-center justify-center rounded-[8px] bg-ink px-3.5 font-sans text-xs font-semibold text-on-primary hover:bg-primary-hover active:translate-y-[1px]"
                 >
                   {item.actionLabel ?? "Review"}
                 </button>

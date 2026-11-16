@@ -51,6 +51,20 @@ describe("Shared Patterns (Release 2)", () => {
     });
   });
 
+  describe("StatTile tones and note", () => {
+    it("colours the note by tone, sets a medium figure smaller and keeps red for negative", () => {
+      const tile = renderToStaticMarkup(
+        createElement(StatTile, { label: "Failed", value: 2, note: "Rs 1 not collected", deltaTone: "negative", size: "medium" }),
+      );
+      expect(tile).toContain("Rs 1 not collected");
+      expect(tile).toContain("text-neg-text");
+      expect(tile).toContain("text-[22px]");
+      expect(tile).not.toContain("text-[32px]");
+      const warn = renderToStaticMarkup(createElement(StatTile, { label: "Needs a look", value: 1, note: "Open each one", deltaTone: "warning" }));
+      expect(warn).toContain("text-accent-text");
+    });
+  });
+
   describe("Skeleton", () => {
     it("renders warm sunken pulse block without spinners", () => {
       const skel = renderToStaticMarkup(createElement(Skeleton, { width: 200, height: 40, rounded: "hero" }));
@@ -292,6 +306,24 @@ describe("Shared Patterns (Release 2)", () => {
       expect(tabs).toContain("Team");
       expect(tabs).toContain("aria-selected=\"true\"");
       expect(tabs).toContain("after:bg-accent-gold");
+    });
+
+    it("renders page links as a labelled nav with aria-current, no tab roles, and a danger tone", () => {
+      const nav = renderToStaticMarkup(
+        createElement(SettingsTabs, {
+          ariaLabel: "Settings",
+          tabs: [
+            { id: "profile", label: "Profile", href: "/settings" },
+            { id: "delete", label: "Delete account", href: "/settings/delete", tone: "danger" },
+          ],
+          activeTabId: "delete",
+        })
+      );
+      expect(nav).toContain('aria-label="Settings"');
+      expect(nav).not.toContain('role="tab');
+      expect(nav).toContain('aria-current="page"');
+      expect(nav).toContain("after:bg-neg-text");
+      expect(nav).toContain('href="/settings"');
     });
   });
 

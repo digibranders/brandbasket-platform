@@ -13,7 +13,7 @@ export const dynamic = "force-dynamic";
 export default async function ForgotPasswordPage() {
   if ((await getEntryAccess()).kind === "granted") redirect("/");
   return (
-    <EntryScreen title="Forgot your password?" lede="Tell us the email or mobile number you sign in with and we'll email you a link to choose a new password.">
+    <EntryScreen framed title="Forgot your password?" lede="Tell us the email or mobile number you sign in with and we'll email you a link to choose a new password.">
       <ForgotPasswordForm siteKey={turnstileSiteKey()} />
     </EntryScreen>
   );

@@ -75,13 +75,13 @@ export async function WebsiteSection({
         </Notice>
       )}
       {project === null ? (
-        <p className="text-ink-soft">No project yet.</p>
+        <p className="text-ink-2">No project yet.</p>
       ) : (
         <>
           {previewUrl === null ? null : (
-            <p className="mt-5 text-sm text-ink-soft">{fresh === null ? "Picture not taken" : `Picture taken ${INDIA_MOMENT.format(fresh.capturedAt)}`}</p>
+            <p className="mt-5 text-sm text-ink-2">{fresh === null ? "Picture not taken" : `Picture taken ${INDIA_MOMENT.format(fresh.capturedAt)}`}</p>
           )}
-          {canPause || canResume ? null : <p className="mt-5 text-ink-soft">Nothing to do here.</p>}
+          {canPause || canResume ? null : <p className="mt-5 text-ink-2">Nothing to do here.</p>}
           <div className="mt-6 flex flex-wrap items-start gap-3">
             {canResume ? (
               <form action={resumeBuildingAction}>

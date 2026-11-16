@@ -14,7 +14,7 @@ import { BILLING_CURRENCY_LABELS } from "@brandbasket/shared/lib/currency";
 import { formatMoney } from "@brandbasket/shared/lib/money";
 import { describeDiscountMonths, describeReferralDiscount, formatPercent } from "@brandbasket/shared/lib/billing/referral-value";
 import { DeleteReferralCodeForm, RetireReferralCodeForm } from "@/components/referral-code-form";
-import { Figures } from "@/components/console/figures";
+import { StatTiles } from "@/components/console/stat-tiles";
 import { EmptyLine, HairlineList, HairlineRow } from "@/components/console/hairline-list";
 import { PageHeader } from "@/components/console/page-header";
 import { Section } from "@/components/console/section";
@@ -80,7 +80,7 @@ export default async function CodePage({ params }: CodePageProps): Promise<React
           This code takes off as much as the cheapest {code.currency} service costs, so there is nothing left to charge.
         </p>
       ) : (
-        <Figures
+        <StatTiles
           items={[
             {
               value: formatMoney(worth.customerPaysCents, code.currency),

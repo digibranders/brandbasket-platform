@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { useGuardedActionState } from "@/lib/use-guarded-action-state";
 import type { ActionResult } from "@/lib/action-result";
 import { Banner, Button, useToast } from "@/ui";
 import { BillingFieldset } from "../../checkout/components/billing-fieldset";
@@ -13,7 +13,7 @@ import { saveBillingDetailsAction } from "../actions";
  */
 export function BillingDetailsForm({ view, canManage }: { readonly view: BillingDetailsView; readonly canManage: boolean }) {
   const toast = useToast();
-  const [state, action, pending] = useActionState(async (previous: ActionResult | null, formData: FormData) => {
+  const [state, action, pending, formRef] = useGuardedActionState(async (previous: ActionResult | null, formData: FormData) => {
     const result = await saveBillingDetailsAction(previous, formData);
     if (result.ok) toast("Billing details saved.");
     return result;
@@ -32,7 +32,7 @@ export function BillingDetailsForm({ view, canManage }: { readonly view: Billing
     );
   }
   return (
-    <form action={action} noValidate className="flex flex-col gap-4">
+    <form ref={formRef} action={action} noValidate className="flex flex-col gap-4">
       {failure === null ? null : <Banner tone="neg">{failure.message}</Banner>}
       <p className="type-body text-ink-3">Your GST invoices are made out from these details. A change applies to invoices issued after it.</p>
       <BillingFieldset view={view} errors={failure?.fieldErrors} />

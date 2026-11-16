@@ -21,6 +21,7 @@ const secrets = {
   authSecret: randomBytes(32).toString("base64"),
   leadsApiToken: randomBytes(32).toString("hex"),
   payloadSecret: randomBytes(32).toString("base64"),
+  accountCodeSecret: randomBytes(32).toString("hex"),
 };
 
 /**

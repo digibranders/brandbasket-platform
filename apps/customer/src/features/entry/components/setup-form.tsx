@@ -1,7 +1,8 @@
 "use client";
 
 import { PASSWORD_MIN_LENGTH, PASSWORD_RULE } from "@brandbasket/auth/password-policy";
-import { useActionState, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useGuardedActionState } from "@/lib/use-guarded-action-state";
 import { Banner, Button, Checkbox, Field, Input } from "@/ui";
 import { completeSetupAction } from "../actions";
 import { BRAND, LEGAL_LINKS } from "../rules/brand";
@@ -11,8 +12,8 @@ import { TurnstileWidget } from "./turnstile";
 
 /** Sets the owner's name and password for a staff setup link, creating their account and business. */
 export function SetupForm({ siteKey, token }: { readonly siteKey: string | null; readonly token: string }) {
-  const [state, formAction, pending] = useActionState(completeSetupAction, null);
   const formRef = useRef<HTMLFormElement>(null);
+  const [state, formAction, pending] = useGuardedActionState(completeSetupAction, null, { formRef });
   const [name, setName] = useState("");
   // Never ticked for the person: agreeing to the Terms and Privacy Notice is their own act (DPDP Act s.6).
   const [agreed, setAgreed] = useState(false);

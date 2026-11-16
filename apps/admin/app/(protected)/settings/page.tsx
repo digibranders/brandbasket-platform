@@ -83,7 +83,7 @@ export default async function SettingsPage({
         {setting.url === null ? (
           <Quiet>No link is set, so customers see no call card.</Quiet>
         ) : (
-          <p className="mt-6 text-sm text-ink-soft">
+          <p className="mt-6 text-sm text-ink-2">
             <a href={setting.url} target="_blank" rel="noopener noreferrer" className="link-underline">
               Open the link to check it
             </a>
@@ -124,7 +124,7 @@ export default async function SettingsPage({
               Save rounds
             </GatedSubmitButton>
           </form>
-          <p className="mt-6 text-sm text-ink-soft">
+          <p className="mt-6 text-sm text-ink-2">
             {rounds.isSaved ? null : "Not saved yet, so new builds use the default. "}
             {rounds.changedAt === null ? null : (
               <>
@@ -153,7 +153,7 @@ export default async function SettingsPage({
       {teams === null ? null : (
         <Section id="teams" title="Teams alerts" aside="Admins only">
           <div className="grid max-w-2xl gap-8">
-            <p className="text-sm text-ink-soft">
+            <p className="text-sm text-ink-2">
               Each kind of alert can go to its own Teams channel. In Teams, open the channel, choose Workflows and use{" "}
               <b className="font-medium text-ink">Post to a channel when a webhook request is received</b>. Paste the address it gives you
               below. The address is kept encrypted and is never shown again. An alert with no address set is not sent to Teams.
@@ -179,7 +179,7 @@ export default async function SettingsPage({
                     autoComplete="off"
                     spellCheck={false}
                   />
-                  <p className="text-sm text-ink-soft">
+                  <p className="text-sm text-ink-2">
                     {state.state === "unset" ? "Not set." : state.state === "set" ? "An address is saved." : "An address is saved but can no longer be read. Paste it again."}
                     {state.state === "unset" ? null : (
                       <>

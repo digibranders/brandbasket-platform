@@ -6,19 +6,22 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { ReactElement } from "react";
 import { buttonSecondary, buttonSmall } from "@/components/console/buttons";
-import { LIFT } from "@/components/console/classes";
-import { Figures } from "@/components/console/figures";
+import { EmptyState } from "@brandbasket/shared/ui/patterns";
+import { FOCAL_CARD } from "@/components/console/classes";
 import { FilterPills } from "@/components/console/filter-pills";
-import { EmptyLine } from "@/components/console/hairline-list";
 import { Notice } from "@/components/console/notice";
 import { PageHeader } from "@/components/console/page-header";
+import { Section } from "@/components/console/section";
 import { SectionTabs } from "@/components/console/section-tabs";
+import { StatTiles } from "@/components/console/stat-tiles";
 import { StatusPill } from "@/components/console/status-pill";
+import { PAYMENT_ATTENTION_LABELS } from "@/lib/billing/attention";
 import { TABLE, TD, TD_NUM, TD_TIME, TH } from "@/components/console/table";
 import { monthLabel, resolveRegisterMonth } from "@/lib/invoice-register-view";
 import {
   filterCounts,
   matchesFilter,
+  needsLook,
   PAYMENT_FILTER_LABELS,
   PAYMENT_FILTERS,
   paymentFigures,
@@ -37,6 +40,9 @@ export const metadata: Metadata = { title: "Payments" };
 
 /** shortcut: one month is read in one go and filtered here; page the query if a month ever passes 1,000 payments. */
 const MONTH_LIMIT = 1000;
+
+/** The Needs a look section shows the first few; the "Needs a look" filter lists all of them. */
+const ATTENTION_SHOWN = 5;
 
 interface PaymentsPageProps {
   readonly searchParams: Promise<Readonly<Record<string, string | string[] | undefined>>>;
@@ -62,6 +68,7 @@ export default async function PaymentsPage({ searchParams }: PaymentsPageProps):
   const rupees = paymentFigures(rows, "INR");
   const dollars = paymentFigures(rows, "USD");
   const shown = rows.filter((row) => matchesFilter(row, filter)).map(paymentRowView);
+  const attention = rows.filter(needsLook).map((row) => ({ ...paymentRowView(row), attentionReason: row.attentionReason }));
   const links = paymentMonthLinks(month);
   const label = monthLabel(month);
   const lookLine = rupees.attentionCount === 0 ? "" : rupees.attentionCount === 1 ? " · 1 needs a look" : ` · ${rupees.attentionCount} need a look`;
@@ -91,7 +98,8 @@ export default async function PaymentsPage({ searchParams }: PaymentsPageProps):
       />
       <SectionTabs role={viewer.role} page="/payments" />
 
-      <Figures
+      <StatTiles
+        label={`Figures for ${label}`}
         items={[
           { value: formatMoney(rupees.collectedCents, "INR"), label: "Collected", note: `${rupees.paymentsCount} payments`, long: true },
           { value: formatMoney(rupees.planCents, "INR"), label: "Monthly plans", note: `${rupees.planClients} clients`, long: true },
@@ -118,7 +126,31 @@ export default async function PaymentsPage({ searchParams }: PaymentsPageProps):
         ]}
       />
 
-      <div className="mt-6 rounded-lg border border-line bg-sunken/40 px-4 py-3">
+      {attention.length === 0 || filter !== "all" ? null : (
+        <Section title="Needs a look" aside={`${attention.length} to open`} tone="attention" className="mt-4">
+          <ul aria-label="Payments that need a look" className="divide-y divide-line">
+            {attention.slice(0, ATTENTION_SHOWN).map((row) => {
+              const reason = row.attentionReason === null ? null : PAYMENT_ATTENTION_LABELS[row.attentionReason];
+              return (
+                <li key={row.id} className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 py-3">
+                  <span className="min-w-0">
+                    <span className="block font-semibold">{row.client}</span>
+                    <span className="block text-sm text-ink-2">{reason?.title}</span>
+                  </span>
+                  <span className="flex items-center gap-3">
+                    <span className="font-figure text-sm tabular-nums">{row.amount}</span>
+                    <Link href={row.href} className={buttonSmall}>
+                      Open
+                    </Link>
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
+        </Section>
+      )}
+
+      <div className="mt-6 rounded-[14px] border border-line bg-surface px-4 py-3">
         <p className="text-xs font-semibold text-ink-2">Payment lapse policy</p>
         <p className="mt-1 text-sm text-ink-2">
           {LAPSE_GRACE_PERIOD_DAYS} days grace period with full service after a missed payment, website hosting paused after {LAPSE_HOSTING_PAUSE_DAYS} days of non-payment, and account data retained for {LAPSE_DATA_RETENTION_DAYS} days before permanent deletion.
@@ -145,9 +177,17 @@ export default async function PaymentsPage({ searchParams }: PaymentsPageProps):
       </div>
 
       {shown.length === 0 ? (
-        <EmptyLine>No payments to show for {label}.</EmptyLine>
+        <div className="mt-4">
+          <EmptyState
+            title={`No payments to show for ${label}.`}
+            description="Payments from clients appear here as they arrive, with failed ones and refunds."
+          />
+        </div>
       ) : (
-        <section aria-label={`Payments in ${label}`} className={`${LIFT} mt-4 overflow-x-auto px-4`}>
+        <section
+          aria-label={`Payments in ${label}`}
+          className={`${FOCAL_CARD} mt-4`}
+        >
           <TableScroll label="Payments">
             <table className={TABLE}>
               <thead>
