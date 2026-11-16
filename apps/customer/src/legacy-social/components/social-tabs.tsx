@@ -34,7 +34,7 @@ export function SocialTabs({ current, hasNumbers, onlyWithoutNumbers = false, ha
         <Link href={withChannel("/social/review", channel)} aria-current={current === "posts" ? "page" : undefined} className={tab(current === "posts")}>
           Posts
           {waiting > 0 ? (
-            <span className="ml-1.5 rounded-full bg-primary px-1.5 text-[0.6875rem] font-bold leading-5 text-on-primary" title={`${waiting} waiting for you on Posts`}>
+            <span className="ml-1.5 rounded-full bg-[#F7C531] px-1.5 shadow-[inset_0_0_0_1px_#C99700] text-[0.6875rem] font-bold leading-5 text-[#3A2A00]" title={`${waiting} waiting for you on Posts`}>
               <span className="sr-only">, {waiting} waiting for you</span>
               <span aria-hidden="true">{waiting}</span>
             </span>
