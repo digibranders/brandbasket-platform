@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { CHANNEL_PLATFORMS, type ChannelPlatform } from "./auto";
+import { plainWords, withoutDashes } from "./no-dashes";
 
 /**
  * What social-auto's AI side tells us (the website jobs, the facts it found, the written posts and the pictures to approve), and how
@@ -259,9 +260,10 @@ export function readBatches(body: unknown): WrittenBatch[] {
     const posts = batch.data.posts.flatMap((entry): WrittenPost[] => {
       const post = writtenPostSchema.safeParse(entry);
       if (!post.success) return [];
+      const edited = post.data.edited === true;
       const captions: Partial<Record<ChannelPlatform, string>> = {};
-      for (const network of networks) captions[network] = captionText(post.data.captions?.[network]) ?? post.data.caption;
-      return [{ id: post.data.id, headline: post.data.headline, caption: post.data.caption, captions, state: post.data.state, edited: post.data.edited === true, advice: post.data.advice ?? null, date: post.data.date?.slice(0, 10) ?? null, time: post.data.time ?? null, ...(post.data.drawn === undefined ? {} : { drawn: post.data.drawn }), ...(post.data.locked === undefined ? {} : { locked: post.data.locked }), notDrawn: post.data.notDrawn ?? null, replaces: post.data.replaces ?? null, replacedBy: post.data.replacedBy ?? null }];
+      for (const network of networks) captions[network] = plainWords(captionText(post.data.captions?.[network]) ?? post.data.caption, edited);
+      return [{ id: post.data.id, headline: plainWords(post.data.headline, edited), caption: plainWords(post.data.caption, edited), captions, state: post.data.state, edited, advice: post.data.advice ?? null, date: post.data.date?.slice(0, 10) ?? null, time: post.data.time ?? null, ...(post.data.drawn === undefined ? {} : { drawn: post.data.drawn }), ...(post.data.locked === undefined ? {} : { locked: post.data.locked }), notDrawn: post.data.notDrawn ?? null, replaces: post.data.replaces ?? null, replacedBy: post.data.replacedBy ?? null }];
     });
     // Weeks are shown only when every one of them can be read: one unreadable week would hide posts, so the batch is shown as one piece.
     const weeks = batch.data.weeks?.map((entry) => batchWeekSchema.safeParse(entry));
@@ -360,7 +362,7 @@ export function readTopics(body: unknown): Topic[] {
   if (!Array.isArray(topics)) return [];
   return topics.flatMap((item): Topic[] => {
     const parsed = topicSchema.safeParse(item);
-    return parsed.success ? [parsed.data] : [];
+    return parsed.success ? [{ ...parsed.data, headline: withoutDashes(parsed.data.headline) }] : [];
   });
 }
 
