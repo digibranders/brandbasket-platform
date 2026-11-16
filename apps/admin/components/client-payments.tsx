@@ -1,10 +1,9 @@
 import type { StaffPaymentRow } from "@brandbasket/db";
 import { rupees } from "@brandbasket/shared/lib/billing/invoice-register";
 import { Fragment, type ReactElement } from "react";
-import { buttonDanger, buttonSmall } from "@/components/console/buttons";
-import { checkboxClasses, fieldClasses, labelClasses } from "@/components/console/field-styles";
 import { EmptyLine } from "@/components/console/hairline-list";
 import { Notice } from "@/components/console/notice";
+import { ManualRefundDialog, RefundDialog } from "@/components/console/refund-dialogs";
 import { Section } from "@/components/console/section";
 import { StatusPill } from "@/components/console/status-pill";
 import { TABLE, TD, TD_NUM, TD_TIME, TH } from "@/components/console/table";
@@ -49,6 +48,7 @@ export function ClientPayments({ businessId, payments, canRefund, notice, refund
               <tbody>
                 {payments.map((payment) => {
                   const view = paymentRowView(payment);
+                  const fullAmount = rupees(payment.amountCents);
                   return (
                     <Fragment key={payment.id}>
                       <tr id={`payment-${payment.id}`} className="scroll-mt-8">
@@ -68,55 +68,25 @@ export function ClientPayments({ businessId, payments, canRefund, notice, refund
                       {canRefund && payment.status === "captured" ? (
                         <tr>
                           <td colSpan={6} className="border-b border-line pb-4">
-                            <div className="space-y-3">
-                              <details>
-                                <summary className={`${buttonSmall} cursor-pointer list-none`}>Refund</summary>
-                                <form action={refundAction} className="mt-3 grid max-w-xl gap-3">
-                                  <input type="hidden" name="businessId" value={businessId} />
-                                  <input type="hidden" name="paymentId" value={payment.id} />
-                                  <label className={labelClasses}>
-                                    Amount to refund ({payment.currency})
-                                    <input name="amount" required inputMode="decimal" defaultValue={rupees(payment.amountCents)} className={fieldClasses} />
-                                  </label>
-                                  <label className={labelClasses}>
-                                    Why it was refunded
-                                    <textarea name="reason" required minLength={3} maxLength={300} rows={2} className={fieldClasses} />
-                                  </label>
-                                  <label className="flex items-start gap-2 text-sm">
-                                    <input type="checkbox" name="confirm" value="yes" required className={checkboxClasses} />
-                                    <span>I confirm this will refund the customer through the payment provider and issue a credit note.</span>
-                                  </label>
-                                  <button type="submit" className={buttonDanger}>
-                                    Refund
-                                  </button>
-                                </form>
-                              </details>
-
+                            <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
+                              <RefundDialog
+                                businessId={businessId}
+                                paymentId={payment.id}
+                                businessName={payment.businessName}
+                                currency={payment.currency}
+                                amountCents={payment.amountCents}
+                                fullAmount={fullAmount}
+                                invoiceNumber={payment.invoiceNumber}
+                                action={refundAction}
+                              />
                               {recordManualRefundAction ? (
-                                <details className="pt-1">
-                                  <summary className="cursor-pointer text-xs text-ink-2 hover:underline">
-                                    Record a refund made outside BrandBasket
-                                  </summary>
-                                  <form action={recordManualRefundAction} className="mt-3 grid max-w-xl gap-3">
-                                    <input type="hidden" name="businessId" value={businessId} />
-                                    <input type="hidden" name="paymentId" value={payment.id} />
-                                    <label className={labelClasses}>
-                                      Amount given back ({payment.currency})
-                                      <input name="amount" required inputMode="decimal" defaultValue={rupees(payment.amountCents)} className={fieldClasses} />
-                                    </label>
-                                    <label className={labelClasses}>
-                                      Why it was refunded
-                                      <textarea name="reason" required minLength={3} maxLength={300} rows={2} className={fieldClasses} />
-                                    </label>
-                                    <label className="flex items-start gap-2 text-sm">
-                                      <input type="checkbox" name="confirm" value="yes" required className={checkboxClasses} />
-                                      <span>I have already given this money back in Razorpay or by bank transfer. The console moves no money.</span>
-                                    </label>
-                                    <button type="submit" className={buttonDanger}>
-                                      Record manual refund
-                                    </button>
-                                  </form>
-                                </details>
+                                <ManualRefundDialog
+                                  businessId={businessId}
+                                  paymentId={payment.id}
+                                  currency={payment.currency}
+                                  fullAmount={fullAmount}
+                                  action={recordManualRefundAction}
+                                />
                               ) : null}
                             </div>
                           </td>

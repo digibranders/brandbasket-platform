@@ -1,6 +1,11 @@
 import { listOpenStaffInvites, listStaffRoster } from "@brandbasket/db";
 import type { Metadata } from "next";
+import { headers } from "next/headers";
 import type { ReactElement } from "react";
+import { ConfirmDialog } from "@/components/console/confirm-dialog";
+import { protectionLines } from "@/lib/protection-status";
+import { verifyCloudflareAccess } from "@/lib/server/cloudflare-access";
+import { serverEnv } from "@/lib/server/env";
 import { LocalDateTime } from "@brandbasket/shared/ui/panel/local-date-time";
 import { buttonDanger, buttonPrimary, buttonSmall } from "@/components/console/buttons";
 import { fieldClasses, labelClasses } from "@/components/console/field-styles";
@@ -34,6 +39,10 @@ export default async function StaffPage({
   const notice = readStaffNotice(params.notice);
   const now = new Date();
   const active = roster.filter((member) => member.active).length;
+  const protection = protectionLines({
+    required: serverEnv().REQUIRE_CF_ACCESS === "1",
+    verified: await verifyCloudflareAccess({ headers: await headers() }),
+  });
 
   return (
     <>
@@ -44,6 +53,13 @@ export default async function StaffPage({
           {STAFF_NOTICES[notice].text}
         </Notice>
       )}
+
+      <Section title="Sign-in protection">
+        <div className="flex flex-wrap items-center gap-3">
+          <StatusPill tone={protection.tone}>{protection.headline}</StatusPill>
+          <p className="text-sm text-ink-2">{protection.detail}</p>
+        </div>
+      </Section>
 
       <Section title="Invite someone">
         <form action={inviteStaffAction} className="grid max-w-2xl gap-4 sm:grid-cols-[minmax(0,1fr)_12rem_auto] sm:items-end">
@@ -117,12 +133,26 @@ export default async function StaffPage({
                             Save role
                           </button>
                         </form>
-                        <form action={member.active ? switchOffStaffAction : switchOnStaffAction}>
-                          <input type="hidden" name="userId" value={member.userId} />
-                          <button type="submit" className={member.active ? `${buttonDanger} h-7 px-2.5 text-xs` : buttonSmall}>
-                            {member.active ? "Switch off" : "Switch on"}
-                          </button>
-                        </form>
+                        {member.active ? (
+                          <ConfirmDialog
+                            title={`Switch off ${member.name}`}
+                            consequence="They are signed out everywhere now and cannot sign in until someone switches them back on."
+                            triggerLabel="Switch off"
+                            triggerClassName={`${buttonDanger} h-7 px-2.5 text-xs`}
+                            confirmLabel="Switch off"
+                            cancelLabel="Keep them on"
+                            formAction={switchOffStaffAction}
+                          >
+                            <input type="hidden" name="userId" value={member.userId} />
+                          </ConfirmDialog>
+                        ) : (
+                          <form action={switchOnStaffAction}>
+                            <input type="hidden" name="userId" value={member.userId} />
+                            <button type="submit" className={buttonSmall}>
+                              Switch on
+                            </button>
+                          </form>
+                        )}
                       </div>
                     )}
                   </td>

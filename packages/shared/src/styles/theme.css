@@ -114,9 +114,62 @@
   --color-info: #2456a6;
   --color-info-wash: #e9f0fb;
   --color-error-wash: #fdecea;
+
+  /* Release 2 pattern names (packages/shared/src/ui/patterns). The customer app defines them in its own tokens.css; the
+     console takes the same values here so a shared pattern looks the same in both apps. */
+  --color-canvas: #f6f5f2;
+  --color-surface-hover: #eeece7;
+  --color-border: #e3e0d9;
+  --color-ink-muted: #8a8d95;
+  --color-primary-hover: #2a2b31;
+  --color-accent-text: #8a5524;
+  --color-accent-gold: #c48a47;
+  --color-accent-wash: #f4e6d3;
+  --color-pos-text: #2f5a43;
+  --color-pos-wash: #e5efe8;
+  --color-pos-border: #b2d0c0;
+  --color-neg-text: #b42318;
+  --color-neg-wash: #fdecea;
+  --color-neg-border: #f4c3be;
+  --shadow-card: 0 1px 0 rgb(42 28 16 / 0.03);
+  --shadow-button: 0 1px 0 rgb(42 28 16 / 0.03);
+  --shadow-hero: 0 1px 2px rgb(42 28 16 / 0.05), 0 12px 32px -12px rgb(42 28 16 / 0.14);
+  --shadow-dialog: 0 24px 64px -16px rgb(42 28 16 / 0.28);
+}
+
+/* The page title and the loading pulse the shared patterns use. The pulse stops under reduced motion. */
+@utility type-title {
+  font-family: var(--font-display);
+  font-size: 28px;
+  line-height: 34px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  text-wrap: balance;
+  @media (min-width: 861px) {
+    font-size: 36px;
+    line-height: 40px;
+  }
+}
+
+@utility motion-pulse {
+  animation: basket-pulse 1600ms ease-in-out infinite;
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
+  }
+}
+
+@keyframes basket-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.45;
+  }
 }
 
 @theme inline {
+  --font-mono: var(--font-red-hat-mono, ui-monospace), ui-monospace, monospace;
   --font-serif: var(--font-newsreader), ui-serif, Georgia, "Times New Roman", serif;
   --font-sans: var(--font-hanken), ui-sans-serif, system-ui, sans-serif;
   --font-brand: var(--font-outfit), ui-sans-serif, system-ui, sans-serif;

@@ -5,8 +5,12 @@ import { GatedSubmitButton } from "@brandbasket/shared/ui/forms/submit-gate";
 import { LocalDateTime } from "@brandbasket/shared/ui/panel/local-date-time";
 import type { Metadata } from "next";
 import type { ReactElement } from "react";
-import { EmptyLine } from "@/components/console/hairline-list";
+import { EmptyState, StatusChip } from "@brandbasket/shared/ui/patterns";
+import { ConfirmDialog } from "@/components/console/confirm-dialog";
+import { Notice } from "@/components/console/notice";
 import { PageHeader } from "@/components/console/page-header";
+import { StatTiles } from "@/components/console/stat-tiles";
+import { breachClock } from "@/lib/deadline-clock";
 import { BREACH_DATA_CATEGORIES, BREACH_FORM_MESSAGES } from "@/lib/breach-form";
 import { getStaffDb } from "@/lib/server/db";
 import { logStaffAccess } from "@/lib/server/staff-access-log";
@@ -32,11 +36,13 @@ const STATE_WORDS: Readonly<Record<BreachDutyState, string>> = {
 function Duty({ title, doneAt, deadline, now, doItNow, id }: { readonly title: string; readonly doneAt: Date | null; readonly deadline: Date | null; readonly now: Date; readonly doItNow: string; readonly id: string }): ReactElement {
   const state = breachDutyState(doneAt, deadline, now);
   const worry = state === "overdue" || state === "done_late";
+  const clock = doneAt === null && deadline !== null ? breachClock(deadline, now) : null;
   return (
     <div className="min-w-0">
       <p className="text-xs font-semibold text-ink-2">{title}</p>
-      <p className={`mt-1 text-sm font-medium ${worry ? "text-accent-deep" : ""}`}>{STATE_WORDS[state]}</p>
-      <p className="mt-0.5 text-sm tabular-nums text-ink-soft">
+      <p className={`mt-1 text-sm font-medium ${worry ? "text-error" : ""}`}>{STATE_WORDS[state]}</p>
+      {clock === null ? null : <StatusChip label={clock.text} variant={clock.late ? "failed" : "waiting"} className="mt-1.5 font-figure tabular-nums" />}
+      <p className="mt-0.5 text-sm tabular-nums text-ink-2">
         {doneAt === null ? (
           deadline === null ? null : (
             <>
@@ -65,11 +71,11 @@ function BreachRow({ breach, now }: { readonly breach: StoredBreach; readonly no
     <li className="border-b border-line py-5 pl-1 pr-2">
       <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1">
         <p className="min-w-0 max-w-2xl break-words font-semibold">{breach.summary}</p>
-        <p className="text-sm tabular-nums text-ink-soft">
+        <p className="text-sm tabular-nums text-ink-2">
           Found <LocalDateTime iso={breach.detectedAt.toISOString()} variant="timestamp" />
         </p>
       </div>
-      <p className="mt-1 text-sm text-ink-soft">
+      <p className="mt-1 text-sm text-ink-2">
         {breach.status === "open" ? "Open" : breach.status === "contained" ? "Contained" : "Closed"}
         {breach.dataCategories.length === 0 ? "" : ` · ${breach.dataCategories.join(", ")}`}
       </p>
@@ -79,17 +85,28 @@ function BreachRow({ breach, now }: { readonly breach: StoredBreach; readonly no
         <Duty title="People affected" doneAt={breach.peopleNotifiedAt} deadline={null} now={now} doItNow="people" id={breach.id} />
       </div>
       {breach.status === "closed" ? null : (
-        <form action={updateBreachAction} className="mt-4 flex flex-wrap gap-2">
-          <input type="hidden" name="id" value={breach.id} />
+        <div className="mt-4 flex flex-wrap gap-2">
           {breach.status === "open" ? (
-            <button type="submit" name="do" value="contained" className={BUTTON}>
-              Mark contained
-            </button>
+            <form action={updateBreachAction}>
+              <input type="hidden" name="id" value={breach.id} />
+              <button type="submit" name="do" value="contained" className={BUTTON}>
+                Mark contained
+              </button>
+            </form>
           ) : null}
-          <button type="submit" name="do" value="closed" className={BUTTON}>
-            Close
-          </button>
-        </form>
+          <ConfirmDialog
+            title="Close this breach"
+            consequence="The breach is recorded as closed now. It stays in the register: nothing here can be deleted."
+            triggerLabel="Close"
+            triggerClassName={BUTTON}
+            confirmLabel="Close breach"
+            cancelLabel="Keep open"
+            formAction={updateBreachAction}
+          >
+            <input type="hidden" name="id" value={breach.id} />
+            <input type="hidden" name="do" value="closed" />
+          </ConfirmDialog>
+        </div>
       )}
     </li>
   );
@@ -101,12 +118,34 @@ export default async function BreachesPage({ searchParams }: { readonly searchPa
   const [breaches, { problem }] = await Promise.all([listBreaches(getStaffDb()), searchParams]);
   const now = new Date();
   const shownProblem = problem !== undefined && BREACH_FORM_MESSAGES.includes(problem) ? problem : null;
+  const openCount = breaches.filter((breach) => breach.status !== "closed").length;
+  const overdueCount = breaches.filter((breach) => {
+    const deadlines = breachDeadlines(breach.detectedAt);
+    return (
+      breachDutyState(breach.reportedCertInAt, deadlines.certInBy, now) === "overdue" ||
+      breachDutyState(breach.reportedBoardAt, deadlines.boardReportBy, now) === "overdue"
+    );
+  }).length;
 
   return (
     <>
       <PageHeader
         title={<>Breach <em>register</em></>}
         meta="Every personal data breach, with when each report was made. Nothing here can be deleted. How to respond: vps-setup/BREACH-RESPONSE.md. The clocks start when the breach is found."
+      />
+
+      <StatTiles
+        label="Breach figures"
+        items={[
+          { value: openCount, label: "Open breaches", note: openCount === 0 ? "None open" : "Not closed yet" },
+          {
+            value: overdueCount,
+            label: "Reports overdue",
+            note: overdueCount === 0 ? "None" : "CERT-In or the Board",
+            tone: overdueCount === 0 ? "good" : "bad",
+          },
+          { value: breaches.length, label: "Logged in all" },
+        ]}
       />
 
       <section className="mt-8 max-w-2xl">
@@ -117,7 +156,7 @@ export default async function BreachesPage({ searchParams }: { readonly searchPa
               What happened<RequiredMark />
             </label>
             <textarea id="breach-summary" name="summary" rows={3} required maxLength={2000} className={INPUT} />
-            <p className="mt-1 text-xs text-ink-soft">A few sentences. Do not put anyone&rsquo;s name or number here.</p>
+            <p className="mt-1 text-xs text-ink-2">A few sentences. Do not put anyone&rsquo;s name or number here.</p>
           </div>
           <div>
             <label htmlFor="breach-detected" className="block text-sm font-medium">
@@ -137,9 +176,7 @@ export default async function BreachesPage({ searchParams }: { readonly searchPa
             </div>
           </fieldset>
           {shownProblem === null ? null : (
-            <p role="alert" className="rounded-control bg-accent-pale px-4 py-3 text-sm text-accent-deep">
-              {shownProblem}
-            </p>
+            <Notice tone="problem">{shownProblem}</Notice>
           )}
           <div>
             <GatedSubmitButton className={BUTTON} pendingLabel="Logging…">
@@ -150,7 +187,9 @@ export default async function BreachesPage({ searchParams }: { readonly searchPa
       </section>
 
       {breaches.length === 0 ? (
-        <EmptyLine>No breaches logged.</EmptyLine>
+        <div className="mt-10">
+          <EmptyState title="No breaches logged." description="A breach appears here with its 6 hour and 72 hour clocks as soon as it is logged." />
+        </div>
       ) : (
         <ul aria-label="Breaches" className="mt-10 border-t border-line">
           {breaches.map((breach) => (

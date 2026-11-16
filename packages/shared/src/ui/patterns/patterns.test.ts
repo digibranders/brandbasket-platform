@@ -51,6 +51,20 @@ describe("Shared Patterns (Release 2)", () => {
     });
   });
 
+  describe("StatTile tones and note", () => {
+    it("colours the note by tone, sets a medium figure smaller and keeps red for negative", () => {
+      const tile = renderToStaticMarkup(
+        createElement(StatTile, { label: "Failed", value: 2, note: "Rs 1 not collected", deltaTone: "negative", size: "medium" }),
+      );
+      expect(tile).toContain("Rs 1 not collected");
+      expect(tile).toContain("text-neg-text");
+      expect(tile).toContain("text-[22px]");
+      expect(tile).not.toContain("text-[32px]");
+      const warn = renderToStaticMarkup(createElement(StatTile, { label: "Needs a look", value: 1, note: "Open each one", deltaTone: "warning" }));
+      expect(warn).toContain("text-accent-text");
+    });
+  });
+
   describe("Skeleton", () => {
     it("renders warm sunken pulse block without spinners", () => {
       const skel = renderToStaticMarkup(createElement(Skeleton, { width: 200, height: 40, rounded: "hero" }));

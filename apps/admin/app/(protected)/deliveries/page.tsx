@@ -3,11 +3,11 @@ import Link from "next/link";
 import type { ReactElement } from "react";
 import { LocalDateTime } from "@brandbasket/shared/ui/panel/local-date-time";
 import { buttonSecondary, buttonSmall } from "@/components/console/buttons";
-import { LIFT } from "@/components/console/classes";
+import { FOCAL_CARD } from "@/components/console/classes";
 import { fieldClasses } from "@/components/console/field-styles";
-import { Figures } from "@/components/console/figures";
+import { StatTiles } from "@/components/console/stat-tiles";
 import { FilterPills } from "@/components/console/filter-pills";
-import { EmptyLine } from "@/components/console/hairline-list";
+import { EmptyState } from "@brandbasket/shared/ui/patterns";
 import { Notice } from "@/components/console/notice";
 import { PageHeader } from "@/components/console/page-header";
 import { SectionTabs } from "@/components/console/section-tabs";
@@ -65,7 +65,7 @@ export default async function DeliveriesPage({ searchParams }: { readonly search
         </Notice>
       )}
 
-      <Figures items={deliveryFigures(health)} />
+      <StatTiles items={deliveryFigures(health)} />
 
       <div className="mt-6 flex flex-wrap items-center gap-3">
         <form method="get" action="/deliveries" role="search" className="min-w-72">
@@ -104,10 +104,10 @@ export default async function DeliveriesPage({ searchParams }: { readonly search
 
       {rows.length === 0 ? (
         <div className="mt-6">
-          <EmptyLine>Nothing matches these filters.</EmptyLine>
+          <EmptyState title="Nothing matches these filters." description="Clear the search or the filters to see every email and webhook again." />
         </div>
       ) : (
-        <section aria-label="Deliveries" className={`${LIFT} mt-6 overflow-x-auto px-4`}>
+        <section aria-label="Deliveries" className={`${FOCAL_CARD} mt-6`}>
           <TableScroll label="Deliveries">
             <table className={TABLE}>
               <thead>
