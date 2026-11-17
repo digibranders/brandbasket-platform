@@ -125,6 +125,26 @@ describe("processSignupReminders", () => {
   });
 });
 
+describe("a reminder the transport reports instead of throwing", () => {
+  async function runWith(answer: { status: "failed" | "queued" | "sent"; error?: string }) {
+    vi.mocked(listAbandonedSignupLeads).mockResolvedValueOnce([makeMockLead()]);
+    vi.mocked(findBillingState).mockResolvedValueOnce({ hasEverPaid: false } as unknown as Awaited<ReturnType<typeof findBillingState>>);
+    send.mockResolvedValueOnce(answer as never);
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+    return processSignupReminders(NOW, { emailTransport: mockTransport });
+  }
+
+  it("does not mark the lead reminded when the message failed for good", async () => {
+    expect(await runWith({ status: "failed", error: "Brevo answered 400" })).toMatchObject({ sent: 0, failed: 1 });
+    expect(recordSignupReminderSent).not.toHaveBeenCalled();
+  });
+
+  it("marks the lead reminded when the message is queued, since the queue will send it", async () => {
+    expect(await runWith({ status: "queued" })).toMatchObject({ sent: 1, failed: 0 });
+    expect(recordSignupReminderSent).toHaveBeenCalledWith(expect.anything(), "lead-123", NOW);
+  });
+});
+
 describe("signupReminderToken", () => {
   const originalEnv = process.env.SIGNUP_REMINDER_TOKEN;
 

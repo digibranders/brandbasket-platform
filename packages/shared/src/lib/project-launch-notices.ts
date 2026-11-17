@@ -3,6 +3,7 @@ export type ProjectLaunchNotice =
   | "launched"
   | "launched-no-email"
   | "launched-email-failed"
+  | "launched-email-queued"
   | "not-approved"
   | "no-owner"
   | "no-domain"
@@ -12,6 +13,7 @@ export type ProjectLaunchNotice =
   | "checks-not-allowed"
   | "resent"
   | "resend-failed"
+  | "resend-queued"
   | "resend-not-allowed"
   | "address-saved"
   | "address-changed"
@@ -35,6 +37,10 @@ export const PROJECT_LAUNCH_NOTICES: Readonly<Record<ProjectLaunchNotice, { read
     text: "The website is marked live, but the email to the customer did not send. Use Resend email below.",
     ok: false,
   },
+  "launched-email-queued": {
+    text: "The website is marked live. The email to the customer did not go yet: it is queued and will be tried again within the hour. Check Deliveries if it does not arrive.",
+    ok: false,
+  },
   "not-approved": { text: "Nothing changed: this business hasn’t approved a preview yet.", ok: false },
   "no-owner": { text: "Nothing changed: this business has no owner account to email.", ok: false },
   "no-domain": { text: "Nothing changed: this business has no domain to launch it on.", ok: false },
@@ -51,6 +57,10 @@ export const PROJECT_LAUNCH_NOTICES: Readonly<Record<ProjectLaunchNotice, { read
   resent: { text: "The launch email was sent again.", ok: true },
   "resend-failed": {
     text: "The launch email still did not send. Try again in a few minutes, or call or message the customer.",
+    ok: false,
+  },
+  "resend-queued": {
+    text: "The email did not go yet: it is queued and will be tried again within the hour. Check Deliveries if it does not arrive.",
     ok: false,
   },
   "resend-not-allowed": {
