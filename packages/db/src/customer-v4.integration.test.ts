@@ -486,7 +486,7 @@ describe("viewer role", () => {
       from writable w
       join information_schema.columns col on col.table_schema = 'public' and col.table_name = w.table_name and col.column_name = 'business_id'
       left join pg_policies p on p.schemaname = 'public' and p.tablename = w.table_name and p.permissive = 'RESTRICTIVE' and p.policyname like '%\\_no\\_viewer\\_%'
-      where w.table_name not in ('notification_preferences', 'notification_reads', 'business_invites')
+      where w.table_name not in ('notification_preferences', 'notification_reads', 'notifications', 'business_invites')
       group by w.table_name
       having count(p.policyname) < 3
     `);

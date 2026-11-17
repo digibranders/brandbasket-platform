@@ -1,4 +1,5 @@
 import { eq } from "drizzle-orm";
+import { phoneAccountEmail } from "./phone-account";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { readExportedNotifications, readExportedPushDevices } from "./queries/account-export";
 import { hasTakenWebhookEvent, recordWebhookEvent } from "./queries/deliveries";
@@ -199,7 +200,7 @@ describe("recipients", () => {
   });
 
   it("gives no address for an account that signs in with a phone number", async () => {
-    await dbs.staff.db.update(users).set({ email: "phone-919876543210@placeholder.invalid" }).where(eq(users.id, OWNER));
+    await dbs.staff.db.update(users).set({ email: phoneAccountEmail("+919876543210") }).where(eq(users.id, OWNER));
     const [recipient] = await listNotificationRecipients(dbs.staff.db, businessA);
     expect(recipient).toMatchObject({ userId: OWNER, email: null });
   });
