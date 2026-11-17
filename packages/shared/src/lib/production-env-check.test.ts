@@ -19,6 +19,10 @@ const PLATFORM = {
   RAZORPAY_KEY_SECRET: "secret",
   RAZORPAY_WEBHOOK_SECRET: "d".repeat(40),
   BRANDBASKET_MEDIA_ROOT: "/srv/brandbasket/media",
+  VAPID_PUBLIC_KEY: "BPublicKey",
+  VAPID_PRIVATE_KEY: "privateKey",
+  VAPID_SUBJECT: "mailto:team@brandbasket.in",
+  NEXT_PUBLIC_VAPID_PUBLIC_KEY: "BPublicKey",
 } as const;
 const ADMIN = {
   APP_ORIGIN: PLATFORM.APP_ORIGIN,
@@ -32,6 +36,10 @@ const ADMIN = {
   RAZORPAY_KEY_ID: PLATFORM.RAZORPAY_KEY_ID,
   RAZORPAY_KEY_SECRET: PLATFORM.RAZORPAY_KEY_SECRET,
   BRANDBASKET_MEDIA_ROOT: PLATFORM.BRANDBASKET_MEDIA_ROOT,
+  VAPID_PUBLIC_KEY: PLATFORM.VAPID_PUBLIC_KEY,
+  VAPID_PRIVATE_KEY: PLATFORM.VAPID_PRIVATE_KEY,
+  VAPID_SUBJECT: PLATFORM.VAPID_SUBJECT,
+  NEXT_PUBLIC_VAPID_PUBLIC_KEY: PLATFORM.VAPID_PUBLIC_KEY,
 } as const;
 
 const problems = (platform: Record<string, string>, admin: Record<string, string>): readonly string[] => checkProductionEnv({ platform, admin }).errors;
@@ -106,5 +114,30 @@ describe("checkProductionEnv", () => {
   it("warns when a database is not on this machine, since the plan is Postgres on the droplet", () => {
     const result = checkProductionEnv({ platform: { ...PLATFORM, DATABASE_URL: "postgresql://bb_app:pw@db.example.com:5432/brandbasket_platform" }, admin: ADMIN });
     expect(result.warnings.join("\n")).toMatch(/not on this machine/);
+  });
+
+  describe("web push keys", () => {
+    const withoutVapid = (env: Record<string, string>): Record<string, string> => {
+      const { VAPID_PUBLIC_KEY: _a, VAPID_PRIVATE_KEY: _b, VAPID_SUBJECT: _c, NEXT_PUBLIC_VAPID_PUBLIC_KEY: _d, ...rest } = env;
+      return rest;
+    };
+
+    it("warns, without failing, when no keys are set: push stays off", () => {
+      const result = checkProductionEnv({ platform: withoutVapid(PLATFORM), admin: withoutVapid(ADMIN) });
+      expect(result.errors).toEqual([]);
+      expect(result.warnings).toEqual(expect.arrayContaining([expect.stringContaining("platform: VAPID"), expect.stringContaining("admin: VAPID")]));
+    });
+
+    it("refuses a half-set group of keys", () => {
+      expect(problems({ ...PLATFORM, VAPID_PRIVATE_KEY: "" }, ADMIN)).toEqual(expect.arrayContaining([expect.stringContaining("platform: VAPID_PRIVATE_KEY")]));
+    });
+
+    it("refuses a browser key that is not the sending key", () => {
+      expect(problems({ ...PLATFORM, NEXT_PUBLIC_VAPID_PUBLIC_KEY: "other" }, ADMIN)).toEqual(expect.arrayContaining([expect.stringContaining("NEXT_PUBLIC_VAPID_PUBLIC_KEY")]));
+    });
+
+    it("refuses keys that differ between the two files", () => {
+      expect(problems(PLATFORM, { ...ADMIN, VAPID_PRIVATE_KEY: "different" })).toEqual(expect.arrayContaining([expect.stringContaining("VAPID_PRIVATE_KEY differs")]));
+    });
   });
 });
