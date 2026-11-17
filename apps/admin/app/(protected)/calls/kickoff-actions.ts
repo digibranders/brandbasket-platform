@@ -37,7 +37,6 @@ export async function completeKickoffAction(formData: FormData): Promise<void> {
   const notes = text === "" ? null : notesSchema.parse(text);
   const { newlyHeld } = await completeKickoff(getStaffDb(), { businessId, staffId: user.id, now: new Date(), notes });
   if (newlyHeld) await logStaffAccessOrThrow({ staffUserId: user.id, action: "setup_call.held", targetType: "business", targetId: businessId, businessId });
-  revalidatePath("/calls");
   revalidatePath(`/clients/${businessId}`);
   revalidatePath("/");
 }
@@ -50,7 +49,6 @@ async function recordOutcomeForBusiness(businessId: string, outcome: NoShowOutco
     await recordKickoffOutcome(db, { businessId, outcome, note: null, startsAt: booking?.startsAt ?? null, endsAt: booking?.endsAt ?? null, staffId: staffUserId, now: new Date() });
     await logStaffAccessOrThrow({ staffUserId, action: `setup_call.${outcome}`, targetType: "business", targetId: businessId, businessId });
   }
-  revalidatePath("/calls");
   revalidatePath(`/clients/${businessId}`);
   revalidatePath("/");
 }
@@ -93,6 +91,6 @@ export async function kickoffDidNotHappenAction(formData: FormData): Promise<voi
   const businessId = readBusinessId(formData);
   const removed = await clearUnheldKickoffBooking(getStaffDb(), businessId);
   if (removed) await logStaffAccessOrThrow({ staffUserId: user.id, action: "setup_call.no_show", targetType: "business", targetId: businessId, businessId });
-  revalidatePath("/calls");
+  revalidatePath("/");
   revalidatePath(`/clients/${businessId}`);
 }

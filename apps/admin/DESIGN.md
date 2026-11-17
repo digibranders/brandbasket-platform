@@ -23,13 +23,12 @@ letter-spaced labels.
 
 ## Shell
 
-- The dark rail (`lib/console-rail.ts`, rendered by the console shell): logo, "Search everything" with ⌘K, then eight
-  items (Today, Clients, Inbox, Calls, Money, Ads, Team, Settings) with live counts (`lib/server/rail-counts.ts`), the
-  signed-in staff member at the foot. A count in red means late or failed work.
-- An item covers several pages. Pages of one item share a tab strip (`SectionTabs`) directly under the page header; the
-  strip lists only the pages the role may open, and the item links to the first of them.
-- Pages a role cannot use are hidden (`needs` on the page entry; an item with no page left goes), and the page refuses
-  them as well (`requireStaffCan`).
+- The dark rail (`lib/console-rail.ts`, rendered by the console shell): logo, then six items (Today, Clients, Inbox,
+  Money, Compliance, System) with live counts (`lib/server/rail-counts.ts`), the signed-in staff member at the foot. A
+  count in red means late or failed work. The top bar holds the command bar field (⌘K) and the notifications bell.
+- An item covers several pages. Pages of one item share a tab strip (`SectionTabs`) directly under the page header, and
+  the item links to the first of them. No item or page is hidden by role; each page and action still checks access
+  itself (`requireStaffCan`).
 - The page sits inset 8px with a 14px radius on the rail. Content up to 1400px.
 - URLs never change for a relabel: `/leads` is Enquiries, `/support` is Requests, `/support/errors` is App errors, `/deliveries` is Emails and webhooks.
 

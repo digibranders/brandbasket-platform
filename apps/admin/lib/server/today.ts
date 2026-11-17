@@ -1,16 +1,22 @@
 import "server-only";
 import {
   countActiveErrorIssues,
+  countSupportQueues,
   countSupportTicketsByStatus,
   listAddOnsToContact,
+  listBreaches,
   listClients,
   listDomainMoves,
   listErrorIssues,
   listKickoffBoard,
   listLeads,
+  listOpenClosures,
+  listOpenPrivacyRequests,
   listPaymentsNeedingAttention,
   listProjectsStartedWithoutCallConfirmation,
+  listReportsForReview,
   listSetupCallsBetween,
+  listSetupCallsForStaff,
   listStaffRoster,
   listSupportTicketsForStaff,
   sumCapturedPaymentsBetween,
@@ -20,18 +26,25 @@ import {
   type DomainMoveRow,
   type ErrorIssue,
   type Lead,
+  type OpenClosure,
   type PaymentNeedingAttention,
+  type ReportForReview,
+  type StaffCallRow,
   type StaffRosterRow,
+  type StoredBreach,
+  type StoredPrivacyRequest,
   type ProjectStartedWithoutConfirmation,
   type SupportStatus,
   type SupportTicket,
 } from "@brandbasket/db";
 import { errorLogInfo } from "@brandbasket/shared/server/error-log-info";
-import { clientPaymentState, countPayingClients } from "@brandbasket/shared/lib/billing/client-payment";
+import { clientPaymentState } from "@brandbasket/shared/lib/billing/client-payment";
 import type { FigureItem } from "@/components/console/figures";
 import { businessFigures, figuresInput } from "@/lib/business-figures";
+import { groupCalls, type CallGroups } from "@/lib/calls-view";
 import { attentionItems } from "@/lib/pipeline";
 import { monthRange, todayRange } from "@/lib/team-time";
+import { breachReportsDue, closuresErasingSoon, privacyRequestsDue, reportsToReview, silentPreviews } from "@/lib/today-sources";
 import { todayQueue, type KickoffNeedingOutcome, type TodayItem } from "@/lib/today-queue";
 import { clientsWaitingOnUs } from "@/lib/waiting-clients";
 import { getStaffDb } from "./db";
@@ -45,6 +58,10 @@ const ATTENTION_READ_LIMIT = 100;
 const NEW_TICKETS_READ_LIMIT = 25;
 /** How far back a kickoff call is still asked about: the Calls page's "Just finished" uses the same window. */
 const KICKOFF_LOOK_BACK_DAYS = 14;
+/** How far back and ahead the Calls card looks (the old Calls page's window). */
+const CALLS_PAST_DAYS = 7;
+const CALLS_AHEAD_DAYS = 28;
+const DAY_MS = 86_400_000;
 
 /** One read that may fail without taking the page down: a failure logs, records its label in `failed` when given, and gives `fallback`. */
 async function guarded<T>(label: string, read: () => Promise<T>, fallback: T, failed?: string[]): Promise<T> {
@@ -76,6 +93,12 @@ interface QueueSources {
   readonly canSeeMoney: boolean;
   /** Domain move requests. */
   readonly domainMoves: readonly DomainMoveRow[];
+  /** Compliance reads, empty without the oversight capability. */
+  readonly privacyRequests: readonly StoredPrivacyRequest[];
+  readonly breaches: readonly StoredBreach[];
+  readonly closures: readonly OpenClosure[];
+  /** Customer reports not yet sent. */
+  readonly reports: readonly ReportForReview[];
 }
 
 interface QueueRead {
@@ -87,11 +110,12 @@ interface QueueRead {
 /**
  * `canSeeMoney` is the staff member's "money" capability: without it the flagged payments are not read at all.
  * `canSeeGoogleAccount` is their "integrations" capability: without it the lost Google sign-in is not read.
+ * `canSeeOversight` is their "oversight" capability: without it the privacy requests, breaches and closing accounts are not read.
  */
-async function readQueueSources(now: Date, canSeeMoney: boolean, canSeeGoogleAccount: boolean): Promise<QueueRead> {
+async function readQueueSources(now: Date, canSeeMoney: boolean, canSeeGoogleAccount: boolean, canSeeOversight: boolean): Promise<QueueRead> {
   const db = getStaffDb();
   const failed: string[] = [];
-  const [clients, leads, staff, flagged, addOns, newTickets, newErrors, failedDeliveries, kickoffsNeedingOutcome, unconfirmedStarts, google, domainMoves] = await Promise.all([
+  const [clients, leads, staff, flagged, addOns, newTickets, newErrors, failedDeliveries, kickoffsNeedingOutcome, unconfirmedStarts, google, domainMoves, privacyRequests, breaches, closures, reports] = await Promise.all([
     guarded("clients", () => listClients(db), [], failed),
     guarded("leads", () => listLeads(db, {}), [], failed),
     guarded("staff roster", () => listStaffRoster(db), [], failed),
@@ -119,8 +143,15 @@ async function readQueueSources(now: Date, canSeeMoney: boolean, canSeeGoogleAcc
     ),
     guarded<readonly TodayItem[]>("Google", () => readGoogleToday(now, canSeeGoogleAccount), [], failed),
     guarded("domain moves", () => listDomainMoves(db), [], failed),
+    canSeeOversight ? guarded("privacy requests", () => listOpenPrivacyRequests(db), [], failed) : Promise.resolve([]),
+    canSeeOversight ? guarded("breaches", () => listBreaches(db), [], failed) : Promise.resolve([]),
+    canSeeOversight ? guarded("closing accounts", () => listOpenClosures(db), [], failed) : Promise.resolve([]),
+    guarded("reports", () => listReportsForReview(db), [], failed),
   ]);
-  return { sources: { clients, leads, staff, flagged, addOns, newTickets, newErrors, failedDeliveries, kickoffsNeedingOutcome, unconfirmedStarts, google, domainMoves, canSeeMoney }, failed };
+  return {
+    sources: { clients, leads, staff, flagged, addOns, newTickets, newErrors, failedDeliveries, kickoffsNeedingOutcome, unconfirmedStarts, google, domainMoves, privacyRequests, breaches, closures, reports, canSeeMoney },
+    failed,
+  };
 }
 
 function queueFrom(sources: QueueSources, now: Date): readonly TodayItem[] {
@@ -180,18 +211,23 @@ function queueFrom(sources: QueueSources, now: Date): readonly TodayItem[] {
     domainMoves: sources.domainMoves,
     unconfirmedStarts: sources.unconfirmedStarts,
     google: sources.google,
+    privacyRequests: privacyRequestsDue(sources.privacyRequests),
+    breaches: breachReportsDue(sources.breaches),
+    closures: closuresErasingSoon(sources.closures, sources.clients, now),
+    reportsToReview: reportsToReview(sources.reports, now),
+    silentPreviews: silentPreviews(sources.clients, now),
     endOfToday: todayRange(now).end,
   });
 }
 
 /** Everything that needs a person right now, late first. */
-export async function loadTodayItems(now: Date, canSeeMoney: boolean, canSeeGoogleAccount = false): Promise<readonly TodayItem[]> {
-  return queueFrom((await readQueueSources(now, canSeeMoney, canSeeGoogleAccount)).sources, now);
+export async function loadTodayItems(now: Date, canSeeMoney: boolean, canSeeGoogleAccount = false, canSeeOversight = false): Promise<readonly TodayItem[]> {
+  return queueFrom((await readQueueSources(now, canSeeMoney, canSeeGoogleAccount, canSeeOversight)).sources, now);
 }
 
 /** The rail's Today count: the length of the queue. */
-export async function countTodayItems(canSeeMoney: boolean, canSeeGoogleAccount = false): Promise<number> {
-  return (await loadTodayItems(new Date(), canSeeMoney, canSeeGoogleAccount)).length;
+export async function countTodayItems(canSeeMoney: boolean, canSeeGoogleAccount = false, canSeeOversight = false): Promise<number> {
+  return (await loadTodayItems(new Date(), canSeeMoney, canSeeGoogleAccount, canSeeOversight)).length;
 }
 
 export interface TodayPage {
@@ -203,30 +239,46 @@ export interface TodayPage {
   readonly systems: readonly SystemLine[];
   /** Kickoff calls that are over and waiting for staff confirmation. */
   readonly pendingKickoffs: readonly KickoffNeedingOutcome[];
-  readonly activeClientsCount: number;
+  /** Customer requests open or waiting on the customer (the Open requests tile); null when the count could not be read. */
+  readonly openRequests: number | null;
+  /** Calls coming up and from the last week, for the Calls card (today's calls are `calls`). */
+  readonly callGroups: Pick<CallGroups, "upcoming" | "past">;
 }
 
 /** Everything the Today page draws, each source read once. Without `canSeeMoney` the collected figure and flagged payments are neither read nor shown. */
-export async function loadTodayPage(now: Date, canSeeMoney: boolean, canSeeGoogleAccount = false): Promise<TodayPage> {
+export async function loadTodayPage(now: Date, canSeeMoney: boolean, canSeeGoogleAccount = false, canSeeOversight = false): Promise<TodayPage> {
   const db = getStaffDb();
   const month = monthRange(now);
   const today = todayRange(now);
-  const [queue, collected, ticketCounts, activeErrors, calls, systems] = await Promise.all([
-    readQueueSources(now, canSeeMoney, canSeeGoogleAccount),
+  const extraFailed: string[] = [];
+  const [queue, collected, ticketCounts, activeErrors, calls, systems, openRequests, callRows] = await Promise.all([
+    readQueueSources(now, canSeeMoney, canSeeGoogleAccount, canSeeOversight),
     canSeeMoney ? guarded("money collected", () => sumCapturedPaymentsBetween(db, month.start, month.end), []) : Promise.resolve(null),
     guarded<Readonly<Record<SupportStatus, number>> | null>("request counts", () => countSupportTicketsByStatus(db), null),
     guarded("open errors", () => countActiveErrorIssues(db), 0),
     guarded("calls today", () => listSetupCallsBetween(db, today.start, today.end), []),
     readSystemHealth(now),
+    guarded<number | null>("open requests", async () => {
+      const counts = await countSupportQueues(db);
+      return counts.needsReply + counts.waitingOnClient;
+    }, null, extraFailed),
+    guarded<readonly StaffCallRow[]>(
+      "calls",
+      () => listSetupCallsForStaff(db, new Date(today.start.getTime() - CALLS_PAST_DAYS * DAY_MS), new Date(today.start.getTime() + CALLS_AHEAD_DAYS * DAY_MS)),
+      [],
+      extraFailed,
+    ),
   ]);
   const { sources } = queue;
+  const callGroups = groupCalls(callRows, now);
   return {
     items: queueFrom(sources, now),
-    failed: queue.failed,
+    failed: [...queue.failed, ...extraFailed],
     figures: businessFigures(figuresInput({ leads: sources.leads, clients: sources.clients, collected, ticketCounts, activeErrors }, now)),
     calls,
     systems,
     pendingKickoffs: sources.kickoffsNeedingOutcome ?? [],
-    activeClientsCount: countPayingClients(sources.clients, now),
+    openRequests,
+    callGroups: { upcoming: callGroups.upcoming, past: callGroups.past },
   };
 }
