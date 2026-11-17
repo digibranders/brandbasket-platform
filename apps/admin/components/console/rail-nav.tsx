@@ -1,9 +1,8 @@
 import { SignOut } from "@phosphor-icons/react/dist/ssr";
 import Link from "next/link";
 import type { ReactElement } from "react";
-import type { StaffRole } from "@brandbasket/db";
 import { cn } from "@brandbasket/shared/lib/cn";
-import { railCount, ROLE_LABELS, type ConsoleRailLink, type RailCountTone, type RailCounts } from "@/lib/console-rail";
+import { railCount, type ConsoleRailLink, type RailCountTone, type RailCounts } from "@/lib/console-rail";
 import { avatarInitials } from "@/lib/avatar";
 import { RailIconMark } from "./rail-icon";
 
@@ -12,7 +11,6 @@ type Tone = "dark" | "light";
 const COUNT_TONES: Readonly<Record<RailCountTone, Readonly<Record<Tone, string>>>> = {
   accent: { dark: "bg-rattan text-ink", light: "bg-rattan text-ink" },
   alert: { dark: "bg-error text-white", light: "bg-error text-white" },
-  quiet: { dark: "bg-white/10 text-white/80", light: "bg-sunken text-ink-2" },
 };
 
 interface RailNavProps {
@@ -64,14 +62,13 @@ export function RailNav({ links, counts, current, tone, onNavigate }: RailNavPro
 
 interface RailAccountProps {
   readonly userName: string;
-  readonly role: StaffRole;
   /** The app's sign-out server action. */
   readonly signOut: () => Promise<void>;
   readonly tone: Tone;
 }
 
-/** Who is signed in, their role, and Sign out, at the foot of the rail and the phone menu. */
-export function RailAccount({ userName, role, signOut, tone }: RailAccountProps): ReactElement {
+/** Who is signed in, and Sign out, at the foot of the rail and the phone menu. */
+export function RailAccount({ userName, signOut, tone }: RailAccountProps): ReactElement {
   return (
     <div className={cn("flex items-center gap-2.5 rounded-[0.625rem] p-2.5 text-[0.8125rem]", tone === "dark" ? "bg-white/[0.06] text-white" : "bg-sunken text-ink")}>
       <span aria-hidden="true" className="grid size-[1.875rem] shrink-0 place-items-center rounded-lg bg-rattan font-display text-xs font-bold text-ink">
@@ -79,7 +76,7 @@ export function RailAccount({ userName, role, signOut, tone }: RailAccountProps)
       </span>
       <span className="min-w-0 flex-1">
         <span className="block truncate font-semibold">{userName}</span>
-        <span className={cn("block text-xs", tone === "dark" ? "text-white/60" : "text-ink-2")}>{ROLE_LABELS[role]}</span>
+        <span className={cn("block text-xs", tone === "dark" ? "text-white/60" : "text-ink-2")}>Signed in</span>
       </span>
       <form action={signOut}>
         <button
