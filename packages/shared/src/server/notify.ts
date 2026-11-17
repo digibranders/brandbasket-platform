@@ -23,6 +23,7 @@ import {
   type PushCopy,
 } from "../lib/notification-events";
 import { createFakePushSender, type PushSender } from "./push-sender";
+import { createDbPushStore, createWebPushSender, createWebPushTransport, vapidFromEnv } from "./web-push-sender";
 
 /*
  * notify(): the one place a notice about an event is sent from. It writes the bell row, queues the email through the existing
@@ -81,10 +82,10 @@ export interface NotifyStore {
 
 export interface NotifyDeps {
   readonly store: NotifyStore;
+  /** Delivers one email: the app's customer transport, which writes the outbox row. */
   /**
-   * Delivers one email: the app's customer transport, which writes the outbox row and never throws for a delivery failure.
-   * It answers the outcome: `queued` counts as delivered (the queue keeps trying), `failed` is a failure here, `suppressed`
-   * (optional mail to an address that opted out) is skipped.
+   * The transport never throws for a delivery failure and answers the outcome: `queued` counts as delivered (the queue keeps
+   * trying), `failed` is a failure here, `suppressed` (optional mail to an address that opted out) is skipped.
    */
   readonly sendEmail: (message: EmailMessage) => Promise<EmailSendOutcome | void>;
   readonly push: PushSender;
@@ -202,7 +203,7 @@ export function createNotifier(deps: NotifyDeps): Notify {
       try {
         await deps.push.send(
           { audience: context.audience, userId: target.userId },
-          { title: push.title, body: push.body, url: absolute(origin, push.link), tag: push.tag },
+          { title: push.title, body: push.body, url: absolute(origin, push.link), tag: push.tag, event },
         );
         result.delivered.push("push");
       } catch (error) {
@@ -261,6 +262,12 @@ export function createNotifier(deps: NotifyDeps): Notify {
   };
 }
 
+/** The real sender when the VAPID keys are set, the fake one (nothing leaves the machine) when they are not. Bad keys fail at send time, which notify() reports. */
+function defaultPushSender(db: Database, env: Readonly<Record<string, string | undefined>>): PushSender {
+  const vapid = vapidFromEnv(env);
+  return vapid === null ? createFakePushSender() : createWebPushSender({ store: createDbPushStore(db), transport: createWebPushTransport(vapid) });
+}
+
 export interface DefaultNotifierOptions {
   readonly push?: PushSender;
   readonly onError: NotifyDeps["onError"];
@@ -269,7 +276,7 @@ export interface DefaultNotifierOptions {
 
 /**
  * notify() for an app's server code: the staff connection for the ledger and the preference reads, the app's email transport
- * (the outbox locally, Brevo in production), the fake push sender until package N4 supplies the real one, and the origins
+ * (the outbox locally, Brevo in production), the web push sender when the VAPID keys are set (the fake one otherwise), and the origins
  * and team address from the environment.
  */
 export function createDefaultNotifier(db: Database, options: DefaultNotifierOptions): Notify {
@@ -281,7 +288,7 @@ export function createDefaultNotifier(db: Database, options: DefaultNotifierOpti
   return createNotifier({
     store: createDbNotifyStore(db),
     sendEmail: (message) => transport.send(message),
-    push: options.push ?? createFakePushSender(),
+    push: options.push ?? defaultPushSender(db, env),
     origins: { customer: customerOrigin, staff: staffOrigin },
     staffEmail: env.SUPPORT_ALERT_EMAIL?.trim() || env.BRANDBASKET_TEAM_EMAIL?.trim() || null,
     onError: options.onError,

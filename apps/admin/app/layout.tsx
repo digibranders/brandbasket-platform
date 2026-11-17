@@ -11,6 +11,7 @@ export const metadata: Metadata = {
   ...dashboardMetadataBase,
   title: { default: "Staff console", template: `%s · ${adminBrand().staffLabel}` },
   robots: { index: false, follow: false },
+  manifest: "/manifest.webmanifest",
 };
 
 /** The browser bar takes the page colour (theme.css `--color-bg`). */

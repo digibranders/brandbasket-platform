@@ -32,7 +32,7 @@ describe("EnquiryList", () => {
   });
 
   it("is the one focal card until an enquiry is open beside it", () => {
-    expect(render([lead], null)).toContain("border-t-rattan");
-    expect(render([lead], "lead-1")).not.toContain("border-t-rattan");
+    expect(render([lead], null)).toContain("shadow-hero");
+    expect(render([lead], "lead-1")).not.toContain("shadow-hero");
   });
 });

@@ -17,7 +17,7 @@ function Report({ view }: { readonly view: ReportMonthView }) {
   return (
     <div className="flex flex-col gap-4">
       {readable.length === 0 ? null : (
-        <article className="rounded-overlay border border-border border-t-2 border-t-accent-gold bg-surface p-6 shadow-hero sm:p-7">
+        <article className="rounded-overlay border border-border bg-surface p-6 shadow-hero sm:p-7">
           <h2 className="type-section text-ink">The month in short</h2>
           <ul className="m-0 mt-3 flex list-disc flex-col gap-2 pl-5 type-body">
             {readable.map(({ service, content }) => (

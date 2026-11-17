@@ -6,7 +6,7 @@ export interface EntryScreenProps {
   readonly lede?: ReactNode;
   /** The state of what the link or page is about (an invitation: open, expired, used), read before anything else. */
   readonly chip?: Pick<StatusChipProps, "label" | "variant">;
-  /** Puts the form or the buttons in the screen's one focal card (gold top edge). The sign-up form brings its own card. */
+  /** Puts the form or the buttons in the screen's one focal card. The sign-up form brings its own card. */
   readonly framed?: boolean;
   readonly children?: ReactNode;
 }
@@ -21,7 +21,7 @@ export function EntryScreen({ title, lede, chip, framed = false, children }: Ent
         {lede === undefined ? null : <p className="type-body text-ink-3">{lede}</p>}
       </div>
       {framed ? (
-        <div className="flex flex-col gap-4 rounded-overlay border border-border border-t-2 border-t-accent-gold bg-surface p-6 shadow-hero sm:p-7">{children}</div>
+        <div className="flex flex-col gap-4 rounded-overlay border border-border bg-surface p-6 shadow-hero sm:p-7">{children}</div>
       ) : (
         children
       )}
