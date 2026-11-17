@@ -7,6 +7,8 @@ import {
   readExportedAccount,
   readExportedBusiness,
   readExportedNotificationPreferences,
+  readExportedNotifications,
+  readExportedPushDevices,
   type Database,
 } from "@brandbasket/db";
 import { DATA_RECIPIENTS } from "@brandbasket/shared/lib/privacy/recipients";
@@ -20,6 +22,8 @@ vi.mock("@brandbasket/db", () => ({
   readExportedAccount: vi.fn(),
   readExportedBusiness: vi.fn(),
   readExportedNotificationPreferences: vi.fn(),
+  readExportedNotifications: vi.fn(),
+  readExportedPushDevices: vi.fn(),
 }));
 
 const NOW = new Date("2026-11-01T06:00:00.000Z");
@@ -43,7 +47,9 @@ function arrange(accountRow: ReturnType<typeof account> | null = account()): voi
   vi.mocked(readExportedAccount).mockResolvedValue(accountRow as never);
   vi.mocked(listExportedSessions).mockResolvedValue([{ startedAt: NOW, expiresAt: NOW, ipAddress: "203.0.113.9", userAgent: "Safari" }]);
   vi.mocked(readExportedBusiness).mockResolvedValue({ business: { id: INPUT.businessId, name: "Asha Dental" }, profile: null, billingProfile: null, subscription: null, payments: [], taxInvoices: [], directoryProfile: null, enquiries: [{ kind: "chat", name: "Ravi", phone: "+919820011223", status: "contacted", note: "Called back" }], connectedAccounts: [{ platform: "instagram", handle: "@asha", status: "connected" }], websitePages: [{ url: "https://asha.example/about", title: "About" }] } as never);
-  vi.mocked(readExportedNotificationPreferences).mockResolvedValue([{ businessId: INPUT.businessId, topic: "billing", email: false, updatedAt: NOW }]);
+  vi.mocked(readExportedNotificationPreferences).mockResolvedValue([{ businessId: INPUT.businessId, topic: "billing", email: false, bell: true, push: false, updatedAt: NOW }]);
+  vi.mocked(readExportedNotifications).mockResolvedValue([{ businessId: INPUT.businessId, eventKey: "kickoff.booked", title: "Your kickoff call is booked for 11:00", body: null, createdAt: NOW, readAt: null }]);
+  vi.mocked(readExportedPushDevices).mockResolvedValue([{ userAgent: "Safari", createdAt: NOW, revokedAt: null }]);
   vi.mocked(listConsents).mockResolvedValue([{ id: "c1", purpose: "account_terms", event: "given", noticeVersion: "2026-10-13", language: "en", channel: "web", ipHash: "secrethash", createdAt: NOW }]);
   vi.mocked(listSupportTickets).mockResolvedValue({ items: [{ id: "t1" }], nextCursor: null } as never);
   vi.mocked(getSupportTicket).mockResolvedValue({
@@ -76,7 +82,10 @@ describe("buildAccountExport", () => {
     expect(file.business?.enquiries).toEqual([{ kind: "chat", name: "Ravi", phone: "+919820011223", status: "contacted", note: "Called back" }]);
     expect(file.business?.connectedAccounts).toEqual([{ platform: "instagram", handle: "@asha", status: "connected" }]);
     expect(file.business?.websitePages).toEqual([{ url: "https://asha.example/about", title: "About" }]);
-    expect(file.emailChoices).toEqual([{ businessId: INPUT.businessId, topic: "billing", email: false, changedAt: NOW }]);
+    expect(file.emailChoices).toEqual([{ businessId: INPUT.businessId, topic: "billing", email: false, bell: true, push: false, changedAt: NOW }]);
+    expect(file.notices).toEqual([{ businessId: INPUT.businessId, event: "kickoff.booked", title: "Your kickoff call is booked for 11:00", body: null, sentAt: NOW, readAt: null }]);
+    expect(file.pushDevices).toEqual([{ browser: "Safari", turnedOnAt: NOW, turnedOffAt: null }]);
+    expect(JSON.stringify(file)).not.toContain("endpoint");
     expect(readExportedNotificationPreferences).toHaveBeenCalledWith(dbs.staff, "user-asha");
   });
 

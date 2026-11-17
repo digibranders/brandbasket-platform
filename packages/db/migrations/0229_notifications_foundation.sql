@@ -63,7 +63,7 @@ ALTER TABLE "email_messages" ADD COLUMN "max_attempts" integer DEFAULT 3 NOT NUL
 ALTER TABLE "email_messages" ADD COLUMN "next_attempt_at" timestamp with time zone;--> statement-breakpoint
 ALTER TABLE "notification_preferences" ADD COLUMN "bell" boolean DEFAULT true NOT NULL;--> statement-breakpoint
 ALTER TABLE "notification_preferences" ADD COLUMN "push" boolean DEFAULT false NOT NULL;--> statement-breakpoint
-ALTER TABLE "kickoff_prompt_state" ADD CONSTRAINT "kickoff_prompt_state_call_id_team_calls_id_fk" FOREIGN KEY ("call_id") REFERENCES "public"."team_calls"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "kickoff_prompt_state" ADD CONSTRAINT "kickoff_prompt_state_call_id_setup_call_bookings_id_fk" FOREIGN KEY ("call_id") REFERENCES "public"."setup_call_bookings"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "notifications" ADD CONSTRAINT "notifications_business_id_businesses_id_fk" FOREIGN KEY ("business_id") REFERENCES "public"."businesses"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "notifications" ADD CONSTRAINT "notifications_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "push_subscriptions" ADD CONSTRAINT "push_subscriptions_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint

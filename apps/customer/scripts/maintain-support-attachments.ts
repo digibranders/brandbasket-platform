@@ -1,5 +1,5 @@
 import { join } from "node:path";
-import { createDatabase, purgeExpiredRetention, purgeOldDeliveries, purgeOldEmailMessages } from "@brandbasket/db";
+import { createDatabase, purgeExpiredRetention, purgeOldDeliveries, purgeOldEmailMessages, purgeOldNotifications } from "@brandbasket/db";
 import { findWorkspaceRoot, requireEnv } from "@brandbasket/db/local-env";
 import { loadCustomerEnv } from "./load-env";
 import { createAppEmailTransport } from "@brandbasket/email";
@@ -58,6 +58,8 @@ async function main(): Promise<void> {
     console.log(`Outbox: ${emailsPurged} old emails purged.`);
     const deliveriesPurged = await purgeOldDeliveries(db, new Date());
     console.log(`Deliveries: ${deliveriesPurged} old webhook and alert records purged.`);
+    const noticesPurged = await purgeOldNotifications(db, new Date());
+    console.log(`Notifications: ${noticesPurged} old bell notices purged.`);
     console.log(retentionReport(await purgeExpiredRetention(db, new Date()), false));
     await remindAboutPrivacyRequests(db);
     await reviewStaffAccess(db);

@@ -4,7 +4,7 @@ import { uuidv7 } from "uuidv7";
 import { users } from "./auth";
 import { businesses } from "./businesses";
 import { createdAt, updatedAt } from "./columns";
-import { teamCalls } from "./team-calls";
+import { setupCallBookings } from "./projects";
 
 /** The rows of Settings, Notifications in the v4 mock, in its order. */
 export const NOTIFICATION_TOPICS = [
@@ -157,13 +157,15 @@ export const pushSubscriptions = pgTable(
 export type PushSubscriptionRow = typeof pushSubscriptions.$inferSelect;
 
 /**
- * The server's memory of one booked kickoff call's "did it happen?" prompt, so a reload or a second tab agrees and the
- * popup can repeat every 15 minutes until answered. Gone with its call.
+ * The server's memory of one booked kickoff call's "did it happen?" prompt (a row of setup_call_bookings), so a reload or a
+ * second tab agrees and the popup can repeat every 15 minutes until answered. Gone with its call: Cal.com removes the
+ * booking when it is cancelled, and erasure removes it with the business. A rescheduled call keeps its booking row, so package
+ * N2 clears this row when the start time moves.
  */
 export const kickoffPromptState = pgTable("kickoff_prompt_state", {
   callId: uuid("call_id")
     .primaryKey()
-    .references(() => teamCalls.id, { onDelete: "cascade" }),
+    .references(() => setupCallBookings.id, { onDelete: "cascade" }),
   /** When staff were first told the call time had passed (the one push and email go out then). */
   firstNotifiedAt: timestamp("first_notified_at", { withTimezone: true }),
   /** When the popup was last shown, to repeat it 15 minutes later. */

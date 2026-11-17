@@ -1,5 +1,5 @@
 {
-  "id": "d9788b40-1331-4239-b784-edb1cc0005dc",
+  "id": "a15526ab-abfe-4c8a-b9d3-bddff0d73017",
   "prevId": "8d2f1f26-47ce-4864-8515-ef5d3182ee5f",
   "version": "7",
   "dialect": "postgresql",
@@ -21742,10 +21742,10 @@
       },
       "indexes": {},
       "foreignKeys": {
-        "kickoff_prompt_state_call_id_team_calls_id_fk": {
-          "name": "kickoff_prompt_state_call_id_team_calls_id_fk",
+        "kickoff_prompt_state_call_id_setup_call_bookings_id_fk": {
+          "name": "kickoff_prompt_state_call_id_setup_call_bookings_id_fk",
           "tableFrom": "kickoff_prompt_state",
-          "tableTo": "team_calls",
+          "tableTo": "setup_call_bookings",
           "columnsFrom": [
             "call_id"
           ],
