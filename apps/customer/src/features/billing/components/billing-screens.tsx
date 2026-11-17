@@ -46,10 +46,10 @@ function Notices({ notices }: { readonly notices: NoticesView }) {
   );
 }
 
-/** The plan at a glance: focal card with gold top border when active plan exists. */
+/** The plan at a glance: focal card when an active plan exists. */
 function Glance({ glance }: { readonly glance: NonNullable<ServicesPanelView["glance"]> }) {
   return (
-    <article className="relative flex flex-col rounded-overlay border border-border border-t-2 border-t-accent-gold bg-surface p-6 shadow-hero sm:p-7">
+    <article className="relative flex flex-col rounded-overlay border border-border bg-surface p-6 shadow-hero sm:p-7">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="flex flex-col gap-1.5">
           <div className="flex items-center gap-2">
@@ -94,7 +94,7 @@ function Glance({ glance }: { readonly glance: NonNullable<ServicesPanelView["gl
 
 function BillPanel({ bill, isFocal = false }: { readonly bill: BillView; readonly isFocal?: boolean }) {
   const containerClass = isFocal
-    ? "relative flex flex-col rounded-overlay border border-border border-t-2 border-t-accent-gold bg-surface p-6 shadow-hero sm:p-7"
+    ? "relative flex flex-col rounded-overlay border border-border bg-surface p-6 shadow-hero sm:p-7"
     : "rounded-panel border border-border bg-surface p-6 shadow-card";
   return (
     <article className={containerClass}>
@@ -155,7 +155,7 @@ function StatePanel({ state, overview }: { readonly state: PlanState; readonly o
       );
     case "unpaid":
       return (
-        <article className="relative flex flex-col rounded-overlay border border-border border-t-2 border-t-accent-gold bg-surface p-6 shadow-hero sm:p-7">
+        <article className="relative flex flex-col rounded-overlay border border-border bg-surface p-6 shadow-hero sm:p-7">
           <div className="flex flex-col gap-2">
             <h2 className="font-display text-xl font-bold tracking-tight text-ink">Your plan</h2>
             <p className="type-body text-ink-3">Your plan starts when your first payment goes through.</p>

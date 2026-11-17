@@ -11,7 +11,7 @@ import { ReportsTable, type ReportRow } from "./reports-table";
 /** The newest report, raised as the one focal card of the list. */
 function LatestReport({ row }: { readonly row: ReportRow }) {
   return (
-    <article className="flex flex-col gap-4 rounded-overlay border border-border border-t-2 border-t-accent-gold bg-surface p-6 shadow-hero sm:p-7">
+    <article className="flex flex-col gap-4 rounded-overlay border border-border bg-surface p-6 shadow-hero sm:p-7">
       <p className="type-meta">
         Latest report, sent <span className="font-mono tabular-nums">{formatDate(row.sentAt)}</span>
       </p>
