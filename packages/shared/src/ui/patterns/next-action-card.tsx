@@ -26,7 +26,7 @@ export interface NextActionCardProps {
 
 /**
  * NextActionCard: the single focal card on the screen.
- * 20px radius, 3px gold top border, 40px icon tile with gold wash, elevated warm shadow.
+ * 20px radius, 40px icon tile with gold wash, elevated warm shadow.
  * Only one focal card per screen viewport.
  */
 export function NextActionCard({
@@ -45,7 +45,7 @@ export function NextActionCard({
 }: NextActionCardProps): ReactElement {
   return (
     <article
-      className={`relative flex flex-col rounded-[20px] border border-border border-t-[3px] border-t-accent-gold bg-surface p-6 shadow-hero sm:p-7 ${className}`}
+      className={`relative flex flex-col rounded-[20px] border border-border bg-surface p-6 shadow-hero sm:p-7 ${className}`}
     >
       <header className="flex flex-wrap items-center gap-3">
         <span className="flex h-10 w-10 flex-none items-center justify-center rounded-[10px] bg-accent-wash text-accent-text">

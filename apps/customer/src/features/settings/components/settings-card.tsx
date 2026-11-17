@@ -7,7 +7,7 @@ export interface SettingsCardProps {
   readonly title: ReactNode;
   /** One short line under the title. */
   readonly description?: ReactNode;
-  /** The tab's one focal card gets the gold top edge; the Delete account card gets a red one; the rest are quiet. */
+  /** The tab's one focal card is raised; the Delete account card gets a red top edge; the rest are quiet. */
   readonly tone?: SettingsCardTone;
   /** No padding around the children: for a table or rows that bring their own. */
   readonly flush?: boolean;
@@ -17,12 +17,12 @@ export interface SettingsCardProps {
 }
 
 const FRAME: Readonly<Record<SettingsCardTone, string>> = {
-  focal: "rounded-overlay border-t-2 border-t-accent-gold shadow-hero",
+  focal: "rounded-overlay shadow-hero",
   danger: "rounded-overlay border-t-2 border-t-neg-text shadow-hero",
   standard: "rounded-panel",
 };
 
-/** A settings block in the premium language: 14px card, or a 20px focal card with a coloured top edge. */
+/** A settings block in the premium language: 14px card, or a 20px focal card. */
 export function SettingsCard({ title, description, tone = "standard", flush = false, action, children }: SettingsCardProps) {
   return (
     <section className={cx("min-w-0 border border-border bg-surface", FRAME[tone])}>
