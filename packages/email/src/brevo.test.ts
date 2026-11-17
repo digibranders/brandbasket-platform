@@ -172,14 +172,15 @@ describe("createBrevoTransport retry", () => {
     error.mockRestore();
   });
 
-  it("records the message as failed when both attempts time out", async () => {
+  it("queues the message for the drainer when both attempts time out", async () => {
     const error = vi.spyOn(console, "error").mockImplementation(() => {});
     const rows: Record<string, unknown>[] = [];
     const db = { insert: vi.fn(() => ({ values: vi.fn(async (row: Record<string, unknown>) => { rows.push(row); }) })) } as unknown as Parameters<typeof createDualTransport>[1];
     const { send } = transportWith([() => { throw timeoutError(); }, () => { throw timeoutError(); }]);
-    await createDualTransport({ send }, db).send(sampleMessage);
+    await expect(createDualTransport({ send }, db).send(sampleMessage)).resolves.toMatchObject({ status: "queued" });
     expect(rows).toHaveLength(1);
-    expect(rows[0]).toMatchObject({ transport: "brevo", status: "failed", error: "Brevo did not answer in time" });
+    expect(rows[0]).toMatchObject({ transport: "brevo", status: "pending", attempts: 1, error: "Brevo did not answer in time" });
+    expect(rows[0]?.nextAttemptAt).toBeInstanceOf(Date);
     error.mockRestore();
   });
 });
@@ -229,13 +230,30 @@ describe("createDualTransport", () => {
     expect(JSON.stringify(rows)).not.toContain("4242");
   });
 
-  it("does not fail when Brevo fails, and records the message as failed with the reason", async () => {
+  it("does not throw when Brevo is down, and queues the message with the reason", async () => {
     const { db, rows } = outboxDb();
     const error = vi.spyOn(console, "error").mockImplementation(() => {});
-    await expect(createDualTransport({ send: async () => { throw new BrevoDeliveryError("down", 503, "") }}, db).send(sampleMessage)).resolves.toBeUndefined();
+    await expect(createDualTransport({ send: async () => { throw new BrevoDeliveryError("down", 503, "") }}, db).send(sampleMessage)).resolves.toMatchObject({ status: "queued" });
     expect(rows).toHaveLength(1);
-    expect(rows[0]).toMatchObject({ transport: "brevo", status: "failed", error: "Brevo answered 503", bodyText: sampleMessage.bodyText });
+    expect(rows[0]).toMatchObject({ transport: "brevo", status: "pending", error: "Brevo answered 503", bodyText: sampleMessage.bodyText });
     expect(error).toHaveBeenCalled();
+    error.mockRestore();
+  });
+
+  it("records a failed row, not a queued one, when Brevo refuses the message", async () => {
+    const { db, rows } = outboxDb();
+    const error = vi.spyOn(console, "error").mockImplementation(() => {});
+    await expect(createDualTransport({ send: async () => { throw new BrevoDeliveryError("bad", 400, "bad sender") }}, db).send(sampleMessage)).resolves.toMatchObject({ status: "failed" });
+    expect(rows[0]).toMatchObject({ status: "failed" });
+    error.mockRestore();
+  });
+
+  it("never queues a redacted message, whose stored body could not be sent", async () => {
+    const { db, rows } = outboxDb();
+    const error = vi.spyOn(console, "error").mockImplementation(() => {});
+    const redacted: EmailMessage = { ...sampleMessage, outboxCopy: { subject: "s", bodyText: "r", bodyHtml: "<p>r</p>" } };
+    await expect(createDualTransport({ send: async () => { throw new BrevoDeliveryError("down", 503, "") }}, db).send(redacted)).resolves.toMatchObject({ status: "failed" });
+    expect(rows[0]).toMatchObject({ status: "failed", bodyRedacted: true });
     error.mockRestore();
   });
 

@@ -187,12 +187,16 @@ export {
 } from "./queries/staff";
 export {
   findEmail,
+  claimDueEmails,
   hasEmailContaining,
+  isEmailSuppressed,
   listEmailDeliveries,
   listRecentEmails,
+  markEmailBounced,
   purgeOldEmailMessages,
   recordEmail,
   SIGN_IN_LINK_TEMPLATES,
+  suppressEmailAddress,
   updateEmailDelivery,
   type RecordedEmail,
   type StoredEmail,

@@ -84,7 +84,7 @@ describe("support alerts in the email outbox", () => {
   it("still records the alert in the outbox when Brevo fails, and does not throw", async () => {
     const error = vi.spyOn(console, "error").mockImplementation(() => {});
     const failing = { send: async () => { throw new BrevoDeliveryError("Brevo down", 503, ""); } };
-    await expect(createDualTransport(failing, dbs.staff.db).send(replyAlert)).resolves.toBeUndefined();
+    await expect(createDualTransport(failing, dbs.staff.db).send(replyAlert)).resolves.toMatchObject({ status: "failed" });
     const [row] = await listRecentEmails(dbs.staff.db, 10);
     expect(row).toMatchObject({ transport: "brevo", status: "failed", error: "Brevo answered 503" });
     expect(JSON.stringify(row)).not.toContain("Still failing");
