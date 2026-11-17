@@ -36,6 +36,8 @@ export interface CommandBarProps {
   /** Opens an item's href. Default is `window.location.assign`, or a new tab with Ctrl or Cmd Enter. */
   readonly onNavigate?: (href: string, newTab: boolean) => void;
   readonly placeholder?: string;
+  /** Offered under the "no results" line, so a dead end still has a next step. */
+  readonly emptyItems?: readonly CommandItem[];
 }
 
 export const GROUP_LABELS: Readonly<Record<CommandGroup, string>> = {
@@ -81,15 +83,15 @@ export function matchesTerm(item: CommandItem, term: string): boolean {
  * and `aria-activedescendant` points at the highlighted option. `>` shows actions only, `#` searches request references,
  * and Backspace on an empty field leaves the mode. Esc clears the text, then closes.
  */
-export function CommandBar({ open, onOpenChange, staticItems, search, recent, onNavigate, placeholder = "Search clients, requests, invoices, or type a command" }: CommandBarProps): ReactElement | null {
+export function CommandBar({ open, onOpenChange, staticItems, search, recent, onNavigate, placeholder = "Search clients, requests, invoices, or type a command", emptyItems }: CommandBarProps): ReactElement | null {
   useShortcuts([{ id: "command-bar", keys: "mod+k", label: "Open the command bar", group: "Anywhere", allowInField: true, run: () => onOpenChange(!open) }]);
   if (!open) return null;
-  return <CommandBarDialog onOpenChange={onOpenChange} staticItems={staticItems} search={search} recent={recent} onNavigate={onNavigate} placeholder={placeholder} />;
+  return <CommandBarDialog onOpenChange={onOpenChange} staticItems={staticItems} search={search} recent={recent} onNavigate={onNavigate} placeholder={placeholder} emptyItems={emptyItems} />;
 }
 
 type DialogProps = Omit<CommandBarProps, "open"> & { readonly placeholder: string };
 
-function CommandBarDialog({ onOpenChange, staticItems, search, recent, onNavigate, placeholder }: DialogProps): ReactElement {
+function CommandBarDialog({ onOpenChange, staticItems, search, recent, onNavigate, placeholder, emptyItems }: DialogProps): ReactElement {
   const uid = useId();
   const [text, setText] = useState("");
   const [mode, setMode] = useState<CommandMode>("all");
@@ -128,12 +130,14 @@ function CommandBarDialog({ onOpenChange, staticItems, search, recent, onNavigat
     };
   }, [term, mode, search, attempt]);
 
-  const visible = useMemo<readonly CommandItem[]>(() => {
+  const matches = useMemo<readonly CommandItem[]>(() => {
     if (mode === "requestRef") return orderItems(remote);
     if (mode === "actions") return orderItems(staticItems.filter((item) => item.group === "action" && (term === "" || matchesTerm(item, term))));
     if (term === "") return orderItems([...recent, ...staticItems]);
     return orderItems([...staticItems.filter((item) => matchesTerm(item, term)), ...remote]);
   }, [mode, term, staticItems, recent, remote]);
+  const showEmpty = status === "idle" && matches.length === 0 && term !== "";
+  const visible = showEmpty && emptyItems ? orderItems(emptyItems) : matches;
 
   useEffect(() => setActive(0), [visible.length, term, mode]);
 
@@ -185,7 +189,6 @@ function CommandBarDialog({ onOpenChange, staticItems, search, recent, onNavigat
   const listId = `${uid}-list`;
   const titleId = `${uid}-title`;
   const optionId = (index: number): string => `${uid}-opt-${index}`;
-  const showEmpty = status === "idle" && visible.length === 0 && term !== "";
 
   const headings = visible.map((item, index) => (index === 0 || visible[index - 1]?.group !== item.group ? GROUP_LABELS[item.group] : null));
 
@@ -237,51 +240,49 @@ function CommandBarDialog({ onOpenChange, staticItems, search, recent, onNavigat
               </div>
             ) : null}
             {showEmpty ? <p className="px-4 py-6 text-center font-sans text-sm text-ink-2">{`No results for "${term}".`}</p> : null}
-            {status !== "error"
-              ? visible.map((item, index) => {
-                  const heading = headings[index];
-                  const isActive = index === active;
-                  return (
-                    <div key={`${item.group}:${item.id}`} role="presentation">
-                      {heading ? (
-                        <div role="presentation" className="px-2.5 pb-1 pt-2 font-sans text-xs font-semibold leading-4 text-ink-3">
-                          {heading}
-                        </div>
-                      ) : null}
-                      <div
-                        id={optionId(index)}
-                        role="option"
-                        aria-selected={isActive}
-                        aria-disabled={item.disabledReason !== undefined || undefined}
-                        onMouseMove={() => setActive(index)}
-                        onClick={() => run(item, false)}
-                        className={`flex min-h-11 cursor-pointer items-center gap-3 rounded-[10px] px-2.5 py-1.5 font-sans text-sm leading-5 aria-disabled:cursor-not-allowed aria-disabled:text-ink-3 ${isActive ? "bg-surface-hover" : ""}`}
-                      >
-                        {item.icon ? <span className="flex size-7 shrink-0 items-center justify-center rounded-[8px] bg-surface-hover text-ink-2">{item.icon}</span> : null}
-                        <span className="min-w-0 flex-1">
-                          <span className="block truncate font-semibold text-ink">
-                            {splitMatch(item.title, term).map((part, at) =>
-                              part.match ? (
-                                <mark key={at} className="rounded-[3px] bg-accent-wash text-inherit">
-                                  {part.text}
-                                </mark>
-                              ) : (
-                                <span key={at}>{part.text}</span>
-                              ),
-                            )}
-                          </span>
-                          {item.disabledReason ? (
-                            <span className="block truncate text-xs leading-4 text-ink-3">{item.disabledReason}</span>
-                          ) : item.subtitle ? (
-                            <span className="block truncate text-xs leading-4 text-ink-3">{item.subtitle}</span>
-                          ) : null}
-                        </span>
-                        {item.hint ? <span className="font-mono text-xs text-ink-3">{item.hint}</span> : null}
-                      </div>
+            {visible.map((item, index) => {
+              const heading = headings[index];
+              const isActive = index === active;
+              return (
+                <div key={`${item.group}:${item.id}`} role="presentation">
+                  {heading ? (
+                    <div role="presentation" className="px-2.5 pb-1 pt-2 font-sans text-xs font-semibold leading-4 text-ink-3">
+                      {heading}
                     </div>
-                  );
-                })
-              : null}
+                  ) : null}
+                  <div
+                    id={optionId(index)}
+                    role="option"
+                    aria-selected={isActive}
+                    aria-disabled={item.disabledReason !== undefined || undefined}
+                    onMouseMove={() => setActive(index)}
+                    onClick={() => run(item, false)}
+                    className={`flex min-h-11 cursor-pointer items-center gap-3 rounded-[10px] px-2.5 py-1.5 font-sans text-sm leading-5 aria-disabled:cursor-not-allowed aria-disabled:text-ink-3 ${isActive ? "bg-surface-hover" : ""}`}
+                  >
+                    {item.icon ? <span className="flex size-7 shrink-0 items-center justify-center rounded-[8px] bg-surface-hover text-ink-2">{item.icon}</span> : null}
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate font-semibold text-ink">
+                        {splitMatch(item.title, term).map((part, at) =>
+                          part.match ? (
+                            <mark key={at} className="rounded-[3px] bg-accent-wash text-inherit">
+                              {part.text}
+                            </mark>
+                          ) : (
+                            <span key={at}>{part.text}</span>
+                          ),
+                        )}
+                      </span>
+                      {item.disabledReason ? (
+                        <span className="block truncate text-xs leading-4 text-ink-3">{item.disabledReason}</span>
+                      ) : item.subtitle ? (
+                        <span className="block truncate text-xs leading-4 text-ink-3">{item.subtitle}</span>
+                      ) : null}
+                    </span>
+                    {item.hint ? <span className="font-mono text-xs text-ink-3">{item.hint}</span> : null}
+                  </div>
+                </div>
+              );
+            })}
           </div>
           <div className="flex flex-wrap gap-4 border-t border-border px-4 py-2.5 font-sans text-xs leading-4 text-ink-3">
             <span>Up and Down move</span>
