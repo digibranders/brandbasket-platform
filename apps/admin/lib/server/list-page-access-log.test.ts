@@ -10,8 +10,6 @@ const LIST_PAGES: readonly { readonly file: string; readonly action: string }[] 
   { file: "page.tsx", action: "today.view" },
   { file: "clients/page.tsx", action: "clients.list" },
   { file: "leads/page.tsx", action: "leads.list" },
-  { file: "calls/page.tsx", action: "calls.list" },
-  { file: "projects/page.tsx", action: "projects.list" },
   { file: "leaving/page.tsx", action: "leaving.list" },
   { file: "support/page.tsx", action: "support.list" },
   { file: "support/new/page.tsx", action: "support.new" },
