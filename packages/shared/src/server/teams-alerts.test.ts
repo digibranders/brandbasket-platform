@@ -9,6 +9,7 @@ vi.mock("server-only", () => ({}));
 
 const queries = vi.hoisted(() => ({
   clearSiteSetting: vi.fn(),
+  consumeRateLimit: vi.fn(),
   findAlertDelivery: vi.fn(),
   findSiteSetting: vi.fn(),
   findSiteSettingWithEditor: vi.fn(),
@@ -75,6 +76,55 @@ describe("sendTeamsAlert", () => {
     expect(logged).toContain("[teams-alert]");
     expect(logged).not.toContain("hush");
     expect(logged).not.toContain("logic.azure.com");
+  });
+});
+
+describe("sendTeamsAlert retry and dedupe", () => {
+  it("tries once more when Teams cannot be reached, and notes the result of the second try", async () => {
+    queries.findSiteSetting.mockResolvedValue(saved());
+    const post = vi.fn().mockRejectedValueOnce(new Error("reset")).mockResolvedValueOnce({ ok: true });
+    await sendTeamsAlert(DB, SECRET, "payments", MESSAGE, post, { retryDelayMs: 0 });
+    expect(post).toHaveBeenCalledTimes(2);
+    expect(queries.recordAlertDelivery).toHaveBeenCalledTimes(1);
+    expect(queries.recordAlertDelivery).toHaveBeenCalledWith(DB, expect.objectContaining({ result: "sent" }));
+  });
+
+  it("gives up after the one retry, and does not retry an answer Teams gave", async () => {
+    queries.findSiteSetting.mockResolvedValue(saved());
+    const down = vi.fn().mockRejectedValue(new Error("reset"));
+    await sendTeamsAlert(DB, SECRET, "payments", MESSAGE, down, { retryDelayMs: 0 });
+    expect(down).toHaveBeenCalledTimes(2);
+    expect(queries.recordAlertDelivery).toHaveBeenCalledWith(DB, expect.objectContaining({ result: "unreachable" }));
+    const refused = vi.fn().mockResolvedValue({ ok: false });
+    await sendTeamsAlert(DB, SECRET, "payments", MESSAGE, refused, { retryDelayMs: 0 });
+    expect(refused).toHaveBeenCalledTimes(1);
+  });
+
+  it("posts a card once per dedupe key, and answers a repeat without posting or noting it", async () => {
+    queries.findSiteSetting.mockResolvedValue(saved());
+    queries.consumeRateLimit.mockResolvedValueOnce({ allowed: true }).mockResolvedValueOnce({ allowed: false });
+    const post = vi.fn().mockResolvedValue({ ok: true });
+    await sendTeamsAlert(DB, SECRET, "customers", MESSAGE, post, { dedupeKey: "calcom:abc" });
+    await sendTeamsAlert(DB, SECRET, "customers", MESSAGE, post, { dedupeKey: "calcom:abc" });
+    expect(post).toHaveBeenCalledTimes(1);
+    expect(queries.consumeRateLimit).toHaveBeenCalledWith(DB, "teams-alert:customers:calcom:abc", { limit: 1, windowSeconds: 86_400 });
+    expect(queries.recordAlertDelivery).toHaveBeenCalledTimes(1);
+  });
+
+  it("sends anyway when the dedupe check cannot be made, and never checks without a key", async () => {
+    queries.findSiteSetting.mockResolvedValue(saved());
+    queries.consumeRateLimit.mockRejectedValueOnce(new Error("db down"));
+    const post = vi.fn().mockResolvedValue({ ok: true });
+    await sendTeamsAlert(DB, SECRET, "customers", MESSAGE, post, { dedupeKey: "k" });
+    await sendTeamsAlert(DB, SECRET, "customers", MESSAGE, post);
+    expect(post).toHaveBeenCalledTimes(2);
+    expect(queries.consumeRateLimit).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not use up a dedupe key when no address is saved", async () => {
+    queries.findSiteSetting.mockResolvedValue(null);
+    await sendTeamsAlert(DB, SECRET, "customers", MESSAGE, vi.fn(), { dedupeKey: "k" });
+    expect(queries.consumeRateLimit).not.toHaveBeenCalled();
   });
 });
 
