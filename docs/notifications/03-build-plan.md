@@ -16,7 +16,7 @@ Stacked, because every package after N1 needs its schema and entry point. Each b
 | N4 | `notify/04-push` | Web push in both apps | N1 |
 | N5 | `notify/05-events` | Wire money, website, requests, account events to `notify()` | N1, N3, N4 |
 | N6 | `notify/06-webhooks-ops` | Replay window, event ids, Cal.com and OyeChats fixes, Teams retry, timers, failure alerts | N1 |
-| N7 | `notify/07-social-receiver` | social-auto receiver and customer notices | N1, blocked on payload and signing details |
+| N7 | `notify/07-social-receiver` | social-auto receiver and customer notices | N1 (spec in 04-social-auto-events.md) |
 
 Only N1 adds migrations (next number 0229). Later packages that find they need a column ask N1's owner or add a clearly separate migration after N1 merges.
 
@@ -62,7 +62,7 @@ Replay window (5 minutes where the sender signs a timestamp) and event id dedupe
 
 ## N7 Social receiver
 
-Blocked. Needs social-auto's real event payloads and signing scheme; the plan in `WORK-PACKAGES.md` WP-15a is unverified. Read the social-auto repo read only, or get the spec from the owner, before building.
+Unblocked. The event payloads and signing scheme were read from the social-auto repo and are in `04-social-auto-events.md`. Build the receiver as written there.
 
 ## Review
 
