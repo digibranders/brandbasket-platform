@@ -1,7 +1,5 @@
 import type { ReactElement } from "react";
-import { completeKickoffAction, rescheduleKickoffAction, theyDidNotJoinAction } from "@/app/(protected)/calls/kickoff-actions";
-import { buttonPrimary, buttonSecondary } from "@/components/console/buttons";
-import { fieldClasses } from "@/components/console/field-styles";
+import { KickoffAnswer } from "@/components/console/kickoff-answer";
 import { clock, weekdayDate } from "@/lib/team-time";
 
 export interface TodayKickoffItem {
@@ -43,45 +41,7 @@ export function TodayKickoffPrompt({ kickoffs }: TodayKickoffPromptProps): React
             </span>
           </div>
 
-          <p className="mt-3 rounded-[8px] bg-sunken/50 p-3 font-sans text-xs text-ink-2">
-            Call confirmation readies the website build. If not confirmed within 24 hours of scheduled completion, the build starts automatically.
-          </p>
-
-          <form action={completeKickoffAction} className="mt-5 grid gap-3">
-            <input type="hidden" name="businessId" value={call.businessId} />
-            <label htmlFor={`today-notes-${call.businessId}`} className="block font-sans text-sm font-medium text-ink">
-              What was agreed (optional)
-            </label>
-            <textarea
-              id={`today-notes-${call.businessId}`}
-              name="notes"
-              rows={2}
-              maxLength={600}
-              placeholder="Notes (optional)"
-              className={fieldClasses}
-            />
-            <div className="flex flex-wrap items-center gap-2 pt-1">
-              <button type="submit" className={buttonPrimary}>
-                Call completed
-              </button>
-            </div>
-          </form>
-
-          <div className="mt-5 flex flex-wrap gap-2 border-t border-line pt-4">
-            <form action={theyDidNotJoinAction}>
-              <input type="hidden" name="businessId" value={call.businessId} />
-              <button type="submit" className={buttonSecondary}>
-                They did not join
-              </button>
-            </form>
-
-            <form action={rescheduleKickoffAction}>
-              <input type="hidden" name="businessId" value={call.businessId} />
-              <button type="submit" className={buttonSecondary}>
-                Reschedule
-              </button>
-            </form>
-          </div>
+          <KickoffAnswer businessId={call.businessId} idPrefix="today" notesRows={2} />
         </section>
       ))}
     </div>

@@ -5,7 +5,7 @@ import {
   listClients,
   listDomainMoves,
   listErrorIssues,
-  listKickoffBoard,
+  listPendingKickoffPrompts,
   listLeads,
   listPaymentsNeedingAttention,
   listProjectsStartedWithoutCallConfirmation,
@@ -15,7 +15,6 @@ import {
   sumCapturedPaymentsBetween,
   type ClientBilling,
   type ClientSummary,
-  type KickoffBoardRow,
   type Lead,
   type PaymentNeedingAttention,
 } from "@brandbasket/db";
@@ -36,7 +35,7 @@ vi.mock("@brandbasket/db", async () => {
     listClients: vi.fn(),
     listDomainMoves: vi.fn(),
     listErrorIssues: vi.fn(),
-    listKickoffBoard: vi.fn(),
+    listPendingKickoffPrompts: vi.fn(),
     listLeads: vi.fn(),
     listPaymentsNeedingAttention: vi.fn(),
     listProjectsStartedWithoutCallConfirmation: vi.fn(),
@@ -75,7 +74,7 @@ beforeEach(() => {
   vi.mocked(listSetupCallsBetween).mockResolvedValue([]);
   vi.mocked(readSystemHealth).mockResolvedValue([]);
   vi.mocked(countFailedDeliveries24h).mockResolvedValue(0);
-  vi.mocked(listKickoffBoard).mockResolvedValue([]);
+  vi.mocked(listPendingKickoffPrompts).mockResolvedValue([]);
   vi.mocked(listStaffRoster).mockResolvedValue([]);
   vi.mocked(listProjectsStartedWithoutCallConfirmation).mockResolvedValue([]);
   vi.mocked(readGoogleToday).mockResolvedValue([]);
@@ -84,20 +83,6 @@ beforeEach(() => {
 afterEach(() => {
   vi.restoreAllMocks();
 });
-
-function kickoffRow(values: Partial<KickoffBoardRow> & Pick<KickoffBoardRow, "businessId">): KickoffBoardRow {
-  return {
-    businessName: values.businessId,
-    startsAt: null,
-    endsAt: null,
-    heldAt: null,
-    summary: null,
-    projectStatus: "onboarding",
-    hasWebsite: true,
-    services: [],
-    ...values,
-  };
-}
 
 describe("loadTodayItems", () => {
   it("keeps the rest of the queue when one source fails, and logs the failure", async () => {
@@ -158,45 +143,23 @@ describe("failed deliveries in the queue", () => {
   });
 });
 
-describe("kickoff calls needing an outcome in the queue", () => {
-  const ENDED_EARLIER = new Date("2026-11-29T05:00:00.000Z");
-  const ENDED_LATER = new Date("2026-11-30T03:00:00.000Z");
+describe("kickoff calls needing an answer on Today", () => {
+  const ENDED = new Date("2026-11-30T03:00:00.000Z");
+  const pending = (callId: string) => ({ callId, businessId: `b-${callId}`, businessName: `Cafe ${callId}`, startsAt: null, endsAt: ENDED, firstNotifiedAt: null, lastPopupShownAt: null, answeredAt: null, reminderPushedAt: null });
 
-  it("asks for the board over the last 14 days and adds one item per business whose call ended without being marked held", async () => {
-    vi.mocked(listKickoffBoard).mockResolvedValue([
-      kickoffRow({ businessId: "b-late", endsAt: ENDED_LATER }),
-      kickoffRow({ businessId: "b-early", endsAt: ENDED_EARLIER }),
-      kickoffRow({ businessId: "b-not-yet", endsAt: new Date("2026-11-30T09:00:00.000Z") }),
-      kickoffRow({ businessId: "b-held", endsAt: ENDED_EARLIER, heldAt: new Date("2026-11-29T06:00:00.000Z") }),
-      kickoffRow({ businessId: "b-started", endsAt: ENDED_EARLIER, projectStatus: "submitted" }),
-    ]);
-    const items = await loadTodayItems(NOW, true);
-    expect(listKickoffBoard).toHaveBeenCalledWith({}, { now: NOW, lookBackDays: 14 });
-    expect(items.filter((item) => item.kind === "kickoff")).toEqual([
-      { key: "kickoff:b-early", kind: "kickoff", href: "/calls", title: "Did the kickoff happen?", detail: "b-early · ended 29 Nov, 10:30", dueAt: ENDED_EARLIER },
-      { key: "kickoff:b-late", kind: "kickoff", href: "/calls", title: "Did the kickoff happen?", detail: "b-late · ended 30 Nov, 08:30", dueAt: ENDED_LATER },
-    ]);
+  it("shows each unanswered call once, as the card, and not again as a queue row", async () => {
+    vi.mocked(listPendingKickoffPrompts).mockResolvedValue([pending("one"), pending("two")]);
+    const page = await loadTodayPage(NOW, true);
+    expect(listPendingKickoffPrompts).toHaveBeenCalledWith({}, { now: NOW, lookBackDays: 14 });
+    expect(page.pendingKickoffs.map((call) => call.businessId)).toEqual(["b-one", "b-two"]);
+    expect(page.items.some((item) => item.key.startsWith("kickoff:"))).toBe(false);
   });
 
-  it("drops the item once the call is marked held, or its booking is removed by a no-show", async () => {
-    vi.mocked(listKickoffBoard).mockResolvedValue([kickoffRow({ businessId: "b-one", endsAt: ENDED_LATER })]);
-    expect((await loadTodayItems(NOW, true)).some((item) => item.key === "kickoff:b-one")).toBe(true);
-    vi.mocked(listKickoffBoard).mockResolvedValue([kickoffRow({ businessId: "b-one", endsAt: ENDED_LATER, heldAt: new Date("2026-11-30T03:30:00.000Z") })]);
-    expect((await loadTodayItems(NOW, true)).some((item) => item.kind === "kickoff")).toBe(false);
-    vi.mocked(listKickoffBoard).mockResolvedValue([]);
-    expect((await loadTodayItems(NOW, true)).some((item) => item.kind === "kickoff")).toBe(false);
-  });
-
-  it("adds no item when no call is waiting for an outcome", async () => {
-    const items = await loadTodayItems(NOW, true);
-    expect(items.some((item) => item.kind === "kickoff")).toBe(false);
-  });
-
-  it("names kickoff calls as failed and adds no item when the board cannot be read", async () => {
-    vi.mocked(listKickoffBoard).mockRejectedValue(new Error("database down"));
+  it("names kickoff calls as failed and shows no card when they cannot be read", async () => {
+    vi.mocked(listPendingKickoffPrompts).mockRejectedValue(new Error("database down"));
     const page = await loadTodayPage(NOW, true);
     expect(page.failed).toEqual(["kickoff calls"]);
-    expect(page.items.some((item) => item.kind === "kickoff")).toBe(false);
+    expect(page.pendingKickoffs).toEqual([]);
     expect(page.items.map((item) => item.key)).toEqual(["lead:lead-1"]);
   });
 });

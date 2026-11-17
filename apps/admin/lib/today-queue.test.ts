@@ -10,7 +10,7 @@ function attention(item: Partial<AttentionItem> & Pick<AttentionItem, "key" | "k
   return { subjectId: "subject", href: "/clients/subject", name: "Om Sweets", reason: "reason", ...item };
 }
 
-const EMPTY: TodayInput = { attention: [], newTickets: [], unpaidSignups: [], newErrors: [], failedDeliveries: null, kickoffsNeedingOutcome: null, endOfToday: END_OF_TODAY };
+const EMPTY: TodayInput = { attention: [], newTickets: [], unpaidSignups: [], newErrors: [], failedDeliveries: null, endOfToday: END_OF_TODAY };
 
 describe("todayQueue", () => {
   it("puts the latest first, then what is due soonest, with every kind", () => {
@@ -24,7 +24,7 @@ describe("todayQueue", () => {
       unpaidSignups: [{ id: "lead-kumar", businessName: "Kumar Opticals", createdAt: new Date("2026-11-29T00:00:00.000Z") }],
       newErrors: [],
       failedDeliveries: null,
-      kickoffsNeedingOutcome: null,
+     
       endOfToday: END_OF_TODAY,
     });
     expect(queue.map((item) => item.key)).toEqual(["overdue:om", "request:ticket-1", "lead:green", "due:fitzone", "signup:lead-kumar"]);
@@ -197,34 +197,6 @@ describe("failed deliveries", () => {
   });
 });
 
-describe("kickoff calls needing an outcome", () => {
-  const EARLY = { businessId: "b-early", businessName: "Green Leaf Cafe", endsAt: new Date("2026-11-29T05:00:00.000Z") };
-  const LATE = { businessId: "b-late", businessName: "Kestrel Bakery", endsAt: new Date("2026-11-30T05:00:00.000Z") };
-
-  it("adds one item per business that links to the Calls page, due when its call ended", () => {
-    const queue = todayQueue({ ...EMPTY, kickoffsNeedingOutcome: [LATE, EARLY] });
-    expect(queue).toEqual([
-      { key: "kickoff:b-early", kind: "kickoff", href: "/calls", title: "Did the kickoff happen?", detail: "Green Leaf Cafe · ended 29 Nov, 10:30", dueAt: EARLY.endsAt },
-      { key: "kickoff:b-late", kind: "kickoff", href: "/calls", title: "Did the kickoff happen?", detail: "Kestrel Bakery · ended 30 Nov, 10:30", dueAt: LATE.endsAt },
-    ]);
-  });
-
-  it("is overdue, so it groups under Overdue", () => {
-    const queue = todayQueue({ ...EMPTY, kickoffsNeedingOutcome: [LATE] });
-    expect(groupTodayQueue(queue, NOW, END_OF_TODAY).map((group) => group.heading)).toEqual(["Overdue"]);
-  });
-
-  it("is gone once the call is marked: a business no longer in the list has no item", () => {
-    expect(todayQueue({ ...EMPTY, kickoffsNeedingOutcome: [EARLY, LATE] }).map((entry) => entry.key)).toEqual(["kickoff:b-early", "kickoff:b-late"]);
-    expect(todayQueue({ ...EMPTY, kickoffsNeedingOutcome: [LATE] }).map((entry) => entry.key)).toEqual(["kickoff:b-late"]);
-  });
-
-  it("adds nothing at zero or when the read failed", () => {
-    expect(todayQueue({ ...EMPTY, kickoffsNeedingOutcome: [] })).toEqual([]);
-    expect(todayQueue({ ...EMPTY, kickoffsNeedingOutcome: null })).toEqual([]);
-  });
-});
-
 function item(key: string, dueAt: Date | null): TodayItem {
   return { key, kind: "payment", href: `/${key}`, title: key, detail: "", dueAt };
 }
@@ -265,7 +237,7 @@ describe("groupTodayQueue", () => {
 
 describe("Google items", () => {
   const google = (key: string, dueAt: Date | null, action = "Open client"): TodayItem => ({ key, kind: "google", href: "/x", title: key, detail: "", action, dueAt });
-  const INPUT: TodayInput = { attention: [], newTickets: [], unpaidSignups: [], newErrors: [], failedDeliveries: null, kickoffsNeedingOutcome: null, endOfToday: END_OF_TODAY };
+  const INPUT: TodayInput = { attention: [], newTickets: [], unpaidSignups: [], newErrors: [], failedDeliveries: null, endOfToday: END_OF_TODAY };
 
   it("joins the queue, so the count follows, and sorts with the rest by due time", () => {
     const early = google("google:a", new Date(NOW.getTime() - 3_600_000));
