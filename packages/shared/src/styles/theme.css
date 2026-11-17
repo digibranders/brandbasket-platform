@@ -496,6 +496,15 @@ html[data-brand="brandbasket"]:is([data-app="customer"], [data-app="console"]) :
    #8a8d95 is 2.8:1 on the sunken one; this is ink-3 (5.2:1 on sunken, 6.1:1 on white). The customer app keeps its own token. */
 html[data-app="console"] {
   --color-ink-muted: #5f626a;
+  /* Console v2 (docs/design/redesign/05-PREMIUM-DESIGN-LANGUAGE.md 8b). The sage and error washes already exist above
+     (--color-sage-wash, --color-error-wash). These are the ones the mocks use that did not: sage text for the done
+     chip (5.9:1 on the sage wash, 7.0:1 on white; the sage fill itself is 4.2:1 on its wash, so never text), the
+     soft gold wash of a selected row, the row hover, and the shadow of overlay layers (side panel, menu, toast,
+     command bar). */
+  --color-sage-text: #3c6150;
+  --color-rattan-soft: #fbf4ea;
+  --color-row-hover: #faf9f6;
+  --shadow-popover: 0 1px 2px rgb(42 28 16 / 0.05), 0 12px 32px -12px rgb(42 28 16 / 0.14);
 }
 
 /*
