@@ -32,8 +32,8 @@ Stacked on N1 (`claude/notify-01-foundation-324d17`, PR 214). Not merged.
 | `pnpm lint` | pass |
 | `pnpm typecheck` | pass |
 | `pnpm test` | pass (admin 2040, customer 4493 at last full run, plus shared) |
-| `pnpm build` | see PR description |
-| `pnpm test:integration` | the one-command run was killed by the machine, so it was run per package (db, then shared) against my own database `brandbasket_platform_n2_test`; results in the PR description |
+| `pnpm build` | pass (needs the shell environment from AGENT-RULES section 4; without it the admin build stops on its env check) |
+| `pnpm test:integration` | the one-command run was killed by the machine, so it was run per package (db, then shared) against my own database `brandbasket_platform_n2_test`; db 120 files passed and 1 hook timeout in `migrator.integration.test.ts` under load, which passed on its own rerun (4 tests); shared 22 files, 291 tests passed |
 
 The new integration file is `packages/db/src/kickoff-prompts.integration.test.ts` (8 tests, passing).
 
