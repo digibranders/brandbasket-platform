@@ -20,7 +20,7 @@ export function StartScreen({ view }: { readonly view: StartView }) {
     <div className="grid items-start gap-6 lg:grid-cols-3">
       <section
         aria-label="Personalise your setup"
-        className="relative flex flex-col gap-6 rounded-overlay border border-border border-t-2 border-t-accent-gold bg-surface p-6 shadow-hero sm:p-7 lg:col-span-2"
+        className="relative flex flex-col gap-6 rounded-overlay border border-border bg-surface p-6 shadow-hero sm:p-7 lg:col-span-2"
       >
         {view.step.kind === "question" ? (
           <>

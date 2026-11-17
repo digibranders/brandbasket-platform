@@ -1,0 +1,1223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Console v2 patterns</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Red+Hat+Display:wght@500;600;700&family=Red+Hat+Text:wght@400;500;600&family=Red+Hat+Mono:wght@400;500;600&display=swap">
+<style>
+:root {
+  --paper: #F6F5F2; --surface: #FFFFFF; --sunken: #EEECE7; --line: #E3E0D9; --field: #CFCBC2;
+  --ink: #15161A; --ink-2: #4E5057; --ink-3: #5F626A;
+  --gold: #C48A47; --gold-wash: #F4E6D3; --gold-soft: #FBF4EA; --gold-deep: #8A5524;
+  --sage: #4F7A63; --sage-wash: #E5EFE8; --sage-text: #3C6150;
+  --error: #B42318; --error-wash: #FDECEA;
+  --hover: #FAF9F6;
+  --sh-rest: 0 1px 0 rgba(42,28,16,.03);
+  --sh-pop: 0 1px 2px rgba(42,28,16,.05), 0 12px 32px -12px rgba(42,28,16,.14);
+  --sh-dialog: 0 24px 64px -16px rgba(42,28,16,.28);
+  --r-ctl: 8px; --r-card: 14px; --r-hero: 20px;
+  --ease: cubic-bezier(.16,1,.3,1);
+  color-scheme: light;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: var(--paper); color: var(--ink); font: 400 15px/24px 'Red Hat Text', system-ui, sans-serif; }
+button, input, select { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible, .is-focus { outline: 2px solid var(--ink); outline-offset: 2px; }
+.mono { font-family: 'Red Hat Mono', ui-monospace, monospace; font-variant-numeric: tabular-nums; }
+h1, h2, h3 { font-family: 'Red Hat Display', system-ui, sans-serif; letter-spacing: -.01em; }
+svg.i { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+/* page chrome */
+#sheet-title:focus { outline: none; }
+.top { position: sticky; top: 0; z-index: 30; background: var(--surface); border-bottom: 1px solid var(--line); }
+.top-in { max-width: 1440px; margin: 0 auto; padding: 12px 24px; display: flex; gap: 16px; align-items: center; flex-wrap: wrap; }
+.top-in strong { font: 600 15px/20px 'Red Hat Display'; }
+.seg { display: inline-flex; background: var(--sunken); border-radius: var(--r-ctl); padding: 2px; }
+.seg button { border: 0; background: transparent; height: 32px; padding: 0 12px; border-radius: 6px; font-weight: 500; font-size: 13px; }
+.seg button[aria-pressed="true"] { background: var(--surface); box-shadow: 0 1px 2px rgba(42,28,16,.1); font-weight: 600; }
+.top nav { display: flex; gap: 4px; flex-wrap: wrap; margin-left: auto; }
+.top nav a { font-size: 13px; line-height: 20px; padding: 6px 10px; border-radius: var(--r-ctl); color: var(--ink-2); text-decoration: none; }
+.top nav a:hover { background: var(--sunken); color: var(--ink); }
+main { padding: 32px 24px 96px; }
+.stage { margin: 0 auto; max-width: 1440px; container-type: inline-size; container-name: stage; transition: max-width 220ms var(--ease); }
+.stage.phone { max-width: 390px; }
+.stage.phone, .stage.desk { }
+.intro { margin-bottom: 40px; max-width: 760px; }
+.intro h1 { font-size: 36px; line-height: 40px; font-weight: 700; letter-spacing: -.02em; margin-bottom: 8px; }
+.intro p { color: var(--ink-2); margin-top: 8px; }
+.intro ul { margin: 12px 0 0 20px; color: var(--ink-2); }
+section.pat { margin-bottom: 64px; scroll-margin-top: 72px; }
+section.pat > h2 { font-size: 26px; line-height: 32px; font-weight: 600; margin-bottom: 4px; }
+section.pat > .lede { color: var(--ink-2); max-width: 760px; margin-bottom: 16px; }
+.kbd-table { width: 100%; max-width: 760px; border-collapse: collapse; font-size: 13px; line-height: 20px; margin-bottom: 20px; }
+.kbd-table th { text-align: left; font-weight: 600; color: var(--ink-2); padding: 6px 12px 6px 0; border-bottom: 1px solid var(--line); font-size: 12px; }
+.kbd-table td { padding: 6px 12px 6px 0; border-bottom: 1px solid var(--line); vertical-align: top; }
+kbd { font: 500 12px/16px 'Red Hat Mono', monospace; background: var(--sunken); border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 6px; padding: 1px 6px; color: var(--ink); white-space: nowrap; }
+.grid { display: grid; gap: 24px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.grid.one { grid-template-columns: minmax(0, 1fr); }
+@container stage (max-width: 760px) { .grid { grid-template-columns: minmax(0, 1fr); } }
+.spec { min-width: 0; }
+.spec > .tag { display: flex; align-items: center; gap: 8px; font-size: 12px; line-height: 16px; font-weight: 600; color: var(--ink-2); margin-bottom: 8px; }
+.spec > .tag span { background: var(--sunken); border-radius: 9999px; padding: 2px 10px; }
+.spec > .note { font-size: 13px; line-height: 20px; color: var(--ink-3); margin-top: 8px; }
+.card { position: relative; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-card); box-shadow: var(--sh-rest); overflow: hidden; }
+
+/* buttons */
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 36px; padding: 0 14px; border-radius: var(--r-ctl); border: 1px solid transparent; font-weight: 600; font-size: 13px; line-height: 20px; text-decoration: none; white-space: nowrap; transition: background-color 120ms, border-color 120ms; }
+.btn:active:not(:disabled) { transform: translateY(1px); }
+.btn.pri { background: var(--ink); color: #fff; box-shadow: inset 0 1px 0 rgba(255,255,255,.08); }
+.btn.pri:hover, .btn.pri.is-hover { background: #2A2B31; }
+.btn.sec { background: var(--surface); border-color: var(--line); }
+.btn.sec:hover, .btn.sec.is-hover { background: var(--hover); border-color: var(--field); }
+.btn.soft { background: var(--sunken); }
+.btn.soft:hover, .btn.soft.is-hover { background: #E6E3DC; }
+.btn.danger { background: var(--error); color: #fff; }
+.btn.quiet { background: transparent; padding: 0 8px; }
+.btn.quiet:hover { background: var(--sunken); }
+.btn.icon { width: 36px; padding: 0; }
+.btn:disabled, .btn[aria-disabled="true"] { opacity: .45; cursor: not-allowed; }
+.btn.busy { cursor: progress; }
+.spin-dots::after { content: "..."; display: inline-block; width: 1.2em; text-align: left; animation: dots 1.2s steps(4) infinite; overflow: hidden; vertical-align: bottom; }
+@keyframes dots { from { width: 0; } to { width: 1.2em; } }
+a.link { color: var(--ink); font-weight: 600; text-decoration: none; }
+a.link:hover { background: var(--sunken); }
+
+/* chips */
+.chip { display: inline-flex; align-items: center; gap: 4px; border-radius: 9999px; padding: 2px 10px; font-size: 12px; line-height: 16px; font-weight: 600; white-space: nowrap; }
+.chip.late { background: var(--error-wash); color: var(--error); }
+.chip.wait { background: var(--gold-wash); color: var(--gold-deep); }
+.chip.done { background: var(--sage-wash); color: var(--sage-text); }
+.chip.idle { background: var(--sunken); color: var(--ink-2); }
+.tile { width: 28px; height: 28px; border-radius: 8px; background: var(--sunken); display: grid; place-items: center; color: var(--ink-2); flex: none; }
+
+/* DataTable */
+.dt { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 13.5px; line-height: 20px; }
+.dt th { position: sticky; top: 0; background: var(--surface); z-index: 1; text-align: left; font-size: 12px; line-height: 16px; font-weight: 600; color: var(--ink-2); padding: 0 12px; height: 36px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+.dt td { height: 44px; padding: 0 12px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+.dt tr:last-child td { border-bottom: 0; }
+.dt td.sel, .dt th.sel { width: 40px; padding-right: 0; }
+.dt td.num, .dt th.num { text-align: right; }
+.dt td.act { text-align: right; white-space: nowrap; width: 1%; }
+.dt tbody tr { transition: background-color 120ms; cursor: default; }
+.dt tbody tr:hover, .dt tbody tr.is-hover { background: var(--hover); }
+.dt tbody tr.is-cursor td:first-child { box-shadow: inset 2px 0 0 var(--ink-2); }
+.dt tbody tr.is-selected { background: var(--gold-soft); }
+.dt tbody tr.is-selected td:first-child { box-shadow: inset 3px 0 0 var(--gold); }
+.dt tbody tr.is-disabled { color: var(--ink-3); }
+.dt tbody tr.is-disabled .name { font-weight: 500; }
+.obj { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.obj .t { min-width: 0; }
+.obj .name { font-weight: 600; line-height: 18px; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.obj .sub { font-size: 12px; line-height: 16px; color: var(--ink-3); display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.age { font-family: 'Red Hat Mono', monospace; font-size: 13px; color: var(--ink-2); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.age.late { color: var(--error); font-weight: 500; }
+.cb { appearance: none; width: 18px; height: 18px; border: 1.5px solid #8C8F96; border-radius: 5px; background: var(--surface); display: inline-grid; place-items: center; vertical-align: middle; cursor: pointer; }
+.cb:checked { background: var(--ink); border-color: var(--ink); }
+.cb:checked::after { content: ""; width: 9px; height: 5px; border-left: 2px solid #fff; border-bottom: 2px solid #fff; transform: translateY(-1px) rotate(-45deg); }
+.cb:disabled { opacity: .4; cursor: not-allowed; }
+.grp { background: var(--paper); font-size: 12px; line-height: 16px; font-weight: 600; color: var(--ink-2); padding: 8px 12px; border-bottom: 1px solid var(--line); display: flex; gap: 8px; align-items: center; }
+.grp .mono { font-weight: 500; }
+.hide-sm { }
+@container stage (max-width: 760px) { .hide-sm { display: none !important; } .dt td:not(.sel):not(.num):not(.act) { max-width: 0; width: 100%; } .dt .tile { display: none; } .dt td.num, .dt th.num { padding: 0 4px; } .dt td { padding: 0 8px; } .btn { height: 44px; } .btn.icon { width: 44px; } .dt td.sel { width: 44px; } }
+
+.sk { background: var(--sunken); border-radius: 6px; height: 12px; animation: pulse 1.6s ease-in-out infinite; }
+@keyframes pulse { 50% { opacity: .5; } }
+.state { padding: 32px 24px; text-align: center; }
+.state h3 { font-size: 17px; line-height: 24px; font-weight: 600; margin-bottom: 4px; }
+.state p { color: var(--ink-2); font-size: 14px; line-height: 20px; max-width: 360px; margin: 0 auto 16px; }
+.state .ic { width: 40px; height: 40px; border-radius: 9999px; margin: 0 auto 12px; display: grid; place-items: center; }
+.ic.sage { background: var(--sage-wash); color: var(--sage-text); }
+.ic.err { background: var(--error-wash); color: var(--error); }
+.ic.sun { background: var(--sunken); color: var(--ink-2); }
+
+/* RowActions */
+.ra { position: relative; display: inline-flex; gap: 4px; align-items: center; }
+.menu { min-width: 224px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; box-shadow: var(--sh-pop); padding: 4px; text-align: left; }
+.menu [role="menuitem"] { display: flex; width: 100%; align-items: center; gap: 10px; min-height: 36px; padding: 6px 10px; border: 0; background: transparent; border-radius: 8px; font-size: 13.5px; line-height: 20px; text-align: left; }
+.menu [role="menuitem"]:hover, .menu [role="menuitem"].is-hover { background: var(--sunken); }
+.menu [role="menuitem"][aria-disabled="true"] { color: var(--ink-3); cursor: not-allowed; }
+.menu [role="menuitem"][aria-disabled="true"]:hover { background: transparent; }
+.menu .why { font-size: 12px; line-height: 16px; color: var(--ink-3); }
+.menu .sep { height: 1px; background: var(--line); margin: 4px 6px; }
+.menu .bad { color: var(--error); }
+.menu kbd { margin-left: auto; }
+.pop { position: relative; }
+.pop .menu { position: absolute; right: 0; top: 40px; z-index: 5; }
+.pop-static .menu { margin-top: 4px; }
+
+/* SidePanel */
+.sp { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-card); box-shadow: var(--sh-pop); display: flex; flex-direction: column; overflow: hidden; max-width: 480px; }
+.sp.full { max-width: none; }
+.sp-h { display: flex; gap: 12px; align-items: flex-start; padding: 16px 20px; border-bottom: 1px solid var(--line); }
+.sp-h h3 { font-size: 17px; line-height: 24px; font-weight: 600; }
+.sp-h .sub { font-size: 13px; line-height: 20px; color: var(--ink-3); }
+.sp-h .x { margin-left: auto; }
+.sp-b { padding: 16px 20px; display: grid; gap: 16px; flex: 1; }
+.sp-f { position: sticky; bottom: 0; padding: 12px 20px; border-top: 1px solid var(--line); background: var(--surface); display: flex; gap: 8px; justify-content: flex-end; }
+.kv { display: grid; grid-template-columns: 120px 1fr; gap: 6px 12px; font-size: 13.5px; line-height: 20px; }
+.kv dt { color: var(--ink-3); }
+.lbl { font-size: 12px; line-height: 16px; font-weight: 600; color: var(--ink-2); margin-bottom: 4px; display: block; }
+.quote { background: var(--paper); border-radius: 10px; padding: 10px 12px; font-size: 13.5px; line-height: 20px; color: var(--ink-2); }
+.backdrop { background: var(--paper); border: 1px dashed var(--line); border-radius: var(--r-card); padding: 16px; display: grid; grid-template-columns: minmax(0, 1fr) 480px; gap: 16px; align-items: start; }
+@container stage (max-width: 1000px) { .backdrop { grid-template-columns: minmax(0, 1fr); } .backdrop > .dim { display: none; } }
+.dim { opacity: .55; }
+
+/* FilterBar */
+.fb { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-card); box-shadow: var(--sh-rest); padding: 10px 12px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; }
+.fb-row { min-width: 0; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.pills { display: flex; gap: 4px; flex-wrap: wrap; }
+.pill { height: 32px; display: inline-flex; align-items: center; gap: 6px; border: 0; background: transparent; border-radius: 9999px; padding: 0 12px; font-size: 13px; font-weight: 500; color: var(--ink-2); transition: background-color 120ms; }
+.pill .n { font-family: 'Red Hat Mono', monospace; font-size: 12px; color: var(--ink-3); }
+.pill:hover, .pill.is-hover { background: var(--sunken); color: var(--ink); }
+.pill[aria-pressed="true"] { background: var(--ink); color: #fff; }
+.pill[aria-pressed="true"] .n { color: #D5D6DA; }
+.pill:disabled { opacity: .45; cursor: not-allowed; }
+.pill.late .n { color: var(--error); font-weight: 600; }
+.search { position: relative; margin-left: auto; min-width: 220px; flex: 1 1 220px; max-width: 320px; }
+.search svg { position: absolute; left: 10px; top: 9px; color: var(--ink-3); }
+.search input, .field { width: 100%; height: 36px; border: 1px solid var(--field); border-radius: var(--r-ctl); background: var(--surface); padding: 0 12px 0 34px; font-size: 14px; }
+.field { padding-left: 12px; }
+.search input:hover, .field:hover { border-color: #A8A59C; }
+.search input::placeholder, .field::placeholder { color: var(--ink-3); }
+.search kbd { position: absolute; right: 8px; top: 8px; }
+.search input:disabled { background: var(--sunken); cursor: not-allowed; }
+@container stage (max-width: 760px) { .search { min-width: 100%; max-width: none; margin-left: 0; } .search input, .field { height: 44px; } .search svg { top: 13px; } .search kbd { display: none; } .pills { flex-wrap: nowrap; overflow-x: auto; width: 100%; padding-bottom: 2px; } .pill { height: 44px; flex: none; } }
+.echo { display: inline-flex; align-items: center; gap: 6px; height: 28px; background: var(--sunken); border-radius: 9999px; padding: 0 4px 0 12px; font-size: 12px; font-weight: 600; }
+.echo button { width: 24px; height: 24px; border: 0; background: transparent; border-radius: 9999px; display: grid; place-items: center; }
+.echo button:hover { background: #E0DDD6; }
+.notice { display: flex; gap: 10px; align-items: center; font-size: 13px; line-height: 20px; border-radius: 10px; padding: 8px 12px; }
+.notice.err { background: var(--error-wash); color: var(--error); }
+
+/* InlineEdit */
+.ie { display: grid; gap: 4px; }
+.ie-view { display: inline-flex; align-items: center; gap: 8px; min-height: 36px; padding: 0 8px; margin-left: -8px; border: 1px solid transparent; border-radius: var(--r-ctl); background: transparent; font-size: 15px; text-align: left; transition: background-color 120ms; }
+.ie-view .i { color: var(--ink-3); opacity: 0; transition: opacity 120ms; }
+.ie-view:hover, .ie-view.is-hover { background: var(--sunken); }
+.ie-view:hover .i, .ie-view.is-hover .i, .ie-view:focus-visible .i { opacity: 1; }
+.ie-view[aria-disabled="true"] { cursor: default; }
+.ie-view[aria-disabled="true"]:hover { background: transparent; }
+.ie-edit { display: flex; gap: 6px; align-items: center; }
+.ie-edit .field { height: 36px; }
+.ie-edit .field.bad { border-color: var(--error); }
+.ie-err { display: flex; gap: 6px; align-items: flex-start; color: var(--error); font-size: 13px; line-height: 20px; }
+.ie-hint { font-size: 12px; line-height: 16px; color: var(--ink-3); }
+@container stage (max-width: 760px) { .ie-view, .ie-edit .field { min-height: 44px; height: 44px; } }
+
+/* Toast */
+.toast { display: flex; align-items: center; gap: 12px; min-height: 48px; padding: 8px 8px 8px 16px; background: var(--ink); color: #fff; border-radius: 12px; box-shadow: var(--sh-pop); font-size: 14px; line-height: 20px; max-width: 440px; }
+.toast .msg { flex: 1; }
+.toast .btn { color: #fff; background: rgba(255,255,255,.12); height: 32px; }
+.toast .btn:hover, .toast .btn.is-hover { background: rgba(255,255,255,.2); }
+.toast .btn:focus-visible, .toast .btn.is-focus { outline-color: #fff; }
+.toast .btn:disabled { opacity: .5; }
+.toast .x { width: 32px; height: 32px; padding: 0; background: transparent; }
+.toast .count { font-family: 'Red Hat Mono', monospace; font-size: 12px; color: #B8BAC2; }
+.toast.err { background: #fff; color: var(--error); border: 1px solid var(--error); }
+.toast.err .btn { color: var(--error); background: var(--error-wash); }
+.toast.err .btn:hover { background: #FAD9D5; }
+.toast.err .btn:focus-visible { outline-color: var(--ink); }
+.toast.err .x { color: var(--error); }
+.toast.err .msg { color: var(--ink); }
+.toast.err svg.lead { color: var(--error); }
+.stack { display: grid; gap: 8px; justify-items: start; }
+@container stage (max-width: 760px) { .toast { max-width: none; width: 100%; } .toast .btn { height: 44px; } .toast .x { width: 44px; height: 44px; } }
+.live-region { position: fixed; left: 24px; bottom: 24px; z-index: 80; display: grid; gap: 8px; }
+@media (max-width: 600px) { .top { position: static; } .live-region { left: 16px; right: 16px; } }
+.toast.in { animation: rise 220ms var(--ease); }
+@keyframes rise { from { opacity: 0; transform: translateY(8px); } }
+
+/* BulkBar */
+.bb { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; background: var(--surface); border: 1px solid var(--ink); border-radius: var(--r-card); box-shadow: var(--sh-pop); padding: 8px 12px; }
+.bb .count { font-weight: 600; font-size: 14px; margin-right: 8px; }
+.bb .count .mono { font-weight: 500; }
+.bb .sp-x { margin-left: auto; }
+.bb .why { font-size: 12px; line-height: 16px; color: var(--ink-3); }
+@container stage (max-width: 760px) { .bb { position: sticky; bottom: 8px; } .bb .btn { flex: 1 1 auto; } }
+
+/* CommandBar */
+.cb-wrap { width: 100%; max-width: 640px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-hero); box-shadow: var(--sh-dialog); overflow: hidden; }
+.cb-in { display: flex; align-items: center; gap: 10px; padding: 0 16px; height: 56px; border-bottom: 1px solid var(--line); }
+.cb-in input { flex: 1; border: 0; background: transparent; font-size: 16px; height: 100%; outline: 0; min-width: 0; }
+.cb-in input::placeholder { color: var(--ink-3); }
+.cb-in:focus-within { box-shadow: inset 0 -2px 0 var(--ink); }
+.cb-in .mode { font-family: 'Red Hat Mono', monospace; font-size: 12px; background: var(--sunken); border-radius: 6px; padding: 2px 8px; }
+.cb-list { max-height: 360px; overflow: auto; padding: 8px; }
+.cb-g { font-size: 12px; line-height: 16px; font-weight: 600; color: var(--ink-3); padding: 8px 10px 4px; }
+.cb-i { display: flex; align-items: center; gap: 12px; min-height: 44px; padding: 6px 10px; border-radius: 10px; font-size: 14px; line-height: 20px; border: 0; background: transparent; width: 100%; text-align: left; }
+.cb-i .t { min-width: 0; flex: 1; }
+.cb-i .t b { font-weight: 600; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cb-i .t span { font-size: 12px; line-height: 16px; color: var(--ink-3); display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cb-i mark { background: var(--gold-wash); color: inherit; border-radius: 3px; }
+.cb-i:hover { background: var(--hover); }
+.cb-i[aria-selected="true"], .cb-i.is-active { background: var(--sunken); }
+.cb-i[aria-disabled="true"] { color: var(--ink-3); cursor: not-allowed; }
+.cb-i .go { font-size: 12px; color: var(--ink-3); }
+.cb-f { display: flex; gap: 16px; padding: 10px 16px; border-top: 1px solid var(--line); font-size: 12px; line-height: 16px; color: var(--ink-3); flex-wrap: wrap; }
+.cb-f span { display: inline-flex; gap: 6px; align-items: center; }
+.cb-pad { padding: 24px 16px; text-align: center; }
+.cb-pad p { color: var(--ink-2); font-size: 14px; line-height: 20px; margin-bottom: 12px; }
+.cb-pad .row { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
+.cb-sk { padding: 8px 10px; display: grid; gap: 10px; }
+.cb-sk > div { display: flex; gap: 12px; align-items: center; min-height: 36px; }
+
+/* dialogs */
+dialog { border: 0; padding: 0; background: transparent; max-width: calc(100vw - 32px); margin: auto; }
+dialog::backdrop { background: rgba(21,22,26,.40); }
+dialog[open] .cb-wrap, dialog[open] .dlg { animation: pop 180ms var(--ease); }
+@keyframes pop { from { opacity: 0; transform: scale(.98); } }
+dialog.cmd { margin-top: 12vh; width: 640px; }
+.dlg { background: var(--surface); border-radius: var(--r-hero); box-shadow: var(--sh-dialog); padding: 28px; width: 440px; max-width: 100%; }
+.dlg h3 { font-size: 22px; line-height: 28px; font-weight: 600; margin-bottom: 8px; }
+.dlg p { color: var(--ink-2); margin-bottom: 20px; }
+.dlg .foot { display: flex; gap: 8px; justify-content: flex-end; }
+.help-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px 32px; margin: 16px 0 20px; font-size: 13.5px; line-height: 20px; }
+.help-grid h4 { grid-column: 1 / -1; font: 600 12px/16px 'Red Hat Text'; color: var(--ink-2); margin-top: 12px; }
+.help-grid div { display: flex; justify-content: space-between; gap: 12px; padding: 4px 0; border-bottom: 1px solid var(--line); }
+@media (max-width: 600px) { .help-grid { grid-template-columns: 1fr; } }
+
+/* live demo */
+.demo { display: grid; gap: 12px; }
+.demo-note { font-size: 13px; line-height: 20px; color: var(--ink-2); background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-card); padding: 10px 12px; }
+.demo-note kbd { margin: 0 1px; }
+.overlay-demo { position: relative; }
+.sheet { position: fixed; top: 0; right: 0; bottom: 0; width: 480px; max-width: 100%; z-index: 60; background: var(--surface); border-left: 1px solid var(--line); box-shadow: var(--sh-pop); display: flex; flex-direction: column; transform: translateX(100%); visibility: hidden; transition: transform 240ms var(--ease), visibility 0s linear 240ms; }
+.sheet.open { transform: none; visibility: visible; transition: transform 240ms var(--ease); }
+.sheet-scrim { position: fixed; inset: 0; background: rgba(21,22,26,.40); z-index: 55; display: none; }
+@media (max-width: 1099px) { .sheet-scrim.open { display: block; } .sheet { border-left: 0; } }
+.checks { margin: 8px 0 0 20px; color: var(--ink-2); font-size: 13.5px; line-height: 20px; }
+.dos { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 20px; max-width: 760px; }
+@container stage (max-width: 760px) { .dos { grid-template-columns: 1fr; } }
+.dos h4 { font: 600 13px/20px 'Red Hat Text'; margin-bottom: 4px; }
+.dos ul { margin-left: 18px; font-size: 13.5px; line-height: 20px; color: var(--ink-2); }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+  .sk { opacity: .75; }
+}
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4 4"/></symbol>
+  <symbol id="i-dots" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.2"/><circle cx="12" cy="12" r="1.2"/><circle cx="19" cy="12" r="1.2"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7.5"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></symbol>
+  <symbol id="i-pencil" viewBox="0 0 24 24"><path d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16z"/></symbol>
+  <symbol id="i-undo" viewBox="0 0 24 24"><path d="M9 7 4 12l5 5"/><path d="M4 12h10a6 6 0 0 1 0 12" transform="translate(0 -5)"/></symbol>
+  <symbol id="i-mail" viewBox="0 0 24 24"><rect x="3.5" y="5.5" width="17" height="13" rx="2"/><path d="m4 7 8 6 8-6"/></symbol>
+  <symbol id="i-alert" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 8v5M12 16.2v.1"/></symbol>
+  <symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="9" r="3.5"/><path d="M5 19c1-3.5 4-5 7-5s6 1.5 7 5"/></symbol>
+  <symbol id="i-card" viewBox="0 0 24 24"><rect x="3.5" y="6" width="17" height="12" rx="2"/><path d="M3.5 10.5h17"/></symbol>
+  <symbol id="i-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M3.5 12h17M12 3.5c2.5 2.5 3.5 5.5 3.5 8.5S14.5 18 12 20.5C9.5 18 8.5 15 8.5 12S9.5 6 12 3.5z"/></symbol>
+  <symbol id="i-chev" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></symbol>
+  <symbol id="i-file" viewBox="0 0 24 24"><path d="M7 3.5h7l4 4v13H7z"/><path d="M14 3.5v4h4"/></symbol>
+  <symbol id="i-kbd" viewBox="0 0 24 24"><rect x="3" y="6.5" width="18" height="11" rx="2"/><path d="M7 10.5h.1M11 10.5h.1M15 10.5h.1M8 14h8"/></symbol>
+</svg>
+
+<header class="top">
+  <div class="top-in">
+    <strong>Console v2 patterns</strong>
+    <div class="seg" role="group" aria-label="Specimen width">
+      <button type="button" id="w-desk" aria-pressed="true">1440 wide</button>
+      <button type="button" id="w-phone" aria-pressed="false">390 wide</button>
+    </div>
+    <button type="button" class="btn sec" id="open-help"><svg class="i"><use href="#i-kbd"/></svg>Shortcuts <kbd>?</kbd></button>
+    <button type="button" class="btn sec" id="open-cmd"><svg class="i"><use href="#i-search"/></svg>Command bar <kbd>Ctrl K</kbd></button>
+    <nav aria-label="Patterns">
+      <a href="#datatable">DataTable</a><a href="#rowactions">RowActions</a><a href="#sidepanel">SidePanel</a><a href="#filterbar">FilterBar</a><a href="#inlineedit">InlineEdit</a><a href="#toast">Toast</a><a href="#bulkbar">BulkBar</a><a href="#commandbar">CommandBar</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+<div class="stage desk" id="stage">
+
+<div class="intro">
+  <h1>Console v2 patterns</h1>
+  <p>The addendum from section 4 of the console redesign plan, as a living page. Eight patterns, each in every state: default, hover or focus, loading, empty, error, selected and disabled. Switch the width above to see the 390 layout. Everything under "Try it" is live: a real table, panel, toast and command bar you can drive from the keyboard.</p>
+  <ul>
+    <li>Rows are 44px, buttons 36px (44px at 390), focus is a 2px ink ring, motion is off under reduced motion.</li>
+    <li>Gold is kept to the selected-row wash and one marker. Specimens are not product screens, so the budget of three per viewport applies when they are placed on one.</li>
+    <li>Names are placeholders: <span class="mono">&lt;business&gt;</span>. Every column and word traces to a field named in the plan (section 3).</li>
+    <li>Icons are inline SVG placeholders. The build uses the Phosphor set, regular weight.</li>
+  </ul>
+</div>
+
+<!-- ============ DATATABLE ============ -->
+<section class="pat" id="datatable">
+  <h2>DataTable</h2>
+  <p class="lede">The one list pattern. Sticky header, 44px rows, the object first (bold name, small line under it), figures in Mono, an age that turns red only when late, one verb and a three dot menu last. Used by Today, Clients, Inbox, Payments, Invoices, Compliance and System.</p>
+  <table class="kbd-table">
+    <thead><tr><th>Key</th><th>Does</th></tr></thead>
+    <tbody>
+      <tr><td><kbd>j</kbd> <kbd>k</kbd> or arrows</td><td>Move the row cursor down or up. The table is one tab stop; the cursor row is the active descendant.</td></tr>
+      <tr><td><kbd>Enter</kbd></td><td>Open the cursor row in the SidePanel (sets <span class="mono">?open=</span>).</td></tr>
+      <tr><td><kbd>e</kbd></td><td>Run the row's one verb. Confirms first if the verb emails the customer.</td></tr>
+      <tr><td><kbd>x</kbd> or <kbd>Space</kbd></td><td>Select or clear the cursor row. <kbd>Shift</kbd> with <kbd>j</kbd> or <kbd>k</kbd> extends the selection.</td></tr>
+      <tr><td><kbd>.</kbd> or <kbd>Shift F10</kbd></td><td>Open the row menu. Right click does the same.</td></tr>
+      <tr><td><kbd>Esc</kbd></td><td>Clears the selection when nothing else is open.</td></tr>
+    </tbody>
+  </table>
+
+  <div class="grid">
+    <div class="spec">
+      <div class="tag"><span>Default, hover, selected, cursor, late</span></div>
+      <div class="card">
+        <table class="dt" aria-label="Default table">
+          <thead><tr><th class="sel"><input class="cb" type="checkbox" aria-label="Select all"></th><th>Work</th><th class="hide-sm">Type</th><th class="num">Waiting</th><th class="num"><span class="sr">Actions</span></th></tr></thead>
+          <tbody>
+            <tr>
+              <td class="sel"><input class="cb" type="checkbox" aria-label="Select row"></td>
+              <td><div class="obj"><span class="tile"><svg class="i"><use href="#i-mail"/></svg></span><div class="t"><span class="name">&lt;business&gt;</span><span class="sub">Replied once, asked for a quote</span></div></div></td>
+              <td class="hide-sm"><span class="chip late">Late</span></td>
+              <td class="num"><span class="age late">5h 12m</span></td>
+              <td class="act"><span class="ra"><button class="btn sec">Reply</button><button class="btn quiet icon" aria-label="More actions"><svg class="i"><use href="#i-dots"/></svg></button></span></td>
+            </tr>
+            <tr class="is-hover">
+              <td class="sel"><input class="cb" type="checkbox" aria-label="Select row"></td>
+              <td><div class="obj"><span class="tile"><svg class="i"><use href="#i-user"/></svg></span><div class="t"><span class="name">&lt;business&gt;</span><span class="sub">New enquiry, no contact yet (hover)</span></div></div></td>
+              <td class="hide-sm"><span class="chip wait">Due today</span></td>
+              <td class="num"><span class="age">42m</span></td>
+              <td class="act"><span class="ra"><button class="btn sec">Contact</button><button class="btn quiet icon" aria-label="More actions"><svg class="i"><use href="#i-dots"/></svg></button></span></td>
+            </tr>
+            <tr class="is-selected">
+              <td class="sel"><input class="cb" type="checkbox" checked aria-label="Select row"></td>
+              <td><div class="obj"><span class="tile"><svg class="i"><use href="#i-card"/></svg></span><div class="t"><span class="name">&lt;business&gt;</span><span class="sub">Payment needs a look (selected)</span></div></div></td>
+              <td class="hide-sm"><span class="chip wait">Money</span></td>
+              <td class="num"><span class="age">3h 04m</span></td>
+              <td class="act"><span class="ra"><button class="btn sec">Check</button><button class="btn quiet icon" aria-label="More actions"><svg class="i"><use href="#i-dots"/></svg></button></span></td>
+            </tr>
+            <tr class="is-cursor">
+              <td class="sel"><input class="cb" type="checkbox" aria-label="Select row"></td>
+              <td><div class="obj"><span class="tile"><svg class="i"><use href="#i-globe"/></svg></span><div class="t"><span class="name">&lt;business&gt;</span><span class="sub">Preview sent, customer silent (keyboard cursor)</span></div></div></td>
+              <td class="hide-sm"><span class="chip idle">Build</span></td>
+              <td class="num"><span class="age">5d 1h</span></td>
+              <td class="act"><span class="ra"><button class="btn sec is-focus">Nudge</button><button class="btn quiet icon" aria-label="More actions"><svg class="i"><use href="#i-dots"/></svg></button></span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="note">Selected rows use the gold wash and a 3px left marker. The keyboard cursor is a 2px ink marker, so a selected row and the cursor row never look alike. Late is the age in red plus the word "Late".</p>
+    </div>
+
+    <div class="spec">
+      <div class="tag"><span>Disabled rows and actions</span></div>
+      <div class="card">
+        <table class="dt" aria-label="Disabled table">
+          <thead><tr><th class="sel"><span class="sr">Select</span></th><th>Work</th><th class="hide-sm">Type</th><th class="num">Waiting</th><th class="num"><span class="sr">Actions</span></th></tr></thead>
+          <tbody>
+            <tr class="is-disabled">
+              <td class="sel"><input class="cb" type="checkbox" disabled aria-label="Select row, unavailable"></td>
+              <td><div class="obj"><span class="tile"><svg class="i"><use href="#i-mail"/></svg></span><div class="t"><span class="name">&lt;business&gt;</span><span class="sub">Waiting on customer, nothing for you to do</span></div></div></td>
+              <td class="hide-sm"><span class="chip idle">Waiting</span></td>
+              <td class="num"><span class="age">1d 2h</span></td>
+              <td class="act"><span class="ra"><button class="btn sec" aria-disabled="true">Reply</button><button class="btn quiet icon" aria-label="More actions"><svg class="i"><use href="#i-dots"/></svg></button></span></td>
+            </tr>
+            <tr class="is-disabled">
+              <td class="sel"><input class="cb" type="checkbox" disabled aria-label="Select row, unavailable"></td>
+              <td><div class="obj"><span class="tile"><svg class="i"><use href="#i-card"/></svg></span><div class="t"><span class="name">&lt;business&gt;</span><span class="sub">Saving the change</span></div></div></td>
+              <td class="hide-sm"><span class="chip idle">Saving</span></td>
+              <td class="num"><span class="age">now</span></td>
+              <td class="act"><span class="ra"><button class="btn sec busy" aria-busy="true" disabled>Saving<span class="spin-dots" aria-hidden="true"></span></button></span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="note">A disabled verb stays visible and says why in the row line or its tooltip. A row that is saving is not selectable and shows the verb as busy, never a spinner icon.</p>
+    </div>
+
+    <div class="spec">
+      <div class="tag"><span>Loading</span></div>
+      <div class="card" role="status" aria-label="Loading the list">
+        <table class="dt" aria-hidden="true">
+          <thead><tr><th class="sel"></th><th>Work</th><th class="hide-sm">Type</th><th class="num">Waiting</th><th></th></tr></thead>
+          <tbody>
+            <tr><td class="sel"><div class="sk" style="width:18px;height:18px"></div></td><td><div class="obj"><div class="sk" style="width:28px;height:28px;border-radius:8px"></div><div class="t" style="flex:1"><div class="sk" style="width:55%"></div></div></div></td><td class="hide-sm"><div class="sk" style="width:56px"></div></td><td class="num"><div class="sk" style="width:44px;margin-left:auto"></div></td><td class="act"><div class="sk" style="width:64px;height:28px"></div></td></tr>
+            <tr><td class="sel"><div class="sk" style="width:18px;height:18px"></div></td><td><div class="obj"><div class="sk" style="width:28px;height:28px;border-radius:8px"></div><div class="t" style="flex:1"><div class="sk" style="width:40%"></div></div></div></td><td class="hide-sm"><div class="sk" style="width:56px"></div></td><td class="num"><div class="sk" style="width:44px;margin-left:auto"></div></td><td class="act"><div class="sk" style="width:64px;height:28px"></div></td></tr>
+            <tr><td class="sel"><div class="sk" style="width:18px;height:18px"></div></td><td><div class="obj"><div class="sk" style="width:28px;height:28px;border-radius:8px"></div><div class="t" style="flex:1"><div class="sk" style="width:62%"></div></div></div></td><td class="hide-sm"><div class="sk" style="width:56px"></div></td><td class="num"><div class="sk" style="width:44px;margin-left:auto"></div></td><td class="act"><div class="sk" style="width:64px;height:28px"></div></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="note">Warm skeleton rows at the real row height, so nothing jumps when data lands. Header stays real. One slow 1.6s pulse, no spinner.</p>
+    </div>
+
+    <div class="spec">
+      <div class="tag"><span>Empty</span></div>
+      <div class="card">
+        <div class="state">
+          <div class="ic sage"><svg class="i"><use href="#i-check"/></svg></div>
+          <h3>Nothing needs you right now</h3>
+          <p>New enquiries, requests and payments that need a look appear here. Social posting and monitoring carry on by themselves.</p>
+        </div>
+      </div>
+      <p class="note">Empty says what will appear. A filtered empty offers "Clear filters" instead (see FilterBar).</p>
+    </div>
+
+    <div class="spec">
+      <div class="tag"><span>Error</span></div>
+      <div class="card">
+        <div class="state">
+          <div class="ic err"><svg class="i"><use href="#i-alert"/></svg></div>
+          <h3>The list did not load</h3>
+          <p>Enquiries could not be read. Nothing was changed. Try again; if it keeps happening, the reference is <span class="mono">a41f09</span>.</p>
+          <button class="btn sec">Try again</button>
+        </div>
+      </div>
+      <p class="note">Names the source that failed (existing <span class="mono">guarded</span> reads) and shows only the digest. Other tables on the screen keep working.</p>
+    </div>
+
+    <div class="spec">
+      <div class="tag"><span>Grouped (Today)</span></div>
+      <div class="card">
+        <div class="grp">Late <span class="mono">2</span></div>
+        <table class="dt" aria-label="Grouped table"><tbody>
+          <tr><td class="sel"><input class="cb" type="checkbox" aria-label="Select row"></td><td><div class="obj"><span class="tile"><svg class="i"><use href="#i-mail"/></svg></span><div class="t"><span class="name">&lt;business&gt;</span><span class="sub">Request, 4 hour limit passed</span></div></div></td><td class="num"><span class="age late">6h 20m</span></td><td class="act"><button class="btn sec">Reply</button></td></tr>
+        </tbody></table>
+        <div class="grp">Due today <span class="mono">1</span></div>
+        <table class="dt" aria-label="Grouped table two"><tbody>
+          <tr><td class="sel"><input class="cb" type="checkbox" aria-label="Select row"></td><td><div class="obj"><span class="tile"><svg class="i"><use href="#i-user"/></svg></span><div class="t"><span class="name">&lt;business&gt;</span><span class="sub">New enquiry</span></div></div></td><td class="num"><span class="age">22m</span></td><td class="act"><button class="btn sec">Contact</button></td></tr>
+        </tbody></table>
+      </div>
+      <p class="note">Group bands (Late, Due today, Waiting on someone, Upcoming) sit on paper, not white, and stay sticky under the header.</p>
+    </div>
+  </div>
+
+  <h3 style="margin:32px 0 12px;font-size:20px;line-height:28px;font-weight:600">Try it</h3>
+  <div class="demo">
+    <div class="demo-note">Click the table or tab into it, then use <kbd>j</kbd> <kbd>k</kbd> to move, <kbd>Enter</kbd> to open the panel, <kbd>x</kbd> to select, <kbd>e</kbd> to run the verb. Rows 1 and 2 are reversible and send no email, so <kbd>e</kbd> shows an Undo toast. Row 3 emails the customer, so <kbd>e</kbd> asks first.</div>
+    <div class="card" id="live-table-wrap">
+      <div id="live-bulk" hidden></div>
+      <table class="dt" id="live-table" role="grid" aria-label="Live example" tabindex="0" aria-activedescendant="lr1">
+        <thead><tr><th class="sel"><span class="sr">Select</span></th><th>Work</th><th class="hide-sm">Type</th><th class="num">Waiting</th><th class="num"><span class="sr">Actions</span></th></tr></thead>
+        <tbody>
+          <tr id="lr1" data-i="0" data-verb="Mark contacted" data-undo="1" data-sub="New enquiry"><td class="sel"><input class="cb" type="checkbox" aria-label="Select row"></td><td><div class="obj"><span class="tile"><svg class="i"><use href="#i-user"/></svg></span><div class="t"><span class="name">&lt;business&gt; one</span><span class="sub">New enquiry, no contact yet</span></div></div></td><td class="hide-sm"><span class="chip wait">Enquiry</span></td><td class="num"><span class="age">42m</span></td><td class="act"><span class="ra"><button class="btn sec" tabindex="-1">Mark contacted</button><button class="btn quiet icon" tabindex="-1" aria-label="More actions"><svg class="i"><use href="#i-dots"/></svg></button></span></td></tr>
+          <tr id="lr2" data-i="1" data-verb="Close" data-undo="1" data-sub="Request"><td class="sel"><input class="cb" type="checkbox" aria-label="Select row"></td><td><div class="obj"><span class="tile"><svg class="i"><use href="#i-mail"/></svg></span><div class="t"><span class="name">&lt;business&gt; two</span><span class="sub">Support ticket, answered</span></div></div></td><td class="hide-sm"><span class="chip idle">Request</span></td><td class="num"><span class="age">2h 10m</span></td><td class="act"><span class="ra"><button class="btn sec" tabindex="-1">Close</button><button class="btn quiet icon" tabindex="-1" aria-label="More actions"><svg class="i"><use href="#i-dots"/></svg></button></span></td></tr>
+          <tr id="lr3" data-i="2" data-verb="Send setup link" data-confirm="Send setup link to &lt;business&gt; three?|This emails the owner a link to finish setting up. It cannot be taken back." data-sub="Enquiry"><td class="sel"><input class="cb" type="checkbox" aria-label="Select row"></td><td><div class="obj"><span class="tile"><svg class="i"><use href="#i-mail"/></svg></span><div class="t"><span class="name">&lt;business&gt; three</span><span class="sub">Enquiry, ready for a setup link</span></div></div></td><td class="hide-sm"><span class="chip late">Late</span></td><td class="num"><span class="age late">1h 31m</span></td><td class="act"><span class="ra"><button class="btn sec" tabindex="-1">Send setup link</button><button class="btn quiet icon" tabindex="-1" aria-label="More actions"><svg class="i"><use href="#i-dots"/></svg></button></span></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- ============ ROWACTIONS ============ -->
+<section class="pat" id="rowactions">
+  <h2>RowActions</h2>
+  <p class="lede">One visible verb plus a three dot menu. The menu holds the less common actions as plain verbs, destructive ones last and red, never more than five items. The same menu opens on right click. The verb is the row's single primary; the menu is never a second primary.</p>
+  <table class="kbd-table">
+    <thead><tr><th>Key</th><th>Does</th></tr></thead>
+    <tbody>
+      <tr><td><kbd>Enter</kbd> or <kbd>Space</kbd> on the dots</td><td>Opens the menu, focus on the first enabled item.</td></tr>
+      <tr><td><kbd>Down</kbd> <kbd>Up</kbd> <kbd>Home</kbd> <kbd>End</kbd></td><td>Move through items. Disabled items stay focusable so the reason can be read.</td></tr>
+      <tr><td>Type a letter</td><td>Jumps to the next item starting with it.</td></tr>
+      <tr><td><kbd>Enter</kbd></td><td>Runs the item, closes the menu, returns focus to the dots button (or to the next row if the row left the list).</td></tr>
+      <tr><td><kbd>Esc</kbd> or <kbd>Tab</kbd></td><td>Closes the menu and returns focus to the dots button.</td></tr>
+    </tbody>
+  </table>
+
+  <div class="grid">
+    <div class="spec">
+      <div class="tag"><span>Default and hover</span></div>
+      <div class="card" style="padding:16px;display:grid;gap:16px">
+        <div class="ra"><button class="btn sec">Reply</button><button class="btn quiet icon" aria-label="More actions" aria-haspopup="menu" aria-expanded="false"><svg class="i"><use href="#i-dots"/></svg></button><span class="note" style="font-size:12px;color:var(--ink-3)">default</span></div>
+        <div class="ra"><button class="btn sec is-hover">Reply</button><button class="btn quiet icon" style="background:var(--sunken)" aria-label="More actions"><svg class="i"><use href="#i-dots"/></svg></button><span class="note" style="font-size:12px;color:var(--ink-3)">hover</span></div>
+        <div class="ra"><button class="btn sec is-focus">Reply</button><button class="btn quiet icon" aria-label="More actions"><svg class="i"><use href="#i-dots"/></svg></button><span class="note" style="font-size:12px;color:var(--ink-3)">verb focused</span></div>
+      </div>
+    </div>
+
+    <div class="spec">
+      <div class="tag"><span>Menu open, item focused, disabled item, destructive last</span></div>
+      <div class="card" style="padding:16px;min-height:320px">
+        <div class="ra pop-static" style="display:block;text-align:right">
+          <div style="display:flex;justify-content:flex-end;gap:4px"><button class="btn sec">Reply</button><button class="btn quiet icon is-focus" style="background:var(--sunken)" aria-label="More actions" aria-haspopup="menu" aria-expanded="true"><svg class="i"><use href="#i-dots"/></svg></button></div>
+          <div class="menu" role="menu" aria-label="Row actions" style="margin-left:auto">
+            <button class="" role="menuitem" tabindex="-1"><svg class="i"><use href="#i-pencil"/></svg>Add internal note</button>
+            <button role="menuitem" class="is-hover" tabindex="-1"><svg class="i"><use href="#i-file"/></svg>Send quote</button>
+            <button role="menuitem" aria-disabled="true" tabindex="-1"><svg class="i"><use href="#i-check"/></svg><span>Start as included edit<br><span class="why">Quote not paid yet</span></span></button>
+            <button role="menuitem" tabindex="-1"><svg class="i"><use href="#i-chev"/></svg>Open client</button>
+            <div class="sep" role="separator"></div>
+            <button role="menuitem" class="bad" tabindex="-1"><svg class="i"><use href="#i-x"/></svg>Close request</button>
+          </div>
+        </div>
+      </div>
+      <p class="note">Five items at most. Destructive and customer-emailing items sit after the separator and open a ConfirmDialog; they are never one click.</p>
+    </div>
+
+    <div class="spec">
+      <div class="tag"><span>Loading and error</span></div>
+      <div class="card" style="padding:16px;display:grid;gap:16px">
+        <div class="ra"><button class="btn sec busy" aria-busy="true" disabled>Sending<span class="spin-dots" aria-hidden="true"></span></button><button class="btn quiet icon" disabled aria-label="More actions"><svg class="i"><use href="#i-dots"/></svg></button></div>
+        <div>
+          <div class="ra"><button class="btn sec">Retry</button><button class="btn quiet icon" aria-label="More actions"><svg class="i"><use href="#i-dots"/></svg></button></div>
+          <div class="notice err" role="alert" style="margin-top:8px"><svg class="i"><use href="#i-alert"/></svg>The reply did not send. Your text is kept. Try again.</div>
+        </div>
+      </div>
+      <p class="note">While running, the verb says what is happening ("Sending") and the menu is disabled. A failure keeps the verb enabled as Retry and shows the reason in the row or panel, never only as a toast.</p>
+    </div>
+
+    <div class="spec">
+      <div class="tag"><span>Disabled and selected row</span></div>
+      <div class="card" style="padding:16px;display:grid;gap:16px">
+        <div class="ra"><button class="btn sec" aria-disabled="true">Resend</button><button class="btn quiet icon" disabled aria-label="More actions, unavailable"><svg class="i"><use href="#i-dots"/></svg></button><span style="font-size:12px;color:var(--ink-3)">Already sent, resend allowed after 1 hour</span></div>
+        <div class="ra"><button class="btn pri">Check</button><button class="btn quiet icon" aria-label="More actions"><svg class="i"><use href="#i-dots"/></svg></button><span style="font-size:12px;color:var(--ink-3)">Panel open for this row: verb may become primary in the panel footer, never in both places</span></div>
+      </div>
+      <p class="note">When a row is selected for bulk, its verb and menu stay usable. When its SidePanel is open, the row verb stays secondary and the panel foot carries the one primary.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============ SIDEPANEL ============ -->
+<section class="pat" id="sidepanel">
+  <h2>SidePanel</h2>
+  <p class="lede">An overlay layer, not a second raised surface: the list stays the focal card. 480px from the right at 1100px and up, a full sheet below, 240ms slide, scrim only on phone. The header names the object, the primary sits sticky in the foot, the URL carries <span class="mono">?open=</span>. Closing returns focus to the row that opened it.</p>
+  <table class="kbd-table">
+    <thead><tr><th>Key</th><th>Does</th></tr></thead>
+    <tbody>
+      <tr><td><kbd>Enter</kbd> on a row</td><td>Opens the panel. Focus moves to the panel heading; the list behind stays scrollable on wide screens.</td></tr>
+      <tr><td><kbd>Esc</kbd></td><td>Closes the panel, focus returns to the opening row. If a dialog or menu is above it, closes that first.</td></tr>
+      <tr><td><kbd>j</kbd> <kbd>k</kbd></td><td>With the panel open and focus outside any field, step to the next or previous row and swap the panel content.</td></tr>
+      <tr><td><kbd>e</kbd></td><td>Runs the panel's primary (same verb as the row). Confirms first when it emails the customer.</td></tr>
+      <tr><td><kbd>Tab</kbd></td><td>Cycles inside the panel on phone (scrim present). On wide screens focus may leave to the list; the panel is a complementary region, not a modal.</td></tr>
+    </tbody>
+  </table>
+
+  <div class="backdrop" style="margin-bottom:24px">
+    <div class="dim card" aria-hidden="true">
+      <table class="dt"><tbody>
+        <tr class="is-selected"><td><div class="obj"><span class="tile"><svg class="i"><use href="#i-mail"/></svg></span><div class="t"><span class="name">&lt;business&gt;</span><span class="sub">Open in the panel</span></div></div></td><td class="num"><span class="age late">5h 12m</span></td></tr>
+        <tr><td><div class="obj"><span class="tile"><svg class="i"><use href="#i-user"/></svg></span><div class="t"><span class="name">&lt;business&gt;</span><span class="sub">New enquiry</span></div></div></td><td class="num"><span class="age">42m</span></td></tr>
+        <tr><td><div class="obj"><span class="tile"><svg class="i"><use href="#i-card"/></svg></span><div class="t"><span class="name">&lt;business&gt;</span><span class="sub">Payment needs a look</span></div></div></td><td class="num"><span class="age">3h</span></td></tr>
+      </tbody></table>
+    </div>
+    <div class="sp" role="complementary" aria-label="Request detail">
+      <div class="sp-h"><div><h3>&lt;business&gt;</h3><div class="sub">Request <span class="mono">#REQ-0000</span> <span class="chip late" style="margin-left:6px">Late</span></div></div><button class="btn quiet icon x" aria-label="Close panel"><svg class="i"><use href="#i-x"/></svg></button></div>
+      <div class="sp-b">
+        <div><span class="lbl">What the customer wrote</span><div class="quote">Customer message text appears here, from the request body.</div></div>
+        <dl class="kv"><dt>Waiting</dt><dd><span class="age late">5h 12m</span></dd><dt>Type</dt><dd>Support</dd><dt>Plan</dt><dd>Website Management</dd></dl>
+        <div><a class="link" href="#sidepanel">Open client</a></div>
+      </div>
+      <div class="sp-f"><button class="btn sec">Add internal note</button><button class="btn pri">Reply</button></div>
+    </div>
+  </div>
+
+  <div class="grid">
+    <div class="spec">
+      <div class="tag"><span>Loading</span></div>
+      <div class="sp" role="status" aria-label="Loading detail">
+        <div class="sp-h"><div style="flex:1"><div class="sk" style="width:50%;height:16px;margin-bottom:8px"></div><div class="sk" style="width:30%"></div></div><button class="btn quiet icon x" aria-label="Close panel"><svg class="i"><use href="#i-x"/></svg></button></div>
+        <div class="sp-b"><div class="sk" style="height:56px"></div><div class="sk" style="width:80%"></div><div class="sk" style="width:60%"></div></div>
+        <div class="sp-f"><button class="btn pri" aria-disabled="true" disabled>Reply</button></div>
+      </div>
+      <p class="note">Header text can render at once from the row; only the body is a skeleton. The primary is disabled until the detail loads.</p>
+    </div>
+    <div class="spec">
+      <div class="tag"><span>Error</span></div>
+      <div class="sp">
+        <div class="sp-h"><div><h3>&lt;business&gt;</h3><div class="sub">Request</div></div><button class="btn quiet icon x" aria-label="Close panel"><svg class="i"><use href="#i-x"/></svg></button></div>
+        <div class="sp-b"><div class="state" style="padding:16px 0"><div class="ic err"><svg class="i"><use href="#i-alert"/></svg></div><h3>The detail did not load</h3><p>The request could not be read. Try again.</p><button class="btn sec">Try again</button></div></div>
+      </div>
+    </div>
+    <div class="spec">
+      <div class="tag"><span>Empty (row has no detail)</span></div>
+      <div class="sp">
+        <div class="sp-h"><div><h3>&lt;business&gt;</h3><div class="sub">System row</div></div><button class="btn quiet icon x" aria-label="Close panel"><svg class="i"><use href="#i-x"/></svg></button></div>
+        <div class="sp-b"><div class="state" style="padding:16px 0"><div class="ic sun"><svg class="i"><use href="#i-file"/></svg></div><h3>Nothing more to show</h3><p>This row has no extra detail. Use Open client for the full record.</p></div></div>
+        <div class="sp-f"><button class="btn pri">Open client</button></div>
+      </div>
+    </div>
+    <div class="spec">
+      <div class="tag"><span>390 wide: full sheet with scrim</span></div>
+      <div class="sp full" style="max-width:390px;border-radius:16px 16px 0 0">
+        <div class="sp-h"><button class="btn quiet icon" aria-label="Back to list"><svg class="i" style="transform:rotate(180deg)"><use href="#i-chev"/></svg></button><div><h3>&lt;business&gt;</h3><div class="sub">Request <span class="mono">#REQ-0000</span></div></div></div>
+        <div class="sp-b"><div class="quote">Customer message text appears here.</div></div>
+        <div class="sp-f"><button class="btn pri" style="flex:1;height:44px">Reply</button></div>
+      </div>
+      <p class="note">On phone the panel is a sheet with a back button instead of a close icon, and the primary is full width at 44px.</p>
+    </div>
+  </div>
+  <p class="note" style="margin-top:16px">Try it: the live table above opens the real panel on <kbd>Enter</kbd>.</p>
+</section>
+
+<!-- ============ FILTERBAR ============ -->
+<section class="pat" id="filterbar">
+  <h2>FilterBar</h2>
+  <p class="lede">Pins under the page header while the list scrolls. Filter pills with counts (the existing <span class="mono">FilterPills</span>), a search field, and active filters echoed as removable chips. The default filter shows work to do, never an empty list. While rows are selected the BulkBar replaces it.</p>
+  <table class="kbd-table">
+    <thead><tr><th>Key</th><th>Does</th></tr></thead>
+    <tbody>
+      <tr><td><kbd>/</kbd></td><td>Focuses the search field from anywhere on the list (not while typing).</td></tr>
+      <tr><td><kbd>Esc</kbd> in the field</td><td>Clears the text; a second press returns focus to the table.</td></tr>
+      <tr><td><kbd>Left</kbd> <kbd>Right</kbd> on a pill</td><td>Move between pills (roving tabindex, one tab stop). <kbd>Enter</kbd> or <kbd>Space</kbd> applies.</td></tr>
+      <tr><td><kbd>Backspace</kbd> on an echo chip</td><td>Removes that filter. The chip's button is also tab reachable.</td></tr>
+    </tbody>
+  </table>
+  <div class="grid">
+    <div class="spec">
+      <div class="tag"><span>Default, hover, focus</span></div>
+      <div class="fb">
+        <div class="fb-row">
+          <div class="pills" role="group" aria-label="Filter">
+            <button class="pill" aria-pressed="true">All <span class="n">9</span></button>
+            <button class="pill late">Late <span class="n">2</span></button>
+            <button class="pill is-hover">Customers <span class="n">3</span></button>
+            <button class="pill is-focus">Money <span class="n">1</span></button>
+            <button class="pill">System <span class="n">0</span></button>
+          </div>
+          <label class="search"><span class="sr">Search this list</span><svg class="i"><use href="#i-search"/></svg><input type="search" placeholder="Search this list"><kbd>/</kbd></label>
+        </div>
+      </div>
+      <p class="note">Selected pill is solid ink. A late count is red text on the pill, with the word Late as the label.</p>
+    </div>
+    <div class="spec">
+      <div class="tag"><span>Active filters echoed</span></div>
+      <div class="fb">
+        <div class="fb-row">
+          <div class="pills" role="group" aria-label="Filter"><button class="pill">All <span class="n">9</span></button><button class="pill" aria-pressed="true">Money <span class="n">1</span></button></div>
+          <label class="search"><span class="sr">Search this list</span><svg class="i"><use href="#i-search"/></svg><input type="search" value="&lt;business&gt;"><kbd>/</kbd></label>
+        </div>
+        <div class="fb-row"><span class="echo">Money<button aria-label="Remove filter Money"><svg class="i" style="width:14px;height:14px"><use href="#i-x"/></svg></button></span><span class="echo">Text: &lt;business&gt;<button aria-label="Remove search text"><svg class="i" style="width:14px;height:14px"><use href="#i-x"/></svg></button></span><button class="btn quiet">Clear filters</button></div>
+      </div>
+    </div>
+    <div class="spec">
+      <div class="tag"><span>Loading</span></div>
+      <div class="fb" role="status" aria-label="Loading filters">
+        <div class="fb-row">
+          <div class="pills"><button class="pill" aria-pressed="true" disabled>All <span class="n">...</span></button><button class="pill" disabled>Late <span class="n">...</span></button><button class="pill" disabled>Customers <span class="n">...</span></button></div>
+          <label class="search"><span class="sr">Search this list</span><svg class="i"><use href="#i-search"/></svg><input type="search" placeholder="Search this list" disabled></label>
+        </div>
+      </div>
+      <p class="note">Pills render at once with their labels; only the counts wait. Disabled until counts arrive so a click never races a load.</p>
+    </div>
+    <div class="spec">
+      <div class="tag"><span>Empty result</span></div>
+      <div class="fb"><div class="fb-row"><div class="pills"><button class="pill" aria-pressed="true">Money <span class="n">0</span></button></div><label class="search"><span class="sr">Search this list</span><svg class="i"><use href="#i-search"/></svg><input type="search" value="zzz"></label></div><div class="fb-row"><span class="echo">Text: zzz<button aria-label="Remove search text"><svg class="i" style="width:14px;height:14px"><use href="#i-x"/></svg></button></span></div></div>
+      <div class="card" style="margin-top:8px"><div class="state" style="padding:20px"><h3>No rows match</h3><p>Nothing in Money matches "zzz".</p><button class="btn sec">Clear filters</button></div></div>
+    </div>
+    <div class="spec">
+      <div class="tag"><span>Error</span></div>
+      <div class="fb">
+        <div class="fb-row"><div class="pills"><button class="pill" aria-pressed="true">All <span class="n">9</span></button><button class="pill">Late <span class="n">?</span></button><button class="pill">Money <span class="n">?</span></button></div></div>
+        <div class="notice err" role="alert"><svg class="i"><use href="#i-alert"/></svg>Some counts could not be read. The list still works. <button class="btn quiet" style="color:var(--error)">Try again</button></div>
+      </div>
+      <p class="note">A failed count shows "?" (the existing <span class="mono">countOrNothing</span> leaves it off); filters stay usable.</p>
+    </div>
+    <div class="spec">
+      <div class="tag"><span>Disabled</span></div>
+      <div class="fb"><div class="fb-row"><div class="pills"><button class="pill" aria-pressed="true">All <span class="n">0</span></button><button class="pill" disabled>Late <span class="n">0</span></button><button class="pill" disabled>Money <span class="n">0</span></button></div><label class="search"><span class="sr">Search this list</span><svg class="i"><use href="#i-search"/></svg><input type="search" placeholder="Nothing to search yet" disabled></label></div></div>
+      <p class="note">A list with no rows and no filters left to apply disables the controls rather than hiding them.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============ INLINEEDIT ============ -->
+<section class="pat" id="inlineedit">
+  <h2>InlineEdit</h2>
+  <p class="lede">For names, notes, status, the preview link and enquiry fields. Click or press Enter to edit, Enter saves, Escape cancels, and a Saved toast carries Undo. Errors stay in the field with the fix. Never for money fields or anything that emails the customer.</p>
+  <table class="kbd-table">
+    <thead><tr><th>Key</th><th>Does</th></tr></thead>
+    <tbody>
+      <tr><td><kbd>Enter</kbd> or click</td><td>On the value: starts editing, field focused, text selected. In the field: saves.</td></tr>
+      <tr><td><kbd>Esc</kbd></td><td>Cancels and restores the value. Focus returns to the value button.</td></tr>
+      <tr><td><kbd>Tab</kbd> or blur</td><td>Saves (a quiet commit), same as Enter. A blur with no change just closes.</td></tr>
+      <tr><td><kbd>Ctrl Enter</kbd></td><td>Saves a multi-line note (Enter adds a new line there).</td></tr>
+    </tbody>
+  </table>
+  <div class="grid">
+    <div class="spec">
+      <div class="tag"><span>Default, hover, focus</span></div>
+      <div class="card" style="padding:16px;display:grid;gap:12px">
+        <div class="ie"><span class="lbl">Owner name</span><button class="ie-view">Owner name from the record <svg class="i"><use href="#i-pencil"/></svg></button></div>
+        <div class="ie"><span class="lbl">Owner name (hover)</span><button class="ie-view is-hover">Owner name from the record <svg class="i"><use href="#i-pencil"/></svg></button></div>
+        <div class="ie"><span class="lbl">Owner name (focus)</span><button class="ie-view is-focus">Owner name from the record <svg class="i" style="opacity:1"><use href="#i-pencil"/></svg></button></div>
+      </div>
+      <p class="note">The pencil appears on hover and focus. On touch it is always visible. The value is a real button, so it is announced as "edit".</p>
+    </div>
+    <div class="spec">
+      <div class="tag"><span>Editing</span></div>
+      <div class="card" style="padding:16px">
+        <div class="ie"><label class="lbl" for="ie-demo">Preview link</label>
+          <div class="ie-edit"><input id="ie-demo" class="field" value="https://preview.example/&lt;business&gt;"><button class="btn pri">Save</button><button class="btn sec">Cancel</button></div>
+          <span class="ie-hint">Enter saves, Esc cancels. Saving does not email the customer.</span></div>
+      </div>
+    </div>
+    <div class="spec">
+      <div class="tag"><span>Saving (loading)</span></div>
+      <div class="card" style="padding:16px">
+        <div class="ie"><span class="lbl">Preview link</span>
+          <div class="ie-edit"><input class="field" value="https://preview.example/&lt;business&gt;" disabled aria-busy="true"><button class="btn pri busy" disabled>Saving<span class="spin-dots" aria-hidden="true"></span></button></div></div>
+      </div>
+      <p class="note">The field is read-only while saving so the value cannot change under the request.</p>
+    </div>
+    <div class="spec">
+      <div class="tag"><span>Error</span></div>
+      <div class="card" style="padding:16px">
+        <div class="ie"><label class="lbl" for="ie-err">Preview link</label>
+          <div class="ie-edit"><input id="ie-err" class="field bad" value="preview.example" aria-invalid="true" aria-describedby="ie-err-msg"><button class="btn pri">Save</button><button class="btn sec">Cancel</button></div>
+          <div class="ie-err" id="ie-err-msg" role="alert"><svg class="i"><use href="#i-alert"/></svg>That is not a full link. Start it with https://</div></div>
+      </div>
+      <p class="note">The field keeps the typed text and its focus. The message says what to fix, not what went wrong in the server.</p>
+    </div>
+    <div class="spec">
+      <div class="tag"><span>Empty value</span></div>
+      <div class="card" style="padding:16px">
+        <div class="ie"><span class="lbl">Internal note</span><button class="ie-view" style="color:var(--ink-3)">Add a note only staff can see <svg class="i" style="opacity:1"><use href="#i-pencil"/></svg></button></div>
+      </div>
+    </div>
+    <div class="spec">
+      <div class="tag"><span>Disabled (read-only)</span></div>
+      <div class="card" style="padding:16px">
+        <div class="ie"><span class="lbl">Business id</span><button class="ie-view" aria-disabled="true"><span class="mono">0000-0000</span></button><span class="ie-hint">Set by the system. It cannot be changed here.</span></div>
+      </div>
+      <p class="note">A field that exists but may not be edited renders as plain text with a hint. Money fields and anything that emails the customer never use InlineEdit.</p>
+    </div>
+  </div>
+  <h3 style="margin:32px 0 12px;font-size:20px;line-height:28px;font-weight:600">Try it</h3>
+  <div class="card" style="padding:16px;max-width:480px">
+    <div class="ie" id="live-ie"><span class="lbl">Owner name</span><button class="ie-view" id="live-ie-view"><span id="live-ie-val">Owner name from the record</span> <svg class="i"><use href="#i-pencil"/></svg></button></div>
+  </div>
+</section>
+
+<!-- ============ TOAST ============ -->
+<section class="pat" id="toast">
+  <h2>Toast</h2>
+  <p class="lede">Bottom left, ink background, white text. 10 seconds when it carries Undo, 4 seconds otherwise, announced politely. Errors do not time out. The timer pauses on hover and focus. Undo only appears where no customer email was sent; anything that emailed already left, and is confirmed before, not undone after.</p>
+  <table class="kbd-table">
+    <thead><tr><th>Key</th><th>Does</th></tr></thead>
+    <tbody>
+      <tr><td><kbd>u</kbd></td><td>Undoes the newest toast that carries Undo, while it is visible and focus is not in a field.</td></tr>
+      <tr><td><kbd>Tab</kbd> into the stack</td><td>Toasts are after the page in tab order only while visible. Focus moves back to where it was when the toast goes.</td></tr>
+      <tr><td><kbd>Esc</kbd> on a toast</td><td>Dismisses it. Dismissing does not undo.</td></tr>
+    </tbody>
+  </table>
+  <div class="grid">
+    <div class="spec">
+      <div class="tag"><span>With undo (default, hover, focus)</span></div>
+      <div class="stack">
+        <div class="toast" role="status"><span class="msg">Marked <b>&lt;business&gt;</b> contacted.</span><span class="count" aria-hidden="true">10s</span><button class="btn"><svg class="i"><use href="#i-undo"/></svg>Undo</button><button class="btn x" aria-label="Dismiss"><svg class="i"><use href="#i-x"/></svg></button></div>
+        <div class="toast"><span class="msg">Closed request from <b>&lt;business&gt;</b>.</span><button class="btn is-hover">Undo</button><button class="btn x" aria-label="Dismiss"><svg class="i"><use href="#i-x"/></svg></button></div>
+        <div class="toast"><span class="msg">Saved the preview link.</span><button class="btn is-focus">Undo</button><button class="btn x" aria-label="Dismiss"><svg class="i"><use href="#i-x"/></svg></button></div>
+      </div>
+      <p class="note">The message names the object, and Undo restores that object. The seconds label is for sighted users; screen readers hear only the message and the button.</p>
+    </div>
+    <div class="spec">
+      <div class="tag"><span>Without undo, 4 seconds</span></div>
+      <div class="stack">
+        <div class="toast" role="status"><span class="msg">Report sent to the owner of <b>&lt;business&gt;</b>.</span><button class="btn x" aria-label="Dismiss"><svg class="i"><use href="#i-x"/></svg></button></div>
+        <div class="toast" role="status"><span class="msg">Exported 24 rows. The export is logged.</span><button class="btn x" aria-label="Dismiss"><svg class="i"><use href="#i-x"/></svg></button></div>
+      </div>
+      <p class="note">Sends, exports and anything that emailed the customer. No undo is offered because none exists.</p>
+    </div>
+    <div class="spec">
+      <div class="tag"><span>Loading and after undo</span></div>
+      <div class="stack">
+        <div class="toast" role="status"><span class="msg">Undoing<span class="spin-dots" aria-hidden="true" style="margin-left:6px"></span></span><button class="btn" disabled>Undo</button></div>
+        <div class="toast" role="status"><span class="msg">Undone. <b>&lt;business&gt;</b> is back as new.</span><button class="btn x" aria-label="Dismiss"><svg class="i"><use href="#i-x"/></svg></button></div>
+      </div>
+      <p class="note">While the reverse is running the button is disabled. A second toast confirms the result; it has no Undo of its own (no undo of an undo).</p>
+    </div>
+    <div class="spec">
+      <div class="tag"><span>Error, stays until dismissed</span></div>
+      <div class="stack">
+        <div class="toast err" role="alert"><svg class="i lead"><use href="#i-alert"/></svg><span class="msg">Could not mark <b>&lt;business&gt;</b> contacted. Nothing changed.</span><button class="btn">Try again</button><button class="btn x" aria-label="Dismiss"><svg class="i"><use href="#i-x"/></svg></button></div>
+      </div>
+      <p class="note">Errors use a white toast with a red edge so the colour is never the only sign; the lead icon and the words say it. Announced assertively.</p>
+    </div>
+    <div class="spec">
+      <div class="tag"><span>Disabled (undo expired)</span></div>
+      <div class="stack">
+        <div class="toast" role="status"><span class="msg">Closed request from <b>&lt;business&gt;</b>.</span><button class="btn" disabled aria-disabled="true">Undo</button><button class="btn x" aria-label="Dismiss"><svg class="i"><use href="#i-x"/></svg></button></div>
+      </div>
+      <p class="note">If the object changed meanwhile (a customer replied), Undo disables and the toast says why for a moment before leaving.</p>
+    </div>
+    <div class="spec">
+      <div class="tag"><span>Stack rules</span></div>
+      <div class="card" style="padding:16px"><ul class="checks"><li>At most three visible; older ones collapse into the newest's "and 2 more".</li><li>Stack sits bottom left on wide screens, above the bottom edge full width on phone.</li><li>Enter from below, 8px rise, 220ms. No exit animation beyond a fade.</li><li>Never covers a SidePanel foot or BulkBar on phone: it lifts above them.</li></ul></div>
+    </div>
+  </div>
+  <h3 style="margin:32px 0 12px;font-size:20px;line-height:28px;font-weight:600">Try it</h3>
+  <div style="display:flex;gap:8px;flex-wrap:wrap">
+    <button class="btn sec" id="t-undo">Show toast with undo</button>
+    <button class="btn sec" id="t-plain">Show plain toast</button>
+    <button class="btn sec" id="t-err">Show error toast</button>
+  </div>
+</section>
+
+<!-- ============ BULKBAR ============ -->
+<section class="pat" id="bulkbar">
+  <h2>BulkBar</h2>
+  <p class="lede">Appears at the top of the list when rows are selected and replaces the filter bar while active: the count, the permitted actions, Clear. Only the sets in plan 3.1 offer one, and nothing that moves money is ever bulk. Actions that email customers ask first; reversible internal ones offer Undo.</p>
+  <table class="kbd-table">
+    <thead><tr><th>Key</th><th>Does</th></tr></thead>
+    <tbody>
+      <tr><td><kbd>x</kbd></td><td>Selects or clears the cursor row. The bar appears at the first selection.</td></tr>
+      <tr><td><kbd>Shift</kbd> <kbd>j</kbd> / <kbd>k</kbd></td><td>Extends the selection by a row.</td></tr>
+      <tr><td><kbd>Ctrl A</kbd> or <kbd>Cmd A</kbd></td><td>With the table focused, selects all rows in the current filter (not hidden rows).</td></tr>
+      <tr><td><kbd>Esc</kbd></td><td>Clears the selection and returns focus to the table.</td></tr>
+      <tr><td><kbd>Tab</kbd></td><td>Reaches the bar's buttons. The count is announced when it changes ("3 selected").</td></tr>
+    </tbody>
+  </table>
+  <div class="grid">
+    <div class="spec">
+      <div class="tag"><span>Default (reversible set, Undo)</span></div>
+      <div class="bb" role="region" aria-label="Bulk actions"><span class="count"><span class="mono">3</span> selected</span><button class="btn sec">Mark contacted</button><button class="btn sec">Send setup link</button><button class="btn quiet sp-x">Clear</button></div>
+      <p class="note">Enquiries: "Mark contacted" shows an Undo toast; "Send setup link" emails, so it asks first.</p>
+    </div>
+    <div class="spec">
+      <div class="tag"><span>Hover, focus</span></div>
+      <div class="bb"><span class="count"><span class="mono">3</span> selected</span><button class="btn sec is-hover">Mark contacted</button><button class="btn sec is-focus">Send setup link</button><button class="btn quiet sp-x">Clear</button></div>
+    </div>
+    <div class="spec">
+      <div class="tag"><span>Confirm needed (emails customers)</span></div>
+      <div class="dlg" style="box-shadow:var(--sh-pop);width:100%;max-width:440px">
+        <h3>Send 3 setup links?</h3>
+        <p>This emails the owner of each selected enquiry a link to finish setting up. It cannot be taken back.</p>
+        <div class="foot"><button class="btn sec">Keep</button><button class="btn pri">Send 3 links</button></div>
+      </div>
+      <p class="note">Consequence in plain words, count in the button, "Keep" as the cancel, primary on the right.</p>
+    </div>
+    <div class="spec">
+      <div class="tag"><span>Loading</span></div>
+      <div class="bb" aria-busy="true"><span class="count"><span class="mono">3</span> selected</span><button class="btn sec busy" disabled>Marking<span class="spin-dots" aria-hidden="true"></span></button><button class="btn sec" disabled>Send setup link</button><button class="btn quiet sp-x" disabled>Clear</button></div>
+      <p class="note">All actions lock while one runs. The table rows being changed show their own busy state.</p>
+    </div>
+    <div class="spec">
+      <div class="tag"><span>Error (partial)</span></div>
+      <div class="bb"><span class="count"><span class="mono">3</span> selected</span><button class="btn sec">Retry 1</button><button class="btn quiet sp-x">Clear</button></div>
+      <div class="notice err" role="alert" style="margin-top:8px"><svg class="i"><use href="#i-alert"/></svg>2 of 3 marked contacted. 1 failed and is still selected.</div>
+      <p class="note">Partial success is stated with numbers. Failed rows stay selected so Retry acts on exactly those.</p>
+    </div>
+    <div class="spec">
+      <div class="tag"><span>Disabled action (mixed selection)</span></div>
+      <div class="bb"><span class="count"><span class="mono">2</span> selected</span><button class="btn sec">Export</button><button class="btn sec" aria-disabled="true">Close selected</button><span class="why">Close needs requests only. 1 selected is a payment.</span><button class="btn quiet sp-x">Clear</button></div>
+      <p class="note">An action that does not fit the whole selection stays visible, disabled, with the reason beside it. There is never a Refund or any money action here.</p>
+    </div>
+  </div>
+  <h3 style="margin:32px 0 12px;font-size:20px;line-height:28px;font-weight:600">Try it</h3>
+  <p class="note" style="margin-bottom:8px">Select rows in the live table above with <kbd>x</kbd> or the tick boxes; the bar appears above the table.</p>
+</section>
+
+<!-- ============ COMMANDBAR ============ -->
+<section class="pat" id="commandbar">
+  <h2>CommandBar</h2>
+  <p class="lede">One overlay for search, go to and actions, opened with <kbd>Ctrl K</kbd> or <kbd>Cmd K</kbd> (native <span class="mono">&lt;dialog&gt;</span>, as today's <span class="mono">global-search.tsx</span>). Groups: Recent, Go to, Actions, then results by kind (client, enquiry, request, invoice, payment, email, 8 per kind). Prefix <span class="mono">&gt;</span> shows actions only, <span class="mono">#</span> searches request references. Recent items live in the browser only.</p>
+  <table class="kbd-table">
+    <thead><tr><th>Key</th><th>Does</th></tr></thead>
+    <tbody>
+      <tr><td><kbd>Ctrl K</kbd> / <kbd>Cmd K</kbd></td><td>Opens, from anywhere, even inside a field. Pressing again closes.</td></tr>
+      <tr><td><kbd>Down</kbd> <kbd>Up</kbd></td><td>Move the highlight (combobox with <span class="mono">aria-activedescendant</span>; focus stays in the input). Wraps at the ends.</td></tr>
+      <tr><td><kbd>Enter</kbd></td><td>Opens the highlighted result or runs the action. An action that emails or moves money opens its confirm first.</td></tr>
+      <tr><td><kbd>Ctrl Enter</kbd></td><td>Opens the result in a new tab.</td></tr>
+      <tr><td><kbd>Esc</kbd></td><td>Clears the text, then closes. Focus returns to what had it.</td></tr>
+      <tr><td><kbd>&gt;</kbd> or <kbd>#</kbd> first</td><td>Switches mode; a mode chip shows in the field. <kbd>Backspace</kbd> on an empty field leaves the mode.</td></tr>
+    </tbody>
+  </table>
+  <div class="grid">
+    <div class="spec">
+      <div class="tag"><span>Empty term: Recent, Go to, Actions</span></div>
+      <div class="cb-wrap">
+        <div class="cb-in"><svg class="i"><use href="#i-search"/></svg><input placeholder="Search clients, requests, invoices, or type a command" aria-label="Command bar" readonly><kbd>Esc</kbd></div>
+        <div class="cb-list" role="listbox" aria-label="Suggestions">
+          <div class="cb-g">Recent</div>
+          <button class="cb-i is-active" role="option" aria-selected="true"><span class="tile"><svg class="i"><use href="#i-user"/></svg></span><span class="t"><b>&lt;business&gt;</b><span>Client</span></span><span class="go">Enter</span></button>
+          <button class="cb-i" role="option"><span class="tile"><svg class="i"><use href="#i-mail"/></svg></span><span class="t"><b>Request #REQ-0000</b><span>&lt;business&gt;</span></span></button>
+          <div class="cb-g">Go to</div>
+          <button class="cb-i" role="option"><span class="tile"><svg class="i"><use href="#i-chev"/></svg></span><span class="t"><b>Today</b></span><span class="mono go">g t</span></button>
+          <button class="cb-i" role="option"><span class="tile"><svg class="i"><use href="#i-chev"/></svg></span><span class="t"><b>Money</b></span><span class="mono go">g m</span></button>
+          <div class="cb-g">Actions</div>
+          <button class="cb-i" role="option"><span class="tile"><svg class="i"><use href="#i-pencil"/></svg></span><span class="t"><b>Add enquiry</b></span></button>
+        </div>
+        <div class="cb-f"><span><kbd>Up</kbd><kbd>Down</kbd> move</span><span><kbd>Enter</kbd> open</span><span><kbd>&gt;</kbd> actions</span><span><kbd>#</kbd> request</span></div>
+      </div>
+    </div>
+    <div class="spec">
+      <div class="tag"><span>Typing, results with the match marked</span></div>
+      <div class="cb-wrap">
+        <div class="cb-in"><svg class="i"><use href="#i-search"/></svg><input value="busi" aria-label="Command bar" readonly><kbd>Esc</kbd></div>
+        <div class="cb-list" role="listbox">
+          <div class="cb-g">Clients</div>
+          <button class="cb-i is-active" role="option" aria-selected="true"><span class="tile"><svg class="i"><use href="#i-user"/></svg></span><span class="t"><b>&lt;<mark>busi</mark>ness&gt;</b><span>Client, Website Management</span></span><span class="go">Enter</span></button>
+          <div class="cb-g">Requests</div>
+          <button class="cb-i" role="option"><span class="tile"><svg class="i"><use href="#i-mail"/></svg></span><span class="t"><b>Subject of the request</b><span>&lt;<mark>busi</mark>ness&gt;, <span class="mono">#REQ-0000</span></span></span></button>
+          <div class="cb-g">Invoices</div>
+          <button class="cb-i" role="option"><span class="tile"><svg class="i"><use href="#i-file"/></svg></span><span class="t"><b>Invoice <span class="mono">INV-0000</span></b><span>&lt;<mark>busi</mark>ness&gt;</span></span></button>
+        </div>
+        <div class="cb-f"><span><kbd>Ctrl</kbd><kbd>Enter</kbd> new tab</span></div>
+      </div>
+      <p class="note">The match uses the sunken wash, not more gold. Email bodies never appear; results show the subject only (existing behaviour).</p>
+    </div>
+    <div class="spec">
+      <div class="tag"><span>Loading</span></div>
+      <div class="cb-wrap" role="status" aria-label="Searching">
+        <div class="cb-in"><svg class="i"><use href="#i-search"/></svg><input value="pay" aria-label="Command bar" readonly aria-busy="true"></div>
+        <div class="cb-sk" aria-hidden="true"><div><div class="sk" style="width:28px;height:28px;border-radius:8px"></div><div style="flex:1"><div class="sk" style="width:50%"></div></div></div><div><div class="sk" style="width:28px;height:28px;border-radius:8px"></div><div style="flex:1"><div class="sk" style="width:35%"></div></div></div><div><div class="sk" style="width:28px;height:28px;border-radius:8px"></div><div style="flex:1"><div class="sk" style="width:60%"></div></div></div></div>
+      </div>
+      <p class="note">Go to and Actions that match still show at once (static); only server results wait.</p>
+    </div>
+    <div class="spec">
+      <div class="tag"><span>No result</span></div>
+      <div class="cb-wrap">
+        <div class="cb-in"><svg class="i"><use href="#i-search"/></svg><input value="zzzz" aria-label="Command bar" readonly></div>
+        <div class="cb-pad"><p>Nothing found for "zzzz". You can add it instead.</p><div class="row"><button class="btn sec">Add enquiry</button><button class="btn sec">New request</button></div></div>
+      </div>
+    </div>
+    <div class="spec">
+      <div class="tag"><span>Error</span></div>
+      <div class="cb-wrap">
+        <div class="cb-in"><svg class="i"><use href="#i-search"/></svg><input value="pay" aria-label="Command bar" readonly></div>
+        <div class="cb-list"><div class="notice err" role="alert" style="margin:4px 8px 8px"><svg class="i"><use href="#i-alert"/></svg>Search failed. Go to and Actions still work. <button class="btn quiet" style="color:var(--error)">Try again</button></div>
+          <div class="cb-g">Go to</div>
+          <button class="cb-i" role="option"><span class="tile"><svg class="i"><use href="#i-chev"/></svg></span><span class="t"><b>Money</b></span></button></div>
+      </div>
+    </div>
+    <div class="spec">
+      <div class="tag"><span>Actions mode, disabled action</span></div>
+      <div class="cb-wrap">
+        <div class="cb-in"><svg class="i"><use href="#i-search"/></svg><span class="mode">&gt;</span><input value="" placeholder="Run an action" aria-label="Command bar" readonly></div>
+        <div class="cb-list" role="listbox">
+          <button class="cb-i is-active" role="option" aria-selected="true"><span class="tile"><svg class="i"><use href="#i-pencil"/></svg></span><span class="t"><b>Add enquiry</b></span></button>
+          <button class="cb-i" role="option"><span class="tile"><svg class="i"><use href="#i-pencil"/></svg></span><span class="t"><b>New request</b></span></button>
+          <button class="cb-i" role="option"><span class="tile"><svg class="i"><use href="#i-file"/></svg></span><span class="t"><b>Export payments</b><span>Logged export</span></span></button>
+          <button class="cb-i" role="option" aria-disabled="true"><span class="tile"><svg class="i"><use href="#i-alert"/></svg></span><span class="t"><b>Open privacy requests</b><span>No privacy requests are open</span></span></button>
+        </div>
+      </div>
+      <p class="note">Actions open the existing route or dialog. None of them performs a send or a money step on its own.</p>
+    </div>
+  </div>
+  <h3 style="margin:32px 0 12px;font-size:20px;line-height:28px;font-weight:600">Try it</h3>
+  <p class="note">Press <kbd>Ctrl K</kbd> or <kbd>Cmd K</kbd> (or the button at the top). Type to filter the sample list, <kbd>Down</kbd> and <kbd>Enter</kbd> to choose, <kbd>Esc</kbd> to close.</p>
+</section>
+
+</div>
+</main>
+
+<!-- live overlays -->
+<div class="sheet-scrim" id="scrim"></div>
+<aside class="sheet" id="sheet" role="complementary" aria-label="Detail" aria-hidden="true">
+  <div class="sp-h"><div><h3 id="sheet-title" tabindex="-1">&lt;business&gt;</h3><div class="sub" id="sheet-sub">Request</div></div><button class="btn quiet icon x" id="sheet-x" aria-label="Close panel"><svg class="i"><use href="#i-x"/></svg></button></div>
+  <div class="sp-b"><div><span class="lbl">What the customer wrote</span><div class="quote">Customer message text appears here, from the request body.</div></div><dl class="kv"><dt>Waiting</dt><dd><span class="age" id="sheet-age">42m</span></dd><dt>Link</dt><dd><span class="mono" id="sheet-url">?open=lr1</span></dd></dl></div>
+  <div class="sp-f"><button class="btn pri" id="sheet-verb">Mark contacted</button></div>
+</aside>
+
+<dialog class="cmd" id="cmd" aria-label="Command bar">
+  <div class="cb-wrap">
+    <div class="cb-in"><svg class="i"><use href="#i-search"/></svg><input id="cmd-in" role="combobox" aria-expanded="true" aria-controls="cmd-list" aria-autocomplete="list" placeholder="Search clients, requests, invoices, or type a command" autocomplete="off"><kbd>Esc</kbd></div>
+    <div class="cb-list" id="cmd-list" role="listbox" aria-label="Results"></div>
+    <div class="cb-f"><span><kbd>Up</kbd><kbd>Down</kbd> move</span><span><kbd>Enter</kbd> open</span><span><kbd>Esc</kbd> close</span></div>
+  </div>
+</dialog>
+
+<dialog id="confirm" aria-labelledby="confirm-t">
+  <div class="dlg"><h3 id="confirm-t"></h3><p id="confirm-p"></p><div class="foot"><button class="btn sec" id="confirm-no">Keep</button><button class="btn pri" id="confirm-yes">Send</button></div></div>
+</dialog>
+
+<dialog id="help" aria-labelledby="help-t">
+  <div class="dlg" style="width:640px">
+    <h3 id="help-t">Keyboard shortcuts</h3>
+    <p style="margin-bottom:0">Single keys work only when you are not typing in a field. None of them deletes anything.</p>
+    <div class="help-grid">
+      <h4>Lists</h4>
+      <div><span>Move down, up</span><span><kbd>j</kbd> <kbd>k</kbd></span></div><div><span>Open the row</span><span><kbd>Enter</kbd></span></div>
+      <div><span>Run the row's verb</span><span><kbd>e</kbd></span></div><div><span>Select the row</span><span><kbd>x</kbd></span></div>
+      <div><span>Focus the filter</span><span><kbd>/</kbd></span></div><div><span>Row menu</span><span><kbd>.</kbd></span></div>
+      <h4>Go to</h4>
+      <div><span>Today</span><span><kbd>g</kbd> <kbd>t</kbd></span></div><div><span>Clients</span><span><kbd>g</kbd> <kbd>c</kbd></span></div>
+      <div><span>Inbox</span><span><kbd>g</kbd> <kbd>i</kbd></span></div><div><span>Money</span><span><kbd>g</kbd> <kbd>m</kbd></span></div>
+      <div><span>Compliance</span><span><kbd>g</kbd> <kbd>o</kbd></span></div><div><span>System</span><span><kbd>g</kbd> <kbd>s</kbd></span></div>
+      <h4>Anywhere</h4>
+      <div><span>Command bar</span><span><kbd>Ctrl K</kbd></span></div><div><span>Close the top layer</span><span><kbd>Esc</kbd></span></div>
+      <div><span>Undo the last change</span><span><kbd>u</kbd></span></div><div><span>This help</span><span><kbd>?</kbd></span></div>
+    </div>
+    <div class="foot"><button class="btn pri" id="help-close">Done</button></div>
+  </div>
+</dialog>
+
+<div class="live-region" id="toasts" aria-live="polite" aria-atomic="false"></div>
+
+<script>
+(function () {
+  'use strict';
+  var $ = function (s, r) { return (r || document).querySelector(s); };
+  var $$ = function (s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); };
+  var reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  /* width switch */
+  var stage = $('#stage'), bd = $('#w-desk'), bp = $('#w-phone');
+  function setW(phone) {
+    stage.classList.toggle('phone', phone); stage.classList.toggle('desk', !phone);
+    bp.setAttribute('aria-pressed', String(phone)); bd.setAttribute('aria-pressed', String(!phone));
+  }
+  bd.onclick = function () { setW(false); }; bp.onclick = function () { setW(true); };
+
+  function typing(t) {
+    return !!t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName) && !(t.type === 'checkbox' && false));
+  }
+
+  /* toasts */
+  var toasts = $('#toasts'), lastUndo = null;
+  var X = '<svg class="i"><use href="#i-x"/></svg>';
+  function toast(msg, opts) {
+    opts = opts || {};
+    var el = document.createElement('div');
+    el.className = 'toast' + (opts.error ? ' err' : '') + (reduced ? '' : ' in');
+    el.setAttribute('role', opts.error ? 'alert' : 'status');
+    var m = document.createElement('span'); m.className = 'msg'; m.textContent = msg; el.appendChild(m);
+    var timer, left = opts.undo ? 10 : 4, count;
+    if (opts.undo) {
+      count = document.createElement('span'); count.className = 'count'; count.setAttribute('aria-hidden', 'true'); count.textContent = left + 's'; el.appendChild(count);
+      var u = document.createElement('button'); u.className = 'btn'; u.type = 'button'; u.textContent = 'Undo';
+      u.onclick = function () { opts.undo(); close(); toast('Undone.'); };
+      el.appendChild(u);
+      lastUndo = { el: el, run: function () { u.click(); } };
+    }
+    if (opts.retry) { var r = document.createElement('button'); r.className = 'btn'; r.type = 'button'; r.textContent = 'Try again'; r.onclick = function () { close(); opts.retry(); }; el.appendChild(r); }
+    var x = document.createElement('button'); x.className = 'btn x'; x.type = 'button'; x.setAttribute('aria-label', 'Dismiss'); x.innerHTML = X; x.onclick = close; el.appendChild(x);
+    el.addEventListener('keydown', function (e) { if (e.key === 'Escape') { e.stopPropagation(); close(); } });
+    function close() { clearInterval(timer); if (lastUndo && lastUndo.el === el) lastUndo = null; el.remove(); }
+    if (!opts.error) {
+      var paused = false;
+      el.addEventListener('mouseenter', function () { paused = true; }); el.addEventListener('mouseleave', function () { paused = false; });
+      el.addEventListener('focusin', function () { paused = true; }); el.addEventListener('focusout', function () { paused = false; });
+      timer = setInterval(function () { if (paused) return; left -= 1; if (count) count.textContent = left + 's'; if (left <= 0) close(); }, 1000);
+    }
+    toasts.appendChild(el);
+    while (toasts.children.length > 3) toasts.firstChild.remove();
+  }
+  $('#t-undo').onclick = function () { toast('Marked <business> contacted.', { undo: function () {} }); };
+  $('#t-plain').onclick = function () { toast('Report sent to the owner of <business>.'); };
+  $('#t-err').onclick = function () { toast('Could not mark <business> contacted. Nothing changed.', { error: true, retry: function () { toast('Marked <business> contacted.', { undo: function () {} }); } }); };
+
+  /* dialogs */
+  function openDlg(d, from) { d._from = from || document.activeElement; if (!d.open) d.showModal(); }
+  ['confirm', 'help', 'cmd'].forEach(function (id) {
+    var d = document.getElementById(id);
+    d.addEventListener('close', function () { if (d._from && d._from.focus) d._from.focus(); });
+    d.addEventListener('click', function (e) { if (e.target === d) d.close(); });
+  });
+  var help = $('#help');
+  $('#open-help').onclick = function () { openDlg(help); }; $('#help-close').onclick = function () { help.close(); };
+
+  /* confirm */
+  var pendingYes = null, confirmD = $('#confirm');
+  function confirmThen(title, body, yes, label) {
+    $('#confirm-t').textContent = title; $('#confirm-p').textContent = body; $('#confirm-yes').textContent = label || 'Send'; pendingYes = yes; openDlg(confirmD);
+  }
+  $('#confirm-no').onclick = function () { pendingYes = null; confirmD.close(); };
+  $('#confirm-yes').onclick = function () { var f = pendingYes; pendingYes = null; confirmD.close(); if (f) f(); };
+
+  /* live table */
+  var tbl = $('#live-table'), rows = $$('tbody tr', tbl), cur = 0, bulk = $('#live-bulk');
+  var sheet = $('#sheet'), scrim = $('#scrim'), sheetFrom = null;
+  function setCur(i) {
+    cur = Math.max(0, Math.min(rows.length - 1, i));
+    rows.forEach(function (r, n) { r.classList.toggle('is-cursor', n === cur); });
+    tbl.setAttribute('aria-activedescendant', rows[cur].id);
+  }
+  function selected() { return rows.filter(function (r) { return $('.cb', r).checked; }); }
+  function renderBulk() {
+    var s = selected();
+    rows.forEach(function (r) { r.classList.toggle('is-selected', $('.cb', r).checked); });
+    if (!s.length) { bulk.hidden = true; bulk.innerHTML = ''; return; }
+    bulk.hidden = false;
+    bulk.innerHTML = '<div class="bb" role="region" aria-label="Bulk actions" style="border:0;border-bottom:1px solid var(--line);border-radius:0;box-shadow:none"><span class="count"><span class="mono">' + s.length + '</span> selected</span><button class="btn sec" id="b-mark">Mark contacted</button><button class="btn quiet sp-x" id="b-clear">Clear</button></div>';
+    $('#b-clear').onclick = function () { rows.forEach(function (r) { $('.cb', r).checked = false; }); renderBulk(); tbl.focus(); };
+    $('#b-mark').onclick = function () { var n = s.length; rows.forEach(function (r) { $('.cb', r).checked = false; }); renderBulk(); toast('Marked ' + n + ' contacted.', { undo: function () {} }); };
+  }
+  function openSheet(i) {
+    var r = rows[i]; sheetFrom = r; setCur(i);
+    $('#sheet-title').textContent = $('.name', r).textContent; $('#sheet-sub').textContent = r.getAttribute('data-sub');
+    $('#sheet-age').textContent = $('.age', r).textContent; $('#sheet-url').textContent = '?open=' + r.id; $('#sheet-verb').textContent = r.getAttribute('data-verb');
+    sheet.classList.add('open'); sheet.setAttribute('aria-hidden', 'false'); scrim.classList.add('open');
+    $('#sheet-title').focus();
+  }
+  function closeSheet() { if (!sheet.classList.contains('open')) return false; sheet.classList.remove('open'); sheet.setAttribute('aria-hidden', 'true'); scrim.classList.remove('open'); if (sheetFrom) tbl.focus(); return true; }
+  $('#sheet-x').onclick = closeSheet; scrim.onclick = closeSheet;
+  function runVerb(i) {
+    var r = rows[i], name = $('.name', r).textContent, v = r.getAttribute('data-verb'), c = r.getAttribute('data-confirm');
+    if (c) { var p = c.split('|'); confirmThen(p[0].replace(/&lt;/g, '<').replace(/&gt;/g, '>'), p[1], function () { toast('Sent. The email has gone to the owner.'); }, v); return; }
+    toast(v + ': ' + name + '.', { undo: function () {} });
+  }
+  $('#sheet-verb').onclick = function () { runVerb(rows.indexOf(sheetFrom)); };
+  rows.forEach(function (r, n) {
+    r.addEventListener('click', function (e) {
+      if (e.target.closest('.cb')) { renderBulk(); return; }
+      if (e.target.closest('.ra button')) { if (e.target.closest('.btn.quiet')) return; runVerb(n); return; }
+      setCur(n); tbl.focus();
+    });
+    r.addEventListener('dblclick', function () { openSheet(n); });
+  });
+  setCur(0);
+
+  /* command bar */
+  var cmd = $('#cmd'), cin = $('#cmd-in'), clist = $('#cmd-list'), hi = 0, items = [];
+  var DATA = [
+    ['Recent', '<business> one', 'Client', 'i-user'], ['Recent', 'Request #REQ-0000', '<business> two', 'i-mail'],
+    ['Go to', 'Today', 'g t', 'i-chev'], ['Go to', 'Clients', 'g c', 'i-chev'], ['Go to', 'Inbox', 'g i', 'i-chev'], ['Go to', 'Money', 'g m', 'i-chev'], ['Go to', 'Compliance', 'g o', 'i-chev'], ['Go to', 'System', 'g s', 'i-chev'],
+    ['Actions', 'Add enquiry', '', 'i-pencil'], ['Actions', 'New request', '', 'i-pencil'], ['Actions', 'Export payments', 'Logged export', 'i-file']
+  ];
+  function esc(s) { return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+  function renderCmd() {
+    var q = cin.value.trim().toLowerCase(), group = '', html = '', n = 0; items = [];
+    DATA.forEach(function (d) { if (q && d[1].toLowerCase().indexOf(q) < 0) return; if (d[0] !== group) { group = d[0]; html += '<div class="cb-g">' + group + '</div>'; } items.push(d); html += '<button class="cb-i" role="option" id="co' + n + '" data-n="' + n + '"><span class="tile"><svg class="i"><use href="#' + d[3] + '"/></svg></span><span class="t"><b>' + esc(d[1]) + '</b><span>' + esc(d[2]) + '</span></span></button>'; n++; });
+    if (!n) html = '<div class="cb-pad"><p>Nothing found for "' + esc(cin.value) + '". You can add it instead.</p><div class="row"><button class="btn sec" data-act="1">Add enquiry</button><button class="btn sec" data-act="1">New request</button></div></div>';
+    clist.innerHTML = html; hi = 0; markHi();
+  }
+  function markHi() { $$('.cb-i', clist).forEach(function (b, n) { var on = n === hi; b.setAttribute('aria-selected', String(on)); b.classList.toggle('is-active', on); if (on) { cin.setAttribute('aria-activedescendant', b.id); b.scrollIntoView({ block: 'nearest' }); } }); if (!items.length) cin.removeAttribute('aria-activedescendant'); }
+  function choose() { var d = items[hi]; if (!d) return; cmd.close(); toast('Would open: ' + d[1]); }
+  function openCmd() { if (cmd.open) { cmd.close(); return; } cin.value = ''; renderCmd(); openDlg(cmd); cin.focus(); }
+  $('#open-cmd').onclick = openCmd;
+  cin.addEventListener('input', renderCmd);
+  cin.addEventListener('keydown', function (e) {
+    if (e.key === 'ArrowDown') { e.preventDefault(); if (items.length) { hi = (hi + 1) % items.length; markHi(); } }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); if (items.length) { hi = (hi - 1 + items.length) % items.length; markHi(); } }
+    else if (e.key === 'Enter') { e.preventDefault(); choose(); }
+    else if (e.key === 'Escape' && cin.value) { e.preventDefault(); e.stopPropagation(); cin.value = ''; renderCmd(); }
+  });
+  clist.addEventListener('click', function (e) { var b = e.target.closest('.cb-i'); if (b) { hi = +b.getAttribute('data-n'); choose(); } else if (e.target.closest('[data-act]')) { cmd.close(); toast('Would open that form.'); } });
+
+  /* inline edit live */
+  (function () {
+    var wrap = $('#live-ie'), view = $('#live-ie-view'), val = $('#live-ie-val');
+    function edit() {
+      var old = val.textContent, f = document.createElement('div'); f.className = 'ie-edit';
+      f.innerHTML = '<input class="field" aria-label="Owner name"><button class="btn pri" type="button">Save</button><button class="btn sec" type="button">Cancel</button>';
+      var inp = $('input', f); inp.value = old; view.hidden = true; wrap.appendChild(f); inp.focus(); inp.select();
+      var err = null;
+      function end(saved) { f.remove(); if (err) err.remove(); view.hidden = false; view.focus(); if (saved !== null) { val.textContent = saved; toast('Saved the owner name.', { undo: function () { val.textContent = old; } }); } }
+      function save() {
+        var v = inp.value.trim();
+        if (!v) { inp.classList.add('bad'); inp.setAttribute('aria-invalid', 'true'); if (!err) { err = document.createElement('div'); err.className = 'ie-err'; err.setAttribute('role', 'alert'); err.innerHTML = '<svg class="i"><use href="#i-alert"/></svg>The name cannot be empty. Type the owner name.'; wrap.appendChild(err); } return; }
+        end(v === old ? null : v);
+      }
+      inp.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); save(); } else if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); end(null); } });
+      $$('button', f)[0].onclick = save; $$('button', f)[1].onclick = function () { end(null); };
+    }
+    view.onclick = edit;
+  })();
+
+  /* global keys */
+  var gPending = false, gTimer;
+  document.addEventListener('keydown', function (e) {
+    if ((e.metaKey || e.ctrlKey) && (e.key === 'k' || e.key === 'K')) { e.preventDefault(); openCmd(); return; }
+    if (e.key === 'Escape') { if (!document.querySelector('dialog[open]') && closeSheet()) { e.preventDefault(); } else if (!document.querySelector('dialog[open]') && selected().length) { rows.forEach(function (r) { $('.cb', r).checked = false; }); renderBulk(); } return; }
+    if (e.metaKey || e.ctrlKey || e.altKey) return;
+    if (typing(e.target) || document.querySelector('dialog[open]')) return;
+    var inTable = e.target === tbl || tbl.contains(e.target) || e.target === document.body;
+    if (gPending) { gPending = false; clearTimeout(gTimer); var map = { t: 'Today', c: 'Clients', i: 'Inbox', m: 'Money', o: 'Compliance', s: 'System' }; if (map[e.key]) { toast('Would go to ' + map[e.key] + '.'); e.preventDefault(); } return; }
+    if (e.key === 'g') { gPending = true; gTimer = setTimeout(function () { gPending = false; }, 1200); return; }
+    if (e.key === '?') { e.preventDefault(); openDlg(help); return; }
+    if (e.key === 'u' && lastUndo) { e.preventDefault(); lastUndo.run(); return; }
+    if (e.key === '/') { var s = $('.fb input:not([disabled])'); if (s) { e.preventDefault(); s.focus(); } return; }
+    if (!inTable || (e.target !== tbl && e.target.closest && e.target.closest('button') && e.key === 'Enter')) return;
+    if (e.key === 'j' || e.key === 'ArrowDown') { e.preventDefault(); if (e.shiftKey) { $('.cb', rows[cur]).checked = true; setCur(cur + 1); $('.cb', rows[cur]).checked = true; renderBulk(); } else setCur(cur + 1); if (sheet.classList.contains('open')) openSheet(cur); }
+    else if (e.key === 'k' || e.key === 'ArrowUp') { e.preventDefault(); if (e.shiftKey) { $('.cb', rows[cur]).checked = true; setCur(cur - 1); $('.cb', rows[cur]).checked = true; renderBulk(); } else setCur(cur - 1); if (sheet.classList.contains('open')) openSheet(cur); }
+    else if (e.key === 'Enter' && e.target === tbl) { e.preventDefault(); openSheet(cur); }
+    else if (e.key === 'e') { e.preventDefault(); runVerb(cur); }
+    else if (e.key === 'x' || (e.key === ' ' && e.target === tbl)) { e.preventDefault(); var c = $('.cb', rows[cur]); c.checked = !c.checked; renderBulk(); }
+  });
+})();
+</script>
+</body>
+</html>
