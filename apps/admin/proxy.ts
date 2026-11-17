@@ -19,7 +19,9 @@ export async function proxy(request: NextRequest): Promise<Response> {
   return NextResponse.next();
 }
 
-// Everything except Next.js static files and favicon.
+// Everything except Next.js static files, favicon and the push files. A browser fetches the service worker, the manifest and
+// the icons without the Cloudflare Access cookie (a worker script is requested outside the page's credentials), so the proxy
+// would answer 401 and push could never register. They hold nothing private. Cloudflare Access must bypass the same paths.
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"],
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|sw.js|manifest.webmanifest|icons/).*)"],
 };

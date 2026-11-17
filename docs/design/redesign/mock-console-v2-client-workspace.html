@@ -1,0 +1,695 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Client workspace, console v2</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Red+Hat+Display:wght@500;600;700&family=Red+Hat+Text:wght@400;500;600&family=Red+Hat+Mono:wght@400;500;600&display=swap">
+<style>
+:root{
+  --ink:#15161A;--ink2:#4E5057;--muted:#6A6C73;
+  --paper:#F6F5F2;--surface:#fff;--sunken:#EEECE7;--line:#E3E0D9;--field:#CFCBC2;
+  --gold:#C48A47;--gold-text:#8A5524;--gold-wash:#F4E6D3;--gold-soft:#FBF4EA;
+  --sage:#4F7A63;--sage-wash:#E5EFE8;
+  --error:#B42318;--error-wash:#FDECEA;
+  --rail:#23242A;--rail-text:#F6F5F2;--rail-muted:#A5A8B0;
+  --sh-rest:0 1px 0 rgba(42,28,16,.03);
+  --sh-hero:0 1px 2px rgba(42,28,16,.05),0 12px 32px -12px rgba(42,28,16,.14);
+  --sh-dialog:0 24px 64px -16px rgba(42,28,16,.28);
+  --r-c:8px;--r-card:14px;--r-hero:20px;
+  color-scheme:light;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{background:var(--paper)}
+body{font-family:'Red Hat Text',system-ui,-apple-system,sans-serif;font-size:15px;line-height:24px;color:var(--ink);background:var(--paper)}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer;background:none;border:0}
+a{color:inherit;text-decoration:none}
+:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+[hidden]{display:none!important}
+.fig{font-family:'Red Hat Mono',ui-monospace,monospace;font-variant-numeric:tabular-nums}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+svg.i{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round;flex:none}
+svg.i.s{width:16px;height:16px}
+
+/* mock toolbar: not part of the product */
+.mock{position:sticky;top:0;z-index:60;background:var(--sunken);border-bottom:1px solid var(--line);padding:8px 16px;display:flex;flex-wrap:wrap;gap:8px 20px;align-items:center;font-size:13px;line-height:20px}
+.mock b{font-weight:600}
+.mock .grp{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.mock .seg{display:flex;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:2px}
+.mock .seg button{padding:4px 10px;border-radius:6px;font-size:13px;font-weight:500;min-height:28px}
+.mock .seg button[aria-pressed=true]{background:var(--ink);color:#fff}
+.mock select{background:var(--surface);border:1px solid var(--field);border-radius:8px;padding:4px 8px;font-size:13px;min-height:30px}
+.mock .url{font-family:'Red Hat Mono',monospace;font-size:12px;color:var(--ink2)}
+.frame{margin:0 auto;width:100%;max-width:1440px;transition:max-width .2s}
+.frame.phone{max-width:390px;border-left:1px solid var(--line);border-right:1px solid var(--line)}
+
+/* shell */
+.app{container-type:inline-size;container-name:app;width:100%}
+.shell{display:grid;grid-template-columns:248px minmax(0,1fr);min-height:900px}
+.rail{background:var(--rail);color:var(--rail-text);padding:20px 12px;display:flex;flex-direction:column;gap:20px;position:sticky;top:0;align-self:start;height:100vh;min-height:760px}
+.logo{display:flex;align-items:center;gap:10px;padding:0 8px;font-family:'Red Hat Display',sans-serif;font-weight:700;font-size:18px}
+.logo .mk{width:28px;height:28px;border-radius:8px;background:var(--gold);color:var(--ink);display:grid;place-items:center;font-size:14px}
+.rail nav{display:flex;flex-direction:column;gap:2px}
+.rail nav a{display:flex;align-items:center;gap:12px;min-height:44px;padding:0 12px;border-radius:8px;color:var(--rail-muted);font-weight:500;font-size:15px}
+.rail nav a:hover{background:rgba(255,255,255,.06);color:var(--rail-text)}
+.rail nav a[aria-current=page]{background:rgba(255,255,255,.1);color:#fff;font-weight:600}
+.rail nav a .n{margin-left:auto;font-family:'Red Hat Mono',monospace;font-size:12px;min-width:22px;text-align:center;padding:0 6px;border-radius:99px;background:rgba(255,255,255,.12);color:#fff}
+.rail nav a .n.late{background:var(--error);color:#fff}
+.rail .foot{margin-top:auto;padding:10px 12px;border-top:1px solid rgba(255,255,255,.1);font-size:13px;color:var(--rail-muted);line-height:18px}
+.rail .foot b{display:block;color:#fff;font-weight:600}
+.main{min-width:0;display:flex;flex-direction:column}
+.topbar{height:64px;background:var(--surface);border-bottom:1px solid var(--line);display:flex;align-items:center;gap:12px;padding:0 40px;position:sticky;top:0;z-index:20}
+.topbar .menu{display:none}
+.cmd{flex:1;max-width:440px;display:flex;align-items:center;gap:10px;min-height:40px;padding:0 12px;border-radius:8px;background:var(--sunken);color:var(--ink2);font-size:14px}
+.cmd kbd{margin-left:auto;font-family:'Red Hat Mono',monospace;font-size:12px;border:1px solid var(--field);border-radius:6px;padding:0 6px;background:var(--surface)}
+.iconbtn{width:44px;height:44px;border-radius:8px;display:grid;place-items:center;color:var(--ink2)}
+.iconbtn:hover{background:var(--sunken)}
+.acct{display:flex;align-items:center;gap:8px;min-height:44px;padding:0 8px;border-radius:8px;font-size:14px;font-weight:500;color:var(--ink2)}
+.acct .av{width:28px;height:28px;border-radius:99px;background:var(--sunken);display:grid;place-items:center;font-size:12px;font-weight:600;color:var(--ink)}
+.topbar .sp{flex:1}
+.page{padding:32px 40px 64px;max-width:1320px;width:100%}
+
+/* type */
+h1{font-family:'Red Hat Display',sans-serif;font-size:36px;line-height:40px;font-weight:700;letter-spacing:-.02em}
+h2{font-family:'Red Hat Display',sans-serif;font-size:20px;line-height:28px;font-weight:600;letter-spacing:-.01em}
+h3{font-family:'Red Hat Display',sans-serif;font-size:15px;line-height:24px;font-weight:600}
+.lbl{font-size:12px;line-height:16px;font-weight:600;letter-spacing:.01em;color:var(--ink2)}
+.small{font-size:13px;line-height:20px;color:var(--ink2)}
+.muted{color:var(--ink2)}
+.hero-t{font-family:'Red Hat Display',sans-serif;font-size:26px;line-height:32px;font-weight:600;letter-spacing:-.015em}
+
+/* surfaces */
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-card);box-shadow:var(--sh-rest)}
+.pad{padding:24px 28px}
+.focal{background:var(--surface);border:1px solid var(--line);border-top:3px solid var(--gold);border-radius:var(--r-hero);box-shadow:var(--sh-hero);padding:28px}
+.focal.calm{border-top-color:var(--line);box-shadow:var(--sh-rest)}
+.focal.late{border-top-color:var(--error)}
+.sec{margin-top:32px}
+.sec>.h{display:flex;align-items:baseline;justify-content:space-between;gap:12px;padding-bottom:8px;margin-bottom:8px;border-bottom:1px solid var(--line)}
+.sec>.h .small{font-size:13px}
+
+/* buttons: 36px desktop, 44px phone */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:36px;padding:0 16px;border-radius:8px;font-weight:600;font-size:14px;white-space:nowrap;transition:background .12s}
+.btn:active{transform:translateY(1px)}
+.btn-p{background:var(--ink);color:#fff;box-shadow:inset 0 1px 0 rgba(255,255,255,.08)}
+.btn-p:hover{background:#2A2B31}
+.btn-p[disabled]{background:#9B9DA3;cursor:not-allowed}
+.btn-s{background:var(--sunken)}
+.btn-s:hover{background:#E4E1DA}
+.btn-d{background:var(--error-wash);color:var(--error)}
+.btn-l{padding:0 10px;min-height:36px;font-weight:600;color:var(--ink)}
+.btn-l:hover{background:var(--sunken)}
+.btn-sm{min-height:32px;padding:0 12px;font-size:13px}
+
+/* chips */
+.chip{display:inline-flex;align-items:center;gap:6px;border-radius:99px;padding:2px 10px;font-size:12px;line-height:16px;font-weight:600;background:var(--sunken);color:var(--ink2);white-space:nowrap}
+.chip.ok{background:var(--sage-wash);color:#2F5A44}
+.chip.wait{background:var(--gold-wash);color:var(--gold-text)}
+.chip.bad{background:var(--error-wash);color:var(--error)}
+.chip.dark{background:var(--ink);color:#fff}
+.chip svg.i{width:14px;height:14px}
+
+/* fields */
+.field{display:grid;gap:4px}
+.field label{font-size:12px;font-weight:600;color:var(--ink2)}
+.in{min-height:42px;border:1px solid var(--field);border-radius:8px;padding:0 12px;background:var(--surface);width:100%}
+.in:hover{border-color:#9B978C}
+textarea.in{padding:10px 12px;min-height:84px}
+.help{font-size:13px;line-height:20px;color:var(--ink2)}
+.tick{display:flex;gap:10px;align-items:flex-start;font-size:14px;line-height:20px}
+.tick input{margin-top:2px;width:18px;height:18px;accent-color:var(--ink)}
+
+/* notices */
+.note{display:flex;gap:12px;align-items:flex-start;border-radius:var(--r-card);padding:14px 16px;font-size:14px;line-height:20px;background:var(--sunken)}
+.note.bad{background:var(--error-wash);color:#7A1A12}
+.note.ok{background:var(--sage-wash);color:#2F5A44}
+.note.wait{background:var(--gold-soft);color:#6B431B}
+.note svg.i{margin-top:0}
+
+/* tables */
+table{border-collapse:collapse;width:100%}
+th{font-size:12px;line-height:16px;font-weight:600;color:var(--ink2);text-align:left;padding:10px 12px;border-bottom:1px solid var(--line);background:var(--surface);position:sticky;top:64px;z-index:5}
+td{padding:6px 12px;border-bottom:1px solid var(--line);height:44px;vertical-align:middle;font-size:14px;line-height:20px}
+td small,.sub{display:block;font-size:12px;line-height:16px;color:var(--ink2)}
+tbody tr:hover{background:#FAF9F6}
+tbody tr.sel{background:var(--gold-soft);box-shadow:inset 3px 0 0 var(--gold)}
+.r{text-align:right}
+.tr-click{cursor:pointer}
+.dot{width:8px;height:8px;border-radius:99px;background:var(--error);display:inline-block;margin-right:8px}
+
+/* tabs */
+.tabs{display:flex;gap:4px;border-bottom:1px solid var(--line);overflow-x:auto;scrollbar-width:none;margin-top:20px}
+.tabs button{display:flex;align-items:center;gap:8px;min-height:44px;padding:0 14px;font-weight:600;font-size:14px;color:var(--ink2);border-bottom:2px solid transparent;margin-bottom:-1px;white-space:nowrap}
+.tabs button:hover{color:var(--ink)}
+.tabs button[aria-selected=true]{color:var(--ink);border-bottom-color:var(--ink)}
+.tabs .n{font-family:'Red Hat Mono',monospace;font-size:12px;background:var(--sunken);border-radius:99px;padding:0 7px}
+.tabs .n.late{background:var(--error);color:#fff}
+
+/* rows / facts */
+.facts{display:grid;grid-template-columns:minmax(120px,40%) 1fr;gap:0}
+.facts dt,.facts dd{padding:10px 0;border-bottom:1px solid var(--line);font-size:14px;line-height:20px}
+.facts dt{color:var(--ink2)}
+.facts dd{text-align:right;word-break:break-word}
+.list>li{list-style:none;display:flex;align-items:center;gap:12px;min-height:44px;padding:8px 0;border-bottom:1px solid var(--line)}
+.tile{width:40px;height:40px;border-radius:12px;background:var(--gold-wash);color:var(--gold-text);display:grid;place-items:center;flex:none}
+.tile.sun{background:var(--sunken);color:var(--ink2)}
+.tile.bad{background:var(--error-wash);color:var(--error)}
+.tile.ok{background:var(--sage-wash);color:var(--sage)}
+.grow{flex:1;min-width:0}
+.row{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.between{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.stack{display:grid;gap:16px}
+.g2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:24px}
+.layout{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1fr);gap:24px;align-items:start}
+.layout>div{display:grid;gap:24px;min-width:0}
+
+/* stepper */
+.stepper{display:flex;align-items:flex-start;list-style:none}
+.stepper li{flex:1;display:flex;flex-direction:column;align-items:center;gap:8px;text-align:center;position:relative;font-size:13px;line-height:18px;color:var(--ink2);font-weight:500}
+.stepper li::before{content:"";position:absolute;top:15px;left:-50%;right:50%;height:2px;background:var(--line)}
+.stepper li:first-child::before{display:none}
+.stepper li.done::before,.stepper li.cur::before{background:var(--sage)}
+.stepper .c{width:32px;height:32px;border-radius:99px;border:2px solid var(--line);background:var(--surface);display:grid;place-items:center;font-family:'Red Hat Mono',monospace;font-size:13px;position:relative;z-index:1}
+.stepper li.done .c{background:var(--sage);border-color:var(--sage);color:#fff}
+.stepper li.cur .c{background:var(--gold);border-color:var(--gold);color:var(--ink);font-weight:600}
+.stepper li.cur{color:var(--ink);font-weight:600}
+.stepper.frozen li.cur .c{background:var(--sunken);border-color:var(--field);color:var(--ink2)}
+
+/* browser preview frame */
+.pf{border:1px solid var(--line);border-radius:14px;overflow:hidden;background:var(--surface);box-shadow:var(--sh-hero)}
+.pf .bar{display:flex;gap:6px;align-items:center;padding:8px 12px;background:var(--sunken);border-bottom:1px solid var(--line);font-family:'Red Hat Mono',monospace;font-size:12px;color:var(--ink2)}
+.pf .bar i{width:8px;height:8px;border-radius:99px;background:#CFCBC2}
+.pf .scr{aspect-ratio:16/10;background:var(--paper);display:grid;place-items:center;color:var(--ink2);font-size:13px;padding:16px;text-align:center}
+
+/* dialogs and panels */
+dialog{border:0;border-radius:20px;padding:28px;box-shadow:var(--sh-dialog);width:min(520px,calc(100vw - 32px));margin:auto;background:var(--surface)}
+dialog::backdrop{background:rgba(21,22,26,.4)}
+dialog h2{font-size:22px;line-height:28px}
+dialog .cons{margin-top:8px;color:var(--ink2);font-size:15px}
+dialog .acts{display:flex;justify-content:flex-end;gap:8px;margin-top:24px;flex-wrap:wrap}
+.side{position:fixed;top:0;right:0;bottom:0;width:480px;max-width:100%;background:var(--surface);border-left:1px solid var(--line);box-shadow:var(--sh-dialog);z-index:70;display:flex;flex-direction:column}
+.side header{padding:20px 24px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;gap:12px;align-items:flex-start}
+.side .body{padding:20px 24px;overflow:auto;flex:1}
+.side footer{padding:16px 24px;border-top:1px solid var(--line);display:flex;gap:8px;justify-content:flex-end}
+
+/* skeleton */
+.sk{background:var(--sunken);border-radius:8px;animation:pulse 1.6s ease-in-out infinite}
+@keyframes pulse{50%{opacity:.5}}
+.empty,.errbox{display:grid;gap:8px;justify-items:start;padding:24px 0}
+.empty .tile,.errbox .tile{margin-bottom:4px}
+.pill-row{display:flex;gap:8px;flex-wrap:wrap}
+.pill{display:inline-flex;align-items:center;gap:8px;min-height:36px;padding:0 14px;border-radius:99px;background:var(--sunken);font-size:14px;font-weight:500}
+.pill[aria-pressed=true]{background:var(--ink);color:#fff}
+.pill .n{font-family:'Red Hat Mono',monospace;font-size:12px;opacity:.75}
+.show-n{display:none}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+
+/* narrow: container query so the 390 toggle and a real phone behave the same */
+@container app (max-width:900px){
+  .shell{grid-template-columns:1fr}
+  .rail{position:fixed;left:0;top:0;bottom:0;width:280px;z-index:80;transform:translateX(-100%);transition:transform .24s;height:100%}
+  .rail.open{transform:none}
+  .topbar{padding:0 8px;height:56px}
+  .topbar .menu{display:grid}
+  .cmd{display:none}
+  .acct span{display:none}
+  .page{padding:20px 16px 48px}
+  h1{font-size:28px;line-height:34px}
+  .hero-t{font-size:22px;line-height:28px}
+  .layout,.g2{grid-template-columns:1fr}
+  .focal{padding:20px}
+  .pad{padding:20px}
+  .btn{min-height:44px}
+  .btn-sm{min-height:44px}
+  .btn-l{min-height:44px}
+  .hide-n{display:none!important}
+  .show-n{display:block}
+  th{top:56px}
+  .stepper li{font-size:11px;line-height:14px}
+  .stepper li span.t{max-width:60px}
+  .facts{grid-template-columns:1fr 1fr}
+  .side{width:100%}
+  dialog{padding:20px}
+}
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+<symbol id="i-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3 3 15 0 18M12 3c-3 3-3 15 0 18"/></symbol>
+<symbol id="i-chat" viewBox="0 0 24 24"><path d="M4 5h16v11H9l-5 4z"/></symbol>
+<symbol id="i-mega" viewBox="0 0 24 24"><path d="M4 10v4h3l8 4V6L7 10zM18 9.5a4 4 0 0 1 0 5"/></symbol>
+<symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/></symbol>
+<symbol id="i-alert" viewBox="0 0 24 24"><path d="M12 4l9 16H3zM12 10v4M12 17h.01"/></symbol>
+<symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12l5 5 9-10"/></symbol>
+<symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
+<symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6"/><path d="M20 20l-4-4"/></symbol>
+<symbol id="i-bell" viewBox="0 0 24 24"><path d="M6 16v-5a6 6 0 0 1 12 0v5l2 2H4zM10 20h4"/></symbol>
+<symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></symbol>
+<symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></symbol>
+<symbol id="i-chev" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></symbol>
+<symbol id="i-back" viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></symbol>
+<symbol id="i-dots" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.2"/><circle cx="12" cy="12" r="1.2"/><circle cx="19" cy="12" r="1.2"/></symbol>
+<symbol id="i-eye" viewBox="0 0 24 24"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></symbol>
+<symbol id="i-card" viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="12" rx="2"/><path d="M3 10h18"/></symbol>
+<symbol id="i-home" viewBox="0 0 24 24"><path d="M4 11l8-7 8 7v9H4z"/></symbol>
+<symbol id="i-users" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><path d="M3 19c0-3 3-5 6-5s6 2 6 5"/><circle cx="17" cy="9" r="2.5"/></symbol>
+<symbol id="i-inbox" viewBox="0 0 24 24"><path d="M4 13l2-8h12l2 8v6H4zM4 13h5l1 2h4l1-2h5"/></symbol>
+<symbol id="i-lock" viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></symbol>
+<symbol id="i-gear" viewBox="0 0 24 24"><path d="M4 8h10M18 8h2M4 16h2M10 16h10"/><circle cx="16" cy="8" r="2"/><circle cx="8" cy="16" r="2"/></symbol>
+<symbol id="i-file" viewBox="0 0 24 24"><path d="M7 3h8l4 4v14H7zM15 3v4h4"/></symbol>
+<symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 4-6 8-6s8 2 8 6"/></symbol>
+<symbol id="i-ext" viewBox="0 0 24 24"><path d="M14 4h6v6M20 4l-9 9M18 14v6H4V6h6"/></symbol>
+<symbol id="i-refresh" viewBox="0 0 24 24"><path d="M20 12a8 8 0 1 1-3-6.2M20 4v5h-5"/></symbol>
+<symbol id="i-phone" viewBox="0 0 24 24"><rect x="7" y="3" width="10" height="18" rx="2"/><path d="M11 18h2"/></symbol>
+<symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+</defs></svg>
+
+<div class="mock" role="toolbar" aria-label="Mock controls, not part of the product">
+
+<div class="grp"><b>Mock: Client workspace (S6 to S11)</b><span class="url" id="url"></span></div>
+<div class="grp"><b>Client</b><div class="seg" id="cs">
+<button type="button" data-c="new" aria-pressed="true">New</button>
+<button type="button" data-c="live" aria-pressed="false">Live</button>
+<button type="button" data-c="calm" aria-pressed="false">Live, all clear</button>
+<button type="button" data-c="empty" aria-pressed="false">Empty</button>
+<button type="button" data-c="error" aria-pressed="false">Error</button></div></div>
+<div class="grp" data-w-tab="website overview"><b>Website stage</b><select id="sel-stage" aria-label="Website stage">
+<option value="waiting">Waiting for kickoff, call booked</option>
+<option value="unconfirmed">Call ended, not confirmed</option>
+<option value="ready">Ready to start</option>
+<option value="building">Building</option>
+<option value="building_late">Building, first preview late</option>
+<option value="review">Preview sent</option>
+<option value="review_silent">Preview sent, customer silent</option>
+<option value="changes">Changes requested</option>
+<option value="approved">Approved, ready to launch</option>
+<option value="address_error">Approved, address check failed</option>
+<option value="live">Live</option>
+<option value="move">Live, domain move asked</option>
+<option value="hold">On hold</option>
+<option value="cancelled">Cancelled</option></select></div>
+<div class="grp" data-w-tab="overview money website"><b>Money</b><select id="sel-money" aria-label="Money state">
+<option value="ok">Paid, nothing wrong</option><option value="past_due">Renewal failed</option><option value="lapsed">Plan lapsed</option><option value="unapplied">Payment needs a look</option></select></div>
+<div class="grp" data-w-tab="overview account"><b>Account</b><select id="sel-acct" aria-label="Account state">
+<option value="normal">Normal</option><option value="closing">Closing</option><option value="privacy">Privacy request open</option></select></div>
+<div class="grp" data-w-tab="services"><b>Social card</b><select id="sel-n7" aria-label="Social events"><option value="off">Hidden until N7 lands</option><option value="on">After N7</option></select></div>
+
+<div class="grp"><b>View</b><div class="seg"><button type="button" data-view="desk" aria-pressed="true">1440</button><button type="button" data-view="phone" aria-pressed="false">390</button></div></div>
+</div>
+<div class="frame" id="frame"><div class="app">
+<div class="shell">
+<aside class="rail" id="rail" aria-label="Console">
+  <div class="logo"><span class="mk" aria-hidden="true">bB</span>Brandbasket</div>
+  <nav><a href="#" onclick="return false"><svg class="i " aria-hidden="true"><use href="#i-home"/></svg><span>Today</span><span class="n late">4</span></a><a href="#" onclick="return false" aria-current="page"><svg class="i " aria-hidden="true"><use href="#i-users"/></svg><span>Clients</span></a><a href="#" onclick="return false"><svg class="i " aria-hidden="true"><use href="#i-inbox"/></svg><span>Inbox</span><span class="n">2</span></a><a href="#" onclick="return false"><svg class="i " aria-hidden="true"><use href="#i-card"/></svg><span>Money</span><span class="n late">1</span></a><a href="#" onclick="return false"><svg class="i " aria-hidden="true"><use href="#i-lock"/></svg><span>Compliance</span></a><a href="#" onclick="return false"><svg class="i " aria-hidden="true"><use href="#i-gear"/></svg><span>System</span></a></nav>
+  <div class="foot"><b>&lt;staff member&gt;</b>Signed in</div>
+</aside>
+<div class="main">
+  <header class="topbar">
+    <button type="button" class="iconbtn menu" id="menu" aria-label="Open menu"><svg class="i " aria-hidden="true"><use href="#i-menu"/></svg></button>
+    <button type="button" class="cmd" onclick="document.getElementById('dlg-cmd').showModal()"><svg class="i s" aria-hidden="true"><use href="#i-search"/></svg><span>Search everything</span><kbd>&#8984;K</kbd></button>
+    <span class="sp"></span>
+    <button type="button" class="iconbtn" aria-label="Notifications"><svg class="i " aria-hidden="true"><use href="#i-bell"/></svg></button>
+    <button type="button" class="acct"><span class="av" aria-hidden="true">S</span><span>&lt;staff member&gt;</span></button>
+  </header>
+  <main class="page" id="page">
+<style>
+.anno{border:1px dashed #B9B4A8;border-radius:10px;padding:8px 12px;font-size:12px;line-height:16px;color:#5C5A52;background:#FAF9F6}
+.anno b{font-weight:600}
+.toast{position:fixed;left:16px;bottom:16px;z-index:90;background:var(--ink);color:#fff;border-radius:10px;padding:12px 16px;display:flex;gap:16px;align-items:center;font-size:14px;box-shadow:var(--sh-dialog)}
+.toast button{color:#fff;font-weight:600;min-height:36px;padding:0 8px;border-radius:6px}
+.toast button:hover{background:rgba(255,255,255,.12)}
+.kv{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:0 24px}
+.kv>div{padding:10px 0;border-bottom:1px solid var(--line)}
+.kv dt{font-size:12px;line-height:16px;color:var(--ink2)}
+.kv dd{font-size:14px;line-height:20px;font-weight:500}
+.exrow{display:flex;gap:12px;align-items:center;min-height:44px;padding:6px 0;border-top:1px solid #F0C7C2}
+.exrow:first-of-type{border-top:0}
+.exrow .grow b{font-weight:600}
+details>summary{list-style:none;cursor:pointer}
+details>summary::-webkit-details-marker{display:none}
+.menu-p{position:absolute;right:0;top:40px;z-index:30;background:var(--surface);border:1px solid var(--line);border-radius:12px;box-shadow:var(--sh-hero);padding:6px;min-width:240px}
+.menu-p button{display:flex;width:100%;text-align:left;min-height:40px;align-items:center;padding:0 12px;border-radius:8px;font-size:14px;font-weight:500}
+.menu-p button:hover{background:var(--sunken)}
+.menu-p button.red{color:var(--error)}
+.thumb{width:72px;height:72px;border-radius:12px;background:var(--sunken);display:grid;place-items:center;font-size:12px;color:var(--ink2)}
+.chk{display:flex;gap:12px;align-items:flex-start;min-height:44px;padding:10px 0;border-bottom:1px solid var(--line);font-size:14px}
+.chk input{margin-top:2px;width:18px;height:18px;accent-color:var(--ink)}
+@container app (max-width:900px){.kv{grid-template-columns:1fr 1fr}.thumb{width:64px;height:64px}.menu-p{min-width:200px}.exrow{flex-wrap:wrap}}
+</style>
+<div id="hdr"></div>
+<div class="tabs" role="tablist" aria-label="Client" id="tabs"></div>
+<div id="t-overview" data-w-tab="overview" style="margin-top:24px"></div>
+<div id="t-website" data-w-tab="website" style="margin-top:24px"></div>
+<div id="t-services" data-w-tab="services" style="margin-top:24px"></div>
+<div id="t-money" data-w-tab="money" style="margin-top:24px"></div>
+<div id="t-requests" data-w-tab="requests" style="margin-top:24px"></div>
+<div id="t-account" data-w-tab="account" style="margin-top:24px"></div>
+<aside class="side" id="side" hidden role="dialog" aria-modal="false" aria-label="Panel"></aside>
+<div id="toast" class="toast" hidden role="status"></div>
+
+  </main>
+</div>
+</div>
+</div></div>
+<dialog id="dlg-cmd"><h2>Search everything</h2><p class="cons">The command bar is specified in the shell mock (CR-A1). It is not drawn here.</p><div class="acts"><button class="btn btn-s" onclick="this.closest('dialog').close()">Close</button></div></dialog>
+
+<dialog id="dlg-confirm" aria-labelledby="cf-title">
+  <h2 id="cf-title">Confirm</h2>
+  <p class="cons" id="cf-body"></p>
+  <label class="tick" id="cf-tick" style="margin-top:16px" hidden><input type="checkbox"><span id="cf-tick-t"></span></label>
+  <div class="acts"><button class="btn btn-s" id="cf-keep" data-close>Keep</button><button class="btn btn-p" id="cf-ok" data-close>Confirm</button></div>
+</dialog>
+
+<dialog id="dlg-kickoff" aria-labelledby="ko-t">
+  <div class="row" style="margin-bottom:12px"><span class="tile"><svg class="i " aria-hidden="true"><use href="#i-phone"/></svg></span></div>
+  <h2 id="ko-t">Did the kickoff call with &lt;business&gt; happen?</h2>
+  <p class="cons">The call was booked for Mon 16 Nov, 3:00 pm. Confirming starts the 48 hour first preview clock. If nobody answers, the build starts on its own 24 hours after the call and is labelled Started without call confirmation.</p>
+  <div class="field" style="margin-top:16px"><label for="ko-n">Notes from the call (optional)</label><textarea class="in" id="ko-n"></textarea></div>
+  <div class="acts"><button class="btn btn-l" data-close>Not now</button><button class="btn btn-s" data-close>They did not join</button><button class="btn btn-s" data-close>Reschedule</button><button class="btn btn-p" id="ko-ok">Call completed</button></div>
+</dialog>
+<dialog id="dlg-refund" aria-labelledby="rf-t">
+  <h2 id="rf-t">Confirm refund of &#8377;2,999 for &lt;business&gt;</h2>
+  <p class="cons">&#8377;2,999 goes back to the customer through the payment provider, a credit note is issued and the customer is emailed. This cannot be undone.</p>
+  <fieldset style="border:0;margin-top:16px;display:grid;gap:8px"><legend class="lbl">How much</legend>
+    <label class="tick"><input type="radio" name="sc" checked><span>The whole payment, &#8377;2,999</span></label>
+    <label class="tick"><input type="radio" name="sc"><span>Part of it</span></label></fieldset>
+  <div class="field" style="margin-top:12px"><label for="rf-r">Reason</label><textarea class="in" id="rf-r"></textarea><span class="help">The customer sees this in the email.</span></div>
+  <label class="tick" style="margin-top:16px"><input type="checkbox"><span>I have checked that &#8377;2,999 should go back to the customer.</span></label>
+  <div class="acts"><button class="btn btn-s" data-close>Keep</button><button class="btn btn-d" data-close>Process refund of &#8377;2,999</button></div>
+</dialog>
+
+<script>
+
+const $=(s,r=document)=>r.querySelector(s), $$=(s,r=document)=>[...r.querySelectorAll(s)];
+// Visibility by state: an element with data-w-<key>="a b" shows only when state[key] is one of the listed values.
+function applyW(S){
+  $$('[data-w-x]').forEach(()=>{});
+  $$('*').forEach(el=>{
+    let show=true,has=false;
+    for(const a of el.attributes){
+      if(!a.name.startsWith('data-w-'))continue;
+      has=true;const k=a.name.slice(7);
+      if(!a.value.split(' ').includes(String(S[k])))show=false;
+    }
+    if(has)el.hidden=!show;
+  });
+}
+$$('[data-view]').forEach(b=>b.addEventListener('click',()=>{
+  $('#frame').classList.toggle('phone',b.dataset.view==='phone');
+  $$('[data-view]').forEach(x=>x.setAttribute('aria-pressed',x===b));
+}));
+$('#menu')&&$('#menu').addEventListener('click',()=>$('#rail').classList.toggle('open'));
+// Native dialogs open from any element with data-dlg="id".
+document.addEventListener('click',e=>{
+  const t=e.target.closest('[data-dlg]');
+  if(t){const d=document.getElementById(t.dataset.dlg);d&&d.showModal();}
+  const c=e.target.closest('[data-close]');
+  if(c)c.closest('dialog').close();
+  const f=e.target.closest('[data-confirm]');
+  if(f){
+    const d=$('#dlg-confirm');
+    $('#cf-title',d).textContent=f.dataset.confirmTitle;
+    $('#cf-body',d).textContent=f.dataset.confirm;
+    const tk=$('#cf-tick',d);tk.hidden=!f.dataset.confirmTick;
+    $('#cf-tick-t',d).textContent=f.dataset.confirmTick||'';
+    const ok=$('#cf-ok',d);ok.textContent=f.dataset.confirmOk||'Confirm';
+    ok.className='btn '+(f.dataset.confirmDanger?'btn-d':'btn-p');
+    $('#cf-keep',d).textContent=f.dataset.confirmKeep||'Keep';
+    d.showModal();
+  }
+});
+
+const R='₹';
+const S={client:'new',tab:'overview',stage:'unconfirmed',money:'ok',account:'normal',n7:'off'};
+const DEF={new:{stage:'unconfirmed',money:'ok',account:'normal'},live:{stage:'live',money:'past_due',account:'privacy'},calm:{stage:'live',money:'ok',account:'normal'},empty:{stage:'none',money:'none',account:'normal'},error:{stage:'live',money:'ok',account:'normal'}};
+const TABS=[['overview','Overview'],['website','Website'],['services','Services'],['money','Money'],['requests','Requests'],['account','Account']];
+const PATH={overview:'',website:'/website',services:'/services',money:'/billing',requests:'/requests',account:'/people'};
+const I=(n,c='')=>`<svg class="i ${c}" aria-hidden="true"><use href="#i-${n}"/></svg>`;
+const has=(...c)=>c.includes(S.client);
+const paid=()=>S.client!=='empty';
+const full=()=>has('live','calm','error');
+const stageStep={waiting:1,unconfirmed:1,ready:2,building:2,building_late:2,review:3,review_silent:3,changes:3,approved:4,address_error:4,live:5,move:5,hold:2,cancelled:2};
+const STAGE_LABEL={waiting:'Waiting for kickoff',unconfirmed:'Waiting for kickoff',ready:'Ready to start',building:'Building',building_late:'Building',review:'Awaiting client review',review_silent:'Awaiting client review',changes:'Changes requested',approved:'Approved, ready to launch',address_error:'Approved, ready to launch',live:'Live',move:'Live',hold:'On hold',cancelled:'Cancelled'};
+const STAGE_TONE={waiting:'wait',unconfirmed:'bad',ready:'wait',building:'',building_late:'bad',review:'',review_silent:'wait',changes:'wait',approved:'wait',address_error:'bad',live:'ok',move:'wait',hold:'',cancelled:''};
+const svcTone=()=>{const t=STAGE_TONE[S.stage];return t==='ok'?'ok':t==='bad'?'bad':'wait'};
+
+// One list of what is wrong for this client. Order is the priority: the first one is the Next step card.
+function exceptions(){
+  if(S.client==='empty')return[];
+  const e=[],st=S.stage;
+  if(st==='unconfirmed')e.push({k:'kickoff',late:1,t:'Kickoff call ended 1 day ago and nobody confirmed it',c:'1d late',title:'Did the kickoff call with <business> happen?',line:'The 48 hour first preview clock starts when you confirm. After 24 hours the build starts on its own, labelled Started without call confirmation.',btn:'Open kickoff prompt',dlg:'dlg-kickoff'});
+  if(st==='building_late')e.push({k:'late',late:1,t:'The first preview is 1 day late',c:'1d late',title:'Send the first preview',line:'It was promised for Mon 16 Nov. The customer is waiting.',btn:'Open Website',tab:'website'});
+  if(st==='review_silent')e.push({k:'silent',t:'Preview sent 5 days ago, no reply',c:'5d',title:'The customer has not replied to the preview',line:'Sent Wed 11 Nov. Nothing is waiting on us, but they may need a nudge.',btn:'Open Website',tab:'website'});
+  if(st==='address_error')e.push({k:'addr',late:1,t:'The address did not load over HTTPS',c:'Check failed',title:'Fix the address before going live',line:'The address check failed. DNS may not point at the site yet.',btn:'Open Website',tab:'website'});
+  if(st==='move')e.push({k:'move',t:'They asked to move to their own domain',c:'Waiting',title:'Move them to their own domain',line:'They want <own domain>. Add it to the site and check DNS.',btn:'Open Website',tab:'website'});
+  if(S.money==='unapplied')e.push({k:'unapplied',late:1,t:'A payment arrived but nothing was bought',c:'2d',title:'Check the payment that was not applied',line:'The customer was told we received it and will be in touch. They are not asked to pay again until it is sorted.',btn:'Open Money',tab:'money'});
+  if(S.money==='past_due')e.push({k:'due',late:1,t:'The monthly renewal failed 3 days ago',c:'3d',title:'Check the failed renewal',line:'The renewal of '+R+'8,997 did not go through on Sat 14 Nov.',btn:'Open Money',tab:'money'});
+  if(S.money==='lapsed')e.push({k:'lapsed',late:1,t:'The plan lapsed on 12 Nov',c:'5d',title:'Their plan has lapsed',line:'Paid through Thu 12 Nov and not renewed.',btn:'Open Money',tab:'money'});
+  if(S.account==='closing')e.push({k:'closing',t:'The account is closing and will be erased on 12 Dec',c:'25d 06h',title:'This account is closing',line:'Erased on Sat 12 Dec unless restored.',btn:'Open Account',tab:'account'});
+  if(S.account==='privacy')e.push({k:'privacy',t:'A privacy request is open',c:'17d 08h remaining',title:'Answer the privacy request',line:'It is due in 17d 08h. It is logged under Compliance.',btn:'Open Account',tab:'account'});
+  return e;
+}
+const stageCard={
+ waiting:{title:"Waiting for the customer's setup",line:'Kickoff call booked for Thu 19 Nov, 3:00 pm.',calm:1,btn:'Open Website',tab:'website'},
+ ready:{title:'Start building',line:'Kickoff confirmed. The first preview is due Thu 19 Nov.',btn:'Open Website',tab:'website'},
+ building:{title:'Send the first preview',line:'Due in 5 hours.',btn:'Open Website',tab:'website'},
+ review:{title:"Waiting for the customer's review",line:'Preview sent Mon 16 Nov, 11:00 am.',calm:1,btn:'Open Website',tab:'website'},
+ changes:{title:"Make the customer's changes",line:'Round 1 of 2. The updated preview is due Wed 18 Nov.',btn:'Open Website',tab:'website'},
+ approved:{title:'Go live',line:'They approved the preview. Eight launch checks are left to tick.',btn:'Open Website',tab:'website'},
+ live:{title:'Nothing is waiting on us',line:'Checked: website, services, money and the account.',calm:1},
+ hold:{title:'The build is on hold',line:'Press Resume on the Website tab to start again.',calm:1,btn:'Open Website',tab:'website'},
+ cancelled:{title:'Nothing needed',line:'This build was cancelled. Their plan and billing did not change.',calm:1}
+};
+function go(tab){S.tab=tab;render()}
+function toast(m,u){const t=$('#toast');t.hidden=false;t.innerHTML=`<span>${m}</span>${u?'<button type="button" id="undo">Undo</button>':''}`;clearTimeout(window._t);window._t=setTimeout(()=>t.hidden=true,u?10000:4000);const b=$('#undo');if(b)b.onclick=()=>{t.hidden=true}}
+const chip=(t,tone='',ic='')=>`<span class="chip ${tone}">${ic?I(ic):''}${t}</span>`;
+const sectionH=(t,aside='')=>`<div class="h"><h2>${t}</h2>${aside?`<span class="small">${aside}</span>`:''}</div>`;
+const empty=(ic,t,d,btn='')=>`<div class="empty"><span class="tile sun">${I(ic)}</span><h3 style="font-size:17px">${t}</h3><p class="muted">${d}</p>${btn}</div>`;
+const errp=(t,d='Something went wrong reading this. Nothing was changed.')=>`<div class="errbox"><span class="tile bad">${I('alert')}</span><h3 style="font-size:17px">${t}</h3><p class="muted">${d}</p><button class="btn btn-s" data-retry>${I('refresh','s')}Try again</button></div>`;
+const kvl=(rows)=>`<dl class="facts">${rows.map(([k,v])=>`<dt>${k}</dt><dd>${v}</dd>`).join('')}</dl>`;
+const stripFor=(list)=>`<section class="note bad" role="region" aria-label="Needs a look" style="display:block;padding:16px 20px"><div class="row" style="margin-bottom:4px">${I('alert')}<b style="font-weight:600">${list.length===1?'1 thing needs a look':list.length+' things need a look'}</b></div>${list.map(x=>`<div class="exrow"><div class="grow"><b>${x.t}</b></div><span class="fig" style="font-size:13px;font-weight:600">${x.c}</span>${x.tab?`<button class="btn btn-l btn-sm" data-go="${x.tab}">${x.btn.replace('Open ','')}${I('chev','s')}</button>`:`<button class="btn btn-l btn-sm" data-dlg="${x.dlg}">Open prompt</button>`}</div>`).join('')}</section>`;
+
+/* header */
+function renderHeader(){
+  const svc=full()||has('new')?(has('new')?['Website']:['Website','Social','Paid Ads','Monitoring']):[];
+  const ic={Website:'globe',Social:'chat','Paid Ads':'mega',Monitoring:'shield'};
+  const tone=has('new')?svcTone():'ok';
+  $('#hdr').innerHTML=`<a href="mock-console-v2-clients.html" class="btn btn-l" style="margin-left:-10px">${I('back','s')}Clients</a>
+  <div class="between" style="align-items:flex-start;margin-top:4px"><div>
+    <h1>&lt;business&gt;</h1>
+    <p class="small" style="margin-top:4px">&lt;owner&gt; · &lt;owner email&gt; · &lt;owner mobile&gt; · <span class="fig">ID b7e1c9a4</span></p></div>
+  <div class="row" style="gap:8px">${paid()?chip(STAGE_LABEL[S.stage]||'',STAGE_TONE[S.stage]):chip('Not paid')}${svc.map(n=>chip(n,tone,n==='Website'&&tone==='bad'?'alert':tone==='ok'?'check':'clock')).join('')}</div></div>`;
+  const reqN=has('live','calm')?2:0;
+  const moneyLate=S.money!=='ok'&&S.money!=='none';
+  $('#tabs').innerHTML=TABS.map(([k,l])=>`<button role="tab" aria-selected="${S.tab===k}" data-go="${k}">${l}${k==='requests'&&reqN?`<span class="n fig">${reqN}</span>`:''}${k==='money'&&moneyLate?`<span class="n late fig" title="Needs a look"><span class="sr">Needs a look</span>!</span>`:''}</button>`).join('');
+  $('#url').textContent='/clients/<id>'+PATH[S.tab];
+}
+
+/* S6 Overview */
+function renderOverview(){
+  const ex=exceptions();
+  let card,calm=false,late=false;
+  if(S.client==='error'){
+    card={title:'We could not check what is waiting',line:'One of the reads failed, so this page cannot say nothing is waiting. Try again before relying on it.',btn:'Try again',retry:1};late=true;
+  }else if(S.client==='empty'){
+    card={title:'Not paid yet',line:'Signed up Mon 16 Nov, 10:20 am. They started checkout and did not finish.',btn:'Open in Enquiries'};calm=true;
+  }else if(ex.length){card=ex[0];late=!!ex[0].late}
+  else{card=stageCard[S.stage==='address_error'||S.stage==='move'?'live':S.stage]||stageCard.live;calm=!!card.calm}
+  const strip=S.client==='error'?`<section class="note bad" role="alert" style="display:block;padding:16px 20px"><div class="row">${I('alert')}<b style="font-weight:600">Exceptions could not be read</b><span class="grow"></span><button class="btn btn-l btn-sm" data-retry>${I('refresh','s')}Try again</button></div></section>`:ex.length?stripFor(ex):'';
+  const btn=card.retry?`<button class="btn btn-p" data-retry>${I('refresh','s')}Try again</button>`:card.dlg?`<button class="btn btn-p" data-dlg="${card.dlg}">${card.btn}</button>`:card.btn?`<button class="btn ${calm?'btn-s':'btn-p'}" data-go="${card.tab||'overview'}">${card.btn}</button>`:'';
+  const focal=`<section class="focal ${calm?'calm':''} ${late&&S.client!=='error'?'':''}" aria-labelledby="ns-t">
+    <div class="row" style="gap:16px;align-items:flex-start"><span class="tile ${late?'bad':calm?'sun':''}">${I(late?'alert':calm?'check':'clock')}</span>
+    <div class="grow"><p class="lbl" id="ns-t">Next step</p><p class="hero-t" style="margin-top:4px">${card.title.replace('<business>','&lt;business&gt;')}</p>
+    <p class="muted" style="margin-top:8px;max-width:60ch">${card.line}</p><div class="row" style="margin-top:20px">${btn}</div></div></div></section>`;
+  // service cards: only services this client has
+  const wTone=svcTone(),wName=STAGE_LABEL[S.stage]||'';
+  const websiteSentence={waiting:'Kickoff call booked.',unconfirmed:'The kickoff call has not been confirmed.',ready:'Ready to start.',building:'First preview due in 5 hours.',building_late:'First preview is 1 day late.',review:'Preview sent, waiting for the customer.',review_silent:'Preview sent 5 days ago, no reply.',changes:'Round 1 of 2 in progress.',approved:'Approved, ready to launch.',address_error:'Approved, the address check failed.',live:'Live since Fri 6 Nov.',move:'Live. They asked for their own domain.',hold:'The build is on hold.',cancelled:'The build was cancelled.'}[S.stage];
+  const svc=(ic,n,tone,sent,act,tab)=>`<div class="card pad" style="padding:20px"><div class="row" style="gap:12px;align-items:flex-start"><span class="tile ${tone==='ok'?'ok':tone==='bad'?'bad':''}">${I(ic)}</span><div class="grow"><div class="between"><h3>${n}</h3>${chip(n==='Website'?wName:tone==='ok'?'Active':'Set up needed',tone==='ok'?'ok':tone==='bad'?'bad':'wait',tone==='ok'?'check':tone==='bad'?'alert':'clock')}</div><p class="small" style="margin-top:4px">${sent}</p><button class="btn btn-l btn-sm" style="margin:8px 0 0 -10px" data-go="${tab}">${act}${I('chev','s')}</button></div></div></div>`;
+  let cards='';
+  if(has('new'))cards=svc('globe','Website',wTone,websiteSentence,'Open Website','website');
+  else if(full())cards=svc('globe','Website',wTone,websiteSentence,'Open Website','website')+svc('chat','Social','ok','Posting runs on its own. Staff do no Social work.','Open Services','services')+svc('mega','Paid Ads','ok','Figures for Oct are in. Display only.','Open Services','services')+svc('shield','Monitoring','ok','Included free with all three plans.','Open Services','services');
+  const cardsHtml=cards?`<div class="sec" style="margin-top:0"><div class="g2" style="gap:16px">${cards}</div></div>`:`<div class="card pad">${empty('globe','No services yet','Services appear here once they have paid. What they told us is on the right.')}</div>`;
+  // mirror
+  const mirrorBody=S.client==='error'?errp('We could not load what the customer sees'):`<div class="pf" style="box-shadow:none"><div class="bar"><i></i><i></i><i></i><span style="margin-left:8px">app.brandbasket.in/website</span></div><div style="padding:16px;display:grid;gap:12px">
+   <div><p class="lbl">Website</p><p>${paid()?({waiting:'Setting up',unconfirmed:'Setting up',ready:'We have your details and will start soon',building:'We are building your website',building_late:'We are building your website',review:'Your preview is ready to review',review_silent:'Your preview is ready to review',changes:'We are making your changes',approved:'Approved, we are getting ready to launch',address_error:'Approved, we are getting ready to launch',live:'Your website is live',move:'Your website is live',hold:'Your build is on hold',cancelled:'No website service active'}[S.stage]):'No website service active'}</p></div>
+   <div><p class="lbl">Kickoff call</p><p>${S.stage==='unconfirmed'?'Your call was on Mon 16 Nov, 3:00 pm':S.stage==='waiting'?'Your call is Thu 19 Nov, 3:00 pm':paid()?'Your call is done':'No call booked'}</p></div>
+   <div><p class="lbl">Plan and billing</p><p>${!paid()?'Not paid':S.money==='lapsed'?'Your plan has lapsed':S.money==='past_due'?'We could not take your renewal':'Paid through Sat 12 Dec'}</p></div></div></div>`;
+  const mirror=`<section class="card pad" aria-labelledby="mir"><div class="between" style="margin-bottom:12px"><div class="row" style="gap:8px">${I('eye')}<h3 id="mir">What the customer sees</h3></div>${chip('Read only mirror')}</div>${mirrorBody}</section>`;
+  const tl=S.client==='error'?errp('We could not load the history'):!paid()?empty('clock','Nothing has happened yet','Their sign-up and every action on this client will be listed here.'):`<ul class="list">${[
+    ...(S.stage==='unconfirmed'?[['Kickoff call ended, not confirmed','Tue 17 Nov, 3:00 pm','Staff']]:[]),
+    ...(S.money==='past_due'?[['Renewal payment failed','Sat 14 Nov, 2:10 am','System']]:[]),
+    ['Payment received, first term started','Mon 16 Nov, 10:48 am','System'],['Kickoff call booked','Mon 16 Nov, 10:50 am','Customer'],['Signed up','Mon 16 Nov, 10:20 am','Customer']].map(([a,b,c])=>`<li><span class="tile sun" style="width:32px;height:32px;border-radius:10px">${I('check','s')}</span><div class="grow"><b style="font-weight:500">${a}</b><span class="sub">${c}</span></div><span class="small fig">${b}</span></li>`).join('')}</ul>`;
+  const activity=`<section class="sec" aria-labelledby="act"><div class="h"><h2 id="act">What happened</h2><span class="small">Every action on this client</span></div>${tl}</section>`;
+  // aside
+  const owner=`<section class="card pad" style="padding:20px"><h3>Owner</h3>${kvl([['Name','&lt;owner&gt;'],['Email','&lt;owner email&gt;'],['Mobile','<span class="fig">&lt;owner mobile&gt;</span>'],['Billed in','Indian rupees'],['Joined','<span class="fig">Mon 16 Nov</span>']])}</section>`;
+  const kick=paid()?`<section class="card pad" style="padding:20px"><h3>Kickoff call</h3>${kvl([['Booking',S.stage==='waiting'?'Thu 19 Nov, 3:00 pm':'Mon 16 Nov, 3:00 pm'],['Outcome',S.stage==='unconfirmed'?'<span style="color:var(--error);font-weight:600">Not confirmed</span>':S.stage==='waiting'?'Not held yet':'Confirmed by staff']])}</section>`:'';
+  const money=paid()?`<section class="card pad" style="padding:20px"><div class="between"><h3>Money</h3><button class="btn btn-l btn-sm" data-go="money">Open${I('chev','s')}</button></div>${kvl([['Payment',S.money==='lapsed'?'Lapsed':'Paid'],['Billed','Monthly'],['First payment','<span class="fig">'+(has('new')?R+'2,999':R+'8,997')+', Mon 16 Nov</span>'],['Paid through','<span class="fig">'+(S.money==='lapsed'?'Thu 12 Nov':'Sat 12 Dec')+'</span>'],['First term ends','<span class="fig">Tue 16 Nov 2027</span>']])}</section>`:'';
+  const told=`<section class="card pad" style="padding:20px"><div class="between"><h3>What they told us</h3>${chip(paid()?'Answered before paying':'Not finished')}</div>${kvl([['Business type','&lt;answer&gt;'],['Main goal','&lt;answer&gt;'],['Website now','&lt;answer&gt;'],['Main action','&lt;answer&gt;'],['Design direction','&lt;answer&gt;']])}<p class="small" style="margin-top:8px">Read only. The rest is on the Account tab.</p></section>`;
+  $('#t-overview').innerHTML=`${strip}<div class="layout" style="margin-top:${strip?'24px':'0'}"><div>${focal}${cardsHtml}${mirror}${activity}</div><div>${owner}${kick}${money}${told}</div></div>`;
+}
+
+/* S7 Website */
+function renderWebsite(){
+  const el=$('#t-website');
+  if(!paid()){el.innerHTML=`<div class="card pad">${empty('globe','No website service','Their website build appears here once they have paid for Website Management.')}</div>`;return}
+  const st=S.stage,step=stageStep[st],frozen=st==='hold'||st==='cancelled';
+  const steps=['Kickoff','Build','Preview','Launch','Live'];
+  const stepper=`<ol class="stepper ${frozen?'frozen':''}" aria-label="Build stages">${steps.map((n,i)=>`<li class="${i+1<step?'done':i+1===step&&!(step===5)?'cur':i+1<=step&&step===5?'done':''}"${i+1===step?' aria-current="step"':''}><span class="c">${(i+1<step||step===5)?I('check','s'):i+1}</span><span class="t">${n}</span></li>`).join('')}</ol>${frozen?`<p class="small" style="margin-top:12px;text-align:center">${st==='hold'?'On hold at Build':'Cancelled at Build'}. The stage did not move.</p>`:''}`;
+  const billing=S.money!=='ok'&&S.money!=='none'?`<div class="note bad" style="margin-bottom:16px">${I('alert')}<span><b style="font-weight:600">Billing needs attention for this client.</b> The build stage is unchanged. <button class="btn btn-l btn-sm" data-go="money" style="min-height:28px">Open Money</button> before doing more work.</span></div>`:'';
+  const menu=`<details style="position:relative"><summary class="iconbtn" aria-label="More controls">${I('dots')}</summary><div class="menu-p">
+    <button type="button" data-confirm="This grants the client one extra round of website changes without charging them." data-confirm-title="Add a round of changes" data-confirm-ok="Add free round">Add a round of changes</button>
+    ${st==='hold'?'':`<button type="button" data-confirm="The build pauses. Their plan and billing do not change." data-confirm-title="Put this build on hold" data-confirm-ok="Put on hold">Put the build on hold</button>`}
+    <button type="button" class="red" data-confirm="This cancels the open website build. Their plan and billing do not change." data-confirm-title="Cancel this build" data-confirm-ok="Cancel build" data-confirm-danger="1" data-confirm-keep="Keep the build">Cancel this build</button></div></details>`;
+  const link=(label,btn,ph)=>`<div class="row" style="align-items:flex-end;margin-top:16px"><div class="field grow" style="min-width:220px"><label for="pl">Preview link</label><input class="in fig" id="pl" placeholder="${ph}"></div>${btn}</div>`;
+  let title='',line='',body='',tone='';
+  const T={waiting:"Waiting for the customer's setup",unconfirmed:'Did the kickoff call happen?',ready:'Start building',building:'Send the first preview',building_late:'Send the first preview',review:"Waiting for the customer's review",review_silent:"Waiting for the customer's review",changes:"Make the customer's changes",approved:'Go live',address_error:'Go live',live:'Nothing needed',move:'Move them to their own domain',hold:'The build is on hold',cancelled:'Nothing needed'};
+  title=T[st];
+  if(st==='waiting'){line='Kickoff call booked for Thu 19 Nov, 3:00 pm. Nothing is needed from us until the call ends.';body=`<div class="row" style="margin-top:16px"><button class="btn btn-s">Copy meeting link</button></div>`;tone='calm'}
+  if(st==='unconfirmed'){line='The call ended 1 day ago. The 48 hour first preview clock has not started. After 24 hours the build starts on its own, labelled Started without call confirmation.';body=`<div class="row" style="margin-top:20px"><button class="btn btn-p" data-dlg="dlg-kickoff">Open kickoff prompt</button></div><p class="small" style="margin-top:8px">The prompt is the one place to answer. This card only opens it.</p>`;tone='late'}
+  if(st==='ready'){line='Kickoff confirmed by staff. The first preview is due Thu 19 Nov, 3:00 pm.';body=`<div class="row" style="margin-top:20px"><button class="btn btn-p">Start building</button></div>`}
+  if(st==='building'||st==='building_late'){line=st==='building'?'The first preview is due in 5 hours.':'The first preview was due Mon 16 Nov, 3:00 pm. It is 1 day late.';body=link('',`<button class="btn btn-p" data-confirm="The customer is emailed this link and the build moves to Awaiting client review." data-confirm-title="Send the preview to &lt;business&gt;" data-confirm-ok="Send preview">Send preview</button>`,'Paste the preview link');tone=st==='building_late'?'late':''}
+  if(st==='review'||st==='review_silent'){line=st==='review'?'Preview sent Mon 16 Nov, 11:00 am. The customer reviews it from their dashboard.':'Preview sent Wed 11 Nov. Nothing is waiting on us, but they have not replied for 5 days.';body=`<div class="row" style="margin-top:16px">${st==='review_silent'?chip('No reply for 5 days','wait','clock'):''}<button class="btn btn-s" data-confirm="The customer is emailed the preview link again." data-confirm-title="Resend the preview email" data-confirm-ok="Resend email">Resend the preview email</button></div>`;tone=st==='review'?'calm':''}
+  if(st==='changes'){line='They asked for changes. Round 1 of 2 is used. The updated preview is due Wed 18 Nov.';body=`<blockquote style="margin-top:16px;border-left:3px solid var(--line);padding:4px 16px;font-size:15px">“&lt;what the customer wrote&gt;”<span class="small" style="display:block;margin-top:4px">Round 1 of 2 · asked Tue 17 Nov, 9:10 am · <button class="btn btn-l btn-sm" data-go="requests" style="min-height:24px;padding:0 4px">Open the request</button></span></blockquote>`+link('',`<button class="btn btn-p" data-confirm="The customer is emailed the updated preview and the build moves to Awaiting client review." data-confirm-title="Send the updated preview to &lt;business&gt;" data-confirm-ok="Send updated preview">Send updated preview</button>`,'Paste the updated preview link')}
+  if(st==='approved'||st==='address_error'){
+    const checks=['The approved preview is the version being launched','A production deployment exists','The hostname is added to the website’s host','DNS points at it and HTTPS works','The homepage and key pages load','It looks right on a phone','The contact form, call and WhatsApp links work','The customer knows the launch plan'];
+    line=st==='approved'?'They approved the preview. Tick all eight checks, then mark it live.':'The address check failed. Fix DNS, check again, then mark it live.';
+    body=`<div style="margin-top:12px">${checks.map((c,i)=>`<label class="chk"><input type="checkbox" class="lc" ${st==='address_error'&&i>=3?'':'checked'}><span>${c}</span></label>`).join('')}</div>
+    <div class="row" style="margin-top:16px"><button class="btn btn-s">Check the address</button><span class="small">${st==='address_error'?'':'Last check: passed, Tue 17 Nov, 9:00 am'}</span></div>
+    ${st==='address_error'?`<div class="note bad" style="margin-top:12px" role="alert">${I('alert')}<span><b style="font-weight:600">Not marked live: the address did not load over HTTPS.</b> DNS reads <span class="fig">&lt;DNS result from the site check&gt;</span>. Check DNS and the deployment, or tick the box beside Mark live to go live anyway.</span></div>
+    <label class="tick" style="margin-top:12px"><input type="checkbox"><span>Go live even though the address check failed.</span></label>`:''}
+    <div class="row" style="margin-top:20px"><button class="btn btn-p" id="live-btn" ${st==='address_error'?'disabled':''} data-confirm="The site is marked live and the customer is emailed the launch details." data-confirm-title="Mark &lt;business&gt; live" data-confirm-ok="Mark live">Mark live</button><span class="small" id="live-h">${st==='address_error'?'Tick every check first.':''}</span></div>`;
+    tone=st==='address_error'?'late':'';
+  }
+  if(st==='live'){line='The website is live since Fri 6 Nov. Nothing is waiting on us.';body=`<div class="row" style="margin-top:16px"><a class="btn btn-s" href="#" onclick="return false">${I('ext','s')}Open the site</a><button class="btn btn-s" data-confirm="The customer is emailed the launch details again." data-confirm-title="Resend the launch email" data-confirm-ok="Resend email">Resend the launch email</button></div><p class="small" style="margin-top:8px">Resending is open for 7 days after launch.</p>`;tone='calm'}
+  if(st==='move'){line='They want to move to their own domain. Add it to the site, check DNS, then switch.';body=`<div class="row" style="margin-top:16px"><button class="btn btn-p" data-confirm="The site starts answering on their own domain. Their free address keeps working until you remove it." data-confirm-title="Switch to their own domain" data-confirm-ok="Switch domain">Switch to their domain</button></div>`}
+  if(st==='hold'){line='Nothing happens until you resume.';body=`<div class="row" style="margin-top:16px"><button class="btn btn-p" data-confirm="The build starts again from the stage it was in." data-confirm-title="Resume this build" data-confirm-ok="Resume">Resume</button></div>`;tone='calm'}
+  if(st==='cancelled'){line='This build was cancelled. Their plan and billing did not change.';tone='calm'}
+  const focal=`<section class="focal ${tone==='calm'?'calm':tone==='late'?'late':''}" aria-labelledby="wn"><div class="between" style="align-items:flex-start"><div class="grow"><p class="lbl" id="wn">Next step <span style="${tone==='late'?'color:var(--error)':''}">· ${STAGE_LABEL[st]}</span></p><p class="hero-t" style="margin-top:4px">${title}</p><p class="muted" style="margin-top:8px;max-width:64ch">${line}</p></div>${menu}</div>${body}</section>`;
+  const dueLbl={waiting:null,unconfirmed:null,ready:['First preview due','Thu 19 Nov, 3:00 pm'],building:['First preview due','Today, 8:00 pm'],building_late:['First preview due','Mon 16 Nov, 3:00 pm'],changes:['Updated preview due','Wed 18 Nov']}[st];
+  const facts=`<dl class="kv card pad" style="padding:8px 24px;margin-top:24px"><div><dt>Customer sees</dt><dd>${{waiting:'Setting up',unconfirmed:'Setting up',ready:'We will start soon',building:'We are building',building_late:'We are building',review:'Preview ready',review_silent:'Preview ready',changes:'Making your changes',approved:'Getting ready to launch',address_error:'Getting ready to launch',live:'Live',move:'Live',hold:'On hold',cancelled:'No website service active'}[st]}</dd></div>${dueLbl?`<div><dt>${dueLbl[0]}</dt><dd class="fig" style="${st==='building_late'?'color:var(--error)':''}">${dueLbl[1]}</dd></div>`:''}<div><dt>Rounds used</dt><dd class="fig">${st==='changes'?'1 of 2':'0 of 2'}</dd></div><div><dt>Planned launch day</dt><dd class="fig">${st==='approved'||st==='address_error'?'Thu 19 Nov':'Not set'}</dd></div><div><dt>Kickoff</dt><dd>${st==='unconfirmed'?'Not confirmed':st==='waiting'?'Not held yet':'Confirmed by staff'}</dd></div></dl>`;
+  const showPrev=['review','review_silent','changes','approved','address_error','live','move'].includes(st);
+  const prev=showPrev?`<section class="sec"><div class="h"><h2>Preview</h2><span class="small">Sent Mon 16 Nov, 11:00 am</span></div><div class="pf"><div class="bar"><i></i><i></i><i></i><span style="margin-left:8px">&lt;preview link&gt;</span></div><div class="scr">The customer’s own site loads here.</div></div>
+    <ul class="list" style="margin-top:8px"><li><div class="grow"><b style="font-weight:500">Version ${st==='changes'?'1':'1'}</b><span class="sub">Sent Mon 16 Nov, 11:00 am</span></div>${chip('Latest')}</li></ul></section>`:'';
+  const fb=(st==='changes'||['approved','address_error','live','move'].includes(st))?`<section class="sec"><div class="h"><h2>Changes they asked for</h2><span class="small fig">1 of 2 rounds</span></div><ul class="list"><li><div class="grow"><b style="font-weight:500">&lt;subject&gt;</b><span class="sub">&lt;what the customer wrote&gt;</span></div><span class="small fig">Tue 17 Nov</span>${chip(st==='changes'?'In progress':'Done',st==='changes'?'wait':'ok')}</li></ul></section>`:'';
+  const dom=(()=>{
+    let inner;
+    if(st==='live')inner=kvl([['Domain','&lt;own domain&gt;'],['DNS','Connected'],['Ownership','Confirmed Fri 6 Nov']]);
+    else if(st==='move')inner=kvl([['Their address now','&lt;free address&gt;'],['Wants to move to','&lt;own domain&gt;'],['DNS','Not connected yet']]);
+    else if(st==='address_error')inner=kvl([['Domain','&lt;own domain&gt;'],['DNS','<span style="color:var(--error);font-weight:600">Not pointing at the site</span>'],['Ownership','Not confirmed']]);
+    else if(st==='cancelled')inner='<p class="muted">No domain was set up.</p>';
+    else inner=kvl([['Domain','&lt;free address&gt;'],['Ownership','Our temporary address, not their own domain yet']])+`<div class="row" style="margin-top:12px"><div class="field grow" style="min-width:200px"><label for="fa">Free address</label><input class="in" id="fa" placeholder="Change the free address"></div><button class="btn btn-s">Save address</button></div>`;
+    const open=['approved','address_error','move'].includes(st);
+    return `<details class="card" ${open?'open':''} style="margin-top:24px"><summary class="between pad" style="padding:16px 24px;min-height:56px"><div class="row" style="gap:8px"><h3>Domain and hosting</h3>${st==='address_error'?chip('Needs a look','bad','alert'):st==='move'?chip('Move asked','wait','clock'):''}</div>${I('chev','s')}</summary><div style="padding:0 24px 20px">${inner}</div></details>`;
+  })();
+  const given=`<details class="card" style="margin-top:16px"><summary class="between pad" style="padding:16px 24px;min-height:56px"><h3>What they gave us</h3><span class="small">Notes, styles, logo and photos</span></summary><div style="padding:0 24px 20px">${kvl([['Anything we should know','&lt;notes for the builder&gt;'],['How it should feel','&lt;style likes&gt;'],['Websites they like','&lt;reference link&gt;']])}<div class="row" style="margin-top:16px"><div class="thumb">Logo</div><div class="thumb">Photo</div><div class="thumb">Photo</div></div></div></details>
+  <details class="card" style="margin-top:16px"><summary class="between pad" style="padding:16px 24px;min-height:56px"><h3>Site details</h3><span class="small">Hosting, features, listing, tags, Google</span></summary><div style="padding:0 24px 20px"><p class="muted">Carried over from today’s Website tab unchanged. See open question 4.</p></div></details>`;
+  el.innerHTML=`${billing}<section class="card pad" style="padding:24px 28px" aria-label="Stages">${stepper}</section><div style="margin-top:24px">${focal}</div>${facts}${prev}${fb}${dom}${given}`;
+  const lc=$$('.lc'),lb=$('#live-btn');
+  if(lc.length&&lb&&st==='approved')lc.forEach(c=>c.onchange=()=>{lb.disabled=!lc.every(x=>x.checked)});
+}
+
+/* S8 Services */
+function renderServices(){
+  const el=$('#t-services');
+  if(!paid()){el.innerHTML=`<div class="card pad">${empty('mega','No services yet','Services appear here once they have paid.')}</div>`;return}
+  const hasAll=full();
+  const err=S.client==='error';
+  const card=(ic,n,chipHtml,inner)=>`<section class="card pad" style="padding:24px 28px"><div class="between" style="align-items:flex-start"><div class="row" style="gap:12px"><span class="tile">${I(ic)}</span><h2>${n}</h2></div>${chipHtml}</div><div style="margin-top:16px">${inner}</div></section>`;
+  const off=(t)=>empty('plus','Not on this plan',t);
+  let social='';
+  if(S.n7==='on'){social=card('chat','Social',hasAll?chip('Connected','ok','check'):'',hasAll?`${kvl([['Connected channels','&lt;channel&gt;, &lt;channel&gt;'],['Last post','&lt;date and time&gt;'],['Last failure','None']])}<div class="row" style="margin-top:12px"><a class="btn btn-s" href="#" onclick="return false">${I('ext','s')}Open the social-auto dashboard</a></div><p class="small" style="margin-top:8px">Read only. Posting and replies run on their own. Staff cannot edit content here.</p>`:off('Social Media Management is not on this plan.'))}
+  const ads=card('mega','Paid Ads',hasAll?chip('Active','ok','check'):'',hasAll?(err?errp('We could not load the figures','Nothing was changed. Try again.'):`<form onsubmit="toast('Figures saved');return false" class="stack" style="gap:12px"><p class="small">Monthly figures for the customer’s report. Display only: Brandbasket does not run the ads.</p><div class="g2" style="gap:12px"><div class="field"><label for="am">Month</label><select class="in" id="am"><option>Nov 2026</option><option>Oct 2026</option></select></div><div class="field"><label for="a1">Ad spend in rupees</label><input class="in fig" id="a1" inputmode="numeric"></div><div class="field"><label for="a2">Ad budget in rupees</label><input class="in fig" id="a2" inputmode="numeric"></div><div class="field"><label for="a3">Enquiries from ads</label><input class="in fig" id="a3" inputmode="numeric"></div></div><div class="row"><button class="btn btn-p" type="submit">Save figures</button></div></form>
+   <table style="margin-top:16px"><thead><tr><th>Month</th><th class="r">Ad spend</th><th class="r">Ad budget</th><th class="r">Enquiries</th></tr></thead><tbody><tr><td>Oct 2026</td><td class="r fig">&lt;amount&gt;</td><td class="r fig">&lt;amount&gt;</td><td class="r fig">&lt;count&gt;</td></tr></tbody></table>`):off('Paid Ads Management is not on this plan.'));
+  const mon=card('shield','Monitoring',hasAll?chip('Included','ok','check'):'',hasAll?`<p>Dedicated Expert Monitoring is included, free with all three plans.</p>`:off('Dedicated Expert Monitoring is free when they have Website, Social and Paid Ads.'));
+  const bot=card('chat','Chatbots',chip('Website'),`<p class="muted">OyeChats bots for this website: the existing form, moved here from Plan and billing.</p><div class="row" style="margin-top:12px"><button class="btn btn-s">Add a bot</button></div><div class="anno" style="margin-top:12px"><b>Mock note.</b> Placement is an open question. See open question 3.</div>`);
+  const legacy=hasAll?`<details class="card" style="margin-top:0"><summary class="between pad" style="padding:16px 24px;min-height:56px"><div class="row" style="gap:8px"><h3>Legacy manual tools</h3>${chip('Legacy')}</div>${I('chev','s')}</summary><div style="padding:0 24px 20px"><p class="muted">Campaigns, accounts, updates for the customer and the report link. Kept until the owner confirms no customer uses them, then removed (CD-5, CD-21). Shown only while this client has stored data.</p><div class="row" style="margin-top:12px"><button class="btn btn-s">Campaigns</button><button class="btn btn-s">Accounts</button><button class="btn btn-s">Updates for the customer</button></div></div></details>`:'';
+  el.innerHTML=`<div class="stack" style="gap:24px;max-width:860px">${social}${ads}${mon}${bot}${legacy}</div>`;
+}
+
+/* S9 Money */
+function renderMoney(){
+  const el=$('#t-money');
+  if(!paid()){el.innerHTML=`<div class="card pad">${empty('card','Nothing to pay yet','They have not paid. Payments, invoices and the plan appear here after the first payment.')}</div>`;return}
+  const m=S.money,err=S.client==='error';
+  const bannerMap={past_due:['The monthly renewal failed on Sat 14 Nov','The renewal of '+R+'8,997 did not go through. Open the failed payment below.'],lapsed:['The plan lapsed on Thu 12 Nov','Paid through Thu 12 Nov and not renewed.'],unapplied:['A payment needs a look','Money arrived but nothing was bought. They were told we received it and will be in touch. They are not asked to pay again until it is sorted.']};
+  const banner=bannerMap[m]?`<section class="note bad" role="region" aria-label="Needs a look">${I('alert')}<div><b style="font-weight:600">${bannerMap[m][0]}</b><p>${bannerMap[m][1]}</p></div></section>`:'';
+  const first=has('new');
+  const rows=first?[['Mon 16 Nov, 10:48 am','First payment, Website','Razorpay',R+'2,999','Paid','ok','inv']]:[
+    ...(m==='past_due'?[['Sat 14 Nov, 2:10 am','Monthly renewal','Razorpay',R+'8,997','Failed','bad','none']]:[]),
+    ...(m==='unapplied'?[['Mon 16 Nov, 4:02 pm','Payment, not applied','Razorpay',R+'8,997','Needs a look','bad','none']]:[]),
+    ['Thu 12 Nov, 2:10 am','Monthly renewal','Razorpay',R+'8,997','Paid','ok','inv'],['Mon 12 Oct, 2:10 am','Monthly renewal','Razorpay',R+'8,997','Paid','ok','inv'],['Mon 12 Oct, 10:48 am','First payment, Website, Social, Paid Ads','Razorpay',R+'8,997','Paid','ok','inv']];
+  const pay=err?errp('We could not load the payments'):`<table><thead><tr><th>When</th><th class="hide-n">For</th><th class="hide-n">Method</th><th class="r">Amount</th><th>Status</th><th class="hide-n">Invoice</th><th style="width:150px"><span class="sr">Actions</span></th></tr></thead><tbody>${rows.map(r=>`<tr><td class="fig" style="font-size:13px">${r[0]}<span class="show-n sub" style="font-family:inherit">${r[1]}</span></td><td class="hide-n">${r[1]}</td><td class="hide-n">${r[2]}</td><td class="r fig">${r[3]}</td><td>${chip(r[4],r[5],r[5]==='ok'?'check':'alert')}</td><td class="hide-n">${r[6]==='inv'?'<button class="btn btn-l btn-sm">&lt;invoice no.&gt;</button>':'<span class="muted">None</span>'}</td><td class="r">${r[5]==='ok'?`<button class="btn btn-s btn-sm" data-dlg="dlg-refund">Refund</button>`:`<button class="btn btn-p btn-sm" data-side="check">Check</button>`}</td></tr>`).join('')}</tbody></table>`;
+  const paySec=`<section class="card" style="overflow:hidden" aria-label="Payments"><div class="between" style="padding:20px 24px 8px"><h2>Payments</h2><span class="small">${err?'':rows.length+' shown'}</span></div>${pay}</section>`;
+  const inv=`<section class="sec" style="margin-top:0"><div class="h"><h2>Tax invoices</h2><span class="small">GST invoices for each payment</span></div>${first||full()?`<ul class="list"><li><div class="grow"><b style="font-weight:500" class="fig">&lt;invoice no.&gt;</b><span class="sub">${first?'Mon 16 Nov':'Thu 12 Nov'}</span></div><span class="fig">${first?R+'2,999':R+'8,997'}</span><button class="btn btn-l btn-sm">Download</button></li></ul>`:''}</section>`;
+  const charges=`<section class="sec" style="margin-top:0"><div class="h"><h2>Extras</h2><button class="btn btn-s btn-sm" data-side="charge">${I('plus','s')}Add charge</button></div><p class="muted" style="padding:8px 0">No one-off charges.</p></section>`;
+  const lines=[['Website Management',R+'2,999','Active'],...(first?[]:[['Social Media Management',R+'2,999','Active'],['Paid Ads Management',R+'2,999','Active'],['Dedicated Expert Monitoring','Free','Included'] ])];
+  const plan=`<section class="card pad" style="padding:20px"><h3>Plan and renewal</h3>${kvl([['Payment',m==='lapsed'?'Lapsed':'Paid'],['Billed','Monthly'],['Next renewal','<span class="fig">'+(m==='lapsed'?'Not renewed':'Sat 12 Dec')+'</span>'],['Paid through','<span class="fig">'+(m==='lapsed'?'Thu 12 Nov':'Sat 12 Dec')+'</span>'],['First term ends','<span class="fig">Tue 16 Nov 2027</span>']])}
+   ${m==='lapsed'?`<div class="row" style="margin-top:12px"><button class="btn btn-s" data-side="manual">Record a payment by bank transfer</button></div>`:''}</section>
+   <section class="card pad" style="padding:20px"><div class="between"><h3>Plan lines</h3><span class="small fig">${first?R+'2,999':R+'8,997'} a month</span></div><ul class="list">${lines.map(l=>`<li><div class="grow"><b style="font-weight:500">${l[0]}</b></div><span class="fig">${l[1]}</span>${chip(l[2],l[2]==='Active'||l[2]==='Included'?'ok':'')}<details style="position:relative"><summary class="iconbtn" style="width:36px;height:36px" aria-label="Line actions">${I('dots','s')}</summary><div class="menu-p"><button type="button" data-confirm="They are marked as contacted about this add-on. Nothing is sent." data-confirm-title="Mark contacted" data-confirm-ok="Mark contacted">Mark contacted</button><button type="button" data-confirm="This service pauses at the end of the period. The customer is emailed." data-confirm-title="Pause ${l[0]}" data-confirm-ok="Pause service">Pause at period end</button><button type="button" class="red" data-confirm="This service ends at the end of the period. The customer is emailed. This cannot be undone." data-confirm-title="Cancel ${l[0]}" data-confirm-ok="Cancel service" data-confirm-danger="1">Cancel at period end</button></div></details></li>`).join('')}</ul><p class="small" style="margin-top:8px">GST included. No package or ad credit lines.</p></section>
+   <section class="card pad" style="padding:20px"><div class="between"><h3>Billing details</h3><button class="btn btn-l btn-sm" data-side="billing">Edit</button></div>${kvl([['Billed to','&lt;legal name&gt;'],['GSTIN','<span class="fig">&lt;gstin&gt;</span>'],['Address','&lt;address&gt;'],['Billing contact','The account’s own email and number']])}</section>`;
+  el.innerHTML=`${banner?banner+'<div style="height:24px"></div>':''}<div class="layout"><div>${paySec}${inv}${charges}</div><div>${plan}</div></div>`;
+}
+
+/* S10 Requests */
+function renderRequests(){
+  const el=$('#t-requests');
+  if(S.client==='error'){el.innerHTML=`<section class="card pad">${errp('We could not load the requests')}</section>`;return}
+  if(!has('live','calm')){el.innerHTML=`<section class="card pad">${empty('inbox','No requests from this client.','Their requests appear here as they send them, with how long each has been waiting.')}</section>`;return}
+  const rows=[['Support','&lt;subject&gt;','Waiting on us','bad','26h','bad','Tue 17 Nov, 2:10 pm',0],['Change','&lt;subject&gt;','Quote sent, waiting on customer','wait','Waiting on customer','','Tue 17 Nov, 9:10 am',1],['Change','&lt;subject&gt;','Paid, in progress','ok','Paid, in progress','','Mon 16 Nov, 5:00 pm',2],['Support','&lt;subject&gt;','Closed','','','','Fri 6 Nov, 11:30 am',3]];
+  el.innerHTML=`<section class="card" style="overflow:hidden;max-width:1040px" aria-label="Requests"><div class="between" style="padding:20px 24px 8px"><h2>Requests</h2><span class="small">Support and change requests, one list</span></div>
+  <table><thead><tr><th>Request</th><th class="hide-n">Type</th><th>Status</th><th class="hide-n">Clock</th><th class="hide-n">Last activity</th></tr></thead><tbody>${rows.map(r=>`<tr class="tr-click" data-req="${r[7]}"><td><b style="font-weight:600">${r[1]}</b><small class="fig">&lt;reference&gt;</small><span class="show-n sub">${r[0]} · ${r[4]}</span></td><td class="hide-n">${chip(r[0])}</td><td>${r[2]?chip(r[2],r[3]):''}</td><td class="hide-n fig" style="${r[5]?'color:var(--error);font-weight:600':''}">${r[4]}</td><td class="hide-n fig" style="font-size:13px">${r[6]}</td></tr>`).join('')}</tbody></table></section>
+  <p class="small" style="margin-top:12px;max-width:60ch">The same list as Inbox, with this client fixed. Replies and quotes are sent from the request, so each one names the email before it goes.</p>`;
+}
+
+/* S11 Account */
+function renderAccount(){
+  const el=$('#t-account');
+  const oneOwner=true;
+  const people=`<section class="card" style="overflow:hidden"><div class="between" style="padding:20px 24px 8px"><h2>People</h2><span class="small">1 with access</span></div><table><thead><tr><th>Person</th><th>Role</th><th class="hide-n">Mobile</th><th class="hide-n">Joined</th></tr></thead><tbody><tr><td><b style="font-weight:600">&lt;owner&gt;</b><small>&lt;owner email&gt;</small></td><td>${chip('Owner','')}</td><td class="hide-n fig">&lt;owner mobile&gt;</td><td class="hide-n fig">Mon 16 Nov</td></tr></tbody></table><p class="small" style="padding:12px 24px">Only the owner is on this account.</p></section>`;
+  const rename=`<section class="card pad" style="padding:20px"><h3>Owner’s name</h3><form onsubmit="toast('Name saved',1);return false" class="row" style="align-items:flex-end;margin-top:8px"><div class="field grow" style="min-width:200px"><label for="on">Name shown on their dashboard and in emails</label><input class="in" id="on" value="&lt;owner&gt;" maxlength="60"></div><button class="btn btn-s" type="submit">Save name</button></form><p class="small" style="margin-top:8px">Their sign-in email and mobile number can only be changed by them, in their own Settings.</p></section>`;
+  const setup=`<section class="card pad" style="padding:20px"><div class="between"><h3>What they told us</h3>${chip(paid()?'Answered before paying':'Not finished')}</div>${kvl([['Business type','&lt;answer&gt;'],['Main goal','&lt;answer&gt;'],['Website now','&lt;answer&gt;'],['Existing site','&lt;answer&gt;'],['Main action','&lt;answer&gt;'],['Design direction','&lt;answer&gt;'],['Social channels','&lt;answer&gt;'],['Search scope','&lt;answer&gt;']])}</section>
+  <section class="card pad" style="padding:20px"><div class="between"><h3>Setup answers</h3>${chip(paid()?'3 of 5 done':'None yet')}</div>${paid()?kvl([['Social setup','&lt;answer&gt;'],['Search setup','&lt;answer&gt;']]):'<p class="muted" style="margin-top:8px">They have not reached setup.</p>'}<p class="small" style="margin-top:8px">Read only. These are the answers staff need for a task.</p></section>`;
+  const priv=S.account==='privacy'?`<section class="note wait" role="region" aria-label="Privacy request"><span class="tile" style="width:32px;height:32px">${I('lock','s')}</span><div class="grow"><b style="font-weight:600">A privacy request is open</b><p>&lt;request type&gt;, received &lt;date&gt;. Due in <span class="fig" style="font-weight:600">17d 08h remaining</span>.</p></div><button class="btn btn-s btn-sm">Open in Compliance</button></section>`:'';
+  let leaving;
+  if(S.account==='closing')leaving=`<section class="card pad" id="leaving" style="padding:20px"><div class="between"><h3>Leaving</h3>${chip('Erased in 25d 06h','bad','clock')}</div><p style="margin-top:8px">Asked to delete on <span class="fig">Thu 12 Nov</span>. Erased on <span class="fig">Sat 12 Dec</span> unless restored.</p><div class="row" style="margin-top:16px"><button class="btn btn-s" data-confirm="The account is restored and deletion is cancelled. The client can sign in again. A plan they cancelled stays cancelled." data-confirm-title="Restore the closing account" data-confirm-ok="Restore account">Restore account</button><button class="btn btn-s" data-confirm="Erasure moves 30 days later." data-confirm-title="Extend by 30 days" data-confirm-ok="Extend by 30 days">Extend by 30 days</button></div></section>`;
+  else leaving=`<section class="card pad" id="leaving" style="padding:20px"><h3>Leaving</h3><p class="muted" style="margin-top:8px">This account is not leaving.</p><details style="margin-top:8px"><summary class="btn btn-l" style="color:var(--error)">Close account</summary><div class="row" style="margin-top:8px"><button class="btn btn-d" data-confirm="This schedules the account for permanent erasure in 30 days. Their active memberships and dashboard access will be closed." data-confirm-title="Close this account" data-confirm-ok="Close account" data-confirm-danger="1" data-confirm-keep="Cancel">Schedule closure</button></div></details></section>`;
+  const note=!paid()?`<section class="card pad">${empty('user','Only the owner is on this account','They signed up and have not paid. Nobody else has been added.')}</section>`:'';
+  if(S.client==='error'){el.innerHTML=`<div class="layout"><div><section class="card pad">${errp('We could not load the people on this account')}</section>${leaving}</div><div>${setup}</div></div>`;return}
+  el.innerHTML=`${priv?priv+'<div style="height:24px"></div>':''}<div class="layout"><div>${note||people}${rename}${leaving}</div><div>${setup}</div></div>`;
+}
+
+/* side panel */
+const PANEL={
+ charge:()=>['Add a charge','Adds a one-off charge to this client.',`<div class="stack"><div class="field"><label for="ck">What it is for</label><select class="in" id="ck"><option>Change hours</option><option>Custom</option></select></div><div class="field"><label for="cq">Quantity</label><input class="in fig" id="cq" value="1"></div><p class="small">Amount: <span class="fig">&lt;amount&gt;</span>, GST included.</p><label class="tick"><input type="checkbox"><span>I have checked that the amount is &lt;amount&gt;.</span></label></div>`,'Add charge'],
+ manual:()=>['Record a payment by bank transfer','Use this when money arrived outside Brandbasket.',`<div class="stack"><div class="field"><label for="mr">Bank or payment reference</label><input class="in" id="mr"></div><div class="field"><label for="mo">Money received on</label><input class="in fig" id="mo" placeholder="YYYY-MM-DD"></div><label class="tick"><input type="checkbox"><span>I have checked that ${R}8,997 has arrived.</span></label></div>`,'Record payment'],
+ billing:()=>['Billing details','Used on GST invoices.',`<div class="stack"><div class="field"><label>Billed to</label><input class="in"></div><div class="field"><label>GSTIN</label><input class="in fig"></div><div class="field"><label>Address</label><textarea class="in"></textarea></div></div>`,'Save details'],
+ check:()=>['Payment needing a look','Money arrived and the plan was not changed.',`${kvl([['Amount','<span class="fig">'+R+'8,997</span>'],['When','Mon 16 Nov, 4:02 pm'],['Method','Razorpay'],['Reference','<span class="fig">&lt;payment id&gt;</span>']])}<p class="muted" style="margin-top:12px">Mark it resolved once you have applied it by hand. The customer is not emailed.</p>`,'Mark resolved'],
+};
+function openSide(k,html){const p=$('#side');const d=html||PANEL[k]();p.hidden=false;p.innerHTML=`<header><div><h2>${d[0]}</h2><p class="small">${d[1]}</p></div><button class="iconbtn" data-sidex aria-label="Close">${I('x')}</button></header><div class="body">${d[2]}</div><footer><button class="btn btn-s" data-sidex>Cancel</button><button class="btn btn-p" data-sidex>${d[3]}</button></footer>`;}
+const REQS=[['Support','Waiting on us','bad','26h, past the 24 hour line'],['Change','Quote sent, waiting on customer','wait','Quote not yet paid'],['Change','Paid, in progress','ok','Paid Mon 16 Nov'],['Support','Closed','','Closed Fri 6 Nov']];
+function openReq(i){const r=REQS[i];openSide('',[`&lt;subject&gt;`,`&lt;reference&gt; · ${r[0]}`,`<div class="row" style="margin-bottom:12px">${chip(r[0])}${chip(r[1],r[2])}</div>${kvl([['Clock','<span class="fig">'+r[3]+'</span>'],['Last message','&lt;customer message&gt;'],...(r[0]==='Change'?[['Quote','&lt;what&gt;, &lt;hours&gt;, <span class="fig">&lt;amount&gt;</span>, ready &lt;n&gt; working days after payment']]:[])])}<p class="small" style="margin-top:12px">A public reply emails the customer, so replies are sent from Inbox, where the email is named before it goes.</p>`,'Open in Inbox']);}
+
+function setClient(c){S.client=c;Object.assign(S,DEF[c]);$$('#cs button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.c===c));sync();render()}
+function sync(){$('#sel-stage').value=S.stage==='none'?'live':S.stage;$('#sel-money').value=S.money==='none'?'ok':S.money;$('#sel-acct').value=S.account;$('#sel-n7').value=S.n7}
+function render(){renderHeader();renderOverview();renderWebsite();renderServices();renderMoney();renderRequests();renderAccount();applyW(S);}
+$$('#cs button').forEach(b=>b.addEventListener('click',()=>setClient(b.dataset.c)));
+$('#sel-stage').onchange=e=>{S.stage=e.target.value;render()};
+$('#sel-money').onchange=e=>{S.money=e.target.value;render()};
+$('#sel-acct').onchange=e=>{S.account=e.target.value;render()};
+$('#sel-n7').onchange=e=>{S.n7=e.target.value;render()};
+document.addEventListener('click',e=>{
+  const g=e.target.closest('[data-go]');if(g){go(g.dataset.go);window.scrollTo({top:0})}
+  if(e.target.closest('[data-retry]')){setClient('live')}
+  const s=e.target.closest('[data-side]');if(s)openSide(s.dataset.side);
+  const q=e.target.closest('tr[data-req]');if(q)openReq(+q.dataset.req);
+  if(e.target.closest('[data-sidex]'))$('#side').hidden=true;
+});
+document.addEventListener('keydown',e=>{if(e.key==='Escape')$('#side').hidden=true});
+$('#ko-ok').onclick=()=>{$('#dlg-kickoff').close();S.stage='ready';sync();render();toast('The 48 hour first preview clock has started')};
+setClient('new');
+
+</script>
+</body>
+</html>

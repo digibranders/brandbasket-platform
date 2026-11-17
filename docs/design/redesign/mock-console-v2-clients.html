@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Clients, console v2</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Red+Hat+Display:wght@500;600;700&family=Red+Hat+Text:wght@400;500;600&family=Red+Hat+Mono:wght@400;500;600&display=swap">
+<style>
+:root{
+  --ink:#15161A;--ink2:#4E5057;--muted:#6A6C73;
+  --paper:#F6F5F2;--surface:#fff;--sunken:#EEECE7;--line:#E3E0D9;--field:#CFCBC2;
+  --gold:#C48A47;--gold-text:#8A5524;--gold-wash:#F4E6D3;--gold-soft:#FBF4EA;
+  --sage:#4F7A63;--sage-wash:#E5EFE8;
+  --error:#B42318;--error-wash:#FDECEA;
+  --rail:#23242A;--rail-text:#F6F5F2;--rail-muted:#A5A8B0;
+  --sh-rest:0 1px 0 rgba(42,28,16,.03);
+  --sh-hero:0 1px 2px rgba(42,28,16,.05),0 12px 32px -12px rgba(42,28,16,.14);
+  --sh-dialog:0 24px 64px -16px rgba(42,28,16,.28);
+  --r-c:8px;--r-card:14px;--r-hero:20px;
+  color-scheme:light;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{background:var(--paper)}
+body{font-family:'Red Hat Text',system-ui,-apple-system,sans-serif;font-size:15px;line-height:24px;color:var(--ink);background:var(--paper)}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer;background:none;border:0}
+a{color:inherit;text-decoration:none}
+:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+[hidden]{display:none!important}
+.fig{font-family:'Red Hat Mono',ui-monospace,monospace;font-variant-numeric:tabular-nums}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+svg.i{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round;flex:none}
+svg.i.s{width:16px;height:16px}
+
+/* mock toolbar: not part of the product */
+.mock{position:sticky;top:0;z-index:60;background:var(--sunken);border-bottom:1px solid var(--line);padding:8px 16px;display:flex;flex-wrap:wrap;gap:8px 20px;align-items:center;font-size:13px;line-height:20px}
+.mock b{font-weight:600}
+.mock .grp{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.mock .seg{display:flex;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:2px}
+.mock .seg button{padding:4px 10px;border-radius:6px;font-size:13px;font-weight:500;min-height:28px}
+.mock .seg button[aria-pressed=true]{background:var(--ink);color:#fff}
+.mock select{background:var(--surface);border:1px solid var(--field);border-radius:8px;padding:4px 8px;font-size:13px;min-height:30px}
+.mock .url{font-family:'Red Hat Mono',monospace;font-size:12px;color:var(--ink2)}
+.frame{margin:0 auto;width:100%;max-width:1440px;transition:max-width .2s}
+.frame.phone{max-width:390px;border-left:1px solid var(--line);border-right:1px solid var(--line)}
+
+/* shell */
+.app{container-type:inline-size;container-name:app;width:100%}
+.shell{display:grid;grid-template-columns:248px minmax(0,1fr);min-height:900px}
+.rail{background:var(--rail);color:var(--rail-text);padding:20px 12px;display:flex;flex-direction:column;gap:20px;position:sticky;top:0;align-self:start;height:100vh;min-height:760px}
+.logo{display:flex;align-items:center;gap:10px;padding:0 8px;font-family:'Red Hat Display',sans-serif;font-weight:700;font-size:18px}
+.logo .mk{width:28px;height:28px;border-radius:8px;background:var(--gold);color:var(--ink);display:grid;place-items:center;font-size:14px}
+.rail nav{display:flex;flex-direction:column;gap:2px}
+.rail nav a{display:flex;align-items:center;gap:12px;min-height:44px;padding:0 12px;border-radius:8px;color:var(--rail-muted);font-weight:500;font-size:15px}
+.rail nav a:hover{background:rgba(255,255,255,.06);color:var(--rail-text)}
+.rail nav a[aria-current=page]{background:rgba(255,255,255,.1);color:#fff;font-weight:600}
+.rail nav a .n{margin-left:auto;font-family:'Red Hat Mono',monospace;font-size:12px;min-width:22px;text-align:center;padding:0 6px;border-radius:99px;background:rgba(255,255,255,.12);color:#fff}
+.rail nav a .n.late{background:var(--error);color:#fff}
+.rail .foot{margin-top:auto;padding:10px 12px;border-top:1px solid rgba(255,255,255,.1);font-size:13px;color:var(--rail-muted);line-height:18px}
+.rail .foot b{display:block;color:#fff;font-weight:600}
+.main{min-width:0;display:flex;flex-direction:column}
+.topbar{height:64px;background:var(--surface);border-bottom:1px solid var(--line);display:flex;align-items:center;gap:12px;padding:0 40px;position:sticky;top:0;z-index:20}
+.topbar .menu{display:none}
+.cmd{flex:1;max-width:440px;display:flex;align-items:center;gap:10px;min-height:40px;padding:0 12px;border-radius:8px;background:var(--sunken);color:var(--ink2);font-size:14px}
+.cmd kbd{margin-left:auto;font-family:'Red Hat Mono',monospace;font-size:12px;border:1px solid var(--field);border-radius:6px;padding:0 6px;background:var(--surface)}
+.iconbtn{width:44px;height:44px;border-radius:8px;display:grid;place-items:center;color:var(--ink2)}
+.iconbtn:hover{background:var(--sunken)}
+.acct{display:flex;align-items:center;gap:8px;min-height:44px;padding:0 8px;border-radius:8px;font-size:14px;font-weight:500;color:var(--ink2)}
+.acct .av{width:28px;height:28px;border-radius:99px;background:var(--sunken);display:grid;place-items:center;font-size:12px;font-weight:600;color:var(--ink)}
+.topbar .sp{flex:1}
+.page{padding:32px 40px 64px;max-width:1320px;width:100%}
+
+/* type */
+h1{font-family:'Red Hat Display',sans-serif;font-size:36px;line-height:40px;font-weight:700;letter-spacing:-.02em}
+h2{font-family:'Red Hat Display',sans-serif;font-size:20px;line-height:28px;font-weight:600;letter-spacing:-.01em}
+h3{font-family:'Red Hat Display',sans-serif;font-size:15px;line-height:24px;font-weight:600}
+.lbl{font-size:12px;line-height:16px;font-weight:600;letter-spacing:.01em;color:var(--ink2)}
+.small{font-size:13px;line-height:20px;color:var(--ink2)}
+.muted{color:var(--ink2)}
+.hero-t{font-family:'Red Hat Display',sans-serif;font-size:26px;line-height:32px;font-weight:600;letter-spacing:-.015em}
+
+/* surfaces */
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-card);box-shadow:var(--sh-rest)}
+.pad{padding:24px 28px}
+.focal{background:var(--surface);border:1px solid var(--line);border-top:3px solid var(--gold);border-radius:var(--r-hero);box-shadow:var(--sh-hero);padding:28px}
+.focal.calm{border-top-color:var(--line);box-shadow:var(--sh-rest)}
+.focal.late{border-top-color:var(--error)}
+.sec{margin-top:32px}
+.sec>.h{display:flex;align-items:baseline;justify-content:space-between;gap:12px;padding-bottom:8px;margin-bottom:8px;border-bottom:1px solid var(--line)}
+.sec>.h .small{font-size:13px}
+
+/* buttons: 36px desktop, 44px phone */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:36px;padding:0 16px;border-radius:8px;font-weight:600;font-size:14px;white-space:nowrap;transition:background .12s}
+.btn:active{transform:translateY(1px)}
+.btn-p{background:var(--ink);color:#fff;box-shadow:inset 0 1px 0 rgba(255,255,255,.08)}
+.btn-p:hover{background:#2A2B31}
+.btn-p[disabled]{background:#9B9DA3;cursor:not-allowed}
+.btn-s{background:var(--sunken)}
+.btn-s:hover{background:#E4E1DA}
+.btn-d{background:var(--error-wash);color:var(--error)}
+.btn-l{padding:0 10px;min-height:36px;font-weight:600;color:var(--ink)}
+.btn-l:hover{background:var(--sunken)}
+.btn-sm{min-height:32px;padding:0 12px;font-size:13px}
+
+/* chips */
+.chip{display:inline-flex;align-items:center;gap:6px;border-radius:99px;padding:2px 10px;font-size:12px;line-height:16px;font-weight:600;background:var(--sunken);color:var(--ink2);white-space:nowrap}
+.chip.ok{background:var(--sage-wash);color:#2F5A44}
+.chip.wait{background:var(--gold-wash);color:var(--gold-text)}
+.chip.bad{background:var(--error-wash);color:var(--error)}
+.chip.dark{background:var(--ink);color:#fff}
+.chip svg.i{width:14px;height:14px}
+
+/* fields */
+.field{display:grid;gap:4px}
+.field label{font-size:12px;font-weight:600;color:var(--ink2)}
+.in{min-height:42px;border:1px solid var(--field);border-radius:8px;padding:0 12px;background:var(--surface);width:100%}
+.in:hover{border-color:#9B978C}
+textarea.in{padding:10px 12px;min-height:84px}
+.help{font-size:13px;line-height:20px;color:var(--ink2)}
+.tick{display:flex;gap:10px;align-items:flex-start;font-size:14px;line-height:20px}
+.tick input{margin-top:2px;width:18px;height:18px;accent-color:var(--ink)}
+
+/* notices */
+.note{display:flex;gap:12px;align-items:flex-start;border-radius:var(--r-card);padding:14px 16px;font-size:14px;line-height:20px;background:var(--sunken)}
+.note.bad{background:var(--error-wash);color:#7A1A12}
+.note.ok{background:var(--sage-wash);color:#2F5A44}
+.note.wait{background:var(--gold-soft);color:#6B431B}
+.note svg.i{margin-top:0}
+
+/* tables */
+table{border-collapse:collapse;width:100%}
+th{font-size:12px;line-height:16px;font-weight:600;color:var(--ink2);text-align:left;padding:10px 12px;border-bottom:1px solid var(--line);background:var(--surface);position:sticky;top:64px;z-index:5}
+td{padding:6px 12px;border-bottom:1px solid var(--line);height:44px;vertical-align:middle;font-size:14px;line-height:20px}
+td small,.sub{display:block;font-size:12px;line-height:16px;color:var(--ink2)}
+tbody tr:hover{background:#FAF9F6}
+tbody tr.sel{background:var(--gold-soft);box-shadow:inset 3px 0 0 var(--gold)}
+.r{text-align:right}
+.tr-click{cursor:pointer}
+.dot{width:8px;height:8px;border-radius:99px;background:var(--error);display:inline-block;margin-right:8px}
+
+/* tabs */
+.tabs{display:flex;gap:4px;border-bottom:1px solid var(--line);overflow-x:auto;scrollbar-width:none;margin-top:20px}
+.tabs button{display:flex;align-items:center;gap:8px;min-height:44px;padding:0 14px;font-weight:600;font-size:14px;color:var(--ink2);border-bottom:2px solid transparent;margin-bottom:-1px;white-space:nowrap}
+.tabs button:hover{color:var(--ink)}
+.tabs button[aria-selected=true]{color:var(--ink);border-bottom-color:var(--ink)}
+.tabs .n{font-family:'Red Hat Mono',monospace;font-size:12px;background:var(--sunken);border-radius:99px;padding:0 7px}
+.tabs .n.late{background:var(--error);color:#fff}
+
+/* rows / facts */
+.facts{display:grid;grid-template-columns:minmax(120px,40%) 1fr;gap:0}
+.facts dt,.facts dd{padding:10px 0;border-bottom:1px solid var(--line);font-size:14px;line-height:20px}
+.facts dt{color:var(--ink2)}
+.facts dd{text-align:right;word-break:break-word}
+.list>li{list-style:none;display:flex;align-items:center;gap:12px;min-height:44px;padding:8px 0;border-bottom:1px solid var(--line)}
+.tile{width:40px;height:40px;border-radius:12px;background:var(--gold-wash);color:var(--gold-text);display:grid;place-items:center;flex:none}
+.tile.sun{background:var(--sunken);color:var(--ink2)}
+.tile.bad{background:var(--error-wash);color:var(--error)}
+.tile.ok{background:var(--sage-wash);color:var(--sage)}
+.grow{flex:1;min-width:0}
+.row{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.between{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.stack{display:grid;gap:16px}
+.g2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:24px}
+.layout{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1fr);gap:24px;align-items:start}
+.layout>div{display:grid;gap:24px;min-width:0}
+
+/* stepper */
+.stepper{display:flex;align-items:flex-start;list-style:none}
+.stepper li{flex:1;display:flex;flex-direction:column;align-items:center;gap:8px;text-align:center;position:relative;font-size:13px;line-height:18px;color:var(--ink2);font-weight:500}
+.stepper li::before{content:"";position:absolute;top:15px;left:-50%;right:50%;height:2px;background:var(--line)}
+.stepper li:first-child::before{display:none}
+.stepper li.done::before,.stepper li.cur::before{background:var(--sage)}
+.stepper .c{width:32px;height:32px;border-radius:99px;border:2px solid var(--line);background:var(--surface);display:grid;place-items:center;font-family:'Red Hat Mono',monospace;font-size:13px;position:relative;z-index:1}
+.stepper li.done .c{background:var(--sage);border-color:var(--sage);color:#fff}
+.stepper li.cur .c{background:var(--gold);border-color:var(--gold);color:var(--ink);font-weight:600}
+.stepper li.cur{color:var(--ink);font-weight:600}
+.stepper.frozen li.cur .c{background:var(--sunken);border-color:var(--field);color:var(--ink2)}
+
+/* browser preview frame */
+.pf{border:1px solid var(--line);border-radius:14px;overflow:hidden;background:var(--surface);box-shadow:var(--sh-hero)}
+.pf .bar{display:flex;gap:6px;align-items:center;padding:8px 12px;background:var(--sunken);border-bottom:1px solid var(--line);font-family:'Red Hat Mono',monospace;font-size:12px;color:var(--ink2)}
+.pf .bar i{width:8px;height:8px;border-radius:99px;background:#CFCBC2}
+.pf .scr{aspect-ratio:16/10;background:var(--paper);display:grid;place-items:center;color:var(--ink2);font-size:13px;padding:16px;text-align:center}
+
+/* dialogs and panels */
+dialog{border:0;border-radius:20px;padding:28px;box-shadow:var(--sh-dialog);width:min(520px,calc(100vw - 32px));margin:auto;background:var(--surface)}
+dialog::backdrop{background:rgba(21,22,26,.4)}
+dialog h2{font-size:22px;line-height:28px}
+dialog .cons{margin-top:8px;color:var(--ink2);font-size:15px}
+dialog .acts{display:flex;justify-content:flex-end;gap:8px;margin-top:24px;flex-wrap:wrap}
+.side{position:fixed;top:0;right:0;bottom:0;width:480px;max-width:100%;background:var(--surface);border-left:1px solid var(--line);box-shadow:var(--sh-dialog);z-index:70;display:flex;flex-direction:column}
+.side header{padding:20px 24px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;gap:12px;align-items:flex-start}
+.side .body{padding:20px 24px;overflow:auto;flex:1}
+.side footer{padding:16px 24px;border-top:1px solid var(--line);display:flex;gap:8px;justify-content:flex-end}
+
+/* skeleton */
+.sk{background:var(--sunken);border-radius:8px;animation:pulse 1.6s ease-in-out infinite}
+@keyframes pulse{50%{opacity:.5}}
+.empty,.errbox{display:grid;gap:8px;justify-items:start;padding:24px 0}
+.empty .tile,.errbox .tile{margin-bottom:4px}
+.pill-row{display:flex;gap:8px;flex-wrap:wrap}
+.pill{display:inline-flex;align-items:center;gap:8px;min-height:36px;padding:0 14px;border-radius:99px;background:var(--sunken);font-size:14px;font-weight:500}
+.pill[aria-pressed=true]{background:var(--ink);color:#fff}
+.pill .n{font-family:'Red Hat Mono',monospace;font-size:12px;opacity:.75}
+.show-n{display:none}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+
+/* narrow: container query so the 390 toggle and a real phone behave the same */
+@container app (max-width:900px){
+  .shell{grid-template-columns:1fr}
+  .rail{position:fixed;left:0;top:0;bottom:0;width:280px;z-index:80;transform:translateX(-100%);transition:transform .24s;height:100%}
+  .rail.open{transform:none}
+  .topbar{padding:0 8px;height:56px}
+  .topbar .menu{display:grid}
+  .cmd{display:none}
+  .acct span{display:none}
+  .page{padding:20px 16px 48px}
+  h1{font-size:28px;line-height:34px}
+  .hero-t{font-size:22px;line-height:28px}
+  .layout,.g2{grid-template-columns:1fr}
+  .focal{padding:20px}
+  .pad{padding:20px}
+  .btn{min-height:44px}
+  .btn-sm{min-height:44px}
+  .btn-l{min-height:44px}
+  .hide-n{display:none!important}
+  .show-n{display:block}
+  th{top:56px}
+  .stepper li{font-size:11px;line-height:14px}
+  .stepper li span.t{max-width:60px}
+  .facts{grid-template-columns:1fr 1fr}
+  .side{width:100%}
+  dialog{padding:20px}
+}
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+<symbol id="i-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3 3 15 0 18M12 3c-3 3-3 15 0 18"/></symbol>
+<symbol id="i-chat" viewBox="0 0 24 24"><path d="M4 5h16v11H9l-5 4z"/></symbol>
+<symbol id="i-mega" viewBox="0 0 24 24"><path d="M4 10v4h3l8 4V6L7 10zM18 9.5a4 4 0 0 1 0 5"/></symbol>
+<symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/></symbol>
+<symbol id="i-alert" viewBox="0 0 24 24"><path d="M12 4l9 16H3zM12 10v4M12 17h.01"/></symbol>
+<symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12l5 5 9-10"/></symbol>
+<symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
+<symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6"/><path d="M20 20l-4-4"/></symbol>
+<symbol id="i-bell" viewBox="0 0 24 24"><path d="M6 16v-5a6 6 0 0 1 12 0v5l2 2H4zM10 20h4"/></symbol>
+<symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></symbol>
+<symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></symbol>
+<symbol id="i-chev" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></symbol>
+<symbol id="i-back" viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></symbol>
+<symbol id="i-dots" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.2"/><circle cx="12" cy="12" r="1.2"/><circle cx="19" cy="12" r="1.2"/></symbol>
+<symbol id="i-eye" viewBox="0 0 24 24"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></symbol>
+<symbol id="i-card" viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="12" rx="2"/><path d="M3 10h18"/></symbol>
+<symbol id="i-home" viewBox="0 0 24 24"><path d="M4 11l8-7 8 7v9H4z"/></symbol>
+<symbol id="i-users" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><path d="M3 19c0-3 3-5 6-5s6 2 6 5"/><circle cx="17" cy="9" r="2.5"/></symbol>
+<symbol id="i-inbox" viewBox="0 0 24 24"><path d="M4 13l2-8h12l2 8v6H4zM4 13h5l1 2h4l1-2h5"/></symbol>
+<symbol id="i-lock" viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></symbol>
+<symbol id="i-gear" viewBox="0 0 24 24"><path d="M4 8h10M18 8h2M4 16h2M10 16h10"/><circle cx="16" cy="8" r="2"/><circle cx="8" cy="16" r="2"/></symbol>
+<symbol id="i-file" viewBox="0 0 24 24"><path d="M7 3h8l4 4v14H7zM15 3v4h4"/></symbol>
+<symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 4-6 8-6s8 2 8 6"/></symbol>
+<symbol id="i-ext" viewBox="0 0 24 24"><path d="M14 4h6v6M20 4l-9 9M18 14v6H4V6h6"/></symbol>
+<symbol id="i-refresh" viewBox="0 0 24 24"><path d="M20 12a8 8 0 1 1-3-6.2M20 4v5h-5"/></symbol>
+<symbol id="i-phone" viewBox="0 0 24 24"><rect x="7" y="3" width="10" height="18" rx="2"/><path d="M11 18h2"/></symbol>
+<symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+</defs></svg>
+
+<div class="mock" role="toolbar" aria-label="Mock controls, not part of the product">
+
+<div class="grp"><b>Mock: Clients (S5)</b><span class="url">/clients, /clients?view=builds</span></div>
+<div class="grp"><b>State</b><div class="seg" id="st">
+<button type="button" data-s="live" aria-pressed="true">Live</button>
+<button type="button" data-s="new" aria-pressed="false">New</button>
+<button type="button" data-s="empty" aria-pressed="false">Empty</button>
+<button type="button" data-s="nomatch" aria-pressed="false">No match</button>
+<button type="button" data-s="loading" aria-pressed="false">Loading</button>
+<button type="button" data-s="error" aria-pressed="false">Error</button></div></div>
+
+<div class="grp"><b>View</b><div class="seg"><button type="button" data-view="desk" aria-pressed="true">1440</button><button type="button" data-view="phone" aria-pressed="false">390</button></div></div>
+</div>
+<div class="frame" id="frame"><div class="app">
+<div class="shell">
+<aside class="rail" id="rail" aria-label="Console">
+  <div class="logo"><span class="mk" aria-hidden="true">bB</span>Brandbasket</div>
+  <nav><a href="#" onclick="return false"><svg class="i " aria-hidden="true"><use href="#i-home"/></svg><span>Today</span><span class="n late">4</span></a><a href="#" onclick="return false" aria-current="page"><svg class="i " aria-hidden="true"><use href="#i-users"/></svg><span>Clients</span></a><a href="#" onclick="return false"><svg class="i " aria-hidden="true"><use href="#i-inbox"/></svg><span>Inbox</span><span class="n">2</span></a><a href="#" onclick="return false"><svg class="i " aria-hidden="true"><use href="#i-card"/></svg><span>Money</span><span class="n late">1</span></a><a href="#" onclick="return false"><svg class="i " aria-hidden="true"><use href="#i-lock"/></svg><span>Compliance</span></a><a href="#" onclick="return false"><svg class="i " aria-hidden="true"><use href="#i-gear"/></svg><span>System</span></a></nav>
+  <div class="foot"><b>&lt;staff member&gt;</b>Signed in</div>
+</aside>
+<div class="main">
+  <header class="topbar">
+    <button type="button" class="iconbtn menu" id="menu" aria-label="Open menu"><svg class="i " aria-hidden="true"><use href="#i-menu"/></svg></button>
+    <button type="button" class="cmd" onclick="document.getElementById('dlg-cmd').showModal()"><svg class="i s" aria-hidden="true"><use href="#i-search"/></svg><span>Search everything</span><kbd>&#8984;K</kbd></button>
+    <span class="sp"></span>
+    <button type="button" class="iconbtn" aria-label="Notifications"><svg class="i " aria-hidden="true"><use href="#i-bell"/></svg></button>
+    <button type="button" class="acct"><span class="av" aria-hidden="true">S</span><span>&lt;staff member&gt;</span></button>
+  </header>
+  <main class="page" id="page">
+
+<div class="between" style="align-items:flex-end">
+  <div>
+    <p class="lbl">Clients</p>
+    <h1>Clients</h1>
+    <p class="small" id="ctx" style="margin-top:4px"></p>
+  </div>
+  <div class="tabs" role="tablist" aria-label="View" style="margin-top:0;border:0;gap:8px">
+    <button role="tab" id="v-list" aria-selected="true" class="btn btn-s" style="border-radius:8px">List</button>
+    <button role="tab" id="v-builds" aria-selected="false" class="btn btn-l">Builds</button>
+  </div>
+</div>
+
+<div id="bar" style="margin-top:20px;position:sticky;top:64px;z-index:10;background:var(--paper);padding:8px 0">
+  <div class="row" style="gap:12px">
+    <label class="cmd" style="max-width:420px;background:var(--surface);border:1px solid var(--field)"><svg class="i s" aria-hidden="true"><use href="#i-search"/></svg><span class="sr">Search clients</span><input id="q" class="" placeholder="Business, owner, email or phone" style="border:0;outline:0;background:none;flex:1;min-width:0;font-size:14px"><kbd>/</kbd></label>
+    <details class="hide-n" style="position:relative"><summary class="btn btn-s" style="list-style:none">Columns</summary>
+      <div class="card pad" style="position:absolute;z-index:15;top:44px;left:0;width:220px;padding:12px 16px;box-shadow:var(--sh-hero)">
+        <label class="tick" style="min-height:36px;align-items:center"><input type="checkbox" id="col-m" checked><span>Monthly</span></label>
+        <label class="tick" style="min-height:36px;align-items:center"><input type="checkbox" id="col-p" checked><span>Paid through</span></label>
+      </div></details>
+  </div>
+  <div class="pill-row" id="pills" style="margin-top:12px" role="group" aria-label="Filter by stage"></div>
+  <div class="row" id="echo" style="margin-top:8px" hidden></div>
+</div>
+
+<section id="list" class="card" style="margin-top:12px;overflow:hidden" aria-label="Clients">
+  <table>
+    <thead><tr>
+      <th>Business</th><th class="hide-n">Services</th><th>Stage</th>
+      <th class="r hide-n" data-col="m">Monthly</th><th class="hide-n">Next</th><th class="hide-n" data-col="p">Paid through</th><th style="width:48px"><span class="sr">Actions</span></th>
+    </tr></thead>
+    <tbody id="rows"></tbody>
+  </table>
+  <div id="below"></div>
+</section>
+
+<section id="builds" hidden aria-label="Builds"></section>
+
+<aside class="side" id="side" hidden role="dialog" aria-label="Quick view"></aside>
+
+  </main>
+</div>
+</div>
+</div></div>
+<dialog id="dlg-cmd"><h2>Search everything</h2><p class="cons">The command bar is specified in the shell mock (CR-A1). It is not drawn here.</p><div class="acts"><button class="btn btn-s" onclick="this.closest('dialog').close()">Close</button></div></dialog>
+
+<dialog id="dlg-confirm" aria-labelledby="cf-title">
+  <h2 id="cf-title">Confirm</h2>
+  <p class="cons" id="cf-body"></p>
+  <label class="tick" id="cf-tick" style="margin-top:16px" hidden><input type="checkbox"><span id="cf-tick-t"></span></label>
+  <div class="acts"><button class="btn btn-s" id="cf-keep" data-close>Keep</button><button class="btn btn-p" id="cf-ok" data-close>Confirm</button></div>
+</dialog>
+
+<script>
+
+const $=(s,r=document)=>r.querySelector(s), $$=(s,r=document)=>[...r.querySelectorAll(s)];
+// Visibility by state: an element with data-w-<key>="a b" shows only when state[key] is one of the listed values.
+function applyW(S){
+  $$('[data-w-x]').forEach(()=>{});
+  $$('*').forEach(el=>{
+    let show=true,has=false;
+    for(const a of el.attributes){
+      if(!a.name.startsWith('data-w-'))continue;
+      has=true;const k=a.name.slice(7);
+      if(!a.value.split(' ').includes(String(S[k])))show=false;
+    }
+    if(has)el.hidden=!show;
+  });
+}
+$$('[data-view]').forEach(b=>b.addEventListener('click',()=>{
+  $('#frame').classList.toggle('phone',b.dataset.view==='phone');
+  $$('[data-view]').forEach(x=>x.setAttribute('aria-pressed',x===b));
+}));
+$('#menu')&&$('#menu').addEventListener('click',()=>$('#rail').classList.toggle('open'));
+// Native dialogs open from any element with data-dlg="id".
+document.addEventListener('click',e=>{
+  const t=e.target.closest('[data-dlg]');
+  if(t){const d=document.getElementById(t.dataset.dlg);d&&d.showModal();}
+  const c=e.target.closest('[data-close]');
+  if(c)c.closest('dialog').close();
+  const f=e.target.closest('[data-confirm]');
+  if(f){
+    const d=$('#dlg-confirm');
+    $('#cf-title',d).textContent=f.dataset.confirmTitle;
+    $('#cf-body',d).textContent=f.dataset.confirm;
+    const tk=$('#cf-tick',d);tk.hidden=!f.dataset.confirmTick;
+    $('#cf-tick-t',d).textContent=f.dataset.confirmTick||'';
+    const ok=$('#cf-ok',d);ok.textContent=f.dataset.confirmOk||'Confirm';
+    ok.className='btn '+(f.dataset.confirmDanger?'btn-d':'btn-p');
+    $('#cf-keep',d).textContent=f.dataset.confirmKeep||'Keep';
+    d.showModal();
+  }
+});
+
+const ICON={ok:'check',wait:'clock',bad:'alert'};
+const SVC={Website:'globe',Social:'chat','Paid Ads':'mega',Monitoring:'shield'};
+// Sample rows. Each field is a ClientSummary or table field: stage (clientRowStage), build (project.status via staffStageOf),
+// services (servicesByBusiness add-ons, status from the attention map), monthly (sum of active lines), next (attention reason), paidThrough.
+const LIVE=[
+ {st:'live',build:'Live',svc:[['Website','ok'],['Social','ok'],['Paid Ads','ok'],['Monitoring','ok']],m:'₹8,997',next:'Renewal failed, 3 days',late:1,pt:'12 Nov'},
+ {st:'live',build:'Live',svc:[['Website','ok'],['Social','ok']],m:'₹5,998',next:'None',pt:'28 Nov'},
+ {st:'live',build:'Live',svc:[['Website','ok'],['Paid Ads','wait']],m:'₹5,998',next:'Add-on to set up',pt:'02 Dec'},
+ {st:'preview',build:'Awaiting client review',svc:[['Website','wait']],m:'₹2,999',next:'Waiting for the customer',pt:'30 Nov'},
+ {st:'building',build:'Building',svc:[['Website','wait'],['Social','ok']],m:'₹5,998',next:'First preview due in 5h',pt:'05 Dec'},
+ {st:'building',build:'Building',svc:[['Website','bad']],m:'₹2,999',next:'First preview 1 day late',late:1,pt:'01 Dec'},
+ {st:'setup',build:'Waiting for kickoff',svc:[['Website','wait']],m:'₹2,999',next:'Kickoff not confirmed, 1 day',late:1,pt:'16 Dec'},
+ {st:'setup',build:'Ready to start',svc:[['Website','wait']],m:'₹2,999',next:'Start building',pt:'17 Dec'},
+ {st:'not-paid',build:null,svc:[],m:'None',next:'Follow up on sign-up',pt:'None'},
+ {st:'leaving',build:'Live',svc:[['Website','ok']],m:'₹2,999',next:'Erased on 12 Dec unless restored',pt:'10 Nov'},
+ {st:'paused',build:'On hold',svc:[['Website','wait']],m:'₹2,999',next:'The build is on hold',pt:'20 Nov'},
+];
+const NEW=[
+ {st:'setup',build:'Waiting for kickoff',svc:[['Website','wait']],m:'₹2,999',next:'Kickoff not confirmed, 1 day',late:1,pt:'16 Dec'},
+ {st:'setup',build:'Ready to start',svc:[['Website','wait']],m:'₹2,999',next:'Start building',pt:'17 Dec'},
+ {st:'not-paid',build:null,svc:[],m:'None',next:'Follow up on sign-up',pt:'None'},
+];
+const LABEL={'not-paid':'Not paid',leaving:'Leaving',setup:'Setting up',building:'Building',preview:'Preview',live:'Live',paused:'Paused'};
+const TONE={'not-paid':'','leaving':'bad',setup:'wait',building:'',preview:'',live:'ok',paused:''};
+const ORDER=['not-paid','setup','building','preview','live','paused','leaving'];
+let S={s:'live',f:null,q:'',view:'list',m:true,p:true};
+const rowsFor=()=>S.s==='live'||S.s==='nomatch'||S.s==='loading'?LIVE:S.s==='new'?NEW:[];
+const svcChips=r=>r.svc.map(([n,t])=>`<span class="chip ${t}" title="${n}">${'<svg class="i"><use href="#i-'+ICON[t]+'"/></svg>'}${n}</span>`).join(' ');
+function draw(){
+  const rows=rowsFor().map((r,i)=>({...r,i}));
+  const vis=rows.filter(r=>S.f===null||r.st===S.f);
+  const $c=$('#ctx');
+  $c.textContent=S.s==='empty'||S.s==='error'?'':S.s==='loading'?'':rows.length+(rows.length===1?' client':' clients');
+  // pills with counts
+  $('#pills').innerHTML=['All',...ORDER.filter(k=>rows.some(r=>r.st===k))].map(k=>{
+    const key=k==='All'?null:k,n=key===null?rows.length:rows.filter(r=>r.st===key).length;
+    return `<button class="pill" data-f="${key}" aria-pressed="${S.f===key}">${k==='All'?'All':LABEL[k]}<span class="n">${n}</span></button>`;
+  }).join('');
+  if(S.f==='leaving')$('#pills').insertAdjacentHTML('beforeend','<a class="btn btn-l" href="#" onclick="return false">Open Closures in Compliance</a>');
+  const echo=$('#echo');
+  const chips=[];if(S.f)chips.push(`<button class="chip" data-clear="f">Stage: ${LABEL[S.f]} ${'<svg class="i"><use href="#i-x"/></svg>'}</button>`);
+  if(S.q)chips.push(`<button class="chip" data-clear="q">Search: ${S.q} ${'<svg class="i"><use href="#i-x"/></svg>'}</button>`);
+  echo.hidden=chips.length===0;echo.innerHTML=chips.join('');
+  const tb=$('#rows'),below=$('#below');below.innerHTML='';
+  const total=document.querySelectorAll('#list thead th').length;
+  if(S.s==='loading'){
+    tb.innerHTML=Array.from({length:6},()=>`<tr><td colspan="${total}"><div class="sk" style="height:20px;width:60%"></div></td></tr>`).join('');
+  }else if(S.s==='error'){
+    tb.innerHTML='';
+    below.innerHTML=`<div class="errbox pad"><span class="tile bad">${'<svg class="i"><use href="#i-alert"/></svg>'}</span><h2>The clients did not load</h2><p class="muted">Something went wrong reading the list. Nothing was changed. The other pages still work.</p><button class="btn btn-p" onclick="setS('live')">${'<svg class="i s"><use href="#i-refresh"/></svg>'}Try again</button><p class="small fig">Reference: digest 0000000000</p></div>`;
+  }else if(S.s==='empty'){
+    tb.innerHTML='';
+    below.innerHTML=`<div class="empty pad"><span class="tile sun">${'<svg class="i"><use href="#i-users"/></svg>'}</span><h2>No clients yet</h2><p class="muted">Clients appear here as soon as someone signs up.</p></div>`;
+  }else if(S.s==='nomatch'){
+    tb.innerHTML='';
+    below.innerHTML=`<div class="empty pad"><span class="tile sun">${'<svg class="i"><use href="#i-search"/></svg>'}</span><h2>No client matches “${S.q||'acme'}”</h2><p class="muted">Check the spelling, or search by owner, email or phone.</p><button class="btn btn-s" onclick="S.q='';$('#q').value='';setS('live')">Clear filters</button></div>`;
+  }else{
+    tb.innerHTML=vis.map(r=>`<tr class="tr-click" data-i="${r.i}">
+      <td>${r.late?'<span class="dot" title="Something is late"></span><span class="sr">Late. </span>':''}<b style="font-weight:600">&lt;business&gt;</b>
+        <small>${r.build?r.build+' · ':''}&lt;owner&gt;</small>
+        <span class="show-n sub" style="margin-top:4px">${svcChips(r)}</span>
+        <span class="show-n sub fig" style="margin-top:4px">${r.m} a month · paid through ${r.pt}</span></td>
+      <td class="hide-n">${svcChips(r)||'<span class="muted">None</span>'}</td>
+      <td><span class="chip ${TONE[r.st]}">${LABEL[r.st]}</span><span class="show-n sub" style="margin-top:4px;${r.late?'color:var(--error);font-weight:600':''}">${r.next}</span></td>
+      <td class="r fig hide-n" data-col="m">${r.m}</td>
+      <td class="hide-n" style="${r.late?'color:var(--error);font-weight:600':''}">${r.next}</td>
+      <td class="fig hide-n" data-col="p">${r.pt}</td>
+      <td><button class="iconbtn" style="width:36px;height:36px" aria-label="Open quick view">${'<svg class="i s"><use href="#i-chev"/></svg>'}</button></td></tr>`).join('');
+    if(vis.length===0&&rows.length>0)below.innerHTML=`<div class="empty pad"><h2>No clients in this view</h2><button class="btn btn-s" onclick="S.f=null;draw()">Clear filters</button></div>`;
+  }
+  $$('[data-col=m]').forEach(e=>e.hidden=!S.m);$$('[data-col=p]').forEach(e=>e.hidden=!S.p);
+  // builds board
+  const cols=['Waiting for kickoff','Ready to start','Building','Awaiting client review','Changes requested','Approved, ready to launch'];
+  const bsrc=LIVE.concat([{build:'Changes requested',next:'Updated preview due 18 Nov'},{build:'Approved, ready to launch',next:'Launch checks open'}]);
+  $('#builds').innerHTML=`<p class="small" style="margin:12px 0">Open builds in every stage, waiting ones included. Live, On hold and Cancelled stay in the List.</p><div class="bd" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px">`+cols.map(c=>{
+    const items=bsrc.filter(r=>r.build===c);
+    return `<div class="card" style="padding:12px;background:var(--sunken);border-color:var(--sunken)"><div class="between" style="margin-bottom:8px"><h3>${c}</h3><span class="chip fig">${items.length}</span></div>${items.map(r=>`<a href="#" onclick="return false" class="card" style="display:block;padding:10px 12px;margin-bottom:8px;min-height:44px"><b style="font-weight:600">&lt;business&gt;</b><span class="sub" style="${r.late?'color:var(--error);font-weight:600':''}">${r.next}</span></a>`).join('')||'<p class="small">None</p>'}</div>`;}).join('')+`</div>`;
+}
+function setS(v){S.s=v;$$('#st button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.s===v));if(v==='nomatch'){S.q='acme';$('#q').value='acme'}draw();$('#bar').hidden=(v==='empty'||v==='error')}
+$$('#st button').forEach(b=>b.addEventListener('click',()=>setS(b.dataset.s)));
+document.addEventListener('click',e=>{
+  const f=e.target.closest('[data-f]');if(f){S.f=f.dataset.f==='null'?null:f.dataset.f;draw();}
+  const c=e.target.closest('[data-clear]');if(c){S[c.dataset.clear]=c.dataset.clear==='f'?null:'';if(c.dataset.clear==='q')$('#q').value='';draw();}
+  const r=e.target.closest('tr[data-i]');if(r){openSide(+r.dataset.i);}
+  if(e.target.closest('[data-sidex]'))closeSide();
+});
+function openSide(i){
+  const r=rowsFor()[i];$$('#rows tr').forEach(t=>t.classList.toggle('sel',+t.dataset.i===i));
+  $('#side').hidden=false;
+  $('#side').innerHTML=`<header><div><p class="lbl fig">?open=client</p><h2>&lt;business&gt;</h2><p class="small">&lt;owner&gt; · &lt;owner email&gt;</p></div><button class="iconbtn" data-sidex aria-label="Close">${'<svg class="i"><use href="#i-x"/></svg>'}</button></header>
+  <div class="body"><div class="row" style="margin-bottom:16px"><span class="chip ${TONE[r.st]}">${LABEL[r.st]}</span>${svcChips(r)}</div>
+  <dl class="facts"><dt>Build</dt><dd>${r.build||'No website'}</dd><dt>Billed</dt><dd class="fig">${r.m} a month</dd><dt>Paid through</dt><dd class="fig">${r.pt}</dd><dt>Next</dt><dd style="${r.late?'color:var(--error);font-weight:600':''}">${r.next}</dd></dl></div>
+  <footer><button class="btn btn-s" data-sidex>Close</button><a class="btn btn-p" href="mock-console-v2-client-workspace.html">Open client</a></footer>`;
+}
+function closeSide(){$('#side').hidden=true;$$('#rows tr').forEach(t=>t.classList.remove('sel'))}
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closeSide();if(e.key==='/'&&document.activeElement.tagName!=='INPUT'){e.preventDefault();$('#q').focus()}});
+$('#q').addEventListener('input',e=>{S.q=e.target.value.trim();if(S.q&&S.s==='live')setS('nomatch');else if(!S.q&&S.s==='nomatch')setS('live');});
+$('#col-m').onchange=e=>{S.m=e.target.checked;draw()};$('#col-p').onchange=e=>{S.p=e.target.checked;draw()};
+function view(v){S.view=v;$('#list').hidden=v!=='list';$('#builds').hidden=v!=='builds';$('#v-list').className='btn '+(v==='list'?'btn-s':'btn-l');$('#v-builds').className='btn '+(v==='builds'?'btn-s':'btn-l');$('#v-list').setAttribute('aria-selected',v==='list');$('#v-builds').setAttribute('aria-selected',v==='builds');$('#bar').hidden=v==='builds';}
+$('#v-list').onclick=()=>view('list');$('#v-builds').onclick=()=>view('builds');
+draw();
+
+</script>
+</body>
+</html>

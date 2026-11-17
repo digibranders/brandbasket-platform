@@ -353,6 +353,20 @@ export async function listChangeRequestsForBusiness(db: Database, businessId: st
   }));
 }
 
+/**
+ * The change request of each listed ticket, for the console's one Requests list: a ticket that has one is a change, any other is
+ * a plain support ticket. Tickets with no change request are absent from the result. Staff connection.
+ */
+export async function listChangeViewsForTickets(db: Database, ticketIds: readonly string[]): Promise<ChangeView[]> {
+  if (ticketIds.length === 0) return [];
+  const rows = await db
+    .select({ change: changeRequests, chargeStatus: charges.status })
+    .from(changeRequests)
+    .leftJoin(charges, eq(charges.id, changeRequests.chargeId))
+    .where(inArray(changeRequests.ticketId, [...ticketIds]));
+  return rows.map((row) => toChangeView(row.change, row.chargeStatus));
+}
+
 /** One request by id with its ticket's subject. Staff connection. Null when there is none. */
 export async function getChangeRequestForStaff(db: Runner, requestId: string): Promise<StaffRequestItem | null> {
   const [row] = await db

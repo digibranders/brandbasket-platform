@@ -1,0 +1,691 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BrandBasket Staff Console v2: shell and Today</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Red+Hat+Display:wght@500;600;700&family=Red+Hat+Text:wght@400;500;600&family=Red+Hat+Mono:wght@400;500;600&display=swap">
+<style>
+/* Mock for CR-A1. One file: the shell, the command bar, Today with filters, side panel, bulk bar, keyboard help and the kickoff prompt
+   (popup and row). Toggles above the frame switch width, state and overlay. Tokens only. Spec: notes-console-v2-shell-today.md */
+:root {
+  --paper: #F6F5F2; --surface: #FFFFFF; --sunken: #EEECE7; --line: #E3E0D9;
+  --ink: #15161A; --ink-2: #4E5057; --ink-3: #5F626A;
+  --gold: #C48A47; --gold-deep: #8A5524; --gold-wash: #FBF4EA;
+  --sage: #4F7A63; --sage-wash: #E5EFE8;
+  --error: #B42318; --error-wash: #FDECEA;
+  --field: #CFCBC2;
+  --shadow-rest: 0 1px 0 rgba(42,28,16,.03);
+  --shadow-hero: 0 1px 2px rgba(42,28,16,.05), 0 12px 32px -12px rgba(42,28,16,.14);
+  --shadow-dialog: 0 24px 64px -16px rgba(42,28,16,.28);
+  --scrim: rgba(21,22,26,.40);
+  --f-display: "Red Hat Display", system-ui, sans-serif;
+  --f-text: "Red Hat Text", system-ui, sans-serif;
+  --f-mono: "Red Hat Mono", ui-monospace, monospace;
+}
+* { box-sizing: border-box; }
+html { background: var(--sunken); }
+body { margin: 0; font: 400 15px/24px var(--f-text); color: var(--ink); background: var(--sunken); }
+button, input, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; }
+.mono { font-family: var(--f-mono); font-variant-numeric: tabular-nums; }
+svg.i { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+.rail :focus-visible, .scrimmed :focus-visible { outline-color: #fff; }
+.popup :focus-visible, .panel :focus-visible, .cmd :focus-visible, .help :focus-visible, .toast :focus-visible { outline-color: var(--ink); }
+.toast :focus-visible { outline-color: #fff; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+
+/* review controls (not part of the console) */
+.ctl { position: sticky; top: 0; z-index: 50; display: flex; flex-wrap: wrap; gap: 12px 24px; padding: 12px 16px; background: var(--ink); color: #fff; font: 500 13px/20px var(--f-text); }
+.ctl .grp { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.ctl .grp > span { color: #C9CAD0; margin-right: 4px; }
+.ctl button { height: 28px; padding: 0 10px; border-radius: 8px; border: 1px solid #55575F; background: transparent; color: #fff; }
+.ctl button[aria-pressed="true"] { background: #fff; color: var(--ink); border-color: #fff; }
+.stage { padding: 24px 16px 64px; overflow-x: auto; }
+.scaler { transform-origin: top left; margin: 0 auto; }
+
+/* frame: the console viewport. Container queries so 390 inside a wide page behaves like a phone. */
+.frame { position: relative; container: frame / inline-size; overflow: hidden; background: var(--paper); border: 1px solid var(--line); border-radius: 14px; box-shadow: var(--shadow-hero); }
+.frame[data-vp="desktop"] { width: 1440px; height: 900px; }
+.frame[data-vp="phone"] { width: 390px; height: 844px; }
+.shell { position: absolute; inset: 0; display: grid; grid-template-columns: 248px 1fr; }
+.rail { background: var(--ink); color: #fff; display: flex; flex-direction: column; padding: 20px 12px 16px; gap: 4px; min-height: 0; }
+.brand { display: flex; align-items: center; gap: 10px; padding: 0 8px 16px; font: 600 16px/24px var(--f-display); }
+.mark { width: 28px; height: 28px; border-radius: 8px; background: var(--gold); color: var(--ink); display: grid; place-items: center; font: 700 13px/1 var(--f-display); }
+.railbtn { display: flex; align-items: center; gap: 12px; height: 44px; padding: 0 12px; border-radius: 8px; border: 0; background: transparent; color: #E9E8E4; text-align: left; width: 100%; }
+.railbtn:hover { background: rgba(255,255,255,.06); }
+.railbtn[aria-current="page"] { background: rgba(255,255,255,.12); color: #fff; font-weight: 600; }
+.railbtn .lbl { flex: 1; font-size: 15px; }
+.count { min-width: 22px; height: 22px; padding: 0 7px; border-radius: 999px; font: 500 12px/22px var(--f-mono); text-align: center; background: rgba(255,255,255,.14); color: #fff; }
+.count.accent { background: var(--gold); color: var(--ink); }
+.count.alert { background: var(--error); color: #fff; }
+.railhint { margin: 4px 0 0; display: flex; align-items: center; gap: 10px; height: 44px; padding: 0 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,.18); background: transparent; color: #E9E8E4; width: 100%; text-align: left; }
+.railhint kbd { margin-left: auto; font: 500 12px/16px var(--f-mono); color: #C9CAD0; }
+.rail .foot { margin-top: auto; padding: 12px 12px 0; border-top: 1px solid rgba(255,255,255,.12); font-size: 13px; line-height: 20px; color: #C9CAD0; }
+.rail .foot b { display: block; color: #fff; font-weight: 600; }
+
+.main { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
+.top { height: 64px; flex: none; display: flex; align-items: center; gap: 12px; padding: 0 40px; background: var(--surface); border-bottom: 1px solid var(--line); }
+.topsearch { flex: 1; max-width: 520px; height: 40px; display: flex; align-items: center; gap: 10px; padding: 0 14px; border: 1px solid var(--field); border-radius: 8px; background: var(--surface); color: var(--ink-3); text-align: left; }
+.topsearch kbd { margin-left: auto; font: 500 12px/16px var(--f-mono); color: var(--ink-3); }
+.iconbtn { width: 40px; height: 40px; border-radius: 8px; border: 1px solid var(--line); background: var(--surface); display: grid; place-items: center; position: relative; color: var(--ink-2); }
+.iconbtn .badge { position: absolute; top: -5px; right: -5px; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 999px; background: var(--ink); color: #fff; font: 500 11px/18px var(--f-mono); text-align: center; }
+.phonebar-only { display: none; }
+.spacer { flex: 1; }
+.page { flex: 1; overflow: auto; padding: 32px 40px 64px; }
+.page-in { max-width: 1240px; margin: 0 auto; }
+
+/* page header */
+.eyebrow { font: 600 12px/16px var(--f-text); letter-spacing: .01em; color: var(--ink-3); margin: 0 0 4px; }
+h1 { margin: 0; font: 700 36px/40px var(--f-display); letter-spacing: -.02em; }
+.sum { margin: 8px 0 0; color: var(--ink-2); }
+.head { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; margin-bottom: 24px; }
+
+/* buttons: 36 desktop, 44 phone. Link buttons carry no underline. */
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 36px; padding: 0 14px; border-radius: 8px; border: 1px solid transparent; font: 600 14px/20px var(--f-text); text-decoration: none; white-space: nowrap; }
+.btn.primary { background: var(--ink); color: #fff; box-shadow: inset 0 1px 0 rgba(255,255,255,.08); }
+.btn.primary:hover { background: #2A2B31; }
+.btn.primary:active, .btn.soft:active, .btn.secondary:active { transform: translateY(1px); }
+.btn.soft { background: var(--sunken); color: var(--ink); }
+.btn.soft:hover { background: #E6E3DC; }
+.btn.secondary { background: var(--surface); border-color: var(--line); color: var(--ink); }
+.btn.danger { background: var(--error); color: #fff; }
+.btn.quiet { background: transparent; color: var(--ink-2); padding: 0 10px; }
+.btn.quiet:hover { background: var(--sunken); }
+.btn[disabled] { opacity: .5; cursor: not-allowed; }
+
+/* stat tiles */
+.tiles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 24px; margin-bottom: 24px; }
+.tile { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 16px 20px; box-shadow: var(--shadow-rest); }
+.tile .l { font: 500 13px/20px var(--f-text); color: var(--ink-2); }
+.tile .v { font: 500 32px/36px var(--f-mono); letter-spacing: -.01em; margin-top: 4px; }
+.tile .v.late { color: var(--error); }
+
+.cols { display: grid; grid-template-columns: minmax(0, 8fr) minmax(0, 4fr); gap: 24px; align-items: start; }
+
+/* filter bar (sticky under the page header) and bulk bar (replaces it) */
+.fbar { position: sticky; top: -32px; z-index: 5; margin: 0 -8px 16px; padding: 8px; background: var(--paper); display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.chip { display: inline-flex; align-items: center; gap: 8px; height: 36px; padding: 0 14px; border-radius: 999px; border: 0; background: var(--sunken); color: var(--ink); font: 500 13px/20px var(--f-text); }
+.chip[aria-pressed="true"] { background: var(--ink); color: #fff; }
+.chip .n { font-family: var(--f-mono); font-size: 12px; color: inherit; opacity: .8; }
+.finput { height: 36px; flex: 1; min-width: 160px; max-width: 260px; padding: 0 12px; border: 1px solid var(--field); border-radius: 8px; background: var(--surface); }
+.echo { display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 6px 0 12px; border-radius: 999px; background: var(--surface); border: 1px solid var(--line); font: 500 12px/16px var(--f-text); }
+.echo button { border: 0; background: transparent; width: 20px; height: 20px; padding: 0; display: grid; place-items: center; }
+.bulk { position: sticky; top: -32px; z-index: 6; margin: 0 -8px 16px; padding: 8px 8px 8px 16px; border-radius: 14px; background: var(--ink); color: #fff; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.bulk .btn.soft { background: rgba(255,255,255,.14); color: #fff; }
+.bulk .btn.soft:hover { background: rgba(255,255,255,.22); }
+.bulk .note { color: #D5D6DB; font-size: 13px; }
+.bulk :focus-visible { outline-color: #fff; }
+
+/* the list: Late group is the one focal card; other groups sit on the page */
+.group { margin-bottom: 24px; }
+.group > h2 { margin: 0 0 8px; padding: 0 4px; display: flex; align-items: baseline; gap: 8px; font: 600 20px/28px var(--f-display); letter-spacing: -.01em; }
+.group > h2 .n { font: 500 13px/20px var(--f-mono); color: var(--ink-2); }
+.group.focal .list { background: var(--surface); border: 1px solid var(--line); border-top: 3px solid var(--gold); border-radius: 14px; box-shadow: var(--shadow-hero); }
+.list { list-style: none; margin: 0; padding: 0; }
+.row { display: grid; grid-template-columns: 28px 32px minmax(0, 1fr) auto auto 36px; align-items: center; gap: 12px; height: 44px; padding: 0 12px; border-top: 1px solid var(--line); position: relative; }
+.row:first-child { border-top: 0; }
+.row:hover { background: #FAF9F6; }
+.row[aria-selected="true"], .row.open { background: var(--gold-wash); box-shadow: inset 3px 0 0 var(--ink); }
+.row.kbd { outline: 2px solid var(--ink); outline-offset: -2px; border-radius: 8px; }
+.row .cb { width: 18px; height: 18px; accent-color: var(--ink); margin: 0 auto; }
+.row .tilei { width: 32px; height: 32px; border-radius: 8px; background: var(--sunken); display: grid; place-items: center; color: var(--ink-2); }
+.row .tilei .i { width: 18px; height: 18px; }
+.row .what { min-width: 0; text-align: left; border: 0; background: transparent; padding: 0; }
+.row .what .t { display: block; font: 600 14px/18px var(--f-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.row .what .d { display: block; font: 400 12px/16px var(--f-text); color: var(--ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.row .clock { font: 500 13px/20px var(--f-mono); color: var(--ink-2); text-align: right; white-space: nowrap; }
+.row .clock.late { color: var(--error); }
+.row .more { width: 36px; height: 36px; border: 0; border-radius: 8px; background: transparent; display: grid; place-items: center; color: var(--ink-2); }
+.row .more:hover { background: var(--sunken); }
+.menu { position: absolute; right: 12px; top: 40px; z-index: 8; min-width: 200px; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; box-shadow: var(--shadow-hero); padding: 6px; }
+.menu button { display: block; width: 100%; text-align: left; height: 36px; padding: 0 10px; border: 0; border-radius: 8px; background: transparent; font: 500 14px/20px var(--f-text); }
+.menu button:hover { background: var(--sunken); }
+.menu button.red { color: var(--error); }
+.group:not(.focal) .list { border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+.hidden { display: none !important; }
+
+/* cards in the aside */
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 20px 24px; box-shadow: var(--shadow-rest); margin-bottom: 24px; }
+.card h2 { margin: 0 0 8px; font: 600 20px/28px var(--f-display); letter-spacing: -.01em; }
+.card h3 { margin: 16px 0 4px; font: 600 12px/16px var(--f-text); letter-spacing: .01em; color: var(--ink-3); }
+.kv { display: flex; align-items: center; gap: 12px; min-height: 44px; border-top: 1px solid var(--line); }
+.kv:first-of-type { border-top: 0; }
+.kv .b { flex: 1; min-width: 0; font-size: 14px; line-height: 20px; }
+.kv .b small { display: block; font-size: 12px; line-height: 16px; color: var(--ink-2); }
+.kv .m { font: 500 13px/20px var(--f-mono); color: var(--ink-2); }
+.kv .m.red { color: var(--error); }
+.link { border: 0; background: transparent; padding: 0; font: 600 14px/20px var(--f-text); color: var(--ink); text-decoration: none; }
+.link:hover { background: var(--sunken); }
+.muted { color: var(--ink-2); }
+
+/* states: empty, error, loading */
+.empty { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 40px 28px; text-align: center; box-shadow: var(--shadow-rest); }
+.empty .ck { width: 40px; height: 40px; border-radius: 999px; background: var(--sage-wash); color: var(--sage); display: grid; place-items: center; margin: 0 auto 12px; }
+.empty h2 { margin: 0; font: 600 20px/28px var(--f-display); }
+.empty p { margin: 8px auto 0; max-width: 520px; color: var(--ink-2); }
+.notice { display: flex; gap: 12px; align-items: flex-start; padding: 12px 16px; border-radius: 14px; background: var(--error-wash); border: 1px solid #F1C6C1; margin-bottom: 16px; }
+.notice .i { color: var(--error); margin-top: 2px; }
+.notice b { display: block; }
+.notice .btn { margin-left: auto; }
+.skel { height: 44px; border-top: 1px solid var(--line); display: flex; align-items: center; gap: 12px; padding: 0 12px; }
+.skel i { display: block; background: var(--sunken); border-radius: 8px; animation: pulse 1.6s ease-in-out infinite; }
+@keyframes pulse { 50% { opacity: .5; } }
+
+/* overlays live inside the frame */
+.layer { position: absolute; inset: 0; z-index: 20; }
+.scrim { position: absolute; inset: 0; background: var(--scrim); }
+.popup, .cmd, .help, .confirm { position: absolute; z-index: 21; background: var(--surface); border-radius: 20px; box-shadow: var(--shadow-dialog); }
+.popup { left: 50%; top: 50%; width: min(520px, calc(100% - 32px)); transform: translate(-50%, -50%); padding: 28px; animation: pop 180ms cubic-bezier(.16,1,.3,1); }
+.popup h2, .confirm h2 { margin: 0; font: 600 22px/28px var(--f-display); letter-spacing: -.01em; }
+.popup .line { margin: 8px 0 0; color: var(--ink-2); }
+.popup label { display: block; margin: 20px 0 4px; font: 600 12px/16px var(--f-text); letter-spacing: .01em; }
+.popup textarea { width: 100%; min-height: 84px; padding: 10px 12px; border: 1px solid var(--field); border-radius: 8px; resize: vertical; }
+.popup .acts, .confirm .acts { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 20px; }
+.popup .acts .primary { margin-left: auto; order: 3; }
+.popup .acts .quietwrap { flex-basis: 100%; order: 4; margin-top: 4px; color: var(--ink-2); font-size: 13px; line-height: 20px; }
+.popup .err { margin-top: 12px; padding: 10px 12px; border-radius: 8px; background: var(--error-wash); color: var(--error); font-size: 14px; line-height: 20px; }
+.popup .meta { margin-top: 12px; font-size: 13px; line-height: 20px; color: var(--ink-2); }
+.confirm { left: 50%; top: 50%; width: min(460px, calc(100% - 32px)); transform: translate(-50%, -50%); padding: 28px; }
+.confirm .acts { justify-content: flex-end; }
+.confirm p { margin: 8px 0 0; color: var(--ink-2); }
+@keyframes pop { from { opacity: 0; transform: translate(-50%, -50%) scale(.98); } }
+
+.cmd { left: 50%; top: 96px; width: min(640px, calc(100% - 32px)); transform: translateX(-50%); overflow: hidden; display: flex; flex-direction: column; max-height: calc(100% - 140px); animation: popc 180ms cubic-bezier(.16,1,.3,1); }
+@keyframes popc { from { opacity: 0; transform: translateX(-50%) scale(.98); } }
+.cmd .in { display: flex; align-items: center; gap: 12px; padding: 0 20px; height: 56px; border-bottom: 1px solid var(--line); flex: none; }
+.cmd .in input { flex: 1; border: 0; outline: 0; height: 40px; font-size: 16px; background: transparent; }
+.cmd .in kbd, .help kbd { font: 500 12px/16px var(--f-mono); padding: 2px 6px; border-radius: 6px; background: var(--sunken); }
+.cmd .body { overflow: auto; padding: 8px; }
+.cmd .gl { padding: 12px 12px 4px; font: 600 12px/16px var(--f-text); letter-spacing: .01em; color: var(--ink-3); }
+.cmd .it { display: flex; align-items: center; gap: 12px; height: 44px; padding: 0 12px; border-radius: 8px; width: 100%; border: 0; background: transparent; text-align: left; }
+.cmd .it:hover, .cmd .it.hl { background: var(--sunken); }
+.cmd .it small { margin-left: auto; color: var(--ink-3); font: 400 12px/16px var(--f-text); }
+.cmd .it .i { width: 18px; height: 18px; color: var(--ink-2); }
+.cmd .foot { flex: none; padding: 10px 20px; border-top: 1px solid var(--line); font-size: 12px; line-height: 16px; color: var(--ink-3); display: flex; gap: 16px; flex-wrap: wrap; }
+.cmd .empty-note { padding: 24px 16px; color: var(--ink-2); }
+.cmd .empty-note p { margin: 0 0 12px; }
+
+.help { left: 50%; top: 50%; width: min(640px, calc(100% - 32px)); transform: translate(-50%, -50%); padding: 28px; max-height: calc(100% - 48px); overflow: auto; }
+.help h2 { margin: 0 0 16px; font: 600 22px/28px var(--f-display); }
+.help .g { display: grid; grid-template-columns: 1fr 1fr; gap: 0 32px; }
+.help .r { display: flex; justify-content: space-between; align-items: center; gap: 12px; min-height: 36px; border-top: 1px solid var(--line); font-size: 14px; }
+.help h3 { margin: 16px 0 4px; font: 600 12px/16px var(--f-text); color: var(--ink-3); grid-column: 1 / -1; }
+.help .foot { margin-top: 16px; color: var(--ink-2); font-size: 13px; line-height: 20px; }
+
+.panel { position: absolute; top: 0; right: 0; bottom: 0; width: 480px; max-width: 100%; z-index: 21; background: var(--surface); border-left: 1px solid var(--line); box-shadow: var(--shadow-hero); display: flex; flex-direction: column; animation: slide 240ms cubic-bezier(.16,1,.3,1); }
+@keyframes slide { from { transform: translateX(32px); opacity: 0; } }
+.panel header { padding: 20px 24px 16px; border-bottom: 1px solid var(--line); display: flex; gap: 12px; align-items: flex-start; }
+.panel header h2 { margin: 0; font: 600 20px/28px var(--f-display); letter-spacing: -.01em; }
+.panel header .url { font: 400 12px/16px var(--f-mono); color: var(--ink-3); margin-top: 4px; }
+.panel .bd { flex: 1; overflow: auto; padding: 8px 24px 24px; }
+.panel h3 { margin: 20px 0 4px; font: 600 12px/16px var(--f-text); letter-spacing: .01em; color: var(--ink-3); }
+.panel p { margin: 0; }
+.panel .fd { position: sticky; bottom: 0; display: flex; gap: 8px; padding: 16px 24px; border-top: 1px solid var(--line); background: var(--surface); }
+.panel .fd .primary { margin-left: auto; }
+.chipw { display: inline-flex; align-items: center; height: 24px; padding: 0 10px; border-radius: 999px; font: 500 12px/16px var(--f-text); }
+.chipw.late { background: var(--error-wash); color: var(--error); }
+.chipw.idle { background: var(--sunken); color: var(--ink); }
+.chipw.done { background: var(--sage-wash); color: var(--sage); }
+
+.toast { position: absolute; left: 24px; bottom: 24px; z-index: 40; display: flex; align-items: center; gap: 16px; padding: 12px 16px; border-radius: 14px; background: var(--ink); color: #fff; font-size: 14px; line-height: 20px; box-shadow: var(--shadow-hero); animation: popc 180ms cubic-bezier(.16,1,.3,1); transform: none; }
+.toast .u { border: 0; background: transparent; color: #fff; font-weight: 600; padding: 4px 8px; border-radius: 8px; }
+.toast .u:hover { background: rgba(255,255,255,.14); }
+.banner { display: flex; gap: 12px; align-items: center; padding: 12px 16px; border-radius: 14px; background: var(--sage-wash); border: 1px solid #C9DDD0; margin-bottom: 16px; color: var(--ink); }
+.banner .i { color: var(--sage); }
+
+.bellmenu { position: absolute; top: 60px; right: 96px; z-index: 22; width: 360px; max-width: calc(100% - 32px); background: var(--surface); border: 1px solid var(--line); border-radius: 14px; box-shadow: var(--shadow-hero); padding: 8px; }
+.bellmenu h3 { margin: 8px 12px 4px; font: 600 12px/16px var(--f-text); color: var(--ink-3); }
+.bellmenu .it { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 56px; padding: 8px 12px; border: 0; border-radius: 8px; background: transparent; text-align: left; }
+.bellmenu .it:hover { background: var(--sunken); }
+.bellmenu .it small { display: block; color: var(--ink-2); font-size: 12px; line-height: 16px; }
+.drawer { position: absolute; left: 0; top: 0; bottom: 0; width: 300px; max-width: 86%; z-index: 22; background: var(--ink); color: #fff; padding: 20px 12px; display: flex; flex-direction: column; gap: 4px; }
+
+/* phone and narrow: the rail becomes the phone bar menu, the aside stacks, rows get two lines, touch targets 44 */
+@container frame (max-width: 899px) {
+  .shell { grid-template-columns: 1fr; }
+  .rail { display: none; }
+  .top { padding: 0 16px; height: 56px; }
+  .topsearch { display: none; }
+  .phonebar-only { display: grid; }
+  .page { padding: 20px 16px 48px; }
+  h1 { font-size: 28px; line-height: 34px; }
+  .head { flex-direction: column; align-items: stretch; margin-bottom: 16px; }
+  .tiles { grid-template-columns: 1fr 1fr; gap: 12px; }
+  .tile { padding: 12px 16px; }
+  .cols { grid-template-columns: minmax(0, 1fr); }
+  .btn, .chip, .finput { height: 44px; }
+  .iconbtn { width: 44px; height: 44px; }
+  .row { grid-template-columns: 32px minmax(0, 1fr) auto; height: auto; min-height: 64px; padding: 10px 12px; row-gap: 4px; }
+  .row .cbw, .row .more { display: none; }
+  .row .what .t, .row .what .d { white-space: normal; }
+  .row .clock { grid-column: 2; grid-row: 2; text-align: left; }
+  .row .verbw { grid-column: 3; grid-row: 1 / span 2; }
+  .row .tilei { grid-row: 1 / span 2; }
+  .fbar { overflow-x: auto; flex-wrap: nowrap; margin: 0 -16px 12px; padding: 8px 16px; top: -20px; }
+  .fbar .finput, .fbar .echo { display: none; }
+  .chip { flex: none; }
+  .panel { width: 100%; border-left: 0; }
+  .panel .fd .btn { flex: 1; }
+  .cmd { top: 16px; max-height: calc(100% - 32px); }
+  .help .g { grid-template-columns: 1fr; }
+  .help .kbdonly { display: none; }
+  .popup .acts .primary { margin-left: 0; order: 0; flex-basis: 100%; }
+  .popup .acts .btn { flex: 1 1 auto; }
+  .bellmenu { right: 16px; }
+  .scaler { margin: 0 auto; }
+}
+@media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-today" viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="15" rx="3"/><path d="M4 10h16M9 3v4M15 3v4"/></symbol>
+  <symbol id="i-clients" viewBox="0 0 24 24"><circle cx="9" cy="9" r="3"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6"/><path d="M16 5.5a3 3 0 0 1 0 6M18 14.4c1.8.8 3 2.6 3 5.6"/></symbol>
+  <symbol id="i-inbox" viewBox="0 0 24 24"><path d="M3 13l3-8h12l3 8v6H3z"/><path d="M3 13h5l1 2h6l1-2h5"/></symbol>
+  <symbol id="i-money" viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="12" rx="3"/><circle cx="12" cy="12" r="2.5"/></symbol>
+  <symbol id="i-compliance" viewBox="0 0 24 24"><path d="M12 3l8 3v6c0 4.5-3.2 7.8-8 9-4.8-1.2-8-4.5-8-9V6z"/><path d="M9 12l2 2 4-4"/></symbol>
+  <symbol id="i-system" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M18.4 5.6l-2.1 2.1M7.7 16.3l-2.1 2.1"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6"/><path d="M20 20l-4.5-4.5"/></symbol>
+  <symbol id="i-bell" viewBox="0 0 24 24"><path d="M6 17V11a6 6 0 0 1 12 0v6l1.5 2h-15z"/><path d="M10 21h4"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></symbol>
+  <symbol id="i-more" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/></symbol>
+  <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></symbol>
+  <symbol id="i-call" viewBox="0 0 24 24"><path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A15 15 0 0 1 3 6a2 2 0 0 1 2-2z"/></symbol>
+  <symbol id="i-alert" viewBox="0 0 24 24"><path d="M12 4l9 16H3z"/><path d="M12 10v4M12 17v.5"/></symbol>
+  <symbol id="i-doc" viewBox="0 0 24 24"><path d="M6 3h8l4 4v14H6z"/><path d="M9 12h6M9 16h6"/></symbol>
+  <symbol id="i-site" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="M3 10h18"/></symbol>
+  <symbol id="i-person" viewBox="0 0 24 24"><circle cx="12" cy="9" r="3.5"/><path d="M5 20c0-3.9 3.1-7 7-7s7 3.1 7 7"/></symbol>
+</svg>
+
+<div class="ctl" role="toolbar" aria-label="Review controls (not part of the console)">
+  <div class="grp"><span>Width</span><button data-set="vp" data-v="desktop" aria-pressed="true">1440</button><button data-set="vp" data-v="phone" aria-pressed="false">390</button></div>
+  <div class="grp"><span>State</span>
+    <button data-set="state" data-v="live" aria-pressed="true">Live</button><button data-set="state" data-v="new" aria-pressed="false">New</button><button data-set="state" data-v="empty" aria-pressed="false">Empty</button><button data-set="state" data-v="error" aria-pressed="false">Error</button><button data-set="state" data-v="loading" aria-pressed="false">Loading</button></div>
+  <div class="grp"><span>Overlay</span>
+    <button data-set="ov" data-v="none" aria-pressed="true">None</button><button data-set="ov" data-v="cmd" aria-pressed="false">Command bar</button><button data-set="ov" data-v="help" aria-pressed="false">Keyboard help</button><button data-set="ov" data-v="popup" aria-pressed="false">Kickoff popup</button><button data-set="ov" data-v="panel" aria-pressed="false">Side panel</button><button data-set="ov" data-v="bulk" aria-pressed="false">Bulk bar</button><button data-set="ov" data-v="bell" aria-pressed="false">Bell</button><button data-set="ov" data-v="menu" aria-pressed="false">Phone menu</button></div>
+  <div class="grp"><span>Command bar</span>
+    <button data-set="cmdst" data-v="empty" aria-pressed="true">Empty term</button><button data-set="cmdst" data-v="results" aria-pressed="false">Results</button><button data-set="cmdst" data-v="loading" aria-pressed="false">Loading</button><button data-set="cmdst" data-v="none" aria-pressed="false">No result</button><button data-set="cmdst" data-v="error" aria-pressed="false">Error</button></div>
+  <div class="grp"><span>Popup</span>
+    <button data-set="pst" data-v="ask" aria-pressed="true">Ask</button><button data-set="pst" data-v="error" aria-pressed="false">Error</button></div>
+</div>
+
+<div class="stage" id="stage"><div class="scaler" id="scaler">
+<div class="frame" id="frame" data-vp="desktop" data-state="live" aria-label="Console mock">
+
+  <div class="shell">
+    <nav class="rail" aria-label="Main" data-surface="dark">
+      <div class="brand"><span class="mark" aria-hidden="true">bB</span><span>Brandbasket</span></div>
+      <button class="railhint" data-open="cmd"><svg class="i" aria-hidden="true"><use href="#i-search"/></svg><span>Search everything</span><kbd>Cmd K</kbd></button>
+      <div style="height:8px"></div>
+      <button class="railbtn" aria-current="page"><svg class="i" aria-hidden="true"><use href="#i-today"/></svg><span class="lbl">Today</span><span class="count accent" data-count="today"></span></button>
+      <button class="railbtn"><svg class="i" aria-hidden="true"><use href="#i-clients"/></svg><span class="lbl">Clients</span></button>
+      <button class="railbtn"><svg class="i" aria-hidden="true"><use href="#i-inbox"/></svg><span class="lbl">Inbox</span><span class="count alert" data-count="inbox"></span></button>
+      <button class="railbtn"><svg class="i" aria-hidden="true"><use href="#i-money"/></svg><span class="lbl">Money</span><span class="count" data-count="money"></span></button>
+      <button class="railbtn"><svg class="i" aria-hidden="true"><use href="#i-compliance"/></svg><span class="lbl">Compliance</span><span class="count alert" data-count="compliance"></span></button>
+      <button class="railbtn"><svg class="i" aria-hidden="true"><use href="#i-system"/></svg><span class="lbl">System</span><span class="count alert" data-count="system"></span></button>
+      <div class="foot"><b>&lt;staff name&gt;</b>Signed in</div>
+    </nav>
+
+    <div class="main">
+      <header class="top">
+        <button class="iconbtn phonebar-only" data-open="menu" aria-label="Menu"><svg class="i" aria-hidden="true"><use href="#i-menu"/></svg></button>
+        <span class="mark phonebar-only" aria-hidden="true">bB</span>
+        <button class="topsearch" data-open="cmd" aria-label="Search everything"><svg class="i" aria-hidden="true"><use href="#i-search"/></svg><span>Search clients, requests, invoices</span><kbd>Cmd K</kbd></button>
+        <span class="spacer"></span>
+        <button class="iconbtn phonebar-only" data-open="cmd" aria-label="Search"><svg class="i" aria-hidden="true"><use href="#i-search"/></svg></button>
+        <button class="iconbtn" data-open="bell" aria-label="Notifications"><svg class="i" aria-hidden="true"><use href="#i-bell"/></svg><span class="badge" id="bellbadge">1</span></button>
+        <button class="iconbtn" aria-label="Account menu"><svg class="i" aria-hidden="true"><use href="#i-person"/></svg></button>
+      </header>
+
+      <main class="page" id="page">
+        <div class="page-in">
+          <div class="head">
+            <div>
+              <p class="eyebrow">Today</p>
+              <h1 id="greet">Good afternoon, &lt;staff first name&gt;.</h1>
+              <p class="sum" id="summary"></p>
+            </div>
+            <div><button class="btn soft">Add enquiry</button></div>
+          </div>
+
+          <div id="banner"></div>
+          <div class="notice hidden" id="errnote" role="alert">
+            <svg class="i" aria-hidden="true"><use href="#i-alert"/></svg>
+            <div><b>Money and System could not be read.</b>The rest of Today is shown. Their rows and counts are left out until they load.</div>
+            <button class="btn secondary">Try again</button>
+          </div>
+
+          <div class="tiles" id="tiles">
+            <div class="tile"><div class="l">Late</div><div class="v late" data-tile="late"></div></div>
+            <div class="tile"><div class="l">Due today</div><div class="v" data-tile="due"></div></div>
+            <div class="tile"><div class="l">On track</div><div class="v" data-tile="track"></div></div>
+            <div class="tile"><div class="l">Active clients</div><div class="v" data-tile="clients"></div></div>
+          </div>
+
+          <div class="cols">
+            <section aria-label="Work queue">
+              <div id="fbar" class="fbar" role="group" aria-label="Filter the list"></div>
+              <div id="bulk" class="bulk hidden" role="region" aria-label="Selected rows"></div>
+              <div id="groups"></div>
+              <div id="skeleton" class="hidden group focal"><h2>Loading</h2><div class="list" style="border:1px solid var(--line);border-radius:14px;background:var(--surface)"></div></div>
+              <div id="empty" class="empty hidden">
+                <div class="ck"><svg class="i" aria-hidden="true"><use href="#i-check"/></svg></div>
+                <h2>Nothing needs you right now</h2>
+                <p>New enquiries, customer requests, payments and compliance clocks appear here as they arrive. Social posting and monitoring continue on their own.</p>
+                <p id="newline" class="hidden">Clients appear here as soon as someone signs up.</p>
+              </div>
+            </section>
+
+            <aside aria-label="Calls and systems">
+              <div class="card" id="callscard">
+                <h2>Calls</h2>
+                <div id="calls"></div>
+              </div>
+              <div class="card" id="syscard">
+                <h2>Systems</h2>
+                <div id="systems"></div>
+              </div>
+            </aside>
+          </div>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <div id="layers"></div>
+</div>
+</div></div>
+
+<script>
+(function () {
+  "use strict";
+  var frame = document.getElementById("frame");
+  var S = { vp: "desktop", state: "live", ov: "none", cmdst: "empty", pst: "ask", filter: "all", sel: {}, kbd: -1, open: null, answered: false, contacted: {}, menuFor: null };
+
+  /* Rows. Each row is one TodayItem (lib/today-queue.ts) or one of the new kinds in plan S3. clock is a sample of dueLabel or deadline-clock. */
+  var B = "&lt;business&gt;";
+  var ROWS = [
+    { key: "kickoff:b1", kind: "kickoff", grp: "late", src: "builds", f: ["builds"], icon: "call", title: "Did the kickoff happen?", detail: B + " · ended 17 Nov, 11:30", clock: "3h late", tone: "late", verb: "Confirm" },
+    { key: "privacy:p1", kind: "privacy", grp: "late", src: "compliance", f: ["compliance"], icon: "compliance", title: "Privacy request: &lt;request ref&gt;", detail: "30 day clock · received &lt;date&gt;", clock: "02d 00h overdue", tone: "late", verb: "Open",
+      sees: "Nothing yet. They are waiting for an answer to their request.", last: "Received through the privacy form.", next: "Answer the request or close it with a recorded reason. Closing cannot be undone." },
+    { key: "request:r1", kind: "request", grp: "late", src: "inbox", f: ["customers"], set: "request", icon: "inbox", title: "No reply yet: \"&lt;subject&gt;\"", detail: "&lt;ref&gt; · &lt;category&gt;", clock: "3h late", tone: "late", verb: "Reply",
+      sees: "Their request shows as sent. No reply yet.", last: "&lt;last message from the customer&gt;", next: "Send a public reply. It emails the person who asked." },
+    { key: "payment:pay1", kind: "payment", grp: "late", src: "money", f: ["money"], icon: "money", title: "Payment needs a look: " + B, detail: "Raised 16 Nov", clock: "5h late", tone: "late", verb: "Check",
+      sees: "Their dashboard shows the plan as not yet paid.", last: "&lt;attention reason from the payment&gt;", next: "Open the payment, confirm the money arrived, then apply it." },
+    { key: "approved:b2", kind: "approved", grp: "due", src: "builds", f: ["builds"], icon: "site", title: "Website approved: " + B, detail: "Ready to launch", clock: "by 18:00", tone: "soon", verb: "Launch",
+      sees: "Their dashboard says the preview is approved and the launch is next.", last: "Approved the preview on &lt;date&gt;.", next: "Run the launch checks, then Mark live. This emails the customer." },
+    { key: "lead:l1", kind: "enquiry", grp: "due", src: "inbox", f: ["enquiries"], set: "enquiry", icon: "person", title: "New enquiry: " + B, detail: "Arrived 17 Nov at 14:10", clock: "by 15:10", tone: "soon", verb: "Open",
+      sees: "They have not signed up yet.", last: "&lt;enquiry message&gt;", next: "Call back or send the setup link. The setup link emails the person." },
+    { key: "lead:l2", kind: "enquiry", grp: "due", src: "inbox", f: ["enquiries"], set: "enquiry", icon: "person", title: "New enquiry: " + B, detail: "Arrived 17 Nov at 14:40", clock: "by 15:40", tone: "soon", verb: "Open",
+      sees: "They have not signed up yet.", last: "&lt;enquiry message&gt;", next: "Call back or send the setup link. The setup link emails the person." },
+    { key: "breach:br1", kind: "breach", grp: "due", src: "compliance", f: ["compliance"], icon: "compliance", title: "Breach: 72 hour notice", detail: "&lt;breach ref&gt; · logged &lt;date&gt;", clock: "5h 12m left", tone: "soon", verb: "Open",
+      sees: "Nothing. This is an internal record.", last: "Logged on &lt;date&gt;.", next: "Send the notice or record why it is not needed. Closing cannot be undone." },
+    { key: "billing:past_due:b3", kind: "billing", grp: "wait", src: "money", f: ["money"], icon: "money", title: "Renewal failed: " + B, detail: "Past due since 15 Nov", clock: "", tone: "plain", verb: "Open",
+      sees: "Their dashboard shows the renewal as failed.", last: "&lt;billing status line&gt;", next: "Open the client's Money tab and check the renewal. Lapse rules wait on decision D10." },
+    { key: "report:b4", kind: "report", grp: "wait", src: "inbox", f: ["customers"], icon: "doc", title: "Report to review: " + B, detail: "Draft written 1 Nov", clock: "", tone: "plain", verb: "Open",
+      sees: "Nothing until the report is sent.", last: "Draft written on the 1st.", next: "Review the draft, then Send. Send emails the owner." },
+    { key: "delivery:failed", kind: "delivery", grp: "wait", src: "system", f: ["system"], set: "delivery", icon: "alert", title: "3 emails and webhooks failed", detail: "In the last 24 hours", clock: "", tone: "plain", verb: "Open",
+      sees: "Some customers may not have received an email.", last: "Latest failure: &lt;failure reason&gt;", next: "Open Emails and webhooks, or Resend all failed (emails customers)." },
+    { key: "google:b5", kind: "google", grp: "wait", src: "system", f: ["system"], icon: "alert", title: "Google: " + B + " cannot be verified", detail: "Site verification failed", clock: "", tone: "plain", verb: "Open",
+      sees: "Nothing visible to them.", last: "&lt;google problem line&gt;", next: "Open the client's Website tab and run the verification again." },
+    { key: "unconfirmed_start:b6", kind: "unconfirmed", grp: "wait", src: "builds", f: ["builds"], icon: "site", title: "Started without call confirmation", detail: B, clock: "", tone: "plain", verb: "Open",
+      sees: "Their dashboard says the website build has started.", last: "Started automatically 24 hours after the call.", next: "Open the Website tab and check the call outcome." },
+    { key: "closure:b7", kind: "closure", grp: "wait", src: "compliance", f: ["compliance"], icon: "compliance", title: "Account closing: " + B, detail: "Erases 19 Nov", clock: "2d 04h to erase", tone: "plain", verb: "Open",
+      sees: "Their account shows as closing.", last: "Closure requested on &lt;date&gt;.", next: "Restore or extend, or leave it to erase. Restore and extend ask for confirmation." }
+  ];
+  var FILTERS = [["all", "All"], ["late", "Late"], ["customers", "Customers"], ["builds", "Builds"], ["money", "Money"], ["enquiries", "Enquiries"], ["compliance", "Compliance"], ["system", "System"]];
+  var GROUPS = [["late", "Late"], ["due", "Due today"], ["wait", "Waiting on someone"]];
+  var FAILED_SRC = ["money", "system"];
+
+  function el(id) { return document.getElementById(id); }
+  function ico(n, c) { return '<svg class="i ' + (c || "") + '" aria-hidden="true"><use href="#i-' + n + '"/></svg>'; }
+  function esc(s) { return s; }
+
+  function visibleRows() {
+    var rows = S.state === "live" || S.state === "error" ? ROWS : [];
+    if (S.state === "error") rows = rows.filter(function (r) { return FAILED_SRC.indexOf(r.src) < 0; });
+    return rows.filter(function (r) { return !S.answered || r.kind !== "kickoff"; });
+  }
+  function inFilter(r) { return S.filter === "all" || (S.filter === "late" ? r.grp === "late" : r.f.indexOf(S.filter) >= 0); }
+  function count(f, rows) { return rows.filter(function (r) { return f === "all" || (f === "late" ? r.grp === "late" : r.f.indexOf(f) >= 0); }).length; }
+
+  function render() {
+    frame.dataset.vp = S.vp; frame.dataset.state = S.state;
+    var rows = visibleRows();
+    var n = rows.length, late = rows.filter(function (r) { return r.grp === "late"; }).length;
+    var due = rows.filter(function (r) { return r.grp === "due"; }).length;
+    var wait = n - late - due;
+    var loading = S.state === "loading";
+    var calm = (S.state === "new" || S.state === "empty");
+
+    // header
+    el("summary").textContent = loading ? "Tuesday 17 November." :
+      n === 0 ? (S.state === "error" ? "Tuesday 17 November." : "Tuesday 17 November. Nothing needs anyone right now.") :
+      "Tuesday 17 November. " + (n === 1 ? "1 thing needs" : n + " things need") + " someone today" + (late === 0 ? "" : late === 1 ? ", 1 is late" : ", " + late + " are late") + ".";
+    el("errnote").classList.toggle("hidden", S.state !== "error");
+    el("banner").innerHTML = S.answered ? '<div class="banner" role="status">' + ico("check") + '<div><b>The 48 hour first preview clock has started.</b> The row has left Today.</div></div>' : "";
+
+    // tiles
+    var T = { late: late, due: due, track: wait, clients: S.state === "new" ? 0 : 12 };
+    document.querySelectorAll("[data-tile]").forEach(function (t) { t.textContent = loading ? "" : T[t.dataset.tile]; if (loading) t.innerHTML = '<i style="display:block;height:32px;width:48px;background:var(--sunken);border-radius:8px"></i>'; });
+    document.querySelector('[data-tile="late"]').classList.toggle("late", late > 0);
+
+    // rail counts: left off when their source failed (countOrNothing)
+    var inbox = rows.filter(function (r) { return r.src === "inbox" && r.kind !== "report"; }).length;
+    var C = { today: n, inbox: inbox, money: S.state === "error" ? 0 : rows.filter(function (r) { return r.src === "money"; }).length, compliance: rows.filter(function (r) { return r.src === "compliance"; }).length, system: S.state === "error" ? 0 : rows.filter(function (r) { return r.src === "system"; }).length };
+    document.querySelectorAll("[data-count]").forEach(function (c) {
+      var k = c.dataset.count; var off = (S.state === "error" && (k === "money" || k === "system"));
+      c.classList.toggle("hidden", C[k] === 0 || off || loading); c.textContent = C[k];
+    });
+    el("bellbadge").classList.toggle("hidden", S.answered || S.state !== "live");
+
+    // filter bar or bulk bar
+    var selKeys = Object.keys(S.sel).filter(function (k) { return S.sel[k]; });
+    var showBulk = selKeys.length > 0 && !loading;
+    el("fbar").classList.toggle("hidden", showBulk || calm || loading);
+    el("bulk").classList.toggle("hidden", !showBulk);
+    if (!showBulk) {
+      el("fbar").innerHTML = FILTERS.map(function (f) { return '<button class="chip" data-filter="' + f[0] + '" aria-pressed="' + (S.filter === f[0]) + '">' + f[1] + ' <span class="n">' + count(f[0], rows) + '</span></button>'; }).join("") +
+        '<input class="finput" placeholder="Filter this list" aria-label="Filter this list">' +
+        (S.filter !== "all" ? '<span class="echo">Showing ' + FILTERS.filter(function (f) { return f[0] === S.filter; })[0][1] + '<button data-filter="all" aria-label="Clear filter">' + ico("x") + '</button></span>' : "");
+    } else bulkBar(selKeys, rows);
+
+    // list
+    var html = "";
+    GROUPS.forEach(function (g) {
+      var list = rows.filter(function (r) { return r.grp === g[0] && inFilter(r); });
+      if (!list.length) return;
+      html += '<section class="group ' + (g[0] === "late" ? "focal" : "") + '" aria-label="' + g[1] + '"><h2>' + g[1] + ' <span class="n">' + list.length + '</span></h2><ul class="list">' + list.map(rowHtml).join("") + '</ul></section>';
+    });
+    if (rows.length && !html) html = '<div class="empty"><h2>No ' + FILTERS.filter(function (f) { return f[0] === S.filter; })[0][1].toLowerCase() + ' work</h2><p>Nothing in this filter needs you.</p><p><button class="btn soft" data-filter="all">Clear filter</button></p></div>';
+    el("groups").innerHTML = loading ? "" : html;
+    el("skeleton").classList.toggle("hidden", !loading);
+    if (loading) {
+      var sk = ""; for (var i = 0; i < 5; i++) sk += '<div class="skel"><i style="width:18px;height:18px"></i><i style="width:32px;height:32px"></i><i style="flex:1;height:14px"></i><i style="width:64px;height:14px"></i><i style="width:64px;height:36px"></i></div>';
+      el("skeleton").querySelector(".list").innerHTML = sk;
+    }
+    el("empty").classList.toggle("hidden", !(calm || (S.state === "live" && rows.length === 0)));
+    el("newline").classList.toggle("hidden", S.state !== "new");
+
+    // aside
+    var calls = '';
+    if (S.state === "new") calls = '<p class="muted" style="margin:0">No calls today. Kickoff calls booked for today appear here.</p>';
+    else if (loading) calls = '<div class="skel"><i style="flex:1;height:14px"></i></div><div class="skel"><i style="flex:1;height:14px"></i></div>';
+    else calls = '<h3 style="margin-top:0">Today</h3><div class="kv"><div class="b">' + B + '<small>Kickoff call</small></div><div class="m">15:00</div></div>' +
+      '<h3>Coming up</h3><div class="kv"><div class="b">' + B + '<small>Kickoff call</small></div><div class="m">Wed 18 Nov, 11:00</div></div>' +
+      '<h3>Just finished</h3>' + (S.answered ? '<div class="kv"><div class="b">' + B + '<small>Call completed</small></div><div class="m">11:30</div></div>' : '<div class="kv"><div class="b">' + B + '<small>Needs an outcome</small></div><button class="link" data-open="popup">Confirm</button></div>') +
+      '<h3>Last 7 days</h3><div class="kv"><div class="b">2 calls</div><button class="link" disabled style="opacity:.6">Show</button></div>';
+    el("calls").innerHTML = calls;
+    var sysFail = S.state === "error";
+    el("systems").innerHTML = loading ? '<div class="skel"><i style="flex:1;height:14px"></i></div>' : sysFail ?
+      '<div class="notice" style="margin:0"><svg class="i" aria-hidden="true"><use href="#i-alert"/></svg><div><b>Systems could not be read.</b>Try again.</div></div>' :
+      (S.state === "live" ? '<div class="kv"><div class="b">Emails and webhooks failed<small>Last 24 hours</small></div><div class="m red">3</div></div><div class="kv"><div class="b">Google problems</div><div class="m red">1</div></div><div class="kv"><div class="b">New app errors</div><div class="m">0</div></div>' :
+       '<div class="kv"><div class="b">Emails and webhooks failed<small>Last 24 hours</small></div><div class="m">0</div></div><div class="kv"><div class="b">Google problems</div><div class="m">0</div></div><div class="kv"><div class="b">New app errors</div><div class="m">0</div></div>');
+    layers();
+    fit();
+  }
+
+  function rowHtml(r, i) {
+    var sel = !!S.sel[r.key];
+    return '<li class="row' + (S.open === r.key ? " open" : "") + (S.kbd === r.key ? " kbd" : "") + '" data-key="' + r.key + '" aria-selected="' + sel + '">' +
+      '<span class="cbw"><input class="cb" type="checkbox" ' + (sel ? "checked" : "") + ' data-sel="' + r.key + '" aria-label="Select this row"></span>' +
+      '<span class="tilei">' + ico(r.icon) + '</span>' +
+      '<button class="what" data-row="' + r.key + '"><span class="t">' + r.title + '</span><span class="d">' + r.detail + '</span></button>' +
+      '<span class="clock ' + (r.tone === "late" ? "late" : "") + '">' + r.clock + '</span>' +
+      '<span class="verbw"><button class="btn soft" data-verb="' + r.key + '">' + r.verb + '</button></span>' +
+      '<button class="more" data-menu="' + r.key + '" aria-label="More actions" aria-haspopup="menu">' + ico("more") + '</button>' +
+      (S.menuFor === r.key ? '<div class="menu" role="menu"><button role="menuitem" data-verb="' + r.key + '">Open client</button><button role="menuitem">Copy link to this row</button>' + (r.set === "request" ? '<button role="menuitem" data-undo="close">Close request</button>' : "") + '</div>' : "") + '</li>';
+  }
+
+  /* Bulk set: only where a bulk action exists (plan 3.1). Mixed kinds get no actions. */
+  function bulkBar(keys, rows) {
+    var sel = rows.filter(function (r) { return keys.indexOf(r.key) >= 0; });
+    var sets = {}; sel.forEach(function (r) { sets[r.set || "none"] = 1; });
+    var kinds = Object.keys(sets); var one = kinds.length === 1 ? kinds[0] : null;
+    var acts = "";
+    if (one === "enquiry") acts = '<button class="btn soft" data-bulk="contacted">Mark contacted</button><button class="btn soft" data-bulk="link">Send setup link</button><button class="btn soft" data-bulk="export">Export selected</button>';
+    else if (one === "request") acts = '<button class="btn soft" data-bulk="close">Close selected</button>';
+    else if (one === "delivery") acts = '<button class="btn soft" data-bulk="resend">Resend all failed</button>';
+    else acts = '<span class="note">No bulk action fits these rows together.</span>';
+    el("bulk").innerHTML = '<strong class="mono">' + keys.length + '</strong> selected' + acts + '<span style="flex:1"></span><button class="btn quiet" data-bulk="clear" style="color:#fff">Clear</button>';
+  }
+
+  /* Overlays */
+  var PANEL_DEFAULT = "lead:l1";
+  function layers() {
+    var h = ""; var ov = S.ov;
+    if (ov === "cmd") h += cmdHtml();
+    if (ov === "help") h += helpHtml();
+    if (ov === "popup") h += popupHtml();
+    if (ov === "confirm") h += confirmHtml();
+    if (ov === "bell") h += '<div class="layer" data-close></div><div class="bellmenu" role="menu"><h3>Notifications</h3>' + (S.answered ? '<p class="muted" style="margin:8px 12px 12px">Nothing new.</p>' : '<button class="it" data-open="popup">' + ico("call") + '<span><b>Did the kickoff call with ' + B + ' happen?</b><small>Opens the same prompt as the Today row</small></span></button>') + '</div>';
+    if (ov === "menu") h += '<div class="layer" data-close><div class="scrim"></div></div><div class="drawer scrimmed" data-surface="dark" style="z-index:23"><div class="brand"><span class="mark" aria-hidden="true">bB</span><span>Brandbasket</span></div>' +
+      [["today", "Today", "today"], ["clients", "Clients"], ["inbox", "Inbox", "inbox"], ["money", "Money", "money"], ["compliance", "Compliance", "compliance"], ["system", "System", "system"]].map(function (m, i) { return '<button class="railbtn" ' + (i === 0 ? 'aria-current="page"' : "") + '>' + ico(m[0]) + '<span class="lbl">' + m[1] + '</span>' + (m[2] ? '<span class="count' + (i === 0 ? " accent" : "") + '">' + (C2()[m[2]] || "") + '</span>' : "") + '</button>'; }).join("") + '<div class="foot"><b>&lt;staff name&gt;</b>Signed in</div></div>';
+    if (S.open && ov !== "popup") h += panelHtml(S.open);
+    if (S.toast) h += '<div class="toast" role="status">' + S.toast + (S.undo ? '<button class="u" data-toastundo>Undo</button>' : "") + '</div>';
+    el("layers").innerHTML = h;
+  }
+  function C2() { var r = visibleRows(); return { today: r.length, inbox: r.filter(function (x) { return x.src === "inbox" && x.kind !== "report"; }).length, money: r.filter(function (x) { return x.src === "money"; }).length, compliance: r.filter(function (x) { return x.src === "compliance"; }).length, system: r.filter(function (x) { return x.src === "system"; }).length }; }
+
+  function popupHtml() {
+    var err = S.pst === "error";
+    return '<div class="layer" data-close><div class="scrim"></div></div><div class="popup" role="dialog" aria-modal="true" aria-labelledby="pt">' +
+      '<h2 id="pt">Did the kickoff call with ' + B + ' happen?</h2>' +
+      '<p class="line">The call was booked for 11:00 and ended at 11:30 today. Call completed starts the website build and the 48 hour first preview clock.</p>' +
+      '<label for="pn">Notes (optional)</label><textarea id="pn" placeholder="Anything we should know before building">' + (err ? "They want a warm, simple look." : "") + '</textarea>' +
+      (err ? '<div class="err" role="alert">This could not be saved. Your notes are kept. Try again.</div>' : "") +
+      '<div class="acts"><button class="btn secondary" data-pop="nojoin">They did not join</button><button class="btn secondary" data-pop="resched">Reschedule</button><button class="btn primary" data-pop="done">Call completed</button>' +
+      '<div class="quietwrap"><button class="btn quiet" data-pop="dismiss">Dismiss</button> Asks again in 15 minutes until answered.</div></div>' +
+      '<div class="meta">1 more call is waiting for an answer.</div></div>';
+  }
+  function confirmHtml() {
+    var c = S.confirm;
+    return '<div class="layer" data-close><div class="scrim"></div></div><div class="confirm" role="alertdialog" aria-modal="true" aria-labelledby="ct"><h2 id="ct">' + c.t + '</h2><p>' + c.p + '</p><div class="acts"><button class="btn secondary" data-conf="no">Keep</button><button class="btn primary" data-conf="yes">' + c.b + '</button></div></div>';
+  }
+  function helpHtml() {
+    function r(l, k) { return '<div class="r"><span>' + l + '</span><span>' + k + '</span></div>'; }
+    return '<div class="layer" data-close><div class="scrim"></div></div><div class="help" role="dialog" aria-modal="true" aria-labelledby="ht"><h2 id="ht">Keyboard shortcuts</h2><div class="g">' +
+      '<h3>Anywhere</h3>' + r("Search and actions", "<kbd>Cmd K</kbd>") + r("Show this help", "<kbd>?</kbd>") + r("Close the top layer", "<kbd>Esc</kbd>") +
+      r("Go to Today", "<kbd>g</kbd> <kbd>t</kbd>") + r("Go to Clients", "<kbd>g</kbd> <kbd>c</kbd>") + r("Go to Inbox", "<kbd>g</kbd> <kbd>i</kbd>") + r("Go to Money", "<kbd>g</kbd> <kbd>m</kbd>") +
+      '<h3>In a list</h3>' + r("Next row", "<kbd>j</kbd>") + r("Previous row", "<kbd>k</kbd>") + r("Open the row", "<kbd>Enter</kbd>") + r("Run the row's verb", "<kbd>e</kbd>") + r("Select the row", "<kbd>x</kbd>") + r("Focus the filter", "<kbd>/</kbd>") +
+      '</div><p class="foot">Single keys work only when the cursor is not in a field. No shortcut deletes anything.</p></div>';
+  }
+  function cmdHtml() {
+    var st = S.cmdst; var q = st === "results" ? "&lt;business&gt;" : st === "none" ? "zzzz" : st === "loading" ? "&lt;busin" : "";
+    var body = "";
+    function it(i, t, small, hl) { return '<button class="it' + (hl ? " hl" : "") + '">' + ico(i) + '<span>' + t + '</span><small>' + small + '</small></button>'; }
+    if (st === "empty" || st === "error") {
+      if (st === "error") body += '<div class="notice" style="margin:8px"><svg class="i" aria-hidden="true"><use href="#i-alert"/></svg><div><b>Search failed.</b>Go to and Actions still work. Try again.</div></div>';
+      else body += '<div class="gl">Recent</div>' + it("clients", B, "Client", true) + it("inbox", "&lt;ref&gt;", "Request") + it("money", "&lt;invoice number&gt;", "Invoice");
+      body += '<div class="gl">Go to</div>' + it("today", "Today", "g t") + it("clients", "Clients", "g c") + it("clients", "Clients: Builds", "") + it("inbox", "Inbox: Requests", "g i") + it("inbox", "Inbox: Enquiries", "") + it("inbox", "Inbox: Reports to review", "") + it("money", "Money: Payments", "g m") + it("money", "Money: Invoices", "") + it("money", "Money: Plans and offers", "") + it("compliance", "Compliance: Privacy requests", "") + it("compliance", "Compliance: Breaches", "") + it("compliance", "Compliance: Closures", "") + it("compliance", "Compliance: Access log", "") + it("system", "System: Health", "") + it("system", "System: Emails and webhooks", "") + it("system", "System: App errors", "") + it("system", "System: Settings", "") + it("system", "System: Access", "");
+      body += '<div class="gl">Actions</div>' + it("person", "Add enquiry", "") + it("inbox", "New request", "") + it("money", "Export payments", "") + it("compliance", "Open privacy requests", "");
+    } else if (st === "results") {
+      body += '<div class="gl">Clients</div>' + it("clients", B, "Client", true) + '<div class="gl">Enquiries</div>' + it("person", B, "Enquiry") + '<div class="gl">Requests</div>' + it("inbox", "&lt;subject&gt;", "&lt;ref&gt;") + '<div class="gl">Invoices</div>' + it("money", "&lt;invoice number&gt;", B) + '<div class="gl">Payments</div>' + it("money", "&lt;payment ref&gt;", B) + '<div class="gl">Emails</div>' + it("inbox", "&lt;email subject&gt;", B);
+    } else if (st === "loading") {
+      body += '<div class="gl">Searching</div>' + [1, 2, 3].map(function () { return '<div class="skel"><i style="width:18px;height:18px"></i><i style="flex:1;height:14px"></i></div>'; }).join("");
+    } else {
+      body += '<div class="empty-note"><p>No results for "' + q + '".</p><button class="btn soft">Add enquiry</button> <button class="btn soft">New request</button></div>';
+    }
+    return '<div class="layer" data-close><div class="scrim"></div></div><div class="cmd" role="dialog" aria-modal="true" aria-label="Search and actions"><div class="in">' + ico("search") + '<input value="' + q + '" placeholder="Search, or type &gt; for actions" aria-label="Search"><kbd>Esc</kbd></div><div class="body">' + body + '</div><div class="foot kbdonly"><span><kbd>&gt;</kbd> actions</span><span><kbd>#</kbd> request references</span><span>Recent items are kept in this browser only</span></div></div>';
+  }
+  function panelHtml(key) {
+    var r = ROWS.filter(function (x) { return x.key === key; })[0]; if (!r || r.kind === "kickoff") return "";
+    var chip = r.tone === "late" ? '<span class="chipw late">Late</span>' : '<span class="chipw idle">' + (r.grp === "due" ? "Due today" : "Waiting") + '</span>';
+    return '<div class="layer" data-close style="' + (S.vp === "phone" ? "" : "pointer-events:none") + '">' + (S.vp === "phone" ? '<div class="scrim"></div>' : "") + '</div><aside class="panel" role="dialog" aria-modal="' + (S.vp === "phone") + '" aria-labelledby="pnt"><header><div style="flex:1;min-width:0"><h2 id="pnt">' + r.title + '</h2><div class="muted" style="font-size:13px;line-height:20px">' + r.detail + '</div><div class="url">?open=' + r.key + '</div></div><button class="iconbtn" data-close aria-label="Close panel">' + ico("x") + '</button></header>' +
+      '<div class="bd"><p style="margin-top:12px">' + chip + ' <span class="mono muted" style="margin-left:8px">' + r.clock + '</span></p>' +
+      '<h3>What the customer sees</h3><p>' + (r.sees || "") + '</p><h3>Last message</h3><p>' + (r.last || "") + '</p><h3>The next step</h3><p>' + (r.next || "") + '</p></div>' +
+      '<div class="fd"><button class="btn soft" data-close>Open client</button><button class="btn primary" data-verb="' + r.key + '">' + r.verb + '</button></div></aside>';
+  }
+
+  /* Events */
+  function toast(t, undo) { S.toast = t; S.undo = !!undo; clearTimeout(S.tt); S.tt = setTimeout(function () { S.toast = null; layers(); }, undo ? 10000 : 4000); }
+  function setOv(v) { S.ov = v; if (v !== "bulk") S.sel = {}; if (v !== "panel") S.open = null; if (v === "panel") S.open = S.open || PANEL_DEFAULT; if (v === "bulk") { S.sel = {}; ROWS.filter(function (r) { return r.set === "enquiry"; }).forEach(function (r) { S.sel[r.key] = true; }); S.open = null; } render(); syncCtl(); }
+  function closeTop() {
+    if (S.ov !== "none") { S.ov = "none"; } else if (S.open) { S.open = null; } else if (Object.keys(S.sel).length) { S.sel = {}; }
+    S.menuFor = null; render(); syncCtl();
+  }
+  function syncCtl() { document.querySelectorAll(".ctl button").forEach(function (b) { var k = b.dataset.set; if (!k) return; var cur = k === "ov" ? (S.ov === "confirm" ? "none" : (S.ov === "none" && S.open ? "panel" : (S.ov === "none" && Object.keys(S.sel).length ? "bulk" : S.ov))) : S[k]; b.setAttribute("aria-pressed", String(cur === b.dataset.v)); }); }
+  function verb(key) { var r = ROWS.filter(function (x) { return x.key === key; })[0]; if (!r) return; if (r.kind === "kickoff") { S.ov = "popup"; S.pst = "ask"; render(); syncCtl(); return; } toast("Would run: " + r.verb + " (opens the real screen in the build)"); S.menuFor = null; layers(); }
+
+  document.addEventListener("click", function (e) {
+    var t = e.target.closest("button, input, [data-close]"); if (!t) { if (S.menuFor) { S.menuFor = null; render(); } return; }
+    var d = t.dataset;
+    if (d.set) { var k = d.set; var v = d.v; if (k === "vp") { S.vp = v; } else if (k === "state") { S.state = v; S.answered = false; S.sel = {}; } else if (k === "ov") { if (v === "panel" || v === "bulk") { S.ov = "none"; } if (v === "none") { S.open = null; S.sel = {}; S.ov = "none"; render(); syncCtl(); return; } setOv(v); return; } else S[k] = v; render(); syncCtl(); return; }
+    if (d.open) { S.ov = d.open; if (d.open === "popup") S.pst = "ask"; render(); syncCtl(); return; }
+    if (d.filter) { S.filter = d.filter; render(); return; }
+    if (d.sel) { S.sel[d.sel] = t.checked; render(); syncCtl(); return; }
+    if (d.row) { S.open = d.row; var r0 = ROWS.filter(function (x) { return x.key === d.row; })[0]; if (r0.kind === "kickoff") { S.open = null; verb(d.row); return; } history.replaceState(null, "", "?open=" + encodeURIComponent(d.row)); render(); syncCtl(); return; }
+    if (d.verb) { if (S.open && t.closest(".panel")) { toast("Would run: " + t.textContent + " (opens the real screen in the build)"); layers(); return; } verb(d.verb); return; }
+    if (d.menu) { S.menuFor = S.menuFor === d.menu ? null : d.menu; render(); return; }
+    if (d.undo) { S.menuFor = null; toast("Request closed. Undo restores it.", true); render(); return; }
+    if (d.pop) { var p = d.pop;
+      if (p === "done") { if (S.pst === "error") { S.pst = "ask"; render(); return; } S.answered = true; S.ov = "none"; toast("Call completed saved."); render(); syncCtl(); return; }
+      if (p === "dismiss") { S.ov = "none"; toast("Asks again in 15 minutes."); render(); syncCtl(); return; }
+      S.ov = "none"; toast(p === "nojoin" ? "Marked as did not join." : "Opening the reschedule step."); render(); syncCtl(); return; }
+    if (d.bulk) { var b = d.bulk;
+      if (b === "clear") { S.sel = {}; render(); syncCtl(); return; }
+      if (b === "contacted") { var n = Object.keys(S.sel).length; S.sel = {}; render(); toast(n + " enquiries marked contacted.", true); layers(); syncCtl(); return; }
+      if (b === "close") { S.sel = {}; render(); toast("Requests closed. Undo reopens them.", true); layers(); syncCtl(); return; }
+      if (b === "export") { toast("Export logged and downloaded."); layers(); return; }
+      if (b === "link") { S.confirm = { t: "Send the setup link?", p: "This emails a setup link to " + Object.keys(S.sel).length + " people. It cannot be taken back.", b: "Send setup link" }; S.ov = "confirm"; render(); return; }
+      if (b === "resend") { S.confirm = { t: "Resend all failed?", p: "This emails customers again. It resends up to 25 emails and 25 alerts from the last 24 hours.", b: "Resend all failed" }; S.ov = "confirm"; render(); return; } }
+    if (d.conf) { S.ov = "none"; if (d.conf === "yes") { S.sel = {}; toast("Done. Counts will update when the queue reloads."); } render(); syncCtl(); return; }
+    if (d.toastundo) { S.toast = "Undone."; S.undo = false; layers(); return; }
+    if ("close" in d) { S.ov === "none" && S.open ? (S.open = null) : (S.ov = "none"); render(); syncCtl(); return; }
+  });
+
+  document.addEventListener("keydown", function (e) {
+    var tag = (e.target.tagName || "").toLowerCase(); var typing = tag === "input" || tag === "textarea";
+    if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") { e.preventDefault(); S.ov = "cmd"; render(); syncCtl(); return; }
+    if (e.key === "Escape") { closeTop(); return; }
+    if (typing || e.metaKey || e.ctrlKey || e.altKey) return;
+    var rows = visibleRows().filter(inFilter); var order = []; GROUPS.forEach(function (g) { rows.forEach(function (r) { if (r.grp === g[0]) order.push(r); }); });
+    var i = order.map(function (r) { return r.key; }).indexOf(S.kbd);
+    if (e.key === "?") { S.ov = "help"; render(); syncCtl(); }
+    else if (e.key === "j") { S.kbd = (order[Math.min(i + 1, order.length - 1)] || {}).key || -1; render(); }
+    else if (e.key === "k") { S.kbd = (order[Math.max(i - 1, 0)] || {}).key || -1; render(); }
+    else if (e.key === "Enter" && S.kbd !== -1 && tag !== "button") { var r = order[i]; if (r) { if (r.kind === "kickoff") verb(r.key); else { S.open = r.key; render(); syncCtl(); } } }
+    else if (e.key === "e" && i >= 0) verb(order[i].key);
+    else if (e.key === "x" && i >= 0) { S.sel[order[i].key] = !S.sel[order[i].key]; render(); syncCtl(); }
+    else if (e.key === "/") { e.preventDefault(); var f = document.querySelector(".finput"); if (f) f.focus(); }
+  });
+
+  document.querySelectorAll(".ctl button").forEach(function (b) { b.addEventListener("keydown", function (e) { e.stopPropagation(); }); });
+
+  /* Scale the 1440 frame to the review window; the layout itself is unscaled. */
+  function fit() {
+    var sc = el("scaler"), w = frame.offsetWidth, h = frame.offsetHeight, avail = el("stage").clientWidth - 32;
+    var s = Math.min(1, avail / w); sc.style.transform = "scale(" + s + ")"; sc.style.width = w + "px"; sc.style.height = h * s + "px";
+    sc.style.marginBottom = "0"; sc.style.marginLeft = Math.max(0, (avail - w * s) / 2) + "px"; sc.style.marginRight = "auto";
+  }
+  window.addEventListener("resize", fit);
+  var q = new URLSearchParams(location.search); if (q.get("open")) S.open = q.get("open");
+  render(); syncCtl(); fit();
+})();
+</script>
+</body>
+</html>

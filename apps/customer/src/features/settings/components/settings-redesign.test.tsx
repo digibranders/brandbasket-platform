@@ -28,7 +28,7 @@ describe("settings tabs", () => {
 });
 
 describe("SettingsCard", () => {
-  it("gives only the focal and danger cards a coloured top edge", () => {
+  it("gives only the danger card a coloured top edge", () => {
     const { container } = render(
       <>
         <SettingsCard title="A" tone="focal">
@@ -41,7 +41,7 @@ describe("SettingsCard", () => {
       </>,
     );
     const cards = container.querySelectorAll("section");
-    expect(cards[0]?.className).toContain("border-t-accent-gold");
+    expect(cards[0]?.className).not.toContain("border-t-");
     expect(cards[1]?.className).toContain("border-t-neg-text");
     expect(cards[2]?.className).not.toContain("border-t-");
   });

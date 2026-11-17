@@ -9,6 +9,7 @@ import {
   getChangeRequestForStaff,
   getChangeWithEvents,
   listChangeRequestsForBusiness,
+  listChangeViewsForTickets,
   listRequestItems,
   listRequestNeeds,
   listWaitingOnYou,
@@ -441,6 +442,14 @@ describe("what staff read", () => {
     expect(found?.displayRef).toBe(second.ticket.displayRef);
     expect(await getChangeRequestForStaff(dbs.staff.db, "00000000-0000-4000-8000-000000000000")).toBeNull();
     expect(first.created).toBe(true);
+  });
+
+  it("tells which of some tickets are change requests, and reads nothing for an empty list", async () => {
+    const change = await ask({ subject: "Add an Implants page" });
+    const question = await createSupportTicket(dbs.app.db, { userId: PHONE_ACCOUNT, businessId: otherBusinessId, category: "general", subject: "A question", description: "Can you call me back?", submissionKey: key() });
+    const views = await listChangeViewsForTickets(dbs.staff.db, [change.ticket.id, question.id]);
+    expect(views.map((view) => view.ticketId)).toEqual([change.ticket.id]);
+    expect(await listChangeViewsForTickets(dbs.staff.db, [])).toEqual([]);
   });
 
   it("finds who to write to, with no address for a phone account", async () => {

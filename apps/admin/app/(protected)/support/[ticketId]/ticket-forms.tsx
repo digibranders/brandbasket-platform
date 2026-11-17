@@ -35,13 +35,11 @@ function ActionNotice({ state }: { readonly state: StaffSupportActionState }): R
   </div>;
 }
 
-export function TicketEditor({ ticket, staff }: { readonly ticket: SupportTicket; readonly staff: readonly { readonly userId: string; readonly name: string }[] }): ReactElement {
+export function TicketEditor({ ticket }: { readonly ticket: SupportTicket }): ReactElement {
   const [status, setStatus] = useState(ticket.status);
   const [category, setCategory] = useState(ticket.category);
   const [priority, setPriority] = useState(ticket.priority);
-  const [assignee, setAssignee] = useState(ticket.assigneeStaffId ?? "");
   const statusOptions = useMemo((): readonly SelectOption[] => SUPPORT_STATUSES.filter((value) => canTransitionSupportStatus(ticket.status, value)).map((value) => ({ value, label: SUPPORT_STATUS_LABELS[value] })), [ticket.status]);
-  const assigneeOptions = useMemo((): readonly SelectOption[] => [{ value: "", label: "Unassigned" }, ...staff.map((person) => ({ value: person.userId, label: person.name }))], [staff]);
   const [state, action, pending] = useGuardedFormState(updateTicket.bind(null, ticket.id), STAFF_SUPPORT_INITIAL_STATE, staffSupportDropped);
   return <form action={action} aria-busy={pending}>
     <input type="hidden" name="expectedVersion" value={ticket.version} />
@@ -50,7 +48,6 @@ export function TicketEditor({ ticket, staff }: { readonly ticket: SupportTicket
       <div><label htmlFor="ticket-status" className={labelClasses}>Status<RequiredMark /></label><SelectField id="ticket-status" name="status" required options={statusOptions} value={status} onChange={(value) => setStatus(pick(SUPPORT_STATUSES, value) ?? status)} aria-invalid={state.kind === "invalid" && state.field === "status"} className={fieldClasses} /></div>
       <div><label htmlFor="ticket-category" className={labelClasses}>Category<RequiredMark /></label><SelectField id="ticket-category" name="category" required options={CATEGORY_OPTIONS} value={category} onChange={(value) => setCategory(pick(SUPPORT_CATEGORIES, value) ?? category)} aria-invalid={state.kind === "invalid" && state.field === "category"} className={fieldClasses} /></div>
       <div><label htmlFor="ticket-priority" className={labelClasses}>Priority<RequiredMark /></label><SelectField id="ticket-priority" name="priority" required options={PRIORITY_OPTIONS} value={priority} onChange={(value) => setPriority(pick(SUPPORT_PRIORITIES, value) ?? priority)} aria-invalid={state.kind === "invalid" && state.field === "priority"} className={fieldClasses} /></div>
-      <div><label htmlFor="ticket-assignee" className={labelClasses}>Assigned to</label><SelectField id="ticket-assignee" name="assigneeStaffId" options={assigneeOptions} value={assignee} onChange={setAssignee} aria-invalid={state.kind === "invalid" && state.field === "assigneeStaffId"} className={fieldClasses} /></div>
     </fieldset>
     <GatedSubmitButton className={`${buttonSecondary} mt-5`} pendingLabel="Saving…">Save changes</GatedSubmitButton>
     <ActionNotice state={state} />

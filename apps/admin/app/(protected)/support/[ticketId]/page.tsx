@@ -1,72 +1,107 @@
-import { randomUUID } from "node:crypto";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { ReactElement } from "react";
 import { z } from "zod";
-import { findFeedbackLinkForTicket, getSupportRequesterContext, getSupportTicketForStaff, listAssignableSupportStaff, listSupportTicketErrors } from "@brandbasket/db";
-import { SUPPORT_STATUS_LABELS } from "@brandbasket/shared/lib/support";
+import { findFeedbackLinkForTicket, getSupportTicketForStaff, listAssignableSupportStaff, listSupportTicketErrors } from "@brandbasket/db";
 import { LocalDateTime } from "@brandbasket/shared/ui/panel/local-date-time";
 import { Notice } from "@/components/console/notice";
 import { PageHeader } from "@/components/console/page-header";
-import { RequestBanner } from "@/components/console/request-banner";
-import { FactList, Section } from "@/components/console/section";
-import { StatusPill, type PillTone } from "@/components/console/status-pill";
-import { replyClockFromMessages, waitingLabel, type RequestQueue } from "@/lib/reply-clock";
+import { Section } from "@/components/console/section";
+import { loadOpenRequest } from "@/components/requests/open-request";
+import { RequestPageView } from "@/components/requests/request-page-view";
 import { getStaffDb } from "@/lib/server/db";
 import { requireStaffAccess } from "@/lib/server/staff-access";
-import { logStaffAccess } from "@/lib/server/staff-access-log";
-import { OPENED_REQUEST_MESSAGES, OPENED_REQUEST_OUTCOMES, STAFF_SUPPORT_CATEGORY_LABELS } from "@/lib/support-admin-state";
-import { ErrorLinkForm, RemoveErrorLink, TicketEditor, TicketMessageForm } from "./ticket-forms";
+import { OPENED_REQUEST_MESSAGES, OPENED_REQUEST_OUTCOMES } from "@/lib/support-admin-state";
+import { ErrorLinkForm, RemoveErrorLink, TicketEditor } from "./ticket-forms";
 
 export const metadata: Metadata = { title: "Request" };
-const QUEUE_PILL: Readonly<Record<RequestQueue, { readonly tone: PillTone; readonly label: string }>> = {
-  needs_reply: { tone: "wait", label: "Needs reply" },
-  waiting_on_client: { tone: "todo", label: "Waiting on client" },
-  done: { tone: "done", label: "Done" },
-};
-const DETAIL_LABELS: Readonly<Record<string, string>> = { pageUrl: "Page address", stepsToReproduce: "Steps to reproduce", expectedBehavior: "Expected behavior", actualBehavior: "Actual behavior", browserDevice: "Browser or device", invoiceReference: "Invoice reference", requestedChange: "Requested change", accountEmail: "Account email" };
 
+/** One request as a page: the same conversation as the Requests side panel, then the ticket's own details, links and history. */
 export default async function StaffTicketPage({ params, searchParams }: { readonly params: Promise<{ readonly ticketId: string }>; readonly searchParams: Promise<{ readonly opened?: string | string[] }> }): Promise<ReactElement> {
   const { user } = await requireStaffAccess();
   const { ticketId } = await params;
-  await logStaffAccess({ staffUserId: user.id, action: "support_ticket.view", targetType: "support_ticket", targetId: ticketId });
   if (!z.uuid().safeParse(ticketId).success) notFound();
+  const open = await loadOpenRequest({ raw: ticketId, staffUserId: user.id });
+  if (open.detail === null) {
+    if (open.detailFailedFor !== null) throw new Error("The request could not be loaded.");
+    notFound();
+  }
+  const { detail } = open;
   const db = getStaffDb();
-  const [detail, requester, staff, errors, feedback] = await Promise.all([getSupportTicketForStaff(db, ticketId), getSupportRequesterContext(db, ticketId), listAssignableSupportStaff(db), listSupportTicketErrors(db, ticketId, user.id), findFeedbackLinkForTicket(db, ticketId)]);
-  if (detail === null) notFound();
-  const { ticket } = detail;
-  const staffName = (id: string): string => staff.find((person) => person.userId === id)?.name ?? "Staff";
+  const [found, staff, errors, feedback] = await Promise.all([getSupportTicketForStaff(db, ticketId), listAssignableSupportStaff(db), listSupportTicketErrors(db, ticketId, user.id), findFeedbackLinkForTicket(db, ticketId)]);
+  if (found === null) notFound();
+  const { ticket } = found;
+  const staffName = (id: string): string => (id === user.id ? "You" : (staff.find((person) => person.userId === id)?.name ?? "Staff"));
   const opened = z.enum(OPENED_REQUEST_OUTCOMES).safeParse((await searchParams).opened);
-  const clock = replyClockFromMessages(ticket.status, detail.messages);
-  const pill = QUEUE_PILL[clock.queue];
-  const waiting = clock.waitingSince === null ? null : waitingLabel(clock.waitingSince, new Date());
-  return <>
-    <PageHeader
-      title={ticket.subject}
-      back={{ href: "/support", label: "Requests" }}
-      meta={<span className="inline-flex flex-wrap items-center gap-2">{`${ticket.displayRef} · ${SUPPORT_STATUS_LABELS[ticket.status]} · ${STAFF_SUPPORT_CATEGORY_LABELS[ticket.category]}`}<StatusPill tone={pill.tone}>{waiting === null ? pill.label : `${pill.label} · ${waiting.text}`}</StatusPill></span>}
-    />
-    {opened.success ? <Notice tone={opened.data === "emailed" || opened.data === "replayed" ? "ok" : "problem"} className="mt-4">{OPENED_REQUEST_MESSAGES[opened.data]}</Notice> : null}
-    <RequestBanner ticketId={ticket.id} businessId={ticket.businessId} />
-    <div className="mt-10">
-      <Section title="Requester"><FactList items={[{ label: "Name", value: requester?.name ?? "Account unavailable" }, { label: "Contact", value: requester?.contact ?? null }, { label: "Business", value: requester?.businessName ?? "No business selected" }, { label: "Received", value: <LocalDateTime iso={ticket.createdAt.toISOString()} variant="timestamp" /> }]} />{feedback === null ? null : <p className="mt-5 text-sm">Preview feedback, round {feedback.round} · <Link href={`/clients/${feedback.businessId}/website`} className="text-accent underline">Open the website build</Link></p>}</Section>
-      <Section title="Conversation">
-        <ol className="space-y-8" aria-label="Ticket conversation">{detail.messages.map((message) => <li key={message.id} className={message.visibility === "internal" ? "border-l-2 border-accent pl-5" : ""}>
-          <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1 text-sm"><h3 className="font-semibold">{message.authorRole === "staff" ? staffName(message.authorUserId) : requester?.name ?? "Requester"}</h3><span className={message.visibility === "internal" ? "text-accent" : "text-ink-2"}>{message.visibility === "internal" ? "Internal note · Staff only" : "Public message"}</span><span className="tabular-nums text-ink-2"><LocalDateTime iso={message.createdAt.toISOString()} variant="timestamp" /></span></div>
-          <p className="mt-3 whitespace-pre-wrap break-words leading-relaxed">{message.body}</p>
-          {message.details === null ? null : <dl className="mt-5 space-y-3">{Object.entries(message.details).filter(([key, value]) => Object.hasOwn(DETAIL_LABELS, key) && value !== "").map(([key, value]) => <div key={key}><dt className="text-sm text-ink-2">{DETAIL_LABELS[key]}</dt><dd className="mt-1 whitespace-pre-wrap break-words">{value}</dd></div>)}</dl>}
-          {detail.attachments.filter((attachment) => attachment.messageId === message.id).length === 0 ? null : <ul aria-label="Screenshots" className="mt-4 space-y-2">{detail.attachments.filter((attachment) => attachment.messageId === message.id).map((attachment, index) => <li key={attachment.id}><a href={`/support-attachments/${attachment.id}`} target="_blank" rel="noopener noreferrer" className="text-sm text-accent underline">Open screenshot {index + 1}: {attachment.filename}</a></li>)}</ul>}
-        </li>)}</ol>
-      </Section>
-      <Section title={ticket.status === "closed" ? "Add staff note" : "Reply or add a note"}><TicketMessageForm ticketId={ticket.id} closed={ticket.status === "closed"} submissionKey={randomUUID()} /></Section>
-      <Section title="Ticket details"><TicketEditor key={ticket.version} ticket={ticket} staff={staff} /></Section>
-      <Section title="Linked automatic errors">
-        <p className="text-sm text-ink-2">These links and incident details are private to staff. <Link href="/support/errors" className="text-accent underline">Open Automatic errors</Link> to copy an issue reference.</p>
-        {errors.length === 0 ? <p className="mt-4 text-sm text-ink-2">No automatic errors linked.</p> : <ul className="mt-5 space-y-4" aria-label="Private incident links">{errors.map((issue) => <li key={issue.id} className="flex flex-wrap items-center justify-between gap-3"><Link href={`/support/errors/${issue.id}`} className="min-w-0 break-words text-accent hover:underline">{issue.errorClass} · {issue.route}<span className="mt-1 block text-sm tabular-nums text-ink-2">{issue.occurrenceCount} occurrences · {issue.status}</span></Link><RemoveErrorLink ticketId={ticket.id} issueId={issue.id} /></li>)}</ul>}
-        <ErrorLinkForm ticketId={ticket.id} />
-      </Section>
-      <Section title="History"><ol className="space-y-4" aria-label="Ticket history">{detail.events.map((event) => <li key={event.id} className="text-sm"><p className="font-medium">{event.kind === "created" ? (event.actorUserId === ticket.requesterUserId ? "Ticket created" : "Opened for the client by staff") : event.kind === "reopened" ? "Requester reopened the ticket" : event.kind === "message_added" ? event.data.visibility === "internal" ? "Internal note added" : "Public message added" : "Ticket details updated"}</p>{event.kind === "updated" ? <p className="mt-1 text-ink-2">Status: {typeof event.data.status === "string" ? event.data.status.replaceAll("_", " ") : "unchanged"} · Priority: {String(event.data.priority ?? "unchanged")}</p> : null}<p className="mt-1 tabular-nums text-ink-2">{event.actorUserId === ticket.requesterUserId ? requester?.name ?? "Requester" : staffName(event.actorUserId)} · <LocalDateTime iso={event.createdAt.toISOString()} variant="timestamp" /></p></li>)}</ol></Section>
-    </div>
-  </>;
+  return (
+    <>
+      <PageHeader title={ticket.subject} back={{ href: "/support", label: "Requests" }} meta={`${ticket.displayRef} · ${detail.categoryLabel}`} />
+      {opened.success ? (
+        <Notice tone={opened.data === "emailed" || opened.data === "replayed" ? "ok" : "problem"} className="mt-4">
+          {OPENED_REQUEST_MESSAGES[opened.data]}
+        </Notice>
+      ) : null}
+      {feedback === null ? null : (
+        <p className="mt-4 text-sm">
+          Preview feedback, round {feedback.round} ·{" "}
+          <Link href={`/clients/${feedback.businessId}/website`} className="text-accent underline">
+            Open the website build
+          </Link>
+        </p>
+      )}
+      <div className="mt-6">
+        <RequestPageView detail={detail}>{open.changeSlot}</RequestPageView>
+      </div>
+      <div className="mt-10">
+        <Section title="Ticket details">
+          <TicketEditor key={ticket.version} ticket={ticket} />
+        </Section>
+        <Section title="Linked automatic errors">
+          <p className="text-sm text-ink-2">
+            These links and incident details are private to staff.{" "}
+            <Link href="/support/errors" className="text-accent underline">
+              Open Automatic errors
+            </Link>{" "}
+            to copy an issue reference.
+          </p>
+          {errors.length === 0 ? (
+            <p className="mt-4 text-sm text-ink-2">No automatic errors linked.</p>
+          ) : (
+            <ul className="mt-5 space-y-4" aria-label="Private incident links">
+              {errors.map((issue) => (
+                <li key={issue.id} className="flex flex-wrap items-center justify-between gap-3">
+                  <Link href={`/support/errors/${issue.id}`} className="min-w-0 break-words text-accent hover:underline">
+                    {issue.errorClass} · {issue.route}
+                    <span className="mt-1 block text-sm tabular-nums text-ink-2">
+                      {issue.occurrenceCount} occurrences · {issue.status}
+                    </span>
+                  </Link>
+                  <RemoveErrorLink ticketId={ticket.id} issueId={issue.id} />
+                </li>
+              ))}
+            </ul>
+          )}
+          <ErrorLinkForm ticketId={ticket.id} />
+        </Section>
+        <Section title="History">
+          <ol className="space-y-4" aria-label="Ticket history">
+            {found.events.map((event) => (
+              <li key={event.id} className="text-sm">
+                <p className="font-medium">{event.kind === "created" ? (event.actorUserId === ticket.requesterUserId ? "Ticket created" : "Opened for the client by staff") : event.kind === "reopened" ? "Requester reopened the ticket" : event.kind === "message_added" ? (event.data.visibility === "internal" ? "Internal note added" : "Public message added") : "Ticket details updated"}</p>
+                {event.kind === "updated" ? (
+                  <p className="mt-1 text-ink-2">
+                    Status: {typeof event.data.status === "string" ? event.data.status.replaceAll("_", " ") : "unchanged"} · Priority: {String(event.data.priority ?? "unchanged")}
+                  </p>
+                ) : null}
+                <p className="mt-1 tabular-nums text-ink-2">
+                  {event.actorUserId === ticket.requesterUserId ? (detail.requester?.name ?? "Requester") : staffName(event.actorUserId)} · <LocalDateTime iso={event.createdAt.toISOString()} variant="timestamp" />
+                </p>
+              </li>
+            ))}
+          </ol>
+        </Section>
+      </div>
+    </>
+  );
 }
