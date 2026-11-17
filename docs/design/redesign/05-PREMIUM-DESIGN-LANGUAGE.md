@@ -58,10 +58,10 @@ Use tabular numbers for money, dates and counts. Phone: page title 28 / 34, hero
 - **Post picture strip (Social):** square thumbnails with 12px radius, status ribbon under each (Posted, Scheduled, Needs OK), a gold ring on items that need the customer.
 - **Stepper:** numbered circles joined by a hairline; current is gold filled, done is sage with a check, upcoming is outlined. Fill the connecting line to the current step.
 - **Stat tiles:** Mono numbers 32px, label above in 13px, a tiny delta in sage or muted. No charts unless data exists; a sparkline only on report pages.
-- **Tables:** 15px rows, 52px high, hairline between rows, header 12px muted, right-aligned figures in Mono, hover `#FAF9F6`.
+- **Tables:** 15px rows, 52px high, hairline between rows, header 12px muted, right-aligned figures in Mono, hover `#FAF9F6`. The console uses 44px rows (section 8b).
 - **Forms:** label above, 42px inputs, 8px radius, `#CFCBC2` border that darkens on hover and gets the ink focus ring; helper text 13px muted; errors in red with an icon and a fix.
 - **Dialogs:** 20px radius, 28px padding, title 22px, consequence line in ink-2, primary on the right. Destructive confirm uses the red variant with the consequence stated.
-- **Toasts:** bottom left, ink background, white text, 4 seconds, with an Undo where possible.
+- **Toasts:** bottom left, ink background, white text, 4 seconds, with an Undo where possible (10 seconds with Undo in the console, section 8b).
 - **Skeletons:** warm `#EEECE7` blocks matching the final layout, a slow 1.6s opacity pulse; no spinners.
 
 ## 4. Motion (all disabled under `prefers-reduced-motion`)
@@ -86,7 +86,85 @@ AA contrast everywhere (gold text on white uses `#A46C2F` or darker; gold fills 
 
 ## 8. Console variant
 
-Same tokens. Dark rail `#23242A` with light text and gold count badges; page paper `#F6F5F2`; one raised white panel per screen; denser rows (44px). Red only for late or failed. One near-black primary per screen. Popup and prompt components use the dialog spec.
+Same tokens. Dark rail `#23242A` with light text and gold count badges; page paper `#F6F5F2`; one raised white panel per screen; denser rows (44px, section 8b). Red only for late or failed. One near-black primary per screen. Popup and prompt components use the dialog spec.
+
+## 8b. Console patterns
+
+Settled by the owner on 2026-11-17 (`docs/implementation/CONSOLE-REDESIGN-RULINGS.md`). Living specimens: `mock-console-v2-patterns.html`, notes in `notes-console-v2-patterns.md`. These apply to the staff console only. Where this section and section 3 differ, this section wins in the console and section 3 wins in the customer app.
+
+### Rules that settle the old conflicts
+
+1. **Rows.** Console table rows are 44px, header 36px with 12px muted text. Read-only registers where staff scan and never act (Invoices, Access log) use 36px compact rows. Every other list is 44px. One density, no user setting. The customer app keeps 52px. On phone a row stays 44px.
+2. **One raised surface, plus overlays.** The list or form the screen is for is the one raised white surface. Overlay layers (side panel, menu, toast, command bar, dialog) are not raised surfaces. They carry the popover shadow `0 1px 2px rgba(42,28,16,.05), 0 12px 32px -12px rgba(42,28,16,.14)` (token `--shadow-popover`; dialogs keep the dialog shadow). Only one overlay of each kind is open at once, and a panel never holds a second panel.
+3. **One primary per screen.** One near-black primary on the page. When a side panel is open, the panel foot carries the only primary and the row verbs go secondary.
+4. **Secondary buttons.** White with a `#E3E0D9` border on white surfaces; a sunken soft fill on paper. Never outlined on paper.
+5. **Confirmation.** A native dialog is allowed only to confirm an action that emails the customer, moves or records money, or cannot be undone. Anything reversible and internal does the thing and shows a toast with Undo.
+6. **Status vocabulary.** Late and failed: red (`--color-error`, wash `--color-error-wash`). Waiting and next step: gold wash. Done and active: sage (text `--color-sage-text` on `--color-sage-wash`). Idle: sunken. Every status has a word; colour is never the only sign. Clocks are Mono (`17d 08h remaining`, `5h 12m left`). Red appears only for late or failed.
+7. **Gold budget.** Three accents per viewport: the rail mark, the Late card edge and one count. A selected row uses the soft wash `#FBF4EA` (`--color-rattan-soft`) and a 3px gold marker, which is one accent; do not add more.
+8. **Rail.** `#23242A` with light text and gold count badges. Counts in red mean late or failed work.
+
+### DataTable
+
+Sticky header; first column is the object (bold name, small line below); figures and ages in Mono, right aligned; red only on a late age; last column holds the row's one verb and `RowActions`. Hover `#FAF9F6`. Selected row: soft gold wash and a 3px gold left marker. Optional money columns can be hidden; no column resize. States: loading (skeleton rows matching the layout), empty (`EmptyState`), error (`ErrorState` with Try again), selected, disabled row with the reason in text.
+
+### RowActions
+
+One visible verb and a three dot menu. The menu holds the less common actions as plain verbs, destructive last and red, never more than five. A disabled item stays focusable and shows its reason. The menu also opens on right click, only on the dots column and on rows with no text selected.
+
+### SidePanel
+
+480px from the right at 1100px and up, a full sheet below; slide 240ms. Scrim only on phone. Focus moves to the heading on open and returns to the opening row on close. `Esc` closes. The URL carries `?open=`. The header names the object; the primary button sits in a sticky foot. On wide screens it is a complementary region and focus may leave it; on phone focus is trapped.
+
+### FilterBar
+
+Pins under the page header while the list scrolls. Filter pills with counts, a search field, and active filters echoed as removable chips. The default filter shows work to do, never an empty list. A count that failed to read shows "?".
+
+### InlineEdit
+
+For names, notes, status, preview link and enquiry fields. Click or `Enter` edits, `Enter` saves, `Esc` cancels, `Tab` or blur saves, `Ctrl Enter` saves a multi-line note. Success is a toast with Undo. Errors stay in the field with the fix. Never for money or anything that emails the customer.
+
+### Toast with Undo
+
+Bottom left, ink background, white text (white focus ring). Plain toasts last 4 seconds. A toast with Undo lasts 10 seconds and the countdown pauses on hover and focus. Error toasts persist until dismissed. Polite live region for normal toasts, assertive for errors. At most three show. No Undo after a confirmed action, and no undo of an undo.
+
+### BulkBar
+
+Appears at the top of the list when rows are selected and replaces the filter bar: count, the permitted actions, Clear. Bulk follows the single-row rule (one toast, one confirm that states the count). A partial failure is stated with numbers and the failed rows stay selected. Anything that moves money is never bulk.
+
+### CommandBar
+
+`Ctrl K` or `Cmd K`, a native `<dialog>` with the combobox pattern. Empty term shows Recent (kept in the browser only) and Go to; results are grouped by kind; `>` shows actions only and `#` searches request references. Never shows an email body beyond the subject. No result says what was searched and offers the add actions.
+
+### Keyboard
+
+Single keys fire only when focus is not in a field and no dialog is open. No key deletes or sends on its own. Every shortcut has a visible button that does the same thing. `?` lists every shortcut that applies, built from the same registry the handlers use.
+
+| Key | Does |
+|---|---|
+| `Ctrl K` / `Cmd K` | Command bar (works inside a field) |
+| `?` | Shortcut help |
+| `Esc` | Closes the top layer, one per press |
+| `g` then `t` `c` `i` `m` `o` `s` | Go to Today, Clients, Inbox, Money, Compliance, System (second key within 1.2 seconds) |
+| `/` | Focus the filter search |
+| `u` | Undo the visible Undo toast |
+| `j` `k` or arrows | Move the row cursor |
+| `Enter` | Open the row in the side panel |
+| `e` | Run the row verb everywhere (confirm first if it emails the customer) |
+| `x` or `Space` (table focused) | Select the row |
+| `Shift` with `j` `k`, `Ctrl A` | Extend the selection, select all in the filter |
+| `.` or `Shift F10` | Row menu |
+
+### Confirm and undo
+
+| Action kind | Control |
+|---|---|
+| Reversible, internal, no email (enquiry status, ticket status, error status, internal note, rename, preview link) | Do it, toast with Undo (10 seconds) |
+| Changes what the customer sees or emails them (send preview, mark live, send report, resend email, send setup link, cancel build, public reply) | Confirm dialog with a consequence line, then a plain toast |
+| Irreversible, no email (close privacy request or breach, switch off staff, delete a coupon code, restore or extend a closure, extend by 30 days) | Confirm dialog with a consequence line |
+| Moves or records money (refund, manual refund, add charge, waive) | Confirm dialog plus a required first-person tick box naming the amount, then a plain toast. Never bulk |
+| A question the system asks (kickoff outcome) | `PromptPopup`, repeats until answered |
+
+Confirm copy: the title is the act and its object, one consequence sentence in ink-2, the primary on the right named for the act (never "OK" or "Yes"), "Keep" as the cancel; the destructive variant is red and says what is lost. Errors keep the typed input.
 
 ## 9. How to use the ChatGPT images
 
