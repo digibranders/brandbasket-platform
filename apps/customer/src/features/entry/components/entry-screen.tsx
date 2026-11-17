@@ -8,7 +8,7 @@ export interface EntryScreenProps {
   readonly chip?: Pick<StatusChipProps, "label" | "variant">;
   /** Puts the form or the buttons in the screen's one focal card (gold top edge). The sign-up form brings its own card. */
   readonly framed?: boolean;
-  readonly children: ReactNode;
+  readonly children?: ReactNode;
 }
 
 /** One entry screen: the title, a line under it, then the form (plan 60, Entry template). */

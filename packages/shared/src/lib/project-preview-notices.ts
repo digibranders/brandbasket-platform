@@ -3,11 +3,13 @@ export type ProjectPreviewNotice =
   | "sent"
   | "sent-no-email"
   | "sent-email-failed"
+  | "sent-email-queued"
   | "invalid-url"
   | "not-ready"
   | "no-owner"
   | "resent"
   | "resend-failed"
+  | "resend-queued"
   | "resend-not-allowed";
 
 /** Fixed messages only: the query parameter picks one, and nothing from it is ever shown. */
@@ -21,6 +23,10 @@ export const PROJECT_PREVIEW_NOTICES: Readonly<Record<ProjectPreviewNotice, { re
     text: "The preview is saved and the customer can see it on their dashboard, but the email did not send. Use Resend email below.",
     ok: false,
   },
+  "sent-email-queued": {
+    text: "The preview is saved and the customer can see it on their dashboard. The email did not go yet: it is queued and will be tried again within the hour. Check Deliveries if it does not arrive.",
+    ok: false,
+  },
   "invalid-url": { text: "Nothing sent: enter a valid http or https link.", ok: false },
   "not-ready": {
     text: "Nothing sent: this business hasn’t sent us their setup yet, or its build has already gone live.",
@@ -30,6 +36,10 @@ export const PROJECT_PREVIEW_NOTICES: Readonly<Record<ProjectPreviewNotice, { re
   resent: { text: "The preview email was sent again.", ok: true },
   "resend-failed": {
     text: "The email still did not send. Try again in a few minutes, or call or message the customer.",
+    ok: false,
+  },
+  "resend-queued": {
+    text: "The email did not go yet: it is queued and will be tried again within the hour. Check Deliveries if it does not arrive.",
     ok: false,
   },
   "resend-not-allowed": {
