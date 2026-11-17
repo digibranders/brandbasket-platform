@@ -23,6 +23,7 @@ const MATRIX_EVENTS = [
   "kickoff.reschedule",
   "kickoff.fallback_started.staff",
   "kickoff.fallback_started",
+  "call.changed.staff",
   "billing.payment_received",
   "billing.payment_failed",
   "billing.payment_failed.staff",
@@ -120,6 +121,11 @@ describe("the kickoff wording", () => {
     expect(bellCopyFor("kickoff.fallback_started", {})?.title).toBe("We started your website");
     expect(bellCopyFor("kickoff.ended", { businessName: "Asha Cafe" })?.title).toBe("Did the kickoff call with Asha Cafe happen?");
     expect(bellCopyFor("kickoff.fallback_started.staff", { businessName: "Asha Cafe" })?.title).toBe("Started without call confirmation");
+  });
+
+  it("words a call changed on Cal.com for staff", () => {
+    expect(bellCopyFor("call.changed.staff", { what: "moved", when: "Tue 11:00" })).toEqual({ title: "A call was moved on Cal.com", body: "Tue 11:00", link: "/calls" });
+    expect(eventDefinition("call.changed.staff").channels).toEqual(["teams", "bell"]);
   });
 
   it("never shows customers the staff wording", () => {

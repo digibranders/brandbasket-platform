@@ -3,7 +3,7 @@ import { noteSecurityEvent } from "@/platform/lib/server/security-events";
 import { razorpayWebhookSecret } from "@/platform/lib/server/billing";
 import { logBillingEvent } from "@brandbasket/shared/server/billing-log";
 import { handleRazorpayWebhookEvent } from "@/platform/lib/server/razorpay-webhook-handler";
-import { noteWebhook } from "@/platform/lib/server/webhook-log";
+import { isRepeatWebhook, noteWebhook, webhookEventId } from "@/platform/lib/server/webhook-log";
 import { failureReason } from "@/platform/lib/webhook-event";
 
 function json(body: unknown, status: number): Response {
@@ -33,18 +33,22 @@ export async function POST(request: Request): Promise<Response> {
     return json({ error: "invalid signature" }, 400);
   }
 
+  // Razorpay names every delivery in x-razorpay-event-id and repeats the id when it retries, so a repeat is answered and not acted on.
+  const eventId = webhookEventId(body, request.headers.get("x-razorpay-event-id"));
+  if (await isRepeatWebhook("razorpay", eventId)) return json({ received: true, duplicate: true }, 200);
+
   const event = parseRazorpayWebhookEvent(body);
   try {
     await handleRazorpayWebhookEvent(event);
   } catch (error) {
-    await noteWebhook("razorpay", body, { result: "failed", error: failureReason(error) });
+    await noteWebhook("razorpay", body, { result: "failed", error: failureReason(error), eventId });
     throw error;
   }
   // shortcut: Razorpay rows carry no business id; return it from handleRazorpayWebhookEvent when staff need the link.
   await noteWebhook(
     "razorpay",
     body,
-    event.kind === "unhandled" ? { result: "ignored" } : event.kind === "invalid" ? { result: "failed", error: "Payload could not be read" } : { result: "handled" },
+    event.kind === "unhandled" ? { result: "ignored", eventId } : event.kind === "invalid" ? { result: "failed", error: "Payload could not be read", eventId } : { result: "handled", eventId },
   );
   return json({ received: true }, 200);
 }
