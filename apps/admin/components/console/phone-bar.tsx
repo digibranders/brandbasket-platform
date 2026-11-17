@@ -6,12 +6,13 @@ import { useEffect, useRef, useState, type ReactElement } from "react";
 import { WordmarkLogo } from "@brandbasket/shared/ui/logo";
 import { currentHref } from "@/lib/console-rail";
 import { GlobalSearch } from "./global-search";
+import type { StaffBellView } from "@/lib/staff-bell";
 import type { RailProps } from "./rail";
 import { RailAccount, RailNav } from "./rail-nav";
 import { StaffBell } from "./staff-bell";
 
 /** Below `lg`: a light top bar with the logo, search and Menu; Menu opens the rail's links in a sheet. */
-export function PhoneBar({ links, counts, userName, role, signOut, logo, bell }: RailProps): ReactElement {
+export function PhoneBar({ links, counts, userName, signOut, logo, bell }: RailProps & { readonly bell: StaffBellView }): ReactElement {
   const pathname = usePathname();
   const [searching, setSearching] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -49,7 +50,7 @@ export function PhoneBar({ links, counts, userName, role, signOut, logo, bell }:
           </div>
           <RailNav links={links} counts={counts} current={currentHref(links, pathname)} tone="light" onNavigate={() => setMenuOpen(false)} />
           <div className="mt-auto pt-3">
-            <RailAccount userName={userName} role={role} signOut={signOut} tone="light" />
+            <RailAccount userName={userName} signOut={signOut} tone="light" />
           </div>
         </div>
       </dialog>

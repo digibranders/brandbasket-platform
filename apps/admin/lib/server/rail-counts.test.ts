@@ -1,4 +1,4 @@
-import { countCallsBetween, countLateProjects, countLeadsToContact, countSupportQueues } from "@brandbasket/db";
+import { countLeadsToContact, countSupportQueues } from "@brandbasket/db";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { countFailedDeliveries24h } from "./deliveries";
 import { readPaymentsCount } from "./payments-count";
@@ -16,8 +16,6 @@ vi.mock("@brandbasket/db", async () => {
     ...actual,
     countLeadsToContact: vi.fn(),
     countSupportQueues: vi.fn(),
-    countLateProjects: vi.fn(),
-    countCallsBetween: vi.fn(),
   };
 });
 
@@ -25,8 +23,6 @@ beforeEach(() => {
   vi.mocked(countTodayItems).mockResolvedValue(5);
   vi.mocked(countLeadsToContact).mockResolvedValue(2);
   vi.mocked(countSupportQueues).mockResolvedValue({ needsReply: 3, needsReplyOverADay: 1, waitingOnClient: 2, done: 58 });
-  vi.mocked(countLateProjects).mockResolvedValue(1);
-  vi.mocked(countCallsBetween).mockResolvedValue(4);
   vi.mocked(readPaymentsCount).mockResolvedValue(2);
   vi.mocked(countFailedDeliveries24h).mockResolvedValue(3);
   vi.spyOn(console, "error").mockImplementation(() => undefined);
@@ -48,7 +44,7 @@ describe("countOrNothing", () => {
 
 describe("readRailCounts", () => {
   it("reads every count", async () => {
-    expect(await readRailCounts("admin")).toEqual({ today: 5, leads: 2, requests: 3, projects: 1, calls: 4, payments: 2, deliveries: 3 });
+    expect(await readRailCounts("admin")).toEqual({ today: 5, leads: 2, requests: 3, payments: 2, deliveries: 3 });
   });
 
   it("counts requests that need a reply, by the reply clock", async () => {
@@ -57,7 +53,7 @@ describe("readRailCounts", () => {
   });
 
   it("leaves the payments count and the flagged payments out of the Today count for a role without money", async () => {
-    expect(await readRailCounts("support")).toEqual({ today: 5, leads: 2, requests: 3, projects: 1, calls: 4, deliveries: 3 });
+    expect(await readRailCounts("support")).toEqual({ today: 5, leads: 2, requests: 3, deliveries: 3 });
     expect(readPaymentsCount).not.toHaveBeenCalled();
     expect(countTodayItems).toHaveBeenCalledWith(false, false);
   });
@@ -71,6 +67,6 @@ describe("readRailCounts", () => {
 
   it("leaves out a count it could not read and keeps the rest", async () => {
     vi.mocked(countFailedDeliveries24h).mockRejectedValue(new Error("database down"));
-    expect(await readRailCounts("admin")).toEqual({ today: 5, leads: 2, requests: 3, projects: 1, calls: 4, payments: 2 });
+    expect(await readRailCounts("admin")).toEqual({ today: 5, leads: 2, requests: 3, payments: 2 });
   });
 });
