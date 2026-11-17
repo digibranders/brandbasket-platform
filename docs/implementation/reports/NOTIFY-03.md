@@ -1,6 +1,6 @@
 # NOTIFY-03: email reliability (package N3)
 
-Branch `claude/notify-03-email-cf3795`, stacked on N1 (`claude/notify-01-foundation-324d17`, PR 214). Spec: `docs/notifications/03-build-plan.md` section "N3 Email reliability", gaps G3 and G14. No migration was added: migration 0229 already had the queue columns, `email_suppressions` and the `brevo` webhook source.
+Branch `claude/notify-03-email-cf3795`, based on `development` after N1 (PR 214) and N4 (PR 219) merged. Spec: `docs/notifications/03-build-plan.md` section "N3 Email reliability", gaps G3 and G14. No migration was added: migration 0229 already had the queue columns, `email_suppressions` and the `brevo` webhook source.
 
 ## What changed
 
@@ -64,11 +64,11 @@ Own databases `brandbasket_platform_n3` and `brandbasket_platform_n3_test`, envi
 
 | Check | Result |
 |---|---|
-| `pnpm lint` | RESULT_LINT |
-| `pnpm typecheck` | RESULT_TYPECHECK |
-| `pnpm test` | RESULT_TEST |
-| `pnpm build` | RESULT_BUILD |
-| `pnpm test:integration` | RESULT_INTEGRATION |
+| `pnpm lint` | pass |
+| `pnpm typecheck` | pass (after merging origin/development) |
+| `pnpm test` | pass: cms 5, db 232, auth 31, billing 426, email 238, shared 2014, admin 2041, customer 4496. The customer run needs `ADMIN_ORIGIN` and `APP_ORIGIN` unset (one security-events test fails only when they are exported, as in the N1 report) |
+| `pnpm build` | pass. As in N1, the first `next build` stopped on the Next.js security advisory notice and the retry passed |
+| `pnpm test:integration` | pass, run one package at a time on one worker: auth 26, db 2057 (121 files), shared 291, email 16, customer 74. The first attempt to run everything with `pnpm test:integration` was killed by memory (exit 137), and an early db run overlapped with another suite on the same database and showed false failures; both were rerun alone. Build and the shared, customer and auth integration runs were done before merging origin/development; after the merge, typecheck, lint, the touched unit tests, and the email and db integration suites were rerun |
 
 New tests: transport outcomes, queueing, redacted rows never queued, suppression skip, List-Unsubscribe headers, signing, backoff (`brevo.test.ts`, `email-queue.test.ts`); the drainer against Postgres with a fake Brevo: not due, sent, backoff to failed after 3 attempts, refusal fails at once, two drainers claim once, suppression after queueing, redacted row, `hasEmailContaining` ignores failed, bounce by message id, first suppression reason, Deliveries health counts failed and bounced, intake connection can queue (`email-queue.integration.test.ts`); Brevo webhook handler and auth (`brevo-webhook.test.ts`); unsubscribe links (`unsubscribe.test.ts`); callers (team invite failed and queued, preview and launch queued, failed, suppressed, reminder failed and queued); `notify()` with failed and queued outcomes. Existing tests changed: two `brevo.test.ts` cases and one support alert integration case that expected a `failed` row after a 503 (it is now `pending`, except for a redacted alert, which stays `failed`), plus mocks of `@brandbasket/email` in three tests that now keep the real exports.
 
