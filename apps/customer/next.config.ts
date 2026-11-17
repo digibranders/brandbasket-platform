@@ -43,6 +43,8 @@ const nextConfig: NextConfig = {
           }),
         ],
       },
+      // The push service worker: always fetched fresh, so a fixed worker reaches browsers at their next visit.
+      { source: "/sw.js", headers: [{ key: "Cache-Control", value: "no-cache, max-age=0" }, { key: "Service-Worker-Allowed", value: "/" }] },
       // The site tracking script (public/t/v1.js): customers' pages load it from here, so it may be cached for an hour and
       // served stale for a day while a fresh copy is fetched. A new version gets a new file name (v2.js). Same as apps/platform.
       { source: "/t/:path*", headers: [{ key: "Cache-Control", value: "public, max-age=3600, stale-while-revalidate=86400" }] },
