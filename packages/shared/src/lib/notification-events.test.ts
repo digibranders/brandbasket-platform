@@ -18,6 +18,7 @@ const MATRIX_EVENTS = [
   "kickoff.booked.staff",
   "kickoff.soon",
   "kickoff.ended",
+  "kickoff.ended.reminder",
   "kickoff.completed",
   "kickoff.not_joined",
   "kickoff.reschedule",
@@ -120,6 +121,11 @@ describe("the kickoff wording", () => {
     expect(bellCopyFor("kickoff.fallback_started", {})?.title).toBe("We started your website");
     expect(bellCopyFor("kickoff.ended", { businessName: "Asha Cafe" })?.title).toBe("Did the kickoff call with Asha Cafe happen?");
     expect(bellCopyFor("kickoff.fallback_started.staff", { businessName: "Asha Cafe" })?.title).toBe("Started without call confirmation");
+  });
+
+  it("words the 2 hour reminder as a push only, with no business name", () => {
+    expect(eventDefinition("kickoff.ended.reminder")).toMatchObject({ audience: "staff", channels: ["push"] });
+    expect(pushCopyFor("kickoff.ended.reminder", {})).toMatchObject({ title: "A kickoff call is still waiting for your answer", link: "/calls", tag: "kickoff.ended.reminder" });
   });
 
   it("never shows customers the staff wording", () => {
