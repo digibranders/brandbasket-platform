@@ -1641,15 +1641,34 @@ export {
   type ConnectedAccountInput,
 } from "./queries/connected-accounts";
 export {
+  BELL_NOTIFICATION_LIMIT,
+  channelDefaults,
   effectivePreferences,
   emailByDefault,
+  getChannelChoices,
   getNotificationsSeenAt,
+  listBellNotifications,
   listNotificationPreferences,
+  listStaffNotifications,
+  markNotificationRead,
   markNotificationsSeen,
+  markStaffNotificationRead,
+  NOTIFICATION_RETENTION_MS,
+  purgeOldNotifications,
+  resolveChoices,
   resolveEmailPreference,
   setNotificationPreference,
   shouldEmail,
+  type BellNotification,
+  type ChannelChoices,
 } from "./queries/notifications";
+export {
+  listNotificationRecipients,
+  recordNotification,
+  type NotificationRecipient,
+  type NotificationRow,
+  type RecordedNotification,
+} from "./queries/notify";
 export {
   acceptBusinessInvite,
   BUSINESS_INVITE_DAYS,

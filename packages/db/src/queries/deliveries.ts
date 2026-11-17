@@ -35,6 +35,8 @@ export interface WebhookEventInput {
   readonly businessId: string | null;
   readonly bodySha256: string;
   readonly bodyBytes: number;
+  /** The provider's id for the event, when it has one. A second handled or ignored delivery with the same id is refused. */
+  readonly eventId?: string | null;
 }
 
 export interface StoredWebhookEvent extends WebhookEventInput {
@@ -59,7 +61,17 @@ const WEBHOOK_COLUMNS = {
 const WEBHOOK_FAILED = inArray(webhookEvents.result, ["failed", "bad_signature"]);
 
 export async function recordWebhookEvent(db: Runner, input: WebhookEventInput): Promise<void> {
-  await db.insert(webhookEvents).values(input);
+  await db.insert(webhookEvents).values({ ...input, eventId: input.eventId ?? null });
+}
+
+/** Whether this provider event id was already taken (handled or ignored): the caller answers 200 and does nothing. */
+export async function hasTakenWebhookEvent(db: Runner, source: WebhookSource, eventId: string): Promise<boolean> {
+  const [row] = await db
+    .select({ id: webhookEvents.id })
+    .from(webhookEvents)
+    .where(and(eq(webhookEvents.source, source), eq(webhookEvents.eventId, eventId), inArray(webhookEvents.result, ["handled", "ignored"])))
+    .limit(1);
+  return row !== undefined;
 }
 
 export async function listWebhookEvents(
