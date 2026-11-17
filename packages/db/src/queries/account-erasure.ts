@@ -13,6 +13,8 @@ import {
   connectedAccounts,
   notificationPreferences,
   notificationReads,
+  notifications,
+  pushSubscriptions,
   websitePages,
   accountClosures,
   accountOtps,
@@ -374,6 +376,10 @@ export async function eraseClosedAccount(db: Database, input: { readonly closure
     await tx.delete(businessInvites).where(eq(businessInvites.businessId, businessId));
     await tx.delete(notificationPreferences).where(or(eq(notificationPreferences.businessId, businessId), eq(notificationPreferences.userId, userId)));
     await tx.delete(notificationReads).where(or(eq(notificationReads.businessId, businessId), eq(notificationReads.userId, userId)));
+    // Their bell notices and the staff notices about this business (they name it), and the browsers they turned push on in. The kickoff prompt
+    // state goes with its calls. email_suppressions is kept: an address that unsubscribed or bounced must stay refused.
+    await tx.delete(notifications).where(or(eq(notifications.businessId, businessId), eq(notifications.userId, userId)));
+    await tx.delete(pushSubscriptions).where(eq(pushSubscriptions.userId, userId));
 
     // The directory listing: what the owner wrote and uploaded goes; the place itself is public and stays, unclaimed.
     await tx.delete(directoryBusinessCategories).where(eq(directoryBusinessCategories.businessId, businessId));

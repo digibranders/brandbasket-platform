@@ -230,7 +230,7 @@ test.describe("Settings tabs", () => {
   for (const [tab, heading] of [
     ["/settings", "Your profile"],
     ["/settings/security", "Change password"],
-    ["/settings/notifications", "Email notifications"],
+    ["/settings/notifications", "Notifications"],
     ["/settings/team", "People with access"],
     ["/settings/privacy", /privacy|data/i],
     ["/settings/delete", /delete/i],

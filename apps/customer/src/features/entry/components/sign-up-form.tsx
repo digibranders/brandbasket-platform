@@ -129,7 +129,7 @@ export function SignUpForm({
 
   if (otp !== null) {
     return (
-      <form action={formAction} noValidate className="relative flex flex-col gap-4 rounded-overlay border border-border border-t-2 border-t-accent-gold bg-surface p-6 shadow-hero sm:p-7">
+      <form action={formAction} noValidate className="relative flex flex-col gap-4 rounded-overlay border border-border bg-surface p-6 shadow-hero sm:p-7">
         {carried}
         {/* The details again: nothing about the owner is kept on the server until the code is confirmed. */}
         <input type="hidden" name="businessName" value={businessName} />
@@ -190,7 +190,7 @@ export function SignUpForm({
   }
 
   return (
-    <form action={formAction} noValidate className="relative flex flex-col gap-4 rounded-overlay border border-border border-t-2 border-t-accent-gold bg-surface p-6 shadow-hero sm:p-7">
+    <form action={formAction} noValidate className="relative flex flex-col gap-4 rounded-overlay border border-border bg-surface p-6 shadow-hero sm:p-7">
       {carried}
       <p className="type-body text-ink-3">
         Signing up for <span className="text-ink font-semibold">{basket.name}</span>

@@ -6,6 +6,7 @@ import {
   StatTile,
   StatusChip,
 } from "@brandbasket/shared/ui/patterns";
+import { ConsolePatternsDemo } from "@brandbasket/shared/ui/patterns/console-patterns-demo";
 
 export const metadata: Metadata = { title: "Design system · Staff console" };
 
@@ -44,6 +45,13 @@ export default function AdminDesignSystemPage() {
           { id: "2", title: "Review preview changes", context: "Urban Groomers", age: "3h" },
         ]}
       />
+
+      <section aria-labelledby="console-v2-patterns" className="flex flex-col gap-4">
+        <h2 id="console-v2-patterns" className="font-display text-2xl font-semibold text-ink">
+          Console v2 patterns
+        </h2>
+        <ConsolePatternsDemo />
+      </section>
     </main>
   );
 }

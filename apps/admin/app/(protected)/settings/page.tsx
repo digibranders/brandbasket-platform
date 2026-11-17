@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { publicVapidKey } from "@brandbasket/shared/lib/push-device";
 import type { ReactElement } from "react";
 import { GatedSubmitButton } from "@brandbasket/shared/ui/forms/submit-gate";
 import { LocalDateTime } from "@brandbasket/shared/ui/panel/local-date-time";
@@ -8,6 +9,7 @@ import { MAX_REVISION_ROUNDS, MIN_REVISION_ROUNDS, REVISION_ROUNDS_FIELD } from 
 import { MAX_TEAMS_URL_LENGTH, TEAMS_DESTINATION_FIELD, TEAMS_DESTINATION_INFO, TEAMS_DESTINATIONS, TEAMS_URL_FIELD } from "@brandbasket/shared/lib/teams-webhook";
 import { buttonDanger, buttonPrimary, buttonSecondary } from "@/components/console/buttons";
 import { fieldClasses, hintClasses, labelClasses } from "@/components/console/field-styles";
+import { DevicePushSwitch } from "@/components/console/device-push-switch";
 import { Notice } from "@/components/console/notice";
 import { SecretInput } from "@/components/console/secret-input";
 import { PageHeader } from "@/components/console/page-header";
@@ -54,6 +56,10 @@ export default async function SettingsPage({
           {SETTINGS_NOTICES[notice].text}
         </Notice>
       )}
+
+      <Section id="notices" title="Notices on this browser" aside="Only you">
+        <DevicePushSwitch publicKey={publicVapidKey(process.env)} />
+      </Section>
 
       <Section id="setup-call" title="Setup call" aside={setting.url === null ? "Not set" : "Shown to customers"}>
         <form action={saveSetupCallUrlAction} className="max-w-2xl">

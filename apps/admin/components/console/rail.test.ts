@@ -5,6 +5,7 @@ import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({ pathname: "/support/errors" }));
 vi.mock("next/navigation", () => ({ usePathname: () => mocks.pathname, useRouter: () => ({ push: vi.fn() }) }));
+vi.mock("@/lib/server/staff-notification-actions", () => ({ markStaffNotificationReadAction: vi.fn() }));
 
 import { railFor } from "@/lib/console-rail";
 import { Rail } from "./rail";
@@ -26,7 +27,7 @@ afterEach(async () => {
 
 async function renderRail(role: "support" | "admin", counts: Record<string, number>): Promise<void> {
   await act(async () =>
-    root.render(createElement(Rail, { links: railFor(role), counts, userName: "Riya Kapoor", role, signOut: async () => undefined, logo })),
+    root.render(createElement(Rail, { links: railFor(role), counts, userName: "Riya Kapoor", role, signOut: async () => undefined, logo, bell: { items: [], unread: 0 } })),
   );
 }
 
@@ -61,4 +62,16 @@ it("shows the signed-in person, their role and Sign out", async () => {
   expect(container.querySelector('a[href="/staff"]')).toBeNull();
   expect(container.querySelector('a[href="/payments"]')).toBeNull();
   expect(container.querySelectorAll("nav a")).toHaveLength(6);
+});
+
+it("shows the bell with the number of new notices, and lists them when opened", async () => {
+  mocks.pathname = "/";
+  const bell = { items: [{ id: "n1", title: "Did the kickoff call with Asha Cafe happen?", body: null, href: "/calls", when: "17 Nov, 10:00", unread: true }], unread: 1 };
+  await act(async () =>
+    root.render(createElement(Rail, { links: railFor("admin"), counts: {}, userName: "Riya Kapoor", role: "admin", signOut: async () => undefined, logo, bell })),
+  );
+  const button = container.querySelector<HTMLButtonElement>('button[aria-label="Notifications, 1 new"]');
+  expect(button).not.toBeNull();
+  expect(container.textContent).toContain("Did the kickoff call with Asha Cafe happen?");
+  expect(container.querySelector('a[href="/calls"]')).not.toBeNull();
 });

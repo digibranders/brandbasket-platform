@@ -10,7 +10,7 @@ import { AppShell } from "./app-shell";
 import { DeploymentUpdate } from "./deployment-update";
 
 const navigation = vi.hoisted(() => ({ pathname: "/requests", push: vi.fn(), refresh: vi.fn() }));
-const actions = vi.hoisted(() => ({ markNotificationsSeenAction: vi.fn(), signOutAction: vi.fn() }));
+const actions = vi.hoisted(() => ({ markNotificationsSeenAction: vi.fn(), markNotificationReadAction: vi.fn(), signOutAction: vi.fn() }));
 
 vi.mock("next/navigation", () => ({
   usePathname: () => navigation.pathname,
@@ -33,6 +33,7 @@ const VIEW: ShellView = {
       waiting: [],
       replies: [],
       activity: [{ id: "a1", title: "Published 3 posts", service: "social", occurredAt: new Date("2026-11-03T04:00:00Z") }],
+      stored: [],
       seenAt: null,
     }),
   },
@@ -49,6 +50,8 @@ beforeEach(() => {
   navigation.pathname = "/requests";
   navigation.push.mockReset();
   actions.markNotificationsSeenAction.mockReset().mockResolvedValue({ ok: true });
+  actions.markNotificationReadAction.mockReset().mockResolvedValue({ ok: true });
+  navigation.refresh.mockReset();
   actions.signOutAction.mockReset().mockResolvedValue({ ok: false, message: "We could not sign you out. Try again." });
 });
 
@@ -120,6 +123,26 @@ describe("AppShell", () => {
     expect(await screen.findByRole("link", { name: /Quote waiting: New home collection page/ })).toBeTruthy();
     expect(actions.markNotificationsSeenAction).toHaveBeenCalledOnce();
     expect(await screen.findByRole("button", { name: "Notifications, 1 new" })).toBeTruthy();
+  });
+
+  it("marks one stored notice read when it is opened, and no other line", async () => {
+    const stored = [{ id: "11111111-1111-4111-8111-111111111111", eventKey: "kickoff.booked", title: "Your kickoff call is booked for Tue 11:00", link: "/help", createdAt: new Date("2026-11-03T05:00:00Z"), readAt: null }];
+    shell({ ...VIEW, notifications: { ok: true, data: bellView({ needs: [], waiting: [], replies: [], activity: [], stored, seenAt: null }) } });
+    await userEvent.click(screen.getByRole("button", { name: "Notifications, 1 new" }));
+    await userEvent.click(await screen.findByRole("link", { name: /Your kickoff call is booked for Tue 11:00/ }));
+    expect(actions.markNotificationReadAction).toHaveBeenCalledWith("11111111-1111-4111-8111-111111111111");
+    expect(await screen.findByRole("button", { name: "Notifications" })).toBeTruthy();
+  });
+
+  it("asks the server for fresh notifications every minute while the page is visible", () => {
+    vi.useFakeTimers();
+    try {
+      shell();
+      vi.advanceTimersByTime(60_000);
+      expect(navigation.refresh).toHaveBeenCalledTimes(1);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("shows the bell's error state instead of hiding it", async () => {

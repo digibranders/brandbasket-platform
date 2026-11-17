@@ -31,6 +31,16 @@ describe("contentSecurityPolicy", () => {
     expect(policy.get("font-src")).toEqual(["'self'"]);
   });
 
+  it("lets the push service worker and the manifest load from the app's own address", () => {
+    // With no worker-src, child-src or manifest-src, the browser falls back to script-src and default-src: both 'self'.
+    const policy = directives(contentSecurityPolicy(PRODUCTION));
+    expect(policy.has("worker-src")).toBe(false);
+    expect(policy.has("child-src")).toBe(false);
+    expect(policy.has("manifest-src")).toBe(false);
+    expect(policy.get("script-src")).toContain("'self'");
+    expect(policy.get("default-src")).toEqual(["'self'"]);
+  });
+
   it("lets the Turnstile robot check load, frame its challenge and report back", () => {
     const policy = directives(contentSecurityPolicy(PRODUCTION));
     expect(policy.get("script-src")).toContain("https://challenges.cloudflare.com");

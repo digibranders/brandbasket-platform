@@ -1594,7 +1594,15 @@ export {
   type StoredPrivacyRequest,
 } from "./queries/privacy-requests";
 export { clearNominee, findNominee, saveNominee, type Nominee } from "./queries/user-privacy-settings";
-export { listExportedSessions, readExportedAccount, readExportedBusiness, readExportedNotificationPreferences, type ExportedSession } from "./queries/account-export";
+export {
+  listExportedSessions,
+  readExportedAccount,
+  readExportedBusiness,
+  readExportedNotificationPreferences,
+  readExportedNotifications,
+  readExportedPushDevices,
+  type ExportedSession,
+} from "./queries/account-export";
 export { findBusinessAlertDetails, findPaymentAlertBase, type AlertPerson, type PaymentAlertBase } from "./queries/payment-alerts";
 // Customer app v4 (plan 61 section 6).
 export {
@@ -1641,15 +1649,34 @@ export {
   type ConnectedAccountInput,
 } from "./queries/connected-accounts";
 export {
+  BELL_NOTIFICATION_LIMIT,
+  channelDefaults,
   effectivePreferences,
   emailByDefault,
+  getChannelChoices,
   getNotificationsSeenAt,
+  listBellNotifications,
   listNotificationPreferences,
+  listStaffNotifications,
+  markNotificationRead,
   markNotificationsSeen,
+  markStaffNotificationRead,
+  NOTIFICATION_RETENTION_MS,
+  purgeOldNotifications,
+  resolveChoices,
   resolveEmailPreference,
   setNotificationPreference,
   shouldEmail,
+  type BellNotification,
+  type ChannelChoices,
 } from "./queries/notifications";
+export {
+  listNotificationRecipients,
+  recordNotification,
+  type NotificationRecipient,
+  type NotificationRow,
+  type RecordedNotification,
+} from "./queries/notify";
 export {
   acceptBusinessInvite,
   BUSINESS_INVITE_DAYS,
@@ -1667,3 +1694,12 @@ export {
   type CheckBusinessInviteResult,
   type InvitableRole,
 } from "./queries/business-invites";
+export {
+  listLivePushSubscriptions,
+  markPushDelivered,
+  PUSH_USER_AGENT_MAX,
+  revokePushSubscription,
+  revokePushSubscriptionById,
+  savePushSubscription,
+  type PushSubscriptionInput,
+} from "./queries/push-subscriptions";

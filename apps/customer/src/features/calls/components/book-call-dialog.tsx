@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition, type ReactElement } from "react";
 import { Banner, Button, Dialog, DialogClose, Field, Select, Textarea, useToast } from "@/ui";
 import { bookCallAction } from "../actions";
-import { BOOK_PROBLEM_TEXT, bookButtonLabel, defaultReasonOf, type ReasonOption } from "../rules";
+import { BOOK_PROBLEM_TEXT, bookButtonLabel, callLengthLabel, defaultReasonOf, type ReasonOption } from "../rules";
 import { SlotChooser, useCallSlots } from "./slot-picker";
 
 export interface BookCallDialogProps {
@@ -62,7 +62,7 @@ function BookCallForm({ options, bookingUrl, replacing, onDone }: Omit<BookCallD
         <Textarea name="note" placeholder="Optional" maxLength={500} value={note} onChange={(event) => setNote(event.target.value)} />
       </Field>
       <SlotChooser state={state} slot={slot} onSlotChange={setSlot} bookingUrl={bookingUrl} />
-      <p className="type-meta">30 minutes on video. The link comes by email and in a calendar invite.</p>
+      <p className="type-meta">{ready && state.minutes !== null ? `${callLengthLabel(state.minutes)} on video` : "Video call"}. The link comes by email and in a calendar invite.</p>
       {problem === null || problem.field !== undefined ? null : <Banner tone="neg">{problem.message}</Banner>}
       <div className="flex flex-wrap justify-end gap-2">
         <DialogClose>

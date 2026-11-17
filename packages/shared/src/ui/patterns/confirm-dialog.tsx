@@ -1,4 +1,5 @@
 import type { ReactElement, ReactNode } from "react";
+import { patternButtonDanger, patternButtonPrimary, patternButtonSecondary } from "./button-classes";
 
 export interface ConfirmDialogProps {
   readonly isOpen: boolean;
@@ -59,7 +60,7 @@ export function ConfirmDialog({
             type="button"
             disabled={isLoading}
             onClick={onCancel}
-            className="inline-flex h-[42px] items-center justify-center rounded-[8px] border border-border bg-surface px-5 font-sans text-sm font-semibold text-ink hover:bg-surface-hover active:translate-y-[1px] disabled:opacity-50"
+            className={patternButtonSecondary}
           >
             {cancelLabel}
           </button>
@@ -67,11 +68,7 @@ export function ConfirmDialog({
             type="button"
             disabled={isLoading}
             onClick={onConfirm}
-            className={`inline-flex h-[42px] items-center justify-center rounded-[8px] px-5 font-sans text-sm font-semibold text-on-primary active:translate-y-[1px] disabled:opacity-50 ${
-              isDestructive
-                ? "bg-neg-text hover:bg-[#9B1D14]"
-                : "bg-ink hover:bg-primary-hover shadow-button"
-            }`}
+            className={isDestructive ? patternButtonDanger : patternButtonPrimary}
           >
             {confirmLabel}
           </button>
