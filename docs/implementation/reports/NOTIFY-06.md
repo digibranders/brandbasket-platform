@@ -76,7 +76,11 @@ No customer strings.
 
 New unit tests: webhook-log helpers via the three route tests (repeat answered 200 and not noted, event id recorded, signature checked before the repeat check), Cal.com handler (repeat, stale both ways, window edge, no createdAt, alert for outside booking, cancel and move, none for ignored), OyeChats handler (no card on redelivery, dedupe key, repeat after signature), `calcom-alerts`, Teams retry and dedupe (retry once, no retry on an answer, dedupe, fail open, key not used when no address), Systems line, registry and copy for the new event. Integration: `recordChatbotLeadReportingNew` created flag.
 
-Results: see the run recorded at the end of this file.
+Results (after merging `origin/development`, one worker, packages one at a time):
+- lint passed, typecheck passed.
+- unit tests passed in every package (cms 5, auth 31, db 232, billing 426, email 228, shared 2123, admin 2102, customer 4541).
+- build: admin compiled. Customer fails on code that came in with N4 (push), not on this package: `packages/shared/src/server/web-push-sender.ts` does `import webpush from "web-push"` and Turbopack reports "Export default doesn't exist" (installed `web-push@4.0.0`). The lead should check that on `development`.
+- integration: only the db files this package touches were run (`chatbots`, `notifications-foundation`, `deliveries`), 59 tests passed, on my own databases. The full `pnpm test:integration` was not run, to keep the machine light.
 
 ## Notes
 
