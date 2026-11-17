@@ -116,6 +116,11 @@ export function calcomMeetingUrl(data: { readonly meetingUrl?: string | null | u
 const FAKE_UTC_TIMES: readonly (readonly [number, number])[] = [[4, 30], [5, 30], [7, 0], [9, 30], [11, 0]];
 export const FAKE_DURATION_MS = 30 * 60_000;
 
+/** How long a call lasts, in words ("30 minutes", "1 hour"), from the length the booking service reports. */
+export function callLengthLabel(minutes: number): string {
+  return minutes === 60 ? "1 hour" : `${String(minutes)} minutes`;
+}
+
 /** Weekday times so the screens can be used with no booking account. Never used where real customers can reach the app. */
 export function fakeSlots(from: Date, to: Date): readonly string[] {
   const slots: string[] = [];

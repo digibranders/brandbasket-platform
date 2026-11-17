@@ -33,8 +33,14 @@ export interface BookedCall {
 
 export type BookResult = { readonly ok: true; readonly call: BookedCall } | { readonly ok: false; readonly reason: "taken" | "failed" };
 
+/** The times on offer, and how long a call at any of them lasts (null when the service does not say). */
+export interface CallSlots {
+  readonly times: readonly string[];
+  readonly minutes: number | null;
+}
+
 interface CallScheduler {
-  slots(from: Date, to: Date): Promise<readonly string[]>;
+  slots(from: Date, to: Date): Promise<CallSlots>;
   book(startIso: string, invitee: CallInvitee): Promise<BookResult>;
 }
 
@@ -118,7 +124,7 @@ function calendlyScheduler(token: string, bookingUrl: string): CallScheduler {
           ),
         ),
       );
-      return weeks.flatMap((week) => week.collection.filter((time) => time.status === "available").map((time) => time.start_time));
+      return { times: weeks.flatMap((week) => week.collection.filter((time) => time.status === "available").map((time) => time.start_time)), minutes: type.duration };
     },
     async book(startIso, invitee) {
       const type = await eventTypeFor(token, bookingUrl);
@@ -148,7 +154,7 @@ function calendlyScheduler(token: string, bookingUrl: string): CallScheduler {
 const CALCOM_SLOTS_VERSION = "2024-09-04";
 const CALCOM_BOOKINGS_VERSION = "2026-02-25";
 
-const calcomSlotsSchema = z.object({ data: z.record(z.string(), z.array(z.object({ start: z.string() }))) });
+const calcomSlotsSchema = z.object({ data: z.record(z.string(), z.array(z.object({ start: z.string(), end: z.string() }))) });
 const calcomBookingSchema = z.object({ data: z.object({ uid: z.string(), start: z.string(), end: z.string(), meetingUrl: z.string().nullish(), location: z.string().nullish() }) });
 const calcomErrorSchema = z.object({ error: z.object({ message: z.string().optional() }).optional(), message: z.string().optional() });
 
@@ -182,9 +188,14 @@ const isTaken = (error: unknown): boolean => error instanceof CalcomError && cal
 function calcomScheduler(key: string, page: { readonly username: string; readonly slug: string }): CallScheduler {
   return {
     async slots(from, to) {
-      const query = new URLSearchParams({ username: page.username, eventTypeSlug: page.slug, start: from.toISOString(), end: to.toISOString(), timeZone: "UTC" });
+      const query = new URLSearchParams({ username: page.username, eventTypeSlug: page.slug, start: from.toISOString(), end: to.toISOString(), timeZone: "UTC", format: "range" });
       const days = await calcom(key, `/slots?${query.toString()}`, CALCOM_SLOTS_VERSION, calcomSlotsSchema);
-      return Object.values(days.data).flatMap((day) => day.map((slot) => new Date(slot.start).toISOString()));
+      const slots = Object.values(days.data).flat();
+      const first = slots[0];
+      return {
+        times: slots.map((slot) => new Date(slot.start).toISOString()),
+        minutes: first === undefined ? null : Math.round((new Date(first.end).getTime() - new Date(first.start).getTime()) / 60_000),
+      };
     },
     async book(startIso, invitee) {
       try {
@@ -207,7 +218,7 @@ function calcomScheduler(key: string, page: { readonly username: string; readonl
 // ---- The local stand-in, like the fake billing provider ----
 
 const fakeScheduler: CallScheduler = {
-  slots: (from, to) => Promise.resolve(fakeSlots(from, to)),
+  slots: (from, to) => Promise.resolve({ times: fakeSlots(from, to), minutes: FAKE_DURATION_MS / 60_000 }),
   book(startIso) {
     const startsAt = new Date(startIso);
     const window = slotWindow(new Date());
@@ -228,8 +239,8 @@ function schedulerFor(bookingUrl: string): CallScheduler | null {
   return isRealDeployment({ VERCEL_ENV: process.env.VERCEL_ENV, APP_ORIGIN: process.env.APP_ORIGIN }) ? null : fakeScheduler;
 }
 
-/** Times that can be booked from a minute from now to the end of the booking window, or null when times are not offered. */
-export async function listCallSlots(bookingUrl: string, now: Date): Promise<readonly string[] | null> {
+/** Times that can be booked from a minute from now to the end of the booking window, with the call's length, or null when times are not offered. */
+export async function listCallSlots(bookingUrl: string, now: Date): Promise<CallSlots | null> {
   const scheduler = schedulerFor(bookingUrl);
   if (scheduler === null) return null;
   const window = slotWindow(now);

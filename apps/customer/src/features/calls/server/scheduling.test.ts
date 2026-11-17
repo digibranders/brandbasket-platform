@@ -26,7 +26,7 @@ describe("the local call scheduler", () => {
 
   it("offers weekday times inside the booking window, none in the past", async () => {
     const now = new Date("2026-10-16T08:00:00.000Z");
-    const slots = (await listCallSlots(CALENDLY, now)) ?? [];
+    const slots = (await listCallSlots(CALENDLY, now))?.times ?? [];
     expect(slots.length).toBeGreaterThan(0);
     for (const iso of slots) {
       const start = new Date(iso);
@@ -37,7 +37,7 @@ describe("the local call scheduler", () => {
   });
 
   it("books a time it offered and refuses one it did not", async () => {
-    const first = ((await listCallSlots(CALENDLY, new Date())) ?? [])[0];
+    const first = ((await listCallSlots(CALENDLY, new Date()))?.times ?? [])[0];
     expect(first).toBeDefined();
     const booked = await bookCallSlot(CALENDLY, first ?? "", INVITEE);
     expect(booked?.ok).toBe(true);
@@ -59,6 +59,15 @@ describe("booking through Cal.com", () => {
   beforeEach(() => {
     vi.stubEnv("CALCOM_API_KEY", "test-key");
     vi.stubEnv("CALENDLY_API_TOKEN", "");
+  });
+
+  it("reports the call length Cal.com gives for a time, not a fixed one", async () => {
+    const fetchMock = vi.fn<(address: string) => Promise<Response>>(() =>
+      Promise.resolve(new Response(JSON.stringify({ status: "success", data: { "2026-10-28": [{ start: "2026-10-28T10:00:00.000Z", end: "2026-10-28T10:45:00.000Z" }, { start: "2026-10-28T11:00:00.000Z", end: "2026-10-28T11:45:00.000Z" }] } }), { status: 200 })),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    expect(await listCallSlots(CAL, new Date())).toEqual({ times: ["2026-10-28T10:00:00.000Z", "2026-10-28T11:00:00.000Z"], minutes: 45 });
+    expect(String(fetchMock.mock.calls[0]?.[0])).toContain("format=range");
   });
 
   it("returns the booking's own address and the meeting address Cal.com made", async () => {
