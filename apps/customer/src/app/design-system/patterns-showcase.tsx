@@ -20,6 +20,7 @@ import {
   Stepper as PatternStepper,
   ThumbStrip,
 } from "@brandbasket/shared/ui/patterns";
+import { ConsolePatternsDemo } from "@brandbasket/shared/ui/patterns/console-patterns-demo";
 
 export function PatternsShowcase() {
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -267,6 +268,12 @@ export function PatternsShowcase() {
             Confirm staff held the video meeting. This begins the 5-day website build.
           </div>
         </PromptPopup>
+      </div>
+
+      {/* Console v2 interaction patterns (CR-01) */}
+      <div className="flex flex-col gap-2">
+        <h3 className="type-label text-ink">Console v2 patterns: DataTable, FilterBar, BulkBar, RowActions, SidePanel, InlineEdit, CommandBar, Toast, ShortcutHelp</h3>
+        <ConsolePatternsDemo />
       </div>
     </section>
   );
