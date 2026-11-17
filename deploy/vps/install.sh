@@ -416,7 +416,8 @@ step_backups() {
     "$HERE/systemd/brandbasket-google-sync.service" "$HERE/systemd/brandbasket-google-sync.timer" \
     "$HERE/systemd/brandbasket-google-provision.service" "$HERE/systemd/brandbasket-google-provision.timer" \
     "$HERE/systemd/brandbasket-monthly-reports.service" "$HERE/systemd/brandbasket-monthly-reports.timer" \
-    "$HERE/systemd/brandbasket-first-payment-check.service" "$HERE/systemd/brandbasket-first-payment-check.timer"
+    "$HERE/systemd/brandbasket-first-payment-check.service" "$HERE/systemd/brandbasket-first-payment-check.timer" \
+    "$HERE/systemd/brandbasket-email-queue.service" "$HERE/systemd/brandbasket-email-queue.timer"
   say "== programs"
   dir 0700 root:root /etc/brandbasket
   dir 0700 root:root /var/backups/brandbasket
@@ -429,12 +430,13 @@ step_backups() {
   put 0755 "$REPO/scripts/server/run-site-rollup-job.sh" /usr/local/sbin/brandbasket-site-rollup-job
   put 0755 "$REPO/scripts/server/run-kickoff-builds-job.sh" /usr/local/sbin/brandbasket-kickoff-builds-job
   put 0755 "$REPO/scripts/server/run-first-payment-check-job.sh" /usr/local/sbin/brandbasket-first-payment-check-job
+  put 0755 "$REPO/scripts/server/run-email-queue-job.sh" /usr/local/sbin/brandbasket-email-queue-job
   say "== units"
-  for f in brandbasket-backup brandbasket-restore-test brandbasket-maintenance brandbasket-erase brandbasket-site-hosting brandbasket-site-rollup brandbasket-kickoff-builds brandbasket-site-health brandbasket-google-sync brandbasket-google-provision brandbasket-monthly-reports brandbasket-first-payment-check; do
+  for f in brandbasket-backup brandbasket-restore-test brandbasket-maintenance brandbasket-erase brandbasket-site-hosting brandbasket-site-rollup brandbasket-kickoff-builds brandbasket-site-health brandbasket-google-sync brandbasket-google-provision brandbasket-monthly-reports brandbasket-first-payment-check brandbasket-email-queue; do
     put 0644 "$HERE/systemd/$f.service" "$UNIT_DIR/$f.service"
     put 0644 "$HERE/systemd/$f.timer" "$UNIT_DIR/$f.timer"
   done
-  install_failure_alerts brandbasket-backup brandbasket-restore-test brandbasket-maintenance brandbasket-site-hosting brandbasket-site-rollup brandbasket-kickoff-builds brandbasket-site-health brandbasket-google-sync brandbasket-google-provision brandbasket-monthly-reports brandbasket-first-payment-check
+  install_failure_alerts brandbasket-backup brandbasket-restore-test brandbasket-maintenance brandbasket-site-hosting brandbasket-site-rollup brandbasket-kickoff-builds brandbasket-site-health brandbasket-google-sync brandbasket-google-provision brandbasket-monthly-reports brandbasket-first-payment-check brandbasket-email-queue
   act "systemctl daemon-reload" systemctl daemon-reload
   say "== timers"
   if [[ -f /var/lib/brandbasket/last-backup-ok && -f /var/lib/brandbasket/last-offsite-ok ]]; then
@@ -444,7 +446,7 @@ step_backups() {
   else
     say "  backup timers: not enabled until one manual 'brandbasket-backup --apply' has reached R2 (then run this step again)"
   fi
-  if [[ -d "$SRV/current-customer" ]]; then enable_units brandbasket-maintenance.timer brandbasket-site-rollup.timer brandbasket-kickoff-builds.timer brandbasket-first-payment-check.timer
+  if [[ -d "$SRV/current-customer" ]]; then enable_units brandbasket-maintenance.timer brandbasket-site-rollup.timer brandbasket-kickoff-builds.timer brandbasket-first-payment-check.timer brandbasket-email-queue.timer
   else say "  maintenance, site rollup, kickoff builds and first payment check timers: not enabled until the first deploy has created $SRV/current-customer"; fi
   say "  brandbasket-erase.timer: installed, NOT enabled. It deletes customer data; the owner decides: systemctl enable --now brandbasket-erase.timer"
   say "  brandbasket-site-hosting.timer: installed, NOT enabled. It pauses lapsed websites; set VERCEL_API_TOKEN, read a --dry-run, then: systemctl enable --now brandbasket-site-hosting.timer"
