@@ -308,23 +308,23 @@ describe("notification preferences and reads", () => {
     expect(await shouldEmail(dbs.staff.db, OWNER_A, businessA, "billing")).toBe(true);
     expect(await shouldEmail(dbs.staff.db, OWNER_A, businessA, "product_news")).toBe(false);
 
-    await as(OWNER_A, businessA, (tx) => setNotificationPreference(tx, OWNER_A, "billing", false));
-    await as(OWNER_A, businessA, (tx) => setNotificationPreference(tx, OWNER_A, "product_news", true));
+    await as(OWNER_A, businessA, (tx) => setNotificationPreference(tx, OWNER_A, "billing", "email", false));
+    await as(OWNER_A, businessA, (tx) => setNotificationPreference(tx, OWNER_A, "product_news", "email", true));
 
     expect(await shouldEmail(dbs.staff.db, OWNER_A, businessA, "billing")).toBe(false);
     expect(await shouldEmail(dbs.staff.db, OWNER_A, businessA, "product_news")).toBe(true);
     // One person's choice is theirs alone.
     expect(await shouldEmail(dbs.staff.db, EDITOR_A, businessA, "billing")).toBe(true);
-    expect(await as(OWNER_A, businessA, (tx) => listNotificationPreferences(tx, OWNER_A))).toMatchObject({ billing: false, product_news: true, new_enquiry: true });
+    expect(await as(OWNER_A, businessA, (tx) => listNotificationPreferences(tx, OWNER_A))).toMatchObject({ billing: { email: false, bell: true, push: false }, product_news: { email: true, bell: false, push: false }, new_enquiry: { email: true } });
   });
 
   it("lets a viewer manage their own settings, but nobody another person's", async () => {
-    await as(VIEWER_A, businessA, (tx) => setNotificationPreference(tx, VIEWER_A, "new_enquiry", false));
-    await as(OWNER_A, businessA, (tx) => setNotificationPreference(tx, OWNER_A, "billing", false));
+    await as(VIEWER_A, businessA, (tx) => setNotificationPreference(tx, VIEWER_A, "new_enquiry", "email", false));
+    await as(OWNER_A, businessA, (tx) => setNotificationPreference(tx, OWNER_A, "billing", "email", false));
 
-    expect(await captureErrorText(as(OWNER_A, businessA, (tx) => setNotificationPreference(tx, EDITOR_A, "billing", false)))).toContain(RLS_REFUSED);
+    expect(await captureErrorText(as(OWNER_A, businessA, (tx) => setNotificationPreference(tx, EDITOR_A, "billing", "email", false)))).toContain(RLS_REFUSED);
     // A non-member scoped to the business cannot store one either.
-    expect(await captureErrorText(as(OWNER_B, businessA, (tx) => setNotificationPreference(tx, OWNER_B, "billing", false)))).toContain(RLS_REFUSED);
+    expect(await captureErrorText(as(OWNER_B, businessA, (tx) => setNotificationPreference(tx, OWNER_B, "billing", "email", false)))).toContain(RLS_REFUSED);
     const seenByViewer = await as(VIEWER_A, businessA, (tx) => tx.select().from(notificationPreferences));
     expect(seenByViewer.map((row) => row.userId)).toEqual([VIEWER_A]);
     expect(await as(OWNER_B, businessB, (tx) => tx.select().from(notificationPreferences))).toEqual([]);
@@ -486,7 +486,7 @@ describe("viewer role", () => {
       from writable w
       join information_schema.columns col on col.table_schema = 'public' and col.table_name = w.table_name and col.column_name = 'business_id'
       left join pg_policies p on p.schemaname = 'public' and p.tablename = w.table_name and p.permissive = 'RESTRICTIVE' and p.policyname like '%\\_no\\_viewer\\_%'
-      where w.table_name not in ('notification_preferences', 'notification_reads', 'business_invites')
+      where w.table_name not in ('notification_preferences', 'notification_reads', 'notifications', 'business_invites')
       group by w.table_name
       having count(p.policyname) < 3
     `);

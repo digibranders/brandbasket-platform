@@ -29,6 +29,8 @@ export const metadata: Metadata = {
   title: { default: "Brandbasket", template: "%s | Brandbasket" },
   // The workspace is private on every host (the X-Robots-Tag header says the same).
   robots: { index: false, follow: false },
+  // The install file push needs on an iPhone (public/manifest.webmanifest).
+  manifest: "/manifest.webmanifest",
 };
 
 export default function RootLayout({ children }: { readonly children: ReactNode }) {

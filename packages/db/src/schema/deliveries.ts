@@ -1,10 +1,15 @@
 import { sql } from "drizzle-orm";
-import { check, index, integer, jsonb, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
+import { check, index, integer, jsonb, pgTable, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core";
 import { uuidv7 } from "uuidv7";
 import { businesses } from "./businesses";
 import { createdAt } from "./columns";
 
 export const WEBHOOK_SOURCES = ["razorpay", "calcom", "oyechats"] as const;
+/**
+ * Sources the check constraint already accepts for receivers that come later (Brevo events in package N3, social-auto in N7),
+ * so they need no second migration. Add one to WEBHOOK_SOURCES, with its delivery health, when its receiver lands.
+ */
+export const RESERVED_WEBHOOK_SOURCES = ["brevo", "social_auto"] as const;
 export type WebhookSource = (typeof WEBHOOK_SOURCES)[number];
 
 export const WEBHOOK_RESULTS = ["handled", "ignored", "failed", "bad_signature"] as const;
@@ -28,11 +33,18 @@ export const webhookEvents = pgTable(
     businessId: uuid("business_id").references(() => businesses.id, { onDelete: "set null" }),
     bodySha256: text("body_sha256").notNull(),
     bodyBytes: integer("body_bytes").notNull(),
+    /** The id the provider gave the event, when it gives one: a delivery repeated with the same id is not handled twice. */
+    eventId: text("event_id"),
     receivedAt: timestamp("received_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [
     index("webhook_events_received_at_idx").on(table.receivedAt),
-    check("webhook_events_source_check", sql`${table.source} in ('razorpay', 'calcom', 'oyechats')`),
+    // Only events that were taken count: a failed one is redelivered on purpose and must be recordable again.
+    uniqueIndex("webhook_events_event_id_idx")
+      .on(table.source, table.eventId)
+      .where(sql`${table.eventId} is not null and ${table.result} in ('handled', 'ignored')`),
+    check("webhook_events_source_check", sql`${table.source} in ('razorpay', 'calcom', 'oyechats', 'brevo', 'social_auto')`),
+    check("webhook_events_event_id_check", sql`${table.eventId} is null or char_length(${table.eventId}) between 1 and 200`),
     check("webhook_events_result_check", sql`${table.result} in ('handled', 'ignored', 'failed', 'bad_signature')`),
     check("webhook_events_event_type_check", sql`char_length(${table.eventType}) between 1 and 64`),
     check("webhook_events_error_check", sql`${table.error} is null or char_length(${table.error}) <= 300`),

@@ -22,6 +22,7 @@ export { domainConnectedEmail, type DomainConnectedInput } from "./templates/dom
 export { domainMovedEmail, type DomainMovedInput } from "./templates/domain-moved";
 export { domainRequestedEmail, type DomainRequestedInput } from "./templates/domain-requested";
 export { domainReadyEmail, type DomainReadyInput } from "./templates/domain-ready";
+export { notificationEmail, type NotificationEmailInput } from "./templates/notification";
 export { onboardingSentEmail, type OnboardingSentInput } from "./templates/onboarding-sent";
 export { assertMinorUnits, emailDate, emailMoney, type EmailCurrency } from "./format";
 export { firstChargeReminderEmail, type FirstChargeReminderInput } from "./templates/first-charge-reminder";

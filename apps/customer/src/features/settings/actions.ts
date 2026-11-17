@@ -1,7 +1,7 @@
 "use server";
 // A "use server" module: every export is a public action endpoint. Only actions belong here.
 
-import { clearNominee, NOTIFICATION_TOPICS, saveNominee, setNotificationPreference, withTenantScope } from "@brandbasket/db";
+import { clearNominee, NOTIFICATION_CHANNELS, NOTIFICATION_TOPICS, saveNominee, setNotificationPreference, withTenantScope } from "@brandbasket/db";
 import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
 import { redirect, unstable_rethrow } from "next/navigation";
@@ -79,15 +79,15 @@ export async function revokeOtherSessionsAction(): Promise<ActionResult> {
   return actionOk();
 }
 
-const notificationSchema = z.object({ topic: z.enum(NOTIFICATION_TOPICS), email: z.boolean() });
+const notificationSchema = z.object({ topic: z.enum(NOTIFICATION_TOPICS), channel: z.enum(NOTIFICATION_CHANNELS), enabled: z.boolean() });
 
-/** Stores one email choice of the signed-in person, for their business. Applies at once, as the switch does. */
-export async function setNotificationAction(topic: string, email: boolean): Promise<ActionResult> {
+/** Stores one choice (a topic on a channel) of the signed-in person, for their business. Applies at once, as the switch does. */
+export async function setNotificationAction(topic: string, channel: string, enabled: boolean): Promise<ActionResult> {
   const customer = await requireCustomer();
-  const parsed = notificationSchema.safeParse({ topic, email });
+  const parsed = notificationSchema.safeParse({ topic, channel, enabled });
   if (!parsed.success) return actionFail("That setting does not exist.");
   try {
-    await withTenantScope(getAppDb(), customer.tenant, (tx) => setNotificationPreference(tx, customer.user.id, parsed.data.topic, parsed.data.email));
+    await withTenantScope(getAppDb(), customer.tenant, (tx) => setNotificationPreference(tx, customer.user.id, parsed.data.topic, parsed.data.channel, parsed.data.enabled));
   } catch (error) {
     unstable_rethrow(error);
     reportError(error, { area: "settings.notifications.set" });
