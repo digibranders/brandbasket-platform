@@ -6,7 +6,7 @@ import {
   listClients,
   listDomainMoves,
   listErrorIssues,
-  listKickoffBoard,
+  listPendingKickoffPrompts,
   listLeads,
   listPaymentsNeedingAttention,
   listProjectsStartedWithoutCallConfirmation,
@@ -37,14 +37,13 @@ import { clientsWaitingOnUs } from "@/lib/waiting-clients";
 import { getStaffDb } from "./db";
 import { countFailedDeliveries24h } from "./deliveries";
 import { readGoogleToday } from "./google-today";
+import { KICKOFF_PROMPT_LOOK_BACK_DAYS } from "./pending-kickoffs";
 import { readSystemHealth, type SystemLine } from "./system-health";
 
 /** Far more flagged payments and add-ons than are ever open at once, so none is left out. */
 const ATTENTION_READ_LIMIT = 100;
 /** The support query's page size cap. */
 const NEW_TICKETS_READ_LIMIT = 25;
-/** How far back a kickoff call is still asked about: the Calls page's "Just finished" uses the same window. */
-const KICKOFF_LOOK_BACK_DAYS = 14;
 
 /** One read that may fail without taking the page down: a failure logs, records its label in `failed` when given, and gives `fallback`. */
 async function guarded<T>(label: string, read: () => Promise<T>, fallback: T, failed?: string[]): Promise<T> {
@@ -103,11 +102,11 @@ async function readQueueSources(now: Date, canSeeMoney: boolean, canSeeGoogleAcc
     guarded<KickoffNeedingOutcome[] | null>(
       "kickoff calls",
       async () =>
-        (await listKickoffBoard(db, { now, lookBackDays: KICKOFF_LOOK_BACK_DAYS })).flatMap((row) =>
-          row.heldAt === null && row.endsAt !== null && row.endsAt.getTime() <= now.getTime() && (row.projectStatus === null || row.projectStatus === "onboarding")
-            ? [{ businessId: row.businessId, businessName: row.businessName, endsAt: row.endsAt }]
-            : [],
-        ),
+        (await listPendingKickoffPrompts(db, { now, lookBackDays: KICKOFF_PROMPT_LOOK_BACK_DAYS })).map((call) => ({
+          businessId: call.businessId,
+          businessName: call.businessName,
+          endsAt: call.endsAt,
+        })),
       null,
       failed,
     ),
@@ -174,7 +173,6 @@ function queueFrom(sources: QueueSources, now: Date): readonly TodayItem[] {
       })),
     newErrors: sources.newErrors,
     failedDeliveries: sources.failedDeliveries,
-    kickoffsNeedingOutcome: sources.kickoffsNeedingOutcome,
     billing,
     approvedPreviews,
     domainMoves: sources.domainMoves,

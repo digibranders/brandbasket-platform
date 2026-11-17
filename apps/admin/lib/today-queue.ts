@@ -3,8 +3,8 @@ import { SUPPORT_CATEGORY_LABELS } from "@brandbasket/shared/lib/support";
 import type { AttentionItem } from "./pipeline";
 import { clock, longDay, shortDate } from "./team-time";
 
-/** Every kind of work Today shows: the pipeline's attention kinds, plus requests, sign-ups, errors, failed deliveries, kickoff calls, approved previews, domain moves and unconfirmed starts. */
-export type TodayKind = AttentionItem["kind"] | "request" | "signup" | "error" | "delivery" | "kickoff" | "google" | "approved" | "domain" | "unconfirmed_start";
+/** Every kind of work Today shows: the pipeline's attention kinds, plus requests, sign-ups, errors, failed deliveries, approved previews, domain moves and unconfirmed starts. */
+export type TodayKind = AttentionItem["kind"] | "request" | "signup" | "error" | "delivery" | "google" | "approved" | "domain" | "unconfirmed_start";
 
 export interface TodayItem {
   /** Unique across the queue. */
@@ -19,6 +19,7 @@ export interface TodayItem {
   readonly action?: string;
 }
 
+/** A kickoff call that is over and unanswered. Today shows it as one card (TodayKickoffPrompt), not as a queue row. */
 export interface KickoffNeedingOutcome {
   readonly businessId: string;
   readonly businessName: string;
@@ -59,8 +60,6 @@ export interface TodayInput {
   readonly newErrors: readonly Pick<ErrorIssue, "id" | "operation" | "route" | "occurrenceCount" | "firstSeenAt">[];
   /** Deliveries that failed in the last 24 hours (the rail's count); null when that count could not be read. */
   readonly failedDeliveries: number | null;
-  /** Kickoff calls that are over and not marked held (or as missed); null when they could not be read. One item each. */
-  readonly kickoffsNeedingOutcome: readonly KickoffNeedingOutcome[] | null;
   /** Billing status issues: past_due and lapsed subscriptions for money-capable roles. */
   readonly billing?: readonly TodayItem[];
   /** Approved website previews waiting to go live. */
@@ -173,18 +172,6 @@ export function todayQueue(input: TodayInput): readonly TodayItem[] {
           },
         ]
       : [];
-  // Every call here has already ended, so each item is overdue from the start; its clock is the call's end time. Recording an
-  // outcome on the Calls page marks the call held or removes its booking, which takes it out of this list.
-  const kickoffs = (input.kickoffsNeedingOutcome ?? []).map(
-    (call): TodayItem => ({
-      key: `kickoff:${call.businessId}`,
-      kind: "kickoff",
-      href: "/calls",
-      title: "Did the kickoff happen?",
-      detail: `${call.businessName} · ended ${shortDate(call.endsAt)}, ${clock(call.endsAt)}`,
-      dueAt: call.endsAt,
-    }),
-  );
   const approved = (input.approvedPreviews ?? []).map(
     (item): TodayItem => ({
       key: `approved:${item.businessId}`,
@@ -223,7 +210,6 @@ export function todayQueue(input: TodayInput): readonly TodayItem[] {
     ...signups,
     ...errors,
     ...deliveries,
-    ...kickoffs,
     ...(input.billing ?? []),
     ...approved,
     ...domainMoves,

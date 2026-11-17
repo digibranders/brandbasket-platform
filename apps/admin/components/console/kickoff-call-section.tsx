@@ -1,5 +1,6 @@
 import { findSetupCallBooking, isProjectStartedWithoutCallConfirmation } from "@brandbasket/db";
 import type { ReactElement } from "react";
+import { KICKOFF_AUTO_START_NOTE } from "@/lib/kickoff-copy";
 import { formatTimingWindow, kickoffMeetingLink } from "@brandbasket/shared/lib/setup-call-link";
 import { buttonSecondary } from "@/components/console/buttons";
 import { FactList, Section } from "@/components/console/section";
@@ -55,7 +56,7 @@ export async function KickoffCallSection({ businessId }: { readonly businessId: 
         </div>
       ) : null}
       <p className="mt-6 max-w-xl text-sm text-ink-soft">
-        Call confirmation readies the website build. If nobody confirms the call within 24 hours, the build starts automatically.
+        {KICKOFF_AUTO_START_NOTE}
       </p>
     </Section>
   );

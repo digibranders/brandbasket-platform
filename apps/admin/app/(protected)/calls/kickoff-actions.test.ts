@@ -1,22 +1,24 @@
-import { clearUnheldKickoffBooking, findSetupCallBooking, recordKickoffOutcome } from "@brandbasket/db";
+import { clearUnheldKickoffBooking, findSetupCallBooking, markKickoffPromptAnswered, markKickoffPromptsShown, recordKickoffOutcome } from "@brandbasket/db";
 import { revalidatePath } from "next/cache";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { getStaffDb } from "@/lib/server/db";
 import { completeKickoff } from "@/lib/server/kickoff-complete";
+import { noticeKickoffAnswered } from "@/lib/server/kickoff-notices";
 import { requireStaffAccess, type GrantedStaff } from "@/lib/server/staff-access";
 import { logStaffAccessOrThrow } from "@/lib/server/staff-access-log";
-import { completeKickoffAction, kickoffDidNotHappenAction, recordKickoffOutcomeAction, rescheduleKickoffAction, theyDidNotJoinAction } from "./kickoff-actions";
+import { completeKickoffAction, kickoffDidNotHappenAction, markKickoffPromptsShownAction, recordKickoffOutcomeAction, rescheduleKickoffAction, theyDidNotJoinAction } from "./kickoff-actions";
 
 vi.mock("server-only", () => ({}));
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 vi.mock("@brandbasket/db", async () => {
   const actual = await vi.importActual<typeof import("@brandbasket/db")>("@brandbasket/db");
-  return { ...actual, clearUnheldKickoffBooking: vi.fn(), findSetupCallBooking: vi.fn(), recordKickoffOutcome: vi.fn() };
+  return { ...actual, clearUnheldKickoffBooking: vi.fn(), findSetupCallBooking: vi.fn(), markKickoffPromptAnswered: vi.fn(), markKickoffPromptsShown: vi.fn(), recordKickoffOutcome: vi.fn() };
 });
 vi.mock("@/lib/server/staff-access", () => ({ requireStaffAccess: vi.fn() }));
 vi.mock("@/lib/server/staff-access-log", () => ({ logStaffAccessOrThrow: vi.fn() }));
 vi.mock("@/lib/server/db", () => ({ getStaffDb: vi.fn() }));
 vi.mock("@/lib/server/kickoff-complete", () => ({ completeKickoff: vi.fn() }));
+vi.mock("@/lib/server/kickoff-notices", () => ({ noticeKickoffAnswered: vi.fn() }));
 
 const BUSINESS = "01a0f71b-8402-7d48-a90a-207e8c8a882c";
 const STAFF = { user: { id: "staff-1" }, staff: { userId: "staff-1", role: "support" } } as unknown as GrantedStaff;
@@ -52,6 +54,19 @@ describe("completeKickoffAction", () => {
     expect(completeKickoff).toHaveBeenCalledWith(DB, { businessId: BUSINESS, staffId: "staff-1", now: expect.any(Date), notes: "Five pages, call to book." });
     expect(logStaffAccessOrThrow).toHaveBeenCalledWith(expect.objectContaining({ action: "setup_call.held", businessId: BUSINESS }));
     expect(revalidatePath).toHaveBeenCalledWith("/calls");
+  });
+
+  it("saves the answer on the server and thanks the customer, once, when the call is newly held", async () => {
+    vi.mocked(findSetupCallBooking).mockResolvedValue({ startsAt: new Date("2026-10-30T10:00:00.000Z") } as never);
+    await completeKickoffAction(form({ businessId: BUSINESS }));
+    expect(markKickoffPromptAnswered).toHaveBeenCalledWith(DB, BUSINESS, expect.any(Date));
+    expect(noticeKickoffAnswered).toHaveBeenCalledWith({ answer: "completed", businessId: BUSINESS, startsAt: new Date("2026-10-30T10:00:00.000Z") });
+  });
+
+  it("does not thank the customer again when the call was already held", async () => {
+    vi.mocked(completeKickoff).mockResolvedValue({ newlyHeld: false, buildStarted: false });
+    await completeKickoffAction(form({ businessId: BUSINESS }));
+    expect(noticeKickoffAnswered).not.toHaveBeenCalled();
   });
 
   it("completes with no notes when the box is empty", async () => {
@@ -99,6 +114,7 @@ describe("recordKickoffOutcomeAction", () => {
     expect(logStaffAccessOrThrow).toHaveBeenCalledWith(expect.objectContaining({ action, targetId: BUSINESS, businessId: BUSINESS }));
     expect(revalidatePath).toHaveBeenCalledWith("/calls");
     expect(revalidatePath).toHaveBeenCalledWith(`/clients/${BUSINESS}`);
+    expect(noticeKickoffAnswered).toHaveBeenCalledWith({ answer: outcome === "customer_no_show" ? "not_joined" : "reschedule", businessId: BUSINESS, startsAt: BOOKING.startsAt });
   });
 
   it.each([["completed"], ["unknown"], [""], [null]])("refuses the outcome %p before recording anything", async (outcome) => {
@@ -159,5 +175,23 @@ describe("three prompt actions", () => {
     expect(recordKickoffOutcome).toHaveBeenCalledWith(DB, expect.objectContaining({ businessId: BUSINESS, outcome: "rescheduled" }));
     expect(clearUnheldKickoffBooking).toHaveBeenCalledWith(DB, BUSINESS);
     expect(revalidatePath).toHaveBeenCalledWith("/");
+  });
+});
+
+describe("markKickoffPromptsShownAction", () => {
+  it("is refused for a session that is not staff's", async () => {
+    vi.mocked(requireStaffAccess).mockRejectedValue(new Error("NEXT_REDIRECT"));
+    await expect(markKickoffPromptsShownAction([BUSINESS])).rejects.toThrow("NEXT_REDIRECT");
+    expect(markKickoffPromptsShown).not.toHaveBeenCalled();
+  });
+
+  it("records the popup as shown for the calls given", async () => {
+    await markKickoffPromptsShownAction([BUSINESS]);
+    expect(markKickoffPromptsShown).toHaveBeenCalledWith(DB, [BUSINESS], expect.any(Date));
+  });
+
+  it("refuses a call id that is not an id", async () => {
+    await expect(markKickoffPromptsShownAction(["x"])).rejects.toThrow();
+    expect(markKickoffPromptsShown).not.toHaveBeenCalled();
   });
 });

@@ -1,7 +1,7 @@
 import { and, asc, eq, gte, isNotNull, isNull, lt, sql } from "drizzle-orm";
 import type { Database } from "../client";
 import type { ScopedTransaction } from "../scope";
-import { businesses, setupCallBookings, type SetupCallBooking } from "../schema";
+import { businesses, kickoffPromptState, setupCallBookings, type SetupCallBooking } from "../schema";
 
 type Runner = Database | ScopedTransaction;
 
@@ -49,6 +49,8 @@ export async function moveSetupCallBooking(
     .set({ inviteeUri: input.toInviteeUri, startsAt: input.startsAt, endsAt: input.endsAt, updatedAt: input.now })
     .where(eq(setupCallBookings.inviteeUri, input.fromInviteeUri))
     .returning({ id: setupCallBookings.id });
+  // The new time starts a new prompt: what was noted for the old time no longer applies.
+  for (const row of moved) await db.delete(kickoffPromptState).where(eq(kickoffPromptState.callId, row.id));
   return moved.length > 0;
 }
 
