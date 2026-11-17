@@ -1,5 +1,7 @@
 @import "tailwindcss";
 @import "./tokens.css";
+/* Tailwind only scans this app by default; the shared patterns (NextActionCard, dialogs) render here too, so their classes must be generated. */
+@source "../../../../packages/shared/src/ui/patterns";
 
 /*
  * Tailwind's default palette, radii, shadows, text sizes and breakpoints are removed, so a palette class (bg-blue-500) or
