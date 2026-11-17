@@ -37,6 +37,8 @@ const MIN_SECRET_LENGTH = 32;
 /** Never set where real customers can reach the app. */
 const FORBIDDEN = ["EMAIL_CODE_BYPASS", "BRANDBASKET_ALLOW_FAKE_BILLING"] as const;
 const SHARED_EQUAL = ["BETTER_AUTH_SECRET", "PAYLOAD_SECRET", "APP_ORIGIN", "ADMIN_ORIGIN", "DATABASE_URL_PAYLOAD"] as const;
+/** Web push: either app may send to a browser the other registered, so the keys are identical in both files. All three or none. */
+const VAPID_KEYS = ["VAPID_PUBLIC_KEY", "VAPID_PRIVATE_KEY", "VAPID_SUBJECT"] as const;
 const SECRETS: Readonly<Record<RequirementsApp, readonly string[]>> = {
   platform: ["BETTER_AUTH_SECRET", "PAYLOAD_SECRET", "ACCOUNT_CODE_SECRET"],
   admin: ["BETTER_AUTH_SECRET", "PAYLOAD_SECRET"],
@@ -95,6 +97,17 @@ function checkApp(app: RequirementsApp, env: EnvValues, errors: string[], warnin
   if (blank(env.BRANDBASKET_MEDIA_ROOT)) warnings.push(`${app}: BRANDBASKET_MEDIA_ROOT is unset, so uploads go to a folder inside the release and are lost at the next deploy. Set one absolute path, the same in both files.`);
 }
 
+function checkVapid(app: RequirementsApp, env: EnvValues, errors: string[], warnings: string[]): void {
+  const missing = VAPID_KEYS.filter((name) => blank(env[name]));
+  if (missing.length === VAPID_KEYS.length) {
+    warnings.push(`${app}: VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY and VAPID_SUBJECT are unset, so web push is off (the bell and email still carry every notice).`);
+    return;
+  }
+  for (const name of missing) errors.push(`${app}: ${name} is missing or blank (the VAPID keys are all set or all left out).`);
+  const browserKey = env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
+  if (!blank(browserKey) && browserKey?.trim() !== env.VAPID_PUBLIC_KEY?.trim()) errors.push(`${app}: NEXT_PUBLIC_VAPID_PUBLIC_KEY must be the same as VAPID_PUBLIC_KEY.`);
+}
+
 /** Checks the platform's and the console's environments, as each file holds them. Either may be omitted to check one alone. */
 export function checkProductionEnv(files: { readonly platform?: EnvValues; readonly admin?: EnvValues }): EnvCheck {
   const errors: string[] = [];
@@ -102,15 +115,19 @@ export function checkProductionEnv(files: { readonly platform?: EnvValues; reado
   const { platform, admin } = files;
   if (platform !== undefined) {
     checkApp("platform", platform, errors, warnings);
+    checkVapid("platform", platform, errors, warnings);
     if (blank(platform.RAZORPAY_WEBHOOK_SECRET)) errors.push("platform: RAZORPAY_WEBHOOK_SECRET is missing or blank (BILLING_PROVIDER=razorpay).");
     else if ((platform.RAZORPAY_WEBHOOK_SECRET ?? "").length < MIN_SECRET_LENGTH) errors.push(`platform: RAZORPAY_WEBHOOK_SECRET must be at least ${MIN_SECRET_LENGTH} characters.`);
     const app = urlOf(platform.APP_ORIGIN);
     const publicApp = urlOf(platform.NEXT_PUBLIC_APP_URL);
     if (app !== null && (publicApp === null || publicApp.origin !== app.origin)) errors.push("platform: NEXT_PUBLIC_APP_URL must be the same address as APP_ORIGIN (it is compiled into the build).");
   }
-  if (admin !== undefined) checkApp("admin", admin, errors, warnings);
+  if (admin !== undefined) {
+    checkApp("admin", admin, errors, warnings);
+    checkVapid("admin", admin, errors, warnings);
+  }
   if (platform !== undefined && admin !== undefined) {
-    for (const name of SHARED_EQUAL) {
+    for (const name of [...SHARED_EQUAL, ...VAPID_KEYS]) {
       if (!blank(platform[name]) && !blank(admin[name]) && platform[name]?.trim() !== admin[name]?.trim()) errors.push(`${name} differs between the platform's file and the console's; it must be identical.`);
     }
     const a = platform.BRANDBASKET_MEDIA_ROOT?.trim() ?? "";

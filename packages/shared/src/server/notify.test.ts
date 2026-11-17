@@ -67,7 +67,7 @@ describe("notify, a customer event", () => {
     const { notify, push } = setup({ choices: async () => ({ bell: true, email: true, push: true }) });
     await notify({ event: "kickoff.soon", audience: CUSTOMER, dedupeKey: "call-1", data: { when: "11:00" } });
     expect(push.sent).toEqual([
-      { target: { audience: "customer", userId: "user-owner" }, message: { title: "Your kickoff call starts at 11:00", url: "https://app.example.test/help", tag: "kickoff.soon" } },
+      { target: { audience: "customer", userId: "user-owner" }, message: { title: "Your kickoff call starts at 11:00", url: "https://app.example.test/help", tag: "kickoff.soon", event: "kickoff.soon" } },
     ]);
   });
 
@@ -224,7 +224,7 @@ describe("notify, a staff event", () => {
     expect(emails[0]).toMatchObject({ to: "team@example.test", subject: "Did the kickoff call with Asha Cafe happen?" });
     expect(emails[0]?.bodyText).toContain("https://console.example.test/calls");
     expect(push.sent).toEqual([
-      { target: { audience: "staff", userId: null }, message: { title: "Did the kickoff call happen?", url: "https://console.example.test/calls", tag: "kickoff.ended" } },
+      { target: { audience: "staff", userId: null }, message: { title: "Did the kickoff call happen?", url: "https://console.example.test/calls", tag: "kickoff.ended", event: "kickoff.ended" } },
     ]);
   });
 

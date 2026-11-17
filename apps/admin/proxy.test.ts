@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { NextRequest } from "next/server";
 import * as accessModule from "@/lib/server/cloudflare-access";
-import { proxy } from "./proxy";
+import { config, proxy } from "./proxy";
 
 describe("admin proxy", () => {
   beforeEach(() => {
@@ -36,5 +36,18 @@ describe("admin proxy", () => {
     const response = await proxy(request);
 
     expect(response.status).toBe(200);
+  });
+
+  describe("matcher", () => {
+    // Next compiles the matcher with path-to-regexp; this one is a plain negative lookahead, so a RegExp is the same test.
+    const runs = (path: string): boolean => new RegExp(`^${config.matcher[0]}$`).test(path);
+
+    it.each(["/sw.js", "/manifest.webmanifest", "/icons/icon-192.png", "/icons/icon-512.png", "/icons/icon-maskable-512.png", "/favicon.ico"])("lets %s through without a Cloudflare Access check", (path) => {
+      expect(runs(path)).toBe(false);
+    });
+
+    it.each(["/", "/clients", "/settings", "/api/uploads", "/iconsets"])("still checks %s", (path) => {
+      expect(runs(path)).toBe(true);
+    });
   });
 });
