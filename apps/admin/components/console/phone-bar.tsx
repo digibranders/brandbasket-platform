@@ -8,9 +8,10 @@ import { currentHref } from "@/lib/console-rail";
 import { GlobalSearch } from "./global-search";
 import type { RailProps } from "./rail";
 import { RailAccount, RailNav } from "./rail-nav";
+import { StaffBell } from "./staff-bell";
 
 /** Below `lg`: a light top bar with the logo, search and Menu; Menu opens the rail's links in a sheet. */
-export function PhoneBar({ links, counts, userName, role, signOut, logo }: RailProps): ReactElement {
+export function PhoneBar({ links, counts, userName, role, signOut, logo, bell }: RailProps): ReactElement {
   const pathname = usePathname();
   const [searching, setSearching] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -28,6 +29,7 @@ export function PhoneBar({ links, counts, userName, role, signOut, logo }: RailP
       <header className="sticky top-0 z-20 flex items-center justify-between gap-3 bg-bg/90 px-5 py-3 backdrop-blur lg:hidden">
         <WordmarkLogo href="/" brand={logo} />
         <span className="flex gap-1">
+          <StaffBell view={bell} tone="light" />
           <button type="button" onClick={() => setSearching(true)} aria-label="Search everything" className="grid size-10 place-items-center rounded-full text-ink transition-colors duration-200 hover:bg-sunken">
             <MagnifyingGlass size={22} aria-hidden="true" />
           </button>

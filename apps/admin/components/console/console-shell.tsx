@@ -4,8 +4,10 @@ import { adminBrand } from "@/lib/brand";
 import { railFor } from "@/lib/console-rail";
 import { readRailCounts } from "@/lib/server/rail-counts";
 import { signOut } from "@/lib/server/sign-out";
+import { readStaffBell } from "@/lib/server/staff-notifications";
 import { PhoneBar } from "./phone-bar";
 import { Rail } from "./rail";
+import { StaffBellRefresh } from "./staff-bell-refresh";
 
 interface ConsoleShellProps {
   readonly userName: string;
@@ -16,9 +18,9 @@ interface ConsoleShellProps {
 /** The staff console v2: the dark rail on desktop (a top bar and menu on phones) around the page. */
 export async function ConsoleShell({ userName, role, children }: ConsoleShellProps): Promise<ReactElement> {
   const links = railFor(role);
-  const counts = await readRailCounts(role);
+  const [counts, bell] = await Promise.all([readRailCounts(role), readStaffBell()]);
   const logo = adminBrand().logo;
-  const shared = { links, counts, userName, role, signOut, logo };
+  const shared = { links, counts, userName, role, signOut, logo, bell };
   return (
     <div className="flex min-h-dvh bg-bg lg:bg-[#23242A]">
       <a
@@ -27,6 +29,7 @@ export async function ConsoleShell({ userName, role, children }: ConsoleShellPro
       >
         Skip to content
       </a>
+      <StaffBellRefresh />
       <Rail {...shared} />
       <div className="flex min-w-0 flex-1 flex-col">
         <PhoneBar {...shared} />

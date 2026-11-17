@@ -8,6 +8,8 @@ import { WordmarkLogo, type BrandLogo } from "@brandbasket/shared/ui/logo";
 import { currentHref, type ConsoleRailLink, type RailCounts } from "@/lib/console-rail";
 import { GlobalSearch } from "./global-search";
 import { RailAccount, RailNav } from "./rail-nav";
+import { StaffBell } from "./staff-bell";
+import type { StaffBellView } from "@/lib/staff-bell";
 
 export interface RailProps {
   readonly links: readonly ConsoleRailLink[];
@@ -16,17 +18,19 @@ export interface RailProps {
   readonly role: StaffRole;
   readonly signOut: () => Promise<void>;
   readonly logo: BrandLogo;
+  readonly bell: StaffBellView;
 }
 
 /** The dark rail from `lg` up: logo, search, the menu items with their counts, and the account at the foot. */
-export function Rail({ links, counts, userName, role, signOut, logo }: RailProps): ReactElement {
+export function Rail({ links, counts, userName, role, signOut, logo, bell }: RailProps): ReactElement {
   const pathname = usePathname();
   const [searching, setSearching] = useState(false);
   const openSearch = useCallback(() => setSearching(true), []);
   return (
     <aside data-surface="dark" className="sticky top-0 z-20 hidden h-dvh w-[14.75rem] shrink-0 flex-col gap-1 overflow-y-auto bg-[#23242A] px-3 py-4 text-white lg:flex">
-      <div className="px-2.5">
+      <div className="flex items-center justify-between px-2.5">
         <WordmarkLogo href="/" tone="light" brand={logo} />
+        <StaffBell view={bell} tone="dark" />
       </div>
       <p className="px-2.5 pb-2 text-xs text-white/60">Console · staff only</p>
       <button
