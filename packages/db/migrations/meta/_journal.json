@@ -1583,6 +1583,13 @@
       "when": 1794656464959,
       "tag": "0228_credit_notes",
       "breakpoints": true
+    },
+    {
+      "idx": 226,
+      "version": "7",
+      "when": 1794896327903,
+      "tag": "0229_notifications_foundation",
+      "breakpoints": true
     }
   ]
 }
