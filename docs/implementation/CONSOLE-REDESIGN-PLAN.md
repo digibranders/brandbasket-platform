@@ -12,7 +12,7 @@ Release 2 gave the console a new look, not a new design. The evidence:
 - `reports/R2-09.md` and `R2-12.md` state "re-theme only, no behaviour change". R2-09 open question 4 records that the Staff page still shows a role picker and an invite form, although the owner decided there is one account (D12, D13).
 - The client workspace still has five tabs (`apps/admin/lib/client-tabs.ts`: Overview, Website, Plan and billing, Messages, People). Social and Paid Ads delivery forms still sit under "Plan and billing" (`clients/[businessId]/billing/page.tsx`), the finding raised in audit `03` and `09`.
 - The kickoff popup component `apps/admin/components/console/kickoff-prompt-popup.tsx` exists, but no file in `apps/admin` imports it (checked with a search of `apps/` for `kickoff-prompt-popup` and `KickoffPromptPopup`). It is not mounted. The notifications package N2 remounts it in `apps/admin/app/(protected)/layout.tsx`. The "Call completed" action also still lives in `calls/kickoff-wrap-up.tsx`, `today/kickoff-prompt.tsx`, `console/calls-section.tsx` and `console/kickoff-call-section.tsx`, so audit finding "four places" is still true.
-- The mocks `docs/design/redesign/mock-console-*.html` and `notes-console.md` cannot be the base for a rebuild. They show Paytm gateway health, a WhatsApp Meta Cloud API status, webhook latency and "Active refunds" tiles. R2-09 open question 6 confirms these have no data source. (The only WhatsApp strings in code are a contact link on an enquiry, `components/enquiries/enquiry-detail.tsx`, and listing contact fields.) The refund dialog mock says a refund cancels the plan and revokes hosting; R2-09 open question 1 says the code does not do that. Wave A redoes the mocks under one rule: **no data source, no element**.
+- The mocks `docs/design/redesign/mock-console-*.html` and `notes-console.md` cannot be the base for a rebuild. They show Paytm gateway health, a WhatsApp Meta Cloud API status, webhook latency and "Active refunds" tiles. R2-09 open question 6 confirms these have no data source. (A search of `apps` and `packages` finds no Paytm at all. WhatsApp appears only as an enquiry channel and in analytics and conversion code, for example `apps/admin/components/enquiries/enquiry-detail.tsx` and `apps/customer/src/features/conversions/senders.ts`; no messaging integration or Meta Cloud API client was found.) The refund dialog mock says a refund cancels the plan and revokes hosting; R2-09 open question 1 says the code does not do that. Wave A redoes the mocks under one rule: **no data source, no element**.
 
 Owner decisions this plan binds to, and treats as fixed:
 
@@ -48,7 +48,7 @@ Source: `19` phases 5 to 13, "One staff account" section of `19`, and `apps/admi
 | Throughout | Answer a customer request or support ticket within 4 hours, send a quote, start the work, close it | `/support`, `/support/[id]`, client Messages tab (two lists for two kinds of request) | Daily | High: the main customer-facing promise |
 | Throughout | Call back or set up a new enquiry within 1 hour, send a setup link | `/leads` | Daily | Medium |
 | Per build | Build the site, paste the preview link, send it, handle change rounds, check launch, mark live | Client Website tab (`website/page.tsx`, 323 lines, about 15 action groups), Board `/projects` | Daily while a build is open (about 2 weeks each) | High: promised dates, customer emailed |
-| Per exception | Look at a payment that needs a look, a first payment whose webhook was lost, an unapplied payment, a failed renewal, a lapse | Payments page (flagged only); renewals and lapses are not on Today (`19` 12.1 and 12.2) | Several a week | High: money and customer lockout |
+| Per exception | Look at a payment that needs a look, a first payment whose webhook was lost, an unapplied payment, a failed renewal, a lapse | Payments page (flagged only). Today already shows flagged payments, past due renewals and lapsed plans (`lib/server/today.ts`, built for money-capable roles, which is the one account); `19` 12.1 and 12.2 saying there is nothing on Today is out of date | Several a week | High: money and customer lockout |
 | Glance | Check systems: failed emails, errors, Google problems | Today "Systems" block, `/deliveries`, `/support/errors` | Daily | Medium |
 | Glance | See a social-auto alert (failed post, expiring connection) | Outside the console today (`19` 8.7). N7 adds a receiver | Rare, but customer-visible | Medium |
 
@@ -57,7 +57,7 @@ Source: `19` phases 5 to 13, "One staff account" section of `19`, and `apps/admi
 | Job | Frequency | Risk | Today's home |
 |---|---|---|---|
 | Review and send the monthly report drafts (written on the 1st of the next month, `reports/page.tsx` empty state) | Monthly burst, review across several days | Medium (customer-visible, timer may be off, `19` 10.1) | `/reports` |
-| Watch renewals and lapses, chase failed payments | Weekly | High | Not on Today; only a per-client notice |
+| Watch renewals and lapses, chase failed payments | Weekly | High | Today rows exist (past due, lapsed). Payments has no list of them |
 | Export invoices and payments for the CA | Monthly | Medium (GST) | `/invoices`, `/payments` exports |
 | Enter Paid Ads figures (display only) | Monthly | Low | Client Plan and billing tab |
 | Move a client's domain, handle a domain move | Occasional | Medium | Website tab, no queue except Today "domain" row |
@@ -90,11 +90,11 @@ Rail, in order, six items (down from eight). One staff account, so no item is hi
 
 | Item | Holds | Replaces |
 |---|---|---|
-| Today | The work queue. Filters: All, Late, Customers, Builds, Money, Enquiries, Compliance, System | Today, Calls, the Systems block |
-| Clients | Directory with views List, Builds (board), Leaving. Opens the client workspace | Clients List, Board, `/leaving` |
+| Today | The work queue. Filters: All, Late, Customers, Builds (includes kickoff and calls), Money, Enquiries, Compliance, System. The aside holds Calls and Systems | Today, Calls, the Systems block |
+| Clients | Directory with views List and Builds (board). Opens the client workspace | Clients List, Board |
 | Inbox | Requests (support and change requests, one list), Enquiries, Reports to review | Inbox, Clients > Reports |
 | Money | Payments (with Needs a look and Renewals lanes), Invoices, Plans and offers (prices, coupons, affiliates), Acquisition (ad results) | Money, Ads |
-| Compliance | Privacy requests, Breaches, Closures, Access log | Team > Compliance, `/leaving` erase list |
+| Compliance | Privacy requests, Breaches, Closures (`/leaving`, URL kept), Access log | Team > Compliance, the Leaving screen |
 | System | Health, Emails and webhooks, App errors, Settings, Access (staff accounts, sign-in protection) | Settings, Team > Staff |
 
 Top bar (new): the command bar field with the `⌘K` hint, the notifications bell (slot filled by notifications package N1: "Console: bell in the console shell reading staff rows"), and the account menu. The rail's footer keeps the signed-in staff member. On phone the rail becomes the existing phone bar menu.
@@ -103,7 +103,9 @@ The kickoff popup and the notification toast stack mount once in `app/(protected
 
 ### 2.2 Every route, and what it becomes
 
-Verified against `apps/admin/app` (`page.tsx` and `route.ts` files) with a script; the list in this table equals that list.
+Every `page.tsx` and `route.ts` path under `apps/admin/app` appears in the tables below (checked by script).
+
+**URL rule.** A page keeps its URL when it only moves between rail items or is relabelled (as `apps/admin/DESIGN.md` already says). A URL changes only when a page is merged into another or becomes a view of it. Each such URL redirects to its new home, and `NOTICE_TABS` forwarding in `lib/client-tabs.ts` is kept so old emailed links still land. The URLs that change are exactly three: `/calls`, `/projects`, and the legacy client tab slugs `/clients/[id]/activity` and `/clients/[id]/project`.
 
 Legend: Keep, Merge, Move, Retire.
 
@@ -112,10 +114,10 @@ Legend: Keep, Merge, Move, Retire.
 | Route (current) | Becomes | Disposition | Notes |
 |---|---|---|---|
 | `/` | Today | Keep, rebuild | Section 3, S3 |
-| `/calls` | Today filter "Calls" plus the kickoff prompt | Merge | The "Today / Coming up / Last 7 days / Just finished" lists become a Calls side panel on Today. Route redirects to `/?filter=calls` (CD-1) |
+| `/calls` | Today: the Calls card in the aside, plus the kickoff prompt | Merge, URL changes | The "Today / Coming up / Last 7 days / Just finished" lists become the Calls card. `/calls` redirects to `/` (CD-1) |
 | `/clients` | Clients, views List, Builds, Leaving | Keep, rebuild | S5 |
-| `/projects` | Clients, view Builds | Merge | Board of website builds as a view of the directory |
-| `/leaving` | Clients view Leaving (filter) and Compliance > Closures | Merge | Removes the orphan route (audit `03`) |
+| `/projects` | `/clients?view=builds` | Merge, URL changes | Board of website builds as a view of the directory; `/projects` redirects |
+| `/leaving` | Compliance > Closures, same URL | Move, URL kept | One home (audit `03` called it an orphan). The Clients list keeps its `stage=leaving` filter and links here |
 | `/clients/[id]` | Client workspace, Overview | Keep, rebuild | S6, the 360 |
 | `/clients/[id]/website` | Workspace Website tab | Keep, split | Domain and hosting become their own panel (S7) |
 | `/clients/[id]/billing` | Workspace Money tab (URL kept, label "Money") | Keep, split | Social and Ads delivery forms move to Services (S8) |
@@ -162,9 +164,9 @@ Legend: Keep, Merge, Move, Retire.
 
 | Route | Recommendation | Why |
 |---|---|---|
-| `/ads` | Retire. Delete the page, its server actions and components (`place-ad-form`, `edit-ad-form`, `staff-ad-picture-field`). Keep database tables | Unreachable page; its actions are still exported from a `'use server'` file with only `requireStaffAccess` (audit `03`). Root `CLAUDE.md` says do not build on it. Ask the owner first (CD-2) |
+| `/ads` | Retire. Delete the page, its server actions and components that only it imports (`place-ad-form`, `edit-ad-form`; `staff-ad-picture-field` to be checked). Keep database tables | Unreachable page; its actions are still exported from a `'use server'` file with only `requireStaffAccess` (audit `03`). Root `CLAUDE.md` says do not build on it. Ask the owner first (CD-2) |
 | `/deals` | Retire, same treatment | Same |
-| `/directory` | Retire page, actions, `client-listing*`, `directory-only.tsx`, `directory-tag-marks`. Keep tables | The directory and clinic code is switched off (`apps/customer`-side plan 35). `businesses.kind = 'listing'` is also the live unpaid sign-up state, so no schema or query removal (audit `00` section 2) |
+| `/directory` | Retire page, actions, `directory-only.tsx`, `directory-tag-marks` after an importer check. Keep tables. Do not delete `client-listing*`: `clients/[businessId]/parts.tsx` and `website/site-details.tsx` still import it | The directory and clinic code is switched off (`apps/customer`-side plan 35). `businesses.kind = 'listing'` is also the live unpaid sign-up state, so no schema or query removal (audit `00` section 2) |
 | `/geography` | Retire, same treatment (`geo-*` components, `geocode.ts`) | Same |
 | `/referrals`, `/referrals/[codeId]` | Retire | Became coupons and affiliates on 2026-10-06 |
 | `/staff-ad-pictures/[pictureId]`, `/directory-pictures/[pictureId]` (routes) | Retire with the dormant pages, after confirming no live image is served | They serve dormant content only |
@@ -211,7 +213,7 @@ One canonical home per job:
 
 ## 3. Screen specifications
 
-Shared patterns that exist now in `packages/shared/src/ui/patterns/`: `ApprovalCard`, `ConfirmDialog`, `EmptyState`, `ErrorState`, `NeedsYourOkList`, `NextActionCard`, `PageHeader`, `PreviewFrame`, `PromptPopup`, `ServiceCard`, `SettingsTabs`, `Skeleton`, `StatTile`, `StatusChip`, `StatusTimeline`, `Stepper`, `ThumbStrip`. Console building blocks in `apps/admin/components/console/`: `buttons`, `table`, `filter-pills`, `section-tabs`, `status-pill`, `notice`, `stat-tiles`, `confirm-dialog`, `route-states`, `global-search`, `customer-mirror-panel`. New patterns this plan adds are in section 4 and built in CD-01: `DataTable`, `FilterBar`, `SidePanel`, `CommandBar`, `Toast` (with undo), `BulkBar`, `RowActions`, `InlineEdit`, `ShortcutHelp`.
+Shared patterns that exist now in `packages/shared/src/ui/patterns/`: `ApprovalCard`, `ConfirmDialog`, `EmptyState`, `ErrorState`, `NeedsYourOkList`, `NextActionCard`, `PageHeader`, `PreviewFrame`, `PromptPopup`, `ServiceCard`, `SettingsTabs`, `Skeleton`, `StatTile`, `StatusChip`, `StatusTimeline`, `Stepper`, `ThumbStrip`. Console building blocks in `apps/admin/components/console/`: `buttons`, `table`, `filter-pills`, `section-tabs`, `status-pill`, `notice`, `stat-tiles`, `confirm-dialog`, `route-states`, `global-search`, `customer-mirror-panel`. New patterns this plan adds are in section 4 and built in CR-01. They extend what exists rather than start over: `DataTable` wraps the class strings in `table.ts` (including `TR_SELECTED`, which already marks the row whose detail is open beside a list); `FilterBar` wraps `filter-pills.tsx`; `SidePanel` is the generalised list-with-detail convention in `DESIGN.md`; `CommandBar` extends `global-search.tsx`; the console `panel.tsx` and `confirm-dialog.tsx` stay. CR-01 checks `packages/shared/src/ui/panel` for overlap before adding anything. The list: `DataTable`, `FilterBar`, `SidePanel`, `CommandBar`, `Toast` (with undo), `BulkBar`, `RowActions`, `InlineEdit`, `ShortcutHelp`.
 
 Common to every screen: all four states (loading with `Skeleton` matching the layout, empty with `EmptyState`, error with `ErrorState` and Try again, success as a toast or `Notice`), a keyboard path, 390 wide usable, access logging on any customer data (`logStaffAccess`, `logStaffAccessOrThrow` on exports and downloads, per `apps/admin/CLAUDE.md`), and every side panel has its own URL (`?open=...`) as `DESIGN.md` already requires.
 
@@ -242,8 +244,8 @@ Common to every screen: all four states (loading with `Skeleton` matching the la
 
 | New row | Source | Clock | Tag |
 |---|---|---|---|
-| Renewal failed, past due, lapsed | subscription status (audit: not on Today) | Lapse policy D10 (open) | [Q] |
-| Unapplied payment (money arrived, nothing bought) | existing flagged payments with `attention_reason` | 1 day | [E] relabel |
+| Renewal failed (past due) and lapsed plan | exists: `lib/server/today.ts` builds `billing:past_due` and `billing:lapsed` rows (for money-capable roles, always true for the one account). Doc `19` 12.1 and 12.2 is out of date on this | Lapse policy D10 (open) | [E] |
+| Unapplied payment (money arrived, nothing bought) | exists as a flagged payment with `attention_reason` | 1 day | [E] relabel |
 | Privacy request | `/privacy-requests` data | 30 days, red under 72 hours | [Q] |
 | Breach | `/breaches` data | 6 hours and 72 hours | [Q] |
 | Closure erasing soon | closure rows | Erase date | [Q] |
@@ -251,10 +253,10 @@ Common to every screen: all four states (loading with `Skeleton` matching the la
 | Preview sent, customer silent | project state | 5 days (CD-8) | [Q] |
 | Service ending (cancel pending) | `end_requested_at` | Period end | [Q] |
 | Social alert (failed post, connection expiring) | social-auto events | Immediate | [Q] [N] N7 |
-| Failed email after retries | email queue | After 3 attempts | [N] N3 |
-| Timer not running (erase, reports, hosting, first-payment) | job run stamps | One missed cycle | [Q] [S?] CD-20 |
+| Failed email after retries; Teams address missing | email queue; Teams settings | After 3 attempts | [N] N3 and N6 (both already plan a Today row) |
+| Timer not running (erase, reports, hosting, first-payment) | N6 adds failure alerts for erase and the sign-up reminder; a last-run time needs a run record that may not exist | One missed cycle | [N] N6, optional [S] (CD-20) |
 
-- Layout: header with greeting and a one-line summary; four `StatTile`s (Late, Due today, On track, Active clients, as R2-08); a sticky filter bar with chips and counts (All, Late, Customers, Builds, Money, Enquiries, Compliance, System); the list as a `DataTable` with 44px rows: icon tile, business and the one line of what, clock in Mono (red only when late), primary verb, overflow `RowActions`. Groups remain Late, Due today, Waiting on someone, Upcoming (`groupTodayQueue`). The Late group is the one focal card. Right aside, 4 columns: Calls today (the old `/calls` content, [E]) and Systems.
+- Layout: header with greeting and a one-line summary; four `StatTile`s (Late, Due today, On track, Active clients, as R2-08); a sticky filter bar with chips and counts (All, Late, Customers, Builds, Money, Enquiries, Compliance, System); the list as a `DataTable` with 44px rows: icon tile, business and the one line of what, clock in Mono (red only when late), primary verb, overflow `RowActions`. Groups remain Late, Due today, Waiting on someone, Upcoming (`groupTodayQueue`). The Late group is the one focal card. Right aside, 4 columns: the Calls card (the old `/calls` lists, [E], the one home for calls) and Systems. There is no Calls filter chip; kickoff rows sit under Builds.
 - Row interaction: Enter or click opens a `SidePanel` with the context (what the customer sees, last message, the exact next step, and the same primary button), URL `?open=<key>`. `Open client` goes to the workspace.
 - Bulk: select rows with `x`; `BulkBar` appears only for the sets where a bulk action exists (see 3.1).
 - Keyboard: `j` and `k` move, `Enter` opens, `e` runs the primary verb, `x` selects, `/` focuses the filter, `g t`, `g c`, `g i`, `g m` jump, `?` shows help.
@@ -268,7 +270,7 @@ Common to every screen: all four states (loading with `Skeleton` matching the la
 |---|---|---|---|
 | Failed deliveries | Resend all failed (existing, max 25 emails and 25 alerts in the last 24 hours, `deliveries.ts`) | Confirm (emails customers) | [E] |
 | Enquiries | Mark contacted; Send setup link to selected | Undo for the status; confirm for the link (emails customers) | [A] |
-| Requests | Close selected (resolved) | Undo (reopen exists) | [A] |
+| Support tickets | Close selected (status only, no customer email) | Undo (reopen exists) | [A] |
 | App errors | Set status on selected | Undo | [A] |
 | Payments, invoices, enquiries | Export selected | Logged export, no confirm | [E] |
 | Anything that moves money | Never bulk | | |
@@ -277,7 +279,7 @@ Common to every screen: all four states (loading with `Skeleton` matching the la
 
 | Pattern | Use for | Rule |
 |---|---|---|
-| Undo toast (10 seconds, bottom left) | Reversible, internal: enquiry status, close or reopen a request, error status, an internal note, select and filter changes | Only where a reverse action exists. The toast names the object and the undo restores it |
+| Undo toast (10 seconds, bottom left) | Reversible and internal, with no email to the customer: enquiry status (`lead-updates.ts` sends no mail), a support ticket's status through `updateTicket` (no mail on the status path, `support-admin-actions.ts`), error status, an internal note | Only where a reverse action exists. The toast names the object and the undo restores it |
 | `ConfirmDialog` with consequence line | Anything that emails or changes what the customer sees (send preview, mark live, send report, resend email, send setup link, cancel build), anything irreversible (close privacy request or breach, switch off staff, delete a coupon code, restore or extend closure) | Consequence in plain words, primary on the right, "Keep" as the cancel |
 | `ConfirmDialog` plus a first-person tick box | Anything that moves or records money (refund, manual refund, add charge, waive) | Tick sentence names the amount, as `DESIGN.md` "Money" requires. Refund dialog text is the one R2-09 shipped (true to the code) |
 | `PromptPopup` | A question the system asks the person ("Did the kickoff call with `<business>` happen?") | Three outcomes plus Dismiss; repeats until answered (N2) |
@@ -297,7 +299,7 @@ Common to every screen: all four states (loading with `Skeleton` matching the la
 - Purpose: find a client and see which services are healthy.
 - Main action: open the client.
 - Data [E]: client rows (`lib/client-rows.ts`, `client-search.ts`), stage filters, `Leaving`. Add a services column showing one `StatusChip` per service (Website, Social, Paid Ads, Monitoring) [Q small].
-- Views: List (default), Builds (the `/projects` board, as columns), Leaving (the `/leaving` content with its figures).
+- Views: List (default) and Builds (the `/projects` board, as columns, at `/clients?view=builds`). The Leaving stage filter stays and links to Compliance > Closures.
 - Interaction: sticky filters, `DataTable` with column choice for Monthly and Paid through, `SidePanel` quick view, keyboard as Today.
 - States: skeleton; empty "No clients yet. Clients appear here as soon as someone signs up."; filtered empty offers Clear filters; error with Try again.
 - Exceptions: a red dot on a client with something late; "Not paid" and "Leaving" chips.
@@ -310,6 +312,7 @@ Common to every screen: all four states (loading with `Skeleton` matching the la
 - Data: header (business, owner, plan, contact, id in Mono, services as chips) [E]; an exceptions strip at the top for anything wrong for this client (failed renewal, lapsed, unapplied payment, closure pending, privacy request open, domain failure) [Q small, joins existing reads]; `ServiceCard` per service with state and its one next step [E]; `CustomerMirrorPanel` "What the customer sees" (R2-08) [E]; `StatusTimeline` "What happened" from `lib/server/activity.ts` [E]; side column: facts (kickoff booking, money summary, intake answers "What they told us", read-only) [E].
 - States: skeleton; no services yet (unpaid) shows Intake answers and "Not paid" with the sign-up time; error per panel so one failed read does not blank the page.
 - Exceptions: all of the above strip.
+- Access log: every tab already logs `client.view` (People logs `client.people_view`, `lib/server/client-page.ts`); keep that on every new tab and side panel.
 - Patterns: `NextActionCard`, `ServiceCard`, `StatusTimeline`, `StatusChip`, `PreviewFrame`, `EmptyState`.
 
 ### S7 Workspace, Website tab
@@ -351,7 +354,7 @@ Common to every screen: all four states (loading with `Skeleton` matching the la
 
 - Purpose: people on the account, intake answers, closure state, privacy requests for this client.
 - Main action: none by default; Restore or Extend appears only while the account is closing, behind `ConfirmDialog`.
-- Data [E]: `people/page.tsx`, closure data. Rename owner stays as `InlineEdit`.
+- Data [E]: `people/page.tsx`, closure data. Rename owner stays as `InlineEdit`. Also shows the post-payment Social and Search setup answers read-only, which the console does not read today (`evidence/admin-operations/client-workspace-review.md`; D14b says a staff task shows the answers) [Q].
 - Exceptions: closing (days to erase), privacy request open.
 
 ### S12 Inbox, Requests
@@ -360,7 +363,7 @@ Common to every screen: all four states (loading with `Skeleton` matching the la
 - Main action: Reply (public). Secondary: Add internal note, Send quote, Start as included edit, Close.
 - Data [E]: `/support` and `/support/[id]` plus the change requests that today exist only on the client page (`requests-section.tsx`). Audit `03`: "Two things called requests"; merge into one model, a type chip (Support, Change). Closed-ticket reply is an internal note only today; allow "Reopen and reply" in one step (one action, [A] small). Queue is derived from messages (`support-staff.ts:35`); show the clock in Mono and "Waiting on customer" explicitly. The paid-started request that looks "waiting on client" (audit `19` 11.3) gets its own chip "Paid, in progress".
 - Layout: list left, detail in a `SidePanel` on wide screens with its own URL; page view on phone.
-- Interaction: `Enter` opens, `r` focuses the reply, `c` closes with undo, `n` new request.
+- Interaction: `Enter` opens, `r` focuses the reply, `c` closes a support ticket with undo (status only, no email), `n` new request. A public reply emails the requester (`notifyRequester`), so it is a send with no undo. Change request moves (quote, start as included, start free, send for checking, done, decline) also email through `request-notify.ts` and `request-actions.ts`, so each goes through a `ConfirmDialog` that names the email. Closing a change request is one of those, not an undo.
 - States: skeleton; empty "No requests here. Requests from customers appear here with how long each has been waiting." (R2-12 wording); error.
 - Exceptions: past 4 hours (soon) and 24 hours (late), a quote not paid, attachments (`support-attachments`).
 - Patterns: `DataTable`, `FilterBar`, `SidePanel`, `StatusChip`, `Toast` with undo.
@@ -403,7 +406,7 @@ Common to every screen: all four states (loading with `Skeleton` matching the la
 
 - Purpose: change what customers pay and offer, rarely.
 - Main action: Save, behind a `ConfirmDialog` that states what changes for new purchases (`pricing-admin.ts`; audit: "New price appears on checkout and /api/pricing").
-- Tabs: Prices, Coupons, Affiliates (with codes). Layouts mostly unchanged: re-themed only in R2-09 with no mock. A mock is needed here (CD-A3).
+- Tabs: Prices, Coupons, Affiliates (with codes). Layouts mostly unchanged: re-themed only in R2-09 with no mock. A mock is needed here (CR-A3).
 - Exceptions: a price that differs from the pricing module (open, audit D3).
 
 ### S18 Compliance
@@ -431,9 +434,21 @@ Common to every screen: all four states (loading with `Skeleton` matching the la
 
 Restyle `/login`, forgot and reset, staff invite, no-access and not-found with `QuietFrame`. No flow change. D19 and D30 (Cloudflare Access verified, second factor, recovery admin) stay owner and infra decisions, surfaced on System > Access.
 
+### States and patterns for the remaining screens
+
+| Screen | Loading | Empty | Error | Success | Exceptions it must show | Patterns |
+|---|---|---|---|---|---|---|
+| S10 Workspace Requests | Skeleton rows | "No requests from this client." | `ErrorState`, Try again | Toast; confirm for any email | Past 4 and 24 hours, unpaid quote | `DataTable`, `StatusChip`, `ConfirmDialog` |
+| S11 Workspace Account | Skeleton panels | "Only the owner is on this account." | Per-panel `ErrorState` | Toast with Undo on rename | Closing (days to erase), open privacy request | `InlineEdit`, `ConfirmDialog`, `StatusChip` |
+| S14 Reports | Skeleton rows | R2-12 empty state | `ErrorState`; failed send row with Retry | Toast "Report sent to `<owner>`" | Draft missing, send failed | `DataTable`, `ConfirmDialog`, `EmptyState` |
+| S16 Invoices | Skeleton table | "No invoices for `<month>`" | `ErrorState` | Toast; export is logged | Missing invoice for a captured payment | `StatTile`, `DataTable`, `FilterBar` |
+| S17 Plans and offers | Skeleton form | "No coupons yet" | Field errors keep input | Toast naming what changed for new purchases | Price differs from the pricing module | `SettingsTabs`, `ConfirmDialog`, `InlineEdit` |
+| S19 System | Skeleton per tab | "No errors in this view" (R2-09) | `ErrorState` with digest | Toast; resend counts | Failed delivery, webhook failure, missing Teams address, Google problem | `StatTile`, `DataTable`, `ConfirmDialog`, `SettingsTabs` |
+| S20 Auth and utility | None | n/a | Field and page errors via `QuietFrame` | Redirect | Locked or inactive staff account | `QuietFrame` |
+
 ## 4. Addendum proposal: console extras for the premium design language
 
-This is a proposal to add as section 8b of `05-PREMIUM-DESIGN-LANGUAGE.md` and to apply to `apps/admin/DESIGN.md` in package CD-00. It resolves three conflicts between the existing rules.
+This is a proposal to add as section 8b of `05-PREMIUM-DESIGN-LANGUAGE.md` and to apply to `apps/admin/DESIGN.md` in package CR-00. It resolves three conflicts between the existing rules.
 
 ### 4.1 Conflicts to settle
 
@@ -459,17 +474,17 @@ This is a proposal to add as section 8b of `05-PREMIUM-DESIGN-LANGUAGE.md` and t
 
 ## 5. Work packages and waves
 
-Common to every package (as `RELEASE-2-PLAN.md` section 5): worktree `../bb-cd-NN`, branch `cd/NN-name` from current `origin/development`, own databases and ports (`AGENT-RULES.md` section 4), tests first for logic, existing components first, tokens only, no new libraries, report `docs/implementation/reports/CD-NN.md`, PR into `development`, never `main`. Checks: `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm build`, plus `pnpm test:integration` when `packages/db`, billing, refunds, tax invoicing or email are touched. Mocks come first and an area's build package does not start until its mock is approved (as R2).
+Common to every package (as `RELEASE-2-PLAN.md` section 5): worktree `../bb-cr-NN`, branch `cr/NN-name` from current `origin/development`, own databases and ports (`AGENT-RULES.md` section 4), tests first for logic, existing components first, tokens only, no new libraries, report `docs/implementation/reports/CR-NN.md`, PR into `development`, never `main`. Checks: `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm build`, plus `pnpm test:integration` when `packages/db`, billing, refunds, tax invoicing or email are touched. Mocks come first and an area's build package does not start until its mock is approved (as R2).
 
 ### 5.1 Waves
 
 | Wave | Packages | Parallel | Exit gate |
 |---|---|---|---|
-| A: design | CD-A1 to CD-A4 | All four parallel | Owner approves IA, Today and the addendum (G2), then Client 360 (G3), then the rest (G4) |
-| B: foundation | CD-00, CD-01, CD-02 | CD-00 then CD-01 in parallel with CD-02 design review; CD-02 waits for N1 merge | Patterns in `/design-system`; rail and routes cut over (G5) |
-| C: core workflows | CD-03 Today, CD-04 command bar, CD-05 client shell and Overview, CD-06 Website, CD-07 Services and Money tab, CD-08 Inbox Requests, CD-09 Enquiries and Reports | CD-03, 04, 05, 08 parallel; 06, 07 after 05; 09 after 08 | Each green against its mock |
-| D: money, compliance, system, cleanup | CD-10 Money, CD-11 Compliance, CD-12 System, CD-13 retire routes and dormant code, CD-14 states, forms, bulk and keyboard sweep | CD-10, 11, 12 parallel; 13 after owner approves the retire list (G6); 14 last | Green |
-| E: verify | CD-15 | Single | All console journeys pass; release candidate walkthrough (G8) |
+| A: design | CR-A1 to CR-A4 | All four parallel | Owner approves IA, Today and the addendum (G2), then Client 360 (G3), then the rest (G4) |
+| B: foundation | CR-00, CR-01, CR-02 | CR-00 then CR-01 in parallel with CR-02 design review; CR-02 waits for N1 merge | Patterns in `/design-system`; rail and routes cut over (G5) |
+| C: core workflows | CR-03 Today, CR-04 command bar, CR-05 client shell and Overview, CR-06 Website, CR-07 Services and Money tab, CR-08 Inbox Requests, CR-09 Enquiries and Reports | CR-03, 04, 05, 08 parallel; 06, 07 after 05; 09 after 08 | Each green against its mock |
+| D: money, compliance, system, cleanup | CR-10 Money, CR-11 Compliance, CR-12 System, CR-13 retire routes and dormant code, CR-14 states, forms, bulk and keyboard sweep | CR-10, 11, 12 parallel; 13 after owner approves the retire list (G6); 14 last | Green |
+| E: verify | CR-15 | Single | All console journeys pass; release candidate walkthrough (G8) |
 
 ### 5.2 Design packages (wave A)
 
@@ -477,35 +492,35 @@ Each writes static HTML mocks to the language file, with in-page states (new, li
 
 | Pkg | Mocks |
 |---|---|
-| CD-A1 | Shell and rail (six items), command bar overlay, Today with filters, side panel, bulk bar, keyboard help, kickoff prompt as popup and as row |
-| CD-A2 | Client workspace: Overview 360 with exceptions strip, Website tab with stepper and states, Services, Money tab, Requests and Account tabs |
-| CD-A3 | Inbox Requests with side panel, Enquiries, Reports to review, Money (Payments with Renewals lane, Invoices, Plans and offers), Compliance (four tabs), System (five tabs) |
-| CD-A4 | The addendum as a living page: `DataTable`, `RowActions`, `SidePanel`, `FilterBar`, `InlineEdit`, `Toast`, `BulkBar`, `CommandBar` with all states; written spec of keyboard map and the confirm and undo rules |
+| CR-A1 | Shell and rail (six items), command bar overlay, Today with filters, side panel, bulk bar, keyboard help, kickoff prompt as popup and as row |
+| CR-A2 | Client workspace: Overview 360 with exceptions strip, Website tab with stepper and states, Services, Money tab, Requests and Account tabs |
+| CR-A3 | Inbox Requests with side panel, Enquiries, Reports to review, Money (Payments with Renewals lane, Invoices, Plans and offers), Compliance (four tabs), System (five tabs) |
+| CR-A4 | The addendum as a living page: `DataTable`, `RowActions`, `SidePanel`, `FilterBar`, `InlineEdit`, `Toast`, `BulkBar`, `CommandBar` with all states; written spec of keyboard map and the confirm and undo rules |
 
 ### 5.3 Build packages
 
 | WP | Scope and files (indicative) | Acceptance | Tests | Depends on | Parallel with |
 |---|---|---|---|---|---|
-| CD-00 | Fold the addendum into `docs/design/redesign/05-PREMIUM-DESIGN-LANGUAGE.md` section 8b and rewrite `apps/admin/DESIGN.md` (modal rule, row height, side panel rule). Docs only plus token additions in `packages/shared/src/styles/theme.css` if needed | The three conflicts in 4.1 are resolved in the docs; no behaviour change | none new | G2 | A review |
-| CD-01 | New patterns in `packages/shared/src/ui/patterns/`: `data-table.tsx`, `filter-bar.tsx`, `side-panel.tsx`, `command-bar.tsx`, `toast.tsx`, `bulk-bar.tsx`, `row-actions.tsx`, `inline-edit.tsx`, `shortcut-help.tsx`, a `use-shortcuts` hook; entries in `/design-system` (both apps); export in `patterns/index.ts` | Each follows the addendum; keyboard, focus return, reduced motion, AA | Unit tests per pattern in `patterns.test.ts` style: render, props, keyboard, reduced motion | CD-00 | CD-02 design |
-| CD-02 | Shell and IA: `lib/console-rail.ts` (six items, `RAIL_ALIASES` updated), `components/console/{console-shell,rail,rail-nav,phone-bar}.tsx`, top bar, `lib/server/rail-counts.ts`, redirects for moved routes (`/calls`, `/projects`, `/leaving`, `/reports`, `/pricing`, `/coupons`, `/affiliates`, `/ad-results`, `/privacy-requests`, `/breaches`, `/access-log`, `/staff`, `/deliveries`, `/support/errors`). Remove the `needs` filter from menu building (guards stay in pages and actions) | Rail has six items; every old URL still lands somewhere sensible; no role variant of the menu; `RELEASE-2-SPEC.md` rail requirement met | Update `rail.test.ts`, `console-rail.test.ts`; test each redirect | CD-01, N1 merged | CD-03 start |
-| CD-03 | Today: `app/(protected)/page.tsx`, `lib/today-queue.ts`, `lib/server/today.ts`, `components/today/*`, new row kinds, filters, side panel, bulk set, keyboard | Every row in the S3 table appears when its condition is true; one primary per row; late first; filters with counts | Extend `today.test.ts` (488 lines now) and `today-queue.test.ts` for each new kind; integration tests where a `packages/db` query is added | CD-01, CD-02; consumes N1 `kickoff_prompt_state` | CD-04, CD-05, CD-08 |
-| CD-04 | Command bar: `components/console/global-search.tsx`, `lib/console-search*.ts`, `app/(protected)/search/route.ts` | Go to, Actions, Recent, prefix modes; no customer data in the Recent list on the server; search results logged as before | `console-search.test.ts` additions; component test for focus and keyboard | CD-01 | CD-03 |
-| CD-05 | Client shell and Overview: `clients/[businessId]/{layout,page}.tsx`, `lib/client-tabs.ts` (six tabs), `lib/client-next-step.ts` (all services), `parts.tsx`, exceptions strip | Tabs Overview, Website, Services, Money, Requests, Account at the URLs in 2.2; legacy tab URLs redirect; next step covers Social, Paid Ads, Monitoring | `client-tabs.test.ts`, `client-next-step.test.ts`, `page.test.ts`, `legacy-tabs.test.ts` | CD-01, CD-02 | CD-03, CD-08 |
-| CD-06 | Website tab split: `website/page.tsx`, `components/console/website-section.tsx`, `kickoff-call-section.tsx` (state only), `lib/hosting-form.ts` | Behaviour unchanged for every action (existing action tests pass untouched); Domain and hosting panel; confirm on cancel build; no duplicate kickoff button | `website-section.test.ts`, `kickoff-actions.test.ts` unchanged | CD-05 | CD-07 |
-| CD-07 | Services tab and Money tab: `services/page.tsx` (new), `billing/page.tsx` (slimmed), move `numbers-section`, `campaigns-section`, `accounts-section`, `updates-section` per CD-5 | Paid Ads figures entry works from Services; Plan and billing holds money only | Move tests with their components; `numbers-actions.test.ts` unchanged | CD-05 | CD-06 |
-| CD-08 | Inbox Requests, one list: `support/page.tsx`, `support/[ticketId]`, `support/new`, `clients/[businessId]/requests`, `requests-section.tsx`, `lib/support-staff.ts` view code | Support tickets and change requests in one list with type chips; reply, quote, close, reopen and undo; client Requests tab uses the same component | `requests-section.test.ts`, `request-actions.test.ts`, `support-admin-actions.test.ts` unchanged plus new list tests | CD-01 | CD-03, CD-05 |
-| CD-09 | Enquiries and Reports: `leads/*`, `components/enquiries/*`, `reports/*` | Send setup link behind confirm; report Send behind confirm; failed send shows Retry | `enquiry-list.test.ts` and existing | CD-08 | CD-10 |
-| CD-10 | Money: `payments/page.tsx`, `payments-needing-attention.tsx`, `invoices/*`, plans and offers tabs from `pricing`, `coupons`, `affiliates`, Acquisition from `ad-results`; Renewals lane query | Renewals lane lists past due and lapsed [Q]; refund dialog unchanged; exports logged | `client-payments.test.ts`, `pricing-admin.test.ts` unchanged; integration test for the new lane query | CD-01, CD-02 | CD-11, CD-12 |
-| CD-11 | Compliance: `access-log`, `privacy-requests`, `breaches`, Closures from `leaving`; Today and rail clock rows | Clocks appear on Today; access log filter lists every action the code writes | `deadline-clock.test.ts`, `access-log-filters.test.ts` | CD-02, CD-03 | CD-10, CD-12 |
-| CD-12 | System: Health page, `deliveries/*`, `outbox/[emailId]`, `support/errors/*`, `settings`, `staff` simplified, `lib/protection-status.ts` | One Health page; no role picker; Teams remove behind confirm | `deliveries-view.test.ts`, `system-health.test.ts`, `staff-admin.test.ts` | CD-02; consumes N3, N6 | CD-10, CD-11 |
-| CD-13 | Retire routes and dormant code after G6: `/ads`, `/deals`, `/directory`, `/geography`, `/referrals*`, `/outbox` list, `/ad-credit`, picture routes, `geo-*`, `place-ad-form`, `edit-ad-form`, `client-listing*`, `directory-only`; exported dormant server actions removed | Build still green; routes return 404; tables untouched; no migration | Delete the matching tests; `rail.test.ts` | Owner approval (G6), CD-02 | none (cleanup) |
-| CD-14 | States and forms sweep across the console: `loading.tsx`, `error.tsx` on new routes, forms keep input on rejection, every list has an empty state, keyboard map completed | As R2-10 for the console; no list without an empty state | Component tests for the states | Wave C and D | none |
-| CD-15 | Playwright console journeys at 1440, 768, 390: kickoff, build to live, request and quote, enquiry, payment exception and refund, privacy request clock, closure, command bar, keyboard; axe sweep; screenshot set; access log written for every customer-data page | Journeys from `19` phases 5 to 13 that touch the console pass; zero serious axe issues | The suite itself | All | none |
+| CR-00 | Fold the addendum into `docs/design/redesign/05-PREMIUM-DESIGN-LANGUAGE.md` section 8b and rewrite `apps/admin/DESIGN.md` (modal rule, row height, side panel rule). Docs only plus token additions in `packages/shared/src/styles/theme.css` if needed | The three conflicts in 4.1 are resolved in the docs; no behaviour change | none new | G2 | A review |
+| CR-01 | New patterns in `packages/shared/src/ui/patterns/`: `data-table.tsx`, `filter-bar.tsx`, `side-panel.tsx`, `command-bar.tsx`, `toast.tsx`, `bulk-bar.tsx`, `row-actions.tsx`, `inline-edit.tsx`, `shortcut-help.tsx`, a `use-shortcuts` hook; entries in `/design-system` (both apps); export in `patterns/index.ts` | Each follows the addendum; keyboard, focus return, reduced motion, AA | Unit tests per pattern in `patterns.test.ts` style: render, props, keyboard, reduced motion | CR-00 | CR-02 design |
+| CR-02 | Shell and IA: `lib/console-rail.ts` (six items, `RAIL_ALIASES` updated), `components/console/{console-shell,rail,rail-nav,phone-bar}.tsx`, top bar, `lib/server/rail-counts.ts`, redirects for the only URLs that change (`/calls` to `/`, `/projects` to `/clients?view=builds`) and the legacy client slugs. Every other URL is kept and only regrouped in the rail config (URL rule, section 2.2). Remove the `needs` filter from menu building (guards stay in pages and actions) | Rail has six items; every old URL still lands somewhere sensible; no role variant of the menu; `RELEASE-2-SPEC.md` rail requirement met | Update `rail.test.ts`, `console-rail.test.ts`; test each redirect | CR-01, N1 merged | CR-03 start |
+| CR-03 | Today: `app/(protected)/page.tsx`, `lib/today-queue.ts`, `lib/server/today.ts`, `components/today/*`, new row kinds, filters, side panel, bulk set, keyboard | Every row in the S3 table appears when its condition is true; one primary per row; late first; filters with counts | Extend `today.test.ts` (488 lines now) and `today-queue.test.ts` for each new kind; integration tests where a `packages/db` query is added | CR-01, CR-02; consumes N1 `kickoff_prompt_state` | CR-04, CR-05, CR-08 |
+| CR-04 | Command bar: `components/console/global-search.tsx`, `lib/console-search*.ts`, `app/(protected)/search/route.ts` | Go to, Actions, Recent, prefix modes; no customer data in the Recent list on the server; search results logged as before | `console-search.test.ts` additions; component test for focus and keyboard | CR-01 | CR-03 |
+| CR-05 | Client shell and Overview: `clients/[businessId]/{layout,page}.tsx`, `lib/client-tabs.ts` (six tabs), `lib/client-next-step.ts` (all services), `parts.tsx`, exceptions strip | Tabs Overview, Website, Services, Money, Requests, Account at the URLs in 2.2; legacy tab URLs redirect; next step covers Social, Paid Ads, Monitoring | `client-tabs.test.ts`, `client-next-step.test.ts`, `page.test.ts`, `legacy-tabs.test.ts` | CR-01, CR-02 | CR-03, CR-08 |
+| CR-06 | Website tab split: `website/page.tsx`, `components/console/website-section.tsx`, `kickoff-call-section.tsx` (state only), `lib/hosting-form.ts` | Behaviour unchanged for every action (existing action tests pass untouched); Domain and hosting panel; confirm on cancel build; no duplicate kickoff button | `website-section.test.ts`, `kickoff-actions.test.ts` unchanged | CR-05 | CR-07 |
+| CR-07 | Services tab and Money tab: `services/page.tsx` (new), `billing/page.tsx` (slimmed), move `numbers-section`, `campaigns-section`, `accounts-section`, `updates-section` per CD-5 | Paid Ads figures entry works from Services; Plan and billing holds money only | Move tests with their components; `numbers-actions.test.ts` unchanged | CR-05 | CR-06 |
+| CR-08 | Inbox Requests, one list: `support/page.tsx`, `support/[ticketId]`, `support/new`, `clients/[businessId]/requests`, `requests-section.tsx`, `lib/support-staff.ts` view code | Support tickets and change requests in one list with type chips; reply, quote, close, reopen and undo; client Requests tab uses the same component | `requests-section.test.ts`, `request-actions.test.ts`, `support-admin-actions.test.ts` unchanged plus new list tests | CR-01 | CR-03, CR-05 |
+| CR-09 | Enquiries and Reports: `leads/*`, `components/enquiries/*`, `reports/*` | Send setup link behind confirm; report Send behind confirm; failed send shows Retry | `enquiry-list.test.ts` and existing | CR-08 | CR-10 |
+| CR-10 | Money: `payments/page.tsx`, `payments-needing-attention.tsx`, `invoices/*`, plans and offers tabs from `pricing`, `coupons`, `affiliates`, Acquisition from `ad-results`; Renewals lane query | Renewals lane lists past due and lapsed [Q]; refund dialog unchanged; exports logged | `client-payments.test.ts`, `pricing-admin.test.ts` unchanged; integration test for the new lane query | CR-01, CR-02 | CR-11, CR-12 |
+| CR-11 | Compliance: `access-log`, `privacy-requests`, `breaches`, Closures from `leaving`; Today and rail clock rows | Clocks appear on Today; access log filter lists every action the code writes | `deadline-clock.test.ts`, `access-log-filters.test.ts` | CR-02, CR-03 | CR-10, CR-12 |
+| CR-12 | System: Health page, `deliveries/*`, `outbox/[emailId]`, `support/errors/*`, `settings`, `staff` simplified, `lib/protection-status.ts` | One Health page; no role picker; Teams remove behind confirm | `deliveries-view.test.ts`, `system-health.test.ts`, `staff-admin.test.ts` | CR-02; consumes N3, N6 | CR-10, CR-11 |
+| CR-13 | Retire routes and dormant code after G6: `/ads`, `/deals`, `/directory`, `/geography`, `/referrals*`, `/outbox` list, `/ad-credit`, picture routes, `geo-*`, `place-ad-form`, `edit-ad-form`, `directory-only` (candidates; each gets an importer search at G6, and `client-listing*` and `geocode.ts` are excluded until proven unused: `client-listing` is imported by live client pages, and `geocode` only by the geography actions); exported dormant server actions removed | Build still green; routes return 404; tables untouched; no migration | Delete the matching tests; `rail.test.ts` | Owner approval (G6), CR-02 | none (cleanup) |
+| CR-14 | States and forms sweep across the console: `loading.tsx`, `error.tsx` on new routes, forms keep input on rejection, every list has an empty state, keyboard map completed | As R2-10 for the console; no list without an empty state | Component tests for the states | Wave C and D | none |
+| CR-15 | Playwright console journeys at 1440, 768, 390: kickoff, build to live, request and quote, enquiry, payment exception and refund, privacy request clock, closure, command bar, keyboard; axe sweep; screenshot set; access log written for every customer-data page | Journeys from `19` phases 5 to 13 that touch the console pass; zero serious axe issues | The suite itself | All | none |
 
 ### 5.4 Parallelism summary
 
-At most five packages run at once. The hot shared files are `lib/console-rail.ts` and `console-shell.tsx` (CD-02 owns them; everyone else rebases after it merges), `lib/today-queue.ts` and `lib/server/today.ts` (CD-03 owns them), `lib/client-tabs.ts` (CD-05 owns it), and `packages/shared/src/ui/patterns/` (CD-01 owns it). Other packages add files, not edits, to these.
+At most five packages run at once. The hot shared files are `lib/console-rail.ts` and `console-shell.tsx` (CR-02 owns them; everyone else rebases after it merges), `lib/today-queue.ts` and `lib/server/today.ts` (CR-03 owns them), `lib/client-tabs.ts` (CR-05 owns it), and `packages/shared/src/ui/patterns/` (CR-01 owns it). Other packages add files, not edits, to these.
 
 ### 5.5 Interplay with the notifications work
 
@@ -513,15 +528,15 @@ Source: `docs/notifications/03-build-plan.md` on `origin/claude/notifications-re
 
 | Notifications package | Touches | What this plan does |
 |---|---|---|
-| N1 foundation (schema 0229, `notify()`, stored bell, console bell in the shell) | `console-shell.tsx`, bell | Land N1 first (the owner merges N1 before the rest, per the build plan). CD-02 rebases on it and keeps the bell slot in the new top bar. No console redesign package adds a migration |
-| N2 kickoff (D33): remount `KickoffPromptPopup` in `(protected)/layout.tsx`, remove the duplicate Today row, 15 minute repeat from `kickoff_prompt_state` | the popup files, `today/kickoff-prompt.tsx`, `calls/*` | N2 lands before CD-03 and CD-06. CD-03 consumes the single prompt; CD-06 removes remaining buttons only if N2 has not. The layout mount is never moved by CD-02 |
-| N3 email queue and retries | deliveries | CD-12 builds the Health and Emails views on top; until N3 merges the view shows today's two in-process tries (`brevo.ts`) |
-| N4 push | service worker, opt-in | Console opt-in lives in System > Access or the account menu (CD-A1 mock). No other UI work |
-| N5 events | Today rows for failed payment, lapse, unapplied payment | CD-03 and N5 share these rows. Rule: CD-03 builds the row and its query; N5 only calls `notify()`. Avoid two implementations |
-| N6 webhooks and ops (replay, Teams retry, timers) | System | CD-12 shows replay and retry state; N6 supplies the data |
-| N7 social receiver | stored social events | CD-07 Social card and CD-03 Social alert row read what N7 stores. Both wait for N7 or ship hidden |
+| N1 foundation (schema 0229, `notify()`, stored bell, console bell in the shell) | `console-shell.tsx`, bell | Land N1 first (the owner merges N1 before the rest, per the build plan). CR-02 rebases on it and keeps the bell slot in the new top bar. No console redesign package adds a migration |
+| N2 kickoff (D33): remount `KickoffPromptPopup` in `(protected)/layout.tsx`, remove the duplicate Today row, 15 minute repeat from `kickoff_prompt_state` | the popup files, `today/kickoff-prompt.tsx`, `calls/*` | N2 lands before CR-03 and CR-06. CR-03 consumes the single prompt; CR-06 removes remaining buttons only if N2 has not. The layout mount is never moved by CR-02 |
+| N3 email queue and retries | deliveries | CR-12 builds the Health and Emails views on top; until N3 merges the view shows today's two in-process tries (`brevo.ts`) |
+| N4 push | service worker, opt-in | Console opt-in lives in System > Access or the account menu (CR-A1 mock). No other UI work |
+| N5 events | `notify()` calls for failed payment, lapse, unapplied payment. The build plan says the Today rows already exist, and the code agrees (`lib/server/today.ts`) | CR-03 only restyles and filters those rows and adds the new kinds in section 3 S3. N5 adds no Today rows of its own. Avoid two implementations |
+| N6 webhooks and ops (replay, Teams retry, timers, failure alerts for erase and sign-up reminder) | System, Today rows for a missing Teams address | CR-12 shows replay and retry state; N6 supplies the data and the alerts. The "last ran" display (CD-20) stays optional and must not duplicate N6's alerts |
+| N7 social receiver | stored social events | CR-07 Social card and CR-03 Social alert row read what N7 stores. Both wait for N7 or ship hidden |
 
-Files both streams edit and the owner of each: `console-shell.tsx` (CD-02 after N1), `(protected)/layout.tsx` (N2), `lib/server/today.ts` (CD-03, with N5 adding `notify()` calls in other files), `lib/server/rail-counts.ts` (CD-02), `components/console/kickoff-prompt-popup.tsx` (N2, CD only restyles through patterns). Each PR states what it is stacked on.
+Files both streams edit and the owner of each: `console-shell.tsx` (CR-02 after N1), `(protected)/layout.tsx` (N2), `lib/server/today.ts` (CR-03, with N5 adding `notify()` calls in other files), `lib/server/rail-counts.ts` (CR-02), `components/console/kickoff-prompt-popup.tsx` (N2, CD only restyles through patterns). Each PR states what it is stacked on.
 
 ## 6. Gates and estimate
 
@@ -530,13 +545,13 @@ Files both streams edit and the owner of each: `console-shell.tsx` (CD-02 after 
 | Gate | When | What the owner approves |
 |---|---|---|
 | G1 | Now | This plan, and answers to the open decisions that block mocks: CD-1, CD-2, CD-4, CD-5, CD-19 |
-| G2 | After CD-A1 and CD-A4 | The six item rail, Today, kickoff prompt, command bar, addendum (including the three conflict rulings) |
-| G3 | After CD-A2 | Client workspace tabs and the 360 |
-| G4 | After CD-A3 | Inbox, Money, Compliance, System mocks |
-| G5 | After CD-02 | Rail and redirects live on `development` |
-| G6 | Before CD-13 | The exact list of routes, actions and components to delete, with the production data check for CD-5 |
+| G2 | After CR-A1 and CR-A4 | The six item rail, Today, kickoff prompt, command bar, addendum (including the three conflict rulings) |
+| G3 | After CR-A2 | Client workspace tabs and the 360 |
+| G4 | After CR-A3 | Inbox, Money, Compliance, System mocks |
+| G5 | After CR-02 | Rail and redirects live on `development` |
+| G6 | Before CR-13 | The exact list of routes, actions and components to delete, with the production data check for CD-5 |
 | G7 | After each wave | Green checks and screenshots at 1440 and 390 |
-| G8 | After CD-15 | Browser walkthrough, then the release PR. The owner enables any new timer on the server |
+| G8 | After CR-15 | Browser walkthrough, then the release PR. The owner enables any new timer on the server |
 | Copy | With each report | All new staff wording listed in the package report |
 
 ### 6.2 Agent run estimate
@@ -546,33 +561,33 @@ A run is one agent session. Counts assume a review and fix pass per build packag
 | Item | Runs |
 |---|---|
 | Wave A: four design agents, plus one revision round each after owner comments | 8 |
-| CD-00 | 1 |
-| CD-01 (large, nine patterns) | 3 |
-| CD-02 | 2 |
-| CD-03 Today (new queries, large) | 3 |
-| CD-04 | 1 |
-| CD-05 | 2 |
-| CD-06 | 2 |
-| CD-07 | 2 |
-| CD-08 | 2 |
-| CD-09 | 2 |
-| CD-10 | 2 |
-| CD-11 | 2 |
-| CD-12 | 2 |
-| CD-13 | 1 |
-| CD-14 | 2 |
-| CD-15 | 3 |
+| CR-00 | 1 |
+| CR-01 (large, nine patterns) | 3 |
+| CR-02 | 2 |
+| CR-03 Today (new queries, large) | 3 |
+| CR-04 | 1 |
+| CR-05 | 2 |
+| CR-06 | 2 |
+| CR-07 | 2 |
+| CR-08 | 2 |
+| CR-09 | 2 |
+| CR-10 | 2 |
+| CR-11 | 2 |
+| CR-12 | 2 |
+| CR-13 | 1 |
+| CR-14 | 2 |
+| CR-15 | 3 |
 | Rebase and conflict runs against notifications packages | 3 |
-| Diff review by Claude for CD-01, CD-02, CD-03, CD-10 (billing adjacent) | 4 |
+| Diff review by Claude for CR-01, CR-02, CR-03, CR-10 (billing adjacent) | 4 |
 | **Total** | **about 47, plausible range 40 to 60** |
 
-Critical path (longest dependency chain): CD-A1 and G2, CD-00, CD-01, CD-02 (after N1), CD-03 or CD-05, CD-06, CD-14, CD-15. About six sequential steps after the mocks are approved.
+Critical path (longest dependency chain): CR-A1 and G2, CR-00, CR-01, CR-02 (after N1), CR-03 or CR-05, CR-06, CR-14, CR-15. About six sequential steps after the mocks are approved.
 
 ### 6.3 Risks
 
 - Rail and route moves break emailed links and bookmarks. Keep redirects (CD-14) and check `notice` links in `lib/client-tabs.ts` ("Which tab shows each notice an action redirects with").
 - Merge conflicts with notifications (5.5). Mitigation: order above and the shared-file owners.
-- Deleting dormant code touches actions that are still exported. Mitigation: G6 and CD-13 ships alone.
+- Deleting dormant code touches actions that are still exported. Mitigation: G6 and CR-13 ships alone.
 - New Today rows need new queries; a slow queue hurts every session. `rail-counts.ts` already reads many tables on every render (audit proposal P15). Mitigation: cache per request, compute only the counts shown.
 - Mocks that invent. Mitigation: the no-source rule and a checklist item in each review.
 - Removing roles in the UI while server guards remain. Mitigation: CD-4 keeps guards and treats the account as admin.
@@ -595,7 +610,7 @@ Each has a recommended default. Existing decisions that still gate parts of this
 
 | ID | Decision | Recommended default |
 |---|---|---|
-| CD-1 | Does Calls stay a rail item? | No. Calls become a Today filter and a side panel; the kickoff prompt covers the action |
+| CD-1 | Does Calls stay a rail item? | No. Calls become the Calls card on Today; the kickoff prompt covers the action; `/calls` redirects to `/` |
 | CD-2 | Delete the dormant routes `/ads`, `/deals`, `/directory`, `/geography` with their exported server actions and components? (Root `CLAUDE.md` says ask first.) | Yes, delete code, keep every table and column. Reason: the exported actions are a risk, the pages are unreachable |
 | CD-3 | `/ad-credit` and the coupons screen | Remove Ad credit once no stored credit exists. Keep Coupons while any coupon is live; add the owner offer rule to the screen header |
 | CD-4 | Roles after one account | Hide every role picker and `needs`-based menu filtering now, keep the schema and server guards unchanged, treat the account as admin. Retire roles from the data model only in a later release with its own migration |
@@ -611,7 +626,8 @@ Each has a recommended default. Existing decisions that still gate parts of this
 | CD-14 | Legacy URL redirects | Keep until a check of emailed and notice links shows none points to them (about 90 days) |
 | CD-15 | Report review window on Today | Rows appear from the 1st to the 5th of the month, or while any draft is unsent |
 | CD-16 | Social status in the workspace | Show last post, last failure and connected channels from social-auto events once N7 lands; hide the card until then |
-| CD-17 | Keep the tab URL `/billing` with the label "Money" | Yes. URLs do not change for a relabel (`DESIGN.md`) |
+| CD-17 | Keep the tab URL `/billing` with the label "Money", and keep every URL not listed in the URL rule | Yes (URL rule, section 2.2) |
 | CD-18 | Search scope | Keep six kinds; add phone and domain search only if the owner asks |
 | CD-19 | The Release 2 console mocks and `notes-console.md` | Discard as the base. Redo under the no data source, no element rule |
-| CD-20 | Show whether the four timers run (erase, hosting, first-payment check, reports) | Show a "last ran" time only where a run record already exists. If none exists, the owner confirms the timers are enabled on the server before this release (R2 owner action). A new run record is a schema change and is not assumed |
+| CD-20 | Show whether the four timers run (erase, hosting, first-payment check, reports), beyond the failure alerts N6 adds | Show a "last ran" time only where a run record already exists. If none exists, the owner confirms the timers are enabled on the server before this release (R2 owner action). A new run record is a schema change and is not assumed |
+| CD-21 | Two report systems: the drafted reports under `/reports` and the per-client "report link" form in Plan and billing (`client-workspace-review.md`) | Keep the drafted reports as the one path; the link form is part of the manual Social path and follows CD-5 |
