@@ -93,7 +93,7 @@ describe("notify against the database", () => {
     await notify(input);
     expect(await emails()).toEqual([expect.objectContaining({ to_address: "team@brandbasket.in", subject: "Did the kickoff call with Rao Dental Care happen?" })]);
     const rows = await dbs.owner.db.select().from(notifications);
-    expect(rows).toEqual([expect.objectContaining({ audience: "staff", userId: null, businessId: null, link: "/calls", listed: true })]);
+    expect(rows).toEqual([expect.objectContaining({ audience: "staff", userId: null, businessId: null, link: "/", listed: true })]);
     expect(push.sent).toHaveLength(1);
   });
 
