@@ -1,9 +1,10 @@
 "use server";
 // A "use server" module: every export is a public action endpoint. Only actions belong here.
 
-import { markNotificationsSeen, withTenantScope } from "@brandbasket/db";
+import { markNotificationRead, markNotificationsSeen, withTenantScope } from "@brandbasket/db";
 import { headers } from "next/headers";
 import { redirect, unstable_rethrow } from "next/navigation";
+import { z } from "zod";
 import { actionFail, actionOk, type ActionResult } from "@/lib/action-result";
 import { getAuth } from "@/lib/auth";
 import { getAppDb } from "@/lib/db";
@@ -24,6 +25,23 @@ export async function markNotificationsSeenAction(): Promise<ActionResult> {
     unstable_rethrow(error);
     reportError(error, { area: "shell.notifications.seen" });
     return actionFail("We could not mark your notifications as read. They will show as new until you open them again.");
+  }
+}
+
+const notificationIdSchema = z.string().uuid();
+
+/** One notice in the bell was opened: it stops counting as new. The person and business come from the session, so another person's id changes nothing. */
+export async function markNotificationReadAction(notificationId: string): Promise<ActionResult> {
+  const customer = await requireCustomer();
+  const parsed = notificationIdSchema.safeParse(notificationId);
+  if (!parsed.success) return actionFail("We could not find that notification.");
+  try {
+    await withTenantScope(getAppDb(), customer.tenant, (tx) => markNotificationRead(tx, customer.user.id, parsed.data));
+    return actionOk();
+  } catch (error) {
+    unstable_rethrow(error);
+    reportError(error, { area: "shell.notifications.read" });
+    return actionFail("We could not mark that notification as read. It will show as new until you open it again.");
   }
 }
 

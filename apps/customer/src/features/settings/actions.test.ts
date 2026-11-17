@@ -33,7 +33,8 @@ vi.mock("next/navigation", () => ({
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 vi.mock("next/headers", () => ({ headers: vi.fn(async () => new Headers({ cookie: "session" })) }));
 vi.mock("@brandbasket/db", () => ({
-  NOTIFICATION_TOPICS: ["new_enquiry", "needs_approval", "request_reply", "billing", "monthly_report", "product_news"],
+  NOTIFICATION_TOPICS: ["new_enquiry", "needs_approval", "request_reply", "billing", "monthly_report", "product_news", "calls", "social"],
+  NOTIFICATION_CHANNELS: ["bell", "email", "push"],
   saveNominee: mocks.saveNominee,
   clearNominee: mocks.clearNominee,
   setNotificationPreference: mocks.setPreference,
@@ -130,20 +131,26 @@ describe("revokeOtherSessionsAction", () => {
 
 describe("setNotificationAction", () => {
   it("stores the person's own choice for their business, from the session", async () => {
-    expect(await setNotificationAction("billing", false)).toEqual({ ok: true });
+    expect(await setNotificationAction("billing", "email", false)).toEqual({ ok: true });
     expect(mocks.withTenantScope).toHaveBeenCalledWith({ name: "app" }, TENANT, expect.any(Function));
-    expect(mocks.setPreference).toHaveBeenCalledWith({ name: "tx" }, "session-user", "billing", false);
+    expect(mocks.setPreference).toHaveBeenCalledWith({ name: "tx" }, "session-user", "billing", "email", false);
   });
 
-  it("refuses a topic that does not exist and a value that is not a switch position", async () => {
-    expect(await setNotificationAction("whatsapp_everything", true)).toMatchObject({ ok: false });
-    expect(await setNotificationAction("billing", "yes" as unknown as boolean)).toMatchObject({ ok: false });
+  it("stores a choice on the bell or push as well", async () => {
+    await setNotificationAction("calls", "push", true);
+    expect(mocks.setPreference).toHaveBeenCalledWith({ name: "tx" }, "session-user", "calls", "push", true);
+  });
+
+  it("refuses a topic or channel that does not exist and a value that is not a switch position", async () => {
+    expect(await setNotificationAction("whatsapp_everything", "email", true)).toMatchObject({ ok: false });
+    expect(await setNotificationAction("billing", "sms", true)).toMatchObject({ ok: false });
+    expect(await setNotificationAction("billing", "email", "yes" as unknown as boolean)).toMatchObject({ ok: false });
     expect(mocks.setPreference).not.toHaveBeenCalled();
   });
 
   it("says so, and reports, when the write fails", async () => {
     mocks.setPreference.mockRejectedValue(new Error("down"));
-    expect(await setNotificationAction("billing", true)).toMatchObject({ ok: false });
+    expect(await setNotificationAction("billing", "email", true)).toMatchObject({ ok: false });
     expect(mocks.report).toHaveBeenCalledOnce();
   });
 });
