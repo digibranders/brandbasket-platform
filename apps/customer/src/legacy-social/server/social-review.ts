@@ -9,6 +9,7 @@ import type { CarouselDetail, CarouselSummary } from "@/legacy-social/lib/social
 import { CHANNEL_PLATFORMS, type ChannelPlatform } from "@/legacy-social/lib/social/auto";
 import type { AutoPostingState } from "@/legacy-social/lib/social/auto-posting";
 import { renewalDay } from "@/legacy-social/lib/social/plan-window";
+import { addDays } from "@/legacy-social/lib/social/week-days";
 import { addableNetworks, type PostingDays } from "@/legacy-social/lib/social/schedule";
 import { loadAutoPosting, loadBatches, loadCarousel, loadCarouselList, loadChannels, loadPictureLimits, loadPosters, loadSchedule, loadSiteJobs, loadTopicRequests, loadTopics, loadWorkspaceFacts, socialAutoSettings, type PictureLimits } from "./social-auto";
 
@@ -115,7 +116,8 @@ export async function loadSocialReview(customer: Pick<CustomerContext, "business
     carousel,
     weeklyCarousel: carouselList.weekly,
     canMakeCarousel: facts.website !== null && channels.length > 0,
-    renewsOn: renewalDay(customer.billing.subscription?.paidThroughAt ?? null, (at) => localDateIn(BRAND_TIME_ZONE, at)),
+    // Without a paid period on record, the plan's own last day decides where the month ends.
+    renewsOn: renewalDay(customer.billing.subscription?.paidThroughAt ?? null, (at) => localDateIn(BRAND_TIME_ZONE, at)) ?? (written.plan?.endsOn == null ? null : addDays(written.plan.endsOn, 1)),
     unavailable: failed,
   };
 }
