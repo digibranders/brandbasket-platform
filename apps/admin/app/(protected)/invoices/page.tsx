@@ -61,7 +61,7 @@ interface InvoicesPageProps {
  * invoice shows up here instead of only in a log (D15). Tables, as the console's lists are (DESIGN.md).
  */
 export default async function InvoicesPage({ searchParams }: InvoicesPageProps): Promise<ReactElement> {
-  const { user, staff: viewer } = await requireStaffCan("money");
+  const { user } = await requireStaffCan("money");
   const params = await searchParams;
   const month = resolveRegisterMonth(params.month, new Date());
   const range = month === null ? null : monthRange(month);
@@ -128,7 +128,7 @@ export default async function InvoicesPage({ searchParams }: InvoicesPageProps):
           </>
         }
       />
-      <SectionTabs role={viewer.role} page="/invoices" />
+      <SectionTabs page="/invoices" />
 
       <Section title={`Financial year ${year.label}`} aside={`${plural(yearCount, "invoice")}, ${registerMoney(yearCents)}`} className="mt-6">
         <FilterPills

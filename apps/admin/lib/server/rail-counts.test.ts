@@ -1,14 +1,14 @@
 import { countLeadsToContact, countSupportQueues } from "@brandbasket/db";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { countFailedDeliveries24h } from "./deliveries";
-import { readPaymentsCount } from "./payments-count";
+import { readMoneyCount } from "./money-count";
 import { countOrNothing, readRailCounts } from "./rail-counts";
 import { countTodayItems } from "./today";
 
 vi.mock("server-only", () => ({}));
 vi.mock("./db", () => ({ getStaffDb: () => ({ name: "staff-db" }) }));
 vi.mock("./today", () => ({ countTodayItems: vi.fn() }));
-vi.mock("./payments-count", () => ({ readPaymentsCount: vi.fn() }));
+vi.mock("./money-count", () => ({ readMoneyCount: vi.fn() }));
 vi.mock("./deliveries", () => ({ countFailedDeliveries24h: vi.fn() }));
 vi.mock("@brandbasket/db", async () => {
   const actual = await vi.importActual<typeof import("@brandbasket/db")>("@brandbasket/db");
@@ -23,7 +23,7 @@ beforeEach(() => {
   vi.mocked(countTodayItems).mockResolvedValue(5);
   vi.mocked(countLeadsToContact).mockResolvedValue(2);
   vi.mocked(countSupportQueues).mockResolvedValue({ needsReply: 3, needsReplyOverADay: 1, waitingOnClient: 2, done: 58 });
-  vi.mocked(readPaymentsCount).mockResolvedValue(2);
+  vi.mocked(readMoneyCount).mockResolvedValue(2);
   vi.mocked(countFailedDeliveries24h).mockResolvedValue(3);
   vi.spyOn(console, "error").mockImplementation(() => undefined);
 });
@@ -54,7 +54,7 @@ describe("readRailCounts", () => {
 
   it("leaves the payments count and the flagged payments out of the Today count for a role without money", async () => {
     expect(await readRailCounts("support")).toEqual({ today: 5, leads: 2, requests: 3, deliveries: 3 });
-    expect(readPaymentsCount).not.toHaveBeenCalled();
+    expect(readMoneyCount).not.toHaveBeenCalled();
     expect(countTodayItems).toHaveBeenCalledWith(false, false, false);
   });
 

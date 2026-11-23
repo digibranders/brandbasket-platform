@@ -1,4 +1,4 @@
-import { indianDate } from "@brandbasket/billing";
+import { indianDate } from "@brandbasket/billing/invoice-number";
 import { gstStateCodeOf } from "@brandbasket/billing/gst-states";
 import type { MissingTaxInvoice, TaxInvoice } from "@brandbasket/db";
 import type { documentSeries, gstSummary } from "@brandbasket/shared/lib/billing/gst-summary";

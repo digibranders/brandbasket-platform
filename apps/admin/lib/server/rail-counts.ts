@@ -5,7 +5,7 @@ import { errorLogInfo } from "@brandbasket/shared/server/error-log-info";
 import type { RailCountKey, RailCounts } from "@/lib/console-rail";
 import { getStaffDb } from "./db";
 import { countFailedDeliveries24h } from "./deliveries";
-import { readPaymentsCount } from "./payments-count";
+import { readMoneyCount } from "./money-count";
 import { countTodayItems } from "./today";
 
 /** One count, or nothing when it cannot be read: the failure is logged and only that count is left off the rail. */
@@ -27,7 +27,7 @@ export async function readRailCounts(role: StaffRole): Promise<RailCounts> {
     countOrNothing("today", () => countTodayItems(canSeeMoney, staffCan(role, "integrations"), staffCan(role, "oversight"))),
     countOrNothing("leads", () => countLeadsToContact(db)),
     countOrNothing("requests", async () => (await countSupportQueues(db)).needsReply),
-    canSeeMoney ? countOrNothing("payments", () => readPaymentsCount(now)) : Promise.resolve(undefined),
+    canSeeMoney ? countOrNothing("payments", () => readMoneyCount(now)) : Promise.resolve(undefined),
     countOrNothing("deliveries", () => countFailedDeliveries24h(now)),
   ]);
   const read: readonly (readonly [RailCountKey, number | undefined])[] = [
