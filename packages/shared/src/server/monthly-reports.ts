@@ -23,6 +23,7 @@ import { REPORT_CONTENT_VERSION, reportContentSchema, type ReportContent } from 
 import { monthName, monthRange, parseMonthKey, type MonthKey } from "../lib/reports/period";
 import { REPORT_SERVICE_TITLES } from "../lib/reports/services";
 import { emailPreferenceAllows } from "./email-preference";
+import { notifyEvent } from "./notify-event";
 import { reportPdfStorageKey } from "./media-keys";
 import type { MediaStorage } from "./media-storage";
 import { renderReportPdf } from "./report-pdf";
@@ -218,6 +219,8 @@ export async function sendReport(db: Database, deps: SendReportDeps, input: { re
     await setReportPdfKey(db, { id: report.id, now: input.now });
     report = await moveReport(db, { id: report.id, to: "sent", staffId: input.staffId, now: input.now });
   }
+  // The bell and push, once per report (the email below is the old sender, kept, and a resend adds no notice).
+  await notifyEvent(db, { event: "account.monthly_report", audience: { kind: "customer", businessId: report.businessId }, dedupeKey: report.id, data: { month } });
   return { report, email: await emailOwner(db, deps, report, month, content.data, details.owner) };
 }
 

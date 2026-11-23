@@ -1,4 +1,4 @@
-import { KICKOFF_LINES } from "./notification-copy-bell";
+import { EVENT_LINES, KICKOFF_LINES } from "./notification-copy-bell";
 import type { CopyModule, EmailCopy } from "./notification-events";
 
 /*
@@ -34,4 +34,18 @@ export const EMAIL_COPY: CopyModule<EmailCopy> = {
     paragraphs: [KICKOFF_LINES.ended(businessName)],
     button: { label: "Open Calls", link: STAFF_CALLS },
   }),
+  // N5. Only the events whose email goes through notify(); the others keep their own templates in packages/email.
+  "billing.plan_lapsed": () => ({
+    subject: EVENT_LINES.planLapsed,
+    paragraphs: [`${EVENT_LINES.planLapsed}.`, `${EVENT_LINES.planLapsedBody}.`],
+    button: { label: "Pay now", link: "/billing/payment" },
+  }),
+  "billing.unapplied_payment": () => ({
+    subject: EVENT_LINES.unappliedPayment,
+    paragraphs: [`${EVENT_LINES.unappliedPayment}.`, `${EVENT_LINES.unappliedPaymentBody}.`],
+    button: { label: "Open billing", link: "/billing" },
+  }),
+  "website.started": () => ({ subject: EVENT_LINES.started, paragraphs: [`${EVENT_LINES.started}.`], button: { label: "See progress", link: "/website" } }),
+  "website.approval_received": () => ({ subject: "We received your approval", paragraphs: [`${EVENT_LINES.approvalReceived}.`], button: { label: "Open your website", link: "/website" } }),
+  "account.closure": () => ({ subject: EVENT_LINES.closure, paragraphs: [`${EVENT_LINES.closure}.`, `${EVENT_LINES.closureBody}.`] }),
 };

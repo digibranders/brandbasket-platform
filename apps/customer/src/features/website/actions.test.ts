@@ -2,6 +2,7 @@ import { ProjectNotAwaitingResponseError, RevisionRoundsUsedUpError, SupportQuer
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { requireWebsite } from "@/lib/guards";
 import { reportError } from "@/lib/report";
+import { notifyEvent } from "@brandbasket/shared/server/notify-event";
 import { notifyTeamPreviewResponse, sendFeedbackTicketAlert, sendPreviewChangesReceived } from "./alerts";
 import { approvePreviewAction, sendPreviewFeedbackAction } from "./actions";
 import { VIEWER_MESSAGE } from "./rules/notices";
@@ -32,6 +33,7 @@ vi.mock("next/navigation", () => ({
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 vi.mock("@/lib/guards", () => ({ requireWebsite: vi.fn() }));
 vi.mock("@/lib/report", () => ({ reportError: vi.fn() }));
+vi.mock("@brandbasket/shared/server/notify-event", () => ({ notifyEvent: vi.fn(async () => undefined) }));
 vi.mock("./alerts", () => ({ notifyTeamPreviewResponse: vi.fn(), sendFeedbackTicketAlert: vi.fn(), sendPreviewChangesReceived: vi.fn() }));
 
 interface ProjectRow {
@@ -151,12 +153,15 @@ describe("approvePreviewAction", () => {
     expect(project.status).toBe("approved");
     expect(notifyTeamPreviewResponse).toHaveBeenCalledWith("approve", { id: BUSINESS_ID, name: "Apex" });
     expect(requireWebsite).toHaveBeenCalledWith({ write: true });
+    expect(notifyEvent).toHaveBeenCalledTimes(1);
+    expect(notifyEvent).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ event: "website.approval_received", audience: { kind: "customer", businessId: BUSINESS_ID } }));
   });
 
   it("says there is no preview waiting on a second press", async () => {
     project = { ...project, status: "approved" };
     expect(await redirectOf(approvePreviewAction())).toBe("/website?response=not-ready");
     expect(notifyTeamPreviewResponse).not.toHaveBeenCalled();
+    expect(notifyEvent).not.toHaveBeenCalled();
   });
 
   it("refuses a viewer, because the move runs on the staff connection", async () => {
@@ -176,6 +181,8 @@ describe("sendPreviewFeedbackAction", () => {
     expect(vi.mocked(sendFeedbackTicketAlert).mock.calls[0]?.[0]).toMatchObject({ subject: "Preview feedback, round 1: Make the logo bigger on every page" });
     expect(sendPreviewChangesReceived).toHaveBeenCalledWith(expect.objectContaining({ round: 1, rounds: 2 }));
     expect(notifyTeamPreviewResponse).toHaveBeenCalledWith("revisions", { id: BUSINESS_ID, name: "Apex" });
+    expect(notifyEvent).toHaveBeenCalledTimes(1);
+    expect(notifyEvent).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ event: "website.changes_sent", dedupeKey: "ticket-1" }));
   });
 
   it("leaves no orphan ticket and sends no alert for the loser of two racing sends", async () => {
@@ -187,6 +194,7 @@ describe("sendPreviewFeedbackAction", () => {
     expect(project.revisionRoundsGranted).toBe(1);
     expect(sendFeedbackTicketAlert).toHaveBeenCalledTimes(1);
     expect(sendPreviewChangesReceived).toHaveBeenCalledTimes(1);
+    expect(notifyEvent).toHaveBeenCalledTimes(1);
   });
 
   it("writes nothing when the last round is taken inside the transaction", async () => {

@@ -207,10 +207,10 @@ describe("notify, a customer event", () => {
 
   it("skips a channel that has no wording yet and says so, still recording the ledger", async () => {
     const { notify, rows, emails, push } = setup();
-    const result = await notify({ event: "billing.renewal_upcoming", audience: CUSTOMER, dedupeKey: "r1", data: {} });
+    const result = await notify({ event: "social.week_lapsed", audience: CUSTOMER, dedupeKey: "r1", data: {} });
     expect(emails).toEqual([]);
     expect(push.sent).toEqual([]);
-    expect(rows).toEqual([expect.objectContaining({ listed: false, title: "billing.renewal_upcoming" })]);
+    expect(rows).toEqual([expect.objectContaining({ listed: false, title: "social.week_lapsed" })]);
     expect(result.recipients[0]?.skipped).toEqual(expect.arrayContaining([{ channel: "bell", reason: "no_wording" }, { channel: "email", reason: "no_wording" }]));
   });
 

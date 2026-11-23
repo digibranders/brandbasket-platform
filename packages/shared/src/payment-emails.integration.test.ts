@@ -187,7 +187,7 @@ describe("sendPaymentReceipt", () => {
 });
 
 describe("sendPaymentFailed", () => {
-  const FAILED = { amountCents: 299_900, currency: "INR", chargeDescription: null } as const;
+  const FAILED = { providerPaymentId: "pay_failed_1", amountCents: 299_900, currency: "INR", chargeDescription: null } as const;
 
   it("tells a customer whose plan is still paid for the date it runs to, and links to Plan and billing", async () => {
     const { payment } = await payFirst(await openSubscription(services), services);
@@ -228,28 +228,12 @@ describe("sendPaymentFailed", () => {
     expect(outcomes).toEqual(["recorded", "already-recorded"]);
   });
 
-  it("sends nothing when the owner turned billing emails off, and still sends the receipt", async () => {
+  it("still emails when the owner turned billing emails off: a failed payment is mandatory", async () => {
     await dbs.owner.db.insert(notificationPreferences).values({ userId: "user-rao-dental", businessId, topic: "billing", email: false });
-    const { payment } = await payFirst(await openSubscription(services), services);
+    await payFirst(await openSubscription(services), services);
 
     await sendPaymentFailed(dbs.staff.db, deps(), { businessId, ...FAILED }, PAID_AT);
-    expect(sent).toHaveLength(0);
-
-    await sendPaymentReceipt(dbs.staff.db, deps(), payment.id);
     expect(sent).toHaveLength(1);
-    expect(sent[0]).toMatchObject({ template: "payment-received" });
-  });
-
-  it("sends the email anyway when the preference cannot be read", async () => {
-    await payFirst(await openSubscription(services), services);
-    await execSql(dbs.owner, "alter table notification_preferences rename to notification_preferences_away");
-    try {
-      await sendPaymentFailed(dbs.staff.db, deps(), { businessId, ...FAILED }, PAID_AT);
-    } finally {
-      await execSql(dbs.owner, "alter table notification_preferences_away rename to notification_preferences");
-    }
-    expect(sent).toHaveLength(1);
-    expect(console.error).toHaveBeenCalledWith("[payment-email] Could not read the email preference, sending anyway.", expect.anything());
   });
 
   it("still sends when the owner turned off a different topic", async () => {

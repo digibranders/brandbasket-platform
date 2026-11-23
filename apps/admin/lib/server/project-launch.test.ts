@@ -1,3 +1,4 @@
+import { notifyEvent } from "@brandbasket/shared/server/notify-event";
 import {
   findClientDetail,
   LAUNCH_CHECK_KEYS,
@@ -22,6 +23,7 @@ import {
 } from "./project-launch";
 
 vi.mock("server-only", () => ({}));
+vi.mock("@brandbasket/shared/server/notify-event", () => ({ notifyEvent: vi.fn(async () => undefined) }));
 vi.mock("@brandbasket/db", async () => {
   const actual = await vi.importActual<typeof import("@brandbasket/db")>("@brandbasket/db");
   return {
@@ -96,6 +98,13 @@ beforeEach(() => {
 });
 
 describe("launchProject", () => {
+  it("notifies the website live once, whether or not the owner has an email address", async () => {
+    mockedFindClient.mockResolvedValue(clientReadyToLaunch({ ownerEmail: null }));
+    await launchProject(db, { businessId: "business-1" }, NOW);
+    expect(notifyEvent).toHaveBeenCalledTimes(1);
+    expect(notifyEvent).toHaveBeenCalledWith(db, expect.objectContaining({ event: "website.live", audience: { kind: "customer", businessId: "business-1" } }));
+  });
+
   it("sets their website address to the domain they went live on", async () => {
     await launchProject(db, { businessId: "business-1" }, NOW);
     expect(mockedSetWebsiteUrl).toHaveBeenCalledWith(db, "business-1", "https://riverside-plumbing.com");

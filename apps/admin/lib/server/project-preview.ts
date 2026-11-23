@@ -2,6 +2,7 @@ import "server-only";
 import { findClientDetail, recordPreviewVersion, recordProjectPreviewSent, savePreviewImage, type Database } from "@brandbasket/db";
 import { emailOutcome, previewReadyEmail, type EmailSendOutcome } from "@brandbasket/email";
 import { emailPreferenceAllows } from "@brandbasket/shared/server/email-preference";
+import { notifyEvent } from "@brandbasket/shared/server/notify-event";
 import { customerEmailTransport } from "./email";
 import { serverEnv } from "./env";
 import { captureScreenshot } from "./preview-screenshot";
@@ -109,6 +110,8 @@ export async function sendProjectPreview(db: Database, input: SendProjectPreview
   }
   await takePreviewPicture(db, { projectId: project.id, businessId: input.businessId, previewUrl: input.previewUrl });
   await addWorkingActivity(db, { businessId: input.businessId, staffId: input.staffId, title: "Your website preview is ready to check", now });
+  // The bell and push, once per send (a revision round is a new send). The preview email below is the old sender, kept; resending it adds no notice.
+  await notifyEvent(db, { event: "website.preview_ready", audience: { kind: "customer", businessId: input.businessId }, dedupeKey: `${project.id}:${now.getTime()}`, data: {} });
 
   if (client.owner.email === null) return "no-email";
   return emailPreview(db, { businessId: input.businessId, ownerUserId: client.owner.userId, to: client.owner.email, businessName: client.businessName, previewUrl: input.previewUrl });

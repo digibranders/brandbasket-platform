@@ -1,3 +1,4 @@
+import { notifyEvent } from "@brandbasket/shared/server/notify-event";
 import { findClientDetail, markDomainReadyForDns, type Database } from "@brandbasket/db";
 import { domainReadyEmail } from "@brandbasket/email";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -5,6 +6,7 @@ import { markDomainReady, DomainReadyRecipientMissingError } from "./domain-read
 import { customerEmailTransport } from "./email";
 
 vi.mock("server-only", () => ({}));
+vi.mock("@brandbasket/shared/server/notify-event", () => ({ notifyEvent: vi.fn(async () => undefined) }));
 vi.mock("@brandbasket/db", () => ({ findClientDetail: vi.fn(), markDomainReadyForDns: vi.fn() }));
 vi.mock("@brandbasket/email", () => ({ domainReadyEmail: vi.fn() }));
 vi.mock("./email", () => ({ customerEmailTransport: vi.fn() }));
@@ -28,6 +30,15 @@ beforeEach(() => {
 });
 
 describe("markDomainReady", () => {
+  it("notifies the domain is ready to connect, once per domain, and not on a repeat press", async () => {
+    await markDomainReady(db, { businessId: "business-1" });
+    expect(notifyEvent).toHaveBeenCalledWith(db, { event: "website.domain_ready", audience: { kind: "customer", businessId: "business-1" }, dedupeKey: "business-1:ready:riverside.com", data: { state: "ready" } });
+    vi.mocked(notifyEvent).mockClear();
+    vi.mocked(markDomainReadyForDns).mockResolvedValue({ hostname: "riverside.com", changed: false });
+    await markDomainReady(db, { businessId: "business-1" });
+    expect(notifyEvent).not.toHaveBeenCalled();
+  });
+
   it("moves the domain to the DNS step, then emails the owner a link to their domain page", async () => {
     await expect(markDomainReady(db, { businessId: "business-1" })).resolves.toBe("emailed");
     expect(markDomainReadyForDns).toHaveBeenCalledWith(db, { businessId: "business-1" });

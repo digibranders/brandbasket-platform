@@ -13,6 +13,7 @@ import {
   withCustomerRole,
   withTenantScope,
 } from "@brandbasket/db";
+import { notifyEvent } from "@brandbasket/shared/server/notify-event";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { actionFail, type ActionResult } from "@/lib/action-result";
@@ -43,7 +44,9 @@ export async function approvePreviewAction(): Promise<ActionResult> {
   const context = await requireWebsite({ write: true });
   if (context.role === "viewer") return actionFail(VIEWER_MESSAGE);
   try {
-    await approveProjectPreview(getStaffDb(), { businessId: context.businessId, now: new Date() });
+    const approved = await approveProjectPreview(getStaffDb(), { businessId: context.businessId, now: new Date() });
+    // Once per project: the move only happens while the project is in preview, so a second press never reaches here.
+    await notifyEvent(getStaffDb(), { event: "website.approval_received", audience: { kind: "customer", businessId: context.businessId }, dedupeKey: `${approved.id}:approved`, data: {} });
   } catch (error) {
     if (error instanceof ProjectNotAwaitingResponseError) redirect(websiteNoticeHref("not-ready"));
     throw error;
@@ -110,6 +113,8 @@ export async function sendPreviewFeedbackAction(_previous: ActionResult | null, 
         return { ticket, created, round, rounds: moved.revisionRoundsIncluded, subject };
       });
       if (saved.created) {
+        // The bell comes from notify() (once per feedback ticket); the confirmation email below is the old sender, kept.
+        await notifyEvent(getStaffDb(), { event: "website.changes_sent", audience: { kind: "customer", businessId, userIds: [user.id] }, dedupeKey: saved.ticket.id, data: {} });
         await Promise.all([
           sendFeedbackTicketAlert({ ticket: saved.ticket, subject: saved.subject, description: body, attachmentCount: attachmentIds.length, user, business: { id: businessId, name: businessName } }),
           sendPreviewChangesReceived({ user, body, round: saved.round, rounds: saved.rounds, now }),

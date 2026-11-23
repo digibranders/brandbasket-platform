@@ -81,9 +81,9 @@ describe("notify against the database", () => {
   it("sends a mandatory event to the owner whatever the topic is set to", async () => {
     await dbs.owner.db.insert(notificationPreferences).values({ userId: "owner", businessId, topic: "billing", email: false, bell: false, push: false });
     await notifier()({ event: "billing.payment_failed", audience: { kind: "customer", businessId }, dedupeKey: "p1", data: {} });
-    // No wording exists for it yet (package N5), so only the ledger row is written: nothing is switched off by the preference.
+    // It has wording now (package N5), so it is listed on the bell although every topic switch is off.
     const [row] = await dbs.owner.db.select().from(notifications);
-    expect(row).toMatchObject({ eventKey: "billing.payment_failed", listed: false });
+    expect(row).toMatchObject({ eventKey: "billing.payment_failed", listed: true });
   });
 
   it("writes one staff row for the console and emails the team", async () => {
