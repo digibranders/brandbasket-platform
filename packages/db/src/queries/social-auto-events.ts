@@ -1,16 +1,13 @@
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq, inArray, sql } from "drizzle-orm";
 import type { Database } from "../client";
 import type { ScopedTransaction } from "../scope";
-import { businesses, webhookEvents, type WebhookResult, type WebhookSource } from "../schema";
+import { businesses, socialAutoCursor, webhookEvents, type WebhookResult, type WebhookSource } from "../schema";
 
 type Runner = Database | ScopedTransaction;
 
-/*
- * social-auto's webhook deliveries, kept in webhook_events (the check constraint already accepts "social_auto"). The column's
- * TypeScript type does not list it yet, because the console's Deliveries page has no label or health line for it; one cast here
- * keeps the rest of the code (and the console's types) untouched until that page learns the source.
- */
-const SOURCE = "social_auto" as WebhookSource;
+/** social-auto's webhook deliveries and catch up reads are kept in webhook_events, which the console's Deliveries page lists. */
+const SOURCE: WebhookSource = "social_auto";
+const CURSOR = "events";
 
 export interface SocialAutoEventInput {
   /** Null for a delivery that was refused before its body was read. */
@@ -42,4 +39,18 @@ export async function recordSocialAutoEvent(db: Runner, input: SocialAutoEventIn
 export async function findExistingBusinessId(db: Runner, businessId: string): Promise<string | null> {
   const [row] = await db.select({ id: businesses.id }).from(businesses).where(eq(businesses.id, businessId)).limit(1);
   return row?.id ?? null;
+}
+
+/** The highest event seq the catch up has read; 0 before its first run. */
+export async function readSocialAutoCursor(db: Runner): Promise<number> {
+  const [row] = await db.select({ seq: socialAutoCursor.seq }).from(socialAutoCursor).where(eq(socialAutoCursor.name, CURSOR)).limit(1);
+  return row?.seq ?? 0;
+}
+
+/** Remembers how far the catch up has read. Never moves back, so two overlapping runs cannot undo each other. */
+export async function saveSocialAutoCursor(db: Runner, seq: number): Promise<void> {
+  await db
+    .insert(socialAutoCursor)
+    .values({ name: CURSOR, seq })
+    .onConflictDoUpdate({ target: socialAutoCursor.name, set: { seq: sql`greatest(${socialAutoCursor.seq}, excluded.seq)`, updatedAt: sql`now()` } });
 }

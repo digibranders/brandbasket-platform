@@ -3,12 +3,13 @@ import type { SystemLine } from "@/lib/server/system-health";
 import { clock, shortDate, todayRange } from "@/lib/team-time";
 
 /** The delivery sources in the order Today's systems block lists them, before Website errors. */
-export const DELIVERY_ORDER: readonly DeliverySource[] = ["razorpay", "calcom", "oyechats", "brevo", "teams"];
+export const DELIVERY_ORDER: readonly DeliverySource[] = ["razorpay", "calcom", "oyechats", "social_auto", "brevo", "teams"];
 
 export const DELIVERY_LABELS: Readonly<Record<DeliverySource, string>> = {
   razorpay: "Razorpay payments",
   calcom: "Cal.com bookings",
   oyechats: "OyeChats leads",
+  social_auto: "Social posting events",
   brevo: "Brevo email",
   teams: "Teams alerts",
 };

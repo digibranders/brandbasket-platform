@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { healthRows, needsLookCount, type HealthInput } from "./system-health-view";
 
 const QUIET = { total: 0, failed: 0, lastOkAt: null, lastFailedAt: null };
-const HEALTHY: DeliveryHealth = { razorpay: QUIET, calcom: QUIET, oyechats: QUIET, brevo: QUIET, teams: QUIET };
+const HEALTHY: DeliveryHealth = { razorpay: QUIET, calcom: QUIET, oyechats: QUIET, social_auto: QUIET, brevo: QUIET, teams: QUIET };
 const FINE: HealthInput = { deliveries: HEALTHY, openErrors: 0, googleStatuses: ["connected", "connected"], teamsMissing: 0, teamsKinds: 5 };
 
 const rowOf = (input: HealthInput, key: string) => healthRows(input).find((row) => row.key === key);
@@ -17,9 +17,9 @@ describe("healthRows", () => {
   });
 
   it("flags failed emails and sums the webhook sources separately", () => {
-    const input = { ...FINE, deliveries: { ...HEALTHY, brevo: { ...QUIET, failed: 2 }, razorpay: { ...QUIET, failed: 1 }, oyechats: { ...QUIET, failed: 3 }, teams: { ...QUIET, failed: 9 } } };
+    const input = { ...FINE, deliveries: { ...HEALTHY, brevo: { ...QUIET, failed: 2 }, razorpay: { ...QUIET, failed: 1 }, oyechats: { ...QUIET, failed: 3 }, social_auto: { ...QUIET, failed: 5 }, teams: { ...QUIET, failed: 9 } } };
     expect(rowOf(input, "emails")).toMatchObject({ state: "look", detail: "2 failed in the last 24 hours" });
-    expect(rowOf(input, "webhooks")).toMatchObject({ state: "look", detail: "4 failed in the last 24 hours" });
+    expect(rowOf(input, "webhooks")).toMatchObject({ state: "look", detail: "9 failed in the last 24 hours" });
   });
 
   it("flags open app errors", () => {

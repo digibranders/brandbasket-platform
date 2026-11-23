@@ -24,7 +24,7 @@ export interface HealthRow {
   readonly href: string;
 }
 
-const WEBHOOK_SOURCES = ["razorpay", "calcom", "oyechats"] as const;
+const WEBHOOK_SOURCES = ["razorpay", "calcom", "oyechats", "social_auto"] as const;
 const COULD_NOT_CHECK = "Could not check. Try again.";
 
 export const HEALTH_STATE_WORDS: Readonly<Record<HealthState, string>> = { ok: "Fine", look: "Needs a look", unknown: "Not known" };

@@ -10,6 +10,7 @@ import {
   recordWebhookEvent,
   updateAlertDelivery,
 } from "./queries/deliveries";
+import { readSocialAutoCursor, saveSocialAutoCursor } from "./queries/social-auto-events";
 import { alertDeliveries, businesses, webhookEvents } from "./schema";
 import { describeError, openTestDatabases, resetTestDatabase, type TestDatabases } from "./testing";
 
@@ -131,5 +132,29 @@ describe("purgeOldDeliveries", () => {
     await dbs.owner.db.insert(alertDeliveries).values({ destination: "system", title: "Old", result: "sent", createdAt: new Date(NOW.getTime() - 91 * DAY) });
     expect(await purgeOldDeliveries(dbs.staff.db, NOW)).toBe(2);
     expect(await listWebhookEvents(dbs.staff.db, { failedOnly: false, source: null, search: null, limit: 10 })).toHaveLength(1);
+  });
+});
+
+describe("social-auto catch up cursor", () => {
+  it("starts at 0, is kept by the staff connection and never moves back", async () => {
+    expect(await readSocialAutoCursor(dbs.staff.db)).toBe(0);
+    await saveSocialAutoCursor(dbs.staff.db, 12);
+    await saveSocialAutoCursor(dbs.staff.db, 9);
+    expect(await readSocialAutoCursor(dbs.staff.db)).toBe(12);
+    await saveSocialAutoCursor(dbs.staff.db, 15);
+    expect(await readSocialAutoCursor(dbs.staff.db)).toBe(15);
+  });
+
+  it("is out of reach of the customer role", async () => {
+    await expect(readSocialAutoCursor(dbs.app.db)).rejects.toThrow();
+  });
+});
+
+describe("social-auto in the delivery health", () => {
+  it("counts its events as their own source", async () => {
+    await dbs.owner.db.insert(webhookEvents).values({ ...webhook, source: "social_auto", eventType: "post.failed", receivedAt: new Date(NOW.getTime() - HOUR) });
+    const health = await deliveryHealth(dbs.staff.db, new Date(NOW.getTime() - DAY));
+    expect(health.social_auto).toMatchObject({ total: 1, failed: 0 });
+    expect(health.razorpay.total).toBe(0);
   });
 });

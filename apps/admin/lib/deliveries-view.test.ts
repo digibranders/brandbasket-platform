@@ -57,6 +57,7 @@ const HEALTH: DeliveryHealth = {
   razorpay: { total: 38, failed: 0, lastOkAt: AT, lastFailedAt: null },
   calcom: { total: 6, failed: 1, lastOkAt: AT, lastFailedAt: AT },
   oyechats: { ...QUIET, total: 17 },
+  social_auto: { total: 9, failed: 1, lastOkAt: AT, lastFailedAt: AT },
   brevo: { total: 81, failed: 2, lastOkAt: AT, lastFailedAt: AT },
   teams: { ...QUIET, total: 15 },
 };
@@ -111,6 +112,7 @@ describe("filters", () => {
   it("decides which sources a filter wants", () => {
     expect(wantsWebhooks({ ...NONE, direction: "out" })).toBe(false);
     expect(wantsWebhooks({ ...NONE, source: "razorpay" })).toBe(true);
+    expect(wantsWebhooks({ ...NONE, source: "social_auto" })).toBe(true);
     expect(wantsWebhooks({ ...NONE, source: "brevo" })).toBe(false);
     expect(wantsSource({ ...NONE, direction: "in" }, "brevo")).toBe(false);
     expect(wantsSource({ ...NONE, source: "teams" }, "teams")).toBe(true);
@@ -124,12 +126,13 @@ describe("figures", () => {
       ["Razorpay", 38, "all handled", "good"],
       ["Cal.com", 6, "1 failed", "bad"],
       ["OyeChats", 17, "all handled", "good"],
+      ["Social posting", 9, "1 failed", "bad"],
       ["Brevo email", 81, "2 not sent", "bad"],
       ["Teams alerts", 15, "all sent", "good"],
     ]);
   });
 
   it("totals what came in, what went out and what failed", () => {
-    expect(deliveryTotals(HEALTH)).toEqual({ in: 61, out: 96, failed: 3 });
+    expect(deliveryTotals(HEALTH)).toEqual({ in: 70, out: 96, failed: 4 });
   });
 });
