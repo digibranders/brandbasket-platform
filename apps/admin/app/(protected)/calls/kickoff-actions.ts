@@ -45,7 +45,6 @@ export async function completeKickoffAction(formData: FormData): Promise<void> {
     await noticeKickoffAnswered({ answer: "completed", businessId, startsAt: booking?.startsAt ?? null });
   }
   if (newlyHeld) await logStaffAccessOrThrow({ staffUserId: user.id, action: "setup_call.held", targetType: "business", targetId: businessId, businessId });
-  revalidatePath("/calls");
   revalidatePath(`/clients/${businessId}`);
   revalidatePath("/");
   // The popup lives in the layout, so every page must re-read it.
@@ -62,7 +61,6 @@ async function recordOutcomeForBusiness(businessId: string, outcome: NoShowOutco
     // Their prompt state went with the booking (it cascades), so only the customer is left to tell.
     await noticeKickoffAnswered({ answer: outcome === "customer_no_show" ? "not_joined" : "reschedule", businessId, startsAt: booking?.startsAt ?? null });
   }
-  revalidatePath("/calls");
   revalidatePath(`/clients/${businessId}`);
   revalidatePath("/");
   revalidatePath("/", "layout");
@@ -106,7 +104,7 @@ export async function kickoffDidNotHappenAction(formData: FormData): Promise<voi
   const businessId = readBusinessId(formData);
   const removed = await clearUnheldKickoffBooking(getStaffDb(), businessId);
   if (removed) await logStaffAccessOrThrow({ staffUserId: user.id, action: "setup_call.no_show", targetType: "business", targetId: businessId, businessId });
-  revalidatePath("/calls");
+  revalidatePath("/");
   revalidatePath(`/clients/${businessId}`);
 }
 

@@ -65,6 +65,9 @@ SITE_HOSTING_SYNC_TOKEN="$(openssl rand -hex 32)"
 KICKOFF_SYNC_TOKEN="$(openssl rand -hex 32)"
 PAYMENT_RECONCILE_TOKEN="$(openssl rand -hex 32)"
 SIGNUP_REMINDER_TOKEN="$(openssl rand -hex 32)"
+EMAIL_QUEUE_TOKEN="$(openssl rand -hex 32)"
+BREVO_WEBHOOK_SECRET="$(openssl rand -hex 32)"
+EMAIL_UNSUBSCRIBE_SECRET="$(openssl rand -hex 32)"
 
 mkdir -p "$SHARED"
 ( umask 077
@@ -90,6 +93,11 @@ SITE_HOSTING_SYNC_TOKEN=$SITE_HOSTING_SYNC_TOKEN
 KICKOFF_SYNC_TOKEN=$KICKOFF_SYNC_TOKEN
 PAYMENT_RECONCILE_TOKEN=$PAYMENT_RECONCILE_TOKEN
 SIGNUP_REMINDER_TOKEN=$SIGNUP_REMINDER_TOKEN
+EMAIL_QUEUE_TOKEN=$EMAIL_QUEUE_TOKEN
+# Enter this same value in Brevo as the webhook's bearer token (Transactional, Webhooks).
+BREVO_WEBHOOK_SECRET=$BREVO_WEBHOOK_SECRET
+# Signs unsubscribe links. Identical to the console's file.
+EMAIL_UNSUBSCRIBE_SECRET=$EMAIL_UNSUBSCRIBE_SECRET
 
 # FILL_ME: Vercel API token (Digibranders team) for the hourly hosting job that pauses a lapsed client's website.
 VERCEL_API_TOKEN=
@@ -125,6 +133,7 @@ DATABASE_URL_PAYLOAD=postgresql://bb_cms:$CMS_PW@$PG_HOST:5432/brandbasket_platf
 # Identical to the dashboard's file.
 BETTER_AUTH_SECRET=$BETTER_AUTH_SECRET
 PAYLOAD_SECRET=$PAYLOAD_SECRET
+EMAIL_UNSUBSCRIBE_SECRET=$EMAIL_UNSUBSCRIBE_SECRET
 
 # FILL_ME: the same Brevo key as the dashboard's.
 BREVO_API_KEY=

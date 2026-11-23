@@ -96,6 +96,15 @@ describe("Website live overview: one failed panel", () => {
     expect(joinButton.getAttribute("target")).toBe("_blank");
     expect(joinButton.getAttribute("rel")).toContain("noopener");
   });
+
+  it("says the call length the booking has, not a fixed one, when there is no meeting link yet", () => {
+    const overview = liveOverview({
+      kickoffFirst: ok(true),
+      history: ok({ events: [], callStartsAt: new Date("2026-11-03T10:00:00Z"), callEndsAt: new Date("2026-11-03T10:45:00Z"), meetingUrl: null }),
+    });
+    showWebsite({ ...liveCore, live: null, project: { ...LIVE_PROJECT, status: "onboarding" } as Project }, overview, null);
+    expect(screen.getByText(/45 minutes on video or phone\./)).toBeTruthy();
+  });
 });
 
 describe("Website preview: a failed panel", () => {

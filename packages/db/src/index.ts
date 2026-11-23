@@ -187,12 +187,16 @@ export {
 } from "./queries/staff";
 export {
   findEmail,
+  claimDueEmails,
   hasEmailContaining,
+  isEmailSuppressed,
   listEmailDeliveries,
   listRecentEmails,
+  markEmailBounced,
   purgeOldEmailMessages,
   recordEmail,
   SIGN_IN_LINK_TEMPLATES,
+  suppressEmailAddress,
   updateEmailDelivery,
   type RecordedEmail,
   type StoredEmail,
@@ -798,6 +802,7 @@ export {
   listChatbotsForBusiness,
   listChatbotsForStaff,
   recordChatbotLead,
+  recordChatbotLeadReportingNew,
   registerChatbot,
   removeChatbot,
   renameChatbot,
@@ -1709,3 +1714,12 @@ export {
   type CheckBusinessInviteResult,
   type InvitableRole,
 } from "./queries/business-invites";
+export {
+  listLivePushSubscriptions,
+  markPushDelivered,
+  PUSH_USER_AGENT_MAX,
+  revokePushSubscription,
+  revokePushSubscriptionById,
+  savePushSubscription,
+  type PushSubscriptionInput,
+} from "./queries/push-subscriptions";

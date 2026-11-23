@@ -29,6 +29,8 @@ export interface EventDataMap {
   "kickoff.reschedule": NoData;
   "kickoff.fallback_started.staff": { readonly businessName: string };
   "kickoff.fallback_started": NoData;
+  /** A call booked on Cal.com's own page, or moved or cancelled from Cal.com's email (package N6). `when` is the new time, already written for staff. */
+  "call.changed.staff": { readonly what: "booked" | "moved" | "cancelled"; readonly when?: string };
   "billing.payment_received": NoData;
   "billing.payment_failed": NoData;
   "billing.payment_failed.staff": NoData;
@@ -106,6 +108,7 @@ const DEFINITIONS: readonly EventDefinition[] = [
   customer("kickoff.reschedule", null, ["email", "bell"], { alwaysSent: "call" }),
   staff("kickoff.fallback_started.staff", ["today", "bell"]),
   customer("kickoff.fallback_started", null, ["bell"], { alwaysSent: "website" }),
+  staff("call.changed.staff", ["teams", "bell"]),
   // B. Money. Payment failed is mandatory by the owner's answer of 2026-11-16, which overrides the matrix row that made email and push optional.
   customer("billing.payment_received", null, ["email", "bell"], { alwaysSent: "payments" }),
   customer("billing.payment_failed", "billing", ["email", "bell", "push"], { mandatory: true, alwaysSent: "payments" }),

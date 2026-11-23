@@ -20,6 +20,18 @@ export function requestClock(dueAt: Date, now: Date): DeadlineClock {
   return { text: `${pad(days)}d ${pad(hours)}h ${late ? "overdue" : "remaining"}`, late };
 }
 
+/** A clock this close to its deadline, and not yet late, is "soon". */
+export const SOON_HOURS = 72;
+
+export type ClockTone = "late" | "soon" | "ok";
+
+/** Late once the deadline has passed, soon inside the last 72 hours, otherwise ok. Colours are chosen from this in one place. */
+export function clockTone(deadline: Date, now: Date): ClockTone {
+  const left = deadline.getTime() - now.getTime();
+  if (left <= 0) return "late";
+  return left < SOON_HOURS * HOUR_MS ? "soon" : "ok";
+}
+
 /** The 6 and 72 hour breach clocks: "5h 12m left", or "1h 05m overdue". */
 export function breachClock(deadline: Date, now: Date): DeadlineClock {
   const left = deadline.getTime() - now.getTime();

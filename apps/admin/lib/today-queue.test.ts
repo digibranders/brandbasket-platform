@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { AttentionItem } from "./pipeline";
-import { actionLabel, dueLabel, groupTodayQueue, todayQueue, todaySummary, type TodayInput, type TodayItem } from "./today-queue";
+import { actionLabel, clientIdOf, dueLabel, filtersFailedBy, groupTodayQueue, matchesTodayFilter, NEXT_STEPS, rowClock, todayFilterCounts, todayQueue, todaySummary, type TodayInput, type TodayItem, type TodayKind } from "./today-queue";
 
 // 11:30 on Monday 30 November 2026 in India; the day ends at 18:30 UTC.
 const NOW = new Date("2026-11-30T06:00:00.000Z");
@@ -10,7 +10,7 @@ function attention(item: Partial<AttentionItem> & Pick<AttentionItem, "key" | "k
   return { subjectId: "subject", href: "/clients/subject", name: "Om Sweets", reason: "reason", ...item };
 }
 
-const EMPTY: TodayInput = { attention: [], newTickets: [], unpaidSignups: [], newErrors: [], failedDeliveries: null, endOfToday: END_OF_TODAY };
+const EMPTY: TodayInput = { attention: [], newTickets: [], unpaidSignups: [], newErrors: [], failedDeliveries: null, kickoffsNeedingOutcome: null, endOfToday: END_OF_TODAY };
 
 describe("todayQueue", () => {
   it("puts the latest first, then what is due soonest, with every kind", () => {
@@ -24,7 +24,7 @@ describe("todayQueue", () => {
       unpaidSignups: [{ id: "lead-kumar", businessName: "Kumar Opticals", createdAt: new Date("2026-11-29T00:00:00.000Z") }],
       newErrors: [],
       failedDeliveries: null,
-     
+      kickoffsNeedingOutcome: null,
       endOfToday: END_OF_TODAY,
     });
     expect(queue.map((item) => item.key)).toEqual(["overdue:om", "request:ticket-1", "lead:green", "due:fitzone", "signup:lead-kumar"]);
@@ -197,13 +197,41 @@ describe("failed deliveries", () => {
   });
 });
 
+describe("kickoff calls needing an outcome", () => {
+  const EARLY = { businessId: "b-early", businessName: "Green Leaf Cafe", endsAt: new Date("2026-11-29T05:00:00.000Z") };
+  const LATE = { businessId: "b-late", businessName: "Kestrel Bakery", endsAt: new Date("2026-11-30T05:00:00.000Z") };
+
+  it("adds one item per business that links to the Calls page, due when its call ended", () => {
+    const queue = todayQueue({ ...EMPTY, kickoffsNeedingOutcome: [LATE, EARLY] });
+    expect(queue).toEqual([
+      { key: "kickoff:b-early", kind: "kickoff", href: "/", title: "Did the kickoff happen?", detail: "Green Leaf Cafe · ended 29 Nov, 10:30", dueAt: EARLY.endsAt },
+      { key: "kickoff:b-late", kind: "kickoff", href: "/", title: "Did the kickoff happen?", detail: "Kestrel Bakery · ended 30 Nov, 10:30", dueAt: LATE.endsAt },
+    ]);
+  });
+
+  it("is overdue, so it groups under Late", () => {
+    const queue = todayQueue({ ...EMPTY, kickoffsNeedingOutcome: [LATE] });
+    expect(groupTodayQueue(queue, NOW, END_OF_TODAY).map((group) => group.heading)).toEqual(["Late"]);
+  });
+
+  it("is gone once the call is marked: a business no longer in the list has no item", () => {
+    expect(todayQueue({ ...EMPTY, kickoffsNeedingOutcome: [EARLY, LATE] }).map((entry) => entry.key)).toEqual(["kickoff:b-early", "kickoff:b-late"]);
+    expect(todayQueue({ ...EMPTY, kickoffsNeedingOutcome: [LATE] }).map((entry) => entry.key)).toEqual(["kickoff:b-late"]);
+  });
+
+  it("adds nothing at zero or when the read failed", () => {
+    expect(todayQueue({ ...EMPTY, kickoffsNeedingOutcome: [] })).toEqual([]);
+    expect(todayQueue({ ...EMPTY, kickoffsNeedingOutcome: null })).toEqual([]);
+  });
+});
+
 function item(key: string, dueAt: Date | null): TodayItem {
   return { key, kind: "payment", href: `/${key}`, title: key, detail: "", dueAt };
 }
 
 describe("groupTodayQueue", () => {
   // NOW is 11:30 India on 30 Nov; END_OF_TODAY is the start of 1 Dec in India.
-  it("sorts items into Overdue, Due today and Waiting for someone, keeping each group's order", () => {
+  it("sorts items into Late, Due today and Upcoming, keeping each group's order", () => {
     const queue = [
       item("late-a", new Date("2026-11-28T06:00:00.000Z")),
       item("late-b", new Date("2026-11-30T03:00:00.000Z")),
@@ -213,9 +241,9 @@ describe("groupTodayQueue", () => {
       item("none", null),
     ];
     expect(groupTodayQueue(queue, NOW, END_OF_TODAY).map((group) => [group.heading, group.items.map((i) => i.key)])).toEqual([
-      ["Overdue", ["late-a", "late-b"]],
+      ["Late", ["late-a", "late-b"]],
       ["Due today", ["today-a", "today-b"]],
-      ["Waiting for someone", ["later", "none"]],
+      ["Upcoming", ["later", "none"]],
     ]);
   });
 
@@ -224,20 +252,20 @@ describe("groupTodayQueue", () => {
     expect(groups.map((group) => group.heading)).toEqual(["Due today"]);
   });
 
-  it("counts an item due at the end of today as waiting", () => {
+  it("counts an item due at the end of today as upcoming", () => {
     const groups = groupTodayQueue([item("edge", END_OF_TODAY)], NOW, END_OF_TODAY);
-    expect(groups.map((group) => group.heading)).toEqual(["Waiting for someone"]);
+    expect(groups.map((group) => group.heading)).toEqual(["Upcoming"]);
   });
 
   it("leaves out empty groups", () => {
-    expect(groupTodayQueue([item("none", null)], NOW, END_OF_TODAY).map((group) => group.heading)).toEqual(["Waiting for someone"]);
+    expect(groupTodayQueue([item("none", null)], NOW, END_OF_TODAY).map((group) => group.heading)).toEqual(["Upcoming"]);
     expect(groupTodayQueue([], NOW, END_OF_TODAY)).toEqual([]);
   });
 });
 
 describe("Google items", () => {
   const google = (key: string, dueAt: Date | null, action = "Open client"): TodayItem => ({ key, kind: "google", href: "/x", title: key, detail: "", action, dueAt });
-  const INPUT: TodayInput = { attention: [], newTickets: [], unpaidSignups: [], newErrors: [], failedDeliveries: null, endOfToday: END_OF_TODAY };
+  const INPUT: TodayInput = { attention: [], newTickets: [], unpaidSignups: [], newErrors: [], failedDeliveries: null, kickoffsNeedingOutcome: null, endOfToday: END_OF_TODAY };
 
   it("joins the queue, so the count follows, and sorts with the rest by due time", () => {
     const early = google("google:a", new Date(NOW.getTime() - 3_600_000));
@@ -246,14 +274,123 @@ describe("Google items", () => {
     expect(todayQueue(INPUT)).toEqual([]);
   });
 
-  it("sits in its own Google section after the others, whatever its clock", () => {
+  it("groups by its clock like any row, with no Google section of its own", () => {
     const overdue = google("google:a", new Date(NOW.getTime() - 3_600_000));
     const other: TodayItem = { key: "request:1", kind: "request", href: "/support/1", title: "r", detail: "", dueAt: new Date(NOW.getTime() - 60_000) };
     const groups = groupTodayQueue([overdue, other], NOW, END_OF_TODAY);
-    expect(groups.map((group) => [group.heading, group.items.map((item) => item.key)])).toEqual([["Overdue", ["request:1"]], ["Google", ["google:a"]]]);
+    expect(groups.map((group) => [group.heading, group.items.map((item) => item.key)])).toEqual([["Late", ["google:a", "request:1"]]]);
   });
 
-  it("leaves no Google section when there are no Google rows", () => {
+  it("leaves no groups when there are no rows", () => {
     expect(groupTodayQueue([], NOW, END_OF_TODAY)).toEqual([]);
+  });
+});
+
+describe("the compliance, report and silent-preview rows", () => {
+  const INPUT: TodayInput = { attention: [], newTickets: [], unpaidSignups: [], newErrors: [], failedDeliveries: null, kickoffsNeedingOutcome: null, endOfToday: END_OF_TODAY };
+
+  it("builds a privacy request row on its own due date with the request clock", () => {
+    const dueAt = new Date("2026-12-20T06:00:00.000Z");
+    const [row] = todayQueue({ ...INPUT, privacyRequests: [{ id: "p1", reference: "PR-1", kindLabel: "Access to my data", dueAt }] });
+    expect(row).toEqual({ key: "privacy:p1", kind: "privacy", href: "/privacy-requests", title: "Privacy request PR-1", detail: "Access to my data", dueAt, clock: "request" });
+    expect(rowClock(row as TodayItem, NOW, END_OF_TODAY)).toEqual({ text: "20d 00h remaining", tone: "plain" });
+    expect(rowClock({ ...(row as TodayItem), dueAt: new Date("2026-11-28T06:00:00.000Z") }, NOW, END_OF_TODAY)).toEqual({ text: "02d 00h overdue", tone: "late" });
+  });
+
+  it("builds a breach row on the next report's deadline with the breach clock, and shortens a long summary", () => {
+    const deadline = new Date("2026-11-30T11:12:00.000Z");
+    const [row] = todayQueue({ ...INPUT, breaches: [{ id: "b1", summary: "x".repeat(100), duty: "CERT-In", deadline }] });
+    expect(row).toMatchObject({ key: "breach:b1", kind: "breach", href: "/breaches", title: "Breach report due: CERT-In", dueAt: deadline, clock: "breach" });
+    expect(row?.detail).toBe(`${"x".repeat(80)}...`);
+    expect(rowClock(row as TodayItem, NOW, END_OF_TODAY)).toEqual({ text: "5h 12m left", tone: "plain" });
+  });
+
+  it("builds a closure row on the erase date", () => {
+    const eraseAfter = new Date("2026-12-02T00:00:00.000Z");
+    const [row] = todayQueue({ ...INPUT, closures: [{ businessId: "biz-1", businessName: "Asha Cafe", eraseAfter }] });
+    expect(row).toEqual({ key: "closure:biz-1", kind: "closure", href: "/clients/biz-1", title: "Account closing: Asha Cafe", detail: "Erased after 2 Dec", dueAt: eraseAfter });
+  });
+
+  it("builds one report row, singular or plural, and none when null", () => {
+    const dueAt = new Date("2026-12-05T18:30:00.000Z");
+    expect(todayQueue({ ...INPUT, reportsToReview: { count: 1, dueAt } })[0]).toEqual({ key: "reports:review", kind: "report", href: "/reports", title: "1 report to review", detail: "Review by the 5th", dueAt });
+    expect(todayQueue({ ...INPUT, reportsToReview: { count: 4, dueAt } })[0]?.title).toBe("4 reports to review");
+    expect(todayQueue({ ...INPUT, reportsToReview: null })).toEqual([]);
+  });
+
+  it("builds a silent preview row with no clock", () => {
+    const [row] = todayQueue({ ...INPUT, silentPreviews: [{ businessId: "biz-2", businessName: "Kumar Opticals", sentAt: new Date("2026-11-24T06:00:00.000Z"), days: 6 }] });
+    expect(row).toEqual({ key: "preview_silent:biz-2", kind: "preview_silent", href: "/clients/biz-2/website", title: "Preview sent, no answer: Kumar Opticals", detail: "Sent 24 Nov, 6 days ago", dueAt: null });
+  });
+
+  it("gives each new kind its verb, next step and client", () => {
+    expect(actionLabel("kickoff")).toBe("Call completed");
+    expect(actionLabel("report")).toBe("Review");
+    for (const kind of ["privacy", "breach", "closure", "preview_silent"] as const) expect(actionLabel(kind)).toBe("Open");
+    for (const kind of Object.keys(NEXT_STEPS) as TodayKind[]) expect(NEXT_STEPS[kind]).not.toBe("");
+    expect(clientIdOf({ key: "kickoff:biz-9", kind: "kickoff", href: "/", title: "", detail: "", dueAt: null })).toBe("biz-9");
+    expect(clientIdOf({ key: "closure:biz-1", kind: "closure", href: "/clients/biz-1", title: "", detail: "", dueAt: null })).toBe("biz-1");
+    expect(clientIdOf({ key: "privacy:p1", kind: "privacy", href: "/privacy-requests", title: "", detail: "", dueAt: null })).toBeNull();
+  });
+});
+
+describe("the four groups", () => {
+  const row = (key: string, kind: TodayKind, dueAt: Date | null): TodayItem => ({ key, kind, href: `/${key}`, title: key, detail: "", dueAt });
+
+  it("puts a late customer wait under Late but an unexpired one, and a silent preview, under Waiting on someone", () => {
+    const queue = [
+      row("late-signup", "signup", new Date("2026-11-29T06:00:00.000Z")),
+      row("signup", "signup", new Date("2026-12-01T06:00:00.000Z")),
+      row("silent", "preview_silent", null),
+      row("today", "request", new Date("2026-11-30T12:30:00.000Z")),
+      row("later", "report", new Date("2026-12-05T06:00:00.000Z")),
+    ];
+    expect(groupTodayQueue(queue, NOW, END_OF_TODAY).map((group) => [group.heading, group.items.map((i) => i.key)])).toEqual([
+      ["Late", ["late-signup"]],
+      ["Due today", ["today"]],
+      ["Waiting on someone", ["signup", "silent"]],
+      ["Upcoming", ["later"]],
+    ]);
+  });
+});
+
+describe("the filters", () => {
+  const row = (key: string, kind: TodayKind, dueAt: Date | null): TodayItem => ({ key, kind, href: `/${key}`, title: key, detail: "", dueAt });
+  const LATE = new Date("2026-11-29T06:00:00.000Z");
+  const items = [
+    row("k", "kickoff", LATE),
+    row("g", "google", null),
+    row("r", "request", null),
+    row("rep", "report", null),
+    row("p", "payment", LATE),
+    row("e", "new-lead", null),
+    row("s", "signup", null),
+    row("pr", "privacy", null),
+    row("br", "breach", null),
+    row("cl", "closure", null),
+    row("d", "delivery", null),
+  ];
+
+  it("files kickoff under Builds, Google under System, reports and requests under Customers, sign-ups under Enquiries", () => {
+    const keys = (filter: Parameters<typeof matchesTodayFilter>[1]): string[] => items.filter((item) => matchesTodayFilter(item, filter, NOW)).map((item) => item.key);
+    expect(keys("builds")).toEqual(["k"]);
+    expect(keys("system")).toEqual(["g", "d"]);
+    expect(keys("customers")).toEqual(["r", "rep"]);
+    expect(keys("enquiries")).toEqual(["e", "s"]);
+    expect(keys("money")).toEqual(["p"]);
+    expect(keys("compliance")).toEqual(["pr", "br", "cl"]);
+    expect(keys("late")).toEqual(["k", "p"]);
+    expect(keys("all")).toHaveLength(items.length);
+  });
+
+  it("counts each chip and has no Calls chip", () => {
+    expect(todayFilterCounts(items, NOW)).toEqual({ all: 11, late: 2, customers: 2, builds: 1, money: 1, enquiries: 2, compliance: 3, system: 2 });
+    expect(Object.keys(todayFilterCounts(items, NOW))).not.toContain("calls");
+  });
+
+  it("marks the chips behind a failed source as unread", () => {
+    expect([...filtersFailedBy(["breaches", "deliveries", "calls", "Google"])].sort()).toEqual(["compliance", "system"]);
+    expect([...filtersFailedBy(["clients"])].sort()).toEqual(["builds", "compliance", "money"]);
+    expect(filtersFailedBy([])).toEqual([]);
   });
 });

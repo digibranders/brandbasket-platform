@@ -27,7 +27,7 @@ async function callsOpen(customer: CustomerContext, now: Date): Promise<boolean 
 }
 
 /** The times on offer, or `unavailable` when none can be offered here (the booking page link is shown instead). */
-export type SlotList = { readonly status: "ok"; readonly slots: readonly string[] } | { readonly status: "unavailable"; readonly bookingUrl: string | null };
+export type SlotList = { readonly status: "ok"; readonly slots: readonly string[]; readonly minutes: number | null } | { readonly status: "unavailable"; readonly bookingUrl: string | null };
 
 function refuseWriter(customer: CustomerContext): string | null {
   if (customer.role === "viewer") return VIEWER_MESSAGE;
@@ -46,8 +46,8 @@ export async function loadSlotsAction(): Promise<ActionResult<SlotList>> {
   let bookingUrl: string | null = null;
   try {
     bookingUrl = await readBookingUrl();
-    const slots = bookingUrl === null ? null : await listCallSlots(bookingUrl, new Date());
-    return actionOk(slots === null || slots.length === 0 ? { status: "unavailable", bookingUrl } : { status: "ok", slots });
+    const offer = bookingUrl === null ? null : await listCallSlots(bookingUrl, new Date());
+    return actionOk(offer === null || offer.times.length === 0 ? { status: "unavailable", bookingUrl } : { status: "ok", slots: offer.times, minutes: offer.minutes });
   } catch (error) {
     reportError(error, { area: "calls.slots" });
     return actionOk({ status: "unavailable", bookingUrl });

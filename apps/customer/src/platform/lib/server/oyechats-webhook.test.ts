@@ -1,19 +1,21 @@
 // @vitest-environment node
-import { applyChatbotQualification, findChatbotWebhookTarget, recordChatbotLead, upsertEnquiryFromChatLead } from "@brandbasket/db";
+import { applyChatbotQualification, findChatbotWebhookTarget, recordChatbotLeadReportingNew, upsertEnquiryFromChatLead } from "@brandbasket/db";
 import { createHmac } from "node:crypto";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { getStaffDb } from "./db";
 import { handleOyeChatsWebhook } from "./oyechats-webhook";
 import { alertTeams } from "./teams";
+import { isRepeatWebhook } from "./webhook-log";
 
 vi.mock("server-only", () => ({}));
 vi.mock("./db", () => ({ getStaffDb: vi.fn() }));
 vi.mock("./teams", () => ({ alertTeams: vi.fn(async () => undefined) }));
+vi.mock("./webhook-log", () => ({ isRepeatWebhook: vi.fn(), webhookEventId: (body: string) => `body:${body.length}` }));
 vi.mock("./env", () => ({ serverEnv: () => ({ ADMIN_ORIGIN: "http://console.localhost:3199" }) }));
 vi.mock("@brandbasket/db", () => ({
   applyChatbotQualification: vi.fn(),
   findChatbotWebhookTarget: vi.fn(),
-  recordChatbotLead: vi.fn(),
+  recordChatbotLeadReportingNew: vi.fn(),
   upsertEnquiryFromChatLead: vi.fn(),
 }));
 
@@ -38,8 +40,9 @@ beforeEach(() => {
   vi.mocked(getStaffDb).mockReturnValue(staffDb);
   vi.mocked(findChatbotWebhookTarget).mockResolvedValue(TARGET);
   vi.mocked(applyChatbotQualification).mockResolvedValue(true);
-  vi.mocked(recordChatbotLead).mockResolvedValue("lead-1");
+  vi.mocked(recordChatbotLeadReportingNew).mockResolvedValue({ id: "lead-1", created: true });
   vi.mocked(upsertEnquiryFromChatLead).mockResolvedValue(true);
+  vi.mocked(isRepeatWebhook).mockResolvedValue(false);
 });
 
 describe("handleOyeChatsWebhook", () => {
@@ -49,7 +52,7 @@ describe("handleOyeChatsWebhook", () => {
     expect(await handleOyeChatsWebhook(body, sign(body))).toEqual({ kind: "recorded", businessId: "business-1" });
 
     expect(findChatbotWebhookTarget).toHaveBeenCalledWith(staffDb, 41);
-    expect(recordChatbotLead).toHaveBeenCalledWith(staffDb, {
+    expect(recordChatbotLeadReportingNew).toHaveBeenCalledWith(staffDb, {
       chatbotId: "chatbot-1",
       businessId: "business-1",
       sessionId: "sess-1",
@@ -75,7 +78,7 @@ describe("handleOyeChatsWebhook", () => {
 
     expect(await handleOyeChatsWebhook(body, sign(body))).toEqual({ kind: "recorded", businessId: "business-1" });
 
-    expect(recordChatbotLead).toHaveBeenCalledTimes(1);
+    expect(recordChatbotLeadReportingNew).toHaveBeenCalledTimes(1);
     expect(alertTeams).toHaveBeenCalledTimes(1);
     expect(log).toHaveBeenCalled();
     expect(JSON.stringify(log.mock.calls)).not.toContain("meera@example.com");
@@ -99,33 +102,57 @@ describe("handleOyeChatsWebhook", () => {
     expect(text).not.toContain("meera@example.com");
   });
 
+  it("does not post to Teams again for a session that already had a lead, but still fills in its enquiry", async () => {
+    vi.mocked(recordChatbotLeadReportingNew).mockResolvedValue({ id: "lead-1", created: false });
+    const body = lead({ phone: "+919820011223" });
+    expect(await handleOyeChatsWebhook(body, sign(body))).toEqual({ kind: "recorded", businessId: "business-1" });
+    expect(alertTeams).not.toHaveBeenCalled();
+    expect(upsertEnquiryFromChatLead).toHaveBeenCalledWith(staffDb, "lead-1");
+  });
+
+  it("keys the Teams card by the lead, so two servers cannot both post it", async () => {
+    const body = lead();
+    await handleOyeChatsWebhook(body, sign(body));
+    expect(vi.mocked(alertTeams).mock.calls[0]?.[2]).toEqual({ dedupeKey: "chatbot-lead:lead-1" });
+  });
+
+  it("answers a body it already handled and does nothing, after checking the signature", async () => {
+    vi.mocked(isRepeatWebhook).mockResolvedValue(true);
+    const body = lead();
+    expect(await handleOyeChatsWebhook(body, sign(body))).toEqual({ kind: "duplicate" });
+    expect(isRepeatWebhook).toHaveBeenCalledWith("oyechats", `body:${body.length}`);
+    expect(recordChatbotLeadReportingNew).not.toHaveBeenCalled();
+    expect(alertTeams).not.toHaveBeenCalled();
+    expect(await handleOyeChatsWebhook(body, sign(body, "another-secret-another-secret-00"))).toEqual({ kind: "refused" });
+  });
+
   it("rates a lead from a qualification event", async () => {
     const body = JSON.stringify({ event: "tier_transition", bot_id: 41, timestamp: "2026-10-16T10:00:00+00:00", data: { session_id: "sess-1", new_tier: "sql", score: 80 } });
 
     expect(await handleOyeChatsWebhook(body, sign(body))).toEqual({ kind: "recorded", businessId: "business-1" });
 
     expect(applyChatbotQualification).toHaveBeenCalledWith(staffDb, { chatbotId: "chatbot-1", sessionId: "sess-1", tier: "sql", score: 80 });
-    expect(recordChatbotLead).not.toHaveBeenCalled();
+    expect(recordChatbotLeadReportingNew).not.toHaveBeenCalled();
   });
 
   it("refuses a body signed with another secret, writing nothing", async () => {
     const body = lead();
     expect(await handleOyeChatsWebhook(body, sign(body, "another-secret-another-secret-00"))).toEqual({ kind: "refused" });
-    expect(recordChatbotLead).not.toHaveBeenCalled();
+    expect(recordChatbotLeadReportingNew).not.toHaveBeenCalled();
   });
 
   it("refuses a missing signature, and an altered body", async () => {
     const body = lead();
     expect(await handleOyeChatsWebhook(body, null)).toEqual({ kind: "refused" });
     expect(await handleOyeChatsWebhook(lead({ email: "attacker@example.com" }), sign(body))).toEqual({ kind: "refused" });
-    expect(recordChatbotLead).not.toHaveBeenCalled();
+    expect(recordChatbotLeadReportingNew).not.toHaveBeenCalled();
   });
 
   it("refuses a bot it does not know the same way as a bad signature, so the answer does not say which bots exist", async () => {
     vi.mocked(findChatbotWebhookTarget).mockResolvedValue(null);
     const body = lead();
     expect(await handleOyeChatsWebhook(body, sign(body))).toEqual({ kind: "refused" });
-    expect(recordChatbotLead).not.toHaveBeenCalled();
+    expect(recordChatbotLeadReportingNew).not.toHaveBeenCalled();
   });
 
   it("refuses a body that names no bot, without looking anything up", async () => {
@@ -136,7 +163,7 @@ describe("handleOyeChatsWebhook", () => {
   it("acknowledges a signed event it does not use, so OyeChats does not retry it", async () => {
     const body = JSON.stringify({ event: "chat_closed", bot_id: 41, timestamp: "2026-10-16T09:00:00+00:00", data: { session_id: "sess-1" } });
     expect(await handleOyeChatsWebhook(body, sign(body))).toEqual({ kind: "ignored" });
-    expect(recordChatbotLead).not.toHaveBeenCalled();
+    expect(recordChatbotLeadReportingNew).not.toHaveBeenCalled();
     expect(applyChatbotQualification).not.toHaveBeenCalled();
   });
 

@@ -2,54 +2,43 @@ import { Plus } from "@phosphor-icons/react/dist/ssr";
 import type { Metadata } from "next";
 import Link from "next/link";
 import type { ReactElement } from "react";
-import { countSupportQueues, listAssignableSupportStaff, listSupportTicketsForStaff } from "@brandbasket/db";
+import { countSupportQueues, listSupportTicketsForStaff } from "@brandbasket/db";
 import { SUPPORT_CATEGORIES } from "@brandbasket/shared/lib/support";
-import { LocalDateTime } from "@brandbasket/shared/ui/panel/local-date-time";
-import { SelectField, type SelectOption } from "@brandbasket/shared/ui/select-field";
+import type { SelectOption } from "@brandbasket/shared/ui/select-field";
 import { buttonSecondary } from "@/components/console/buttons";
-import { fieldClasses } from "@/components/console/field-styles";
-import { FilterPills } from "@/components/console/filter-pills";
-import { EmptyState } from "@brandbasket/shared/ui/patterns";
-import { FOCAL_CARD } from "@/components/console/classes";
 import { PageHeader } from "@/components/console/page-header";
 import { SectionTabs } from "@/components/console/section-tabs";
-import { TABLE, TD, TD_TIME, TH } from "@/components/console/table";
-import { replyClock, waitingLabel, type WaitingTone } from "@/lib/reply-clock";
-import { readRequestFilters, requestsHref } from "@/lib/requests-filters";
+import { loadOpenRequest } from "@/components/requests/open-request";
+import { RequestsWorkspace } from "@/components/requests/requests-workspace";
+import { readRequestFilters } from "@/lib/requests-filters";
+import { listHref } from "@/lib/requests-model";
 import { getStaffDb } from "@/lib/server/db";
+import { loadRequestRows } from "@/lib/server/requests-view";
 import { requireStaffAccess } from "@/lib/server/staff-access";
 import { logStaffAccess } from "@/lib/server/staff-access-log";
 import { STAFF_SUPPORT_CATEGORY_LABELS } from "@/lib/support-admin-state";
-import { TableScroll } from "@/components/console/table-scroll";
 
 export const metadata: Metadata = { title: "Requests" };
 
 const CATEGORY_OPTIONS: readonly SelectOption[] = [{ value: "", label: "Any category" }, ...SUPPORT_CATEGORIES.map((value) => ({ value, label: STAFF_SUPPORT_CATEGORY_LABELS[value] }))];
-const WAITING_CLASSES: Readonly<Record<WaitingTone, string>> = { late: "font-semibold text-error", soon: "font-semibold text-rattan-ink", ok: "text-ink-2" };
 
 interface RequestsPageProps {
   readonly searchParams: Promise<Record<string, string | string[] | undefined>>;
 }
 
+/** Inbox, Requests: support tickets and change requests in one list, with the open request in a side panel. */
 export default async function RequestsPage({ searchParams }: RequestsPageProps): Promise<ReactElement> {
   const { user, staff: viewer } = await requireStaffAccess();
   await logStaffAccess({ staffUserId: user.id, action: "support.list", targetType: "support_tickets" });
-  const filters = readRequestFilters(await searchParams);
+  const raw = await searchParams;
+  const filters = readRequestFilters(raw);
   const db = getStaffDb();
-  const [page, counts, staff] = await Promise.all([
-    listSupportTicketsForStaff(db, {
-      queue: filters.queue,
-      category: filters.category,
-      search: filters.search,
-      cursor: filters.cursor,
-      assigneeStaffId: filters.mine ? user.id : undefined,
-      limit: 25,
-    }),
+  const [page, counts, open] = await Promise.all([
+    listSupportTicketsForStaff(db, { queue: filters.queue, category: filters.category, search: filters.search, cursor: filters.cursor, limit: 25 }),
     countSupportQueues(db),
-    listAssignableSupportStaff(db),
+    loadOpenRequest({ raw: raw.open, staffUserId: user.id }),
   ]);
-  const now = new Date();
-  const ownerName = (id: string | null): string => (id === null ? "Nobody" : staff.find((person) => person.userId === id)?.name ?? "Staff");
+  const rows = await loadRequestRows(db, page.items, new Date());
 
   return (
     <>
@@ -64,80 +53,25 @@ export default async function RequestsPage({ searchParams }: RequestsPageProps):
         }
       />
       <SectionTabs role={viewer.role} page="/support" />
-
-      <div className="mt-6 flex flex-wrap items-center gap-3">
-        <form method="get" action="/support" className="flex flex-wrap items-center gap-2">
-          <input type="hidden" name="queue" value={filters.queue} />
-          {filters.mine ? <input type="hidden" name="mine" value="1" /> : null}
-          <label htmlFor="requests-search" className="sr-only">
-            Subject or reference
-          </label>
-          <input id="requests-search" name="search" type="search" maxLength={120} defaultValue={filters.search} placeholder="Subject or reference" className={`${fieldClasses} w-72`} />
-          <SelectField id="requests-category" name="category" aria-label="Category" options={CATEGORY_OPTIONS} defaultValue={filters.category ?? ""} className={fieldClasses} />
-          <button type="submit" className={buttonSecondary}>
-            Apply
-          </button>
-        </form>
-        <FilterPills
-          label="Requests"
-          options={[
-            { href: requestsHref(filters, { queue: "needs_reply" }), label: "Needs reply", count: counts.needsReply, current: filters.queue === "needs_reply" },
-            { href: requestsHref(filters, { queue: "waiting_on_client" }), label: "Waiting on client", count: counts.waitingOnClient, current: filters.queue === "waiting_on_client" },
-            { href: requestsHref(filters, { queue: "done" }), label: "Done", count: counts.done, current: filters.queue === "done" },
-            { href: requestsHref(filters, { mine: !filters.mine }), label: "Mine", current: filters.mine },
-          ]}
+      <div className="mt-6">
+        <RequestsWorkspace
+          rows={rows}
+          basePath="/support"
+          defaultQueue="needs_reply"
+          queue={filters.queue}
+          search={filters.search ?? ""}
+          category={filters.category ?? ""}
+          counts={{ needsReply: counts.needsReply, waitingOnClient: counts.waitingOnClient, done: counts.done }}
+          categoryOptions={CATEGORY_OPTIONS}
+          openId={open.openId}
+          detail={open.detail}
+          detailFailedFor={open.detailFailedFor}
+          changeSlot={open.changeSlot}
+          newRequestHref="/support/new"
+          nextHref={page.nextCursor === null ? null : listHref("/support", "needs_reply", { queue: filters.queue, search: filters.search, category: filters.category, cursor: page.nextCursor })}
+          empty={{ title: "No requests here.", description: "Requests from customers appear here with how long each has been waiting." }}
         />
       </div>
-
-      {page.items.length === 0 ? (
-        <div className="mt-6">
-          <EmptyState title="No requests here." description="Requests from customers appear here with how long each has been waiting." />
-        </div>
-      ) : (
-        <section aria-label="Requests" className={`${FOCAL_CARD} mt-6`}>
-        <TableScroll label="Requests">
-          <table className={TABLE}>
-            <thead>
-              <tr>
-                <th className={TH}>Request</th>
-                <th className={TH}>Client</th>
-                <th className={TH}>Category</th>
-                <th className={TH}>Owner</th>
-                <th className={`${TH} text-right`}>Waiting</th>
-              </tr>
-            </thead>
-            <tbody>
-              {page.items.map((ticket) => {
-                const clock = replyClock(ticket);
-                const waiting = clock.waitingSince === null ? null : waitingLabel(clock.waitingSince, now);
-                return (
-                  <tr key={ticket.id}>
-                    <td className={TD}>
-                      <Link href={`/support/${ticket.id}`} className="font-semibold hover:underline">
-                        {ticket.subject}
-                      </Link>
-                      <small className="mt-0.5 block font-figure text-xs text-ink-2">{ticket.displayRef}</small>
-                    </td>
-                    <td className={TD}>{ticket.businessName ?? "No business"}</td>
-                    <td className={TD}>{STAFF_SUPPORT_CATEGORY_LABELS[ticket.category]}</td>
-                    <td className={`${TD} text-ink-2`}>{ownerName(ticket.assigneeStaffId)}</td>
-                    <td className={`${TD_TIME} text-right`}>
-                      {waiting === null ? <LocalDateTime iso={ticket.lastActivityAt.toISOString()} variant="timestamp" /> : <span className={WAITING_CLASSES[waiting.tone]}>{waiting.text}</span>}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </TableScroll>
-        </section>
-      )}
-
-      {page.nextCursor === null ? null : (
-        <Link href={requestsHref(filters, { cursor: page.nextCursor })} className={`${buttonSecondary} mt-6`}>
-          Older requests
-        </Link>
-      )}
     </>
   );
 }

@@ -1,6 +1,5 @@
 /*
- * How notify() hands a push to a device. The interface is all package N1 ships: the real sender (web-push with VAPID keys,
- * quiet hours, revoking a subscription on 404 or 410) is package N4. Development uses the fake sender, which only remembers
+ * How notify() hands a push to a device. The real sender (web-push with VAPID keys, quiet hours, revoking a subscription on 404 or 410) is web-push-sender.ts. Development uses the fake sender, which only remembers
  * what it was asked to send, so no real push leaves the machine.
  */
 
@@ -16,6 +15,8 @@ export interface PushMessage {
   readonly body?: string;
   readonly url: string;
   readonly tag: string;
+  /** The event key. Lets the real sender apply quiet hours (payment failed is the one exception). */
+  readonly event?: string;
 }
 
 export interface PushSender {

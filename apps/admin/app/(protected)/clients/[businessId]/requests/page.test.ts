@@ -7,7 +7,7 @@ import ClientRequestsPage from "./page";
 vi.mock("server-only", () => ({}));
 vi.mock("@/lib/server/db", () => ({ getStaffDb: () => ({ name: "staff-db" }) }));
 vi.mock("@/lib/server/client-page", () => ({ openClientTab: vi.fn() }));
-vi.mock("@/components/console/requests-section", () => ({ RequestsSection: () => "[send request]" }));
+vi.mock("@/components/requests/requests-workspace", () => ({ RequestsWorkspace: ({ rows, empty }: { rows: readonly unknown[]; empty: { title: string } }) => (rows.length === 0 ? empty.title : "[requests]") }));
 vi.mock("@/components/console/calls-section", () => ({ CallsSection: () => "[calls]" }));
 vi.mock("@brandbasket/db", async () => {
   const actual = await vi.importActual<typeof import("@brandbasket/db")>("@brandbasket/db");
@@ -28,7 +28,7 @@ function activityRows(count: number): never {
 }
 
 async function render(rows = 2): Promise<string> {
-  vi.mocked(openClientTab).mockResolvedValue({ granted: { staff: { role: "support" } }, client: { businessId: BUSINESS } } as never);
+  vi.mocked(openClientTab).mockResolvedValue({ granted: { user: { id: "staff-1" }, staff: { role: "support" } }, client: { businessId: BUSINESS } } as never);
   vi.mocked(listSupportTicketsForStaff).mockResolvedValue({ items: [], nextCursor: null } as never);
   vi.mocked(listActivityForBusiness).mockResolvedValue(activityRows(rows));
   vi.mocked(listAssignableSupportStaff).mockResolvedValue([]);

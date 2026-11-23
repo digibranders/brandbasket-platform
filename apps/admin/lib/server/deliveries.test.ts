@@ -44,7 +44,7 @@ const FAILED: StoredEmail = {
   status: "failed",
   providerMessageId: null,
   error: "Brevo could not be reached",
-  attempts: 1,
+  attempts: 1, maxAttempts: 3, nextAttemptAt: null,
   lastAttemptAt: NOW,
   bodyRedacted: false,
   createdAt: NOW,

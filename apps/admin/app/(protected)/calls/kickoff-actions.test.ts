@@ -53,7 +53,7 @@ describe("completeKickoffAction", () => {
     await completeKickoffAction(form({ businessId: BUSINESS, notes: "  Five pages, call to book.  " }));
     expect(completeKickoff).toHaveBeenCalledWith(DB, { businessId: BUSINESS, staffId: "staff-1", now: expect.any(Date), notes: "Five pages, call to book." });
     expect(logStaffAccessOrThrow).toHaveBeenCalledWith(expect.objectContaining({ action: "setup_call.held", businessId: BUSINESS }));
-    expect(revalidatePath).toHaveBeenCalledWith("/calls");
+    expect(revalidatePath).toHaveBeenCalledWith("/");
   });
 
   it("saves the answer on the server and thanks the customer, once, when the call is newly held", async () => {
@@ -112,7 +112,7 @@ describe("recordKickoffOutcomeAction", () => {
     });
     expect(clearUnheldKickoffBooking).toHaveBeenCalledWith(DB, BUSINESS);
     expect(logStaffAccessOrThrow).toHaveBeenCalledWith(expect.objectContaining({ action, targetId: BUSINESS, businessId: BUSINESS }));
-    expect(revalidatePath).toHaveBeenCalledWith("/calls");
+    expect(revalidatePath).toHaveBeenCalledWith("/");
     expect(revalidatePath).toHaveBeenCalledWith(`/clients/${BUSINESS}`);
     expect(noticeKickoffAnswered).toHaveBeenCalledWith({ answer: outcome === "customer_no_show" ? "not_joined" : "reschedule", businessId: BUSINESS, startsAt: BOOKING.startsAt });
   });

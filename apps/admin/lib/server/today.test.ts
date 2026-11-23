@@ -1,20 +1,27 @@
 import {
   countActiveErrorIssues,
+  countSupportQueues,
   countSupportTicketsByStatus,
   listAddOnsToContact,
+  listBreaches,
   listClients,
   listDomainMoves,
   listErrorIssues,
-  listPendingKickoffPrompts,
+  listKickoffBoard,
   listLeads,
+  listOpenClosures,
+  listOpenPrivacyRequests,
   listPaymentsNeedingAttention,
   listProjectsStartedWithoutCallConfirmation,
+  listReportsForReview,
   listSetupCallsBetween,
+  listSetupCallsForStaff,
   listStaffRoster,
   listSupportTicketsForStaff,
   sumCapturedPaymentsBetween,
   type ClientBilling,
   type ClientSummary,
+  type KickoffBoardRow,
   type Lead,
   type PaymentNeedingAttention,
 } from "@brandbasket/db";
@@ -30,16 +37,22 @@ vi.mock("@brandbasket/db", async () => {
   return {
     ...actual,
     countActiveErrorIssues: vi.fn(),
+    countSupportQueues: vi.fn(),
     countSupportTicketsByStatus: vi.fn(),
     listAddOnsToContact: vi.fn(),
+    listBreaches: vi.fn(),
     listClients: vi.fn(),
     listDomainMoves: vi.fn(),
     listErrorIssues: vi.fn(),
-    listPendingKickoffPrompts: vi.fn(),
+    listKickoffBoard: vi.fn(),
     listLeads: vi.fn(),
+    listOpenClosures: vi.fn(),
+    listOpenPrivacyRequests: vi.fn(),
     listPaymentsNeedingAttention: vi.fn(),
     listProjectsStartedWithoutCallConfirmation: vi.fn(),
+    listReportsForReview: vi.fn(),
     listSetupCallsBetween: vi.fn(),
+    listSetupCallsForStaff: vi.fn(),
     listStaffRoster: vi.fn(),
     listSupportTicketsForStaff: vi.fn(),
     sumCapturedPaymentsBetween: vi.fn(),
@@ -74,15 +87,35 @@ beforeEach(() => {
   vi.mocked(listSetupCallsBetween).mockResolvedValue([]);
   vi.mocked(readSystemHealth).mockResolvedValue([]);
   vi.mocked(countFailedDeliveries24h).mockResolvedValue(0);
-  vi.mocked(listPendingKickoffPrompts).mockResolvedValue([]);
+  vi.mocked(listKickoffBoard).mockResolvedValue([]);
   vi.mocked(listStaffRoster).mockResolvedValue([]);
   vi.mocked(listProjectsStartedWithoutCallConfirmation).mockResolvedValue([]);
   vi.mocked(readGoogleToday).mockResolvedValue([]);
+  vi.mocked(listOpenPrivacyRequests).mockResolvedValue([]);
+  vi.mocked(listBreaches).mockResolvedValue([]);
+  vi.mocked(listOpenClosures).mockResolvedValue([]);
+  vi.mocked(listReportsForReview).mockResolvedValue([]);
+  vi.mocked(countSupportQueues).mockResolvedValue({ needsReply: 2, needsReplyOverADay: 0, waitingOnClient: 1, done: 0 });
+  vi.mocked(listSetupCallsForStaff).mockResolvedValue([]);
 });
 
 afterEach(() => {
   vi.restoreAllMocks();
 });
+
+function kickoffRow(values: Partial<KickoffBoardRow> & Pick<KickoffBoardRow, "businessId">): KickoffBoardRow {
+  return {
+    businessName: values.businessId,
+    startsAt: null,
+    endsAt: null,
+    heldAt: null,
+    summary: null,
+    projectStatus: "onboarding",
+    hasWebsite: true,
+    services: [],
+    ...values,
+  };
+}
 
 describe("loadTodayItems", () => {
   it("keeps the rest of the queue when one source fails, and logs the failure", async () => {
@@ -143,23 +176,45 @@ describe("failed deliveries in the queue", () => {
   });
 });
 
-describe("kickoff calls needing an answer on Today", () => {
-  const ENDED = new Date("2026-11-30T03:00:00.000Z");
-  const pending = (callId: string) => ({ callId, businessId: `b-${callId}`, businessName: `Cafe ${callId}`, startsAt: null, endsAt: ENDED, firstNotifiedAt: null, lastPopupShownAt: null, answeredAt: null, reminderPushedAt: null });
+describe("kickoff calls needing an outcome in the queue", () => {
+  const ENDED_EARLIER = new Date("2026-11-29T05:00:00.000Z");
+  const ENDED_LATER = new Date("2026-11-30T03:00:00.000Z");
 
-  it("shows each unanswered call once, as the card, and not again as a queue row", async () => {
-    vi.mocked(listPendingKickoffPrompts).mockResolvedValue([pending("one"), pending("two")]);
-    const page = await loadTodayPage(NOW, true);
-    expect(listPendingKickoffPrompts).toHaveBeenCalledWith({}, { now: NOW, lookBackDays: 14 });
-    expect(page.pendingKickoffs.map((call) => call.businessId)).toEqual(["b-one", "b-two"]);
-    expect(page.items.some((item) => item.key.startsWith("kickoff:"))).toBe(false);
+  it("asks for the board over the last 14 days and adds one item per business whose call ended without being marked held", async () => {
+    vi.mocked(listKickoffBoard).mockResolvedValue([
+      kickoffRow({ businessId: "b-late", endsAt: ENDED_LATER }),
+      kickoffRow({ businessId: "b-early", endsAt: ENDED_EARLIER }),
+      kickoffRow({ businessId: "b-not-yet", endsAt: new Date("2026-11-30T09:00:00.000Z") }),
+      kickoffRow({ businessId: "b-held", endsAt: ENDED_EARLIER, heldAt: new Date("2026-11-29T06:00:00.000Z") }),
+      kickoffRow({ businessId: "b-started", endsAt: ENDED_EARLIER, projectStatus: "submitted" }),
+    ]);
+    const items = await loadTodayItems(NOW, true);
+    expect(listKickoffBoard).toHaveBeenCalledWith({}, { now: NOW, lookBackDays: 14 });
+    expect(items.filter((item) => item.kind === "kickoff")).toEqual([
+      { key: "kickoff:b-early", kind: "kickoff", href: "/", title: "Did the kickoff happen?", detail: "b-early · ended 29 Nov, 10:30", dueAt: ENDED_EARLIER },
+      { key: "kickoff:b-late", kind: "kickoff", href: "/", title: "Did the kickoff happen?", detail: "b-late · ended 30 Nov, 08:30", dueAt: ENDED_LATER },
+    ]);
   });
 
-  it("names kickoff calls as failed and shows no card when they cannot be read", async () => {
-    vi.mocked(listPendingKickoffPrompts).mockRejectedValue(new Error("database down"));
+  it("drops the item once the call is marked held, or its booking is removed by a no-show", async () => {
+    vi.mocked(listKickoffBoard).mockResolvedValue([kickoffRow({ businessId: "b-one", endsAt: ENDED_LATER })]);
+    expect((await loadTodayItems(NOW, true)).some((item) => item.key === "kickoff:b-one")).toBe(true);
+    vi.mocked(listKickoffBoard).mockResolvedValue([kickoffRow({ businessId: "b-one", endsAt: ENDED_LATER, heldAt: new Date("2026-11-30T03:30:00.000Z") })]);
+    expect((await loadTodayItems(NOW, true)).some((item) => item.kind === "kickoff")).toBe(false);
+    vi.mocked(listKickoffBoard).mockResolvedValue([]);
+    expect((await loadTodayItems(NOW, true)).some((item) => item.kind === "kickoff")).toBe(false);
+  });
+
+  it("adds no item when no call is waiting for an outcome", async () => {
+    const items = await loadTodayItems(NOW, true);
+    expect(items.some((item) => item.kind === "kickoff")).toBe(false);
+  });
+
+  it("names kickoff calls as failed and adds no item when the board cannot be read", async () => {
+    vi.mocked(listKickoffBoard).mockRejectedValue(new Error("database down"));
     const page = await loadTodayPage(NOW, true);
     expect(page.failed).toEqual(["kickoff calls"]);
-    expect(page.pendingKickoffs).toEqual([]);
+    expect(page.items.some((item) => item.kind === "kickoff")).toBe(false);
     expect(page.items.map((item) => item.key)).toEqual(["lead:lead-1"]);
   });
 });
@@ -447,5 +502,69 @@ describe("loadTodayPage", () => {
     expect(item?.title).toBe("Started without call confirmation");
     expect(item?.detail).toBe("Fallback Bakers");
     expect(item?.href).toBe("/clients/biz-1/website");
+  });
+});
+
+describe("compliance, report and silent-preview rows", () => {
+  const PRIVACY = { id: "pr-1", reference: "PR-0001", kind: "access", status: "received", dueAt: new Date("2026-12-10T00:00:00.000Z") };
+  const BREACH = { id: "br-1", status: "open", summary: "A laptop was lost", detectedAt: new Date("2026-11-30T00:00:00.000Z"), reportedCertInAt: null, reportedBoardAt: null };
+
+  it("reads privacy requests, breaches and closing accounts only with the oversight capability", async () => {
+    vi.mocked(listOpenPrivacyRequests).mockResolvedValue([PRIVACY as never]);
+    vi.mocked(listBreaches).mockResolvedValue([BREACH as never]);
+    vi.mocked(listOpenClosures).mockResolvedValue([{ businessId: "biz-1", requestedAt: NOW, eraseAfter: new Date("2026-12-02T00:00:00.000Z") }]);
+    const without = await loadTodayItems(NOW, true);
+    expect(without.map((item) => item.kind)).not.toEqual(expect.arrayContaining(["privacy"]));
+    expect(listOpenPrivacyRequests).not.toHaveBeenCalled();
+    expect(listBreaches).not.toHaveBeenCalled();
+    expect(listOpenClosures).not.toHaveBeenCalled();
+    const items = await loadTodayItems(NOW, true, false, true);
+    expect(items.map((item) => item.key)).toEqual(expect.arrayContaining(["privacy:pr-1", "breach:br-1", "closure:biz-1"]));
+    expect(items.find((item) => item.key === "closure:biz-1")?.title).toBe("Account closing: An account");
+  });
+
+  it("adds one report row while reports wait for a review, due at the end of the 5th", async () => {
+    vi.mocked(listReportsForReview).mockResolvedValue([{ state: "draft" }, { state: "held" }, { state: "approved" }] as never);
+    const row = (await loadTodayItems(NOW, true)).find((item) => item.kind === "report");
+    expect(row?.title).toBe("2 reports to review");
+    expect(row?.dueAt).toEqual(new Date("2026-11-05T18:30:00.000Z"));
+  });
+
+  it("adds a row for a preview sent 5 or more days ago, and none for a newer one", async () => {
+    const project = (sentAt: string): never => ({ businessId: sentAt, businessName: `Cafe ${sentAt}`, project: { status: "preview", previewSentAt: new Date(sentAt) } }) as never;
+    vi.mocked(listClients).mockResolvedValue([project("2026-11-24T06:00:00.000Z"), project("2026-11-26T06:00:00.000Z")]);
+    const rows = (await loadTodayItems(NOW, true)).filter((item) => item.kind === "preview_silent");
+    expect(rows.map((item) => item.key)).toEqual(["preview_silent:2026-11-24T06:00:00.000Z"]);
+  });
+
+  it("names a failed compliance source and leaves the rest of the queue", async () => {
+    vi.mocked(listBreaches).mockRejectedValue(new Error("down"));
+    const page = await loadTodayPage(NOW, true, false, true);
+    expect(page.failed).toEqual(["breaches"]);
+    expect(page.items.map((item) => item.key)).toEqual(["lead:lead-1"]);
+  });
+});
+
+describe("the Today page's open requests and calls", () => {
+  it("counts requests that need a reply or wait on the customer", async () => {
+    expect((await loadTodayPage(NOW, true)).openRequests).toBe(3);
+  });
+
+  it("leaves the count null and names the source when it cannot be read", async () => {
+    vi.mocked(countSupportQueues).mockRejectedValue(new Error("down"));
+    const page = await loadTodayPage(NOW, true);
+    expect(page.openRequests).toBeNull();
+    expect(page.failed).toEqual(["open requests"]);
+  });
+
+  it("splits calls from the last 7 and next 28 days into coming up and the last week", async () => {
+    vi.mocked(listSetupCallsForStaff).mockResolvedValue([
+      { businessId: "b-next", businessName: "Next", startsAt: new Date("2026-12-03T08:00:00.000Z"), setupDone: 1 },
+      { businessId: "b-past", businessName: "Past", startsAt: new Date("2026-11-27T08:00:00.000Z"), setupDone: 2 },
+    ] as never);
+    const page = await loadTodayPage(NOW, true);
+    expect(page.callGroups.upcoming.map((line) => line.call.businessId)).toEqual(["b-next"]);
+    expect(page.callGroups.past.map((line) => line.call.businessId)).toEqual(["b-past"]);
+    expect(listSetupCallsForStaff).toHaveBeenCalledWith({}, new Date("2026-11-22T18:30:00.000Z"), new Date("2026-12-27T18:30:00.000Z"));
   });
 });

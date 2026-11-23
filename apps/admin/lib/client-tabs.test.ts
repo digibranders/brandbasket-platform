@@ -5,14 +5,14 @@ const ROLES = ["support", "finance", "admin"] as const;
 const ID = "01a0f71b-8402-7d48-a90a-207e8c8a882c";
 
 describe("tabsFor", () => {
-  it("gives every role the same five tabs, in order, with these labels", () => {
+  it("gives every role the same six tabs, in order, with these labels", () => {
     for (const role of ROLES) {
-      expect(tabsFor(role).map((tab) => tab.label), role).toEqual(["Overview", "Website", "Plan and billing", "Messages", "People"]);
-      expect(tabsFor(role).map((tab) => tab.slug), role).toEqual(["", "website", "billing", "requests", "people"]);
+      expect(tabsFor(role).map((tab) => tab.label), role).toEqual(["Overview", "Website", "Services", "Money", "Requests", "Account"]);
+      expect(tabsFor(role).map((tab) => tab.slug), role).toEqual(["", "website", "services", "billing", "requests", "people"]);
     }
   });
 
-  it("keeps no tab behind a capability, because the money half of Plan and billing guards itself", () => {
+  it("keeps no tab behind a capability, because the money half of Money guards itself", () => {
     expect(CLIENT_TABS.some((tab) => "needs" in tab)).toBe(false);
   });
 });
@@ -35,19 +35,24 @@ describe("clientTabHrefWithQuery", () => {
 });
 
 describe("forwardedNoticeHref", () => {
-  it("sends payment, charge, invoice and refund notices to Plan and billing with their query", () => {
+  it("sends payment, charge, invoice and refund notices to Money with their query", () => {
     expect(forwardedNoticeHref(ID, { payment: "recorded" })).toBe(`/clients/${ID}/billing?payment=recorded`);
     expect(forwardedNoticeHref(ID, { charges: "added" })).toBe(`/clients/${ID}/billing?charges=added`);
     expect(forwardedNoticeHref(ID, { invoice: "issued" })).toBe(`/clients/${ID}/billing?invoice=issued`);
     expect(forwardedNoticeHref(ID, { refund: "marked" })).toBe(`/clients/${ID}/billing?refund=marked`);
   });
 
-  it("sends add-on, work, numbers, updates and chatbot notices to Plan and billing", () => {
+  it("sends add-on notices to Money", () => {
     expect(forwardedNoticeHref(ID, { addOns: "contacted" })).toBe(`/clients/${ID}/billing?addOns=contacted`);
-    expect(forwardedNoticeHref(ID, { work: "saved" })).toBe(`/clients/${ID}/billing?work=saved`);
-    expect(forwardedNoticeHref(ID, { numbers: "saved" })).toBe(`/clients/${ID}/billing?numbers=saved`);
-    expect(forwardedNoticeHref(ID, { updates: "added" })).toBe(`/clients/${ID}/billing?updates=added`);
-    expect(forwardedNoticeHref(ID, { chatbots: "removed" })).toBe(`/clients/${ID}/billing?chatbots=removed`);
+  });
+
+  it("sends work, numbers, updates, chatbot, campaign and account notices to Services (CR-07)", () => {
+    expect(forwardedNoticeHref(ID, { work: "saved" })).toBe(`/clients/${ID}/services?work=saved`);
+    expect(forwardedNoticeHref(ID, { numbers: "saved" })).toBe(`/clients/${ID}/services?numbers=saved`);
+    expect(forwardedNoticeHref(ID, { updates: "added" })).toBe(`/clients/${ID}/services?updates=added`);
+    expect(forwardedNoticeHref(ID, { chatbots: "removed" })).toBe(`/clients/${ID}/services?chatbots=removed`);
+    expect(forwardedNoticeHref(ID, { campaigns: "saved" })).toBe(`/clients/${ID}/services?campaigns=saved`);
+    expect(forwardedNoticeHref(ID, { accounts: "saved" })).toBe(`/clients/${ID}/services?accounts=saved`);
   });
 
   it("sends preview, launch, domain, build and site-data notices to Website, keeping every part of the query", () => {
@@ -61,7 +66,7 @@ describe("forwardedNoticeHref", () => {
     expect(forwardedNoticeHref(ID, { hosting: "saved" })).toBe(`/clients/${ID}/website?hosting=saved`);
   });
 
-  it("sends call and request notices to Messages", () => {
+  it("sends call and request notices to Requests", () => {
     expect(forwardedNoticeHref(ID, { calls: "held" })).toBe(`/clients/${ID}/requests?calls=held`);
     expect(forwardedNoticeHref(ID, { requests: "sent", mail: "failed" })).toBe(`/clients/${ID}/requests?requests=sent&mail=failed`);
   });

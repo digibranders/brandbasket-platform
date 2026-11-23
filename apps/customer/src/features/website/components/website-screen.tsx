@@ -2,6 +2,7 @@ import type { WebsitePage } from "@brandbasket/db";
 import { NextActionCard, PreviewFrame, Stepper, type StepItem } from "@brandbasket/shared/ui/patterns";
 import { safeExternalHref } from "@brandbasket/shared/lib/safe-link";
 import { MetricStrip, PageHeader, Panel, PanelData, PanelError } from "@/components";
+import { callLengthLabel } from "@/features/calls/rules";
 import { formatDate, formatDateTime, formatNumber, formatQuantity, formatTime } from "@/lib/format";
 import type { CustomerContext } from "@/lib/guards";
 import type { Loaded } from "@/lib/loaded";
@@ -114,6 +115,7 @@ export function WebsiteScreen({ context, core, overview, pages, notice, feedback
         ? `${formatDateTime(view.startsAt, now)} to ${formatTime(view.endsAt)}`
         : formatDateTime(view.startsAt, now)
       : null;
+    const callMinutes = view.startsAt && view.endsAt ? Math.round((view.endsAt.getTime() - view.startsAt.getTime()) / 60_000) : null;
     const description = kickoffTiming
       ? `Kickoff call booked for ${kickoffTiming}. We will call the primary contact number or join on video.`
       : (view.line ?? view.title);
@@ -167,7 +169,7 @@ export function WebsiteScreen({ context, core, overview, pages, notice, feedback
                 <p className="type-body text-ink-2">
                   {view.meetingUrl
                     ? "Video call. Join with the button above or from your calendar invite."
-                    : "30 minutes on video or phone. We go through your business and plan your website with you."}
+                    : `${callMinutes === null ? "Video or phone call" : `${callLengthLabel(callMinutes)} on video or phone`}. We go through your business and plan your website with you.`}
                 </p>
               </NextActionCard>
               <NextStepsPanel steps={steps} history={overview.history} />

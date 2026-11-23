@@ -6,7 +6,7 @@ import {
   recordSignupReminderSent,
   type Database,
 } from "@brandbasket/db";
-import { signupReminderEmail, type EmailTransport } from "@brandbasket/email";
+import { emailOutcome, signupReminderEmail, type EmailTransport } from "@brandbasket/email";
 import { customerEmailTransport } from "@/features/server-common/email";
 import { getStaffDb } from "@/lib/db";
 import { LEADS_API_TOKEN_MIN_LENGTH } from "@/platform/lib/leads-api";
@@ -86,7 +86,14 @@ export async function processSignupReminders(
         businessName: lead.businessName,
         continueUrl,
       });
-      await transport.send(email);
+      const outcome = emailOutcome(await transport.send(email));
+      // Marked reminded when Brevo took it or the queue holds it. A message that failed for good is left unmarked, so the
+      // next run tries the lead again instead of silently dropping the reminder.
+      if (outcome.status === "failed") {
+        failed += 1;
+        console.error(`Sign-up reminder to ${lead.email} (lead ${lead.id}) failed: ${outcome.error ?? "no reason given"}`);
+        continue;
+      }
       await recordSignupReminderSent(db, lead.id, now);
       sent += 1;
     } catch (err: unknown) {

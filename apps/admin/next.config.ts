@@ -43,6 +43,8 @@ const nextConfig: NextConfig = {
           razorpayCheckout: false,
         }),
       },
+      // The push service worker: always fetched fresh, so a fixed worker reaches browsers at their next visit.
+      { source: "/sw.js", headers: [{ key: "Cache-Control", value: "no-cache, max-age=0" }, { key: "Service-Worker-Allowed", value: "/" }] },
     ];
   },
   // Server actions keep Next's default 1 MB body limit. Raising it for uploads would let anyone make every action

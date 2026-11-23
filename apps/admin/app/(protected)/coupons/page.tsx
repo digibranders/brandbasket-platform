@@ -16,7 +16,7 @@ import { getStaffDb } from "@/lib/server/db";
 import { requireStaffCan } from "@/lib/server/staff-role";
 import { logStaffAccess } from "@/lib/server/staff-access-log";
 
-export const metadata: Metadata = { title: "Coupons" };
+export const metadata: Metadata = { title: "Plans and offers" };
 
 /** Enough to see at a glance; a longer history belongs in a report, not a console list. */
 const LIST_LIMIT = 200;
@@ -34,7 +34,7 @@ function retiredReason(
 }
 
 export default async function CouponsPage(): Promise<ReactElement> {
-  const { user, staff: viewer } = await requireStaffCan("money");
+  const { user } = await requireStaffCan("money");
   await logStaffAccess({ staffUserId: user.id, action: "coupons.list", targetType: "coupons" });
   const codes = await listReferralCodes(getStaffDb(), "coupon", LIST_LIMIT);
   const now = new Date();
@@ -44,15 +44,15 @@ export default async function CouponsPage(): Promise<ReactElement> {
   return (
     <>
       <PageHeader
-        title="Coupons"
-        meta="A fixed amount or a percentage off every month. Nobody is paid for them."
+        title="Plans and offers"
+        meta="Coupons that are live change what a customer pays. A fixed amount or a percentage off every month; nobody is paid for them."
         action={
           <Link href="/coupons/new" className={buttonPrimary}>
             New coupon
           </Link>
         }
       />
-      <SectionTabs role={viewer.role} page="/coupons" />
+      <SectionTabs page="/coupons" />
 
       <StatTiles
         items={[

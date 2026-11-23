@@ -12,17 +12,15 @@ vi.mock("@/app/(protected)/calls/kickoff-actions", () => ({
 import { KICKOFF_AUTO_START_NOTE } from "@/lib/kickoff-copy";
 import { TodayKickoffPrompt } from "./kickoff-prompt";
 
-const CALLS = [
-  {
-    businessId: "01a0f71b-8402-7d48-a90a-207e8c8a882c",
-    businessName: "Green Leaf Cafe",
-    endsAt: new Date("2026-11-14T09:30:00Z"),
-  },
-];
+const CALL = {
+  businessId: "01a0f71b-8402-7d48-a90a-207e8c8a882c",
+  businessName: "Green Leaf Cafe",
+  endsAt: new Date("2026-11-14T09:30:00Z"),
+};
 
 describe("TodayKickoffPrompt", () => {
-  it("renders the prompt card with the question and three actions", () => {
-    const html = renderToStaticMarkup(createElement(TodayKickoffPrompt, { kickoffs: CALLS }));
+  it("renders the prompt with the question and three actions", () => {
+    const html = renderToStaticMarkup(createElement(TodayKickoffPrompt, { kickoff: CALL, onClose: vi.fn() }));
     expect(html).toContain("Did the kickoff call with Green Leaf Cafe happen?");
     expect(html).toContain("Call completed");
     expect(html).toContain("They did not join");
@@ -32,8 +30,7 @@ describe("TodayKickoffPrompt", () => {
     expect(html).not.toContain("held");
   });
 
-  it("renders nothing when no calls are pending", () => {
-    const html = renderToStaticMarkup(createElement(TodayKickoffPrompt, { kickoffs: [] }));
-    expect(html).toBe("");
+  it("renders nothing when no call is chosen", () => {
+    expect(renderToStaticMarkup(createElement(TodayKickoffPrompt, { kickoff: null, onClose: vi.fn() }))).toBe("");
   });
 });
