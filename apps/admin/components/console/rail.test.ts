@@ -53,7 +53,7 @@ it("shows no count on any item when none could be read", async () => {
 
 it("draws the System count in red for failed deliveries", async () => {
   await renderRail({ deliveries: 3 });
-  const count = container.querySelector('a[href="/deliveries"] span:last-child');
+  const count = container.querySelector('a[href="/system"] span:last-child');
   expect(count?.textContent).toBe("3");
   expect(count?.className).toContain("bg-error");
 });

@@ -6,7 +6,6 @@ import { TurnstileScope } from "@brandbasket/shared/ui/turnstile-scope";
 import { retryMessage } from "@brandbasket/shared/lib/sign-in-limits";
 import { QuietFrame } from "@/components/console/quiet-frame";
 import { StaffInviteForm } from "@/components/staff-invite-form";
-import { ROLE_LABELS } from "@/lib/staff-roles";
 import { signOut } from "@/lib/server/sign-out";
 import { viewStaffInvite } from "@/lib/server/staff-invite-accept";
 
@@ -18,9 +17,9 @@ export default async function StaffInvitePage({ params }: { readonly params: Pro
   const view = await viewStaffInvite(token);
 
   if (view.kind === "limited") return <QuietFrame title="Too many tries" lede={retryMessage(view.retryAfterSeconds)} />;
-  if (view.kind === "gone") return <QuietFrame title="This invite no longer works" lede="It was used, replaced or has expired. Ask an admin for a new one." />;
+  if (view.kind === "gone") return <QuietFrame title="This invite no longer works" lede="It was used, replaced or has expired. Ask the person who runs Brandbasket for a new invite." />;
 
-  const lede = `You are invited as ${ROLE_LABELS[view.invite.role]}, with ${view.invite.email}.`;
+  const lede = `You were invited with ${view.invite.email}.`;
   if (view.mode === "sign-in-first") {
     return (
       <QuietFrame title="Sign in first" lede={`${lede} This email already has an account. Sign in with it, then open this link again.`}>
@@ -42,7 +41,7 @@ export default async function StaffInvitePage({ params }: { readonly params: Pro
     );
   }
   return (
-    <QuietFrame title="Join the staff console" lede={lede}>
+    <QuietFrame title="Set up your sign in" lede={lede}>
       <TurnstileScope>
         <StaffInviteForm token={token} mode={view.mode} />
       </TurnstileScope>
