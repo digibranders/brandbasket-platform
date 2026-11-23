@@ -431,10 +431,10 @@ step_backups() {
   put 0755 "$REPO/scripts/server/run-site-rollup-job.sh" /usr/local/sbin/brandbasket-site-rollup-job
   put 0755 "$REPO/scripts/server/run-kickoff-builds-job.sh" /usr/local/sbin/brandbasket-kickoff-builds-job
   put 0755 "$REPO/scripts/server/run-first-payment-check-job.sh" /usr/local/sbin/brandbasket-first-payment-check-job
-  put 0755 "$REPO/scripts/server/run-email-queue-job.sh" /usr/local/sbin/brandbasket-email-queue-job
   put 0755 "$REPO/scripts/server/run-signup-reminder-job.sh" /usr/local/sbin/brandbasket-signup-reminder-job
+  put 0755 "$REPO/scripts/server/run-email-queue-job.sh" /usr/local/sbin/brandbasket-email-queue-job
   say "== units"
-  for f in brandbasket-backup brandbasket-restore-test brandbasket-maintenance brandbasket-erase brandbasket-site-hosting brandbasket-site-rollup brandbasket-kickoff-builds brandbasket-site-health brandbasket-google-sync brandbasket-google-provision brandbasket-monthly-reports brandbasket-first-payment-check brandbasket-email-queue brandbasket-signup-reminder; do
+  for f in brandbasket-backup brandbasket-restore-test brandbasket-maintenance brandbasket-erase brandbasket-site-hosting brandbasket-site-rollup brandbasket-kickoff-builds brandbasket-site-health brandbasket-google-sync brandbasket-google-provision brandbasket-monthly-reports brandbasket-first-payment-check brandbasket-signup-reminder brandbasket-email-queue; do
     put 0644 "$HERE/systemd/$f.service" "$UNIT_DIR/$f.service"
     put 0644 "$HERE/systemd/$f.timer" "$UNIT_DIR/$f.timer"
   done
