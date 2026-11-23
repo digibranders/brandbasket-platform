@@ -1,6 +1,7 @@
 import { and, between, inArray, isNotNull } from "drizzle-orm";
 import type { Database } from "../client";
-import { subscriptions, type Subscription } from "../schema";
+import { subscriptions } from "../schema";
+import type { Subscription } from "./billing";
 
 /**
  * Active subscriptions whose paid-up-front first term ends in [from, to]: the first full price charge is about to be taken.

@@ -2,7 +2,7 @@ import type { Database } from "@brandbasket/db";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
-  notifyEvent: vi.fn(async () => undefined),
+  notifyEvent: vi.fn(async (_db: unknown, _input: { event: string; dedupeKey: string }) => undefined),
   findPaymentAlertBase: vi.fn(),
   findBusinessAlertDetails: vi.fn(),
   findLatestSubscriptionForBusiness: vi.fn(async () => null),
@@ -51,7 +51,7 @@ describe("sendPaymentReceipt, the bell and push", () => {
   it("tells the owner and staff about an unapplied payment, and sends no receipt", async () => {
     mocks.findPaymentAlertBase.mockResolvedValue({ payment: { id: "p2", businessId: BUSINESS, status: "captured", attentionReason: "unapplied" }, owner: OWNER });
     await sendPaymentReceipt(DB, deps, "p2");
-    expect(mocks.notifyEvent.mock.calls.map((call) => (call[1] as { event: string }).event)).toEqual(["billing.unapplied_payment", "billing.payment_needs_look.staff"]);
+    expect(mocks.notifyEvent.mock.calls.map((call) => call[1].event)).toEqual(["billing.unapplied_payment", "billing.payment_needs_look.staff"]);
     expect(send).not.toHaveBeenCalled();
   });
 
@@ -83,7 +83,7 @@ describe("sendPaymentRefunded", () => {
     mocks.findPaymentAlertBase.mockResolvedValue({ payment: { id: "p5", businessId: BUSINESS, createdAt: new Date(), currency: "INR", amountCents: 500 }, owner: OWNER });
     await sendPaymentRefunded(DB, deps, { paymentId: "p5", refundedAmountCents: 200, reason: "x", creditNoteNumber: "CN-1" });
     await sendPaymentRefunded(DB, deps, { paymentId: "p5", refundedAmountCents: 200, reason: "x", creditNoteNumber: null });
-    expect(mocks.notifyEvent.mock.calls.map((call) => (call[1] as { dedupeKey: string }).dedupeKey)).toEqual(["CN-1", "p5:200"]);
+    expect(mocks.notifyEvent.mock.calls.map((call) => call[1].dedupeKey)).toEqual(["CN-1", "p5:200"]);
   });
 });
 
