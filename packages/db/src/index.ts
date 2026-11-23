@@ -1674,6 +1674,7 @@ export {
   type BellNotification,
   type ChannelChoices,
 } from "./queries/notifications";
+export { listSubscriptionsEndingFirstTerm, listSubscriptionsPaidThroughBetween } from "./queries/billing-notices";
 export {
   listNotificationRecipients,
   recordNotification,
