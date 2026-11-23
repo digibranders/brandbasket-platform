@@ -1,4 +1,4 @@
-import type { ReportService, ReportState } from "@brandbasket/db";
+import { isPhoneAccountEmail, type ReportForReview, type ReportService, type ReportState } from "@brandbasket/db";
 import { monthRange, parseMonthKey } from "@brandbasket/shared/lib/reports/period";
 import { REPORT_SERVICE_TITLES } from "@brandbasket/shared/lib/reports/services";
 import type { PillTone } from "@/components/console/status-pill";
@@ -50,4 +50,67 @@ export function reportNotice(done: string | undefined): ReportNotice | null {
     return email === undefined ? null : { tone: done === "sent.failed" ? "problem" : "ok", text: `The report is sent. ${email}` };
   }
   return NOTICES[done] ?? null;
+}
+
+const HEADLINE_CHARACTERS = 110;
+
+/** The first line of a report as the list shows it. */
+export function reportPreview(content: Record<string, unknown>): string {
+  const headline = typeof content.headline === "string" ? content.headline : "";
+  return headline.length > HEADLINE_CHARACTERS ? `${headline.slice(0, HEADLINE_CHARACTERS).trimEnd()}...` : headline;
+}
+
+type ChipVariant = "idle" | "waiting" | "active" | "failed";
+const CHIP_VARIANTS: Readonly<Record<PillTone, ChipVariant>> = { wait: "waiting", problem: "failed", done: "active", todo: "idle", progress: "active" };
+
+/** One line of the Reports list. Plain data: it crosses from the server page to the client list. */
+export interface ReportRow {
+  readonly id: string;
+  readonly businessName: string;
+  readonly service: string;
+  readonly month: string;
+  readonly stateLabel: string;
+  readonly chip: ChipVariant;
+  readonly opening: string;
+  /** Approved but never sent: the earlier send did not finish, so the row's verb is Retry send. */
+  readonly retry: boolean;
+  /** Who a send emails, for the confirm. Null when nobody can be emailed (no address, or a phone sign-up). Read only for a retry row. */
+  readonly ownerEmail: string | null;
+}
+
+export function toReportRow(row: ReportForReview, ownerEmail: string | null): ReportRow {
+  const state = REPORT_STATE_LABELS[row.state];
+  return {
+    id: row.id,
+    businessName: row.businessName,
+    service: serviceTitle(row.service),
+    month: monthLabel(row.month),
+    stateLabel: state.label,
+    chip: CHIP_VARIANTS[state.tone],
+    opening: reportPreview(row.content),
+    retry: row.state === "approved",
+    ownerEmail: ownerEmail === null || isPhoneAccountEmail(ownerEmail) ? null : ownerEmail,
+  };
+}
+
+/** The confirm before a send or a retry. It names the address, and says plainly when nobody will be emailed. */
+export function sendReportCopy(row: { readonly month: string; readonly ownerEmail: string | null; readonly retry: boolean }): { readonly title: string; readonly consequence: string; readonly confirmLabel: string } {
+  const reach =
+    row.ownerEmail === null
+      ? "The owner has no email address on record, so nobody is emailed. The customer sees the report in their dashboard."
+      : `${row.ownerEmail} is emailed the PDF now, unless the owner turned report emails off.`;
+  const to = row.ownerEmail === null ? "" : ` to ${row.ownerEmail}`;
+  return row.retry
+    ? { title: `Try sending the ${row.month} report${to} again?`, consequence: `The earlier attempt did not finish. ${reach} A sent report cannot be recalled.`, confirmLabel: "Retry send" }
+    : { title: `Send the ${row.month} report${to}?`, consequence: `It is made into a PDF. ${reach} A sent report cannot be recalled.`, confirmLabel: "Send report" };
+}
+
+const IST_DAY = new Intl.DateTimeFormat("en-GB", { timeZone: "Asia/Kolkata", day: "numeric" });
+
+/**
+ * CD-15: the review window is the 1st to the 5th of the month (India time), or any time while a draft is unsent. Unsent reports
+ * are never hidden by the date; the date only decides whether an empty queue is still expected to fill.
+ */
+export function reportReviewWindowOpen(now: Date, unsentCount: number): boolean {
+  return unsentCount > 0 || Number(IST_DAY.format(now)) <= 5;
 }
