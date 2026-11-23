@@ -1,3 +1,4 @@
+import { notifyEvent } from "@brandbasket/shared/server/notify-event";
 import { findClientDetail, recordPreviewVersion, recordProjectPreviewSent, savePreviewImage, shouldEmail, type Database } from "@brandbasket/db";
 import { previewReadyEmail } from "@brandbasket/email";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -7,6 +8,7 @@ import { ProjectPreviewRecipientMissingError, resendPreviewEmail, sendProjectPre
 import { addWorkingActivity } from "./website-moves";
 
 vi.mock("server-only", () => ({}));
+vi.mock("@brandbasket/shared/server/notify-event", () => ({ notifyEvent: vi.fn(async () => undefined) }));
 vi.mock("@brandbasket/db", () => ({
   findClientDetail: vi.fn(),
   recordPreviewVersion: vi.fn(),
@@ -64,6 +66,12 @@ beforeEach(() => {
 });
 
 describe("sendProjectPreview", () => {
+  it("notifies the preview ready once per send, keyed on the project and the time", async () => {
+    await sendProjectPreview(db, INPUT, NOW);
+    expect(notifyEvent).toHaveBeenCalledTimes(1);
+    expect(notifyEvent).toHaveBeenCalledWith(db, { event: "website.preview_ready", audience: { kind: "customer", businessId: "business-1" }, dedupeKey: `project-1:${NOW.getTime()}`, data: {} });
+  });
+
   it("reads the client, records the preview against the business's project, then emails the owner", async () => {
     await sendProjectPreview(db, INPUT, NOW);
 

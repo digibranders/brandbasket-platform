@@ -12,6 +12,7 @@ import {
   type LaunchCheckKey,
 } from "@brandbasket/db";
 import { websiteLiveEmail } from "@brandbasket/email";
+import { notifyEvent } from "@brandbasket/shared/server/notify-event";
 import { customerEmailTransport } from "./email";
 import { ownerNotificationOf, type OwnerNotification } from "./project-preview";
 import { checkSiteAddress, type SiteCheckFailure } from "./site-check";
@@ -108,6 +109,8 @@ export async function launchProject(db: Database, input: LaunchProjectInput, now
   } catch (error) {
     if (!(error instanceof InvalidWebsiteUrlError)) throw error;
   }
+  // The bell and push, once per project going live. The website live email below is the old sender, kept; resending it adds no notice.
+  await notifyEvent(db, { event: "website.live", audience: { kind: "customer", businessId: input.businessId }, dedupeKey: `${client.project?.id ?? input.businessId}:live`, data: {} });
   if (client.owner.email === null) return "no-email";
   return emailLaunch(db, { businessId: input.businessId, to: client.owner.email, businessName: client.businessName, websiteUrl });
 }

@@ -1,3 +1,4 @@
+import { notifyEvent } from "@brandbasket/shared/server/notify-event";
 import { findClientDetail, switchToDomain, type Database } from "@brandbasket/db";
 import { domainMovedEmail } from "@brandbasket/email";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -5,6 +6,7 @@ import { customerEmailTransport } from "./email";
 import { DomainSwitchRecipientMissingError, switchDomain } from "./domain-switch";
 
 vi.mock("server-only", () => ({}));
+vi.mock("@brandbasket/shared/server/notify-event", () => ({ notifyEvent: vi.fn(async () => undefined) }));
 vi.mock("@brandbasket/db", () => ({ findClientDetail: vi.fn(), switchToDomain: vi.fn() }));
 vi.mock("@brandbasket/email", () => ({ domainMovedEmail: vi.fn() }));
 vi.mock("./email", () => ({ customerEmailTransport: vi.fn() }));
@@ -27,6 +29,12 @@ beforeEach(() => {
 });
 
 describe("switchDomain", () => {
+  it("notifies the move to their own domain once", async () => {
+    await switchDomain(db, { businessId: "business-1" });
+    expect(notifyEvent).toHaveBeenCalledTimes(1);
+    expect(notifyEvent).toHaveBeenCalledWith(db, { event: "website.domain_ready", audience: { kind: "customer", businessId: "business-1" }, dedupeKey: "business-1:moved:riverside.com", data: { state: "moved" } });
+  });
+
   it("switches first, then emails the owner their new address and the old one that forwards", async () => {
     await expect(switchDomain(db, { businessId: "business-1" })).resolves.toBe("emailed");
     expect(switchToDomain).toHaveBeenCalledWith(db, { businessId: "business-1" });

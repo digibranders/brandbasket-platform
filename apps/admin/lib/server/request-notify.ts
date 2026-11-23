@@ -3,6 +3,7 @@ import { findRequestRecipient, type Database } from "@brandbasket/db";
 import { changeRequestUpdateEmail, type ChangeRequestUpdate } from "@brandbasket/email";
 import { emailPreferenceAllows } from "@brandbasket/shared/server/email-preference";
 import { errorLogInfo } from "@brandbasket/shared/server/error-log-info";
+import { notifyEvent } from "@brandbasket/shared/server/notify-event";
 import type { MailOutcome } from "@/lib/request-notices";
 import { customerEmailTransport } from "./email";
 import { serverEnv } from "./env";
@@ -18,6 +19,16 @@ export async function notifyRequester(db: Database, ticketId: string, update: Ch
   try {
     const recipient = await findRequestRecipient(db, ticketId);
     if (recipient === null) return "failed";
+    // The bell and push for the four updates a person is told about (not "started" or "closed"); the email below is the old sender, kept.
+    if (recipient.businessId !== null && (update.kind === "reply" || update.kind === "quote" || update.kind === "ready" || update.kind === "done")) {
+      await notifyEvent(db, {
+        event: "request.reply",
+        audience: { kind: "customer", businessId: recipient.businessId, userIds: [recipient.userId] },
+        // A reply has no id of its own here, so each reply is its own notice; the other three happen once per request.
+        dedupeKey: update.kind === "reply" ? `${ticketId}:reply:${crypto.randomUUID()}` : `${ticketId}:${update.kind}`,
+        data: { ticketId, update: update.kind },
+      });
+    }
     if (recipient.email === null) return "no-email";
     if (
       recipient.businessId !== null &&

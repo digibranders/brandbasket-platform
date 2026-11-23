@@ -1,6 +1,7 @@
 import "server-only";
 import { findClientDetail, switchToDomain, type Database } from "@brandbasket/db";
 import { domainMovedEmail } from "@brandbasket/email";
+import { notifyEvent } from "@brandbasket/shared/server/notify-event";
 import { customerEmailTransport } from "./email";
 import type { OwnerNotification } from "./project-preview";
 
@@ -21,6 +22,7 @@ export async function switchDomain(db: Database, input: { readonly businessId: s
 
   const client = await findClientDetail(db, input.businessId);
   if (client === null || client.owner === null) throw new DomainSwitchRecipientMissingError(input.businessId);
+  await notifyEvent(db, { event: "website.domain_ready", audience: { kind: "customer", businessId: input.businessId }, dedupeKey: `${input.businessId}:moved:${switched.newHostname}`, data: { state: "moved" } });
   if (client.owner.email === null) return "no-email";
 
   await customerEmailTransport(db).send(
