@@ -1,5 +1,5 @@
 import type { ReactElement } from "react";
-import { TABLE, TD, TD_NUM, TD_TIME, TH } from "@/components/console/table";
+import { TABLE, TD_COMPACT, TD_COMPACT_NUM, TD_COMPACT_TIME, TH } from "@/components/console/table";
 import type { RegisterFooterView, RegisterTableRow } from "@/lib/invoice-register-view";
 import { TableScroll } from "@/components/console/table-scroll";
 
@@ -35,24 +35,23 @@ export function RegisterTable({ label, rows, footer }: { readonly label: string;
           <tbody>
             {rows.map((row) => (
               <tr key={row.id}>
-                <td className={`${TD} whitespace-nowrap font-figure font-medium tabular-nums`}>{row.number}</td>
-                <td className={TD_TIME}>{row.date}</td>
-                <td className={`${TD} max-w-[22rem] break-words`}>
-                  <span className="block font-semibold">{row.customer}</span>
-                  <span className="block text-xs tabular-nums text-ink-2">{row.party}</span>
-                  <span className="block text-xs text-ink-2">
+                <td className={`${TD_COMPACT} font-figure font-medium tabular-nums`}>{row.number}</td>
+                <td className={TD_COMPACT_TIME}>{row.date}</td>
+                <td className={`${TD_COMPACT} max-w-[28rem] truncate`} title={`${row.customer}, ${row.party}. ${row.payment}${row.paid === null ? "" : `, ${row.paid}`}`}>
+                  <span className="font-semibold">{row.customer}</span> <span className="text-xs tabular-nums text-ink-2">{row.party}</span>{" "}
+                  <span className="text-xs text-ink-2">
                     {row.payment}
                     {row.paid === null ? null : <span className="font-semibold">, {row.paid}</span>}
                   </span>
                 </td>
-                <td className={`${TD} whitespace-nowrap text-ink-2`}>{row.place}</td>
-                <td className={TD_NUM}>{row.taxable}</td>
-                <td className={TD_NUM}>{row.cgst}</td>
-                <td className={TD_NUM}>{row.sgst}</td>
-                <td className={TD_NUM}>{row.igst}</td>
-                <td className={TD_NUM}>{row.roundOff}</td>
-                <td className={`${TD_NUM} font-semibold`}>{row.total}</td>
-                <td className={`${TD} text-right`}>
+                <td className={`${TD_COMPACT} text-ink-2`}>{row.place}</td>
+                <td className={TD_COMPACT_NUM}>{row.taxable}</td>
+                <td className={TD_COMPACT_NUM}>{row.cgst}</td>
+                <td className={TD_COMPACT_NUM}>{row.sgst}</td>
+                <td className={TD_COMPACT_NUM}>{row.igst}</td>
+                <td className={TD_COMPACT_NUM}>{row.roundOff}</td>
+                <td className={`${TD_COMPACT_NUM} font-semibold`}>{row.total}</td>
+                <td className={`${TD_COMPACT} text-right`}>
                   <a href={row.downloadHref} aria-label={row.downloadLabel} className="text-sm font-semibold text-ink underline underline-offset-4">
                     PDF
                   </a>
@@ -62,16 +61,16 @@ export function RegisterTable({ label, rows, footer }: { readonly label: string;
           </tbody>
           <tfoot>
             <tr className="font-semibold">
-              <td className={TD} colSpan={4}>
+              <td className={TD_COMPACT} colSpan={4}>
                 Month total
               </td>
-              <td className={TD_NUM}>{footer.taxable}</td>
-              <td className={TD_NUM}>{footer.cgst}</td>
-              <td className={TD_NUM}>{footer.sgst}</td>
-              <td className={TD_NUM}>{footer.igst}</td>
-              <td className={TD_NUM}>{footer.roundOff}</td>
-              <td className={TD_NUM}>{footer.total}</td>
-              <td className={TD} />
+              <td className={TD_COMPACT_NUM}>{footer.taxable}</td>
+              <td className={TD_COMPACT_NUM}>{footer.cgst}</td>
+              <td className={TD_COMPACT_NUM}>{footer.sgst}</td>
+              <td className={TD_COMPACT_NUM}>{footer.igst}</td>
+              <td className={TD_COMPACT_NUM}>{footer.roundOff}</td>
+              <td className={TD_COMPACT_NUM}>{footer.total}</td>
+              <td className={TD_COMPACT} />
             </tr>
           </tfoot>
         </table>

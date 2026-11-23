@@ -1,4 +1,15 @@
-import { findClientIntake, findSetupCallBooking, listActivityForBusiness, listAssignableSupportStaff, type ProjectStatus } from "@brandbasket/db";
+import {
+  findClientIntake,
+  findOpenClosureForBusiness,
+  findSetupCallBooking,
+  listActivityForBusiness,
+  listAddOnsToContact,
+  listAssignableSupportStaff,
+  listLiveServiceLines,
+  listOpenPrivacyRequests,
+  listPaymentsNeedingAttention,
+  type ProjectStatus,
+} from "@brandbasket/db";
 import { renderToStaticMarkup } from "react-dom/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { NEXT_STEP_HEADLINES } from "@/lib/delivery-tab";
@@ -24,7 +35,18 @@ vi.mock("./parts", () => ({
 }));
 vi.mock("@brandbasket/db", async () => {
   const actual = await vi.importActual<typeof import("@brandbasket/db")>("@brandbasket/db");
-  return { ...actual, findClientIntake: vi.fn(), findSetupCallBooking: vi.fn(), listActivityForBusiness: vi.fn(), listAssignableSupportStaff: vi.fn() };
+  return {
+    ...actual,
+    findClientIntake: vi.fn(),
+    findSetupCallBooking: vi.fn(),
+    listActivityForBusiness: vi.fn(),
+    listAssignableSupportStaff: vi.fn(),
+    findOpenClosureForBusiness: vi.fn(),
+    listOpenPrivacyRequests: vi.fn(),
+    listPaymentsNeedingAttention: vi.fn(),
+    listLiveServiceLines: vi.fn(),
+    listAddOnsToContact: vi.fn(),
+  };
 });
 
 const BUSINESS = "01a0f71b-8402-7d48-a90a-207e8c8a882c";
@@ -58,6 +80,11 @@ beforeEach(() => {
   vi.mocked(listActivityForBusiness).mockResolvedValue([]);
   vi.mocked(listAssignableSupportStaff).mockResolvedValue([]);
   vi.mocked(loadClientAddOns).mockResolvedValue({ package: {} } as never);
+  vi.mocked(findOpenClosureForBusiness).mockResolvedValue(null);
+  vi.mocked(listOpenPrivacyRequests).mockResolvedValue([]);
+  vi.mocked(listPaymentsNeedingAttention).mockResolvedValue([]);
+  vi.mocked(listLiveServiceLines).mockResolvedValue([]);
+  vi.mocked(listAddOnsToContact).mockResolvedValue([]);
 });
 
 describe("the Overview's next step", () => {

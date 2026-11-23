@@ -255,9 +255,10 @@ export interface ChatbotLeadInput {
 
 /**
  * Records a lead once per chat session. A redelivery, or a second delivery for the same session with more details, fills
- * in what was missing and never blanks what is already there. Returns the lead's id. Staff connection only.
+ * in what was missing and never blanks what is already there. Returns the lead's id and whether this call created the row
+ * (so only the first delivery of a session is announced). Staff connection only.
  */
-export async function recordChatbotLead(db: Runner, input: ChatbotLeadInput): Promise<string> {
+export async function recordChatbotLeadReportingNew(db: Runner, input: ChatbotLeadInput): Promise<{ readonly id: string; readonly created: boolean }> {
   const rows = await db
     .insert(chatbotLeads)
     .values(input)
@@ -271,10 +272,16 @@ export async function recordChatbotLead(db: Runner, input: ChatbotLeadInput): Pr
         updatedAt: new Date(),
       },
     })
-    .returning({ id: chatbotLeads.id });
+    // xmax is 0 on a freshly inserted row and set on one the conflict path updated.
+    .returning({ id: chatbotLeads.id, created: sql<boolean>`(xmax = 0)` });
   const row = rows[0];
   if (row === undefined) throw new Error("The chatbot lead was not stored.");
-  return row.id;
+  return row;
+}
+
+/** The same write for callers that only need the lead's id. Staff connection only. */
+export async function recordChatbotLead(db: Runner, input: ChatbotLeadInput): Promise<string> {
+  return (await recordChatbotLeadReportingNew(db, input)).id;
 }
 
 /** Rates a lead that exists. False for a session that left no details, which is not a lead. Staff connection only. */

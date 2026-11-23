@@ -4,6 +4,14 @@ import { describe, expect, it, vi } from "vitest";
 import { createNotifier, type NotifyDeps, type NotifyStore } from "./notify";
 import { createFakePushSender } from "./push-sender";
 
+/** Every event has words now, so the "no wording" paths are reached by blanking one event's words. */
+const NO_WORDS: string = "social.week_lapsed";
+vi.mock("../lib/notification-events", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../lib/notification-events")>();
+  const blank = <F extends (key: never, data: never) => unknown>(copyFor: F): F => ((key: never, data: never) => (key === NO_WORDS ? null : copyFor(key, data))) as F;
+  return { ...actual, bellCopyFor: blank(actual.bellCopyFor), emailCopyFor: blank(actual.emailCopyFor), pushCopyFor: blank(actual.pushCopyFor) };
+});
+
 const BUSINESS = "11111111-1111-4111-8111-111111111111";
 const OWNER: NotificationRecipient = { userId: "user-owner", name: "Asha", email: "asha@example.com" };
 const PHONE_OWNER: NotificationRecipient = { userId: "user-phone", name: "Ravi", email: null };
@@ -229,11 +237,11 @@ describe("notify, a staff event", () => {
   it("writes one staff row, emails the team address and pushes to the staff account", async () => {
     const { notify, rows, emails, push } = setup();
     await notify({ event: "kickoff.ended", audience: STAFF, dedupeKey: "call-1", data: { businessName: "Asha Cafe" } });
-    expect(rows).toEqual([expect.objectContaining({ audience: "staff", userId: null, businessId: null, title: "Did the kickoff call with Asha Cafe happen?", link: "/calls", listed: true })]);
+    expect(rows).toEqual([expect.objectContaining({ audience: "staff", userId: null, businessId: null, title: "Did the kickoff call with Asha Cafe happen?", link: "/", listed: true })]);
     expect(emails[0]).toMatchObject({ to: "team@example.test", subject: "Did the kickoff call with Asha Cafe happen?" });
-    expect(emails[0]?.bodyText).toContain("https://console.example.test/calls");
+    expect(emails[0]?.bodyText).toContain("https://console.example.test/");
     expect(push.sent).toEqual([
-      { target: { audience: "staff", userId: null }, message: { title: "Did the kickoff call happen?", url: "https://console.example.test/calls", tag: "kickoff.ended", event: "kickoff.ended" } },
+      { target: { audience: "staff", userId: null }, message: { title: "Did the kickoff call happen?", url: "https://console.example.test/", tag: "kickoff.ended", event: "kickoff.ended" } },
     ]);
   });
 

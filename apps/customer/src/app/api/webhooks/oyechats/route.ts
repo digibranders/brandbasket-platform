@@ -1,6 +1,6 @@
 import { BodyTooLargeError, readLimitedBody } from "@brandbasket/shared/server/read-limited-body";
 import { handleOyeChatsWebhook, type OyeChatsWebhookResult } from "@/platform/lib/server/oyechats-webhook";
-import { noteWebhook } from "@/platform/lib/server/webhook-log";
+import { noteWebhook, webhookEventId } from "@/platform/lib/server/webhook-log";
 import { failureReason } from "@/platform/lib/webhook-event";
 import { noteSecurityEvent } from "@/platform/lib/server/security-events";
 
@@ -33,10 +33,13 @@ export async function POST(request: Request): Promise<Response> {
     await noteWebhook("oyechats", body, { result: "failed", error: failureReason(error) });
     throw error;
   }
+  // A repeat is already on the list from its first delivery; noting it again would be refused by the unique event id.
+  if (result.kind === "duplicate") return json({ received: true, duplicate: true }, 200);
+  const eventId = webhookEventId(body);
   await noteWebhook(
     "oyechats",
     body,
-    result.kind === "recorded" ? { result: "handled", businessId: result.businessId } : result.kind === "ignored" ? { result: "ignored" } : { result: "bad_signature" },
+    result.kind === "recorded" ? { result: "handled", businessId: result.businessId, eventId } : result.kind === "ignored" ? { result: "ignored", eventId } : { result: "bad_signature", eventId },
   );
   if (result.kind === "refused") {
     // Counted across servers; a few in an hour may be someone faking leads, and the team is emailed.

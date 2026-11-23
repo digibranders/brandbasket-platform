@@ -7,10 +7,12 @@ import type { CopyModule, PushCopy } from "./notification-events";
  */
 
 const CUSTOMER_CALLS = "/help";
-const STAFF_CALLS = "/calls";
+const STAFF_CALLS = "/";
 
 export const PUSH_COPY: CopyModule<PushCopy> = {
   "kickoff.soon": ({ when }) => ({ title: KICKOFF_LINES.soon(when), link: CUSTOMER_CALLS, tag: "kickoff.soon" }),
+  // The one extra push when a call is still unanswered 2 hours after it ended. Draft wording, awaiting the owner's yes.
+  "kickoff.ended.reminder": () => ({ title: "A kickoff call is still waiting for your answer", link: STAFF_CALLS, tag: "kickoff.ended.reminder" }),
   // The business is named in the bell and the email, not here: a lock screen is not private.
   "kickoff.ended": () => ({ title: "Did the kickoff call happen?", link: STAFF_CALLS, tag: "kickoff.ended" }),
   // N5. A push says what happened and opens the page: no amounts, no names, no business. Staff pushes never name a business.

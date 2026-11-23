@@ -1,4 +1,4 @@
-import { indianDate } from "@brandbasket/billing";
+import { indianDate } from "@brandbasket/billing/invoice-number";
 import type { Payment, TaxInvoice } from "@brandbasket/db";
 import { stateName } from "@brandbasket/shared/lib/directory/india-states";
 import { formatStoredDate } from "@brandbasket/shared/lib/format";

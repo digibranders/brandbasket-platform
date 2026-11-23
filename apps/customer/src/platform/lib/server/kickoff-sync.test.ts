@@ -2,9 +2,11 @@
 import { addActivityEvent, listKickoffsToStart, markProjectReadyAfterKickoff } from "@brandbasket/db";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { kickoffStartMode, startBuildsAfterKickoff } from "./kickoff-sync";
+import { notify } from "./notifier";
 
 vi.mock("server-only", () => ({}));
 vi.mock("./db", () => ({ getStaffDb: () => ({}) }));
+vi.mock("./notifier", () => ({ notify: vi.fn() }));
 vi.mock("@brandbasket/db", async () => {
   const actual = await vi.importActual<typeof import("@brandbasket/db")>("@brandbasket/db");
   return { ...actual, addActivityEvent: vi.fn(), listKickoffsToStart: vi.fn(), markProjectReadyAfterKickoff: vi.fn() };
@@ -18,6 +20,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   vi.mocked(listKickoffsToStart).mockResolvedValue([]);
   vi.mocked(markProjectReadyAfterKickoff).mockResolvedValue(true);
+  vi.mocked(notify).mockResolvedValue({ event: "kickoff.fallback_started", recipients: [], failed: false });
 });
 
 afterEach(() => {
@@ -55,7 +58,7 @@ describe("startBuildsAfterKickoff", () => {
 
   it("starts the build for a held kickoff the query returns, in confirmed-only mode", async () => {
     vi.stubEnv("KICKOFF_AUTO_START", "off");
-    vi.mocked(listKickoffsToStart).mockResolvedValue([{ businessId: "business-held", endsAt: null, heldAt: NOW }]);
+    vi.mocked(listKickoffsToStart).mockResolvedValue([{ businessId: "business-held", businessName: "Held Cafe", endsAt: null, heldAt: NOW }]);
     const report = await startBuildsAfterKickoff(NOW);
     expect(report).toEqual({ checked: 1, started: 1, failed: 0 });
     expect(markProjectReadyAfterKickoff).toHaveBeenCalledWith(
@@ -68,18 +71,34 @@ describe("startBuildsAfterKickoff", () => {
     );
   });
 
-  it("labels 24-hour fallback builds as started without call confirmation", async () => {
+  it("tells the customer a fallback build started in plain words, and keeps the staff label for staff", async () => {
     vi.stubEnv("KICKOFF_AUTO_START", "on");
-    vi.mocked(listKickoffsToStart).mockResolvedValue([{ businessId: "business-fallback", endsAt: ENDED_BEFORE, heldAt: null }]);
+    vi.mocked(listKickoffsToStart).mockResolvedValue([{ businessId: "business-fallback", businessName: "Fallback Cafe", endsAt: ENDED_BEFORE, heldAt: null }]);
     const report = await startBuildsAfterKickoff(NOW);
     expect(report).toEqual({ checked: 1, started: 1, failed: 0 });
     expect(markProjectReadyAfterKickoff).toHaveBeenCalledWith(
       {},
       expect.objectContaining({ businessId: "business-fallback", now: NOW, startedWithoutCallConfirmation: true }),
     );
-    expect(addActivityEvent).toHaveBeenCalledWith(
-      {},
-      expect.objectContaining({ businessId: "business-fallback", service: "website", title: "Started without call confirmation" }),
-    );
+    // The activity line is what the customer reads under "What we did".
+    expect(addActivityEvent).toHaveBeenCalledWith({}, expect.objectContaining({ businessId: "business-fallback", service: "website", title: "We started your website" }));
+    expect(notify).toHaveBeenCalledWith({ event: "kickoff.fallback_started", audience: { kind: "customer", businessId: "business-fallback" }, dedupeKey: "business-fallback", data: {} });
+    expect(notify).toHaveBeenCalledWith({ event: "kickoff.fallback_started.staff", audience: { kind: "staff", businessId: "business-fallback" }, dedupeKey: "business-fallback", data: { businessName: "Fallback Cafe" } });
+  });
+
+  it("sends no fallback notice for a call staff marked held", async () => {
+    vi.stubEnv("KICKOFF_AUTO_START", "off");
+    vi.mocked(listKickoffsToStart).mockResolvedValue([{ businessId: "business-held", businessName: "Held Cafe", endsAt: null, heldAt: NOW }]);
+    await startBuildsAfterKickoff(NOW);
+    expect(notify).not.toHaveBeenCalled();
+  });
+
+  it("still counts the build as started when a notice cannot be sent", async () => {
+    vi.stubEnv("KICKOFF_AUTO_START", "on");
+    vi.mocked(listKickoffsToStart).mockResolvedValue([{ businessId: "business-fallback", businessName: "Fallback Cafe", endsAt: ENDED_BEFORE, heldAt: null }]);
+    vi.mocked(notify).mockRejectedValue(new Error("no origins"));
+    const spy = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    expect(await startBuildsAfterKickoff(NOW)).toEqual({ checked: 1, started: 1, failed: 0 });
+    spy.mockRestore();
   });
 });

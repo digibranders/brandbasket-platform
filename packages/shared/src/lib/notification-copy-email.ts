@@ -9,7 +9,7 @@ import type { CopyModule, EmailCopy } from "./notification-events";
  */
 
 const CUSTOMER_CALLS = "/help";
-const STAFF_CALLS = "/calls";
+const STAFF_CALLS = "/";
 const SOCIAL = "/social";
 
 export const EMAIL_COPY: CopyModule<EmailCopy> = {
