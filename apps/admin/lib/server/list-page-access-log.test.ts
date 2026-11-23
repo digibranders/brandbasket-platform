@@ -13,8 +13,6 @@ const LIST_PAGES: readonly { readonly file: string; readonly action: string }[] 
   { file: "leaving/page.tsx", action: "leaving.list" },
   { file: "support/page.tsx", action: "support.list" },
   { file: "support/new/page.tsx", action: "support.new" },
-  { file: "outbox/page.tsx", action: "outbox.list" },
-  { file: "ad-credit/page.tsx", action: "ad_credit.list" },
   { file: "affiliates/page.tsx", action: "affiliates.list" },
   { file: "affiliates/[affiliateId]/page.tsx", action: "affiliates.detail" },
   { file: "affiliates/[affiliateId]/codes/new/page.tsx", action: "affiliates.new_code" },
