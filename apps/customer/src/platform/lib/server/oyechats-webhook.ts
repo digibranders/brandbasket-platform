@@ -1,16 +1,17 @@
 import "server-only";
-import { applyChatbotQualification, findChatbotWebhookTarget, recordChatbotLead, upsertEnquiryFromChatLead } from "@brandbasket/db";
+import { applyChatbotQualification, findChatbotWebhookTarget, recordChatbotLeadReportingNew, upsertEnquiryFromChatLead } from "@brandbasket/db";
 import { errorLogInfo } from "@brandbasket/shared/server/error-log-info";
 import { parseOyeChatsEvent, readOyeChatsBotId, verifyOyeChatsSignature } from "@brandbasket/shared/server/oyechats-webhook";
 import { getStaffDb } from "./db";
 import { serverEnv } from "./env";
 import { alertTeams } from "./teams";
+import { isRepeatWebhook, webhookEventId } from "./webhook-log";
 import { chatbotLeadTeamsCard } from "./teams-cards";
 
 /** Tells the Teams enquiries channel a client's chatbot caught a lead. Best effort: never throws and never waits on Teams. */
-function alertChatbotLead(businessId: string): void {
+function alertChatbotLead(businessId: string, leadId: string): void {
   try {
-    void alertTeams("enquiries", chatbotLeadTeamsCard({ clientUrl: new URL(`/clients/${businessId}`, serverEnv().ADMIN_ORIGIN).toString() }));
+    void alertTeams("enquiries", chatbotLeadTeamsCard({ clientUrl: new URL(`/clients/${businessId}`, serverEnv().ADMIN_ORIGIN).toString() }), { dedupeKey: `chatbot-lead:${leadId}` });
   } catch (error) {
     console.error("A chatbot lead was saved but Teams could not be told about it.", errorLogInfo(error));
   }
@@ -35,6 +36,8 @@ async function mirrorLeadToEnquiries(staffDb: ReturnType<typeof getStaffDb>, lea
 export type OyeChatsWebhookResult =
   | { readonly kind: "recorded"; readonly businessId: string }
   | { readonly kind: "ignored" }
+  /** The same delivery was already handled: answered, not acted on. */
+  | { readonly kind: "duplicate" }
   | { readonly kind: "refused" };
 
 const REFUSED: OyeChatsWebhookResult = { kind: "refused" };
@@ -54,10 +57,14 @@ export async function handleOyeChatsWebhook(rawBody: string, signature: string |
   const target = await findChatbotWebhookTarget(staffDb, botId);
   if (target === null || !verifyOyeChatsSignature(rawBody, signature, target.secret)) return REFUSED;
 
+  // OyeChats' body has an event, bot, timestamp and data but no delivery id, so a redelivery is known by its body.
+  // No replay window: OyeChats retries for hours, and its timestamp is not documented as the moment of sending.
+  if (await isRepeatWebhook("oyechats", webhookEventId(rawBody))) return { kind: "duplicate" };
+
   const event = parseOyeChatsEvent(rawBody);
   switch (event.kind) {
     case "lead":
-      const leadId = await recordChatbotLead(staffDb, {
+      const { id: leadId, created } = await recordChatbotLeadReportingNew(staffDb, {
         chatbotId: target.chatbotId,
         businessId: target.businessId,
         sessionId: event.sessionId,
@@ -68,7 +75,8 @@ export async function handleOyeChatsWebhook(rawBody: string, signature: string |
         capturedAt: event.occurredAt,
       });
       await mirrorLeadToEnquiries(staffDb, leadId);
-      alertChatbotLead(target.businessId);
+      // Only the first delivery for a chat session is news; a redelivery or a later one with more details is not.
+      if (created) alertChatbotLead(target.businessId, leadId);
       return { kind: "recorded", businessId: target.businessId };
     case "qualification": {
       const rated = await applyChatbotQualification(staffDb, {

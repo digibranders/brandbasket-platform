@@ -802,6 +802,7 @@ export {
   listChatbotsForBusiness,
   listChatbotsForStaff,
   recordChatbotLead,
+  recordChatbotLeadReportingNew,
   registerChatbot,
   removeChatbot,
   renameChatbot,

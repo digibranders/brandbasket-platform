@@ -1,5 +1,6 @@
 import { countActiveErrorIssues, deliveryHealth, type DeliveryHealth } from "@brandbasket/db";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { loadTeamsStates } from "./teams-admin";
 import { readSystemHealth, SYSTEM_SOURCES, type SystemSource } from "./system-health";
 
 vi.mock("server-only", () => ({}));
@@ -14,6 +15,10 @@ const HEALTH: DeliveryHealth = {
   teams: { total: 15, failed: 0, lastOkAt: new Date("2026-11-30T04:28:00.000Z"), lastFailedAt: null },
 };
 vi.mock("./db", () => ({ getStaffDb: () => ({}) }));
+vi.mock("./teams-admin", () => ({ loadTeamsStates: vi.fn() }));
+
+const SET = { state: "set", changedAt: new Date("2026-11-01T00:00:00.000Z"), changedBy: null } as const;
+const ALL_SET = { enquiries: SET, payments: SET, customers: SET, support: SET, system: SET };
 
 // 15:28 on Monday 30 November 2026 in India.
 const NOW = new Date("2026-11-30T09:58:00.000Z");
@@ -39,20 +44,29 @@ describe("readSystemHealth", () => {
   it("lists every delivery source over the last 24 hours, then the open errors", async () => {
     vi.mocked(deliveryHealth).mockResolvedValue(HEALTH);
     vi.mocked(countActiveErrorIssues).mockResolvedValue(2);
+    vi.mocked(loadTeamsStates).mockResolvedValue(ALL_SET);
     expect(await readSystemHealth(NOW, SYSTEM_SOURCES)).toEqual([
       { key: "razorpay", label: "Razorpay payments", state: "ok", detail: "last 09:58" },
       { key: "calcom", label: "Cal.com bookings", state: "ok", detail: "none in 24 hours" },
       { key: "oyechats", label: "OyeChats leads", state: "ok", detail: "none in 24 hours" },
       { key: "brevo", label: "Brevo email", state: "bad", detail: "2 not sent" },
       { key: "teams", label: "Teams alerts", state: "ok", detail: "all sent" },
+      { key: "teams-addresses", label: "Teams addresses", state: "ok", detail: "5 of 5 saved" },
       { key: "errors", label: "Website errors", state: "bad", detail: "2 open" },
     ]);
+  });
+
+  it("warns, by channel name, when a Teams channel has no address or an unreadable one", async () => {
+    vi.mocked(loadTeamsStates).mockResolvedValue({ ...ALL_SET, support: { state: "unset" }, system: { state: "unreadable", changedAt: NOW, changedBy: null } });
+    const source = SYSTEM_SOURCES.find((entry) => entry.key === "teams-addresses");
+    expect(await source?.read(NOW)).toEqual({ state: "warn", detail: "none for Support, bugs and feedback, System errors" });
   });
 
   it("reads the delivery figures once for all five sources, from 24 hours before now", async () => {
     vi.mocked(deliveryHealth).mockClear();
     vi.mocked(deliveryHealth).mockResolvedValue(HEALTH);
     vi.mocked(countActiveErrorIssues).mockResolvedValue(0);
+    vi.mocked(loadTeamsStates).mockResolvedValue(ALL_SET);
     // A moment no other test uses, so the per-render cache cannot answer from an earlier test.
     const later = new Date("2026-11-30T10:00:00.000Z");
     await readSystemHealth(later, SYSTEM_SOURCES);

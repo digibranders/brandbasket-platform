@@ -1,5 +1,5 @@
 import { listLivePushSubscriptions, markPushDelivered, revokePushSubscriptionById, type Database, type NotificationAudience, type PushSubscriptionRow } from "@brandbasket/db";
-import webpush from "web-push";
+import { sendNotification } from "web-push";
 import type { PushMessage, PushSender, PushTarget } from "./push-sender";
 
 /*
@@ -61,7 +61,7 @@ export function createWebPushTransport(vapid: Vapid): PushTransport {
   const details = { subject: vapid.subject, publicKey: vapid.publicKey, privateKey: vapid.privateKey };
   return {
     send: async (subscription, payload) => {
-      await webpush.sendNotification(subscription, payload, { vapidDetails: details, TTL: TTL_SECONDS });
+      await sendNotification(subscription, payload, { vapidDetails: details, TTL: TTL_SECONDS });
     },
   };
 }
