@@ -368,7 +368,8 @@ export function BillingFacts({
 }: {
   readonly client: ClientDetail;
   readonly state: ClientPaymentState;
-  readonly packageFacts: ClientPackageFacts;
+  /** The package and ad credit rows; null leaves them out (the Overview shows no Package or Ad credit, decision 3 of the v2 notes). */
+  readonly packageFacts: ClientPackageFacts | null;
 }): ReactElement {
   const subscription = client.billing.subscription;
   const hasPaid = state.kind === "paid" || state.kind === "lapsed";
@@ -401,9 +402,13 @@ export function BillingFacts({
           label: "First term ends",
           value: subscription?.commitmentEndsAt ? <When date={subscription.commitmentEndsAt} /> : null,
         },
-        { label: "Package", value: packageFacts.package },
-        { label: "Ad credit", value: packageFacts.adCredit },
-        ...(packageFacts.forfeitedOn === null ? [] : [{ label: "Package offer ended", value: packageFacts.forfeitedOn }]),
+        ...(packageFacts === null
+          ? []
+          : [
+              { label: "Package", value: packageFacts.package },
+              { label: "Ad credit", value: packageFacts.adCredit },
+              ...(packageFacts.forfeitedOn === null ? [] : [{ label: "Package offer ended", value: packageFacts.forfeitedOn }]),
+            ]),
         ...(manual === null
           ? []
           : [

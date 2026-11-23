@@ -55,14 +55,14 @@ describe("readRailCounts", () => {
   it("leaves the payments count and the flagged payments out of the Today count for a role without money", async () => {
     expect(await readRailCounts("support")).toEqual({ today: 5, leads: 2, requests: 3, deliveries: 3 });
     expect(readMoneyCount).not.toHaveBeenCalled();
-    expect(countTodayItems).toHaveBeenCalledWith(false, false);
+    expect(countTodayItems).toHaveBeenCalledWith(false, false, false);
   });
 
   it("lets only a role with the Google account count the lost sign-in in Today", async () => {
     await readRailCounts("admin");
-    expect(countTodayItems).toHaveBeenLastCalledWith(true, true);
+    expect(countTodayItems).toHaveBeenLastCalledWith(true, true, true);
     await readRailCounts("finance");
-    expect(countTodayItems).toHaveBeenLastCalledWith(true, false);
+    expect(countTodayItems).toHaveBeenLastCalledWith(true, false, false);
   });
 
   it("leaves out a count it could not read and keeps the rest", async () => {

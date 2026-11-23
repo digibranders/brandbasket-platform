@@ -133,7 +133,7 @@ export default async function ClientWebsitePage({
       {billingAttention || roundsPastAllowance ? (
         <div className="mb-8 space-y-3">
           {billingAttention ? (
-            <Notice tone="problem">Billing needs attention for this client. The build stage is unchanged. Check Plan and billing before doing more work.</Notice>
+            <Notice tone="problem">Billing needs attention for this client. The build stage is unchanged. Check Money before doing more work.</Notice>
           ) : null}
           {roundsPastAllowance ? (
             <Notice tone="problem">

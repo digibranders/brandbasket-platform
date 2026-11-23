@@ -24,7 +24,7 @@ export async function readRailCounts(role: StaffRole): Promise<RailCounts> {
   const db = getStaffDb();
   const now = new Date();
   const [today, leads, requests, payments, deliveries] = await Promise.all([
-    countOrNothing("today", () => countTodayItems(canSeeMoney, staffCan(role, "integrations"))),
+    countOrNothing("today", () => countTodayItems(canSeeMoney, staffCan(role, "integrations"), staffCan(role, "oversight"))),
     countOrNothing("leads", () => countLeadsToContact(db)),
     countOrNothing("requests", async () => (await countSupportQueues(db)).needsReply),
     canSeeMoney ? countOrNothing("payments", () => readMoneyCount(now)) : Promise.resolve(undefined),
