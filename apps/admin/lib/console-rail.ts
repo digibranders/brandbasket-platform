@@ -1,30 +1,24 @@
-import type { StaffRole } from "@brandbasket/db";
-import { staffCan, type StaffCapability } from "@brandbasket/shared/lib/access";
+export type ConsoleRailIcon = "today" | "clients" | "inbox" | "money" | "compliance" | "system";
 
-export type ConsoleRailIcon = "today" | "clients" | "inbox" | "calls" | "money" | "ads" | "team" | "settings";
+export type RailCountKey = "today" | "leads" | "requests" | "payments" | "deliveries";
 
-export type RailCountKey = "today" | "leads" | "projects" | "requests" | "calls" | "payments" | "deliveries";
+export type RailCountTone = "accent" | "alert";
 
-export type RailCountTone = "accent" | "alert" | "quiet";
-
-/** "alert" draws a count in red (late or failed work); "quiet" in grey; the rest use the rattan accent. */
+/** "alert" draws a count in red (late or failed work); "accent" uses the rattan gold. */
 const COUNT_TONES: Readonly<Record<RailCountKey, RailCountTone>> = {
   today: "accent",
   leads: "accent",
   requests: "accent",
-  projects: "alert",
-  calls: "quiet",
   payments: "accent",
   deliveries: "alert",
 };
 
-const TONE_LOUDNESS: Readonly<Record<RailCountTone, number>> = { quiet: 0, accent: 1, alert: 2 };
+const TONE_LOUDNESS: Readonly<Record<RailCountTone, number>> = { accent: 1, alert: 2 };
 
-/** One page of a menu item. `label` is what its tab strip shows; `needs` hides it from roles that cannot open it. */
+/** One page of a menu item. `label` is what its tab strip shows. */
 export interface ConsoleRailPage {
   readonly href: string;
   readonly label: string;
-  readonly needs?: StaffCapability;
 }
 
 export interface ConsoleRailGroup {
@@ -32,30 +26,24 @@ export interface ConsoleRailGroup {
   readonly icon: ConsoleRailIcon;
   /** The counts added up beside the item. */
   readonly countKeys?: readonly RailCountKey[];
-  /** Every page the item covers, in tab order. The first page the role may open is where the item links. */
+  /** Every page the item covers, in tab order. The item links to the first. */
   readonly pages: readonly ConsoleRailPage[];
 }
 
-/** A group as one role sees it: only the pages that role may open, and the address the item links to. */
+/** An item as the rail draws it: the group and the address it links to. */
 export interface ConsoleRailLink extends ConsoleRailGroup {
   readonly href: string;
 }
 
 export type RailCounts = Readonly<Partial<Record<RailCountKey, number>>>;
 
-/** The console's menu, in order. URLs never change when an item is renamed or regrouped. */
+/**
+ * The console's menu, in order. URLs never change when an item is renamed or regrouped. No item or page is hidden by role:
+ * the one staff account sees everything, and each page and action still checks access itself.
+ */
 export const CONSOLE_RAIL: readonly ConsoleRailGroup[] = [
   { label: "Today", icon: "today", countKeys: ["today"], pages: [{ href: "/", label: "Today" }] },
-  {
-    label: "Clients",
-    icon: "clients",
-    countKeys: ["projects"],
-    pages: [
-      { href: "/clients", label: "List" },
-      { href: "/projects", label: "Board" },
-      { href: "/reports", label: "Reports" },
-    ],
-  },
+  { label: "Clients", icon: "clients", pages: [{ href: "/clients", label: "Clients" }] },
   {
     label: "Inbox",
     icon: "inbox",
@@ -63,68 +51,53 @@ export const CONSOLE_RAIL: readonly ConsoleRailGroup[] = [
     pages: [
       { href: "/support", label: "Requests" },
       { href: "/leads", label: "Enquiries" },
+      { href: "/reports", label: "Reports to review" },
     ],
   },
-  { label: "Calls", icon: "calls", countKeys: ["calls"], pages: [{ href: "/calls", label: "Calls" }] },
   {
     label: "Money",
     icon: "money",
     countKeys: ["payments"],
     pages: [
-      { href: "/payments", label: "Payments", needs: "money" },
-      { href: "/invoices", label: "Invoices", needs: "money" },
-      { href: "/pricing", label: "Prices", needs: "money" },
-      { href: "/coupons", label: "Coupons", needs: "money" },
-      { href: "/affiliates", label: "Affiliates", needs: "money" },
+      { href: "/payments", label: "Payments" },
+      { href: "/invoices", label: "Invoices" },
+      { href: "/pricing", label: "Prices" },
+      { href: "/coupons", label: "Coupons" },
+      { href: "/affiliates", label: "Affiliates" },
+      { href: "/ad-results", label: "Acquisition" },
     ],
   },
   {
-    label: "Ads",
-    icon: "ads",
+    label: "Compliance",
+    icon: "compliance",
     pages: [
-      { href: "/ad-credit", label: "Ad credit" },
-      { href: "/ad-results", label: "Ad results", needs: "money" },
+      { href: "/privacy-requests", label: "Privacy requests" },
+      { href: "/breaches", label: "Breaches" },
+      { href: "/leaving", label: "Closures" },
+      { href: "/access-log", label: "Access log" },
     ],
   },
   {
-    label: "Team",
-    icon: "team",
-    pages: [
-      { href: "/staff", label: "Staff", needs: "oversight" },
-      { href: "/access-log", label: "Compliance", needs: "oversight" },
-    ],
-  },
-  {
-    label: "Settings",
-    icon: "settings",
+    label: "System",
+    icon: "system",
     countKeys: ["deliveries"],
     pages: [
-      { href: "/settings", label: "Settings" },
-      { href: "/support/errors", label: "App errors" },
       { href: "/deliveries", label: "Emails and webhooks" },
+      { href: "/support/errors", label: "App errors" },
+      { href: "/settings", label: "Settings" },
+      { href: "/staff", label: "Access" },
     ],
   },
 ];
 
-function pagesFor(role: StaffRole, group: ConsoleRailGroup): readonly ConsoleRailPage[] {
-  return group.pages.filter((page) => page.needs === undefined || staffCan(role, page.needs));
-}
+/** The rail's items with the address each links to. Every viewer gets the same list. */
+export const CONSOLE_RAIL_LINKS: readonly ConsoleRailLink[] = CONSOLE_RAIL.map((group) => ({ ...group, href: group.pages[0]?.href ?? "/" }));
 
-/** The menu a role sees: pages it cannot open are left out, and an item left with no page goes too. */
-export function railFor(role: StaffRole): readonly ConsoleRailLink[] {
-  return CONSOLE_RAIL.flatMap((group) => {
-    const pages = pagesFor(role, group);
-    const first = pages[0];
-    return first === undefined ? [] : [{ ...group, href: first.href, pages }];
-  });
-}
-
-/** The tabs for the menu item that holds `page`, as `role` may open them; null when the role has no other page to switch to. */
-export function tabsFor(role: StaffRole, page: string): { readonly label: string; readonly pages: readonly ConsoleRailPage[] } | null {
+/** The tabs for the menu item that holds `page`; null when the item has no other page to switch to. */
+export function tabsFor(page: string): { readonly label: string; readonly pages: readonly ConsoleRailPage[] } | null {
   const group = CONSOLE_RAIL.find((candidate) => candidate.pages.some((entry) => entry.href === page));
-  if (group === undefined) return null;
-  const pages = pagesFor(role, group);
-  return pages.length < 2 ? null : { label: group.label, pages };
+  if (group === undefined || group.pages.length < 2) return null;
+  return { label: group.label, pages: group.pages };
 }
 
 /** The number and tone beside an item: its counts added up, drawn in the loudest tone among those that have something waiting. */
@@ -141,7 +114,7 @@ export function railCount(link: ConsoleRailGroup, counts: RailCounts): { readonl
 }
 
 /** Pages that belong to a menu item without sitting under its address. */
-export const RAIL_ALIASES: Readonly<Record<string, string>> = { "/breaches": "/access-log", "/privacy-requests": "/access-log" };
+export const RAIL_ALIASES: Readonly<Record<string, string>> = { "/outbox": "/deliveries" };
 
 /** Today only on "/" itself; every other page on its own address and the pages under it. */
 export function isCurrent(pathname: string, href: string): boolean {
@@ -164,5 +137,3 @@ export function currentHref(links: readonly ConsoleRailLink[], pathname: string)
   }
   return best;
 }
-
-export const ROLE_LABELS: Readonly<Record<StaffRole, string>> = { support: "Support", finance: "Finance", admin: "Admin" };

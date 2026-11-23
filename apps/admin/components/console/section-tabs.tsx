@@ -5,14 +5,15 @@ import { cn } from "@brandbasket/shared/lib/cn";
 import { tabsFor } from "@/lib/console-rail";
 
 interface SectionTabsProps {
-  readonly role: StaffRole;
+  /** Ignored: the strip is the same for every role. Pages still pass it; drop it as each page is rebuilt. */
+  readonly role?: StaffRole;
   /** The address of the page showing the strip: it picks the menu item's tabs and the current one. */
   readonly page: string;
 }
 
-/** The tab strip shared by the pages of one menu item, directly under their header. Shows only pages the role may open. */
-export function SectionTabs({ role, page }: SectionTabsProps): ReactElement | null {
-  const tabs = tabsFor(role, page);
+/** The tab strip shared by the pages of one menu item, directly under their header. Lists every page of the item. */
+export function SectionTabs({ page }: SectionTabsProps): ReactElement | null {
+  const tabs = tabsFor(page);
   if (tabs === null) return null;
   return (
     <nav aria-label={tabs.label} className="mt-6 flex gap-1 overflow-x-auto overflow-y-hidden border-b border-line">
