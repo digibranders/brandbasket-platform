@@ -47,6 +47,10 @@ interface NextStepCardProps {
   readonly rounds: RoundsFact | null;
   readonly latestFeedback: LatestFeedback | null;
   readonly goLive: GoLiveInput;
+  /** What to show while the build waits for the kickoff call: its state, and the one button that opens the kickoff prompt. */
+  readonly kickoff?: ReactNode;
+  /** Whole days the customer has not answered a sent preview, once past the silent threshold. */
+  readonly silentDays?: number | null;
 }
 
 function requestHref(ticketId: string): string {
@@ -70,8 +74,10 @@ function QuotedFeedback({ feedback, rounds }: { readonly feedback: LatestFeedbac
   );
 }
 
-function StageBody({ businessId, status, rounds, latestFeedback, goLive }: Omit<NextStepCardProps, "late">): ReactNode {
+function StageBody({ businessId, status, rounds, latestFeedback, goLive, kickoff, silentDays }: Omit<NextStepCardProps, "late">): ReactNode {
   switch (status) {
+    case "onboarding":
+      return kickoff === undefined || kickoff === null ? null : <div className="mt-4">{kickoff}</div>;
     case "submitted":
       return (
         <div className="mt-4">
@@ -87,6 +93,11 @@ function StageBody({ businessId, status, rounds, latestFeedback, goLive }: Omit<
     case "preview":
       return (
         <div className="mt-4">
+          {silentDays === undefined || silentDays === null ? null : (
+            <p className="mb-3">
+              <StatusPill tone="wait">{`No reply for ${silentDays} days`}</StatusPill>
+            </p>
+          )}
           <ResendPreviewEmailForm businessId={businessId} />
         </div>
       );

@@ -7,6 +7,7 @@ import {
   startBuildingAction,
 } from "@/app/(protected)/clients/[businessId]/website-actions";
 import { buttonPrimary, buttonSecondary } from "@/components/console/buttons";
+import { ConfirmSubmit } from "@/components/console/confirm-submit";
 import { fieldClasses, labelClasses } from "@/components/console/field-styles";
 import { Notice } from "@/components/console/notice";
 import { Section } from "@/components/console/section";
@@ -86,9 +87,12 @@ export async function WebsiteSection({
             {canResume ? (
               <form action={resumeBuildingAction}>
                 {hidden}
-                <button type="submit" className={`${buttonPrimary} !px-4 !py-2`}>
+                <ConfirmSubmit
+                  className={`${buttonPrimary} !px-4 !py-2`}
+                  copy={{ title: "Resume this build", consequence: "The build starts again from the stage it was in, and the customer sees that stage again.", confirmLabel: "Resume" }}
+                >
                   Resume
-                </button>
+                </ConfirmSubmit>
               </form>
             ) : null}
             {previewUrl !== null && fresh === null ? (
@@ -118,9 +122,16 @@ export async function WebsiteSection({
                 />
               </div>
               <div>
-                <button type="submit" className={`${buttonSecondary} !px-4 !py-2`}>
+                <ConfirmSubmit
+                  className={`${buttonSecondary} !px-4 !py-2`}
+                  copy={{
+                    title: "Put this build on hold",
+                    consequence: "The build pauses and the customer sees your reason exactly as you typed it. Their plan and billing do not change.",
+                    confirmLabel: "Put on hold",
+                  }}
+                >
                   Put on hold
-                </button>
+                </ConfirmSubmit>
               </div>
             </form>
           ) : null}

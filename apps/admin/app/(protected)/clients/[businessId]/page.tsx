@@ -58,13 +58,21 @@ export default async function ClientOverviewPage({
   const fallbackCallUrl = reading !== null && reading.ok ? reading.url : null;
   const card = overviewCard({ client, now, result: overview.exceptions, servicesToSetUp: overview.toSetUp });
   const done = new Set(client.completedSteps);
+  // The kickoff exception opens the one kickoff prompt for the booked call that ended.
+  const booked = overview.booking.ok ? overview.booking.value : null;
+  const kickoffPrompt = booked?.endsAt ? { businessName: client.businessName, endsAt: booked.endsAt } : undefined;
 
   return (
     <>
-      <ExceptionsStrip businessId={client.businessId} exceptions={overview.exceptions.exceptions} unreadable={overview.exceptions.unreadable} />
+      <ExceptionsStrip
+        businessId={client.businessId}
+        exceptions={overview.exceptions.exceptions}
+        unreadable={overview.exceptions.unreadable}
+        kickoffPrompt={kickoffPrompt}
+      />
       <div className="grid items-start gap-8 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
       <div className="grid grid-cols-1 gap-8">
-        <OverviewNextStepCard card={card} businessId={client.businessId} />
+        <OverviewNextStepCard card={card} businessId={client.businessId} kickoffPrompt={kickoffPrompt} />
 
         {overview.services.ok && overview.services.value.length > 0 ? (
           <section aria-labelledby="services-title">

@@ -21,16 +21,22 @@ import { Fold } from "@/components/console/fold";
 import { ClientBrandUploader } from "@/components/console/client-brand-uploader";
 import { ChangeFreeAddressForm, FreeAddressForm } from "@/components/console/free-address-form";
 import { KickoffCallSection } from "@/components/console/kickoff-call-section";
+import { KickoffPromptOpener } from "@/components/console/kickoff-prompt-opener";
 import { Notice } from "@/components/console/notice";
 import { Quiet, Section } from "@/components/console/section";
+import { buttonPrimary } from "@/components/console/buttons";
 import { WebsiteSection } from "@/components/console/website-section";
+import { WebsiteStepper } from "@/components/console/website-stepper";
 import { billingNeedsAttention } from "@/lib/billing-attention";
 import { buildPanelState } from "@/lib/build-summary";
 import { isPastIncludedRounds } from "@/lib/build-rounds";
 import { clientNextStep, previewLateReason } from "@/lib/client-next-step";
+import { PREVIEW_SILENT_DAYS } from "@/lib/client-exceptions";
 import { updatedPreviewDay, updatedPreviewLateReason } from "@/lib/delivery-tab";
 import { readProjectMoveNotice } from "@/lib/project-move-notices";
 import { readWebsiteMoveNotice } from "@/lib/website-form";
+import { silentDaysSince, websiteStage } from "@/lib/website-stage";
+import { clock, weekdayDate } from "@/lib/team-time";
 import { ProjectControls } from "@/components/project-controls";
 import { openClientTab } from "@/lib/server/client-page";
 import { isWebsiteBought } from "@/lib/server/bought-services";
@@ -89,6 +95,10 @@ export default async function ClientWebsitePage({
           booking: await findSetupCallBooking(getStaffDb(), client.businessId),
           outcome: await findLatestKickoffOutcome(getStaffDb(), client.businessId),
         };
+  // Before the call the project is still onboarding, which the kickoff fact above does not cover: read the booking for it here.
+  const callBooking = project !== null && project.status === "onboarding" ? await findSetupCallBooking(getStaffDb(), client.businessId) : null;
+  const kickoffUnconfirmed =
+    callBooking !== null && callBooking.heldAt === null && callBooking.endsAt !== null && callBooking.endsAt.getTime() <= now.getTime();
   const kickoffConfirmed = kickoff !== null && (Boolean(kickoff.booking?.heldAt) || kickoff.outcome?.outcome === "completed");
   const launchChecks =
     project === null || nextStep !== "live"
@@ -108,7 +118,41 @@ export default async function ClientWebsitePage({
     project.status === "live" &&
     project.launchedAt !== null &&
     now.getTime() - project.launchedAt.getTime() <= LAUNCH_RESEND_WINDOW_MS;
+  const silentDays = project !== null && project.status === "preview" ? silentDaysSince(project.previewSentAt, now) : null;
+  const stage =
+    project === null
+      ? null
+      : websiteStage({
+          status: project.status,
+          kickoffUnconfirmed,
+          late: late !== null,
+          silentDays,
+          silentThreshold: PREVIEW_SILENT_DAYS,
+          domainStatus: client.domain?.status ?? null,
+          moveAsked: client.movingTo !== null,
+        });
   const hasControls = websiteBought || launchEmailOpen;
+  const domainOpen = stage === "approved" || stage === "address_error" || stage === "move" || client.movingTo !== null;
+  // The one place to answer the kickoff is the prompt; this card only shows the state and opens it.
+  const kickoffSlot =
+    project === null || project.status !== "onboarding" ? null : kickoffUnconfirmed && callBooking?.endsAt ? (
+      <>
+        <p className="max-w-xl text-sm text-ink-2">
+          The call ended {weekdayDate(callBooking.endsAt)}, {clock(callBooking.endsAt)}. The 48 hour first preview clock has not started. After 24 hours the build starts on its own, labelled Started without call confirmation.
+        </p>
+        <div className="mt-4">
+          <KickoffPromptOpener businessId={client.businessId} businessName={client.businessName} endsAt={callBooking.endsAt} className={buttonPrimary}>
+            Call completed
+          </KickoffPromptOpener>
+        </div>
+      </>
+    ) : (
+      <p className="max-w-xl text-sm text-ink-2">
+        {callBooking?.startsAt
+          ? `Kickoff call booked for ${weekdayDate(callBooking.startsAt)}, ${clock(callBooking.startsAt)}. Nothing is needed from us until the call ends.`
+          : "No kickoff call is booked yet. Nothing is needed from us until the customer books one."}
+      </p>
+    );
   // A move or build notice is printed inside the controls, so a fold that is shut would hide the answer to what was just pressed.
   const controlsOpen = project?.status === "on_hold" || readProjectMoveNotice(sp.move) !== null || readWebsiteMoveNotice(sp.build) !== null;
   // The same holds for the site details: their notices are printed inside the fold.
@@ -144,15 +188,18 @@ export default async function ClientWebsitePage({
       ) : null}
 
       {project === null ? (
-        <Quiet>No project yet.</Quiet>
+        <Quiet>{websiteBought ? "No project yet." : "No website service. Their website build appears here once they have paid for Website Management."}</Quiet>
       ) : (
         <>
+          {stage === null ? null : <WebsiteStepper stage={stage} />}
           <NextStepCard
             businessId={client.businessId}
             status={project.status}
             late={late}
             rounds={build?.rounds ?? null}
             latestFeedback={latestFeedback}
+            kickoff={kickoffSlot}
+            silentDays={stage === "review_silent" ? silentDays : null}
             goLive={{
               doneChecks: launchChecks.map((check) => check.key),
               domain: client.domain,
@@ -169,16 +216,6 @@ export default async function ClientWebsitePage({
           />
         </>
       )}
-      {client.movingTo !== null && client.domain !== null ? (
-        <Section title="Move to their own domain" id="domain" aside="Asked by the customer">
-          <MoveDomainPanel
-            businessId={client.businessId}
-            current={client.domain.hostname}
-            movingTo={client.movingTo}
-            siteUrl={websiteUrl ?? project?.previewUrl ?? null}
-          />
-        </Section>
-      ) : null}
       {previewVersions.length === 0 ? null : (
         <Fold title="Preview versions" count={previewVersions.length} open={project?.status === "preview"}>
           <PreviewVersionList versions={previewVersions} />
@@ -210,6 +247,17 @@ export default async function ClientWebsitePage({
         </Fold>
       ) : null}
 
+      <Fold title="Domain and hosting" open={domainOpen}>
+      {client.movingTo !== null && client.domain !== null ? (
+        <Section title="Move to their own domain" id="domain" aside="Asked by the customer">
+          <MoveDomainPanel
+            businessId={client.businessId}
+            current={client.domain.hostname}
+            movingTo={client.movingTo}
+            siteUrl={websiteUrl ?? project?.previewUrl ?? null}
+          />
+        </Section>
+      ) : null}
       <Section title="Domain" id={client.movingTo === null && nextStep !== "live" ? "domain" : undefined}>
         {client.domain === null ? (
           <>
@@ -256,6 +304,7 @@ export default async function ClientWebsitePage({
           />
         )}
       </Section>
+      </Fold>
 
       <Section title="Notes for the builder">
         {client.brief === null ? (

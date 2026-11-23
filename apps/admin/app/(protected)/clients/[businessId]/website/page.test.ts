@@ -295,3 +295,49 @@ describe("More controls", () => {
     expect(await render("building", { bought: false })).not.toContain("More controls");
   });
 });
+
+describe("the Website tab, CR-06", () => {
+  const ended = { startsAt: new Date("2026-11-02T10:00:00Z"), endsAt: new Date("2026-11-02T10:30:00Z"), heldAt: null };
+
+  it("shows the five-stage stepper above the next-step card, and none without a project", async () => {
+    const html = await render("building");
+    expect(html.indexOf('aria-label="Progress"')).toBeGreaterThanOrEqual(0);
+    expect(html.indexOf('aria-label="Progress"')).toBeLessThan(html.indexOf("Next step"));
+    expect(await render(null)).not.toContain('aria-label="Progress"');
+  });
+
+  it("says there is no website service when it was not bought and there is no project", async () => {
+    expect(await render(null, { bought: false })).toContain("No website service.");
+  });
+
+  it("offers Call completed as the one kickoff action once the call ended unconfirmed", async () => {
+    vi.mocked(findSetupCallBooking).mockResolvedValue(ended as never);
+    const html = await render("onboarding");
+    expect(html.match(/>Call completed</g)).toHaveLength(1);
+    expect(html).toContain("The 48 hour first preview clock has not started.");
+  });
+
+  it("shows only the state while the call has not ended, and no kickoff button", async () => {
+    vi.mocked(findSetupCallBooking).mockResolvedValue({ ...ended, endsAt: new Date("2099-01-01T00:00:00Z") } as never);
+    const html = await render("onboarding");
+    expect(html).toContain("Nothing is needed from us until the call ends.");
+    expect(html).not.toContain(">Call completed<");
+  });
+
+  it("opens Domain and hosting for an approved build, and keeps it shut while building", async () => {
+    expect(foldTag(await render("approved"), "Domain and hosting")).toContain(" open");
+    expect(foldTag(await render("building"), "Domain and hosting")).not.toContain(" open");
+  });
+
+  it("names a preview with no reply for five days or more", async () => {
+    vi.useFakeTimers();
+    try {
+      vi.setSystemTime(new Date("2026-11-09T06:30:00Z"));
+      expect(await render("preview", { versions: true })).toContain("No reply for 6 days");
+      vi.setSystemTime(new Date("2026-11-05T06:30:00Z"));
+      expect(await render("preview", { versions: true })).not.toContain("No reply for");
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+});
