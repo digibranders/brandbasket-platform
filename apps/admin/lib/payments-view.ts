@@ -1,4 +1,5 @@
-import { isUnappliedReason, type StaffPaymentRow } from "@brandbasket/db";
+import type { StaffPaymentRow } from "@brandbasket/db";
+import { isUnappliedReason } from "@brandbasket/db/unapplied-reasons";
 import { adjacentMonth, monthRange } from "@brandbasket/shared/lib/billing/invoice-register";
 import { formatMoney, type MoneyCurrency } from "@brandbasket/shared/lib/money";
 import type { PillTone } from "@/components/console/status-pill";
