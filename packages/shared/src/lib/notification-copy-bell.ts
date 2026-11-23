@@ -9,7 +9,7 @@ import type { BellCopy, CopyModule } from "./notification-events";
 /** Where a customer reads about and picks a call time: Help and calls. */
 const CUSTOMER_CALLS = "/help";
 /** Where staff answer a call: the console's Calls page. */
-const STAFF_CALLS = "/calls";
+const STAFF_CALLS = "/";
 
 /** The kickoff lines, shared by the email and push modules so the same sentence is worded once. */
 export const KICKOFF_LINES = {

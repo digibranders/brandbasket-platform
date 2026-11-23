@@ -7,7 +7,7 @@ import type { CopyModule, PushCopy } from "./notification-events";
  */
 
 const CUSTOMER_CALLS = "/help";
-const STAFF_CALLS = "/calls";
+const STAFF_CALLS = "/";
 
 export const PUSH_COPY: CopyModule<PushCopy> = {
   "kickoff.soon": ({ when }) => ({ title: KICKOFF_LINES.soon(when), link: CUSTOMER_CALLS, tag: "kickoff.soon" }),
