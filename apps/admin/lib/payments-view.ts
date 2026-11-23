@@ -199,3 +199,46 @@ export function paymentMonthLinks(month: string): {
     neighbour === null ? null : { href: `/payments?month=${neighbour}`, label: monthLabel(neighbour) };
   return { previous: link(adjacentMonth(month, -1)), next: link(adjacentMonth(month, 1)), exportHref: `/payments/export?month=${month}` };
 }
+
+/** A payment as the table and its side panel need it: the table row plus what only the panel shows. */
+export interface PaymentPanelRow extends PaymentRowView {
+  readonly providerPaymentId: string;
+  readonly provider: StaffPaymentRow["provider"];
+  readonly rawStatus: StaffPaymentRow["status"];
+  readonly failureReason: string | null;
+  readonly refundReason: string | null;
+  /** What flagged it, in words, while it is still unresolved. */
+  readonly attentionTitle: string | null;
+}
+
+export function paymentPanelRow(row: StaffPaymentRow, attentionTitle: string | null): PaymentPanelRow {
+  return {
+    ...paymentRowView(row),
+    providerPaymentId: row.providerPaymentId,
+    provider: row.provider,
+    rawStatus: row.status,
+    failureReason: row.failureReason,
+    refundReason: row.refundReason,
+    attentionTitle,
+  };
+}
+
+/** The page address with a payment's side panel open (`?open=`), keeping the month and filter. */
+export function paymentOpenHref(month: string, filter: PaymentFilter, openId: string | null): string {
+  const base = paymentFilterHref(month, filter);
+  return openId === null ? base : `${base}&open=${encodeURIComponent(openId)}`;
+}
+
+/**
+ * Payments that need a person: still flagged, or failed. The same two groups the rail counts (`countPaymentsNeedingStaff`),
+ * so the Needs a look tile and the rail agree.
+ */
+export function needsLookOrFailed(row: StaffPaymentRow): boolean {
+  return needsLook(row) || row.status === "failed";
+}
+
+/** The month to open after `month`, or null when it would be in the future: nothing can have been paid there. */
+export function nextPaymentMonthLink(month: string, currentMonth: string): PaymentMonthLink | null {
+  const next = adjacentMonth(month, 1);
+  return next === null || next > currentMonth ? null : { href: `/payments?month=${next}`, label: monthLabel(next) };
+}
