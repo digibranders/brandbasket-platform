@@ -42,12 +42,17 @@ describe("forwardedNoticeHref", () => {
     expect(forwardedNoticeHref(ID, { refund: "marked" })).toBe(`/clients/${ID}/billing?refund=marked`);
   });
 
-  it("sends add-on, work, numbers, updates and chatbot notices to Money", () => {
+  it("sends add-on notices to Money", () => {
     expect(forwardedNoticeHref(ID, { addOns: "contacted" })).toBe(`/clients/${ID}/billing?addOns=contacted`);
-    expect(forwardedNoticeHref(ID, { work: "saved" })).toBe(`/clients/${ID}/billing?work=saved`);
-    expect(forwardedNoticeHref(ID, { numbers: "saved" })).toBe(`/clients/${ID}/billing?numbers=saved`);
-    expect(forwardedNoticeHref(ID, { updates: "added" })).toBe(`/clients/${ID}/billing?updates=added`);
-    expect(forwardedNoticeHref(ID, { chatbots: "removed" })).toBe(`/clients/${ID}/billing?chatbots=removed`);
+  });
+
+  it("sends work, numbers, updates, chatbot, campaign and account notices to Services (CR-07)", () => {
+    expect(forwardedNoticeHref(ID, { work: "saved" })).toBe(`/clients/${ID}/services?work=saved`);
+    expect(forwardedNoticeHref(ID, { numbers: "saved" })).toBe(`/clients/${ID}/services?numbers=saved`);
+    expect(forwardedNoticeHref(ID, { updates: "added" })).toBe(`/clients/${ID}/services?updates=added`);
+    expect(forwardedNoticeHref(ID, { chatbots: "removed" })).toBe(`/clients/${ID}/services?chatbots=removed`);
+    expect(forwardedNoticeHref(ID, { campaigns: "saved" })).toBe(`/clients/${ID}/services?campaigns=saved`);
+    expect(forwardedNoticeHref(ID, { accounts: "saved" })).toBe(`/clients/${ID}/services?accounts=saved`);
   });
 
   it("sends preview, launch, domain, build and site-data notices to Website, keeping every part of the query", () => {

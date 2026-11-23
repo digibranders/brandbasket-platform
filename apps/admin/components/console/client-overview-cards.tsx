@@ -166,7 +166,7 @@ export function OverviewNextStepCard({
   );
 }
 
-const CHIP_VARIANTS: Readonly<Record<ServiceState, StatusChipVariant>> = { active: "active", setup: "waiting", late: "failed", waiting: "idle" };
+export const CHIP_VARIANTS: Readonly<Record<ServiceState, StatusChipVariant>> = { active: "active", setup: "waiting", late: "failed", waiting: "idle" };
 
 /** One card per service this client has, with where it stands and a link to where staff work on it. */
 export function ServiceCards({
