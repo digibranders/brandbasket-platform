@@ -16,7 +16,7 @@ import {
   type ReportDocument,
   type ReportService,
 } from "@brandbasket/db";
-import { monthlyReportEmail, type EmailMessage } from "@brandbasket/email";
+import { emailOutcome, monthlyReportEmail, type EmailMessage, type EmailSendOutcome } from "@brandbasket/email";
 import { searchConsoleFigures, visitorFigures } from "../lib/reports/traffic";
 import { composeSearch, composeSocial, composeWebsite, type DoneLine, type ReportFacts } from "../lib/reports/compose";
 import { REPORT_CONTENT_VERSION, reportContentSchema, type ReportContent } from "../lib/reports/content";
@@ -170,7 +170,7 @@ function errorText(error: unknown): string {
 export interface SendReportDeps {
   readonly storage: MediaStorage;
   /** Delivers one message: the app's transport. Called only when there is someone to write to and the owner wants the email. */
-  readonly send: (message: EmailMessage) => Promise<void>;
+  readonly send: (message: EmailMessage) => Promise<EmailSendOutcome | void>;
   /** The customer app's origin, for the link in the email. */
   readonly customerOrigin: string;
 }
@@ -251,8 +251,11 @@ async function emailOwner(
       pdfUrl: marker,
     });
     if (await hasEmailContaining(db, { template: "monthly-report", toAddress: owner.email, text: marker, since: report.createdAt })) return "already-sent";
-    await deps.send(message);
-    return "sent";
+    // The transport reports a failure instead of throwing. A failed message is "failed" so staff can send it again (the outbox check
+    // ignores failed rows); a queued one goes out on the queue's next runs, and an address that opted out is left alone.
+    const outcome = emailOutcome(await deps.send(message));
+    if (outcome.status === "failed") return "failed";
+    return outcome.status === "suppressed" ? "owner-turned-off" : "sent";
   } catch (error) {
     console.error("[monthly-report] The report email could not be sent.", { reportId: report.id, error: errorText(error) });
     return "failed";

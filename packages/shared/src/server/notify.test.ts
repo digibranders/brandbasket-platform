@@ -171,6 +171,15 @@ describe("notify, a customer event", () => {
     expect(errors.map((entry) => entry.step)).toEqual(["email"]);
   });
 
+  it("treats a failed outcome from the transport like a failure, and a queued one as delivered", async () => {
+    const { deps, errors } = setup({ choices: async () => ({ bell: true, email: true, push: false }) });
+    const failed = await createNotifier({ ...deps, sendEmail: async () => ({ status: "failed", error: "Brevo answered 400" }) })({ event: "kickoff.soon", audience: CUSTOMER, dedupeKey: "call-f", data: { when: "11:00" } });
+    expect(failed.recipients[0]).toMatchObject({ status: "failed", delivered: ["bell"] });
+    expect(errors.map((entry) => entry.step)).toEqual(["email"]);
+    const queued = await createNotifier({ ...deps, sendEmail: async () => ({ status: "queued" }) })({ event: "kickoff.soon", audience: CUSTOMER, dedupeKey: "call-q", data: { when: "11:00" } });
+    expect(queued.recipients[0]).toMatchObject({ delivered: ["bell", "email"] });
+  });
+
   it("keeps going for the next person when one recipient fails", async () => {
     const second: NotificationRecipient = { userId: "user-two", name: "Dev", email: "dev@example.com" };
     const { notify, rows, store } = setup({ recipients: [OWNER, second] });

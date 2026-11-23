@@ -10,7 +10,7 @@ import {
   type NotificationTopic,
   type RecordedNotification,
 } from "@brandbasket/db";
-import { createAppEmailTransport, notificationEmail, type EmailMessage } from "@brandbasket/email";
+import { createAppEmailTransport, emailOutcome, notificationEmail, type EmailMessage, type EmailSendOutcome } from "@brandbasket/email";
 import {
   bellCopyFor,
   eventDefinition,
@@ -83,7 +83,11 @@ export interface NotifyStore {
 export interface NotifyDeps {
   readonly store: NotifyStore;
   /** Delivers one email: the app's customer transport, which writes the outbox row. */
-  readonly sendEmail: (message: EmailMessage) => Promise<void>;
+  /**
+   * The transport never throws for a delivery failure and answers the outcome: `queued` counts as delivered (the queue keeps
+   * trying), `failed` is a failure here, `suppressed` (optional mail to an address that opted out) is skipped.
+   */
+  readonly sendEmail: (message: EmailMessage) => Promise<EmailSendOutcome | void>;
   readonly push: PushSender;
   /** The two apps' origins, for the links in emails and pushes. */
   readonly origins: { readonly customer: string; readonly staff: string };
@@ -183,8 +187,13 @@ export function createNotifier(deps: NotifyDeps): Notify {
     let failed = false;
     if (emailOn && email !== null && to !== null) {
       try {
-        await deps.sendEmail(emailMessage(event, to, email, origin));
-        result.delivered.push("email");
+        const outcome = emailOutcome(await deps.sendEmail(emailMessage(event, to, email, origin)));
+        if (outcome.status === "failed") {
+          failed = true;
+          fail("email", new Error(outcome.error ?? "The email was not sent"));
+        } else if (outcome.status !== "suppressed") {
+          result.delivered.push("email");
+        }
       } catch (error) {
         failed = true;
         fail("email", error);

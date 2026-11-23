@@ -1,6 +1,6 @@
 import "server-only";
 import { findClientDetail, recordPreviewVersion, recordProjectPreviewSent, savePreviewImage, type Database } from "@brandbasket/db";
-import { previewReadyEmail } from "@brandbasket/email";
+import { emailOutcome, previewReadyEmail, type EmailSendOutcome } from "@brandbasket/email";
 import { emailPreferenceAllows } from "@brandbasket/shared/server/email-preference";
 import { customerEmailTransport } from "./email";
 import { serverEnv } from "./env";
@@ -18,7 +18,25 @@ export class ProjectPreviewRecipientMissingError extends Error {
  * Whether the owner was emailed: an owner who signs in with a mobile number has no address, and staff tell them. "email-failed"
  * means the send itself failed; the preview is saved all the same and staff resend the email from the console.
  */
-export type OwnerNotification = "emailed" | "no-email" | "email-failed";
+export type OwnerNotification = "emailed" | "email-queued" | "no-email" | "email-failed";
+
+/**
+ * What staff are told about an email a transport handled. "email-queued": Brevo did not take it yet and the queue will retry,
+ * so it is not yet "emailed". An address that opted out of optional mail counts as "no-email": staff tell the owner another way.
+ */
+export function ownerNotificationOf(answer: EmailSendOutcome | void): OwnerNotification {
+  switch (emailOutcome(answer).status) {
+    case "queued":
+      return "email-queued";
+    case "failed":
+      return "email-failed";
+    case "suppressed":
+      return "no-email";
+    case "sent":
+    case "local_only":
+      return "emailed";
+  }
+}
 
 /** What resendPreviewEmail did: the send's outcome, or "not-allowed" when the preview is no longer waiting for the customer. */
 export type PreviewResend = OwnerNotification | "not-allowed";
@@ -60,8 +78,7 @@ async function emailPreview(
     );
     if (!allowed) return "no-email";
     const reviewUrl = new URL("/website", serverEnv().APP_ORIGIN).toString();
-    await customerEmailTransport(db).send(previewReadyEmail({ to: input.to, businessName: input.businessName, previewUrl: input.previewUrl, reviewUrl }));
-    return "emailed";
+    return ownerNotificationOf(await customerEmailTransport(db).send(previewReadyEmail({ to: input.to, businessName: input.businessName, previewUrl: input.previewUrl, reviewUrl })));
   } catch (error) {
     console.error("[preview-email]", { businessId: input.businessId, error });
     return "email-failed";

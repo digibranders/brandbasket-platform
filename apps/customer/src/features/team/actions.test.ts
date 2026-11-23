@@ -48,7 +48,7 @@ vi.mock("@brandbasket/db", () => ({
   removeBusinessMember: mocks.removeBusinessMember,
   withTenantScope: mocks.withTenantScope,
 }));
-vi.mock("@brandbasket/email", () => ({ businessInviteEmail: (input: unknown) => ({ template: "business-invite", input }) }));
+vi.mock("@brandbasket/email", async (importOriginal) => ({ ...(await importOriginal<typeof import("@brandbasket/email")>()), businessInviteEmail: (input: unknown) => ({ template: "business-invite", input }) }));
 vi.mock("@/features/server-common/email", () => ({ customerEmailTransport: () => ({ send: mocks.send }) }));
 vi.mock("@/lib/guards", () => ({ requireOwner: mocks.requireOwner, requireSignedIn: mocks.requireSignedIn }));
 vi.mock("@/lib/db", () => ({ getAppDb: () => ({ name: "app" }), getPublicDb: () => ({ name: "public" }), getStaffDb: () => ({ name: "staff" }) }));
@@ -124,6 +124,18 @@ describe("inviteAction", () => {
     expect(await inviteAction(form({ email: "front@apex.in", role: "editor" }))).toMatchObject({ ok: false, message: expect.stringContaining("Nothing was saved") });
     expect(mocks.revokeBusinessInvite).toHaveBeenCalledWith({ name: "tx" }, INVITE_ID);
     expect(mocks.report).toHaveBeenCalledOnce();
+  });
+
+  it("takes the invite back when the transport answers failed instead of throwing", async () => {
+    mocks.send.mockResolvedValue({ status: "failed", error: "Brevo answered 400" });
+    expect(await inviteAction(form({ email: "front@apex.in", role: "editor" }))).toMatchObject({ ok: false, message: expect.stringContaining("Nothing was saved") });
+    expect(mocks.revokeBusinessInvite).toHaveBeenCalledWith({ name: "tx" }, INVITE_ID);
+  });
+
+  it("keeps the invite when the email is queued for a retry", async () => {
+    mocks.send.mockResolvedValue({ status: "queued" });
+    expect(await inviteAction(form({ email: "front@apex.in", role: "editor" }))).toEqual({ ok: true });
+    expect(mocks.revokeBusinessInvite).not.toHaveBeenCalled();
   });
 
   it("stops a flood of invitations", async () => {
