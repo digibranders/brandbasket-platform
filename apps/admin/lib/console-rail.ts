@@ -82,6 +82,7 @@ export const CONSOLE_RAIL: readonly ConsoleRailGroup[] = [
     icon: "system",
     countKeys: ["deliveries"],
     pages: [
+      { href: "/system", label: "Health" },
       { href: "/deliveries", label: "Emails and webhooks" },
       { href: "/support/errors", label: "App errors" },
       { href: "/settings", label: "Settings" },

@@ -10,7 +10,7 @@ describe("the rail", () => {
   });
 
   it("links each item to its first page", () => {
-    expect(CONSOLE_RAIL_LINKS.map((link) => link.href)).toEqual(["/", "/clients", "/support", "/payments", "/privacy-requests", "/deliveries"]);
+    expect(CONSOLE_RAIL_LINKS.map((link) => link.href)).toEqual(["/", "/clients", "/support", "/payments", "/privacy-requests", "/system"]);
   });
 
   it("has no Calls, Ads, Team or Settings item, and no page left without an item that holds it", () => {
@@ -36,9 +36,9 @@ describe("tabs under a page header", () => {
     }
   });
 
-  it("groups System: Emails and webhooks, App errors, Settings and Access", () => {
-    for (const page of ["/deliveries", "/support/errors", "/settings", "/staff"]) {
-      expect(stripLabels(page)).toEqual(["Emails and webhooks", "App errors", "Settings", "Access"]);
+  it("groups System: Health, Emails and webhooks, App errors, Settings and Access", () => {
+    for (const page of ["/system", "/deliveries", "/support/errors", "/settings", "/staff"]) {
+      expect(stripLabels(page)).toEqual(["Health", "Emails and webhooks", "App errors", "Settings", "Access"]);
     }
   });
 
@@ -117,19 +117,20 @@ describe("the current item", () => {
       "/breaches": "/privacy-requests",
       "/privacy-requests": "/privacy-requests",
       "/leaving": "/privacy-requests",
-      "/settings": "/deliveries",
-      "/staff": "/deliveries",
-      "/support/errors": "/deliveries",
-      "/support/errors/123": "/deliveries",
-      "/deliveries": "/deliveries",
-      "/deliveries/abc": "/deliveries",
-      "/outbox/abc": "/deliveries",
+      "/system": "/system",
+      "/settings": "/system",
+      "/staff": "/system",
+      "/support/errors": "/system",
+      "/support/errors/123": "/system",
+      "/deliveries": "/system",
+      "/deliveries/abc": "/system",
+      "/outbox/abc": "/system",
     };
     for (const [path, href] of Object.entries(expected)) expect(currentHref(CONSOLE_RAIL_LINKS, path), path).toBe(href);
   });
 
   it("picks the longest match, so App errors (System) wins over Requests (Inbox)", () => {
-    expect(currentHref(CONSOLE_RAIL_LINKS, "/support/errors/123")).toBe("/deliveries");
+    expect(currentHref(CONSOLE_RAIL_LINKS, "/support/errors/123")).toBe("/system");
     expect(currentHref(CONSOLE_RAIL_LINKS, "/support/abc")).toBe("/support");
   });
 

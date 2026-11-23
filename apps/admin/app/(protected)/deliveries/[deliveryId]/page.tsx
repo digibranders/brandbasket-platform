@@ -5,6 +5,7 @@ import type { ReactElement } from "react";
 import { z } from "zod";
 import { LocalDateTime } from "@brandbasket/shared/ui/panel/local-date-time";
 import { buttonPrimary } from "@/components/console/buttons";
+import { ConfirmDialog } from "@/components/console/confirm-dialog";
 import { Notice } from "@/components/console/notice";
 import { PageHeader } from "@/components/console/page-header";
 import { FactList, Section } from "@/components/console/section";
@@ -56,13 +57,21 @@ function AlertFacts({ alert }: { readonly alert: StoredAlertDelivery }): ReactEl
         ]}
       />
       {row.resend === null ? null : (
-        <form action={resendAlertAction} className="mt-6">
-          <input type="hidden" name="deliveryId" value={alert.id} />
-          <input type="hidden" name="from" value="detail" />
-          <button type="submit" className={buttonPrimary}>
-            Resend
-          </button>
-        </form>
+        <div className="mt-6">
+          <ConfirmDialog
+            title="Resend this Teams alert?"
+            consequence="It is posted to Teams again."
+            triggerLabel="Resend"
+            triggerClassName={buttonPrimary}
+            confirmLabel="Resend"
+            cancelLabel="Keep"
+            variant="default"
+            formAction={resendAlertAction}
+          >
+            <input type="hidden" name="deliveryId" value={alert.id} />
+            <input type="hidden" name="from" value="detail" />
+          </ConfirmDialog>
+        </div>
       )}
     </Section>
   );
