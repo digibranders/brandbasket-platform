@@ -65,7 +65,7 @@ describe("recordRazorpayPaymentFailure", () => {
     await recordRazorpayPaymentFailure({ ...event, businessId: BUSINESS });
 
     expect(sendPaymentFailed).toHaveBeenCalledTimes(1);
-    expect(sendPaymentFailed).toHaveBeenCalledWith({ businessId: BUSINESS, amountCents: 299_900, currency: "INR", chargeDescription: null });
+    expect(sendPaymentFailed).toHaveBeenCalledWith({ businessId: BUSINESS, providerPaymentId: "pay_failed_1", amountCents: 299_900, currency: "INR", chargeDescription: null });
   });
 
   it("names a failed extra by what it was for", async () => {
