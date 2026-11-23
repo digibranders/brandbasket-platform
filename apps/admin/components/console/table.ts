@@ -7,5 +7,9 @@ export const TD = "border-b border-line px-2.5 py-2.5 align-middle first:pl-0 la
 export const TD_NUM = `${TD} text-right font-figure tabular-nums`;
 /** Dates and times: small, quiet, in the figure face. */
 export const TD_TIME = `${TD} whitespace-nowrap font-figure text-xs text-ink-2`;
+/** 36px rows for the read-only registers (Invoices): one line a row, the line height plus 6px above and below. */
+export const TD_COMPACT = "h-9 whitespace-nowrap border-b border-line px-2.5 py-1.5 align-middle leading-5 first:pl-0 last:pr-0";
+export const TD_COMPACT_NUM = `${TD_COMPACT} text-right font-figure tabular-nums`;
+export const TD_COMPACT_TIME = `${TD_COMPACT} font-figure text-xs text-ink-2`;
 /** The row whose detail is open beside the list. */
 export const TR_SELECTED = "bg-surface [&>td:first-child]:shadow-[inset_3px_0_0_var(--color-ink)]";

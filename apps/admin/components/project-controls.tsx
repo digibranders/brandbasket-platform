@@ -1,4 +1,4 @@
-import { canMoveProject, findOpenProjectForStaff, listAssignableSupportStaff } from "@brandbasket/db";
+import { canMoveProject, findOpenProjectForStaff } from "@brandbasket/db";
 import type { ReactElement } from "react";
 import { buttonDanger, buttonSecondary } from "@/components/console/buttons";
 import { ConfirmDialog } from "@/components/console/confirm-dialog";
@@ -9,7 +9,6 @@ import { StatusPill } from "@/components/console/status-pill";
 import { PROJECT_MOVE_NOTICES, readProjectMoveNotice } from "@/lib/project-move-notices";
 import { getStaffDb } from "@/lib/server/db";
 import {
-  assignBuilderAction,
   cancelProjectAction,
   grantRoundAction,
   planLaunchAction,
@@ -21,10 +20,10 @@ interface ProjectControlsProps {
   readonly notice: string | string[] | undefined;
 }
 
-/** Hand moves on the business's open build: builder, extra round, cancel. Start, hold and resume are in the website build section. */
+/** Hand moves on the business's open build: extra round, launch day, cancel. There is no builder to pick: one staff account does all the work. Start, hold and resume are in the website build section. */
 export async function ProjectControls({ businessId, notice }: ProjectControlsProps): Promise<ReactElement | null> {
   const db = getStaffDb();
-  const [project, staff] = await Promise.all([findOpenProjectForStaff(db, businessId), listAssignableSupportStaff(db)]);
+  const project = await findOpenProjectForStaff(db, businessId);
   const shown = readProjectMoveNotice(notice);
   if (project === null) {
     return shown === null ? null : <Notice tone={PROJECT_MOVE_NOTICES[shown].ok ? "ok" : "problem"}>{PROJECT_MOVE_NOTICES[shown].text}</Notice>;
@@ -72,26 +71,6 @@ export async function ProjectControls({ businessId, notice }: ProjectControlsPro
             <p className="text-sm text-ink-2">The client sees this on their website page once it is set. Leave it empty to show no day.</p>
             <button type="submit" className={`${buttonSecondary} justify-self-start`}>
               Save launch day
-            </button>
-          </form>
-        ) : null}
-
-        {canMoveProject("assign", project.status) ? (
-          <form action={assignBuilderAction} className="grid max-w-md gap-2">
-            {ids}
-            <label htmlFor="builder" className={labelClasses}>
-              Builder
-            </label>
-            <select id="builder" name="builder" defaultValue={project.assignedStaffId ?? ""} className={fieldClasses}>
-              <option value="">No builder</option>
-              {staff.map((person) => (
-                <option key={person.userId} value={person.userId}>
-                  {person.name}
-                </option>
-              ))}
-            </select>
-            <button type="submit" className={`${buttonSecondary} justify-self-start`}>
-              Save builder
             </button>
           </form>
         ) : null}

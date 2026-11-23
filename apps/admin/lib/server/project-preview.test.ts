@@ -16,7 +16,7 @@ vi.mock("@brandbasket/db", () => ({
 }));
 vi.mock("./preview-screenshot", () => ({ captureScreenshot: vi.fn() }));
 vi.mock("./website-moves", () => ({ addWorkingActivity: vi.fn() }));
-vi.mock("@brandbasket/email", () => ({ previewReadyEmail: vi.fn() }));
+vi.mock("@brandbasket/email", async (importOriginal) => ({ ...(await importOriginal<typeof import("@brandbasket/email")>()), previewReadyEmail: vi.fn() }));
 vi.mock("./email", () => ({ customerEmailTransport: vi.fn() }));
 vi.mock("./env", () => ({ serverEnv: () => ({ APP_ORIGIN: "https://app.brandbasket.in" }) }));
 
@@ -191,6 +191,22 @@ describe("sendProjectPreview outcomes beyond the happy path", () => {
     await expect(sendProjectPreview(db, INPUT, NOW)).resolves.toBe("emailed");
     expect(console.error).toHaveBeenCalledWith("[preview-version]", expect.anything());
     expect(send).toHaveBeenCalledTimes(1);
+  });
+
+  it("reports email-queued when the transport holds the message for a retry", async () => {
+    send.mockResolvedValue({ status: "queued" });
+    await expect(sendProjectPreview(db, INPUT, NOW)).resolves.toBe("email-queued");
+  });
+
+  it("reports email-failed, not emailed, when the transport answers failed instead of throwing", async () => {
+    send.mockResolvedValue({ status: "failed", error: "Brevo answered 400" });
+    await expect(sendProjectPreview(db, INPUT, NOW)).resolves.toBe("email-failed");
+    expect(mockedRecordSent).toHaveBeenCalledTimes(1);
+  });
+
+  it("tells staff to reach an owner who opted out of mail another way", async () => {
+    send.mockResolvedValue({ status: "suppressed" });
+    await expect(sendProjectPreview(db, INPUT, NOW)).resolves.toBe("no-email");
   });
 
   it("keeps the saved preview and reports email-failed when the send fails", async () => {

@@ -13,6 +13,7 @@ import {
   type LeadSource,
   type LeadStatus,
 } from "../schema";
+import { isSystemLeadStatus, LEAD_STATUSES_TO_CONTACT, SYSTEM_LEAD_STATUSES, type StaffLeadStatus } from "../lead-statuses";
 
 /** The account lookup also runs inside the onboarding transaction, so it accepts either runner. */
 type Runner = Database | ScopedTransaction;
@@ -197,18 +198,7 @@ export async function findUserIdByEmail(db: Runner, email: string): Promise<stri
   return rows[0]?.id ?? null;
 }
 
-/**
- * Statuses only the system sets: creating the customer's account sets `account_created`, and a confirmed first
- * payment sets `paid`. Staff can neither choose them nor move a lead out of them.
- */
-export const SYSTEM_LEAD_STATUSES = ["account_created", "paid"] as const satisfies readonly LeadStatus[];
-export type SystemLeadStatus = (typeof SYSTEM_LEAD_STATUSES)[number];
-/** The statuses staff may put a lead in by hand. */
-export type StaffLeadStatus = Exclude<LeadStatus, SystemLeadStatus>;
-
-export function isSystemLeadStatus(status: LeadStatus): status is SystemLeadStatus {
-  return (SYSTEM_LEAD_STATUSES as readonly LeadStatus[]).includes(status);
-}
+export { isSystemLeadStatus, SYSTEM_LEAD_STATUSES, type StaffLeadStatus, type SystemLeadStatus } from "../lead-statuses";
 
 /** A status only the system sets was asked for by hand. Nothing was written. */
 export class SystemLeadStatusError extends Error {
@@ -351,8 +341,7 @@ export async function changeLeadCurrency(
   });
 }
 
-/** Enquiries waiting for someone to get in touch: new ones, and accounts opened that have not paid. */
-export const LEAD_STATUSES_TO_CONTACT = ["new", "account_created"] as const satisfies readonly LeadStatus[];
+export { LEAD_STATUSES_TO_CONTACT } from "../lead-statuses";
 
 /** How many enquiries are waiting for someone to get in touch (the console rail's Enquiries count). */
 export async function countLeadsToContact(db: Database): Promise<number> {

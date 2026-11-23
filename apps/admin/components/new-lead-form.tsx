@@ -178,7 +178,7 @@ export function NewLeadForm({ action, phoneCountries, defaultPhoneCountry }: New
       )}
 
       <GatedSubmitButton className={buttonPrimary} pendingLabel="Saving…">
-        Add lead
+        Add enquiry
       </GatedSubmitButton>
     </form>
   );

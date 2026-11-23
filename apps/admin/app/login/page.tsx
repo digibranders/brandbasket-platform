@@ -25,10 +25,10 @@ export default async function AdminLoginPage({ searchParams }: {
       <QuietFrame
         title={
           <>
-            No staff <em>access.</em>
+            This sign in cannot <em>open the console.</em>
           </>
         }
-        lede={`${access.user.email} is signed in, but it isn’t a ${brand.name} staff account. Sign out and use your staff account instead.`}
+        lede={`${access.user.email} is not an active ${brand.name} staff account, so nothing here is shown. Sign out and use your staff account, or ask the person who runs ${brand.name} to check it.`}
       >
         <div className="flex justify-center py-2">
           <SignOutButton signOut={signOut} />
@@ -38,7 +38,7 @@ export default async function AdminLoginPage({ searchParams }: {
   }
 
   return (
-    <AuthFrame title="Welcome back." description="Sign in to keep good things moving.">
+    <AuthFrame title="Staff sign in" description="Use your staff email and password.">
       <TurnstileScope>
         <StaffSignInForm action={signInStaff} passwordChanged={(await searchParams).notice === "password-changed"} />
       </TurnstileScope>

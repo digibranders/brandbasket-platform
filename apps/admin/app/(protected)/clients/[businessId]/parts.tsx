@@ -38,6 +38,7 @@ import { registrableDomain } from "@brandbasket/shared/lib/onboarding/domain-dns
 import { safeExternalHref } from "@brandbasket/shared/lib/safe-link";
 import { buttonPrimary, buttonSecondary } from "@/components/console/buttons";
 import { ConfirmDialog } from "@/components/console/confirm-dialog";
+import { ConfirmSubmit } from "@/components/console/confirm-submit";
 import { checkboxClasses, fieldClasses, hintClasses, labelClasses } from "@/components/console/field-styles";
 import { FactList, Quiet, type Fact } from "@/components/console/section";
 import {
@@ -368,7 +369,8 @@ export function BillingFacts({
 }: {
   readonly client: ClientDetail;
   readonly state: ClientPaymentState;
-  readonly packageFacts: ClientPackageFacts;
+  /** The package and ad credit rows; null leaves them out (the Overview shows no Package or Ad credit, decision 3 of the v2 notes). */
+  readonly packageFacts: ClientPackageFacts | null;
 }): ReactElement {
   const subscription = client.billing.subscription;
   const hasPaid = state.kind === "paid" || state.kind === "lapsed";
@@ -401,9 +403,13 @@ export function BillingFacts({
           label: "First term ends",
           value: subscription?.commitmentEndsAt ? <When date={subscription.commitmentEndsAt} /> : null,
         },
-        { label: "Package", value: packageFacts.package },
-        { label: "Ad credit", value: packageFacts.adCredit },
-        ...(packageFacts.forfeitedOn === null ? [] : [{ label: "Package offer ended", value: packageFacts.forfeitedOn }]),
+        ...(packageFacts === null
+          ? []
+          : [
+              { label: "Package", value: packageFacts.package },
+              { label: "Ad credit", value: packageFacts.adCredit },
+              ...(packageFacts.forfeitedOn === null ? [] : [{ label: "Package offer ended", value: packageFacts.forfeitedOn }]),
+            ]),
         ...(manual === null
           ? []
           : [
@@ -516,9 +522,20 @@ export function SendPreviewForm({ businessId, label = SEND_PREVIEW_LABEL }: { re
           className={fieldClasses}
         />
       </div>
-      <GatedSubmitButton className={`${buttonPrimary} mt-5`} pendingLabel="Sending…" formNoValidate>
+      <ConfirmSubmit
+        className={`${buttonPrimary} mt-5`}
+        formNoValidate
+        copy={{
+          title: label === SEND_PREVIEW_LABEL ? "Send the preview" : "Send the updated preview",
+          consequence:
+            label === SEND_PREVIEW_LABEL
+              ? "The customer is emailed this link and the build moves to Awaiting client review."
+              : "The customer is emailed the updated preview and the build moves to Awaiting client review.",
+          confirmLabel: label,
+        }}
+      >
         {label}
-      </GatedSubmitButton>
+      </ConfirmSubmit>
     </form>
   );
 }
@@ -528,9 +545,12 @@ export function ResendPreviewEmailForm({ businessId }: { readonly businessId: st
     <form action={resendPreviewEmailAction}>
       <p className="max-w-xl text-ink-2">If the customer did not get the email, send it again.</p>
       <input type="hidden" name="businessId" value={businessId} />
-      <GatedSubmitButton className={`${buttonSecondary} mt-5`} pendingLabel="Sending…">
+      <ConfirmSubmit
+        className={`${buttonSecondary} mt-5`}
+        copy={{ title: "Resend the preview email", consequence: "The customer is emailed the preview link again. The stage does not change.", confirmLabel: "Resend email" }}
+      >
         Resend email
-      </GatedSubmitButton>
+      </ConfirmSubmit>
     </form>
   );
 }
@@ -540,9 +560,12 @@ export function ResendLaunchEmailForm({ businessId }: { readonly businessId: str
     <form action={resendLaunchEmailAction}>
       <p className="max-w-xl text-ink-2">If the customer did not get the email, send it again.</p>
       <input type="hidden" name="businessId" value={businessId} />
-      <GatedSubmitButton className={`${buttonSecondary} mt-5`} pendingLabel="Sending…">
+      <ConfirmSubmit
+        className={`${buttonSecondary} mt-5`}
+        copy={{ title: "Resend the launch email", consequence: "The customer is emailed their launch details again.", confirmLabel: "Resend email" }}
+      >
         Resend email
-      </GatedSubmitButton>
+      </ConfirmSubmit>
     </form>
   );
 }
@@ -606,9 +629,12 @@ function MarkLiveForm({
           <span>Mark live even though the address did not load</span>
         </label>
       ) : null}
-      <button type="submit" className={`${buttonPrimary} mt-5`}>
+      <ConfirmSubmit
+        className={`${buttonPrimary} mt-5`}
+        copy={{ title: "Mark this website live", consequence: "The website is marked live and the customer is emailed their website address.", confirmLabel: "Mark live" }}
+      >
         Mark live
-      </button>
+      </ConfirmSubmit>
     </form>
   );
 }
@@ -662,9 +688,16 @@ export function GoLivePanel({
             <li>Then ask the customer to change their DNS. They’re emailed, and the records show on their dashboard.</li>
           </ol>
           <input type="hidden" name="businessId" value={businessId} />
-          <GatedSubmitButton className={`${buttonPrimary} mt-5`} pendingLabel="Emailing…">
+          <ConfirmSubmit
+            className={`${buttonPrimary} mt-5`}
+            copy={{
+              title: "Ask the customer to connect their domain",
+              consequence: "The customer is emailed, and the DNS records show on their dashboard.",
+              confirmLabel: "Email the customer",
+            }}
+          >
             Ready for customer’s DNS
-          </GatedSubmitButton>
+          </ConfirmSubmit>
         </form>
       ) : null}
 
@@ -725,9 +758,16 @@ export function MoveDomainPanel({
             <li>Then ask the customer to change their DNS. They’re emailed, and the records show on their dashboard. Their free address keeps working.</li>
           </ol>
           <input type="hidden" name="businessId" value={businessId} />
-          <GatedSubmitButton className={`${buttonPrimary} mt-5`} pendingLabel="Emailing…">
+          <ConfirmSubmit
+            className={`${buttonPrimary} mt-5`}
+            copy={{
+              title: "Ask the customer to connect their domain",
+              consequence: "The customer is emailed, and the DNS records show on their dashboard.",
+              confirmLabel: "Email the customer",
+            }}
+          >
             Ready for customer’s DNS
-          </GatedSubmitButton>
+          </ConfirmSubmit>
         </form>
       ) : null}
 

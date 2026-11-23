@@ -33,7 +33,7 @@ vi.mock("@brandbasket/db", async () => {
     setLaunchCheck: vi.fn(),
   };
 });
-vi.mock("@brandbasket/email", () => ({ websiteLiveEmail: vi.fn() }));
+vi.mock("@brandbasket/email", async (importOriginal) => ({ ...(await importOriginal<typeof import("@brandbasket/email")>()), websiteLiveEmail: vi.fn() }));
 vi.mock("./email", () => ({ customerEmailTransport: vi.fn() }));
 vi.mock("./site-check", () => ({ checkSiteAddress: vi.fn() }));
 
@@ -274,6 +274,20 @@ describe("resendLaunchEmail", () => {
 
       await expect(resendLaunchEmail(db, { businessId: "business-1" })).resolves.toBe("no-email");
       expect(send).not.toHaveBeenCalled();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("reports email-queued and email-failed from the transport's answer", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(NOW);
+    try {
+      mockedFindClient.mockResolvedValue(clientReadyToLaunch({ projectStatus: "live", launchedAt: NOW }));
+      send.mockResolvedValueOnce({ status: "queued" });
+      await expect(resendLaunchEmail(db, { businessId: "business-1" })).resolves.toBe("email-queued");
+      send.mockResolvedValueOnce({ status: "failed", error: "Brevo answered 400" });
+      await expect(resendLaunchEmail(db, { businessId: "business-1" })).resolves.toBe("email-failed");
     } finally {
       vi.useRealTimers();
     }

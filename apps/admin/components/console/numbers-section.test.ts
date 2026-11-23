@@ -113,6 +113,22 @@ describe("NumbersSection", () => {
     expect(html).toContain("September 2026");
   });
 
+  it("with the ads scope shows the three ad fields and columns only, and no Search form", async () => {
+    vi.mocked(listBoughtServices).mockResolvedValue(["social", "search"]);
+    vi.mocked(listMonthlySnapshots).mockResolvedValue([SNAPSHOT] as never);
+    const html = renderToStaticMarkup(await NumbersSection({ businessId: BUSINESS, notice: null, scope: "ads" }));
+    for (const name of ["adSpendRupees", "adBudgetRupees", "adEnquiries"]) expect(html).toContain(`name="${name}"`);
+    for (const name of ["postsPublished", "postsPlanned", "reach", "followers", "profileVisits", "keywordsPageOne"]) expect(html).not.toContain(`name="${name}"`);
+    expect(html).not.toContain("Posts published");
+    expect(html).toContain("₹12,500");
+    expect(html.match(/Save numbers/g)).toHaveLength(1);
+  });
+
+  it("with the ads scope renders nothing for a business that only bought Search", async () => {
+    vi.mocked(listBoughtServices).mockResolvedValue(["search"]);
+    expect(renderToStaticMarkup(await NumbersSection({ businessId: BUSINESS, notice: null, scope: "ads" }) ?? null)).toBe("");
+  });
+
   it("shows the notice for what just happened", async () => {
     vi.mocked(listBoughtServices).mockResolvedValue(["social"]);
     expect(await render("saved")).toContain("Numbers saved.");

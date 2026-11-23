@@ -51,7 +51,7 @@ describe("completeKickoffAction", () => {
     await completeKickoffAction(form({ businessId: BUSINESS, notes: "  Five pages, call to book.  " }));
     expect(completeKickoff).toHaveBeenCalledWith(DB, { businessId: BUSINESS, staffId: "staff-1", now: expect.any(Date), notes: "Five pages, call to book." });
     expect(logStaffAccessOrThrow).toHaveBeenCalledWith(expect.objectContaining({ action: "setup_call.held", businessId: BUSINESS }));
-    expect(revalidatePath).toHaveBeenCalledWith("/calls");
+    expect(revalidatePath).toHaveBeenCalledWith("/");
   });
 
   it("completes with no notes when the box is empty", async () => {
@@ -97,7 +97,7 @@ describe("recordKickoffOutcomeAction", () => {
     });
     expect(clearUnheldKickoffBooking).toHaveBeenCalledWith(DB, BUSINESS);
     expect(logStaffAccessOrThrow).toHaveBeenCalledWith(expect.objectContaining({ action, targetId: BUSINESS, businessId: BUSINESS }));
-    expect(revalidatePath).toHaveBeenCalledWith("/calls");
+    expect(revalidatePath).toHaveBeenCalledWith("/");
     expect(revalidatePath).toHaveBeenCalledWith(`/clients/${BUSINESS}`);
   });
 

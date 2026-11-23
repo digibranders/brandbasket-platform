@@ -50,7 +50,62 @@ export const ACTION_LABELS: Readonly<Record<StaffAccessAction, string>> = {
   "affiliates.new_code": "Opened the new affiliate code form",
   "coupons.list": "Opened coupons",
   "coupons.detail": "Opened a coupon",
+  "invoice.register_view": "Opened the invoice register",
+  "report.view": "Opened a report",
+  "report.send": "Sent a report",
+  "report.hold": "Held a report",
+  "report.release": "Released a held report",
+  "setup_call.held": "Marked a setup call as held",
+  "setup_call.no_show": "Cleared a setup call that did not happen",
+  "setup_call.customer_no_show": "Recorded a setup call the customer missed",
+  "setup_call.team_no_show": "Recorded a setup call the team missed",
+  "setup_call.rescheduled": "Recorded a setup call as rescheduled",
+  "team_call.held": "Marked a team call as held",
+  "team_call.unheld": "Marked a team call as not held",
+  "activity.add": "Added an update to a client",
+  "activity.remove": "Removed an update from a client",
+  "account.save": "Saved a client's connected account",
+  "account.remove": "Removed a client's connected account",
+  "campaign.add": "Added an ad campaign",
+  "campaign.update": "Changed an ad campaign",
+  "campaign.remove": "Removed an ad campaign",
+  "numbers.save": "Saved a client's figures",
+  "call.summary": "Saved a call summary",
+  "change_request.quote": "Sent a quote for a change",
+  "change_request.included": "Started a change as an included edit",
+  "change_request.free": "Started a change at no charge",
+  "change_request.preview": "Sent a change for checking",
+  "change_request.shipped": "Marked a change done",
+  "change_request.declined": "Declined a change",
 };
+
+/** The filter's groups, in the order they show. Every action is in exactly one group (the test checks it). */
+export const ACTION_GROUPS: readonly { readonly label: string; readonly actions: readonly StaffAccessAction[] }[] = [
+  { label: "Sign-in and search", actions: ["staff.sign_in", "access_log.view", "access.denied", "search.run", "today.view"] },
+  {
+    label: "Clients and calls",
+    actions: [
+      "client.view", "client.people_view", "client.closure_restore", "client.closure_extend", "clients.list", "leaving.list", "calls.list", "projects.list",
+      "setup_call.held", "setup_call.no_show", "setup_call.customer_no_show", "setup_call.team_no_show", "setup_call.rescheduled", "team_call.held", "team_call.unheld",
+      "call.summary", "activity.add", "activity.remove", "account.save", "account.remove", "campaign.add", "campaign.update", "campaign.remove", "numbers.save",
+    ],
+  },
+  {
+    label: "Enquiries and requests",
+    actions: [
+      "lead.view", "lead.export", "leads.list", "support_ticket.view", "support_attachment.view", "support.list", "support.new",
+      "change_request.quote", "change_request.included", "change_request.free", "change_request.preview", "change_request.shipped", "change_request.declined",
+    ],
+  },
+  { label: "Money", actions: ["payment.list_view", "payment.export", "invoice.view", "invoice.export", "invoice.export_zip", "invoice.register_view", "ad_credit.list"] },
+  {
+    label: "Compliance",
+    actions: ["privacy_request.view", "privacy_request.log", "privacy_request.update", "privacy_request.close", "breach.view", "breach.log", "breach.update"],
+  },
+  { label: "Emails, reports and directory", actions: ["outbox.view", "outbox.list", "delivery.view", "email.resend", "alert.resend", "report.view", "report.send", "report.hold", "report.release", "directory.view"] },
+  { label: "Staff", actions: ["staff.invite", "staff.role_change", "staff.deactivate", "staff.reactivate"] },
+  { label: "Partners and coupons", actions: ["affiliates.list", "affiliates.detail", "affiliates.new_code", "coupons.list", "coupons.detail"] },
+];
 
 export function actionLabel(action: string): string {
   return ACTION_LABELS[action as StaffAccessAction] ?? action;

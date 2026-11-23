@@ -9,6 +9,7 @@ import { MAX_REVISION_ROUNDS, MIN_REVISION_ROUNDS, REVISION_ROUNDS_FIELD } from 
 import { MAX_TEAMS_URL_LENGTH, TEAMS_DESTINATION_FIELD, TEAMS_DESTINATION_INFO, TEAMS_DESTINATIONS, TEAMS_URL_FIELD } from "@brandbasket/shared/lib/teams-webhook";
 import { buttonDanger, buttonPrimary, buttonSecondary } from "@/components/console/buttons";
 import { fieldClasses, hintClasses, labelClasses } from "@/components/console/field-styles";
+import { ConfirmDialog } from "@/components/console/confirm-dialog";
 import { DevicePushSwitch } from "@/components/console/device-push-switch";
 import { Notice } from "@/components/console/notice";
 import { SecretInput } from "@/components/console/secret-input";
@@ -50,7 +51,7 @@ export default async function SettingsPage({
   return (
     <>
       <PageHeader title={<>Settings</>} meta="Changes here are live straight away, with no deploy." />
-      <SectionTabs role={staff.role} page="/settings" />
+      <SectionTabs page="/settings" />
       {notice === null ? null : (
         <Notice tone={SETTINGS_NOTICES[notice].ok ? "ok" : "problem"} className="mt-8">
           {SETTINGS_NOTICES[notice].text}
@@ -169,7 +170,8 @@ export default async function SettingsPage({
               const info = TEAMS_DESTINATION_INFO[destination];
               const inputId = `teams-${destination}`;
               return (
-                <form key={destination} action={saveTeamsWebhookAction} className="grid gap-3 border-t border-line pt-6 first:border-t-0 first:pt-0">
+                <div key={destination} className="grid gap-3 border-t border-line pt-6 first:border-t-0 first:pt-0">
+                  <form action={saveTeamsWebhookAction} className="grid gap-3">
                   <input type="hidden" name={TEAMS_DESTINATION_FIELD} value={destination} />
                   <div>
                     <label htmlFor={inputId} className={labelClasses}>
@@ -199,17 +201,26 @@ export default async function SettingsPage({
                       Save address
                     </GatedSubmitButton>
                     {state.state === "unset" ? null : (
-                      <>
-                        <button type="submit" formAction={testTeamsWebhookAction} formNoValidate className={buttonSecondary}>
-                          Send test
-                        </button>
-                        <button type="submit" formAction={removeTeamsWebhookAction} formNoValidate className={buttonDanger}>
-                          Remove
-                        </button>
-                      </>
+                      <button type="submit" formAction={testTeamsWebhookAction} formNoValidate className={buttonSecondary}>
+                        Send test
+                      </button>
                     )}
                   </div>
-                </form>
+                  </form>
+                  {state.state === "unset" ? null : (
+                    <ConfirmDialog
+                      title={`Remove the ${info.label} address?`}
+                      consequence="Alerts of this kind stop going to Teams until you paste a new address. The address cannot be shown again."
+                      triggerLabel="Remove"
+                      triggerClassName={`${buttonDanger} justify-self-start`}
+                      confirmLabel="Remove address"
+                      cancelLabel="Keep"
+                      formAction={removeTeamsWebhookAction}
+                    >
+                      <input type="hidden" name={TEAMS_DESTINATION_FIELD} value={destination} />
+                    </ConfirmDialog>
+                  )}
+                </div>
               );
             })}
           </div>

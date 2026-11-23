@@ -1,58 +1,27 @@
 import type { Metadata } from "next";
-import { notFound, redirect } from "next/navigation";
-import { revalidatePath } from "next/cache";
+import { notFound } from "next/navigation";
 import type { ReactElement } from "react";
 import { z } from "zod";
-import { getErrorIssue, listAssignableSupportStaff, updateErrorIssueStatus } from "@brandbasket/db";
-import { RequiredMark } from "@brandbasket/shared/ui/forms/required-mark";
-import { GatedSubmitButton } from "@brandbasket/shared/ui/forms/submit-gate";
+import { getErrorIssue } from "@brandbasket/db";
 import { LocalDateTime } from "@brandbasket/shared/ui/panel/local-date-time";
-import { SelectField, type SelectOption } from "@brandbasket/shared/ui/select-field";
-import { buttonPrimary } from "@/components/console/buttons";
-import { fieldClasses, labelClasses } from "@/components/console/field-styles";
+import { ErrorStatusControl } from "@/components/console/error-status-control";
 import { PageHeader } from "@/components/console/page-header";
 import { FactList, Section } from "@/components/console/section";
+import { StatusPill } from "@/components/console/status-pill";
+import { ERROR_STATUS_LABELS, ERROR_STATUS_TONES } from "@/lib/error-status";
 import { getStaffDb } from "@/lib/server/db";
 import { requireStaffAccess } from "@/lib/server/staff-access";
 
 export const metadata: Metadata = { title: "Error" };
-const statusInput = z.enum(["new", "investigating", "resolved", "ignored"]);
-const STATUS_OPTIONS: readonly SelectOption[] = [
-  { value: "new", label: "New" },
-  { value: "investigating", label: "Investigating" },
-  { value: "resolved", label: "Resolved" },
-  { value: "ignored", label: "Ignored" },
-];
-
-export default async function AutomaticErrorPage({ params, searchParams }: { readonly params: Promise<{ readonly issueId: string }>; readonly searchParams: Promise<{ readonly updated?: string }> }): Promise<ReactElement> {
+export default async function AutomaticErrorPage({ params }: { readonly params: Promise<{ readonly issueId: string }> }): Promise<ReactElement> {
   await requireStaffAccess();
   const { issueId } = await params;
   if (!z.uuid().safeParse(issueId).success) notFound();
   const issue = await getErrorIssue(getStaffDb(), issueId);
   if (issue === null) notFound();
-  const staff = await listAssignableSupportStaff(getStaffDb());
-  const search = await searchParams;
-  const assigneeOptions: readonly SelectOption[] = [{ value: "", label: "Unassigned" }, ...staff.map((person) => ({ value: person.userId, label: person.name }))];
-
-  async function updateStatus(formData: FormData): Promise<void> {
-    "use server";
-    await requireStaffAccess();
-    const status = statusInput.safeParse(formData.get("status"));
-    const count = z.coerce.number().int().min(1).max(2_147_483_647).safeParse(formData.get("occurrenceCount"));
-    const assignee = z.string().max(200).nullable().safeParse(formData.get("assigneeStaffId") || null);
-    if (!status.success || !count.success || !assignee.success) redirect(`/support/errors/${issueId}?updated=invalid`);
-    const currentStaff = await listAssignableSupportStaff(getStaffDb());
-    if (assignee.data !== null && !currentStaff.some((person) => person.userId === assignee.data)) redirect(`/support/errors/${issueId}?updated=invalid`);
-    const changed = await updateErrorIssueStatus(getStaffDb(), issueId, status.data, count.data, assignee.data);
-    revalidatePath("/support/errors");
-    revalidatePath(`/support/errors/${issueId}`);
-    redirect(`/support/errors/${issueId}?updated=${changed ? "saved" : "stale"}`);
-  }
-
   return (
     <>
       <PageHeader title={issue.errorClass} back={{ href: "/support/errors", label: "App errors" }} meta={`${issue.app} · ${issue.route}`} />
-      {search.updated === "saved" ? <p role="status" className="mt-6 text-sm text-ink-2">Status saved.</p> : search.updated === "stale" ? <p role="status" className="mt-6 text-sm text-error">This issue changed while you reviewed it. Check the latest counts before updating again.</p> : search.updated === "invalid" ? <p role="alert" className="mt-6 text-sm text-error">Choose a valid status and try again.</p> : null}
       <div className="mt-10">
         <Section title="Occurrences">
           <FactList items={[
@@ -77,19 +46,8 @@ export default async function AutomaticErrorPage({ params, searchParams }: { rea
           {issue.frames.length === 0 ? <p className="mt-2 text-sm text-ink-2">No allowlisted source location was available.</p> : <ol className="mt-3 space-y-2 font-mono text-sm tabular-nums">{issue.frames.map((frame, index) => <li key={`${frame.file}:${frame.line}:${frame.column}:${index}`} className="break-all">{frame.file}:{frame.line}:{frame.column}</li>)}</ol>}
           <p className="mt-4 max-w-2xl text-sm text-ink-2">Production locations may refer to compiled JavaScript. Native capture does not upload or resolve source maps. Messages, stack text, request data and console logs are never recorded.</p>
         </Section>
-        <Section title="Review status">
-          <form action={updateStatus} className="flex flex-wrap items-end gap-4">
-            <input type="hidden" name="occurrenceCount" value={issue.occurrenceCount} />
-            <div className="min-w-48">
-              <label className={labelClasses} htmlFor="error-status">Status<RequiredMark /></label>
-              <SelectField id="error-status" name="status" required options={STATUS_OPTIONS} defaultValue={issue.status} className={fieldClasses} />
-            </div>
-            <div className="min-w-48">
-              <label className={labelClasses} htmlFor="error-assignee">Assigned to</label>
-              <SelectField id="error-assignee" name="assigneeStaffId" options={assigneeOptions} defaultValue={issue.assigneeStaffId ?? ""} className={fieldClasses} />
-            </div>
-            <GatedSubmitButton className={buttonPrimary} pendingLabel="Saving…">Save status</GatedSubmitButton>
-          </form>
+        <Section title="Review status" aside={<StatusPill tone={ERROR_STATUS_TONES[issue.status]}>{ERROR_STATUS_LABELS[issue.status]}</StatusPill>}>
+          <ErrorStatusControl issueId={issue.id} errorClass={issue.errorClass} status={issue.status} occurrenceCount={issue.occurrenceCount} />
           <p className="mt-4 text-sm text-ink-2">A new occurrence reopens a resolved issue. Ignored issues continue counting without reopening.</p>
         </Section>
       </div>

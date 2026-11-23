@@ -70,10 +70,16 @@ describe("hasEmailContaining", () => {
   const link = "https://app.brandbasket.in/billing/receipts?ids=0192f3c4-0000-7000-8000-00000000000a";
   const match = { template: "payment-received", toAddress: "asha@example.in", text: link, since: new Date(NOW.getTime() - DAY) };
 
-  it("finds a row of the template to the address that holds the text, whatever became of the delivery", async () => {
+  it("finds a row of the template to the address that holds the text, whatever became of it except a failed delivery", async () => {
     await expect(hasEmailContaining(dbs.staff.db, match)).resolves.toBe(false);
     await recordEmail(dbs.staff.db, { ...base, bodyText: `Download your receipt: ${link}`, status: "failed", error: "Brevo answered 400" });
-    await expect(hasEmailContaining(dbs.staff.db, { ...match, since: new Date(0) })).resolves.toBe(true);
+    // A message that never went must not stop the receipt being sent again.
+    await expect(hasEmailContaining(dbs.staff.db, { ...match, since: new Date(0) })).resolves.toBe(false);
+    for (const status of ["pending", "sent", "bounced", "local_only"] as const) {
+      await resetTestDatabase(dbs.owner);
+      await recordEmail(dbs.staff.db, { ...base, bodyText: `Download your receipt: ${link}`, status, nextAttemptAt: status === "pending" ? NOW : null });
+      await expect(hasEmailContaining(dbs.staff.db, { ...match, since: new Date(0) })).resolves.toBe(true);
+    }
   });
 
   it("does not match another address, template, payment or an older row, and takes wildcard characters as themselves", async () => {
