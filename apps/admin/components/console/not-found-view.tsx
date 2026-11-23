@@ -9,14 +9,14 @@ export function NotFoundView(): ReactElement {
     <QuietFrame
       title={
         <>
-          Nothing <em>here.</em>
+          That page does <em>not exist.</em>
         </>
       }
-      lede="That page doesn’t exist, or it has moved."
+      lede="The link may be old, or the page was moved. Everything you need is reachable from Today."
     >
       <div className="flex justify-center py-2">
         <Link href="/" className={buttonPrimary}>
-          Back to the journey
+          Back to Today
         </Link>
       </div>
     </QuietFrame>

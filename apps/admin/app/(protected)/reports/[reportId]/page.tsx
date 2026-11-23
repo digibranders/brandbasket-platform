@@ -1,4 +1,4 @@
-import { findBusinessAlertDetails, getReport } from "@brandbasket/db";
+import { findBusinessAlertDetails, getReport, isPhoneAccountEmail } from "@brandbasket/db";
 import { reportContentSchema } from "@brandbasket/shared/lib/reports/content";
 import { LocalDateTime } from "@brandbasket/shared/ui/panel/local-date-time";
 import type { Metadata } from "next";
@@ -6,11 +6,12 @@ import { notFound } from "next/navigation";
 import type { ReactElement } from "react";
 import { z } from "zod";
 import { buttonPrimary, buttonSecondary } from "@/components/console/buttons";
+import { ConfirmDialog } from "@/components/console/confirm-dialog";
 import { Notice } from "@/components/console/notice";
 import { PageHeader } from "@/components/console/page-header";
 import { FactList, Section } from "@/components/console/section";
 import { StatusPill } from "@/components/console/status-pill";
-import { monthLabel, reportNotice, REPORT_STATE_LABELS, serviceTitle } from "@/lib/reports-view";
+import { monthLabel, reportNotice, REPORT_STATE_LABELS, sendReportCopy, serviceTitle } from "@/lib/reports-view";
 import { getStaffDb } from "@/lib/server/db";
 import { requireStaffAccess } from "@/lib/server/staff-access";
 import { logStaffAccess } from "@/lib/server/staff-access-log";
@@ -38,20 +39,25 @@ export default async function ReportPage({
   await logStaffAccess({ staffUserId: user.id, action: "report.view", targetType: "report", targetId: reportId, businessId: report.businessId });
   const details = await findBusinessAlertDetails(db, report.businessId);
   const content = reportContentSchema.safeParse(report.content);
-  const notice = reportNotice((await searchParams).done);
+  const { done } = await searchParams;
+  const notice = reportNotice(done);
   const state = REPORT_STATE_LABELS[report.state];
   const readable = content.success && report.contentVersion === 1;
+  // A sent report whose email did not go can be sent again: sendReport then only retries the email.
+  const emailFailed = report.state === "sent" && done === "sent.failed";
+  const ownerEmail = details?.owner.email == null || isPhoneAccountEmail(details.owner.email) ? null : details.owner.email;
+  const copy = sendReportCopy({ month: monthLabel(report.month), ownerEmail, retry: report.state === "approved" || emailFailed });
 
   return (
     <>
       <PageHeader
-        back={{ href: "/reports", label: "Customer reports" }}
+        back={{ href: "/reports", label: "Reports to review" }}
         title={`${serviceTitle(report.service)}, ${monthLabel(report.month)}`}
         meta={details?.business.name ?? "Client"}
         action={
-          report.state === "sent" ? null : (
+          report.state === "sent" && !emailFailed ? null : (
             <div className="flex flex-wrap gap-2">
-              {report.state === "held" ? (
+              {report.state === "sent" ? null : report.state === "held" ? (
                 <form action={releaseReportAction}>
                   <Hidden reportId={report.id} />
                   <button type="submit" className={buttonSecondary}>
@@ -67,12 +73,18 @@ export default async function ReportPage({
                 </form>
               )}
               {readable ? (
-                <form action={sendReportAction}>
+                <ConfirmDialog
+                  variant="default"
+                  triggerClassName={buttonPrimary}
+                  triggerLabel={report.state === "approved" || emailFailed ? "Retry send" : "Send to customer"}
+                  title={copy.title}
+                  consequence={copy.consequence}
+                  confirmLabel={copy.confirmLabel}
+                  cancelLabel="Keep"
+                  formAction={sendReportAction}
+                >
                   <Hidden reportId={report.id} />
-                  <button type="submit" className={buttonPrimary}>
-                    Send to customer
-                  </button>
-                </form>
+                </ConfirmDialog>
               ) : null}
             </div>
           )

@@ -1,33 +1,25 @@
 import "server-only";
-import { listKickoffBoard } from "@brandbasket/db";
+import { isKickoffPromptDue, listPendingKickoffPrompts } from "@brandbasket/db";
 import { getStaffDb } from "./db";
 
-export interface PendingKickoffPrompt {
+/** One unanswered kickoff call, as the console's popup shows it. */
+export interface KickoffPromptItem {
+  readonly callId: string;
   readonly businessId: string;
   readonly businessName: string;
   readonly endsAt: Date;
+  /** The server's say: never shown, or last shown at least 15 minutes ago. The popup opens on this, not on browser memory. */
+  readonly due: boolean;
 }
 
-const LOOK_BACK_DAYS = 14;
+/** How far back an unanswered call is still asked about: the Calls page's "Just finished" uses the same window. */
+export const KICKOFF_PROMPT_LOOK_BACK_DAYS = 14;
 
 /**
- * Kickoff calls that have ended but have not been confirmed by staff (heldAt is null),
- * and whose project has not already moved past onboarding.
+ * Every kickoff call that has ended and has no answer, oldest first, with whether the popup is due for it. The state lives in
+ * `kickoff_prompt_state`, so a reload or a second tab sees the same thing. Staff connection.
  */
-export async function listPendingKickoffPrompts(now: Date = new Date()): Promise<readonly PendingKickoffPrompt[]> {
-  const db = getStaffDb();
-  const board = await listKickoffBoard(db, { now, lookBackDays: LOOK_BACK_DAYS });
-  return board
-    .filter(
-      (row) =>
-        row.heldAt === null &&
-        row.endsAt !== null &&
-        row.endsAt.getTime() <= now.getTime() &&
-        (row.projectStatus === null || row.projectStatus === "onboarding"),
-    )
-    .map((row) => ({
-      businessId: row.businessId,
-      businessName: row.businessName,
-      endsAt: row.endsAt as Date,
-    }));
+export async function loadKickoffPrompts(now: Date = new Date()): Promise<readonly KickoffPromptItem[]> {
+  const pending = await listPendingKickoffPrompts(getStaffDb(), { now, lookBackDays: KICKOFF_PROMPT_LOOK_BACK_DAYS });
+  return pending.map((call) => ({ callId: call.callId, businessId: call.businessId, businessName: call.businessName, endsAt: call.endsAt, due: isKickoffPromptDue(call, now) }));
 }

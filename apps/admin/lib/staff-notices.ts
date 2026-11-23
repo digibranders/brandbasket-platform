@@ -5,7 +5,7 @@ export const STAFF_NOTICES = {
   "role-changed": { ok: true, text: "Role changed. It applies from their next page." },
   "switched-off": { ok: true, text: "Switched off. They were signed out everywhere." },
   "switched-on": { ok: true, text: "Switched back on. They can sign in again." },
-  "bad-invite": { ok: false, text: "Enter a work email and choose a role." },
+  "bad-invite": { ok: false, text: "Enter a work email." },
   "already-staff": { ok: false, text: "They are already on the team. Change their role or switch them on instead." },
   "invite-gone": { ok: false, text: "That invite was already used or replaced." },
   "not-found": { ok: false, text: "That person is not on the team." },

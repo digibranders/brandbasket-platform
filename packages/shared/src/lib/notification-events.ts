@@ -26,11 +26,14 @@ export interface EventDataMap {
   "kickoff.booked.staff": NoData;
   "kickoff.soon": { readonly when: string };
   "kickoff.ended": { readonly businessName: string };
+  "kickoff.ended.reminder": NoData;
   "kickoff.completed": NoData;
   "kickoff.not_joined": { readonly when: string };
   "kickoff.reschedule": NoData;
   "kickoff.fallback_started.staff": { readonly businessName: string };
   "kickoff.fallback_started": NoData;
+  /** A call booked on Cal.com's own page, or moved or cancelled from Cal.com's email (package N6). `when` is the new time, already written for staff. */
+  "call.changed.staff": { readonly what: "booked" | "moved" | "cancelled"; readonly when?: string };
   "billing.payment_received": NoData;
   "billing.payment_failed": NoData;
   "billing.payment_failed.staff": NoData;
@@ -109,11 +112,13 @@ const DEFINITIONS: readonly EventDefinition[] = [
   staff("kickoff.booked.staff", ["teams", "today"]),
   customer("kickoff.soon", "calls", ["email", "push", "bell"]),
   staff("kickoff.ended", ["popup", "bell", "push", "email"]),
+  staff("kickoff.ended.reminder", ["push"]),
   customer("kickoff.completed", null, ["bell", "email"], { alwaysSent: "call" }),
   customer("kickoff.not_joined", null, ["email", "bell"], { alwaysSent: "call" }),
   customer("kickoff.reschedule", null, ["email", "bell"], { alwaysSent: "call" }),
   staff("kickoff.fallback_started.staff", ["today", "bell"]),
   customer("kickoff.fallback_started", null, ["bell"], { alwaysSent: "website" }),
+  staff("call.changed.staff", ["teams", "bell"]),
   // B. Money. Payment failed is mandatory by the owner's answer of 2026-11-16, which overrides the matrix row that made email and push optional.
   customer("billing.payment_received", null, ["bell"], { alwaysSent: "payments" }),
   customer("billing.payment_failed", "billing", ["bell", "push"], { mandatory: true, alwaysSent: "payments" }),

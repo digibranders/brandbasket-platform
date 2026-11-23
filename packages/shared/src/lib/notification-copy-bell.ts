@@ -9,7 +9,7 @@ import type { BellCopy, CopyModule, RequestUpdate } from "./notification-events"
 /** Where a customer reads about and picks a call time: Help and calls. */
 const CUSTOMER_CALLS = "/help";
 /** Where staff answer a call: the console's Calls page. */
-const STAFF_CALLS = "/calls";
+const STAFF_CALLS = "/";
 
 /** The kickoff lines, shared by the email and push modules so the same sentence is worded once. */
 export const KICKOFF_LINES = {
@@ -68,6 +68,7 @@ export const BELL_COPY: CopyModule<BellCopy> = {
   "kickoff.not_joined": ({ when }) => ({ title: KICKOFF_LINES.notJoined(when), link: CUSTOMER_CALLS }),
   "kickoff.reschedule": () => ({ title: KICKOFF_LINES.reschedule, link: CUSTOMER_CALLS }),
   "kickoff.fallback_started": () => ({ title: KICKOFF_LINES.fallbackStarted, link: "/" }),
+  "call.changed.staff": ({ what, when }) => ({ title: `A call was ${what} on Cal.com`, body: when, link: STAFF_CALLS }),
   "kickoff.ended": ({ businessName }) => ({ title: KICKOFF_LINES.ended(businessName), link: STAFF_CALLS }),
   "kickoff.fallback_started.staff": ({ businessName }) => ({ title: KICKOFF_LINES.fallbackStartedStaff, body: businessName, link: STAFF_CALLS }),
   // B. Money

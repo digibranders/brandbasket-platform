@@ -45,6 +45,7 @@ export default async function ClientLayout({
               {project === null ? "No project yet" : STAFF_STAGE_LABELS[staffStageOf(project.status)]} · Billed in{" "}
               {BILLING_CURRENCY_LABELS[client.currency]}
             </span>
+            <span className="font-figure text-xs text-ink-2">ID {client.businessId.slice(0, 8)}</span>
             <ServiceTags addOns={addOns} />
             {closure === null ? null : (
               <StatusPill tone="problem">

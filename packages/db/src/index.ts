@@ -802,6 +802,7 @@ export {
   listChatbotsForBusiness,
   listChatbotsForStaff,
   recordChatbotLead,
+  recordChatbotLeadReportingNew,
   registerChatbot,
   removeChatbot,
   renameChatbot,
@@ -891,6 +892,21 @@ export {
   saveSetupCallSummary,
   type BookedCall,
 } from "./queries/setup-calls";
+export {
+  clearKickoffPromptState,
+  clearKickoffPromptStateForBusiness,
+  isKickoffPromptDue,
+  KICKOFF_PROMPT_REPEAT_MS,
+  KICKOFF_REMINDER_PUSH_AFTER_MS,
+  listKickoffsStartingSoon,
+  listPendingKickoffPrompts,
+  markKickoffFirstNotified,
+  markKickoffPromptAnswered,
+  markKickoffPromptsShown,
+  markKickoffReminderPushed,
+  type PendingKickoffPrompt,
+  type SoonKickoff,
+} from "./queries/kickoff-prompts";
 export * from "./queries/team-calls";
 export { boughtSetupServicesFrom, listBoughtSetupServices, listServiceSetups, saveServiceSetup } from "./queries/service-setup";
 export {
