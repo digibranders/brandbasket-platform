@@ -1,4 +1,4 @@
-import { EVENT_LINES, KICKOFF_LINES } from "./notification-copy-bell";
+import { EVENT_LINES, KICKOFF_LINES, SOCIAL_LINES } from "./notification-copy-bell";
 import type { CopyModule, PushCopy } from "./notification-events";
 
 /*
@@ -22,4 +22,9 @@ export const PUSH_COPY: CopyModule<PushCopy> = {
   "request.new.staff": ({ ticketId }) => ({ title: EVENT_LINES.staffNewRequest, link: `/support/${ticketId}`, tag: `request.new.staff.${ticketId}` }),
   "billing.payment_needs_look.staff": () => ({ title: EVENT_LINES.staffPaymentLook, link: "/payments", tag: "billing.payment_needs_look.staff" }),
   "account.security_alert.staff": () => ({ title: EVENT_LINES.staffSystemError, link: "/", tag: "account.security_alert.staff" }),
+  // N7. Social: a line and the page, no account or post detail.
+  "social.post_failed": () => ({ title: SOCIAL_LINES.postFailed, link: "/social", tag: "social.post_failed" }),
+  "social.connection_expiring": ({ daysLeft }) => ({ title: SOCIAL_LINES.connectionExpiring(daysLeft), link: "/social", tag: "social.connection_expiring" }),
+  "social.poster_ready": () => ({ title: SOCIAL_LINES.posterReady, link: "/social", tag: "social.poster_ready" }),
+  "social.post_held": () => ({ title: SOCIAL_LINES.postHeld, link: "/social", tag: "social.post_held" }),
 };

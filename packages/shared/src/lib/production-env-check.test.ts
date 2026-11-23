@@ -140,4 +140,14 @@ describe("checkProductionEnv", () => {
       expect(problems(PLATFORM, { ...ADMIN, VAPID_PRIVATE_KEY: "different" })).toEqual(expect.arrayContaining([expect.stringContaining("VAPID_PRIVATE_KEY differs")]));
     });
   });
+
+  it("checks the social-auto webhook secret only when social-auto is set up", () => {
+    expect(checkProductionEnv({ platform: PLATFORM })).toEqual({ errors: [], warnings: [] });
+    const unset = checkProductionEnv({ platform: { ...PLATFORM, SOCIAL_AUTO_URL: "https://social.example.com" } });
+    expect(unset.errors).toEqual([]);
+    expect(unset.warnings.join("\n")).toMatch(/SOCIAL_AUTO_WEBHOOK_SECRET is unset/);
+    const short = checkProductionEnv({ platform: { ...PLATFORM, SOCIAL_AUTO_URL: "https://social.example.com", SOCIAL_AUTO_WEBHOOK_SECRET: "short" } });
+    expect(short.errors.join("\n")).toMatch(/SOCIAL_AUTO_WEBHOOK_SECRET must be at least 16/);
+    expect(checkProductionEnv({ platform: { ...PLATFORM, SOCIAL_AUTO_URL: "https://social.example.com", SOCIAL_AUTO_WEBHOOK_SECRET: "x".repeat(16) } })).toEqual({ errors: [], warnings: [] });
+  });
 });
