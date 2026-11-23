@@ -23,6 +23,7 @@ export interface EventDataMap {
   "kickoff.booked.staff": NoData;
   "kickoff.soon": { readonly when: string };
   "kickoff.ended": { readonly businessName: string };
+  "kickoff.ended.reminder": NoData;
   "kickoff.completed": NoData;
   "kickoff.not_joined": { readonly when: string };
   "kickoff.reschedule": NoData;
@@ -101,6 +102,7 @@ const DEFINITIONS: readonly EventDefinition[] = [
   staff("kickoff.booked.staff", ["teams", "today"]),
   customer("kickoff.soon", "calls", ["email", "push", "bell"]),
   staff("kickoff.ended", ["popup", "bell", "push", "email"]),
+  staff("kickoff.ended.reminder", ["push"]),
   customer("kickoff.completed", null, ["bell", "email"], { alwaysSent: "call" }),
   customer("kickoff.not_joined", null, ["email", "bell"], { alwaysSent: "call" }),
   customer("kickoff.reschedule", null, ["email", "bell"], { alwaysSent: "call" }),

@@ -1,10 +1,11 @@
 "use server";
 
-import { clearUnheldKickoffBooking, findSetupCallBooking, recordKickoffOutcome } from "@brandbasket/db";
+import { clearUnheldKickoffBooking, findSetupCallBooking, markKickoffPromptAnswered, markKickoffPromptsShown, recordKickoffOutcome } from "@brandbasket/db";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { getStaffDb } from "@/lib/server/db";
 import { completeKickoff } from "@/lib/server/kickoff-complete";
+import { noticeKickoffAnswered } from "@/lib/server/kickoff-notices";
 import { requireStaffAccess } from "@/lib/server/staff-access";
 import { logStaffAccessOrThrow } from "@/lib/server/staff-access-log";
 
@@ -35,10 +36,19 @@ export async function completeKickoffAction(formData: FormData): Promise<void> {
   const raw = formData.get("notes");
   const text = typeof raw === "string" ? raw.trim() : "";
   const notes = text === "" ? null : notesSchema.parse(text);
-  const { newlyHeld } = await completeKickoff(getStaffDb(), { businessId, staffId: user.id, now: new Date(), notes });
+  const db = getStaffDb();
+  const now = new Date();
+  const { newlyHeld } = await completeKickoff(db, { businessId, staffId: user.id, now, notes });
+  await markKickoffPromptAnswered(db, businessId, now);
+  if (newlyHeld) {
+    const booking = await findSetupCallBooking(db, businessId);
+    await noticeKickoffAnswered({ answer: "completed", businessId, startsAt: booking?.startsAt ?? null });
+  }
   if (newlyHeld) await logStaffAccessOrThrow({ staffUserId: user.id, action: "setup_call.held", targetType: "business", targetId: businessId, businessId });
   revalidatePath(`/clients/${businessId}`);
   revalidatePath("/");
+  // The popup lives in the layout, so every page must re-read it.
+  revalidatePath("/", "layout");
 }
 
 async function recordOutcomeForBusiness(businessId: string, outcome: NoShowOutcome, staffUserId: string): Promise<void> {
@@ -48,9 +58,12 @@ async function recordOutcomeForBusiness(businessId: string, outcome: NoShowOutco
   if (removed) {
     await recordKickoffOutcome(db, { businessId, outcome, note: null, startsAt: booking?.startsAt ?? null, endsAt: booking?.endsAt ?? null, staffId: staffUserId, now: new Date() });
     await logStaffAccessOrThrow({ staffUserId, action: `setup_call.${outcome}`, targetType: "business", targetId: businessId, businessId });
+    // Their prompt state went with the booking (it cascades), so only the customer is left to tell.
+    await noticeKickoffAnswered({ answer: outcome === "customer_no_show" ? "not_joined" : "reschedule", businessId, startsAt: booking?.startsAt ?? null });
   }
   revalidatePath(`/clients/${businessId}`);
   revalidatePath("/");
+  revalidatePath("/", "layout");
 }
 
 /**
@@ -93,4 +106,15 @@ export async function kickoffDidNotHappenAction(formData: FormData): Promise<voi
   if (removed) await logStaffAccessOrThrow({ staffUserId: user.id, action: "setup_call.no_show", targetType: "business", targetId: businessId, businessId });
   revalidatePath("/");
   revalidatePath(`/clients/${businessId}`);
+}
+
+const callIdsSchema = z.array(z.uuid()).min(1).max(50);
+
+/**
+ * The popup was shown for these calls: the server notes it, so it shows again in 15 minutes whichever tab or browser staff
+ * use. The ids are calls' ids (the prompt state's key), not business ids.
+ */
+export async function markKickoffPromptsShownAction(callIds: readonly string[]): Promise<void> {
+  await requireStaffAccess();
+  await markKickoffPromptsShown(getStaffDb(), callIdsSchema.parse(callIds), new Date());
 }

@@ -5,6 +5,7 @@ import { useState, type ReactElement } from "react";
 import { completeKickoffAction, rescheduleKickoffAction, theyDidNotJoinAction } from "@/app/(protected)/calls/kickoff-actions";
 import { buttonPrimary, buttonSecondary } from "@/components/console/buttons";
 import { fieldClasses } from "@/components/console/field-styles";
+import { KICKOFF_AUTO_START_NOTE } from "@/lib/kickoff-copy";
 import { clock, weekdayDate } from "@/lib/team-time";
 
 export interface TodayKickoffItem {
@@ -53,9 +54,7 @@ export function TodayKickoffPrompt({ kickoff, onClose }: TodayKickoffPromptProps
 
   return (
     <PromptPopup isOpen title={`Did the kickoff call with ${kickoff.businessName} happen?`} description={`Ended ${weekdayDate(kickoff.endsAt)}, ${clock(kickoff.endsAt)}.`} onClose={onClose}>
-      <p className="rounded-[8px] bg-sunken/50 p-3 font-sans text-xs text-ink-2">
-        Call confirmation readies the website build. If not confirmed within 24 hours of scheduled completion, the build starts automatically.
-      </p>
+      <p className="rounded-[8px] bg-sunken/50 p-3 font-sans text-xs text-ink-2">{KICKOFF_AUTO_START_NOTE}</p>
       <form action={(formData) => run(completeKickoffAction, formData, "The 48 hour first preview clock has started.")} className="mt-5 grid gap-3">
         <input type="hidden" name="businessId" value={kickoff.businessId} />
         <label htmlFor="today-kickoff-notes" className="block font-sans text-sm font-medium text-ink">

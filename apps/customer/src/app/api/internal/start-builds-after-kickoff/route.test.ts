@@ -1,9 +1,11 @@
 // @vitest-environment node
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { sendKickoffNotices } from "@/platform/lib/server/kickoff-notices";
 import { kickoffSyncToken, startBuildsAfterKickoff } from "@/platform/lib/server/kickoff-sync";
 import { POST } from "./route";
 
 vi.mock("server-only", () => ({}));
+vi.mock("@/platform/lib/server/kickoff-notices", () => ({ sendKickoffNotices: vi.fn() }));
 vi.mock("@/platform/lib/server/kickoff-sync", () => ({ kickoffSyncToken: vi.fn(), startBuildsAfterKickoff: vi.fn() }));
 
 const TOKEN = "k".repeat(40);
@@ -14,6 +16,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   vi.mocked(kickoffSyncToken).mockReturnValue(TOKEN);
   vi.mocked(startBuildsAfterKickoff).mockResolvedValue({ checked: 2, started: 1, failed: 0 });
+  vi.mocked(sendKickoffNotices).mockResolvedValue({ ended: 1, reminders: 0, soon: 2 });
 });
 
 describe("POST /api/internal/start-builds-after-kickoff", () => {
@@ -32,7 +35,7 @@ describe("POST /api/internal/start-builds-after-kickoff", () => {
   it("runs the sync and returns the report", async () => {
     const response = await POST(post());
     expect(response.status).toBe(200);
-    expect(await response.json()).toEqual({ checked: 2, started: 1, failed: 0 });
+    expect(await response.json()).toEqual({ checked: 2, started: 1, failed: 0, notices: { ended: 1, reminders: 0, soon: 2 } });
   });
 
   it("answers 502 when a build could not be started, so a person looks", async () => {

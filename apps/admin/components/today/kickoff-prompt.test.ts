@@ -9,6 +9,7 @@ vi.mock("@/app/(protected)/calls/kickoff-actions", () => ({
   rescheduleKickoffAction: vi.fn(),
 }));
 
+import { KICKOFF_AUTO_START_NOTE } from "@/lib/kickoff-copy";
 import { TodayKickoffPrompt } from "./kickoff-prompt";
 
 const CALL = {
@@ -25,7 +26,7 @@ describe("TodayKickoffPrompt", () => {
     expect(html).toContain("They did not join");
     expect(html).toContain("Reschedule");
     expect(html).toContain("What was agreed (optional)");
-    expect(html).toContain("Call confirmation readies the website build. If not confirmed within 24 hours of scheduled completion, the build starts automatically.");
+    expect(html).toContain(KICKOFF_AUTO_START_NOTE);
     expect(html).not.toContain("held");
   });
 

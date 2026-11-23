@@ -112,6 +112,7 @@ export async function listProjectsStartedWithoutCallConfirmation(db: Database): 
 /** A kickoff whose project is still waiting in onboarding: the call was held by staff, or ended long enough ago to start without a mark. */
 export interface KickoffToStart {
   readonly businessId: string;
+  readonly businessName: string;
   readonly endsAt: Date | null;
   readonly heldAt: Date | null;
 }
@@ -127,9 +128,10 @@ export async function listKickoffsToStart(db: Database, input: { readonly endedB
       ? isNotNull(setupCallBookings.heldAt)
       : or(isNotNull(setupCallBookings.heldAt), and(isNotNull(setupCallBookings.endsAt), lte(setupCallBookings.endsAt, input.endedBefore)));
   return db
-    .select({ businessId: setupCallBookings.businessId, endsAt: setupCallBookings.endsAt, heldAt: setupCallBookings.heldAt })
+    .select({ businessId: setupCallBookings.businessId, businessName: businesses.name, endsAt: setupCallBookings.endsAt, heldAt: setupCallBookings.heldAt })
     .from(setupCallBookings)
     .innerJoin(projects, eq(projects.businessId, setupCallBookings.businessId))
+    .innerJoin(businesses, eq(businesses.id, setupCallBookings.businessId))
     .where(and(eq(projects.status, "onboarding"), over));
 }
 
