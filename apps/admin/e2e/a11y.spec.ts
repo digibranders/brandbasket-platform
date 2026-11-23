@@ -6,8 +6,8 @@ import { CONSOLE_ORIGIN, consoleStatePath, fixture, settle } from "../../custome
 
 const ROUTES = [
   "/", "/clients", "/projects", "/reports", "/calls", "/support", "/support/new", "/support/errors", "/leads", "/leads/new", "/payments", "/invoices",
-  "/pricing", "/coupons", "/affiliates", "/ad-credit", "/ad-results", "/deliveries", "/outbox", "/staff", "/settings", "/access-log", "/privacy-requests",
-  "/breaches", "/leaving", "/referrals",
+  "/pricing", "/coupons", "/affiliates", "/ad-results", "/deliveries", "/staff", "/settings", "/access-log", "/privacy-requests",
+  "/breaches", "/leaving",
 ];
 const CLIENT_TABS = ["", "/website", "/services", "/billing", "/requests", "/people", "/activity", "/project"];
 

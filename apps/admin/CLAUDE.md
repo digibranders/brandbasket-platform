@@ -21,7 +21,7 @@ The app at console.brandbasket.in where Brandbasket staff run clients, billing, 
 | Path | Holds |
 |---|---|
 | `app/(protected)/page.tsx` | Today: the queue of everything that needs a person |
-| `app/(protected)/` | Sections: leads (Enquiries), clients (one route per tab under `[businessId]/`), projects, calls, support (Requests) and `support/errors`, payments, invoices, pricing, coupons, affiliates, ad-credit, deliveries, staff, settings, access-log, privacy-requests, breaches, outbox, search. Dormant and switched off: directory, geography, ads, deals |
+| `app/(protected)/` | Sections: leads (Enquiries), clients (one route per tab under `[businessId]/`), projects, calls, support (Requests) and `support/errors`, payments, invoices, pricing, coupons, affiliates, deliveries, staff, settings, access-log, privacy-requests, breaches, outbox (one email at `outbox/[emailId]`), search. The dormant directory, geography, ads, deals, referrals and ad-credit pages were removed in CR-13; their database tables and `packages/db` queries remain |
 | `app/login/` | Staff sign-in |
 | `app/(protected)/**/actions.ts` | Server actions, beside the page that uses them |
 | `lib/console-rail.ts` | The menu's items, the pages each covers (and their tab strips), roles, counts and current-item rule |
