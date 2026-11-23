@@ -51,5 +51,5 @@ it("renders nothing for a single-page item or a page no item holds", async () =>
 it("scrolls inside the strip instead of widening the page", async () => {
   await render("admin", "/deliveries");
   expect(container.querySelector("nav")?.className).toContain("overflow-x-auto");
-  expect(links()).toEqual(["Emails and webhooks:/deliveries", "App errors:/support/errors", "Settings:/settings", "Access:/staff"]);
+  expect(links()).toEqual(["Health:/system", "Emails and webhooks:/deliveries", "App errors:/support/errors", "Settings:/settings", "Access:/staff"]);
 });
