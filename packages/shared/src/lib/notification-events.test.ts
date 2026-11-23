@@ -142,8 +142,8 @@ describe("the copy modules", () => {
   });
 
   it("returns null, not invented words, for an event with no wording yet", () => {
-    expect(bellCopyFor("billing.renewal_upcoming", {})).toBeNull();
-    expect(EVENTS_WITHOUT_WORDING).toContain("billing.renewal_upcoming");
+    expect(bellCopyFor("social.post_failed", {})).toBeNull();
+    expect(EVENTS_WITHOUT_WORDING).toContain("social.post_failed");
   });
 
   it("has wording on every channel an event lists, or names the event as waiting for wording", () => {
@@ -173,5 +173,78 @@ describe("the copy modules", () => {
       const links = [bellCopyFor(key, sample)?.link, emailCopyFor(key, sample)?.button?.link, pushCopyFor(key, sample)?.link];
       for (const link of links) if (link !== undefined && link !== null) expect(link).toMatch(/^\/($|[^/])/);
     }
+  });
+});
+
+/** Package N5: the events that carry money, website, request and account notices. */
+describe("the N5 wording and channels", () => {
+  const WITH_WORDING = [
+    "billing.payment_received",
+    "billing.payment_failed",
+    "billing.renewal_upcoming",
+    "billing.plan_lapsed",
+    "billing.refund",
+    "billing.unapplied_payment",
+    "billing.payment_needs_look.staff",
+    "website.started",
+    "website.preview_ready",
+    "website.changes_sent",
+    "website.approval_received",
+    "website.live",
+    "website.domain_ready",
+    "request.received",
+    "request.reply",
+    "request.new.staff",
+    "account.closure",
+    "account.monthly_report",
+    "account.security_alert.staff",
+  ] as const;
+
+  it("leaves only the social events without words", () => {
+    expect([...EVENTS_WITHOUT_WORDING].every((key) => key.startsWith("social."))).toBe(true);
+    for (const key of WITH_WORDING) expect(EVENTS_WITHOUT_WORDING, key).not.toContain(key);
+  });
+
+  it("sends the email through notify() only for events with no template of their own", () => {
+    const viaNotify = NOTIFICATION_EVENT_KEYS.filter((key) => key !== "kickoff.ended" && eventDefinition(key).channels.includes("email") && WITH_WORDING.includes(key as never));
+    expect([...viaNotify].sort()).toEqual(["account.closure", "billing.plan_lapsed", "billing.unapplied_payment", "website.approval_received", "website.started"]);
+  });
+
+  it("makes payment failed, lapse, refund, unmatched payment, closure and the website lifecycle mandatory, with a bell", () => {
+    for (const key of ["billing.payment_failed", "billing.plan_lapsed", "billing.refund", "billing.unapplied_payment", "account.closure", "website.started", "website.approval_received", "website.live"] as const) {
+      const definition = eventDefinition(key);
+      expect(definition.mandatory, key).toBe(true);
+      expect(definition.channels, key).toContain("bell");
+    }
+    expect(eventDefinition("billing.payment_failed").channels).toContain("push");
+  });
+
+  it("words the request updates by kind and opens the request", () => {
+    expect(bellCopyFor("request.reply", { ticketId: "t1", update: "quote" })).toEqual({ title: "Your request has a quote", link: "/requests/t1" });
+    expect(bellCopyFor("request.reply", { ticketId: "t1", update: "done" })?.title).toBe("Your request is done");
+    expect(pushCopyFor("request.reply", { ticketId: "t1", update: "ready" })).toMatchObject({ title: "Your request is ready to check", link: "/requests/t1", tag: "request.reply.t1" });
+  });
+
+  it("words the domain notice for ready and for moved", () => {
+    expect(bellCopyFor("website.domain_ready", { state: "ready" })).toMatchObject({ link: "/domain" });
+    expect(bellCopyFor("website.domain_ready", { state: "moved" })).toMatchObject({ link: "/website" });
+  });
+
+  it("carries the plan lapsed line into the email", () => {
+    expect(emailCopyFor("billing.plan_lapsed", {})).toMatchObject({ subject: "Your plan has lapsed", button: { label: "Pay now", link: "/billing/payment" } });
+    expect(emailCopyFor("account.closure", {})?.button).toBeUndefined();
+  });
+
+  it("never puts a business name or an amount in a push", () => {
+    const sample = { when: "30 Nov", ticketId: "t1", update: "reply", month: "2026-10", state: "ready" } as never;
+    for (const key of WITH_WORDING) {
+      const push = pushCopyFor(key, sample);
+      if (push !== null) expect(JSON.stringify(push), key).not.toMatch(/₹|\$|Asha|business/i);
+    }
+    expect(pushCopyFor("request.new.staff", { ticketId: "t1" })?.link).toBe("/support/t1");
+  });
+
+  it("names the month in the report link", () => {
+    expect(bellCopyFor("account.monthly_report", { month: "2026-10" })?.link).toBe("/reports/2026-10");
   });
 });

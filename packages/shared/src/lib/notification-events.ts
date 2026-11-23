@@ -18,6 +18,9 @@ export type EventAudience = "customer" | "staff";
 /** What a caller passes with an event: just what the words need. Events that have no wording yet take no data. */
 type NoData = Readonly<Record<never, never>>;
 
+/** What happened to a request: the four updates a person is told about. */
+export type RequestUpdate = "reply" | "quote" | "ready" | "done";
+
 export interface EventDataMap {
   "kickoff.booked": { readonly when: string };
   "kickoff.booked.staff": NoData;
@@ -31,7 +34,7 @@ export interface EventDataMap {
   "billing.payment_received": NoData;
   "billing.payment_failed": NoData;
   "billing.payment_failed.staff": NoData;
-  "billing.renewal_upcoming": NoData;
+  "billing.renewal_upcoming": { readonly when: string };
   "billing.plan_lapsed": NoData;
   "billing.refund": NoData;
   "billing.unapplied_payment": NoData;
@@ -42,10 +45,10 @@ export interface EventDataMap {
   "website.changes_or_approved.staff": NoData;
   "website.approval_received": NoData;
   "website.live": NoData;
-  "website.domain_ready": NoData;
-  "request.received": NoData;
-  "request.reply": NoData;
-  "request.new.staff": NoData;
+  "website.domain_ready": { readonly state: "ready" | "moved" };
+  "request.received": { readonly ticketId: string };
+  "request.reply": { readonly ticketId: string; readonly update: RequestUpdate };
+  "request.new.staff": { readonly ticketId: string };
   "social.post_failed": NoData;
   "social.connection_expiring": NoData;
   "social.poster_ready": NoData;
@@ -53,7 +56,7 @@ export interface EventDataMap {
   "social.week_lapsed": NoData;
   "social.attention.staff": NoData;
   "account.closure": NoData;
-  "account.monthly_report": NoData;
+  "account.monthly_report": { readonly month: string };
   "account.security_alert.staff": NoData;
 }
 
@@ -93,6 +96,13 @@ const customer = (
 
 const staff = (key: NotificationEventKey, channels: readonly DeliveryChannel[]): EventDefinition => ({ key, audience: "staff", topic: null, mandatory: true, channels });
 
+/*
+ * Package N5 decision, one rule for every event: where an email template already exists and its sender is kept (receipt, failed,
+ * refund, renewal reminder, preview, changes received, live, domain, request acknowledgement and update, staff request alert,
+ * monthly report, system error), the registry lists no "email" channel, so notify() adds the bell and push without a second
+ * email. Events with no template today (lapse, unapplied payment, build started, approval received, closure) send their email
+ * through notify().
+ */
 const DEFINITIONS: readonly EventDefinition[] = [
   // A. Kickoff call (decision D33)
   customer("kickoff.booked", null, ["email", "bell"], { alwaysSent: "call" }),
@@ -105,26 +115,26 @@ const DEFINITIONS: readonly EventDefinition[] = [
   staff("kickoff.fallback_started.staff", ["today", "bell"]),
   customer("kickoff.fallback_started", null, ["bell"], { alwaysSent: "website" }),
   // B. Money. Payment failed is mandatory by the owner's answer of 2026-11-16, which overrides the matrix row that made email and push optional.
-  customer("billing.payment_received", null, ["email", "bell"], { alwaysSent: "payments" }),
-  customer("billing.payment_failed", "billing", ["email", "bell", "push"], { mandatory: true, alwaysSent: "payments" }),
+  customer("billing.payment_received", null, ["bell"], { alwaysSent: "payments" }),
+  customer("billing.payment_failed", "billing", ["bell", "push"], { mandatory: true, alwaysSent: "payments" }),
   staff("billing.payment_failed.staff", ["today", "teams"]),
-  customer("billing.renewal_upcoming", "billing", ["email", "bell"]),
+  customer("billing.renewal_upcoming", "billing", ["bell"]),
   customer("billing.plan_lapsed", null, ["email", "bell"], { alwaysSent: "plan" }),
-  customer("billing.refund", null, ["email", "bell"], { alwaysSent: "payments" }),
+  customer("billing.refund", null, ["bell"], { alwaysSent: "payments" }),
   customer("billing.unapplied_payment", null, ["email", "bell"], { alwaysSent: "payments" }),
   staff("billing.payment_needs_look.staff", ["today", "push"]),
   // C. Website
   customer("website.started", null, ["bell", "email"], { alwaysSent: "website" }),
-  customer("website.preview_ready", "needs_approval", ["email", "bell", "push"]),
-  customer("website.changes_sent", null, ["email", "bell"]),
+  customer("website.preview_ready", "needs_approval", ["bell", "push"]),
+  customer("website.changes_sent", null, ["bell"]),
   staff("website.changes_or_approved.staff", ["today", "teams"]),
   customer("website.approval_received", null, ["email", "bell"], { alwaysSent: "website" }),
-  customer("website.live", null, ["email", "bell", "push"], { alwaysSent: "website" }),
-  customer("website.domain_ready", null, ["email", "bell"]),
+  customer("website.live", null, ["bell", "push"], { alwaysSent: "website" }),
+  customer("website.domain_ready", null, ["bell"]),
   // D. Requests and support
-  customer("request.received", "request_reply", ["email", "bell"]),
-  customer("request.reply", "request_reply", ["email", "bell", "push"]),
-  staff("request.new.staff", ["email", "teams", "today", "push"]),
+  customer("request.received", "request_reply", ["bell"]),
+  customer("request.reply", "request_reply", ["bell", "push"]),
+  staff("request.new.staff", ["teams", "today", "push"]),
   // E. Social
   customer("social.post_failed", "social", ["bell", "email", "push"]),
   customer("social.connection_expiring", "social", ["bell", "email", "push"]),
@@ -134,8 +144,8 @@ const DEFINITIONS: readonly EventDefinition[] = [
   staff("social.attention.staff", ["today"]),
   // F. Account and security. Sign-up codes, password resets and invites stay direct, mandatory emails sent by their own flows.
   customer("account.closure", null, ["email", "bell"], { alwaysSent: "account" }),
-  customer("account.monthly_report", "monthly_report", ["email", "bell", "push"]),
-  staff("account.security_alert.staff", ["email", "push", "teams"]),
+  customer("account.monthly_report", "monthly_report", ["bell", "push"]),
+  staff("account.security_alert.staff", ["push", "teams"]),
 ];
 
 export const NOTIFICATION_EVENTS: Readonly<Record<NotificationEventKey, EventDefinition>> = Object.fromEntries(
@@ -200,8 +210,7 @@ export function pushCopyFor<K extends NotificationEventKey>(key: K, data: EventD
 }
 
 /**
- * Events with a channel but no words on it yet. The matrix has draft wording only for the kickoff call; package N5 adds
- * the rest and empties this list. notify() skips a channel that has no words and says so in its result.
+ * Events with a channel but no words on it yet. Package N5 gave every notify() channel its words, so this is empty except for social (N7). notify() skips a channel that has no words and says so in its result.
  */
 export const EVENTS_WITHOUT_WORDING: readonly NotificationEventKey[] = NOTIFICATION_EVENT_KEYS.filter((key) => {
   const { channels } = eventDefinition(key);
