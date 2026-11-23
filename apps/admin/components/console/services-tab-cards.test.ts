@@ -1,7 +1,10 @@
 import { renderToStaticMarkup } from "react-dom/server";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import type { ServiceStatus } from "@/lib/client-services";
 import { ServicesTabCards } from "./services-tab-cards";
+
+// The cards reach the kickoff prompt, which imports server actions, and those import server-only modules.
+vi.mock("server-only", () => ({}));
 
 const ID = "01a0f71b-8402-7d48-a90a-207e8c8a882c";
 const SERVICES: ServiceStatus[] = [
