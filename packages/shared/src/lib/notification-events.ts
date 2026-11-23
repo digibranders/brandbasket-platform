@@ -53,10 +53,14 @@ export interface EventDataMap {
   "request.reply": { readonly ticketId: string; readonly update: RequestUpdate };
   "request.new.staff": { readonly ticketId: string };
   "social.post_failed": NoData;
-  "social.connection_expiring": NoData;
+  "social.connection_expiring": { readonly daysLeft: number };
   "social.poster_ready": NoData;
   "social.poster_auto_approved": NoData;
   "social.week_lapsed": NoData;
+  "social.post_held": NoData;
+  "social.post_missed": NoData;
+  "social.poster_expiring": NoData;
+  "social.poster_expired": NoData;
   "social.attention.staff": NoData;
   "account.closure": NoData;
   "account.monthly_report": { readonly month: string };
@@ -146,6 +150,11 @@ const DEFINITIONS: readonly EventDefinition[] = [
   customer("social.poster_ready", "needs_approval", ["bell", "email", "push"]),
   customer("social.poster_auto_approved", "social", ["bell"]),
   customer("social.week_lapsed", "social", ["bell", "email"]),
+  // Beyond the matrix (N7): draft, awaiting the owner's yes.
+  customer("social.post_held", "social", ["bell", "email", "push"]),
+  customer("social.post_missed", "social", ["bell", "email"]),
+  customer("social.poster_expiring", "social", ["bell", "email"]),
+  customer("social.poster_expired", "social", ["bell"]),
   staff("social.attention.staff", ["today"]),
   // F. Account and security. Sign-up codes, password resets and invites stay direct, mandatory emails sent by their own flows.
   customer("account.closure", null, ["email", "bell"], { alwaysSent: "account" }),
@@ -215,7 +224,7 @@ export function pushCopyFor<K extends NotificationEventKey>(key: K, data: EventD
 }
 
 /**
- * Events with a channel but no words on it yet. Package N5 gave every notify() channel its words, so this is empty except for social (N7). notify() skips a channel that has no words and says so in its result.
+ * Events with a channel but no words on it yet. Packages N5 and N7 gave every notify() channel its words, so this is empty. notify() skips a channel that has no words and says so in its result.
  */
 export const EVENTS_WITHOUT_WORDING: readonly NotificationEventKey[] = NOTIFICATION_EVENT_KEYS.filter((key) => {
   const { channels } = eventDefinition(key);

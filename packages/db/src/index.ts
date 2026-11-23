@@ -13,6 +13,7 @@ export * from "./queries/support-staff";
 export * from "./queries/error-issues";
 export * from "./queries/support-ticket-error-links";
 export * from "./queries/deliveries";
+export * from "./queries/social-auto-events";
 export * from "./queries/staff-payments";
 export * from "./queries/staff-domains";
 export { assertValidRule, consumeRateLimit, windowStartFor, type RateLimitResult, type RateLimitRule } from "./rate-limit";

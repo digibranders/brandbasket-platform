@@ -48,6 +48,10 @@ const MATRIX_EVENTS = [
   "social.poster_ready",
   "social.poster_auto_approved",
   "social.week_lapsed",
+  "social.post_held",
+  "social.post_missed",
+  "social.poster_expiring",
+  "social.poster_expired",
   "social.attention.staff",
   "account.closure",
   "account.monthly_report",
@@ -154,8 +158,8 @@ describe("the copy modules", () => {
   });
 
   it("returns null, not invented words, for an event with no wording yet", () => {
-    expect(bellCopyFor("social.post_failed", {})).toBeNull();
-    expect(EVENTS_WITHOUT_WORDING).toContain("social.post_failed");
+    expect(bellCopyFor("social.attention.staff", {})).toBeNull();
+    expect(pushCopyFor("social.post_missed", {})).toBeNull();
   });
 
   it("has wording on every channel an event lists, or names the event as waiting for wording", () => {
@@ -212,9 +216,19 @@ describe("the N5 wording and channels", () => {
     "account.security_alert.staff",
   ] as const;
 
-  it("leaves only the social events without words", () => {
-    expect([...EVENTS_WITHOUT_WORDING].every((key) => key.startsWith("social."))).toBe(true);
+  it("leaves no event without words", () => {
+    expect(EVENTS_WITHOUT_WORDING).toEqual([]);
     for (const key of WITH_WORDING) expect(EVENTS_WITHOUT_WORDING, key).not.toContain(key);
+  });
+
+  it("words every social channel, with a day count on the expiring connection and no private detail", () => {
+    expect(bellCopyFor("social.connection_expiring", { daysLeft: 3 })?.title).toBe("Your social account connection expires in 3 days");
+    expect(bellCopyFor("social.connection_expiring", { daysLeft: 1 })?.title).toBe("Your social account connection expires in 1 day");
+    expect(bellCopyFor("social.connection_expiring", { daysLeft: 0 })?.title).toBe("Your social account connection has expired");
+    expect(pushCopyFor("social.connection_expiring", { daysLeft: 7 })?.body).toBeUndefined();
+    expect(eventDefinition("social.poster_ready").mandatory).toBe(false);
+    expect(eventDefinition("social.poster_ready").topic).toBe("needs_approval");
+    for (const key of ["social.post_failed", "social.post_held", "social.post_missed", "social.poster_expiring", "social.poster_expired"] as const) expect(eventDefinition(key).topic).toBe("social");
   });
 
   it("sends the email through notify() only for events with no template of their own", () => {

@@ -4,6 +4,14 @@ import { describe, expect, it, vi } from "vitest";
 import { createNotifier, type NotifyDeps, type NotifyStore } from "./notify";
 import { createFakePushSender } from "./push-sender";
 
+/** Every event has words now, so the "no wording" paths are reached by blanking one event's words. */
+const NO_WORDS: string = "social.week_lapsed";
+vi.mock("../lib/notification-events", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../lib/notification-events")>();
+  const blank = <F extends (key: never, data: never) => unknown>(copyFor: F): F => ((key: never, data: never) => (key === NO_WORDS ? null : copyFor(key, data))) as F;
+  return { ...actual, bellCopyFor: blank(actual.bellCopyFor), emailCopyFor: blank(actual.emailCopyFor), pushCopyFor: blank(actual.pushCopyFor) };
+});
+
 const BUSINESS = "11111111-1111-4111-8111-111111111111";
 const OWNER: NotificationRecipient = { userId: "user-owner", name: "Asha", email: "asha@example.com" };
 const PHONE_OWNER: NotificationRecipient = { userId: "user-phone", name: "Ravi", email: null };

@@ -57,7 +57,30 @@ export const EVENT_LINES = {
   staffSystemError: "A system error needs a look",
 } as const;
 
+/** The social lines (N7), shared by the email and push modules. Draft wording, awaiting the owner's yes; the last four events are new beyond the matrix. */
+export const SOCIAL_LINES = {
+  postFailed: "A post could not be published",
+  postFailedBody: "Open Social to see what went wrong",
+  connectionExpiring: (daysLeft: number): string =>
+    daysLeft <= 0 ? "Your social account connection has expired" : `Your social account connection expires in ${daysLeft} ${daysLeft === 1 ? "day" : "days"}`,
+  connectionBody: "Reconnect it to keep your posts going out",
+  posterReady: "Your pictures are ready for your approval",
+  posterReadyBody: "Check them so your posts can go out",
+  posterAutoApproved: "We approved your pictures for you",
+  posterAutoApprovedBody: "Your posts will go out as planned",
+  weekLapsed: "This week's posts did not go out",
+  weekLapsedBody: "The pictures were not approved in time",
+  postHeld: "A post is on hold",
+  postHeldBody: "Reconnect your account to let it go out",
+  postMissed: "A post missed its time",
+  postMissedBody: "Open Social to see what to do next",
+  posterExpiring: "Your pictures will expire in 2 days",
+  posterExpiringBody: "Approve them to keep them",
+  posterExpired: "Your pictures have expired",
+} as const;
+
 /** Where each notice opens. */
+const SOCIAL = "/social";
 const BILLING = "/billing";
 const WEBSITE = "/website";
 
@@ -88,6 +111,16 @@ export const BELL_COPY: CopyModule<BellCopy> = {
   // D. Requests
   "request.received": ({ ticketId }) => ({ title: EVENT_LINES.requestReceived, link: `/requests/${ticketId}` }),
   "request.reply": ({ ticketId, update }) => ({ title: EVENT_LINES.requestUpdate[update], link: `/requests/${ticketId}` }),
+  // E. Social
+  "social.post_failed": () => ({ title: SOCIAL_LINES.postFailed, body: SOCIAL_LINES.postFailedBody, link: SOCIAL }),
+  "social.connection_expiring": ({ daysLeft }) => ({ title: SOCIAL_LINES.connectionExpiring(daysLeft), body: SOCIAL_LINES.connectionBody, link: SOCIAL }),
+  "social.poster_ready": () => ({ title: SOCIAL_LINES.posterReady, body: SOCIAL_LINES.posterReadyBody, link: SOCIAL }),
+  "social.poster_auto_approved": () => ({ title: SOCIAL_LINES.posterAutoApproved, body: SOCIAL_LINES.posterAutoApprovedBody, link: SOCIAL }),
+  "social.week_lapsed": () => ({ title: SOCIAL_LINES.weekLapsed, body: SOCIAL_LINES.weekLapsedBody, link: SOCIAL }),
+  "social.post_held": () => ({ title: SOCIAL_LINES.postHeld, body: SOCIAL_LINES.postHeldBody, link: SOCIAL }),
+  "social.post_missed": () => ({ title: SOCIAL_LINES.postMissed, body: SOCIAL_LINES.postMissedBody, link: SOCIAL }),
+  "social.poster_expiring": () => ({ title: SOCIAL_LINES.posterExpiring, body: SOCIAL_LINES.posterExpiringBody, link: SOCIAL }),
+  "social.poster_expired": () => ({ title: SOCIAL_LINES.posterExpired, link: SOCIAL }),
   // F. Account and system
   "account.monthly_report": ({ month }) => ({ title: EVENT_LINES.monthlyReport, link: `/reports/${month}` }),
   "account.closure": () => ({ title: EVENT_LINES.closure, body: EVENT_LINES.closureBody, link: "/" }),
