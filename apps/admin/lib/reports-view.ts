@@ -1,4 +1,5 @@
-import { isPhoneAccountEmail, type ReportForReview, type ReportService, type ReportState } from "@brandbasket/db";
+import type { ReportForReview, ReportService, ReportState } from "@brandbasket/db";
+import { isPhoneAccountEmail } from "@brandbasket/db/phone-account";
 import { monthRange, parseMonthKey } from "@brandbasket/shared/lib/reports/period";
 import { REPORT_SERVICE_TITLES } from "@brandbasket/shared/lib/reports/services";
 import type { PillTone } from "@/components/console/status-pill";
