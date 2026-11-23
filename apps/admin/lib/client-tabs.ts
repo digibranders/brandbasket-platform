@@ -9,15 +9,17 @@ interface TabDefinition {
 }
 
 /**
- * The client page's tabs, in order. None needs a capability now: Plan and billing is open to every role, and its money
- * section checks the capability itself (billing/page.tsx).
+ * The client workspace's six tabs, in order (plan 2.2). Money keeps /billing and Account keeps /people, so every link,
+ * redirect and notice that already names those addresses still lands. None needs a capability: the money half of Money
+ * checks the capability itself (billing/page.tsx).
  */
 export const CLIENT_TABS = [
   { slug: "", label: "Overview" },
   { slug: "website", label: "Website" },
-  { slug: "billing", label: "Plan and billing" },
-  { slug: "requests", label: "Messages" },
-  { slug: "people", label: "People" },
+  { slug: "services", label: "Services" },
+  { slug: "billing", label: "Money" },
+  { slug: "requests", label: "Requests" },
+  { slug: "people", label: "Account" },
 ] as const satisfies readonly TabDefinition[];
 
 export type ClientTab = (typeof CLIENT_TABS)[number];

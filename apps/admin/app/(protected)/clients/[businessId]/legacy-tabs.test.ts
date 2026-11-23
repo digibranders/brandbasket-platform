@@ -1,7 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import LegacyActivityPage from "./activity/page";
 import LegacyProjectPage from "./project/page";
-import LegacyServicesPage from "./services/page";
 
 vi.mock("next/navigation", () => ({
   redirect: vi.fn((url: string) => {
@@ -30,10 +29,6 @@ describe("the old client tab addresses", () => {
     expect(await landing(LegacyProjectPage)).toBe(`/clients/${BUSINESS}/website`);
   });
 
-  it("/services goes to Plan and billing", async () => {
-    expect(await landing(LegacyServicesPage)).toBe(`/clients/${BUSINESS}/billing`);
-  });
-
   it("/activity goes to the Activity fold on Messages", async () => {
     expect(await landing(LegacyActivityPage)).toBe(`/clients/${BUSINESS}/requests#activity`);
   });
@@ -41,7 +36,6 @@ describe("the old client tab addresses", () => {
   it("keep the whole query string, so a notice survives the move", async () => {
     expect(await landing(LegacyProjectPage, { move: "cancelled" })).toBe(`/clients/${BUSINESS}/website?move=cancelled`);
     expect(await landing(LegacyProjectPage, { build: "paused", preview: "sent" })).toBe(`/clients/${BUSINESS}/website?build=paused&preview=sent`);
-    expect(await landing(LegacyServicesPage, { addOns: "contacted", work: ["a", "b"] })).toBe(`/clients/${BUSINESS}/billing?addOns=contacted&work=a&work=b`);
     expect(await landing(LegacyActivityPage, { q: "x" })).toBe(`/clients/${BUSINESS}/requests?q=x#activity`);
   });
 });
