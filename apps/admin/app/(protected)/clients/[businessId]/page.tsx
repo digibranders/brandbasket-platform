@@ -1,4 +1,4 @@
-import { findClientIntake, findSetupCallBooking, findSiteSetting, listActivityForBusiness, listAssignableSupportStaff } from "@brandbasket/db";
+import { findClientIntake, findSiteSetting, listActivityForBusiness, listAssignableSupportStaff } from "@brandbasket/db";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
@@ -12,13 +12,14 @@ import { SETUP_CALL_URL_KEY, readSetupCallUrl } from "@brandbasket/shared/lib/se
 import { displayPhoneText } from "@brandbasket/shared/server/phone-display";
 import { TickIcon } from "@brandbasket/shared/ui/icons";
 import { ActivityList } from "@/components/activity-list";
-import { buttonPrimary } from "@/components/console/buttons";
-import { LIFT, SECTION_TITLE } from "@/components/console/classes";
+import { SECTION_TITLE } from "@/components/console/classes";
+import { ExceptionsStrip, OverviewNextStepCard, ServiceCards } from "@/components/console/client-overview-cards";
 import { CustomerMirrorPanel } from "@/components/console/customer-mirror-panel";
 import { Quiet, Section } from "@/components/console/section";
-import { overviewNextStep } from "@/lib/client-next-step";
+import { TryAgain } from "@/components/console/try-again";
+import { overviewCard } from "@/lib/client-next-step";
 import { clientTabHref, forwardedNoticeHref } from "@/lib/client-tabs";
-import { loadClientAddOns } from "@/lib/server/add-ons-admin";
+import { loadOverviewReads, readOnce } from "@/lib/server/client-overview";
 import { openClientTab } from "@/lib/server/client-page";
 import { getStaffDb } from "@/lib/server/db";
 import { BillingFacts, Facts, When } from "./parts";
@@ -44,40 +45,51 @@ export default async function ClientOverviewPage({
   const db = getStaffDb();
   const now = new Date();
   const seesMoney = staffCan(granted.staff.role, "money");
-  const [booking, recent, staff, addOns, intake, setupCallSetting] = await Promise.all([
-    findSetupCallBooking(db, client.businessId),
-    listActivityForBusiness(db, client.businessId, RECENT_SHOWN),
-    listAssignableSupportStaff(db),
-    seesMoney ? loadClientAddOns(client.businessId, now) : Promise.resolve(null),
-    findClientIntake(db, client.businessId),
+  const [overview, recent, intake, setupCallSetting] = await Promise.all([
+    loadOverviewReads({ client, now, seesMoney }),
+    readOnce("activity", async () => ({
+      rows: await listActivityForBusiness(db, client.businessId, RECENT_SHOWN),
+      staff: await listAssignableSupportStaff(db),
+    })),
+    readOnce("intake", () => findClientIntake(db, client.businessId)),
     findSiteSetting(db, SETUP_CALL_URL_KEY).catch(() => null),
   ]);
   const reading = setupCallSetting === null ? null : readSetupCallUrl(setupCallSetting.value);
   const fallbackCallUrl = reading !== null && reading.ok ? reading.url : null;
-  const next = overviewNextStep(client, now);
-  const websiteHref = clientTabHref(client.businessId, "website");
+  const card = overviewCard({ client, now, result: overview.exceptions, servicesToSetUp: overview.toSetUp });
   const done = new Set(client.completedSteps);
+  // The kickoff exception opens the one kickoff prompt for the booked call that ended.
+  const booked = overview.booking.ok ? overview.booking.value : null;
+  const kickoffPrompt = booked?.endsAt ? { businessName: client.businessName, endsAt: booked.endsAt } : undefined;
 
   return (
-    <div className="grid items-start gap-8 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
+    <>
+      <ExceptionsStrip
+        businessId={client.businessId}
+        exceptions={overview.exceptions.exceptions}
+        unreadable={overview.exceptions.unreadable}
+        kickoffPrompt={kickoffPrompt}
+      />
+      <div className="grid items-start gap-8 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
       <div className="grid grid-cols-1 gap-8">
-        <section aria-labelledby="next-step-title" className={`${LIFT} p-5`}>
-          <h2 id="next-step-title" className="font-display text-[0.9375rem] font-semibold text-ink">
-            Next step
-          </h2>
-          {next === null ? (
-            <p className="mt-2 text-sm text-ink-2">Nothing is waiting on us.</p>
-          ) : (
-            <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
-              <p className="text-sm font-semibold text-ink">{next.label}</p>
-              <Link href={next.anchor === null ? websiteHref : `${websiteHref}#${next.anchor}`} className={buttonPrimary}>
-                Open website
-              </Link>
-            </div>
-          )}
-        </section>
+        <OverviewNextStepCard card={card} businessId={client.businessId} kickoffPrompt={kickoffPrompt} />
 
-        <CustomerMirrorPanel client={client} booking={booking} now={now} fallbackCallUrl={fallbackCallUrl} />
+        {overview.services.ok && overview.services.value.length > 0 ? (
+          <section aria-labelledby="services-title">
+            <h2 id="services-title" className={SECTION_TITLE}>
+              Services
+            </h2>
+            <div className="mt-2">
+              <ServiceCards businessId={client.businessId} services={overview.services.value} linkTo="services" />
+            </div>
+          </section>
+        ) : null}
+
+        {overview.booking.ok ? (
+          <CustomerMirrorPanel client={client} booking={overview.booking.value} now={now} fallbackCallUrl={fallbackCallUrl} />
+        ) : (
+          <ReadFailed title="We could not load what the customer sees" />
+        )}
 
         <section aria-labelledby="recent-title">
           <h2 id="recent-title" className={`${SECTION_TITLE} flex items-baseline justify-between`}>
@@ -87,7 +99,11 @@ export default async function ClientOverviewPage({
             </Link>
           </h2>
           <div className="mt-2">
-            <ActivityList rows={recent} staffNames={new Map(staff.map((member) => [member.userId, member.name]))} />
+            {recent.ok ? (
+              <ActivityList rows={recent.value.rows} staffNames={new Map(recent.value.staff.map((member) => [member.userId, member.name]))} />
+            ) : (
+              <ReadFailed title="We could not load the history" />
+            )}
           </div>
         </section>
       </div>
@@ -116,29 +132,31 @@ export default async function ClientOverviewPage({
           />
         </Section>
 
-        {addOns === null ? null : (
+        {!seesMoney ? null : (
           <Section title="Money">
-            <BillingFacts client={client} state={clientPaymentState(client.billing, now)} packageFacts={addOns.package} />
+            <BillingFacts client={client} state={clientPaymentState(client.billing, now)} packageFacts={null} />
           </Section>
         )}
 
-        <Section title="What they told us" aside={intake === null ? undefined : intake.completedAt === null ? "Not finished" : "Answered before paying"}>
-          {intake === null ? (
+        <Section title="What they told us" aside={!intake.ok || intake.value === null ? undefined : intake.value.completedAt === null ? "Not finished" : "Answered before paying"}>
+          {!intake.ok ? (
+            <ReadFailed title="We could not load what they told us" />
+          ) : intake.value === null ? (
             <Quiet>Not asked. They signed up before the short questions existed, or have not reached them.</Quiet>
           ) : (
             <Facts
               items={summaryRows(
-                intakeServicesOf(intake.askedForServices),
+                intakeServicesOf(intake.value.askedForServices),
                 {
-                  businessType: intake.businessType,
-                  businessSubtype: intake.businessSubtype,
-                  primaryGoal: intake.primaryGoal,
-                  websiteState: intake.websiteState,
-                  existingWebsiteUrl: intake.existingWebsiteUrl,
-                  primaryAction: intake.primaryAction,
-                  designDirection: intake.designDirection,
-                  socialChannels: intake.socialChannels,
-                  searchScope: intake.searchScope,
+                  businessType: intake.value.businessType,
+                  businessSubtype: intake.value.businessSubtype,
+                  primaryGoal: intake.value.primaryGoal,
+                  websiteState: intake.value.websiteState,
+                  existingWebsiteUrl: intake.value.existingWebsiteUrl,
+                  primaryAction: intake.value.primaryAction,
+                  designDirection: intake.value.designDirection,
+                  socialChannels: intake.value.socialChannels,
+                  searchScope: intake.value.searchScope,
                 },
               ).map((row) => ({ label: row.label, value: row.value ?? <span className="text-ink-2">Not answered</span> }))}
             />
@@ -165,5 +183,17 @@ export default async function ClientOverviewPage({
         </Section>
       </div>
     </div>
+    </>
   );
 }
+
+/** One panel whose read failed: it says so and offers to read it again, and the rest of the page stays. */
+function ReadFailed({ title }: { readonly title: string }): ReactElement {
+  return (
+    <div role="alert" className="flex flex-wrap items-center gap-3 rounded-[14px] border border-neg-border bg-neg-wash p-4">
+      <p className="min-w-0 flex-1 text-sm font-semibold text-neg-text">{title}. Nothing was changed.</p>
+      <TryAgain />
+    </div>
+  );
+}
+

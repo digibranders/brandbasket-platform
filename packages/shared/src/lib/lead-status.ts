@@ -1,4 +1,5 @@
-import { isSystemLeadStatus, type LeadStatus, type StaffLeadStatus } from "@brandbasket/db";
+import type { LeadStatus } from "@brandbasket/db";
+import { isSystemLeadStatus, type StaffLeadStatus } from "@brandbasket/db/lead-statuses";
 
 /** Pipeline order, used for the filter bar. */
 export const LEAD_STATUS_ORDER = [

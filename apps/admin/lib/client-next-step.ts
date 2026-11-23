@@ -1,6 +1,7 @@
 import { PROJECT_STATUSES_PREVIEWABLE, type ClientDetail, type ClientProject } from "@brandbasket/db";
 import { PROJECT_STATUSES_WAITING_ON_US } from "@brandbasket/shared/lib/project-status";
 import { NEXT_STEP_HEADLINES } from "@/lib/delivery-tab";
+import type { ClientException, ExceptionResult, Read } from "@/lib/client-exceptions";
 import { lateReason } from "@/lib/pipeline";
 
 export type ClientNextStep = "preview" | "live" | null;
@@ -43,4 +44,42 @@ export function overviewNextStep(client: Pick<ClientDetail, "project" | "movingT
   if (step === "live") return { label: NEXT_STEP_HEADLINES[project.status], anchor: "domain" };
   const late = previewLateReason(project, now);
   return { label: `${NEXT_STEP_HEADLINES[project.status]}${late === null ? "" : `: ${late.toLowerCase()}`}`, anchor: null };
+}
+
+export interface ServiceToSetUp {
+  readonly id: string;
+  readonly title: string;
+}
+
+/** What the Overview's Next step card shows. Only "exception" and "unreadable" are drawn red. */
+export type OverviewCard =
+  | { readonly kind: "exception"; readonly exception: ClientException }
+  | { readonly kind: "unreadable"; readonly unreadable: readonly string[] }
+  | { readonly kind: "not-paid" }
+  | { readonly kind: "stage"; readonly step: OverviewNextStep }
+  | { readonly kind: "service"; readonly service: ServiceToSetUp }
+  | { readonly kind: "clear" };
+
+/**
+ * The one card the Overview leads with, across every service and the money and account state, not the website alone.
+ * Order: an exception (first by priority), a business that has not paid, the website's next step, a paid service nobody has
+ * set up yet (Social, Paid Ads, Monitoring), then "clear". It is "clear" only when every read succeeded: with a failed read
+ * and no exception to show, the card says it could not check.
+ */
+export function overviewCard(input: {
+  readonly client: Pick<ClientDetail, "project" | "movingTo" | "billing">;
+  readonly now: Date;
+  readonly result: ExceptionResult;
+  readonly servicesToSetUp: Read<readonly ServiceToSetUp[]>;
+}): OverviewCard {
+  const { exceptions, unreadable } = input.result;
+  const first = exceptions[0];
+  if (first !== undefined) return { kind: "exception", exception: first };
+  const failed = input.servicesToSetUp.ok ? unreadable : [...unreadable, "the services"];
+  if (failed.length > 0) return { kind: "unreadable", unreadable: failed };
+  if (input.client.project === null && input.client.billing.firstPayment === null) return { kind: "not-paid" };
+  const step = overviewNextStep(input.client, input.now);
+  if (step !== null) return { kind: "stage", step };
+  const service = input.servicesToSetUp.ok ? input.servicesToSetUp.value[0] : undefined;
+  return service === undefined ? { kind: "clear" } : { kind: "service", service };
 }

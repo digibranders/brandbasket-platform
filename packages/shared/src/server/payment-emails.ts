@@ -17,7 +17,7 @@ import {
   type Payment,
   type TaxInvoice,
 } from "@brandbasket/db";
-import { firstChargeReminderEmail, paymentFailedEmail, paymentReceivedEmail, paymentRefundedEmail, type EmailMessage, type PaymentFailedPlan } from "@brandbasket/email";
+import { firstChargeReminderEmail, paymentFailedEmail, paymentReceivedEmail, paymentRefundedEmail, type EmailMessage, type EmailSendOutcome, type PaymentFailedPlan } from "@brandbasket/email";
 import { nextBundledNetCents, nextDiscountCents } from "../lib/billing/bundle";
 import { nextPaymentDate } from "../lib/billing/period";
 import { paymentsContinue } from "../lib/billing/payments-continue";
@@ -36,7 +36,7 @@ const PLAN_PAYMENT_KINDS: ReadonlySet<Payment["kind"]> = new Set(["initial", "re
 
 export interface PaymentEmailDeps {
   /** Delivers one message: the app's customer transport. Called only when there is someone to write to. */
-  readonly send: (message: EmailMessage) => Promise<void>;
+  readonly send: (message: EmailMessage) => Promise<EmailSendOutcome | void>;
   /** The dashboard's origin, for the links in the email. */
   readonly dashboardOrigin: string;
 }

@@ -212,7 +212,7 @@ export async function deliveryHealth(db: Runner, since: Date): Promise<DeliveryH
     .where(gte(webhookEvents.receivedAt, since))
     .groupBy(webhookEvents.source);
   const [email] = await db
-    .select(healthColumns(sql`${emailMessages.status} = 'failed'`, sql`${emailMessages.createdAt}`))
+    .select(healthColumns(sql`${emailMessages.status} in ('failed', 'bounced')`, sql`${emailMessages.createdAt}`))
     .from(emailMessages)
     .where(gte(emailMessages.createdAt, since));
   const [teams] = await db

@@ -13,7 +13,7 @@ import {
 } from "@brandbasket/db";
 import { websiteLiveEmail } from "@brandbasket/email";
 import { customerEmailTransport } from "./email";
-import type { OwnerNotification } from "./project-preview";
+import { ownerNotificationOf, type OwnerNotification } from "./project-preview";
 import { checkSiteAddress, type SiteCheckFailure } from "./site-check";
 
 /** How long after going live staff may send the launch email again. */
@@ -63,10 +63,9 @@ export type LaunchResend = OwnerNotification | "not-allowed";
 async function emailLaunch(
   db: Database,
   input: { readonly businessId: string; readonly to: string; readonly businessName: string; readonly websiteUrl: string },
-): Promise<"emailed" | "email-failed"> {
+): Promise<OwnerNotification> {
   try {
-    await customerEmailTransport(db).send(websiteLiveEmail({ to: input.to, businessName: input.businessName, websiteUrl: input.websiteUrl }));
-    return "emailed";
+    return ownerNotificationOf(await customerEmailTransport(db).send(websiteLiveEmail({ to: input.to, businessName: input.businessName, websiteUrl: input.websiteUrl })));
   } catch (error) {
     console.error("[launch-email]", { businessId: input.businessId, error });
     return "email-failed";

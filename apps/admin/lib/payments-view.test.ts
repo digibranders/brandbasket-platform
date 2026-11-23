@@ -8,6 +8,10 @@ import {
   paymentMonthBounds,
   paymentMonthLinks,
   paymentRowView,
+  needsLookOrFailed,
+  nextPaymentMonthLink,
+  paymentOpenHref,
+  paymentPanelRow,
   readPaymentFilter,
 } from "./payments-view";
 
@@ -130,5 +134,33 @@ describe("months", () => {
     });
     expect(paymentFilterHref("2026-11", "all")).toBe("/payments?month=2026-11");
     expect(paymentFilterHref("2026-11", "failed")).toBe("/payments?month=2026-11&show=failed");
+  });
+});
+
+describe("the Money panel helpers", () => {
+  it("counts a failed payment as needing a look, like the rail", () => {
+    expect(needsLookOrFailed(row({ status: "failed", paidAt: null }))).toBe(true);
+    expect(needsLookOrFailed(row({ attentionReason: "already_paid" }))).toBe(true);
+    expect(needsLookOrFailed(row({ attentionReason: "already_paid", attentionResolvedAt: new Date() }))).toBe(false);
+    expect(needsLookOrFailed(row())).toBe(false);
+  });
+
+  it("keeps the month and filter in the address with a panel open", () => {
+    expect(paymentOpenHref("2026-11", "all", null)).toBe("/payments?month=2026-11");
+    expect(paymentOpenHref("2026-11", "failed", "p1")).toBe("/payments?month=2026-11&show=failed&open=p1");
+  });
+
+  it("offers no next month past the current one", () => {
+    expect(nextPaymentMonthLink("2026-11", "2026-11")).toBeNull();
+    expect(nextPaymentMonthLink("2026-10", "2026-11")).toEqual({ href: "/payments?month=2026-11", label: "November 2026" });
+  });
+
+  it("adds the reference and reasons the panel shows", () => {
+    expect(paymentPanelRow(row({ status: "failed", failureReason: "Card declined" }), "Duplicate payment")).toMatchObject({
+      providerPaymentId: "pay_1",
+      rawStatus: "failed",
+      failureReason: "Card declined",
+      attentionTitle: "Duplicate payment",
+    });
   });
 });

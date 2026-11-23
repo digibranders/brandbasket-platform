@@ -124,7 +124,7 @@ describe("the kickoff wording", () => {
   });
 
   it("words a call changed on Cal.com for staff", () => {
-    expect(bellCopyFor("call.changed.staff", { what: "moved", when: "Tue 11:00" })).toEqual({ title: "A call was moved on Cal.com", body: "Tue 11:00", link: "/calls" });
+    expect(bellCopyFor("call.changed.staff", { what: "moved", when: "Tue 11:00" })).toEqual({ title: "A call was moved on Cal.com", body: "Tue 11:00", link: "/" });
     expect(eventDefinition("call.changed.staff").channels).toEqual(["teams", "bell"]);
   });
 

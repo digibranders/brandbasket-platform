@@ -12,6 +12,9 @@ vi.mock("@/lib/server/staff-access", () => ({
 vi.mock("@/lib/server/staff-access-log", () => ({
   logStaffAccess: vi.fn().mockResolvedValue(undefined),
 }));
+vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn(), replace: vi.fn(), refresh: vi.fn() }) }));
+vi.mock("@/app/(protected)/today-actions", () => ({ resendAllFailedFromTodayAction: vi.fn() }));
+vi.mock("@/app/(protected)/calls/kickoff-actions", () => ({ completeKickoffAction: vi.fn(), theyDidNotJoinAction: vi.fn(), rescheduleKickoffAction: vi.fn() }));
 vi.mock("@/lib/server/today", () => ({
   loadTodayPage: vi.fn().mockResolvedValue({
     items: [
@@ -45,7 +48,8 @@ vi.mock("@/lib/server/today", () => ({
     calls: [],
     systems: [{ key: "email", label: "Email", state: "ok", detail: "operational" }],
     pendingKickoffs: [],
-    activeClientsCount: 42,
+    openRequests: 42,
+    callGroups: { upcoming: [], past: [] },
   }),
 }));
 
@@ -57,20 +61,22 @@ describe("TodayPage", () => {
   it("renders the 4 StatTiles with correct labels and values", async () => {
     const markup = renderToStaticMarkup(await TodayPage());
 
-    expect(markup).toContain("Late tasks");
+    expect(markup).toContain("Late");
     expect(markup).toContain("Due today");
     expect(markup).toContain("On track");
-    expect(markup).toContain("Active clients");
+    expect(markup).toContain("Open requests");
+    expect(markup).not.toContain("Active clients");
     expect(markup).toContain("42");
   });
 
   it("renders the prioritized task list with Late items first", async () => {
     const markup = renderToStaticMarkup(await TodayPage());
 
-    expect(markup).toContain("Needs someone");
-    expect(markup).toContain("Late items first");
     expect(markup).toContain("Payment past due: Bakery");
     expect(markup).toContain("Change hours");
+    expect(markup).toContain("Calls");
+    expect(markup).toContain("Check");
+    expect(markup).toContain("Reply");
   });
 
   it("renders the Systems section", async () => {

@@ -7,6 +7,7 @@ import { buttonPrimary } from "@/components/console/buttons";
 import { Notice } from "@/components/console/notice";
 import { PageHeader } from "@/components/console/page-header";
 import { FactList, Section } from "@/components/console/section";
+import { ConfirmDialog } from "@/components/console/confirm-dialog";
 import { StatusPill } from "@/components/console/status-pill";
 import { canResendEmail, emailRow } from "@/lib/deliveries-view";
 import { resendNotice } from "@/lib/deliveries-notices";
@@ -62,13 +63,21 @@ export default async function OutboxMessagePage({
             ]}
           />
           {canResendEmail(message) ? (
-            <form action={resendEmailAction} className="mt-6">
-              <input type="hidden" name="deliveryId" value={message.id} />
-              <input type="hidden" name="from" value="detail" />
-              <button type="submit" className={buttonPrimary}>
-                Resend
-              </button>
-            </form>
+            <div className="mt-6">
+              <ConfirmDialog
+                title="Resend this email?"
+                consequence={`It goes to ${message.toAddress} again.`}
+                triggerLabel="Resend"
+                triggerClassName={buttonPrimary}
+                confirmLabel="Resend"
+                cancelLabel="Keep"
+                variant="default"
+                formAction={resendEmailAction}
+              >
+                <input type="hidden" name="deliveryId" value={message.id} />
+                <input type="hidden" name="from" value="detail" />
+              </ConfirmDialog>
+            </div>
           ) : null}
         </Section>
         <Section title="As the customer sees it">
