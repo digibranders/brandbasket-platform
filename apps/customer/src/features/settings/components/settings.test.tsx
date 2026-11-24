@@ -24,7 +24,17 @@ vi.mock("../actions", () => ({
 vi.mock("@/features/consent/consent", () => ({ MEASUREMENT_TOOLS: ["Google Analytics", "Microsoft Clarity"] }));
 vi.mock("@/features/consent/components/cookie-settings-button", () => ({ CookieSettingsButton: () => <button type="button">Change my choice</button> }));
 
-const CHOICES = { new_enquiry: true, needs_approval: true, request_reply: true, billing: true, monthly_report: true, product_news: false };
+const CHOICE = { bell: true, email: true, push: false };
+const CHOICES = {
+  new_enquiry: CHOICE,
+  needs_approval: CHOICE,
+  request_reply: CHOICE,
+  billing: CHOICE,
+  monthly_report: CHOICE,
+  product_news: { bell: false, email: false, push: false },
+  calls: CHOICE,
+  social: CHOICE,
+};
 const FAILED = { ok: false, error: { at: new Date("2026-11-03T05:00:00Z") } } as const;
 
 function renderWithToasts(ui: ReactNode) {
@@ -47,24 +57,35 @@ describe("SettingsHeader", () => {
 });
 
 describe("NotificationTable", () => {
-  it("has one email switch per topic and no WhatsApp column", () => {
-    render(<NotificationTable rows={notificationRows(CHOICES)} />);
-    expect(screen.getAllByRole("switch")).toHaveLength(6);
+  it("has a bell, an email and a push switch per topic and no WhatsApp column", () => {
+    render(<NotificationTable rows={notificationRows(CHOICES)} always={["Your account is closed"]} />);
+    expect(screen.getAllByRole("switch")).toHaveLength(24);
     expect(screen.queryByText("WhatsApp")).toBeNull();
+    for (const heading of ["Bell", "Email", "Push"]) expect(screen.getByRole("columnheader", { name: heading })).toBeTruthy();
     expect(screen.getByRole("switch", { name: "Product news from Brandbasket: email" }).getAttribute("aria-checked")).toBe("false");
-    expect(screen.getByRole("switch", { name: "A new enquiry arrives: email" }).getAttribute("aria-checked")).toBe("true");
+    expect(screen.getByRole("switch", { name: "A new enquiry arrives: bell" }).getAttribute("aria-checked")).toBe("true");
+    expect(screen.getByRole("switch", { name: "A call with us is coming up: push" }).getAttribute("aria-checked")).toBe("false");
   });
 
-  it("saves a flip at once with the topic and the new position", async () => {
+  it("lists what is always sent, with no switch", () => {
+    render(<NotificationTable rows={notificationRows(CHOICES)} always={["Your account is closed"]} />);
+    const row = screen.getByText("Your account is closed").closest("tr");
+    expect(row?.textContent).toContain("Always sent");
+    expect(row?.querySelector('[role="switch"]')).toBeNull();
+  });
+
+  it("saves a flip at once with the topic, the channel and the new position", async () => {
     vi.mocked(setNotificationAction).mockResolvedValue({ ok: true });
-    render(<NotificationTable rows={notificationRows(CHOICES)} />);
+    render(<NotificationTable rows={notificationRows(CHOICES)} always={[]} />);
     await userEvent.click(screen.getByRole("switch", { name: "An invoice is ready or a payment fails: email" }));
-    expect(setNotificationAction).toHaveBeenCalledWith("billing", false);
+    expect(setNotificationAction).toHaveBeenCalledWith("billing", "email", false);
+    await userEvent.click(screen.getByRole("switch", { name: "Something needs your approval: push" }));
+    expect(setNotificationAction).toHaveBeenCalledWith("needs_approval", "push", true);
   });
 
   it("puts the switch back and says so when the save fails", async () => {
     vi.mocked(setNotificationAction).mockResolvedValue({ ok: false, message: "We could not save that. Try again in a moment." });
-    render(<NotificationTable rows={notificationRows(CHOICES)} />);
+    render(<NotificationTable rows={notificationRows(CHOICES)} always={[]} />);
     const toggle = screen.getByRole("switch", { name: "Your monthly report is ready: email" });
     await userEvent.click(toggle);
     expect(await screen.findByText("We could not save that. Try again in a moment.")).toBeTruthy();

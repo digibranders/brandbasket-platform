@@ -10,8 +10,8 @@ const YESTERDAY = new Date("2026-11-29T12:00:00.000Z"); // 17:30 on 29 Nov in In
 const health = (part: Partial<SourceHealth>): SourceHealth => ({ total: 1, failed: 0, lastOkAt: null, lastFailedAt: null, ...part });
 
 describe("deliveryLine", () => {
-  it("lists the five delivery sources in the systems block's order", () => {
-    expect(DELIVERY_ORDER).toEqual(["razorpay", "calcom", "oyechats", "brevo", "teams"]);
+  it("lists the six delivery sources in the systems block's order", () => {
+    expect(DELIVERY_ORDER).toEqual(["razorpay", "calcom", "oyechats", "social_auto", "brevo", "teams"]);
   });
 
   it("says when the last good delivery was, as a time today or a date before today", () => {

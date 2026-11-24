@@ -1,8 +1,10 @@
+import { notifyEvent } from "@brandbasket/shared/server/notify-event";
 import { addActivityEvent, ProjectNotPausedError, resumeProject, setProjectBuilding, setProjectOnHold, type Database, type Project } from "@brandbasket/db";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { addWorkingActivity, putOnHold, resumeBuilding, startBuilding } from "./website-moves";
 
 vi.mock("server-only", () => ({}));
+vi.mock("@brandbasket/shared/server/notify-event", () => ({ notifyEvent: vi.fn(async () => undefined) }));
 vi.mock("@brandbasket/db", () => {
   class ProjectNotPausedError extends Error {}
   return { addActivityEvent: vi.fn(), ProjectNotPausedError, resumeProject: vi.fn(), setProjectBuilding: vi.fn(), setProjectOnHold: vi.fn() };
@@ -26,6 +28,12 @@ function lines(): string[] {
 }
 
 describe("the staff moves", () => {
+  it("tells the customer once, by business, that the build has started", async () => {
+    await startBuilding(db, move, NOW);
+    expect(notifyEvent).toHaveBeenCalledTimes(1);
+    expect(notifyEvent).toHaveBeenCalledWith(db, { event: "website.started", audience: { kind: "customer", businessId: "business-1" }, dedupeKey: "business-1", data: {} });
+  });
+
   it("start building moves the project and writes one dated line", async () => {
     await startBuilding(db, move, NOW);
     expect(setProjectBuilding).toHaveBeenCalledWith(db, { businessId: "business-1" });

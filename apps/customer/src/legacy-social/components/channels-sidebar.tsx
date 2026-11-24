@@ -1,5 +1,7 @@
 "use client";
 
+import { RequestChannel } from "@/features/social/accounts/components/request-channel";
+import type { ChannelRequest, ConnectMode } from "@/features/social/accounts/requests";
 import { Warning } from "@phosphor-icons/react/dist/ssr";
 import type { ReactElement } from "react";
 import { buttonClasses } from "@/ui/button-styles";
@@ -32,6 +34,13 @@ interface ChannelsSidebarProps {
   readonly brandId?: string;
   /** "Posts booked until 30 Nov.", or what to say when none are. */
   readonly bookedLine: string;
+  /** Networks that ask for a link to the customer's profile in place of the Allow button, and where each request stands. */
+  readonly requests?: ChannelRequests;
+}
+
+export interface ChannelRequests {
+  readonly modes: Partial<Record<ChannelPlatform, ConnectMode>>;
+  readonly list: readonly ChannelRequest[];
 }
 
 /** A button that sends the customer to a network's own Allow page. The business comes from the session on the server. */
@@ -51,7 +60,7 @@ export function ConnectButton({ platform, label, className, logo = false }: { re
  * The second sidebar of the Social media page: only the channels. Each connected account is a row that switches that
  * network's posts on or off in the calendar; a network with no account yet has a Connect button.
  */
-export function ChannelsSidebar({ rows, brandId = "brand", bookedLine }: ChannelsSidebarProps): ReactElement {
+export function ChannelsSidebar({ rows, brandId = "brand", bookedLine, requests }: ChannelsSidebarProps): ReactElement {
   const { shown, filtering, only, showAll } = useChannelFilter();
   const missing = CHANNEL_PLATFORMS.filter((platform) => !rows.some((row) => row.platform === platform));
   return (
@@ -114,12 +123,16 @@ export function ChannelsSidebar({ rows, brandId = "brand", bookedLine }: Channel
           <h3 id="add-channel-title" className="type-meta font-medium">
             {rows.length === 0 ? "Connect your accounts" : "Add a channel"}
           </h3>
-          {missing.map((platform) => (
-            <div key={platform} className="grid gap-1">
-              <ConnectButton platform={platform} label={`Connect ${platform === "google" ? "Google" : PLATFORM_NAMES[platform]}`} logo />
-              <span className="type-meta">{PLATFORM_HINTS[platform]}</span>
-            </div>
-          ))}
+          {missing.map((platform) =>
+            requests?.modes[platform] === "request" ? (
+              <RequestChannel key={platform} platform={platform} request={requests.list.find((one) => one.network === platform && one.state !== "connected") ?? null} />
+            ) : (
+              <div key={platform} className="grid gap-1">
+                <ConnectButton platform={platform} label={`Connect ${platform === "google" ? "Google" : PLATFORM_NAMES[platform]}`} logo />
+                <span className="type-meta">{PLATFORM_HINTS[platform]}</span>
+              </div>
+            ),
+          )}
         </section>
       )}
 

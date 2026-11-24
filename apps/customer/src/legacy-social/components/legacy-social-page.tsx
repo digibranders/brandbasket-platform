@@ -9,6 +9,7 @@ import { reportPath } from "@/features/reports/rules";
 import { loadBrands, socialAutoSettings } from "@/legacy-social/server/social-auto";
 import type { AccountInUse } from "@/features/social/accounts/rules";
 import { loadChannelState } from "@/legacy-social/server/channel-todos";
+import { loadChannelRequests } from "@/features/social/accounts/request-store";
 import { loadLegacySocial } from "@/legacy-social/server/load";
 import { LegacySocialView } from "./social-view";
 
@@ -39,6 +40,8 @@ export async function LegacySocialPage({ customer, notice, inUse = null, now = n
   const newest = months.ok ? months.data.find((month) => month.reports.some((report) => report.service === "social")) : undefined;
   // The number beside each channel, as on the Posts page; left off when it cannot be read.
   const channelState = data.ok && data.data !== null ? await loadChannelState(customer, data.data.channels.map((channel) => channel.platform)) : undefined;
+  // Networks that ask for a link to the profile in place of the Allow button, and where each request stands; none when it cannot be read.
+  const requests = data.ok && data.data !== null ? await loadChannelRequests(customer, data.data.channels.map((channel) => channel.platform)).catch(() => undefined) : undefined;
   if (!data.ok || data.data === null) {
     return (
       <Panel title="Social media">
@@ -59,6 +62,7 @@ export async function LegacySocialPage({ customer, notice, inUse = null, now = n
       canChange={customer.role !== "viewer"}
       savedWebsite={savedWebsite}
       channelState={channelState}
+      {...(requests === undefined ? {} : { requests })}
       move={inUse !== null && heldByName !== null ? { channel: inUse.channel, heldBy: inUse.heldBy, brandName: heldByName } : null}
     />
   );

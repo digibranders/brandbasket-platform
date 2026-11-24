@@ -41,12 +41,13 @@ export interface DeliveryFilter {
   readonly search: string | null;
 }
 
-export const DELIVERY_SOURCES: readonly DeliverySource[] = ["razorpay", "calcom", "oyechats", "brevo", "teams"];
+export const DELIVERY_SOURCES: readonly DeliverySource[] = ["razorpay", "calcom", "oyechats", "social_auto", "brevo", "teams"];
 
 export const SOURCE_LABELS: Readonly<Record<DeliverySource, string>> = {
   razorpay: "Razorpay",
   calcom: "Cal.com",
   oyechats: "OyeChats",
+  social_auto: "Social posting",
   brevo: "Brevo",
   teams: "Teams",
 };
@@ -55,14 +56,15 @@ const FIGURE_LABELS: Readonly<Record<DeliverySource, string>> = {
   razorpay: "Razorpay",
   calcom: "Cal.com",
   oyechats: "OyeChats",
+  social_auto: "Social posting",
   brevo: "Brevo email",
   teams: "Teams alerts",
 };
 
 const WEBHOOK_LABELS: Readonly<Record<WebhookResult, string>> = { handled: "Handled", ignored: "Ignored", failed: "Failed", bad_signature: "Bad signature" };
 const WEBHOOK_OUTCOMES: Readonly<Record<WebhookResult, DeliveryOutcome>> = { handled: "ok", ignored: "quiet", failed: "failed", bad_signature: "failed" };
-const EMAIL_LABELS: Readonly<Record<EmailStatus, string>> = { sent: "Sent", local_only: "Kept, not sent", failed: "Not sent" };
-const EMAIL_OUTCOMES: Readonly<Record<EmailStatus, DeliveryOutcome>> = { sent: "ok", local_only: "quiet", failed: "failed" };
+const EMAIL_LABELS: Readonly<Record<EmailStatus, string>> = { pending: "Waiting to send", sent: "Sent", local_only: "Kept, not sent", failed: "Not sent", bounced: "Bounced" };
+const EMAIL_OUTCOMES: Readonly<Record<EmailStatus, DeliveryOutcome>> = { pending: "quiet", sent: "ok", local_only: "quiet", failed: "failed", bounced: "failed" };
 const ALERT_LABELS: Readonly<Record<AlertResult, string>> = { sent: "Sent", rejected: "Refused by Teams", unreachable: "Teams not reached", unreadable: "Address unreadable" };
 const CHANNEL_LABELS: Readonly<Record<AlertDestination, string>> = { enquiries: "Enquiries card", payments: "Payments card", customers: "Customers card", support: "Requests card", system: "System card" };
 

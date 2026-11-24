@@ -37,6 +37,12 @@ describe("the basket the website's link carries", () => {
     expect(readEntryRequest({ plan: "social,ads" })).toMatchObject({ view: "create", choice: "managed" });
   });
 
+  it("carries Dedicated Expert Monitoring when the link names it, except beside all three plans or with no plan", () => {
+    expect(readEntryRequest({ plan: "website,social,monitoring" }).services).toEqual(["managed-website", "social-media", "expert-monitoring"]);
+    expect(readEntryRequest({ plan: "website,social,ads,monitoring" }).services).toEqual(["managed-website", "social-media", "paid-ads"]);
+    expect(readEntryRequest({ plan: "monitoring" })).toMatchObject({ view: "create", services: ["managed-website"] });
+  });
+
   it("still reads a link shared before the plans changed: growth is Social Media Management, and search names nothing on sale", () => {
     expect(readEntryRequest({ plan: "website,growth" }).services).toEqual(["managed-website", "social-media"]);
     expect(readEntryRequest({ plan: "search,growth" }).services).toEqual(["social-media"]);

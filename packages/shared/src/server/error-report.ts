@@ -1,5 +1,6 @@
 import "server-only";
 import { consumeRateLimit, recordErrorReport, type Database, type RateLimitRule } from "@brandbasket/db";
+import { notifyEvent } from "./notify-event";
 import { browserFamily, createErrorReport, errorReportSchema, type ErrorApp, type ErrorReport, type ErrorReportContext } from "../lib/error-report";
 
 export interface ServerErrorContext extends ErrorReportContext { readonly userId?: string }
@@ -39,7 +40,12 @@ export function createServerErrorReporter(deps: { readonly writeReport: ErrorWri
 /** Native default store; no external credentials or provider are involved. */
 export function createDatabaseErrorReporter(getStaffDb: () => Database): ReturnType<typeof createServerErrorReporter> {
   return createServerErrorReporter({
-    writeReport: (report, userId) => recordErrorReport(getStaffDb(), report, userId),
+    writeReport: async (report, userId) => {
+      const id = await recordErrorReport(getStaffDb(), report, userId);
+      // A staff push that something broke: at most one an hour (the key is the hour), so an error storm is one push. The email path is not used.
+      if (id !== null) void notifyEvent(getStaffDb(), { event: "account.security_alert.staff", audience: { kind: "staff" }, dedupeKey: `system-error:${Math.floor(Date.now() / 3_600_000)}`, data: {} });
+      return id;
+    },
     allowReport: async () => (await consumeRateLimit(getStaffDb(), "automatic-errors:server:global", { limit: 120, windowSeconds: 60 })).allowed,
   });
 }

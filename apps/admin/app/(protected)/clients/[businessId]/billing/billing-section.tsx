@@ -8,7 +8,7 @@ import {
   listTaxInvoicesForBusiness,
 } from "@brandbasket/db";
 import type { ClientDetail } from "@brandbasket/db";
-import type { ReactElement } from "react";
+import type { ReactElement, ReactNode } from "react";
 import { reactivationNetCents, websiteAloneNetCents } from "@brandbasket/shared/lib/billing/bundle";
 import { readStaffChargeNotice } from "@brandbasket/shared/lib/billing/charge-notices";
 import { clientPaymentState } from "@brandbasket/shared/lib/billing/client-payment";
@@ -45,10 +45,13 @@ export async function BillingSection({
   client,
   query: sp,
   packageFacts,
+  afterPayments,
 }: {
   readonly client: ClientDetail;
   readonly query: Readonly<Record<string, string | string[] | undefined>>;
-  readonly packageFacts: ClientPackageFacts;
+  readonly packageFacts: ClientPackageFacts | null;
+  /** Rendered right under the payments table: the plan lines, so the table stays first and the plan follows it. */
+  readonly afterPayments?: ReactNode;
 }): Promise<ReactElement> {
   await requireStaffCan("money");
   const notice = readManualPaymentNotice(sp.payment);
@@ -109,6 +112,8 @@ export async function BillingSection({
         refundAction={refundPaymentAction}
         recordManualRefundAction={markPaymentRefundedAction}
       />
+
+      {afterPayments}
 
       <Section title="Billing">
         <BillingFacts client={client} state={paymentState} packageFacts={packageFacts} />

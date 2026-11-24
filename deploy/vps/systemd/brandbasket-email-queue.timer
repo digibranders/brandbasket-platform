@@ -1,0 +1,11 @@
+# Starts brandbasket-email-queue.service every 15 minutes, which is also the shortest wait before a queued email is tried again.
+[Unit]
+Description=Brandbasket send queued emails
+
+[Timer]
+OnCalendar=*:0/15
+Persistent=true
+RandomizedDelaySec=60
+
+[Install]
+WantedBy=timers.target

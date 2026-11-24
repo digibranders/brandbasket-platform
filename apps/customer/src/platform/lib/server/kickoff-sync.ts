@@ -1,9 +1,11 @@
 import "server-only";
 import { addActivityEvent, firstPreviewDueAfterKickoff, KICKOFF_FALLBACK_START_HOURS, listKickoffsToStart, markProjectReadyAfterKickoff } from "@brandbasket/db";
+import { KICKOFF_LINES } from "@brandbasket/shared/lib/notification-copy-bell";
 import { errorLogInfo } from "@brandbasket/shared/server/error-log-info";
 import { LEADS_API_TOKEN_MIN_LENGTH } from "@/platform/lib/leads-api";
 import { getStaffDb } from "./db";
 import { kickoffAutoStart } from "./env";
+import { notify } from "./notifier";
 
 /**
  * How the sync decides a build may start. "auto": staff marked the call held, or it ended more than
@@ -32,6 +34,16 @@ export interface KickoffSyncReport {
   readonly failed: number;
 }
 
+/** The build started without anyone confirming the call: the customer is told in plain words, staff with their own label. The build is already moved, so a failure here is logged, not counted. */
+async function tellFallbackStarted(businessId: string, businessName: string): Promise<void> {
+  try {
+    await notify({ event: "kickoff.fallback_started", audience: { kind: "customer", businessId }, dedupeKey: businessId, data: {} });
+    await notify({ event: "kickoff.fallback_started.staff", audience: { kind: "staff", businessId }, dedupeKey: businessId, data: { businessName } });
+  } catch (error) {
+    console.error("[kickoff-sync] could not send the build-started notices", { businessId, error: errorLogInfo(error) });
+  }
+}
+
 /**
  * Starts the website build for every kickoff staff marked held, and for one that ended more than
  * KICKOFF_FALLBACK_START_HOURS ago with no mark at all. A call staff marked as not attended has no booking, so it never
@@ -58,8 +70,10 @@ export async function startBuildsAfterKickoff(now: Date = new Date()): Promise<K
       });
       if (!moved) continue;
       started += 1;
-      const title = startedWithoutCallConfirmation ? "Started without call confirmation" : "Kickoff call completed";
+      // This line is the customer's: staff keep their own label (the flag behind Today's "Started without call confirmation").
+      const title = startedWithoutCallConfirmation ? KICKOFF_LINES.fallbackStarted : "Kickoff call completed";
       await addActivityEvent(db, { businessId: kickoff.businessId, service: "website", title, occurredAt: now, staffId: null });
+      if (startedWithoutCallConfirmation) await tellFallbackStarted(kickoff.businessId, kickoff.businessName);
     } catch (error) {
       failed += 1;
       console.error("[kickoff-sync] could not start a build", { businessId: kickoff.businessId, error: errorLogInfo(error) });

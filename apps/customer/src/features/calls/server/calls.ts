@@ -24,6 +24,7 @@ import type { CustomerContext } from "@/lib/guards";
 import { reportError } from "@/lib/report";
 import { SERVICE_NAMES } from "@/ui";
 import { callAlert, callsAreOpen, MAX_UPCOMING_CALLS, readSlotStart, readTimeZone, upcomingCount } from "../rules";
+import { noticeKickoffBooked } from "./kickoff-booked-notice";
 import { bookCallSlot, cancelCallBooking } from "./scheduling";
 
 
@@ -161,6 +162,7 @@ export async function bookKickoff(customer: CustomerContext, startIso: string, t
       // The booking service's own answer, not something from the browser.
       recordSetupCallBooking(tx, { businessId: customer.businessId, inviteeUri: result.call.inviteeUri, now, startsAt: result.call.startsAt, endsAt: result.call.endsAt }),
     );
+    await noticeKickoffBooked({ businessId: customer.businessId, userId: customer.user.id }, result.call.startsAt);
     const previousAhead = previous?.startsAt != null && previous.startsAt > now;
     if (previousAhead && previous.inviteeUri !== null && previous.inviteeUri !== result.call.inviteeUri) {
       await cancelCallBooking(url, previous.inviteeUri).catch((error: unknown) => reportError(error, { area: "calls.kickoff-cancel-previous" }));

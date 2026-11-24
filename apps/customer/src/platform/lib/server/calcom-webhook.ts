@@ -3,7 +3,9 @@ import { createHmac, timingSafeEqual } from "node:crypto";
 import { cancelTeamCallByUri, moveSetupCallBooking, moveTeamCallByUri, recordBookedCallFromWebhook, removeSetupCallBooking } from "@brandbasket/db";
 import { z } from "zod";
 import { calcomBookingUri } from "./call-scheduling";
+import { alertCalcomChange } from "./calcom-alerts";
 import { getStaffDb } from "./db";
+import { isRepeatWebhook, webhookEventId } from "./webhook-log";
 
 /**
  * What a Cal.com delivery came to. `refused` is a missing or wrong signature; `unconfigured` is a server with no
@@ -14,6 +16,10 @@ export type CalcomWebhookResult =
   | { readonly kind: "removed" }
   | { readonly kind: "recorded" }
   | { readonly kind: "ignored" }
+  /** The same delivery was already handled: answered, not acted on. */
+  | { readonly kind: "duplicate" }
+  /** Signed, but its own createdAt is more than REPLAY_WINDOW_MS from now: a replay, or a very late retry. */
+  | { readonly kind: "stale" }
   | { readonly kind: "refused" }
   | { readonly kind: "unconfigured" };
 
@@ -35,6 +41,21 @@ export type CalcomEvent =
   | { readonly kind: "cancelled"; readonly uid: string }
   | { readonly kind: "rescheduled"; readonly fromUid: string; readonly uid: string; readonly startsAt: Date; readonly endsAt: Date }
   | { readonly kind: "other" };
+
+/** How far a delivery's own `createdAt` (inside the signed body, the moment Cal.com sent it) may be from now. */
+export const REPLAY_WINDOW_MS = 5 * 60 * 1000;
+
+/** Whether the signed body's top-level `createdAt` puts it outside the window. A body with no readable createdAt is not judged: Cal.com's docs do not promise one. */
+function isStale(rawBody: string, now: Date): boolean {
+  try {
+    const createdAt: unknown = (JSON.parse(rawBody) as { createdAt?: unknown }).createdAt;
+    if (typeof createdAt !== "string") return false;
+    const sent = new Date(createdAt).getTime();
+    return !Number.isNaN(sent) && Math.abs(now.getTime() - sent) > REPLAY_WINDOW_MS;
+  } catch {
+    return false;
+  }
+}
 
 const uid = z.string().regex(/^[A-Za-z0-9_-]{1,64}$/);
 const deliverySchema = z.object({ triggerEvent: z.string(), payload: z.unknown() });
@@ -128,6 +149,11 @@ export async function handleCalcomWebhook(rawBody: string, signature: string | n
   if (secret === undefined || secret === "") return { kind: "unconfigured" };
   if (signature === null || !verifyCalcomSignature(rawBody, signature, secret)) return { kind: "refused" };
 
+  // Cal.com sends no event id, so a redelivery is known by its body (createdAt is in it, so a repeat is byte for byte the same).
+  const eventId = webhookEventId(rawBody);
+  if (await isRepeatWebhook("calcom", eventId)) return { kind: "duplicate" };
+  if (isStale(rawBody, now)) return { kind: "stale" };
+
   const event = parseCalcomEvent(rawBody);
   switch (event.kind) {
     case "created": {
@@ -141,13 +167,18 @@ export async function handleCalcomWebhook(rawBody: string, signature: string | n
         reason: event.reason,
         note: event.note,
       });
-      return outcome === "recorded" ? { kind: "recorded" } : { kind: "ignored" };
+      if (outcome !== "recorded") return { kind: "ignored" };
+      // A booking the dashboard made is already known to staff; one made on Cal.com's own page is not.
+      if (event.purpose === null) void alertCalcomChange({ what: "booked", startsAt: event.startsAt, eventId });
+      return { kind: "recorded" };
     }
     case "cancelled": {
       const uri = calcomBookingUri(event.uid);
       // A booking is the kickoff call or a team call, never both, so the second is looked for only when the first is not it.
       const removed = (await removeSetupCallBooking(getStaffDb(), uri)) || (await cancelTeamCallByUri(getStaffDb(), uri, now));
-      return removed ? { kind: "removed" } : { kind: "ignored" };
+      if (!removed) return { kind: "ignored" };
+      void alertCalcomChange({ what: "cancelled", eventId });
+      return { kind: "removed" };
     }
     case "rescheduled": {
       const from = calcomBookingUri(event.fromUid);
@@ -155,7 +186,9 @@ export async function handleCalcomWebhook(rawBody: string, signature: string | n
       const moved =
         (await moveSetupCallBooking(getStaffDb(), { fromInviteeUri: from, toInviteeUri: to, startsAt: event.startsAt, endsAt: event.endsAt, now })) ||
         (await moveTeamCallByUri(getStaffDb(), { fromProviderUri: from, toProviderUri: to, startsAt: event.startsAt, endsAt: event.endsAt, now }));
-      return moved ? { kind: "moved" } : { kind: "ignored" };
+      if (!moved) return { kind: "ignored" };
+      void alertCalcomChange({ what: "moved", startsAt: event.startsAt, eventId });
+      return { kind: "moved" };
     }
     case "other":
       return { kind: "ignored" };

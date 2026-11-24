@@ -25,6 +25,7 @@ import { EXIT_REASON_OPTIONS } from "@brandbasket/shared/lib/account-exit";
 import { formatIstTime } from "@brandbasket/shared/lib/teams-webhook";
 import { cancelAtProvider } from "@brandbasket/shared/server/provider-cancellation";
 import { describeError, logBillingEvent } from "@brandbasket/shared/server/billing-log";
+import { notifyEvent } from "@brandbasket/shared/server/notify-event";
 import { getBillingProvider } from "@/features/checkout/server/billing";
 import { announceCustomerToTeams } from "@/features/checkout/server/teams";
 import { getAppDb, getStaffDb } from "@/lib/db";
@@ -202,6 +203,9 @@ export async function closeAccountFor(
     }
     throw error;
   }
+  // Mandatory, bell and email (a signed-out person reads the email). Once per business: closing again is refused. The restore link is
+  // never put in the notice; the sign-in page says how to restore.
+  await notifyEvent(staffDb, { event: "account.closure", audience: { kind: "customer", businessId, userIds: [userId] }, dedupeKey: businessId, data: {} });
   void announceCustomerToTeams({
     businessId,
     event: "account_closed",

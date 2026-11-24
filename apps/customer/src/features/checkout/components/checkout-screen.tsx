@@ -93,7 +93,7 @@ function PayScreen({ view }: { readonly view: Extract<CheckoutView, { kind: "pay
       ) : null}
 
       <div className="grid items-start gap-6 lg:grid-cols-12">
-        <article className="relative flex flex-col rounded-overlay border border-border border-t-2 border-t-accent-gold bg-surface p-6 shadow-hero sm:p-7 lg:col-span-7">
+        <article className="relative flex flex-col rounded-overlay border border-border bg-surface p-6 shadow-hero sm:p-7 lg:col-span-7">
           <div className="flex flex-col gap-4">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <h2 className="font-display text-xl font-bold tracking-tight text-ink">

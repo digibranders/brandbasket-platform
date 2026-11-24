@@ -160,7 +160,7 @@ describe("Shared Patterns (Release 2)", () => {
   });
 
   describe("NextActionCard (Focal)", () => {
-    it("renders focal card with 20px radius and gold top border", () => {
+    it("renders focal card with 20px radius and no top line", () => {
       const card = renderToStaticMarkup(
         createElement(NextActionCard, {
           serviceName: "Website",
@@ -172,7 +172,7 @@ describe("Shared Patterns (Release 2)", () => {
           asideNote: "Times in India",
         })
       );
-      expect(card).toContain("border-t-accent-gold");
+      expect(card).not.toContain("border-t-");
       expect(card).toContain("shadow-hero");
       expect(card).toContain("Book your kickoff call");
       expect(card).toContain("Book call");

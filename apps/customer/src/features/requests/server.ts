@@ -3,6 +3,7 @@ import { acceptChangeQuote, ChangeRequestError, consumeRateLimit, getSupportTick
 import { createAppEmailTransport, emailTeamInboxDefault, requestAcknowledgementEmail, supportReplyAlertEmail, supportTicketAlertEmail, type EmailTransport } from "@brandbasket/email";
 import { emailPreferenceAllows } from "@brandbasket/shared/server/email-preference";
 import { errorLogInfo } from "@brandbasket/shared/server/error-log-info";
+import { notifyEvent } from "@brandbasket/shared/server/notify-event";
 import { SUPPORT_CATEGORY_LABELS, SUPPORT_STATUS_LABELS, type SupportCategory } from "@brandbasket/shared/lib/support";
 import { customerEmailTransport } from "@/features/server-common/email";
 import { getStaffDb } from "@/lib/db";
@@ -84,6 +85,8 @@ export async function sendTicketAlert(
   input: { readonly category: SupportCategory; readonly subject: string; readonly description: string; readonly details?: Readonly<Record<string, string>>; readonly attachmentIds: readonly string[] },
   access: { readonly user: Requester; readonly businessId: string; readonly businessName: string },
 ): Promise<void> {
+  // The staff push (no business name in it); the alert email below stays the old sender.
+  await notifyEvent(getStaffDb(), { event: "request.new.staff", audience: { kind: "staff", businessId: access.businessId }, dedupeKey: ticket.id, data: { ticketId: ticket.id } });
   await alertTransport().send(
     supportTicketAlertEmail({
       to: alertRecipient(),
@@ -115,6 +118,8 @@ export async function sendReplyAlert(
 ): Promise<void> {
   const detail = await getSupportTicket(readDb, user.id, ticketId);
   if (detail === null) return;
+  // A reply has no id of its own here, so each call is its own notice (the action calls this once per reply).
+  await notifyEvent(getStaffDb(), { event: "request.new.staff", audience: { kind: "staff", businessId: detail.ticket.businessId ?? undefined }, dedupeKey: `${ticketId}:reply:${crypto.randomUUID()}`, data: { ticketId } });
   await alertTransport().send(
     supportReplyAlertEmail({
       to: alertRecipient(),
@@ -143,6 +148,8 @@ export async function sendRequestAcknowledgement(
   customer: { readonly user: Requester; readonly businessId: string; readonly businessName: string },
 ): Promise<void> {
   const { user, businessId, businessName } = customer;
+  // The bell comes from notify(); the acknowledgement email below is the old sender, kept.
+  await notifyEvent(db, { event: "request.received", audience: { kind: "customer", businessId, userIds: [user.id] }, dedupeKey: ticket.id, data: { ticketId: ticket.id } });
   if (isPhoneAccountEmail(user.email)) return;
 
   const allowed = await emailPreferenceAllows(

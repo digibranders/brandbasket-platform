@@ -13,7 +13,7 @@ import { AD_RESULTS_WINDOWS, adResultsHref, adResultsWindow, readAdResultsDays }
 import { getStaffDb } from "@/lib/server/db";
 import { requireStaffCan } from "@/lib/server/staff-role";
 
-export const metadata: Metadata = { title: "Ad results" };
+export const metadata: Metadata = { title: "Acquisition" };
 
 interface AdResultsPageProps {
   readonly searchParams: Promise<Readonly<Record<string, string | string[] | undefined>>>;
@@ -32,7 +32,7 @@ function moneyCell(inrCents: number, usdCents: number): string {
  * Leads are matched to a campaign by the line the ad page leaves on the enquiry. Finance and admin only.
  */
 export default async function AdResultsPage({ searchParams }: AdResultsPageProps): Promise<ReactElement> {
-  const { staff: viewer } = await requireStaffCan("money");
+  await requireStaffCan("money");
   const days = readAdResultsDays(await searchParams);
   const { from, to } = adResultsWindow(new Date(), days);
   const rows = buildAdFunnel(await listAdFunnelData(getStaffDb(), from, to));
@@ -40,8 +40,8 @@ export default async function AdResultsPage({ searchParams }: AdResultsPageProps
 
   return (
     <>
-      <PageHeader title="Ad results" meta={`Last ${String(days)} days · ${String(total.leads)} leads · ${String(total.accounts)} accounts · ${String(total.paid)} paid`} />
-      <SectionTabs role={viewer.role} page="/ad-results" />
+      <PageHeader title="Acquisition" meta={`Brandbasket's own ads. Last ${String(days)} days · ${String(total.leads)} leads · ${String(total.accounts)} accounts · ${String(total.paid)} paid`} />
+      <SectionTabs page="/ad-results" />
       <div className="mt-6">
         <FilterPills
           label="Choose the period"

@@ -1,6 +1,6 @@
-import { asc, desc, eq } from "drizzle-orm";
+import { and, asc, desc, eq } from "drizzle-orm";
 import type { Database } from "../client";
-import { businessProfiles, businesses, connectedAccounts, enquiries, notificationPreferences, sessions, users, websitePages } from "../schema";
+import { businessProfiles, businesses, connectedAccounts, enquiries, notificationPreferences, notifications, pushSubscriptions, sessions, users, websitePages } from "../schema";
 import { findDirectoryProfile } from "./directory-business-profiles";
 import { findLatestSubscriptionForBusiness, listPaymentsForBusiness } from "./billing";
 import { findBillingProfile, listTaxInvoicesForBusiness } from "./tax-invoices";
@@ -21,6 +21,7 @@ import { findBillingProfile, listTaxInvoicesForBusiness } from "./tax-invoices";
 const MAX_PAYMENTS = 1000;
 const MAX_ENQUIRIES = 5000;
 const MAX_WEBSITE_PAGES = 2000;
+const MAX_NOTIFICATIONS = 1000;
 
 export interface ExportedSession {
   readonly startedAt: Date;
@@ -119,11 +120,37 @@ export async function readExportedBusiness(db: Database, businessId: string) {
   };
 }
 
-/** The email choices a person has made, for any business: only the ones they set (the rest follow the defaults). */
+/** The notification choices a person has made, for any business: only the ones they set (the rest follow the defaults). */
 export async function readExportedNotificationPreferences(db: Database, userId: string) {
   return db
-    .select({ businessId: notificationPreferences.businessId, topic: notificationPreferences.topic, email: notificationPreferences.email, updatedAt: notificationPreferences.updatedAt })
+    .select({
+      businessId: notificationPreferences.businessId,
+      topic: notificationPreferences.topic,
+      email: notificationPreferences.email,
+      bell: notificationPreferences.bell,
+      push: notificationPreferences.push,
+      updatedAt: notificationPreferences.updatedAt,
+    })
     .from(notificationPreferences)
     .where(eq(notificationPreferences.userId, userId))
     .orderBy(asc(notificationPreferences.businessId), asc(notificationPreferences.topic));
+}
+
+/** The notices the bell holds for a person (kept 90 days), newest first. */
+export async function readExportedNotifications(db: Database, userId: string) {
+  return db
+    .select({ businessId: notifications.businessId, eventKey: notifications.eventKey, title: notifications.title, body: notifications.body, createdAt: notifications.createdAt, readAt: notifications.readAt })
+    .from(notifications)
+    .where(and(eq(notifications.audience, "customer"), eq(notifications.userId, userId)))
+    .orderBy(desc(notifications.createdAt))
+    .limit(MAX_NOTIFICATIONS);
+}
+
+/** The browsers a person turned push on in. The address and keys that reach the device are secrets, not information about the person, and stay out. */
+export async function readExportedPushDevices(db: Database, userId: string) {
+  return db
+    .select({ userAgent: pushSubscriptions.userAgent, createdAt: pushSubscriptions.createdAt, revokedAt: pushSubscriptions.revokedAt })
+    .from(pushSubscriptions)
+    .where(and(eq(pushSubscriptions.audience, "customer"), eq(pushSubscriptions.userId, userId)))
+    .orderBy(asc(pushSubscriptions.createdAt));
 }

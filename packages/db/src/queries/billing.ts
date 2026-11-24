@@ -1,4 +1,5 @@
 import { and, asc, desc, eq, gte, inArray, isNotNull, isNull, lt, lte, ne, notInArray, or, sql, sum, type SQL } from "drizzle-orm";
+import { queueSalesRedemption } from "./sales-redemptions";
 import type { Database } from "../client";
 import type { ScopedTransaction } from "../scope";
 import { bundledNetCents, findLiveBundledAddOns, insertBundledAddOns, removeBundledAddOnsOf, type NewBundledAddOn } from "./bundled-add-ons";
@@ -1137,6 +1138,9 @@ export async function recordPaymentAndActivate(db: Runner, input: PaymentActivat
       .where(eq(subscriptions.id, input.subscriptionId));
 
     const leadsMarkedPaid = input.kind === "initial" ? await markLeadPaidForBusiness(tx, input.businessId) : 0;
+    // A payment on a plain coupon is queued for Fynix in this same transaction, so the
+    // payment and the news of it exist together or not at all.
+    await queueSalesRedemption(tx, payment.id);
     return { payment, alreadyRecorded: false, leadsMarkedPaid };
   });
 }

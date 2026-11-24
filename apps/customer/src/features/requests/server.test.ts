@@ -1,9 +1,14 @@
 import { isPhoneAccountEmail, shouldEmail, type Database } from "@brandbasket/db";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { sendRequestAcknowledgement } from "./server";
+import { notifyEvent } from "@brandbasket/shared/server/notify-event";
+import { createAppEmailTransport } from "@brandbasket/email";
+import { sendRequestAcknowledgement, sendTicketAlert } from "./server";
 import { customerEmailTransport } from "@/features/server-common/email";
 
 vi.mock("server-only", () => ({}));
+vi.mock("@brandbasket/shared/server/notify-event", () => ({ notifyEvent: vi.fn(async () => undefined) }));
+vi.mock("@/lib/db", () => ({ getStaffDb: () => ({ kind: "staff-db" }) }));
+vi.mock("@brandbasket/email", async (importOriginal) => ({ ...(await importOriginal<typeof import("@brandbasket/email")>()), createAppEmailTransport: vi.fn() }));
 vi.mock("@/lib/env", () => ({ serverEnv: () => ({ APP_ORIGIN: "https://app.brandbasket.in" }) }));
 vi.mock("@/features/server-common/email", () => ({ customerEmailTransport: vi.fn() }));
 vi.mock("@brandbasket/db", async (importOriginal) => ({
@@ -63,5 +68,22 @@ describe("sendRequestAcknowledgement", () => {
     send.mockRejectedValue(new Error("Brevo down"));
 
     await expect(sendRequestAcknowledgement(DB, TICKET, REQUEST, CUSTOMER)).resolves.toBeUndefined();
+  });
+});
+
+describe("the request notices", () => {
+  it("notifies the requester once with the ticket, even when no email goes out", async () => {
+    vi.mocked(isPhoneAccountEmail).mockReturnValue(true);
+    await sendRequestAcknowledgement(DB, TICKET, REQUEST, CUSTOMER);
+    expect(notifyEvent).toHaveBeenCalledOnce();
+    expect(notifyEvent).toHaveBeenCalledWith(DB, { event: "request.received", audience: { kind: "customer", businessId: "business-1", userIds: ["user-1"] }, dedupeKey: TICKET.id, data: { ticketId: TICKET.id } });
+  });
+
+  it("notifies staff once for a new request, with no business name in the data, and keeps the alert email", async () => {
+    vi.mocked(createAppEmailTransport).mockReturnValue({ send } as never);
+    await sendTicketAlert({ id: TICKET.id, displayRef: "FY-1" }, { category: "website_change", subject: "Add a page", description: "Please", attachmentIds: [] }, { user: USER, businessId: "business-1", businessName: "Riverside Plumbing" });
+    expect(notifyEvent).toHaveBeenCalledOnce();
+    expect(notifyEvent).toHaveBeenCalledWith(expect.anything(), { event: "request.new.staff", audience: { kind: "staff", businessId: "business-1" }, dedupeKey: TICKET.id, data: { ticketId: TICKET.id } });
+    expect(send).toHaveBeenCalledOnce();
   });
 });

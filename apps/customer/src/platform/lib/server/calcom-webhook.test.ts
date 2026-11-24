@@ -2,11 +2,15 @@
 import { cancelTeamCallByUri, moveSetupCallBooking, moveTeamCallByUri, recordBookedCallFromWebhook, removeSetupCallBooking } from "@brandbasket/db";
 import { createHmac } from "node:crypto";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { alertCalcomChange } from "./calcom-alerts";
 import { getStaffDb } from "./db";
+import { isRepeatWebhook } from "./webhook-log";
 import { handleCalcomWebhook, parseCalcomEvent, verifyCalcomSignature } from "./calcom-webhook";
 
 vi.mock("server-only", () => ({}));
 vi.mock("./db", () => ({ getStaffDb: vi.fn() }));
+vi.mock("./calcom-alerts", () => ({ alertCalcomChange: vi.fn(async () => undefined) }));
+vi.mock("./webhook-log", () => ({ isRepeatWebhook: vi.fn(), webhookEventId: (body: string) => `body:${body.length}` }));
 vi.mock("@brandbasket/db", () => ({
   cancelTeamCallByUri: vi.fn(),
   moveSetupCallBooking: vi.fn(),
@@ -52,6 +56,7 @@ beforeEach(() => {
   vi.mocked(moveTeamCallByUri).mockResolvedValue(true);
   vi.mocked(cancelTeamCallByUri).mockResolvedValue(true);
   vi.mocked(recordBookedCallFromWebhook).mockResolvedValue("recorded");
+  vi.mocked(isRepeatWebhook).mockResolvedValue(false);
 });
 
 afterEach(() => {
@@ -197,5 +202,63 @@ describe("handleCalcomWebhook", () => {
     vi.stubEnv("CALCOM_WEBHOOK_SECRET", "");
     expect(await handleCalcomWebhook(cancelled, sign(cancelled, ""), NOW)).toEqual({ kind: "unconfigured" });
     expect(removeSetupCallBooking).not.toHaveBeenCalled();
+  });
+});
+
+describe("handleCalcomWebhook repeats, replays and alerts", () => {
+  it("answers a delivery it already handled without acting or alerting", async () => {
+    vi.mocked(isRepeatWebhook).mockResolvedValue(true);
+    expect(await handleCalcomWebhook(cancelled, sign(cancelled), NOW)).toEqual({ kind: "duplicate" });
+    expect(isRepeatWebhook).toHaveBeenCalledWith("calcom", `body:${cancelled.length}`);
+    expect(removeSetupCallBooking).not.toHaveBeenCalled();
+    expect(alertCalcomChange).not.toHaveBeenCalled();
+  });
+
+  it("does not look for a repeat when the signature is wrong", async () => {
+    expect(await handleCalcomWebhook(cancelled, sign(cancelled, "other"), NOW)).toEqual({ kind: "refused" });
+    expect(isRepeatWebhook).not.toHaveBeenCalled();
+  });
+
+  it("refuses to act on a signed delivery whose createdAt is more than five minutes from now", async () => {
+    const old = JSON.stringify({ triggerEvent: "BOOKING_CANCELLED", createdAt: "2026-10-23T09:54:59.000Z", payload: { uid: "old-uid-1" } });
+    expect(await handleCalcomWebhook(old, sign(old), NOW)).toEqual({ kind: "stale" });
+    expect(removeSetupCallBooking).not.toHaveBeenCalled();
+    const future = JSON.stringify({ triggerEvent: "BOOKING_CANCELLED", createdAt: "2026-10-23T10:05:01.000Z", payload: { uid: "old-uid-1" } });
+    expect(await handleCalcomWebhook(future, sign(future), NOW)).toEqual({ kind: "stale" });
+  });
+
+  it("acts on a delivery just inside the window, and on one with no createdAt", async () => {
+    const edge = JSON.stringify({ triggerEvent: "BOOKING_CANCELLED", createdAt: "2026-10-23T09:55:01.000Z", payload: { uid: "old-uid-1" } });
+    expect(await handleCalcomWebhook(edge, sign(edge), NOW)).toEqual({ kind: "removed" });
+    const bare = JSON.stringify({ triggerEvent: "BOOKING_CANCELLED", payload: { uid: "old-uid-1" } });
+    expect(await handleCalcomWebhook(bare, sign(bare), NOW)).toEqual({ kind: "removed" });
+  });
+
+  it("alerts staff for a booking made on Cal.com's page, but not one the dashboard made", async () => {
+    const outside = created({ source: "other" });
+    await handleCalcomWebhook(outside, sign(outside), NOW);
+    expect(alertCalcomChange).toHaveBeenCalledWith({ what: "booked", startsAt: new Date("2026-12-02T08:30:00.000Z"), eventId: `body:${outside.length}` });
+    vi.mocked(alertCalcomChange).mockClear();
+    const inApp = created({ source: "dashboard", purpose: "call" });
+    await handleCalcomWebhook(inApp, sign(inApp), NOW);
+    expect(alertCalcomChange).not.toHaveBeenCalled();
+  });
+
+  it("alerts staff for a cancellation and a move it acted on, and for nothing it ignored", async () => {
+    await handleCalcomWebhook(cancelled, sign(cancelled), NOW);
+    expect(alertCalcomChange).toHaveBeenLastCalledWith({ what: "cancelled", eventId: `body:${cancelled.length}` });
+    await handleCalcomWebhook(rescheduled, sign(rescheduled), NOW);
+    expect(alertCalcomChange).toHaveBeenLastCalledWith({ what: "moved", startsAt: new Date("2026-10-27T06:00:00.000Z"), eventId: `body:${rescheduled.length}` });
+    vi.mocked(alertCalcomChange).mockClear();
+    vi.mocked(removeSetupCallBooking).mockResolvedValue(false);
+    vi.mocked(cancelTeamCallByUri).mockResolvedValue(false);
+    vi.mocked(moveSetupCallBooking).mockResolvedValue(false);
+    vi.mocked(moveTeamCallByUri).mockResolvedValue(false);
+    await handleCalcomWebhook(cancelled, sign(cancelled), NOW);
+    await handleCalcomWebhook(rescheduled, sign(rescheduled), NOW);
+    vi.mocked(recordBookedCallFromWebhook).mockResolvedValue("ignored" as never);
+    const unmatched = created(null);
+    await handleCalcomWebhook(unmatched, sign(unmatched), NOW);
+    expect(alertCalcomChange).not.toHaveBeenCalled();
   });
 });

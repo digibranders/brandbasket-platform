@@ -37,8 +37,8 @@ beforeEach(() => {
 describe("loadSlotsAction", () => {
   it("calls the live-period guard and lists the times", async () => {
     vi.mocked(readBookingUrl).mockResolvedValue("https://cal.com/a/b");
-    vi.mocked(listCallSlots).mockResolvedValue([START]);
-    expect(await loadSlotsAction()).toEqual({ ok: true, data: { status: "ok", slots: [START] } });
+    vi.mocked(listCallSlots).mockResolvedValue({ times: [START], minutes: 45 });
+    expect(await loadSlotsAction()).toEqual({ ok: true, data: { status: "ok", slots: [START], minutes: 45 } });
     expect(requireBilling).toHaveBeenCalledOnce();
   });
 

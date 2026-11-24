@@ -223,7 +223,7 @@ export async function sendPreviewAction(formData: FormData): Promise<void> {
 
   await recordStaffAction(staff, { businessId, kind: "project.preview_sent", summary: "Sent the preview", data: { previewUrl: parsedUrl.data, notified } });
   revalidateClient(businessId);
-  redirect(projectPreviewNoticeHref(businessId, notified === "emailed" ? "sent" : notified === "no-email" ? "sent-no-email" : "sent-email-failed"));
+  redirect(projectPreviewNoticeHref(businessId, notified === "emailed" ? "sent" : notified === "no-email" ? "sent-no-email" : notified === "email-queued" ? "sent-email-queued" : "sent-email-failed"));
 }
 
 /** Sends the customer the preview email again, to the link already on their dashboard. The project's stage does not change. */
@@ -237,6 +237,7 @@ export async function resendPreviewEmailAction(formData: FormData): Promise<void
   await recordStaffAction(staff, { businessId, kind: "project.preview_email_resent", summary: "Sent the preview email again", data: { result } });
   revalidateClient(businessId);
   if (result === "email-failed") redirect(projectPreviewNoticeHref(businessId, "resend-failed"));
+  if (result === "email-queued") redirect(projectPreviewNoticeHref(businessId, "resend-queued"));
   redirect(projectPreviewNoticeHref(businessId, result === "emailed" ? "resent" : "sent-no-email"));
 }
 
@@ -260,7 +261,7 @@ export async function markLiveAction(formData: FormData): Promise<void> {
 
   await recordStaffAction(staff, { businessId, kind: "project.marked_live", summary: "Marked the website live", data: { notified, addressConfirmedByStaff: confirmUnverifiedAddress } });
   revalidateClient(businessId);
-  redirect(projectLaunchNoticeHref(businessId, notified === "emailed" ? "launched" : notified === "no-email" ? "launched-no-email" : "launched-email-failed"));
+  redirect(projectLaunchNoticeHref(businessId, notified === "emailed" ? "launched" : notified === "no-email" ? "launched-no-email" : notified === "email-queued" ? "launched-email-queued" : "launched-email-failed"));
 }
 
 /** Saves the launch checks the staff member ticked on the form. A check is ticked when its `check_<key>` field is present. */
@@ -288,6 +289,7 @@ export async function resendLaunchEmailAction(formData: FormData): Promise<void>
   await recordStaffAction(staff, { businessId, kind: "project.launch_email_resent", summary: "Sent the launch email again", data: { result } });
   revalidateClient(businessId);
   if (result === "email-failed") redirect(projectLaunchNoticeHref(businessId, "resend-failed"));
+  if (result === "email-queued") redirect(projectLaunchNoticeHref(businessId, "resend-queued"));
   redirect(projectLaunchNoticeHref(businessId, result === "emailed" ? "resent" : "launched-no-email"));
 }
 

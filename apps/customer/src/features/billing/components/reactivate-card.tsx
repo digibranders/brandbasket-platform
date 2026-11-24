@@ -23,7 +23,7 @@ export function ReactivateCard({ view, canManage }: { readonly view: Reactivatio
   const confirm = useConfirmPayment(state, pending);
   const failure = state !== null && !state.ok && !pending ? state : null;
   return (
-    <article className="relative flex flex-col rounded-overlay border border-border border-t-2 border-t-accent-gold bg-surface p-6 shadow-hero sm:p-7">
+    <article className="relative flex flex-col rounded-overlay border border-border bg-surface p-6 shadow-hero sm:p-7">
       <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
         <h2 className="font-display text-2xl font-bold tracking-tight text-ink">Your plan has ended</h2>
         <StatusChip label="Plan ended" variant="waiting" />

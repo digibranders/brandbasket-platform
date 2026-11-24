@@ -15,9 +15,10 @@ const MORE = "more";
 export type SlotsState = { readonly kind: "loading" } | SlotList;
 
 /** Loads the times once, and drops a time the booking service said was just taken so it cannot be picked again. */
-export function useCallSlots(): { readonly state: SlotsState; readonly drop: (slot: string) => void } {
+export function useCallSlots(enabled = true): { readonly state: SlotsState; readonly drop: (slot: string) => void } {
   const [state, setState] = useState<SlotsState>({ kind: "loading" });
   useEffect(() => {
+    if (!enabled) return;
     let live = true;
     loadSlotsAction()
       .then((result): SlotsState => (result.ok && result.data !== undefined ? result.data : { status: "unavailable", bookingUrl: null }))
@@ -28,12 +29,12 @@ export function useCallSlots(): { readonly state: SlotsState; readonly drop: (sl
     return () => {
       live = false;
     };
-  }, []);
+  }, [enabled]);
   const drop = (slot: string): void =>
     setState((current) => {
       if (!("status" in current) || current.status !== "ok") return current;
       const left = current.slots.filter((iso) => iso !== slot);
-      return left.length > 0 ? { status: "ok", slots: left } : { status: "unavailable", bookingUrl: null };
+      return left.length > 0 ? { ...current, slots: left } : { status: "unavailable", bookingUrl: null };
     });
   return { state, drop };
 }

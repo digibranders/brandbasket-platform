@@ -17,13 +17,14 @@ import {
   type Payment,
   type TaxInvoice,
 } from "@brandbasket/db";
-import { firstChargeReminderEmail, paymentFailedEmail, paymentReceivedEmail, paymentRefundedEmail, type EmailMessage, type PaymentFailedPlan } from "@brandbasket/email";
+import { emailDate, firstChargeReminderEmail, paymentFailedEmail, paymentReceivedEmail, paymentRefundedEmail, type EmailMessage, type EmailSendOutcome, type PaymentFailedPlan } from "@brandbasket/email";
 import { nextBundledNetCents, nextDiscountCents } from "../lib/billing/bundle";
 import { nextPaymentDate } from "../lib/billing/period";
 import { paymentsContinue } from "../lib/billing/payments-continue";
 import { receiptDownloadHref } from "../lib/billing/receipt-download";
 import { renewalChargeCents } from "../lib/billing/terms";
 import { emailPreferenceAllows } from "./email-preference";
+import { notifyEvent } from "./notify-event";
 import { paymentServiceNames, serviceTitle } from "./payment-alerts";
 
 /** Where the customer pays: the payment and details step on the dashboard. */
@@ -36,7 +37,7 @@ const PLAN_PAYMENT_KINDS: ReadonlySet<Payment["kind"]> = new Set(["initial", "re
 
 export interface PaymentEmailDeps {
   /** Delivers one message: the app's customer transport. Called only when there is someone to write to. */
-  readonly send: (message: EmailMessage) => Promise<void>;
+  readonly send: (message: EmailMessage) => Promise<EmailSendOutcome | void>;
   /** The dashboard's origin, for the links in the email. */
   readonly dashboardOrigin: string;
 }
@@ -79,7 +80,15 @@ export async function sendPaymentReceipt(db: Database, deps: PaymentEmailDeps, p
     const base = await findPaymentAlertBase(db, paymentId);
     if (base === null) return;
     const { payment, owner } = base;
-    if (payment.status !== "captured" || isUnappliedReason(payment.attentionReason)) return;
+    if (payment.status !== "captured") return;
+    if (isUnappliedReason(payment.attentionReason)) {
+      // No receipt for money that bought nothing. The owner is told it arrived and is being looked at; staff get a push.
+      await notifyEvent(db, { event: "billing.unapplied_payment", audience: { kind: "customer", businessId: payment.businessId }, dedupeKey: payment.id, data: {} });
+      await notifyEvent(db, { event: "billing.payment_needs_look.staff", audience: { kind: "staff", businessId: payment.businessId }, dedupeKey: payment.id, data: {} });
+      return;
+    }
+    // The bell and push come from notify() (its dedupe key is the payment); the receipt email below is the old sender, kept.
+    await notifyEvent(db, { event: "billing.payment_received", audience: { kind: "customer", businessId: payment.businessId }, dedupeKey: payment.id, data: {} });
     const to = recipientOf(owner);
     if (to === null) return;
     const receiptUrl = new URL(receiptDownloadHref([payment.id]), deps.dashboardOrigin).toString();
@@ -110,6 +119,8 @@ export async function sendPaymentReceipt(db: Database, deps: PaymentEmailDeps, p
 
 export interface FailedPaymentEmail {
   readonly businessId: string;
+  /** The provider's payment id: what makes a retried delivery the same notice. */
+  readonly providerPaymentId: string;
   readonly amountCents: number;
   readonly currency: BillingCurrency;
   /** What an extra charge was for; null for a payment of the plan. */
@@ -136,20 +147,15 @@ async function failedPaymentItems(db: Database, input: FailedPaymentEmail): Prom
 /**
  * Emails the customer that a payment of theirs did not go through, with where their plan stands and a link to pay. Call it once, when
  * the failed payment was recorded for the first time: recordFailedPayment is keyed on the provider's payment id, so a retried delivery
- * records nothing and the caller sends nothing. Skipped when the owner turned billing emails off for this business (the receipt,
- * a tax document, is not). Best-effort: it never throws.
+ * records nothing and the caller sends nothing. Always sent: no email preference is read. Best-effort: it never throws.
  */
 export async function sendPaymentFailed(db: Database, deps: PaymentEmailDeps, input: FailedPaymentEmail, now: Date = new Date()): Promise<void> {
   try {
+    // Mandatory since the owner's answer of 2026-11-16: the bell and push always go, and so does the email (no preference is read).
+    await notifyEvent(db, { event: "billing.payment_failed", audience: { kind: "customer", businessId: input.businessId }, dedupeKey: input.providerPaymentId, data: {} });
     const details = await findBusinessAlertDetails(db, input.businessId);
     const to = details === null ? null : recipientOf(details.owner);
     if (details === null || to === null) return;
-    const allowed =
-      details.owner.userId === null ||
-      (await emailPreferenceAllows(db, details.owner.userId, input.businessId, "billing", (error) =>
-        console.error("[payment-email] Could not read the email preference, sending anyway.", { businessId: input.businessId, error: error instanceof Error ? error.name : "error" }),
-      ));
-    if (!allowed) return;
     const [items, plan] = await Promise.all([
       failedPaymentItems(db, input),
       input.chargeDescription === null ? planAfterFailure(db, input.businessId, now) : Promise.resolve(null),
@@ -191,6 +197,13 @@ export async function sendFirstChargeReminder(
   now: Date = new Date(),
 ): Promise<void> {
   try {
+    // The bell comes from notify() (once per charge date); the email below is the existing template, kept.
+    await notifyEvent(db, {
+      event: "billing.renewal_upcoming",
+      audience: { kind: "customer", businessId: input.businessId },
+      dedupeKey: `${input.businessId}:${input.chargeDate.toISOString()}`,
+      data: { when: emailDate(input.chargeDate) },
+    });
     const details = await findBusinessAlertDetails(db, input.businessId);
     const to = details === null ? null : recipientOf(details.owner);
     if (details === null || to === null) return;
@@ -267,6 +280,13 @@ export async function sendPaymentRefunded(
     const base = await findPaymentAlertBase(db, input.paymentId);
     if (base === null) return;
     const { payment, owner } = base;
+    // One notice per refund: the credit note when there is one, else the payment and the amount (a payment can be refunded in parts).
+    await notifyEvent(db, {
+      event: "billing.refund",
+      audience: { kind: "customer", businessId: payment.businessId },
+      dedupeKey: input.creditNoteNumber ?? `${payment.id}:${input.refundedAmountCents}`,
+      data: {},
+    });
     const to = recipientOf(owner);
     if (to === null) return;
     const billingUrl = new URL(BILLING_PATH, deps.dashboardOrigin).toString();

@@ -31,3 +31,12 @@ describe("ProjectControls", () => {
     expect(html).toContain('value="yes"');
   });
 });
+
+describe("ProjectControls without a builder", () => {
+  it("has no builder to pick", async () => {
+    const element = await ProjectControls({ businessId: "b1", notice: undefined });
+    const html = renderToStaticMarkup(element!);
+    expect(html).not.toContain("Builder");
+    expect(html).not.toContain("Save builder");
+  });
+});

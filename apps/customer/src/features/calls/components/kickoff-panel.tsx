@@ -3,12 +3,12 @@
 import { callInviteHref } from "@brandbasket/shared/lib/call-slots";
 import { NextActionCard } from "@brandbasket/shared/ui/patterns";
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useState, useTransition, type ReactNode } from "react";
 import { formatDateTime, formatTime } from "@/lib/format";
 import { Banner, Button, Icon, LinkButton } from "@/ui";
 import { bookKickoffAction } from "../actions";
-import { BOOK_PROBLEM_TEXT, bookButtonLabel, dayLabel, promiseDates } from "../rules";
-import { SlotChooser, useCallSlots } from "./slot-picker";
+import { BOOK_PROBLEM_TEXT, bookButtonLabel, callLengthLabel, dayLabel, promiseDates } from "../rules";
+import { SlotChooser, useCallSlots, type SlotsState } from "./slot-picker";
 
 /** The words for what the kickoff plans, by service. */
 const PLANS: Readonly<Record<"website" | "social" | "search", string>> = {
@@ -24,9 +24,8 @@ function plansLine(services: readonly ("website" | "social" | "search")[]): stri
 }
 
 /** The picker and its Book button: books the kickoff, then refreshes Home into its booked state. */
-function KickoffPicker({ showLiveBy, bookingUrl }: { readonly showLiveBy: boolean; readonly bookingUrl: string | null }) {
+function KickoffPicker({ showLiveBy, bookingUrl, state, drop }: { readonly showLiveBy: boolean; readonly bookingUrl: string | null; readonly state: SlotsState; readonly drop: (slot: string) => void }) {
   const router = useRouter();
-  const { state, drop } = useCallSlots();
   const [slot, setSlot] = useState<string | null>(null);
   const [problem, setProblem] = useState<string | null>(null);
   const [pending, startBooking] = useTransition();
@@ -87,13 +86,46 @@ export interface KickoffPanelProps {
   readonly missedLine: string | null;
 }
 
+/** What the call is, then the picker. The call's length comes from the booking service with the times, so it is never typed here. */
+function KickoffAsk({ services, bookingUrl, canBook, cannotBook, booked, missedLine, onKeep }: Pick<KickoffPanelProps, "services" | "bookingUrl" | "canBook" | "missedLine"> & {
+  readonly cannotBook: ReactNode;
+  readonly booked: boolean;
+  readonly onKeep: () => void;
+}) {
+  const { state, drop } = useCallSlots(canBook);
+  const minutes = "status" in state && state.status === "ok" ? state.minutes : null;
+  return (
+    <NextActionCard
+      serviceName="Website"
+      serviceIcon={<Icon name="Browser" size="md" />}
+      serviceBadge="Active"
+      title={booked ? "Pick a new time" : "Book your kickoff call"}
+      description={`${minutes === null ? "Video call" : `${callLengthLabel(minutes)} on video`}. We go through your business and plan your ${plansLine(services)} with you.`}
+      secondaryAction={
+        booked ? (
+          <Button variant="ghost" onClick={onKeep}>
+            Keep my time
+          </Button>
+        ) : undefined
+      }
+      asideNote="Times in India"
+      statusText="Waiting for your kickoff call"
+      statusTone="waiting"
+    >
+      <div className="flex flex-col gap-4">
+        {missedLine === null ? null : <p className="type-sub font-semibold text-ink">{missedLine}</p>}
+        {canBook ? <KickoffPicker showLiveBy={services.includes("website")} bookingUrl={bookingUrl} state={state} drop={drop} /> : cannotBook}
+      </div>
+    </NextActionCard>
+  );
+}
+
 /**
  * Home kickoff panel. Unbooked: what the call is, then the picker. Booked: the time, Add to calendar
  * and Change time, which opens the picker again.
  */
 export function KickoffPanel({ services, bookingUrl, canBook, cannotBookLine, booked, missedLine }: KickoffPanelProps) {
   const [changing, setChanging] = useState(false);
-  const hasWebsite = services.includes("website");
   const cannotBook =
     cannotBookLine === null ? null : (
       <p className="type-body text-ink-2">
@@ -180,27 +212,6 @@ export function KickoffPanel({ services, bookingUrl, canBook, cannotBookLine, bo
   }
 
   return (
-    <NextActionCard
-      serviceName="Website"
-      serviceIcon={<Icon name="Browser" size="md" />}
-      serviceBadge="Active"
-      title={booked === null ? "Book your kickoff call" : "Pick a new time"}
-      description={`30 minutes on video. We go through your business and plan your ${plansLine(services)} with you.`}
-      secondaryAction={
-        booked !== null ? (
-          <Button variant="ghost" onClick={() => setChanging(false)}>
-            Keep my time
-          </Button>
-        ) : undefined
-      }
-      asideNote="Times in India"
-      statusText="Waiting for your kickoff call"
-      statusTone="waiting"
-    >
-      <div className="flex flex-col gap-4">
-        {missedLine === null ? null : <p className="type-sub font-semibold text-ink">{missedLine}</p>}
-        {canBook ? <KickoffPicker showLiveBy={hasWebsite} bookingUrl={bookingUrl} /> : cannotBook}
-      </div>
-    </NextActionCard>
+    <KickoffAsk services={services} bookingUrl={bookingUrl} canBook={canBook} cannotBook={cannotBook} booked={booked !== null} missedLine={missedLine} onKeep={() => setChanging(false)} />
   );
 }
