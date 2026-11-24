@@ -224,6 +224,7 @@ export async function deliveryHealth(db: Runner, since: Date): Promise<DeliveryH
     razorpay: bySource("razorpay"),
     calcom: bySource("calcom"),
     oyechats: bySource("oyechats"),
+    social_auto: bySource("social_auto"),
     brevo: email === undefined || Number(email.total) === 0 ? QUIET : asHealth(email),
     teams: teams === undefined || Number(teams.total) === 0 ? QUIET : asHealth(teams),
   };

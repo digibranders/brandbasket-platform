@@ -1,0 +1,11 @@
+# Starts brandbasket-social-auto-catch-up.service every 15 minutes: the sweep behind the social-auto webhook.
+[Unit]
+Description=Brandbasket catch up on missed social-auto events
+
+[Timer]
+OnCalendar=*:0/15
+Persistent=true
+RandomizedDelaySec=60
+
+[Install]
+WantedBy=timers.target
