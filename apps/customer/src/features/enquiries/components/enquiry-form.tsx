@@ -1,6 +1,7 @@
 "use client";
 
-import { useActionState, useEffect } from "react";
+import { useEffect } from "react";
+import { useGuardedActionState } from "@/lib/use-guarded-action-state";
 import { STATUS_WORDS } from "@/components";
 import { Banner, Button, Field, Select, Textarea, useToast } from "@/ui";
 import { saveEnquiryAction } from "../actions";
@@ -10,14 +11,14 @@ const STATUS_OPTIONS = (["new", "contacted", "won", "lost"] as const).map((value
 
 /** The status and the private note of one enquiry, saved by a guarded action. Shown to owners and editors only. */
 export function EnquiryForm({ row }: { readonly row: EnquiryRow & { readonly status: "new" | "contacted" | "won" | "lost" } }) {
-  const [state, action, pending] = useActionState(saveEnquiryAction, null);
+  const [state, action, pending, formRef] = useGuardedActionState(saveEnquiryAction, null);
   const toast = useToast();
   useEffect(() => {
     if (state?.ok === true) toast("Enquiry updated");
   }, [state, toast]);
 
   return (
-    <form action={action} className="flex flex-col gap-4">
+    <form ref={formRef} action={action} className="flex flex-col gap-4">
       <input type="hidden" name="id" value={row.id} />
       {state?.ok === false ? <Banner tone="neg">{state.message}</Banner> : null}
       <Field label="Status" nativeLabel={false} {...(state?.ok === false && state.fieldErrors?.status !== undefined ? { error: state.fieldErrors.status } : {})}>

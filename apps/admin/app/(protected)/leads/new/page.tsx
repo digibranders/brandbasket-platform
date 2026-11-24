@@ -8,7 +8,7 @@ import { PageHeader } from "@/components/console/page-header";
 import { requireStaffAccess } from "@/lib/server/staff-access";
 import { createLeadAction } from "./actions";
 
-export const metadata: Metadata = { title: "Add lead" };
+export const metadata: Metadata = { title: "Add enquiry" };
 
 export default async function NewLeadPage(): Promise<ReactElement> {
   await requireStaffAccess();
@@ -17,13 +17,9 @@ export default async function NewLeadPage(): Promise<ReactElement> {
   return (
     <>
       <PageHeader
-        back={{ href: "/leads", label: "Leads" }}
-        title={
-          <>
-            Add a <em>lead.</em>
-          </>
-        }
-        meta="An enquiry by phone, email or in person. It joins the journey as new, like the website form."
+        back={{ href: "/leads", label: "Enquiries" }}
+        title="Add enquiry"
+        meta="An enquiry by phone, email or in person. It joins the list as new, like the website form."
       />
       <div className="mt-10 border-t border-line pt-10">
         <NewLeadForm

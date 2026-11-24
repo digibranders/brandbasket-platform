@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState, useState } from "react";
+import { useState } from "react";
+import { useGuardedActionState } from "@/lib/use-guarded-action-state";
 import { Banner, Button, Field, Input } from "@/ui";
 import { requestPasswordResetAction } from "../actions";
 import { SIGN_IN_PATH } from "../rules/account-entry";
@@ -11,7 +12,7 @@ import { TurnstileWidget } from "./turnstile";
 
 /** Asks for the email or mobile number an account signs in with, and says the same thing whether or not it has one. */
 export function ForgotPasswordForm({ siteKey }: { readonly siteKey: string | null }) {
-  const [state, formAction, pending] = useActionState(requestPasswordResetAction, null);
+  const [state, formAction, pending] = useGuardedActionState(requestPasswordResetAction, null);
   const [identifier, setIdentifier] = useState("");
 
   if (state?.ok === true && state.data !== undefined) {

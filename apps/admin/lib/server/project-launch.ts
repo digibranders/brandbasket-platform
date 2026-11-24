@@ -12,8 +12,9 @@ import {
   type LaunchCheckKey,
 } from "@brandbasket/db";
 import { websiteLiveEmail } from "@brandbasket/email";
+import { notifyEvent } from "@brandbasket/shared/server/notify-event";
 import { customerEmailTransport } from "./email";
-import type { OwnerNotification } from "./project-preview";
+import { ownerNotificationOf, type OwnerNotification } from "./project-preview";
 import { checkSiteAddress, type SiteCheckFailure } from "./site-check";
 
 /** How long after going live staff may send the launch email again. */
@@ -63,10 +64,9 @@ export type LaunchResend = OwnerNotification | "not-allowed";
 async function emailLaunch(
   db: Database,
   input: { readonly businessId: string; readonly to: string; readonly businessName: string; readonly websiteUrl: string },
-): Promise<"emailed" | "email-failed"> {
+): Promise<OwnerNotification> {
   try {
-    await customerEmailTransport(db).send(websiteLiveEmail({ to: input.to, businessName: input.businessName, websiteUrl: input.websiteUrl }));
-    return "emailed";
+    return ownerNotificationOf(await customerEmailTransport(db).send(websiteLiveEmail({ to: input.to, businessName: input.businessName, websiteUrl: input.websiteUrl })));
   } catch (error) {
     console.error("[launch-email]", { businessId: input.businessId, error });
     return "email-failed";
@@ -109,6 +109,8 @@ export async function launchProject(db: Database, input: LaunchProjectInput, now
   } catch (error) {
     if (!(error instanceof InvalidWebsiteUrlError)) throw error;
   }
+  // The bell and push, once per project going live. The website live email below is the old sender, kept; resending it adds no notice.
+  await notifyEvent(db, { event: "website.live", audience: { kind: "customer", businessId: input.businessId }, dedupeKey: `${client.project?.id ?? input.businessId}:live`, data: {} });
   if (client.owner.email === null) return "no-email";
   return emailLaunch(db, { businessId: input.businessId, to: client.owner.email, businessName: client.businessName, websiteUrl });
 }

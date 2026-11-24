@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useTransition, type FormEvent } from "react";
-import type { ActionFailure, ActionResult } from "@/lib/action-result";
+import { guardAction } from "@brandbasket/shared/lib/guard-action";
+import { actionFail, type ActionFailure, type ActionResult } from "@/lib/action-result";
 
 export interface ActionForm {
   readonly submit: (event: FormEvent<HTMLFormElement>) => void;
@@ -16,6 +17,7 @@ export interface ActionForm {
 /**
  * Submits a form to a server action without the browser resetting it: a refused form keeps everything typed, and the caller
  * decides what a success does (clear the fields, close a dialog, show a toast). An action that redirects navigates from here.
+ * A dropped or rejected request becomes a failure with the recoverable message, and the form keeps what was typed.
  */
 export function useActionForm<T = undefined>(
   action: (formData: FormData) => Promise<ActionResult<T>>,
@@ -23,6 +25,7 @@ export function useActionForm<T = undefined>(
 ): ActionForm {
   const [failure, setFailure] = useState<ActionFailure | null>(null);
   const [pending, startTransition] = useTransition();
+  const guarded = guardAction(action, (message): ActionResult<T> => actionFail(message));
 
   function submit(event: FormEvent<HTMLFormElement>): void {
     event.preventDefault();
@@ -30,7 +33,7 @@ export function useActionForm<T = undefined>(
     const data = new FormData(form);
     setFailure(null);
     startTransition(async () => {
-      const result = await action(data);
+      const result = await guarded(data);
       if (result.ok) onSuccess?.(result.data, form);
       else setFailure(result);
     });

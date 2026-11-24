@@ -6,14 +6,17 @@ import {
   StatTile,
   StatusChip,
 } from "@brandbasket/shared/ui/patterns";
+import { ConsolePatternsDemo } from "@brandbasket/shared/ui/patterns/console-patterns-demo";
+import { requireStaffAccess } from "@/lib/server/staff-access";
 
 export const metadata: Metadata = { title: "Design system · Staff console" };
 
 /**
  * Preview of shared patterns for staff console.
  */
-export default function AdminDesignSystemPage() {
+export default async function AdminDesignSystemPage() {
   if (process.env.NODE_ENV === "production") notFound();
+  await requireStaffAccess();
 
   return (
     <main className="mx-auto flex w-full max-w-[1240px] flex-col gap-8 p-8">
@@ -44,6 +47,13 @@ export default function AdminDesignSystemPage() {
           { id: "2", title: "Review preview changes", context: "Urban Groomers", age: "3h" },
         ]}
       />
+
+      <section aria-labelledby="console-v2-patterns" className="flex flex-col gap-4">
+        <h2 id="console-v2-patterns" className="font-display text-2xl font-semibold text-ink">
+          Console v2 patterns
+        </h2>
+        <ConsolePatternsDemo />
+      </section>
     </main>
   );
 }

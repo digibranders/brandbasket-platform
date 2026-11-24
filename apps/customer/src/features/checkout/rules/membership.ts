@@ -1,6 +1,6 @@
 import { chargedAmountCents, gstInsideCents } from "@brandbasket/billing/tax";
 import type { BillingInterval } from "@brandbasket/db";
-import { annualListCents, MONTHLY_ADD_ON_IDS, type MonthlyAddOnId } from "@brandbasket/shared/lib/billing/add-ons";
+import { annualListCents, MONTHLY_ADD_ON_IDS, PAUSED_ADD_ON_IDS, type MonthlyAddOnId } from "@brandbasket/shared/lib/billing/add-ons";
 import { bundleLines, bundleNetCents, readBundleSelection, WEBSITE_ALONE, type BundleLine } from "@brandbasket/shared/lib/billing/bundle";
 import { adCreditCentsAtCheckout, packageBasisPointsFor } from "@brandbasket/shared/lib/billing/packages";
 import { initialTermPhrase, renewalChargeCents } from "@brandbasket/shared/lib/billing/terms";
@@ -64,7 +64,8 @@ export function billingParamValue(interval: BillingInterval): string {
 export function readSelectedServices(params: Readonly<Record<string, string | string[] | undefined>>): readonly MonthlyAddOnId[] {
   const raw = params[MEMBERSHIP_SERVICES_PARAM];
   const text = Array.isArray(raw) ? raw.join(",") : (raw ?? "");
-  const named = readBundleSelection(text.split(","));
+  // A paused service (PAUSED_ADD_ON_IDS) cannot be named, even by an old link or a typed address.
+  const named = readBundleSelection(text.split(",").filter((id) => !(PAUSED_ADD_ON_IDS as readonly string[]).includes(id)));
   return named.length === 0 ? WEBSITE_ALONE : named;
 }
 

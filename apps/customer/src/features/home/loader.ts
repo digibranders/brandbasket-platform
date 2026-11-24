@@ -92,7 +92,7 @@ export function loadHomeState(customer: CustomerContext, now: Date): Promise<Loa
     const { billing, services } = customer;
     // Only a business with no booking can be showing a miss, so the outcome is read only then, and only for the website.
     const missedKickoffAt = booking === null && services.includes("website") && billing.status === "paid" ? await readMissedKickoffAt(customer) : null;
-    const state = deriveClientHomeState({
+    const derived = deriveClientHomeState({
       now,
       billing: { status: billing.status, paymentUnderReview: billing.paymentUnderReview },
       services,
@@ -101,6 +101,8 @@ export function loadHomeState(customer: CustomerContext, now: Date): Promise<Loa
       project: project === null ? null : { status: project.status, slaDueAt: stillAhead(project.slaDueAt, now), onHoldReason: project.onHoldReason },
       live,
     });
+    // Only the website has a kickoff call. A business without it that never booked one is not asked to (journey doc 19, 6.3 and 9.2).
+    const state: ClientHomeState = derived.kind === "kickoff_unbooked" && !services.includes("website") ? { kind: "ongoing" } : derived;
     return {
       state,
       layout: homeLayoutOf(state),

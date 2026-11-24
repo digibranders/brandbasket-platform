@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import {
   bellAfterOpening,
   bellHasUnseenWork,
+  bellAfterReading,
   bellView,
   billingBannerState,
   countOf,
@@ -34,7 +35,7 @@ describe("navModel", () => {
   it("follows the mock from the first day, before the kickoff call too", () => {
     expect(shape(LIVE)).toEqual([
       [null, ["Home", "Enquiries", "Requests"]],
-      ["Services", ["Website", "Social media", "Paid Ads", "Local SEO + AEO"]],
+      ["Services", ["Website", "Social media", "Local SEO + AEO"]],
       ["Business", ["Reports", "Business profile"]],
     ]);
     expect(navModel(LIVE).foot.map((entry) => entry.label)).toEqual(["Plan & billing", "Settings", "Help & calls"]);
@@ -50,7 +51,6 @@ describe("navModel", () => {
   it("keeps a service not bought, marked as such, still linking to its page", () => {
     const social = link("Social media", { ...LIVE, services: ["website"] });
     expect(social).toMatchObject({ href: "/social", bought: false, service: "social", children: [] });
-    expect(link("Paid Ads", { ...LIVE, services: ["website"] })).toMatchObject({ href: "/ads", bought: false });
     expect(link("Website", { ...LIVE, services: ["website"] })).toMatchObject({ bought: true });
   });
 
@@ -77,7 +77,7 @@ describe("navModel", () => {
   it("points every link at a page of the route map (plan 61, section 3)", () => {
     const model = navModel(LIVE);
     const hrefs = [...model.sections.flatMap((section) => section.links), ...model.foot].map((entry) => entry.href);
-    expect(hrefs).toEqual(["/", "/enquiries", "/requests", "/website", "/social", "/ads", "/search", "/reports", "/business", "/billing", "/settings", "/help"]);
+    expect(hrefs).toEqual(["/", "/enquiries", "/requests", "/website", "/social", "/search", "/reports", "/business", "/billing", "/settings", "/help"]);
   });
 });
 
@@ -119,7 +119,7 @@ describe("phoneTabs", () => {
       const found = menu(id);
       return found?.kind === "menu" ? found.links.map((entry) => entry.label) : [];
     };
-    expect(links("services")).toEqual(["Website", "Social media", "Paid Ads", "Local SEO + AEO"]);
+    expect(links("services")).toEqual(["Website", "Social media", "Local SEO + AEO"]);
     expect(links("more")).toEqual(["Reports", "Business profile", "Plan & billing", "Settings", "Help & calls"]);
   });
 });
@@ -191,8 +191,10 @@ describe("bell", () => {
       { id: "a1", title: "Fixed your address on 4 listings", service: "search", occurredAt: at("2026-11-01T06:00:00Z") },
       { id: "a2", title: "Published 3 posts", service: "social", occurredAt: at("2026-11-03T06:00:00Z") },
     ],
+    stored: [],
     seenAt: at("2026-11-02T00:00:00Z"),
   };
+  const NOTICE = { id: "n1", eventKey: "kickoff.booked", title: "Your kickoff call is booked for Tue 11:00", body: null, link: "/help", createdAt: at("2026-11-03T08:00:00Z"), readAt: null };
 
   it("lists what waits first, one line per conversation, then the work, newest first", () => {
     const view = bellView(SOURCE);
@@ -215,6 +217,38 @@ describe("bell", () => {
     expect(opened.unread).toBe(3);
     expect(bellHasUnseenWork(opened)).toBe(false);
     expect(bellAfterOpening(bellView(SOURCE), at("2026-11-02T12:00:00Z")).unread).toBe(4);
+  });
+
+  it("lists stored notices with the work, newest first, and keeps the live sources", () => {
+    const view = bellView({ ...SOURCE, stored: [NOTICE] });
+    expect(view.items.map((item) => item.title)).toEqual([
+      "Quote waiting: New home collection page",
+      "Waiting for you: Photos of the MRI room",
+      "New reply: Google profile hours",
+      "Your kickoff call is booked for Tue 11:00",
+      "Published 3 posts",
+      "Fixed your address on 4 listings",
+    ]);
+    expect(view.items[3]).toMatchObject({ kind: "notice", href: "/help", notificationId: "n1", needsYou: false, unread: true });
+  });
+
+  it("counts a stored notice until its own read time is set, whatever the bell was opened", () => {
+    expect(bellView({ ...SOURCE, stored: [NOTICE] }).unread).toBe(5);
+    expect(bellView({ ...SOURCE, stored: [{ ...NOTICE, readAt: at("2026-11-03T09:00:00Z") }] }).unread).toBe(4);
+    const opened = bellAfterOpening(bellView({ ...SOURCE, stored: [NOTICE] }), at("2026-11-04T00:00:00Z"));
+    expect(opened.items.find((item) => item.kind === "notice")?.unread).toBe(true);
+    expect(bellHasUnseenWork(bellView({ ...SOURCE, stored: [NOTICE], activity: [] }))).toBe(false);
+  });
+
+  it("marks one stored notice read without touching the others", () => {
+    const view = bellView({ ...SOURCE, stored: [NOTICE, { ...NOTICE, id: "n2", title: "Another" }] });
+    const after = bellAfterReading(view, "n1");
+    expect(after.items.filter((item) => item.kind === "notice").map((item) => item.unread)).toEqual([false, true]);
+    expect(after.unread).toBe(view.unread - 1);
+  });
+
+  it("falls back to the home page for a notice with no link", () => {
+    expect(bellView({ ...SOURCE, stored: [{ ...NOTICE, link: null }] }).items.find((item) => item.kind === "notice")?.href).toBe("/");
   });
 
   it("cuts long subjects at 60 characters", () => {

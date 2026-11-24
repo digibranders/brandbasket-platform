@@ -16,13 +16,14 @@ import {
   type ReportDocument,
   type ReportService,
 } from "@brandbasket/db";
-import { monthlyReportEmail, type EmailMessage } from "@brandbasket/email";
+import { emailOutcome, monthlyReportEmail, type EmailMessage, type EmailSendOutcome } from "@brandbasket/email";
 import { searchConsoleFigures, visitorFigures } from "../lib/reports/traffic";
 import { composeSearch, composeSocial, composeWebsite, type DoneLine, type ReportFacts } from "../lib/reports/compose";
 import { REPORT_CONTENT_VERSION, reportContentSchema, type ReportContent } from "../lib/reports/content";
 import { monthName, monthRange, parseMonthKey, type MonthKey } from "../lib/reports/period";
 import { REPORT_SERVICE_TITLES } from "../lib/reports/services";
 import { emailPreferenceAllows } from "./email-preference";
+import { notifyEvent } from "./notify-event";
 import { reportPdfStorageKey } from "./media-keys";
 import type { MediaStorage } from "./media-storage";
 import { renderReportPdf } from "./report-pdf";
@@ -170,7 +171,7 @@ function errorText(error: unknown): string {
 export interface SendReportDeps {
   readonly storage: MediaStorage;
   /** Delivers one message: the app's transport. Called only when there is someone to write to and the owner wants the email. */
-  readonly send: (message: EmailMessage) => Promise<void>;
+  readonly send: (message: EmailMessage) => Promise<EmailSendOutcome | void>;
   /** The customer app's origin, for the link in the email. */
   readonly customerOrigin: string;
 }
@@ -218,6 +219,8 @@ export async function sendReport(db: Database, deps: SendReportDeps, input: { re
     await setReportPdfKey(db, { id: report.id, now: input.now });
     report = await moveReport(db, { id: report.id, to: "sent", staffId: input.staffId, now: input.now });
   }
+  // The bell and push, once per report (the email below is the old sender, kept, and a resend adds no notice).
+  await notifyEvent(db, { event: "account.monthly_report", audience: { kind: "customer", businessId: report.businessId }, dedupeKey: report.id, data: { month } });
   return { report, email: await emailOwner(db, deps, report, month, content.data, details.owner) };
 }
 
@@ -251,8 +254,11 @@ async function emailOwner(
       pdfUrl: marker,
     });
     if (await hasEmailContaining(db, { template: "monthly-report", toAddress: owner.email, text: marker, since: report.createdAt })) return "already-sent";
-    await deps.send(message);
-    return "sent";
+    // The transport reports a failure instead of throwing. A failed message is "failed" so staff can send it again (the outbox check
+    // ignores failed rows); a queued one goes out on the queue's next runs, and an address that opted out is left alone.
+    const outcome = emailOutcome(await deps.send(message));
+    if (outcome.status === "failed") return "failed";
+    return outcome.status === "suppressed" ? "owner-turned-off" : "sent";
   } catch (error) {
     console.error("[monthly-report] The report email could not be sent.", { reportId: report.id, error: errorText(error) });
     return "failed";

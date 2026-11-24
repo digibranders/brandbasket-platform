@@ -3,7 +3,6 @@ import type { Metadata } from "next";
 import type { ReactElement } from "react";
 import { RequiredMark } from "@brandbasket/shared/ui/forms/required-mark";
 import { RuleInput } from "@brandbasket/shared/ui/forms/rule-input";
-import { GatedSubmitButton } from "@brandbasket/shared/ui/forms/submit-gate";
 import { LocalDateTime } from "@brandbasket/shared/ui/panel/local-date-time";
 import {
   formPriceValue,
@@ -15,7 +14,7 @@ import {
 } from "@brandbasket/shared/lib/billing/pricing-form";
 import { BILLING_CURRENCY_LABELS } from "@brandbasket/shared/lib/currency";
 import { formatMoney } from "@brandbasket/shared/lib/money";
-import { buttonPrimary } from "@/components/console/buttons";
+import { ConfirmSaveButton } from "@/components/console/confirm-save-button";
 import { fieldClasses, hintClasses, labelClasses } from "@/components/console/field-styles";
 import { Notice } from "@/components/console/notice";
 import { PageHeader } from "@/components/console/page-header";
@@ -27,7 +26,7 @@ import { listPricingPlans, listRecentPriceChanges } from "@/lib/server/pricing-a
 import { requireStaffCan } from "@/lib/server/staff-role";
 import { savePricesAction } from "./actions";
 
-export const metadata: Metadata = { title: "Pricing" };
+export const metadata: Metadata = { title: "Plans and offers" };
 
 /** Rupees or dollars with up to two places, as the server reads them (parseMoney); the typing rule already drops commas. */
 const PRICE_PATTERN = "[0-9]+(?:\\.[0-9]{1,2})?";
@@ -95,6 +94,17 @@ function ServicesCatalogue(): ReactElement {
   );
 }
 
+/** The one offer, stated as the owner's rule (root CLAUDE.md). Staff cannot change it here, so there is no form. */
+function TheOneOffer(): ReactElement {
+  return (
+    <Section title="The one offer">
+      <p className="max-w-3xl text-sm leading-relaxed">
+        Dedicated Expert Monitoring is free when a customer has all three plans. A basket is the plans added up: there are no package discounts and no ad money.
+      </p>
+    </Section>
+  );
+}
+
 function ExtrasForm({ plan }: { readonly plan: Plan }): ReactElement {
   const key = `${plan.tier}-${plan.currency.toLowerCase()}`;
   const tax = plan.taxRateBasisPoints > 0 ? `include ${plan.taxRateBasisPoints / 100}% GST` : "carry no tax";
@@ -132,9 +142,14 @@ function ExtrasForm({ plan }: { readonly plan: Plan }): ReactElement {
         <p className="mt-6 max-w-2xl border-l-2 border-gold-deep py-1 pl-4 text-sm leading-relaxed">
           The extras apply to everyone from now on. Extras already added keep their price.
         </p>
-        <GatedSubmitButton className={`${buttonPrimary} mt-6`} pendingLabel="Saving…">
-          Save {plan.currency} extras
-        </GatedSubmitButton>
+        <div className="mt-6">
+          <ConfirmSaveButton
+            title={`Save the ${plan.currency} extras?`}
+            consequence="The new prices appear at checkout and in the pricing the website shows, for everyone from now on. Extras already added keep their price."
+            triggerLabel={`Save ${plan.currency} extras`}
+            confirmLabel={`Save ${plan.currency} extras`}
+          />
+        </div>
       </form>
     </Section>
   );
@@ -155,11 +170,11 @@ function PriceHistory({ changes }: { readonly changes: readonly PriceChange[] })
                   {change.tier === null ? FIELD_LABELS[change.field] : FIELD_LABELS[change.field].toLowerCase()} ({change.currency})
                 </span>
                 {": "}
-                <span className="tabular-nums text-ink-soft line-through">{formatMoney(change.oldAmountCents, change.currency)}</span>
+                <span className="tabular-nums text-ink-2 line-through">{formatMoney(change.oldAmountCents, change.currency)}</span>
                 {" → "}
                 <span className="font-semibold tabular-nums">{formatMoney(change.newAmountCents, change.currency)}</span>
               </span>
-              <span className="tabular-nums text-ink-soft">
+              <span className="tabular-nums text-ink-2">
                 {change.changedByName ?? "Staff"} · <LocalDateTime iso={change.createdAt.toISOString()} variant="timestamp" />
               </span>
             </li>
@@ -175,17 +190,14 @@ export default async function PricingPage({
 }: {
   readonly searchParams: Promise<Record<string, string | string[] | undefined>>;
 }): Promise<ReactElement> {
-  const { staff: viewer } = await requireStaffCan("money");
+  await requireStaffCan("money");
   const [plans, changes, params] = await Promise.all([listPricingPlans(), listRecentPriceChanges(), searchParams]);
   const notice = readPricingNotice(params.saved);
 
   return (
     <>
-      <PageHeader
-        title="Pricing"
-        meta="What each service costs a month, and what extras cost."
-      />
-      <SectionTabs role={viewer.role} page="/pricing" />
+      <PageHeader title="Plans and offers" meta="What customers pay and what is on offer. A change here reaches new purchases only." />
+      <SectionTabs page="/pricing" />
       {notice === null ? null : (
         <Notice tone={PRICING_NOTICES[notice].ok ? "ok" : "problem"} className="mt-10">
           {PRICING_NOTICES[notice].text}
@@ -193,6 +205,7 @@ export default async function PricingPage({
       )}
       <div className="mt-12">
         <ServicesCatalogue />
+        <TheOneOffer />
         {plans.map((plan) => (
           <ExtrasForm key={plan.id} plan={plan} />
         ))}

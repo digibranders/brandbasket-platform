@@ -1,5 +1,6 @@
+import Link from "next/link";
+import { SettingsTabs, type SettingsTabItem } from "@brandbasket/shared/ui/patterns";
 import { PageHeader } from "@/components";
-import { TabLinks } from "@/ui";
 
 const TABS = [
   { href: "/settings", label: "Profile" },
@@ -8,12 +9,27 @@ const TABS = [
   { href: "/settings/social-media", label: "Social media" },
   { href: "/settings/team", label: "Team" },
   { href: "/settings/privacy", label: "Privacy and data" },
+  { href: "/settings/delete", label: "Delete account" },
 ] as const;
 
 export type SettingsTab = (typeof TABS)[number]["href"];
 
-/** The page title and its tabs. Team is the owner's, so the others do not see the tab; Social media is only for a business that has the service. */
+/** Team and Delete account are the owner's, so the others do not see those tabs; Social media is only for a business that has the service. */
+export function visibleSettingsTabs(showTeam: boolean, showSocial: boolean): readonly SettingsTabItem[] {
+  return TABS.filter((tab) => {
+    if (tab.href === "/settings/team" || tab.href === "/settings/delete") return showTeam;
+    if (tab.href === "/settings/social-media") return showSocial;
+    return true;
+  }).map((tab) => ({ id: tab.href, label: tab.label, href: tab.href, ...(tab.href === "/settings/delete" ? { tone: "danger" as const } : {}) }));
+}
+
+/** The page title and its tabs. */
 export function SettingsHeader({ current, showTeam, showSocial = false }: { readonly current: SettingsTab; readonly showTeam: boolean; readonly showSocial?: boolean }) {
-  const items = TABS.filter((tab) => (showTeam || tab.href !== "/settings/team") && (showSocial || tab.href !== "/settings/social-media"));
-  return <PageHeader title="Settings" tabs={<TabLinks aria-label="Settings" items={items} current={current} />} />;
+  return (
+    <PageHeader
+      title="Settings"
+      description="Manage your profile, sign-in, notifications, team and data."
+      tabs={<SettingsTabs ariaLabel="Settings" tabs={visibleSettingsTabs(showTeam, showSocial)} activeTabId={current} LinkComponent={Link} />}
+    />
+  );
 }

@@ -6,7 +6,7 @@ import { headers } from "next/headers";
 import { generatePasswordResetEmail, getAuth } from "@/lib/auth";
 import type { AccountIdentifier } from "./customer-sign-in-form";
 import { realDeployment } from "@/features/server-common/email";
-import { createEmailDelivery, createOutboxTransport } from "@brandbasket/email";
+import { createEmailDelivery, createOutboxTransport, emailFailureSummary, recordOutboxCopy } from "@brandbasket/email";
 import { after } from "next/server";
 import { getAppDb, getPublicDb } from "@/lib/db";
 import { BRAND } from "../rules/brand";
@@ -87,6 +87,13 @@ export async function requestPasswordReset(identifier: AccountIdentifier): Promi
           await delivery.send(message);
         } catch (error) {
           console.error("A password reset email could not be delivered.", errorLogInfo(error));
+          // The code row above is written before delivery, so it cannot say this failed. A second row can, so the failure shows on
+          // Today and Deliveries. It is redacted like the first and is never sent again: the person asks for a new link.
+          try {
+            await recordOutboxCopy(getPublicDb(), message, "brevo", {}, { status: "failed", error: emailFailureSummary(error) });
+          } catch (recordError) {
+            console.error("A failed password reset email could not be recorded.", errorLogInfo(recordError));
+          }
         }
       });
     }

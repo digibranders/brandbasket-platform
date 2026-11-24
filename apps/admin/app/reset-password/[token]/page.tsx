@@ -13,7 +13,7 @@ export default async function ResetPasswordPage({ params }: {
 }): Promise<ReactElement> {
   const { token } = await params;
   return (
-    <AuthFrame title="A fresh start." description="Choose a new password. You'll sign in again on all your devices.">
+    <AuthFrame title="Choose a new password" description="You will sign in again on all your devices.">
       <TurnstileScope><ResetPasswordForm action={resetPasswordAction} token={token} /></TurnstileScope>
     </AuthFrame>
   );

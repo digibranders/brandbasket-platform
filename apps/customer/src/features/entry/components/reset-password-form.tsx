@@ -1,7 +1,7 @@
 "use client";
 
 import { PASSWORD_MIN_LENGTH, PASSWORD_RULE } from "@brandbasket/auth/password-policy";
-import { useActionState } from "react";
+import { useGuardedActionState } from "@/lib/use-guarded-action-state";
 import { Banner, Button, Field, LinkButton } from "@/ui";
 import { resetPasswordAction } from "../actions";
 import { FORGOT_PASSWORD_PATH } from "../rules/account-recovery-form";
@@ -10,7 +10,7 @@ import { TurnstileWidget } from "./turnstile";
 
 /** Chooses the new password for the account a reset link belongs to. A dead link offers a new one instead. */
 export function ResetPasswordForm({ siteKey, token }: { readonly siteKey: string | null; readonly token: string }) {
-  const [state, formAction, pending] = useActionState(resetPasswordAction, null);
+  const [state, formAction, pending] = useGuardedActionState(resetPasswordAction, null);
 
   if (state !== null && !state.ok && state.deadLink === true) {
     return (

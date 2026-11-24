@@ -1,6 +1,7 @@
 import "server-only";
 import { findClientDetail, markDomainReadyForDns, type Database } from "@brandbasket/db";
 import { domainReadyEmail } from "@brandbasket/email";
+import { notifyEvent } from "@brandbasket/shared/server/notify-event";
 import { customerEmailTransport } from "./email";
 import { serverEnv } from "./env";
 import type { OwnerNotification } from "./project-preview";
@@ -27,6 +28,7 @@ export async function markDomainReady(db: Database, input: { readonly businessId
 
   const client = await findClientDetail(db, input.businessId);
   if (client === null || client.owner === null) throw new DomainReadyRecipientMissingError(input.businessId);
+  await notifyEvent(db, { event: "website.domain_ready", audience: { kind: "customer", businessId: input.businessId }, dedupeKey: `${input.businessId}:ready:${result.hostname}`, data: { state: "ready" } });
   if (client.owner.email === null) return "no-email";
 
   await customerEmailTransport(db).send(

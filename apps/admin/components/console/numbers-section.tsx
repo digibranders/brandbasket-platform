@@ -12,6 +12,10 @@ import { TableScroll } from "@/components/console/table-scroll";
 
 export type NumbersNotice = "saved" | "invalid" | "not-bought";
 
+/** "all" is every figure a service has; "ads" is the Paid Ads figures alone (the three ad fields, ruling 10) and drops the Search form (ruling 13). */
+export type NumbersScope = "all" | "ads";
+const AD_FIELD_COUNT = 3;
+
 const NOTICE_TEXT: Readonly<Record<NumbersNotice, string>> = {
   saved: "Numbers saved.",
   invalid: "Check the numbers: whole numbers only, and enter at least one.",
@@ -80,12 +84,15 @@ const monthLabel = (month: string): string => MONTH_LABEL.format(new Date(`${mon
 export async function NumbersSection({
   businessId,
   notice,
+  scope = "all",
 }: {
   readonly businessId: string;
   readonly notice: NumbersNotice | null;
+  readonly scope?: NumbersScope;
 }): Promise<ReactElement | null> {
   const db = getStaffDb();
-  const services = await listBoughtServices(db, businessId);
+  const bought = await listBoughtServices(db, businessId);
+  const services = scope === "ads" ? bought.filter((service) => service === "social") : bought;
   if (services.length === 0) return null;
 
   const months = recentMonths(6, new Date());
@@ -105,10 +112,14 @@ export async function NumbersSection({
         </Notice>
       )}
       {services.map((service) => {
-        const { title, fields, columns } = SERVICES[service];
+        const base = SERVICES[service];
+        const ads = scope === "ads";
+        const title = ads ? "Paid Ads" : base.title;
+        const fields = ads ? base.fields.slice(0, AD_FIELD_COUNT) : base.fields;
+        const columns = ads ? base.columns.slice(0, AD_FIELD_COUNT) : base.columns;
         return (
           <div key={service} className="mt-8">
-            <h3 className="font-serif text-lg">{title}</h3>
+            {ads ? null : <h3 className="font-serif text-lg">{title}</h3>}
             <form action={saveNumbersAction} className="mt-4 grid max-w-xl gap-4">
               <input type="hidden" name="businessId" value={businessId} />
               <input type="hidden" name="service" value={service} />

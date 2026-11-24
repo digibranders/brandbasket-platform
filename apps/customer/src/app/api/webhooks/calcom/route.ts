@@ -1,5 +1,5 @@
 import { handleCalcomWebhook, type CalcomWebhookResult } from "@/platform/lib/server/calcom-webhook";
-import { noteWebhook, type WebhookOutcome } from "@/platform/lib/server/webhook-log";
+import { noteWebhook, webhookEventId, type WebhookOutcome } from "@/platform/lib/server/webhook-log";
 import { failureReason } from "@/platform/lib/webhook-event";
 import { BodyTooLargeError, readLimitedBody } from "@brandbasket/shared/server/read-limited-body";
 import { noteSecurityEvent } from "@/platform/lib/server/security-events";
@@ -12,7 +12,7 @@ function json(body: unknown, status: number): Response {
 }
 
 /** What the console says about each answer the handler gives. */
-function outcomeOf(result: CalcomWebhookResult): WebhookOutcome {
+function outcomeOf(result: Exclude<CalcomWebhookResult, { readonly kind: "duplicate" }>): WebhookOutcome {
   switch (result.kind) {
     case "moved":
     case "recorded":
@@ -20,6 +20,8 @@ function outcomeOf(result: CalcomWebhookResult): WebhookOutcome {
       return { result: "handled" };
     case "ignored":
       return { result: "ignored" };
+    case "stale":
+      return { result: "ignored", error: "Delivery older than 5 minutes" };
     case "refused":
       return { result: "bad_signature" };
     case "unconfigured":
@@ -53,8 +55,10 @@ export async function POST(request: Request): Promise<Response> {
     await noteWebhook("calcom", body, { result: "failed", error: failureReason(error) });
     throw error;
   }
+  // A repeat is already on the list from its first delivery; noting it again would be refused by the unique event id.
+  if (result.kind === "duplicate") return json({ received: true, duplicate: true }, 200);
   // shortcut: Cal.com rows carry no business id; return it from handleCalcomWebhook when staff need the link.
-  await noteWebhook("calcom", body, outcomeOf(result));
+  await noteWebhook("calcom", body, { ...outcomeOf(result), eventId: webhookEventId(body) });
   if (result.kind === "unconfigured") {
     console.error("[calcom-webhook] a delivery arrived but CALCOM_WEBHOOK_SECRET is not set");
     return json({ error: "not configured" }, 503);

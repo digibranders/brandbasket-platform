@@ -1,8 +1,9 @@
 "use client";
 
-import { useActionState, useRef, useState, type ReactElement } from "react";
+import { useRef, useState, type ReactElement } from "react";
 import { LocalDate } from "@brandbasket/shared/ui/panel/local-date-time";
 import { buttonPrimary, buttonSecondary } from "@/components/console/buttons";
+import { useGuardedFormState } from "@/lib/use-guarded-form-state";
 import { StatusPill } from "@/components/console/status-pill";
 
 export type LoginLinkState =
@@ -12,6 +13,7 @@ export type LoginLinkState =
   | { readonly status: "error"; readonly message: string };
 
 const initialLoginLinkState: LoginLinkState = { status: "idle" };
+const loginLinkDropped = (message: string): LoginLinkState => ({ status: "error", message });
 
 interface AffiliateLoginLinkProps {
   readonly action: (state: LoginLinkState, formData: FormData) => Promise<LoginLinkState>;
@@ -31,8 +33,8 @@ interface AffiliateLoginLinkProps {
  * WhatsApp.
  */
 export function AffiliateLoginLink({ action, emailAction, emailTo, signedUp, linkExpiresAt }: AffiliateLoginLinkProps): ReactElement {
-  const [state, formAction, isPending] = useActionState(action, initialLoginLinkState);
-  const [mailState, mailFormAction, isMailing] = useActionState(emailAction, initialLoginLinkState);
+  const [state, formAction, isPending] = useGuardedFormState(action, initialLoginLinkState, loginLinkDropped);
+  const [mailState, mailFormAction, isMailing] = useGuardedFormState(emailAction, initialLoginLinkState, loginLinkDropped);
   const [copied, setCopied] = useState<"idle" | "copied" | "failed">("idle");
   const linkRef = useRef<HTMLInputElement>(null);
 

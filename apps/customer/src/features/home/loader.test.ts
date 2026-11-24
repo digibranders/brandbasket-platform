@@ -105,6 +105,12 @@ describe("loadHomeState", () => {
     expect(readMissedKickoffAt).not.toHaveBeenCalled();
   });
 
+  it("does not ask a business without the website to book a kickoff call", async () => {
+    const loaded = await loadHomeState(customer({ services: ["social"] }), NOW);
+    expect(loaded.ok && loaded.data.state).toEqual({ kind: "ongoing" });
+    expect(loaded.ok && loaded.data.layout).toBe("overview");
+  });
+
   it("follows the project once the kickoff is held, and says whether calls are open", async () => {
     vi.mocked(readKickoffFacts).mockResolvedValue({ booking: HELD, project: PROJECT, live: null });
     vi.mocked(callsOpenFor).mockReturnValue(true);

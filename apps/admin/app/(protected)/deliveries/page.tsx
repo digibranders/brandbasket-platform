@@ -2,12 +2,13 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import type { ReactElement } from "react";
 import { LocalDateTime } from "@brandbasket/shared/ui/panel/local-date-time";
+import { ConfirmDialog } from "@/components/console/confirm-dialog";
 import { buttonSecondary, buttonSmall } from "@/components/console/buttons";
-import { LIFT } from "@/components/console/classes";
+import { FOCAL_CARD } from "@/components/console/classes";
 import { fieldClasses } from "@/components/console/field-styles";
-import { Figures } from "@/components/console/figures";
+import { StatTiles } from "@/components/console/stat-tiles";
 import { FilterPills } from "@/components/console/filter-pills";
-import { EmptyLine } from "@/components/console/hairline-list";
+import { EmptyState } from "@brandbasket/shared/ui/patterns";
 import { Notice } from "@/components/console/notice";
 import { PageHeader } from "@/components/console/page-header";
 import { SectionTabs } from "@/components/console/section-tabs";
@@ -35,7 +36,7 @@ interface DeliveriesSearch {
 }
 
 export default async function DeliveriesPage({ searchParams }: { readonly searchParams: Promise<DeliveriesSearch> }): Promise<ReactElement> {
-  const { user, staff: viewer } = await requireStaffAccess();
+  const { user } = await requireStaffAccess();
   const search = await searchParams;
   const filter = readDeliveryFilter(search);
   await logStaffAccess({ staffUserId: user.id, action: "delivery.view", targetType: "deliveries" });
@@ -50,22 +51,27 @@ export default async function DeliveriesPage({ searchParams }: { readonly search
         meta={`Last 24 hours · ${totals.in} in, ${totals.out} out · ${totals.failed} failed`}
         action={
           totals.failed === 0 ? null : (
-            <form action={resendAllFailedAction}>
-              <button type="submit" className={buttonSecondary}>
-                Resend all failed
-              </button>
-            </form>
+            <ConfirmDialog
+              title="Resend all failed?"
+              consequence="Failed emails go to customers again and failed Teams alerts are posted again, up to 25 of each from the last 24 hours."
+              triggerLabel="Resend all failed"
+              triggerClassName={buttonSecondary}
+              confirmLabel="Resend all failed"
+              cancelLabel="Keep"
+              variant="default"
+              formAction={resendAllFailedAction}
+            />
           )
         }
       />
-      <SectionTabs role={viewer.role} page="/deliveries" />
+      <SectionTabs page="/deliveries" />
       {notice === null ? null : (
         <Notice tone={notice.tone} className="mt-4">
           {notice.text}
         </Notice>
       )}
 
-      <Figures items={deliveryFigures(health)} />
+      <StatTiles items={deliveryFigures(health)} />
 
       <div className="mt-6 flex flex-wrap items-center gap-3">
         <form method="get" action="/deliveries" role="search" className="min-w-72">
@@ -104,10 +110,10 @@ export default async function DeliveriesPage({ searchParams }: { readonly search
 
       {rows.length === 0 ? (
         <div className="mt-6">
-          <EmptyLine>Nothing matches these filters.</EmptyLine>
+          <EmptyState title="Nothing matches these filters." description="Clear the search or the filters to see every email and webhook again." />
         </div>
       ) : (
-        <section aria-label="Deliveries" className={`${LIFT} mt-6 overflow-x-auto px-4`}>
+        <section aria-label="Deliveries" className={`${FOCAL_CARD} mt-6`}>
           <TableScroll label="Deliveries">
             <table className={TABLE}>
               <thead>
@@ -143,13 +149,19 @@ export default async function DeliveriesPage({ searchParams }: { readonly search
                           Details
                         </Link>
                       ) : (
-                        <form action={row.resend === "email" ? resendEmailAction : resendAlertAction} className="inline">
+                        <ConfirmDialog
+                          title={row.resend === "email" ? "Resend this email?" : "Resend this Teams alert?"}
+                          consequence={row.resend === "email" ? `It goes to ${row.target ?? "the customer"} again.` : "It is posted to Teams again."}
+                          triggerLabel="Resend"
+                          triggerClassName={buttonSmall}
+                          confirmLabel="Resend"
+                          cancelLabel="Keep"
+                          variant="default"
+                          formAction={row.resend === "email" ? resendEmailAction : resendAlertAction}
+                        >
                           <input type="hidden" name="deliveryId" value={row.id} />
                           <input type="hidden" name="from" value="list" />
-                          <button type="submit" className={buttonSmall}>
-                            Resend
-                          </button>
-                        </form>
+                        </ConfirmDialog>
                       )}
                     </td>
                   </tr>

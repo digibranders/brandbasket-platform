@@ -13,6 +13,7 @@ export * from "./queries/support-staff";
 export * from "./queries/error-issues";
 export * from "./queries/support-ticket-error-links";
 export * from "./queries/deliveries";
+export * from "./queries/social-auto-events";
 export * from "./queries/staff-payments";
 export * from "./queries/staff-domains";
 export { assertValidRule, consumeRateLimit, windowStartFor, type RateLimitResult, type RateLimitRule } from "./rate-limit";
@@ -187,12 +188,16 @@ export {
 } from "./queries/staff";
 export {
   findEmail,
+  claimDueEmails,
   hasEmailContaining,
+  isEmailSuppressed,
   listEmailDeliveries,
   listRecentEmails,
+  markEmailBounced,
   purgeOldEmailMessages,
   recordEmail,
   SIGN_IN_LINK_TEMPLATES,
+  suppressEmailAddress,
   updateEmailDelivery,
   type RecordedEmail,
   type StoredEmail,
@@ -798,6 +803,7 @@ export {
   listChatbotsForBusiness,
   listChatbotsForStaff,
   recordChatbotLead,
+  recordChatbotLeadReportingNew,
   registerChatbot,
   removeChatbot,
   renameChatbot,
@@ -887,6 +893,21 @@ export {
   saveSetupCallSummary,
   type BookedCall,
 } from "./queries/setup-calls";
+export {
+  clearKickoffPromptState,
+  clearKickoffPromptStateForBusiness,
+  isKickoffPromptDue,
+  KICKOFF_PROMPT_REPEAT_MS,
+  KICKOFF_REMINDER_PUSH_AFTER_MS,
+  listKickoffsStartingSoon,
+  listPendingKickoffPrompts,
+  markKickoffFirstNotified,
+  markKickoffPromptAnswered,
+  markKickoffPromptsShown,
+  markKickoffReminderPushed,
+  type PendingKickoffPrompt,
+  type SoonKickoff,
+} from "./queries/kickoff-prompts";
 export * from "./queries/channel-link-requests";
 export * from "./queries/team-calls";
 export { boughtSetupServicesFrom, listBoughtSetupServices, listServiceSetups, saveServiceSetup } from "./queries/service-setup";
@@ -1595,7 +1616,15 @@ export {
   type StoredPrivacyRequest,
 } from "./queries/privacy-requests";
 export { clearNominee, findNominee, saveNominee, type Nominee } from "./queries/user-privacy-settings";
-export { listExportedSessions, readExportedAccount, readExportedBusiness, readExportedNotificationPreferences, type ExportedSession } from "./queries/account-export";
+export {
+  listExportedSessions,
+  readExportedAccount,
+  readExportedBusiness,
+  readExportedNotificationPreferences,
+  readExportedNotifications,
+  readExportedPushDevices,
+  type ExportedSession,
+} from "./queries/account-export";
 export { findBusinessAlertDetails, findPaymentAlertBase, type AlertPerson, type PaymentAlertBase } from "./queries/payment-alerts";
 // Customer app v4 (plan 61 section 6).
 export {
@@ -1642,15 +1671,35 @@ export {
   type ConnectedAccountInput,
 } from "./queries/connected-accounts";
 export {
+  BELL_NOTIFICATION_LIMIT,
+  channelDefaults,
   effectivePreferences,
   emailByDefault,
+  getChannelChoices,
   getNotificationsSeenAt,
+  listBellNotifications,
   listNotificationPreferences,
+  listStaffNotifications,
+  markNotificationRead,
   markNotificationsSeen,
+  markStaffNotificationRead,
+  NOTIFICATION_RETENTION_MS,
+  purgeOldNotifications,
+  resolveChoices,
   resolveEmailPreference,
   setNotificationPreference,
   shouldEmail,
+  type BellNotification,
+  type ChannelChoices,
 } from "./queries/notifications";
+export { listSubscriptionsEndingFirstTerm, listSubscriptionsPaidThroughBetween } from "./queries/billing-notices";
+export {
+  listNotificationRecipients,
+  recordNotification,
+  type NotificationRecipient,
+  type NotificationRow,
+  type RecordedNotification,
+} from "./queries/notify";
 export {
   acceptBusinessInvite,
   BUSINESS_INVITE_DAYS,
@@ -1668,3 +1717,12 @@ export {
   type CheckBusinessInviteResult,
   type InvitableRole,
 } from "./queries/business-invites";
+export {
+  listLivePushSubscriptions,
+  markPushDelivered,
+  PUSH_USER_AGENT_MAX,
+  revokePushSubscription,
+  revokePushSubscriptionById,
+  savePushSubscription,
+  type PushSubscriptionInput,
+} from "./queries/push-subscriptions";

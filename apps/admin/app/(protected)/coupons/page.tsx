@@ -6,8 +6,9 @@ import { LocalDate } from "@brandbasket/shared/ui/panel/local-date-time";
 import { TagIcon } from "@brandbasket/shared/ui/icons";
 import { describeDiscountMonths, describeReferralDiscount } from "@brandbasket/shared/lib/billing/referral-value";
 import { buttonPrimary } from "@/components/console/buttons";
-import { Figures } from "@/components/console/figures";
-import { EmptyLine, HairlineList, HairlineRow } from "@/components/console/hairline-list";
+import { StatTiles } from "@/components/console/stat-tiles";
+import { EmptyState } from "@brandbasket/shared/ui/patterns";
+import { HairlineList, HairlineRow } from "@/components/console/hairline-list";
 import { PageHeader } from "@/components/console/page-header";
 import { SectionTabs } from "@/components/console/section-tabs";
 import { StatusDot } from "@/components/console/status-dot";
@@ -15,7 +16,7 @@ import { getStaffDb } from "@/lib/server/db";
 import { requireStaffCan } from "@/lib/server/staff-role";
 import { logStaffAccess } from "@/lib/server/staff-access-log";
 
-export const metadata: Metadata = { title: "Coupons" };
+export const metadata: Metadata = { title: "Plans and offers" };
 
 /** Enough to see at a glance; a longer history belongs in a report, not a console list. */
 const LIST_LIMIT = 200;
@@ -33,7 +34,7 @@ function retiredReason(
 }
 
 export default async function CouponsPage(): Promise<ReactElement> {
-  const { user, staff: viewer } = await requireStaffCan("money");
+  const { user } = await requireStaffCan("money");
   await logStaffAccess({ staffUserId: user.id, action: "coupons.list", targetType: "coupons" });
   const codes = await listReferralCodes(getStaffDb(), "coupon", LIST_LIMIT);
   const now = new Date();
@@ -43,17 +44,17 @@ export default async function CouponsPage(): Promise<ReactElement> {
   return (
     <>
       <PageHeader
-        title="Coupons"
-        meta="A fixed amount or a percentage off every month. Nobody is paid for them."
+        title="Plans and offers"
+        meta="Coupons that are live change what a customer pays. A fixed amount or a percentage off every month; nobody is paid for them."
         action={
           <Link href="/coupons/new" className={buttonPrimary}>
             New coupon
           </Link>
         }
       />
-      <SectionTabs role={viewer.role} page="/coupons" />
+      <SectionTabs page="/coupons" />
 
-      <Figures
+      <StatTiles
         items={[
           { value: codes.length, label: "Coupons" },
           { value: usable, label: "Usable now" },
@@ -62,7 +63,7 @@ export default async function CouponsPage(): Promise<ReactElement> {
       />
 
       {codes.length === 0 ? (
-        <EmptyLine>No coupons yet.</EmptyLine>
+        <EmptyState title="No coupons yet." description="A coupon appears here once you create one, with how many members are using it." />
       ) : (
         <div className="mt-6">
           <HairlineList label="Coupons">

@@ -1,6 +1,7 @@
 "use client";
 
-import { useActionState, type ReactNode } from "react";
+import { type ReactNode } from "react";
+import { useGuardedActionState } from "@/lib/use-guarded-action-state";
 import { Banner, Button, type ButtonVariant } from "@/ui";
 import { continueToCheckoutAction, toggleServiceAction } from "../actions";
 
@@ -15,7 +16,7 @@ interface BasketButtonProps {
 
 /** Continue to checkout, and Skip for now: both finish the questions and open the checkout on the basket. */
 export function ContinueButton({ services, variant, size = "md", children }: BasketButtonProps) {
-  const [state, action, pending] = useActionState(continueToCheckoutAction, null);
+  const [state, action, pending] = useGuardedActionState(continueToCheckoutAction, null);
   return (
     <form action={action} className="flex flex-col gap-2">
       <input type="hidden" name="services" value={services} />
@@ -29,7 +30,7 @@ export function ContinueButton({ services, variant, size = "md", children }: Bas
 
 /** Adds or removes one service on the summary. The last one cannot be removed. */
 export function ToggleServiceButton({ services, toggle, variant, disabled, children, ...aria }: BasketButtonProps & { readonly toggle: string }) {
-  const [state, action, pending] = useActionState(toggleServiceAction, null);
+  const [state, action, pending] = useGuardedActionState(toggleServiceAction, null);
   return (
     <form action={action}>
       <input type="hidden" name="services" value={services} />

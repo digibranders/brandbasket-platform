@@ -34,7 +34,7 @@ export async function recordRazorpayPaymentFailure(event: RazorpayPaymentFailed)
   if (outcome === "already-recorded") return;
   // Recorded for the first time (the provider payment id is unique), so the customer is told once, after the write has committed.
   if (outcome === "recorded" && businessId !== null) {
-    void sendPaymentFailed({ businessId, amountCents: event.amountCents, currency: event.currency, chargeDescription: charge?.description ?? null });
+    void sendPaymentFailed({ businessId, providerPaymentId: event.paymentId, amountCents: event.amountCents, currency: event.currency, chargeDescription: charge?.description ?? null });
   }
   if (outcome === "unknown-business") {
     logBillingEvent("warn", "confirmation-refused", {

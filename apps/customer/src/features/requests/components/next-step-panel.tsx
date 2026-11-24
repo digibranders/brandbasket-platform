@@ -2,11 +2,12 @@
 
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
-import { NextStep } from "@/components";
+import { NextActionCard } from "@brandbasket/shared/ui/patterns";
 import { ConfirmPaymentDialog, useConfirmPayment } from "@/features/checkout/components/confirm-payment";
 import type { PaymentSummary } from "@/features/checkout/rules/payment-summary";
 import type { ActionResult } from "@/lib/action-result";
-import { Banner, Button, LinkButton } from "@/ui";
+import { ASK_OWNER } from "@/lib/ask-owner";
+import { Banner, Button, Icon, LinkButton } from "@/ui";
 import { acceptQuoteAction, approveChangeAction, declineQuoteAction, reopenRequestAction } from "../actions";
 import { chargePath, type RequestNextStep } from "../rules";
 
@@ -89,24 +90,39 @@ export function NextStepPanel({ step, requestId, canAct }: NextStepPanelProps) {
       </LinkButton>
     ) : null;
 
+  const quoteLine =
+    quote === null ? null : (
+      <div className="flex justify-between gap-3 border-t border-border pt-3 type-body">
+        <span>{quote.line}</span>
+        <strong className="font-mono font-semibold tabular-nums text-ink">{quote.total}</strong>
+      </div>
+    );
+
   return (
     <div className="flex flex-col gap-3">
       {message === null ? null : <Banner tone="neg">{message}</Banner>}
       {summary === null || confirmButton === null ? null : <ConfirmPaymentDialog summary={summary} open={confirm.open} onClose={confirm.close} confirm={confirmButton} />}
-      <NextStep
-        title={step.title}
-        icon={quote === null ? undefined : "Receipt"}
-        actions={buttons}
-        note={canAct ? (step.note ?? undefined) : undefined}
-      >
-        {step.text}
-        {quote === null ? null : (
-          <span className="mt-2 flex justify-between gap-3 border-t border-accent-border pt-2">
-            <span>{quote.line}</span>
-            <strong className="font-semibold text-ink">{quote.total}</strong>
-          </span>
-        )}
-      </NextStep>
+      {action === null ? (
+        <section className="flex flex-col gap-2 rounded-panel border border-border bg-surface p-5 shadow-card">
+          <h2 className="flex items-center gap-2 type-sub text-ink">
+            <Icon name="ChatCircleDots" className="text-ink-3" />
+            {step.title}
+          </h2>
+          <p className="type-body text-ink-2">{step.text}</p>
+          {buttons === null || secondary === null ? null : <div className="flex flex-wrap items-center gap-2">{buttons}</div>}
+        </section>
+      ) : (
+        <NextActionCard
+          serviceName={quote === null ? "Your request" : "Quote"}
+          serviceIcon={<Icon name={quote === null ? "ChatCircleDots" : "Receipt"} />}
+          title={step.title}
+          description={step.text}
+          secondaryAction={buttons}
+          asideNote={canAct ? (step.note ?? undefined) : ASK_OWNER}
+        >
+          {quoteLine}
+        </NextActionCard>
+      )}
     </div>
   );
 }

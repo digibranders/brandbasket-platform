@@ -42,7 +42,7 @@ const EMAIL: StoredEmail = {
   status: "failed",
   providerMessageId: null,
   error: "Brevo answered 400",
-  attempts: 1,
+  attempts: 1, maxAttempts: 3, nextAttemptAt: null,
   lastAttemptAt: AT,
   bodyRedacted: false,
   createdAt: AT,

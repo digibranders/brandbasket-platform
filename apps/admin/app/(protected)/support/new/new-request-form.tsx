@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, type ReactElement } from "react";
+import { type ReactElement } from "react";
 import { SUPPORT_CATEGORIES } from "@brandbasket/shared/lib/support";
 import { RequiredMark } from "@brandbasket/shared/ui/forms/required-mark";
 import { GatedSubmitButton } from "@brandbasket/shared/ui/forms/submit-gate";
@@ -8,7 +8,8 @@ import { SelectField, type SelectOption } from "@brandbasket/shared/ui/select-fi
 import { buttonPrimary } from "@/components/console/buttons";
 import { LIFT } from "@/components/console/classes";
 import { fieldClasses, labelClasses } from "@/components/console/field-styles";
-import { STAFF_SUPPORT_CATEGORY_LABELS, STAFF_SUPPORT_INITIAL_STATE } from "@/lib/support-admin-state";
+import { staffSupportDropped, STAFF_SUPPORT_CATEGORY_LABELS, STAFF_SUPPORT_INITIAL_STATE } from "@/lib/support-admin-state";
+import { useGuardedFormState } from "@/lib/use-guarded-form-state";
 import { openRequestForClient } from "./actions";
 
 const CATEGORY_OPTIONS: readonly SelectOption[] = SUPPORT_CATEGORIES.map((value) => ({ value, label: STAFF_SUPPORT_CATEGORY_LABELS[value] }));
@@ -21,7 +22,7 @@ interface NewRequestFormProps {
 }
 
 export function NewRequestForm({ clients, preselected, submissionKey }: NewRequestFormProps): ReactElement {
-  const [state, action, pending] = useActionState(openRequestForClient, STAFF_SUPPORT_INITIAL_STATE);
+  const [state, action, pending] = useGuardedFormState(openRequestForClient, STAFF_SUPPORT_INITIAL_STATE, staffSupportDropped);
   const describedBy = state.kind === "idle" ? undefined : "new-request-result";
   return (
     <form action={action} aria-busy={pending} className={`${LIFT} grid gap-5 p-5`}>

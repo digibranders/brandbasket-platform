@@ -1,4 +1,5 @@
 import { Panel, PanelError } from "@/components";
+import { ASK_OWNER } from "@/lib/ask-owner";
 import type { CustomerContext } from "@/lib/guards";
 import type { Loaded } from "@/lib/loaded";
 import type { ContactView, SiteFactsView } from "../loader";
@@ -25,6 +26,7 @@ export function BusinessDetails({ customer, contact, siteFacts }: BusinessDetail
   return (
     <SaveBarHost>
       <div className="flex flex-col gap-4 pb-save-bar">
+        {readOnly ? <p className="type-meta">{ASK_OWNER}</p> : null}
         {contact.ok ? (
           <Panel flush className="overflow-clip">
             <div className="-mb-px">

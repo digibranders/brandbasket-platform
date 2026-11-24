@@ -2,6 +2,7 @@ import "server-only";
 import {
   countNewEnquiries,
   getNotificationsSeenAt,
+  listBellNotifications,
   listActivityEvents,
   listRequestNeeds,
   listSentReports,
@@ -72,6 +73,7 @@ export const loadShell = cache(async (customer: CustomerContext): Promise<ShellV
             service: event.service,
             occurredAt: event.occurredAt,
           })),
+          stored: await listBellNotifications(tx, user.id),
           seenAt: await getNotificationsSeenAt(tx, user.id),
         }),
       ),

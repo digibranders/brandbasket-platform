@@ -40,7 +40,7 @@ function RequestCard({ item, businessId, unitCents, currency, includedLeft }: { 
           Open the conversation and reply
         </Link>
       </div>
-      <p className="mt-1 text-sm text-ink-soft">
+      <p className="mt-1 text-sm text-ink-2">
         {KIND_LABELS[change.kind]}
         {change.page === null ? "" : `, ${change.page}`} · asked {INDIA_DATE.format(change.createdAt)} · {stateLabel(change.state)} · {coverageLabel(change.coverage)}
       </p>
@@ -73,7 +73,7 @@ function RequestCard({ item, businessId, unitCents, currency, includedLeft }: { 
                       <RequiredMark />
                     </label>
                     <input id={`${id}-hours`} name="hours" type="number" required min={1} max={40} step={1} inputMode="numeric" className={fieldClasses} />
-                    <p className="mt-1 text-sm text-ink-soft">{unitCents === null ? "This business has no plan to price from." : `${formatMoney(unitCents, currency)} an hour, taken from their plan.`}</p>
+                    <p className="mt-1 text-sm text-ink-2">{unitCents === null ? "This business has no plan to price from." : `${formatMoney(unitCents, currency)} an hour, taken from their plan.`}</p>
                   </div>
                   <div>
                     <label htmlFor={`${id}-days`} className={labelClasses}>
@@ -183,7 +183,7 @@ export async function RequestsSection({
   const waiting = items.filter((item) => item.change.state === "requested").length;
   return (
     <Section title="Change requests" id="requests" aside={waiting === 0 ? undefined : `${waiting} waiting for us`}>
-      <p className="max-w-xl text-sm text-ink-soft">
+      <p className="max-w-xl text-sm text-ink-2">
         Changes the customer asked for in their dashboard. Every reply, quote and move here emails them.{" "}
         {allowed === 0 ? "This plan has no included edits." : `Included edits this month: ${includedEditsUsedLine(used, allowed)}.`}
       </p>

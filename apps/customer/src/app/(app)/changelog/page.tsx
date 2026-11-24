@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
-import { PageHeader, Panel } from "@/components";
+import { PageHeader } from "@/components";
 import { ChangelogList } from "@/features/changelog/components/changelog-list";
+import { SettingsCard } from "@/features/settings/components/settings-card";
 import { requireCustomer } from "@/lib/guards";
 
 export const metadata: Metadata = { title: "What’s new" };
@@ -11,9 +12,9 @@ export default async function ChangelogPage() {
   return (
     <>
       <PageHeader title="What’s new" description="What we have changed in your dashboard." />
-      <Panel flush>
+      <SettingsCard title="Latest updates" tone="focal" flush>
         <ChangelogList />
-      </Panel>
+      </SettingsCard>
     </>
   );
 }

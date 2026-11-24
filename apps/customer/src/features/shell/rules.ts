@@ -88,6 +88,9 @@ const SERVICE_CHILDREN: Readonly<Record<Service, readonly NavTarget[]>> = {
 /** Paid Ads is its own menu item, apart from Social media. It has no service key of its own yet, so it is shown, and marked bought, with Social media. */
 const ADS_LINK: Omit<NavLink, "bought" | "children"> = { href: SHELL_PATHS.ads, label: "Paid Ads", icon: "ChartLineUp", service: "social" };
 
+/** Paid Ads is paused for now (PAUSED_ADD_ON_IDS in the shared add-ons, which this browser-safe file cannot import), so its menu item is hidden. */
+const SHOWS_ADS = false;
+
 const SERVICES_IN_ORDER: readonly Service[] = ["website", "social", "search"];
 
 const withCount = (link: NavLink, count: number | undefined): NavLink => (count !== undefined && count > 0 ? { ...link, count } : link);
@@ -115,7 +118,7 @@ export function navModel(input: NavInput): NavModel {
   const services = SERVICES_IN_ORDER.filter((service) => service !== "search" || input.services.includes(service)).map((service): NavLink => {
     const bought = input.services.includes(service);
     return { ...SERVICE_LINKS[service], bought, children: bought ? SERVICE_CHILDREN[service] : [] };
-  }).flatMap((link): NavLink[] => (link.service === "social" ? [link, { ...ADS_LINK, bought: link.bought === true, children: [] }] : [link]));
+  }).flatMap((link): NavLink[] => (link.service === "social" && SHOWS_ADS ? [link, { ...ADS_LINK, bought: link.bought === true, children: [] }] : [link]));
   return {
     sections: [
       { label: null, links: [HOME, withCount(ENQUIRIES, input.enquiries), requests] },
@@ -242,6 +245,8 @@ export interface BellSource {
   readonly replies: readonly { readonly ticketId: string; readonly subject: string }[];
   /** Work we did, newest first (activity_events). */
   readonly activity: readonly { readonly id: string; readonly title: string; readonly service: Service | null; readonly occurredAt: Date }[];
+  /** Stored notices for this person and business (notifications), newest first. */
+  readonly stored: readonly { readonly id: string; readonly eventKey: string; readonly title: string; readonly link: string | null; readonly createdAt: Date; readonly readAt: Date | null }[];
   /** When the person last opened the bell (notification_reads.seen_at); null if never. */
   readonly seenAt: Date | null;
 }
@@ -249,7 +254,9 @@ export interface BellSource {
 export interface BellItem {
   readonly id: string;
   /** A quote or change to check, a question from the team, a new reply, or work we did. */
-  readonly kind: "need" | "waiting" | "reply" | "activity";
+  readonly kind: "need" | "waiting" | "reply" | "activity" | "notice";
+  /** The stored notice's id, for marking it read. Only on a "notice". */
+  readonly notificationId?: string;
   readonly icon: IconName;
   readonly title: string;
   readonly href: string;
@@ -339,7 +346,38 @@ export function bellView(source: BellSource): BellView {
         unread: source.seenAt === null || event.occurredAt.getTime() > source.seenAt.getTime(),
       }),
     );
-  const items = [...needs, ...waiting, ...replies, ...activity];
+  const notices = source.stored.map(
+    (notice): BellItem => ({
+      id: `notice-${notice.id}`,
+      kind: "notice",
+      icon: noticeIcon(notice.eventKey),
+      title: notice.title,
+      href: notice.link ?? SHELL_PATHS.home,
+      at: notice.createdAt,
+      needsYou: false,
+      unread: notice.readAt === null,
+      notificationId: notice.id,
+    }),
+  );
+  // Stored notices and work we did are one timeline, newest first, after what waits on the customer.
+  const timeline = [...notices, ...activity].sort((left, right) => (right.at?.getTime() ?? 0) - (left.at?.getTime() ?? 0));
+  const items = [...needs, ...waiting, ...replies, ...timeline];
+  return { items, unread: items.filter((item) => item.unread).length };
+}
+
+/** A stored notice's icon, by what it is about. An event the app does not know any more still gets the bell. */
+function noticeIcon(eventKey: string): IconName {
+  const area = eventKey.split(".")[0];
+  if (area === "billing") return "Wallet";
+  if (area === "kickoff") return "Headset";
+  if (area === "request") return "ChatText";
+  if (area === "website") return "Browser";
+  return "Bell";
+}
+
+/** One stored notice read: it stops counting. The other lines are untouched. */
+export function bellAfterReading(view: BellView, notificationId: string): BellView {
+  const items = view.items.map((item) => (item.notificationId === notificationId ? { ...item, unread: false } : item));
   return { items, unread: items.filter((item) => item.unread).length };
 }
 

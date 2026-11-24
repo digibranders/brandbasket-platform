@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { publicVapidKey } from "@brandbasket/shared/lib/push-device";
 import type { ReactElement } from "react";
 import { GatedSubmitButton } from "@brandbasket/shared/ui/forms/submit-gate";
 import { LocalDateTime } from "@brandbasket/shared/ui/panel/local-date-time";
@@ -8,6 +9,8 @@ import { MAX_REVISION_ROUNDS, MIN_REVISION_ROUNDS, REVISION_ROUNDS_FIELD } from 
 import { MAX_TEAMS_URL_LENGTH, TEAMS_DESTINATION_FIELD, TEAMS_DESTINATION_INFO, TEAMS_DESTINATIONS, TEAMS_URL_FIELD } from "@brandbasket/shared/lib/teams-webhook";
 import { buttonDanger, buttonPrimary, buttonSecondary } from "@/components/console/buttons";
 import { fieldClasses, hintClasses, labelClasses } from "@/components/console/field-styles";
+import { ConfirmDialog } from "@/components/console/confirm-dialog";
+import { DevicePushSwitch } from "@/components/console/device-push-switch";
 import { Notice } from "@/components/console/notice";
 import { SecretInput } from "@/components/console/secret-input";
 import { PageHeader } from "@/components/console/page-header";
@@ -48,12 +51,16 @@ export default async function SettingsPage({
   return (
     <>
       <PageHeader title={<>Settings</>} meta="Changes here are live straight away, with no deploy." />
-      <SectionTabs role={staff.role} page="/settings" />
+      <SectionTabs page="/settings" />
       {notice === null ? null : (
         <Notice tone={SETTINGS_NOTICES[notice].ok ? "ok" : "problem"} className="mt-8">
           {SETTINGS_NOTICES[notice].text}
         </Notice>
       )}
+
+      <Section id="notices" title="Notices on this browser" aside="Only you">
+        <DevicePushSwitch publicKey={publicVapidKey(process.env)} />
+      </Section>
 
       <Section id="setup-call" title="Setup call" aside={setting.url === null ? "Not set" : "Shown to customers"}>
         <form action={saveSetupCallUrlAction} className="max-w-2xl">
@@ -83,7 +90,7 @@ export default async function SettingsPage({
         {setting.url === null ? (
           <Quiet>No link is set, so customers see no call card.</Quiet>
         ) : (
-          <p className="mt-6 text-sm text-ink-soft">
+          <p className="mt-6 text-sm text-ink-2">
             <a href={setting.url} target="_blank" rel="noopener noreferrer" className="link-underline">
               Open the link to check it
             </a>
@@ -124,7 +131,7 @@ export default async function SettingsPage({
               Save rounds
             </GatedSubmitButton>
           </form>
-          <p className="mt-6 text-sm text-ink-soft">
+          <p className="mt-6 text-sm text-ink-2">
             {rounds.isSaved ? null : "Not saved yet, so new builds use the default. "}
             {rounds.changedAt === null ? null : (
               <>
@@ -153,7 +160,7 @@ export default async function SettingsPage({
       {teams === null ? null : (
         <Section id="teams" title="Teams alerts" aside="Admins only">
           <div className="grid max-w-2xl gap-8">
-            <p className="text-sm text-ink-soft">
+            <p className="text-sm text-ink-2">
               Each kind of alert can go to its own Teams channel. In Teams, open the channel, choose Workflows and use{" "}
               <b className="font-medium text-ink">Post to a channel when a webhook request is received</b>. Paste the address it gives you
               below. The address is kept encrypted and is never shown again. An alert with no address set is not sent to Teams.
@@ -163,7 +170,8 @@ export default async function SettingsPage({
               const info = TEAMS_DESTINATION_INFO[destination];
               const inputId = `teams-${destination}`;
               return (
-                <form key={destination} action={saveTeamsWebhookAction} className="grid gap-3 border-t border-line pt-6 first:border-t-0 first:pt-0">
+                <div key={destination} className="grid gap-3 border-t border-line pt-6 first:border-t-0 first:pt-0">
+                  <form action={saveTeamsWebhookAction} className="grid gap-3">
                   <input type="hidden" name={TEAMS_DESTINATION_FIELD} value={destination} />
                   <div>
                     <label htmlFor={inputId} className={labelClasses}>
@@ -179,7 +187,7 @@ export default async function SettingsPage({
                     autoComplete="off"
                     spellCheck={false}
                   />
-                  <p className="text-sm text-ink-soft">
+                  <p className="text-sm text-ink-2">
                     {state.state === "unset" ? "Not set." : state.state === "set" ? "An address is saved." : "An address is saved but can no longer be read. Paste it again."}
                     {state.state === "unset" ? null : (
                       <>
@@ -193,17 +201,26 @@ export default async function SettingsPage({
                       Save address
                     </GatedSubmitButton>
                     {state.state === "unset" ? null : (
-                      <>
-                        <button type="submit" formAction={testTeamsWebhookAction} formNoValidate className={buttonSecondary}>
-                          Send test
-                        </button>
-                        <button type="submit" formAction={removeTeamsWebhookAction} formNoValidate className={buttonDanger}>
-                          Remove
-                        </button>
-                      </>
+                      <button type="submit" formAction={testTeamsWebhookAction} formNoValidate className={buttonSecondary}>
+                        Send test
+                      </button>
                     )}
                   </div>
-                </form>
+                  </form>
+                  {state.state === "unset" ? null : (
+                    <ConfirmDialog
+                      title={`Remove the ${info.label} address?`}
+                      consequence="Alerts of this kind stop going to Teams until you paste a new address. The address cannot be shown again."
+                      triggerLabel="Remove"
+                      triggerClassName={`${buttonDanger} justify-self-start`}
+                      confirmLabel="Remove address"
+                      cancelLabel="Keep"
+                      formAction={removeTeamsWebhookAction}
+                    >
+                      <input type="hidden" name={TEAMS_DESTINATION_FIELD} value={destination} />
+                    </ConfirmDialog>
+                  )}
+                </div>
               );
             })}
           </div>

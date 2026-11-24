@@ -4,36 +4,25 @@ import Link from "next/link";
 import type { ReactElement } from "react";
 import { staffCan } from "@brandbasket/shared/lib/access";
 import { formatMoney } from "@brandbasket/shared/lib/money";
-import { STAFF_STAGE_LABELS, type StaffStage } from "@brandbasket/shared/lib/project-stage";
-import { SearchIcon } from "@brandbasket/shared/ui/icons";
-import { LocalDate } from "@brandbasket/shared/ui/panel/local-date-time";
+import type { StatusChipVariant } from "@brandbasket/shared/ui/patterns";
+import { ClientsDirectory, type DirectoryRow, type StageOption } from "@/components/clients/clients-directory";
 import { FilterPills } from "@/components/console/filter-pills";
-import { EmptyLine } from "@/components/console/hairline-list";
 import { PageHeader } from "@/components/console/page-header";
 import { SectionTabs } from "@/components/console/section-tabs";
-import { StatusPill } from "@/components/console/status-pill";
-import { TABLE, TD, TD_NUM, TD_TIME, TH } from "@/components/console/table";
-import { ServiceTags } from "@/components/service-tags";
-import {
-  BUILD_STAGES,
-  buildStageLabel,
-  CLIENT_ROW_STAGE_LABELS,
-  CLIENT_ROW_STAGE_TONES,
-  clientBuildStage,
-  clientRowStage,
-  filterClientRows,
-  parseBuildStage,
-  servicesByBusiness,
-  type ClientRowFilter,
-  type ClientRowStage,
-} from "@/lib/client-rows";
+import { CLIENT_ROW_STAGE_LABELS, CLIENT_ROW_STAGE_TONES, clientBuildStage, buildStageLabel, clientRowStage, servicesByBusiness, type ClientRowStage } from "@/lib/client-rows";
+import { serviceStatuses } from "@/lib/client-services";
 import { matchesClientSearch } from "@/lib/client-search";
+import { parseClientsView } from "@/lib/clients-view";
+import { previewLateReason } from "@/lib/client-next-step";
 import { attentionBySubject, attentionItems } from "@/lib/pipeline";
+import { parseProjectScope } from "@/lib/project-board";
 import { getStaffDb } from "@/lib/server/db";
 import { requireStaffAccess } from "@/lib/server/staff-access";
 import { logStaffAccess } from "@/lib/server/staff-access-log";
+import { shortDate } from "@/lib/team-time";
 import { clientsWaitingOnUs } from "@/lib/waiting-clients";
-import { TableScroll } from "@/components/console/table-scroll";
+import { BuildsView } from "./builds-view";
+import type { PillTone } from "@/components/console/status-pill";
 
 export const metadata: Metadata = { title: "Clients" };
 
@@ -44,33 +33,46 @@ function readStage(value: string | string[] | undefined): ClientRowStage | null 
   return (ROW_STAGES as readonly string[]).includes(raw ?? "") ? (raw as ClientRowStage) : null;
 }
 
-/** An address that keeps the filters and the search already chosen when it changes one of them. */
-function clientsHref(filter: ClientRowFilter, search: string): string {
-  const query = new URLSearchParams();
-  if (filter.stage !== null) query.set("stage", filter.stage);
-  if (filter.build !== null) query.set("build", filter.build);
-  if (search !== "") query.set("q", search);
-  const text = query.toString();
-  return text === "" ? "/clients" : `/clients?${text}`;
-}
+const CHIP_OF_TONE: Readonly<Record<PillTone, StatusChipVariant>> = { todo: "idle", wait: "waiting", progress: "next", done: "active", problem: "failed" };
 
 /** Flagged payments and add-on purchases read for the Next column; far more than are ever open at once. */
 const ATTENTION_READ_LIMIT = 100;
 
+/** Clients, in two views: the List (default) and Builds, the board of website builds that used to be /projects. */
 export default async function ClientsPage({
   searchParams,
 }: {
   readonly searchParams: Promise<Record<string, string | string[] | undefined>>;
 }): Promise<ReactElement> {
   const { user, staff } = await requireStaffAccess();
-  await logStaffAccess({ staffUserId: user.id, action: "clients.list", targetType: "clients" });
   const params = await searchParams;
+  const view = parseClientsView(params.view);
+  const now = new Date();
+  const viewOptions = [
+    { href: "/clients", label: "List", current: view === "list" },
+    { href: "/clients?view=builds", label: "Builds", current: view === "builds" },
+  ];
+
+  if (view === "builds") {
+    await logStaffAccess({ staffUserId: user.id, action: "projects.list", targetType: "projects" });
+    const { meta, body } = await BuildsView({ scope: parseProjectScope(Array.isArray(params.show) ? params.show[0] : params.show), now });
+    return (
+      <>
+        <PageHeader title="Clients" meta={meta} />
+        <SectionTabs role={staff.role} page="/clients" />
+        <div className="mt-6">
+          <FilterPills label="View" options={viewOptions} />
+        </div>
+        <div className="mt-4">{body}</div>
+      </>
+    );
+  }
+
+  await logStaffAccess({ staffUserId: user.id, action: "clients.list", targetType: "clients" });
   const stage = readStage(params.stage);
-  const build = parseBuildStage(Array.isArray(params.build) ? params.build[0] : params.build);
   const rawSearch = (Array.isArray(params.q) ? params.q[0] : params.q)?.trim() ?? "";
   const search = rawSearch.toLowerCase();
   const db = getStaffDb();
-  const now = new Date();
   const [clients, closures, flagged, addOns, linkRequests] = await Promise.all([
     listClients(db, { include: ["paying", "not_paid", "leaving"] }),
     listOpenClosures(db),
@@ -79,26 +81,68 @@ export default async function ClientsPage({
     listAddOnsToContact(db, ATTENTION_READ_LIMIT),
     listOpenChannelLinkRequests(db),
   ]);
-  const services = servicesByBusiness(await listLiveServiceLines(db, clients.map((client) => client.businessId)));
+  const lines = await listLiveServiceLines(db, clients.map((client) => client.businessId));
+  const services = servicesByBusiness(lines);
   const closing = new Map(closures.map((closure) => [closure.businessId, closure]));
   const attention = attentionBySubject(attentionItems({ flagged, addOns, waiting: clientsWaitingOnUs(clients, now), newLeads: [], now }));
+  const toSetUp = new Set(addOns.filter((purchase) => purchase.kind !== "press-release").map((purchase) => `${purchase.businessId}:${purchase.addOn}`));
 
-  const rows = clients.map((client) => ({
-    client,
-    stage: clientRowStage(client, closing.has(client.businessId)),
-    buildStage: clientBuildStage(client),
-  }));
-  const found = rows.filter((row) => matchesClientSearch(row.client, search));
-  const visible = filterClientRows(found, { stage, build });
-  const countOf = (option: ClientRowStage | null): number => filterClientRows(found, { stage: option, build }).length;
-  const buildCountOf = (option: StaffStage | null): number => filterClientRows(found, { stage, build: option }).length;
-  const paying = rows.filter((row) => row.client.billing.firstPayment !== null).length;
+  const found = clients.filter((client) => matchesClientSearch(client, search)).map((client) => ({ client, stage: clientRowStage(client, closing.has(client.businessId)) }));
+  const visible = found.filter((row) => stage === null || row.stage === stage);
+  const stages: StageOption[] = [
+    { id: "all", label: "All", count: found.length },
+    ...ROW_STAGES.map((option) => ({ id: option, label: CLIENT_ROW_STAGE_LABELS[option], count: found.filter((row) => row.stage === option).length })),
+  ];
+  const paying = clients.filter((client) => client.billing.firstPayment !== null).length;
+
+  const rows: DirectoryRow[] = visible.map(({ client, stage: rowStage }) => {
+    const needs = attention.get(client.businessId);
+    const closure = closing.get(client.businessId);
+    const service = services.get(client.businessId);
+    const paidThrough = client.billing.subscription?.paidThroughAt ?? null;
+    const pastDue = client.billing.subscription?.status === "past_due";
+    const websiteLate = previewLateReason(client.project, now) !== null;
+    const next =
+      closure !== undefined
+        ? `Erased on ${shortDate(closure.eraseAfter)} unless restored`
+        : needs !== undefined
+          ? needs.kind === "add-on"
+            ? "Add-on to set up"
+            : needs.reason
+          : pastDue
+            ? "Renewal failed"
+            : rowStage === "not-paid"
+              ? "Follow up on sign-up"
+              : null;
+    return {
+      id: client.businessId,
+      name: client.businessName,
+      ownerName: client.owner?.name ?? null,
+      stageLabel: CLIENT_ROW_STAGE_LABELS[rowStage],
+      stageVariant: CHIP_OF_TONE[CLIENT_ROW_STAGE_TONES[rowStage]],
+      buildLabel: buildStageLabel(clientBuildStage(client)),
+      services: serviceStatuses({
+        lines: lines.filter((line) => line.businessId === client.businessId),
+        project: client.project,
+        websiteLate,
+        toSetUp: new Set([...(service?.addOns ?? [])].filter((id) => toSetUp.has(`${client.businessId}:${id}`))),
+      }),
+      monthly:
+        service === undefined || service.monthlyCents === 0
+          ? "None"
+          : `${formatMoney(service.monthlyCents, client.currency)}${client.billing.subscription?.billingInterval === "year" ? " a year" : ""}`,
+      next,
+      nextIsLate: pastDue || needs?.kind === "overdue" || needs?.kind === "payment",
+      paidThroughIso: paidThrough === null ? null : paidThrough.toISOString(),
+      late: pastDue || websiteLate || needs?.kind === "overdue" || needs?.kind === "payment",
+    };
+  });
 
   return (
     <>
       <PageHeader
         title="Clients"
-        meta={`${paying} paying · ${rows.length - paying} signed up, not paid`}
+        meta={`${paying} paying · ${clients.length - paying} signed up, not paid`}
         action={
           <Link href="/clients/channel-requests" className="rounded-lg border border-ink-2/65 bg-surface px-3 py-1.5 text-sm font-semibold text-ink hover:bg-ink/5">
             Channel requests{linkRequests.length === 0 ? "" : ` (${linkRequests.length})`}
@@ -106,128 +150,19 @@ export default async function ClientsPage({
         }
       />
       <SectionTabs role={staff.role} page="/clients" />
-
-      <div className="mt-8 space-y-4">
-        <form action="/clients" role="search" className="w-full sm:w-80">
-          {stage === null ? null : <input type="hidden" name="stage" value={stage} />}
-          {build === null ? null : <input type="hidden" name="build" value={build} />}
-          <label htmlFor="clients-search" className="sr-only">
-            Search clients
-          </label>
-          <div className="relative">
-            <SearchIcon className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-ink-2" />
-            <input
-              id="clients-search"
-              name="q"
-              type="search"
-              defaultValue={rawSearch}
-              placeholder="Business, owner, email or phone"
-              className="block w-full rounded-lg border border-ink-2/65 bg-surface py-2 pl-10 pr-3 text-sm text-ink placeholder:text-ink-2"
-            />
-          </div>
-        </form>
-        <FilterPills
-          label="Filter by stage"
-          options={[
-            { href: clientsHref({ stage: null, build }, rawSearch), label: "All", count: countOf(null), current: stage === null },
-            ...ROW_STAGES.map((option) => ({
-              href: clientsHref({ stage: option, build }, rawSearch),
-              label: CLIENT_ROW_STAGE_LABELS[option],
-              count: countOf(option),
-              current: stage === option,
-            })),
-          ]}
-        />
-        <FilterPills
-          label="Build"
-          options={[
-            { href: clientsHref({ stage, build: null }, rawSearch), label: "All", count: buildCountOf(null), current: build === null },
-            ...BUILD_STAGES.map((option) => ({
-              href: clientsHref({ stage, build: option }, rawSearch),
-              label: STAFF_STAGE_LABELS[option],
-              count: buildCountOf(option),
-              current: build === option,
-            })),
-          ]}
-        />
-        {stage === "leaving" ? (
-          <p className="text-sm text-ink-2">
-            <Link href="/leaving" className="font-semibold text-ink underline underline-offset-4">
-              Why people leave
-            </Link>
-          </p>
-        ) : null}
+      <div className="mt-6">
+        <FilterPills label="View" options={viewOptions} />
       </div>
-
-      {visible.length === 0 ? (
-        <EmptyLine>
-          {clients.length === 0
-            ? "No clients yet."
-            : rawSearch !== "" && found.length === 0
-              ? `No client matches “${rawSearch}”.`
-              : "Nobody here right now."}
-        </EmptyLine>
-      ) : (
-        <TableScroll label="Clients" className="mt-6">
-          <table className={TABLE}>
-            <thead>
-              <tr>
-                <th className={TH}>Business</th>
-                <th className={TH}>Services</th>
-                <th className={TH}>Stage</th>
-                <th className={`${TH} text-right`}>Monthly</th>
-                <th className={TH}>Next</th>
-                <th className={TH}>Paid through</th>
-              </tr>
-            </thead>
-            <tbody>
-              {visible.map(({ client, stage: rowStage, buildStage }) => {
-                const buildLabel = buildStageLabel(buildStage);
-                const needs = attention.get(client.businessId);
-                const service = services.get(client.businessId);
-                const closure = closing.get(client.businessId);
-                const paidThrough = client.billing.subscription?.paidThroughAt ?? null;
-                return (
-                  <tr key={client.businessId}>
-                    <td className={TD}>
-                      <Link href={`/clients/${client.businessId}`} className="font-semibold hover:underline">
-                        {client.businessName}
-                      </Link>
-                      {buildLabel === null ? null : <small className="block text-xs text-ink-2">{buildLabel}</small>}
-                      <small className="block text-xs text-ink-2">{client.owner?.name ?? "No owner"}</small>
-                    </td>
-                    <td className={TD}>
-                      <ServiceTags addOns={service?.addOns ?? []} />
-                    </td>
-                    <td className={TD}>
-                      <StatusPill tone={CLIENT_ROW_STAGE_TONES[rowStage]}>{CLIENT_ROW_STAGE_LABELS[rowStage]}</StatusPill>
-                    </td>
-                    <td className={TD_NUM}>
-                      {service === undefined || service.monthlyCents === 0
-                        ? "None"
-                        : `${formatMoney(service.monthlyCents, client.currency)}${client.billing.subscription?.billingInterval === "year" ? " a year" : ""}`}
-                    </td>
-                    <td className={TD}>
-                      {closure !== undefined ? (
-                        <>
-                          Erased on <LocalDate iso={closure.eraseAfter.toISOString()} /> unless restored
-                        </>
-                      ) : needs !== undefined ? (
-                        <b className="font-semibold">{needs.kind === "add-on" ? "Add-on to set up" : needs.reason}</b>
-                      ) : rowStage === "not-paid" ? (
-                        <span className="text-ink-2">Follow up on sign-up</span>
-                      ) : (
-                        <span className="text-ink-2">None</span>
-                      )}
-                    </td>
-                    <td className={TD_TIME}>{paidThrough === null ? "None" : <LocalDate iso={paidThrough.toISOString()} />}</td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </TableScroll>
-      )}
+      <div className="mt-4">
+        <ClientsDirectory rows={rows} stages={stages} stage={stage} search={rawSearch} emptyKind={clients.length === 0 ? "none" : "no-match"} />
+      </div>
+      {stage === "leaving" ? (
+        <p className="mt-4 text-sm text-ink-2">
+          <Link href="/leaving" className="font-semibold text-ink underline underline-offset-4">
+            Why people leave
+          </Link>
+        </p>
+      ) : null}
     </>
   );
 }

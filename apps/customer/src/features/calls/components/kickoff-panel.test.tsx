@@ -5,7 +5,7 @@ import { KickoffPanel } from "./kickoff-panel";
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
 vi.mock("../actions", () => ({ bookKickoffAction: vi.fn() }));
 vi.mock("./slot-picker", () => ({
-  useCallSlots: () => ({ state: { status: "ok", slots: [] }, drop: vi.fn() }),
+  useCallSlots: () => ({ state: { status: "ok", slots: [], minutes: 45 }, drop: vi.fn() }),
   SlotChooser: () => <div data-testid="slot-chooser">SlotChooser</div>,
 }));
 
@@ -23,7 +23,7 @@ describe("KickoffPanel", () => {
     );
 
     expect(screen.getByRole("heading", { name: "Book your kickoff call" })).toBeTruthy();
-    expect(screen.getByText(/30 minutes on video/)).toBeTruthy();
+    expect(screen.getByText(/45 minutes on video/)).toBeTruthy();
     expect(screen.queryByRole("link", { name: /Join meeting/ })).toBeNull();
     expect(container.textContent).not.toContain("\u2014");
     expect(container.textContent).not.toContain("\u2013");

@@ -1,16 +1,16 @@
 "use client";
 
-import { useActionState } from "react";
+import { useGuardedActionState } from "@/lib/use-guarded-action-state";
 import { Banner, Button, Checkbox, Field, Input, LinkButton, RadioCard, RadioGroup } from "@/ui";
 import { saveAnswerAction } from "../actions";
 import type { StartQuestion } from "../loader";
 
 /** One question: its choices, then Continue. Every answer is saved as it is given, so a refresh or Back resumes. */
 export function QuestionForm({ question, services }: { readonly question: StartQuestion; readonly services: string }) {
-  const [state, action, pending] = useActionState(saveAnswerAction, null);
+  const [state, action, pending, formRef] = useGuardedActionState(saveAnswerAction, null);
   const error = state !== null && !state.ok && !pending ? state.message : null;
   return (
-    <form action={action} className="flex flex-col gap-6">
+    <form ref={formRef} action={action} className="flex flex-col gap-6">
       <input type="hidden" name="field" value={question.field} />
       <input type="hidden" name="services" value={services} />
       <fieldset className="flex flex-col gap-4">

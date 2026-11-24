@@ -1,76 +1,111 @@
-import { listPaymentsForStaff } from "@brandbasket/db";
+import { listClients, listPaymentsForStaff, listPaymentsNeedingAttention, type ClientSummary, type PaymentNeedingAttention } from "@brandbasket/db";
 import { LAPSE_DATA_RETENTION_DAYS, LAPSE_GRACE_PERIOD_DAYS, LAPSE_HOSTING_PAUSE_DAYS } from "@brandbasket/billing";
+import { rupees } from "@brandbasket/shared/lib/billing/invoice-register";
 import { formatMoney } from "@brandbasket/shared/lib/money";
+import { StatTile } from "@brandbasket/shared/ui/patterns";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { ReactElement } from "react";
-import { buttonSecondary, buttonSmall } from "@/components/console/buttons";
-import { LIFT } from "@/components/console/classes";
-import { Figures } from "@/components/console/figures";
-import { FilterPills } from "@/components/console/filter-pills";
-import { EmptyLine } from "@/components/console/hairline-list";
+import { buttonSecondary } from "@/components/console/buttons";
 import { Notice } from "@/components/console/notice";
 import { PageHeader } from "@/components/console/page-header";
 import { SectionTabs } from "@/components/console/section-tabs";
-import { StatusPill } from "@/components/console/status-pill";
-import { TABLE, TD, TD_NUM, TD_TIME, TH } from "@/components/console/table";
+import { RefundDialog, ManualRefundDialog } from "@/components/console/refund-dialogs";
+import { NeedsALookStrip, RenewalsLane } from "@/components/payments/money-lanes";
+import { PaymentsWorkspace } from "@/components/payments/payments-workspace";
+import { PAYMENT_ATTENTION_LABELS } from "@/lib/billing/attention";
 import { monthLabel, resolveRegisterMonth } from "@/lib/invoice-register-view";
+import { moneyNeedsALookCount, renewalLane } from "@/lib/money-attention";
+import { paymentsAttention } from "@/lib/payments-attention";
 import {
   filterCounts,
   matchesFilter,
-  PAYMENT_FILTER_LABELS,
-  PAYMENT_FILTERS,
+  nextPaymentMonthLink,
   paymentFigures,
-  paymentFilterHref,
   paymentMonthBounds,
   paymentMonthLinks,
-  paymentRowView,
+  paymentPanelRow,
   readPaymentFilter,
 } from "@/lib/payments-view";
 import { getStaffDb } from "@/lib/server/db";
 import { logStaffAccess } from "@/lib/server/staff-access-log";
 import { requireStaffCan } from "@/lib/server/staff-role";
-import { TableScroll } from "@/components/console/table-scroll";
+import { markPaymentRefundedAction, refundPaymentAction } from "../clients/[businessId]/billing/refund-actions";
 
 export const metadata: Metadata = { title: "Payments" };
 
 /** shortcut: one month is read in one go and filtered here; page the query if a month ever passes 1,000 payments. */
 const MONTH_LIMIT = 1000;
 
+/** Far more flagged payments than are ever open at once, so none is left out (the Today queue reads the same way). */
+const FLAGGED_READ_LIMIT = 100;
+
+const count = (n: number, noun: string): string => `${n} ${noun}${n === 1 ? "" : "s"}`;
+
 interface PaymentsPageProps {
   readonly searchParams: Promise<Readonly<Record<string, string | string[] | undefined>>>;
 }
 
+/** One read that may fail without taking the page down: the page then says what it could not read instead of showing zero. */
+async function readOrNull<T>(read: () => Promise<T>): Promise<T | null> {
+  try {
+    return await read();
+  } catch (error) {
+    console.error("[payments] could not read a source", error instanceof Error ? error.message : "unknown error");
+    return null;
+  }
+}
+
 /**
  * Every payment in a month (`?month=2026-11`, the current Indian month by default), across every client: paid, failed,
- * refunded and recorded by hand, with the month's figures in rupees. `?show=` narrows the table; the figures always
- * cover the whole month. Finance and admin only.
+ * refunded and recorded by hand. Three figures, what needs a look (payments and overdue plans together, as the rail counts it),
+ * then the table with a side panel. `?show=` narrows the table; the figures always cover the whole month.
  */
 export default async function PaymentsPage({ searchParams }: PaymentsPageProps): Promise<ReactElement> {
-  const { user, staff: viewer } = await requireStaffCan("money");
+  const { user } = await requireStaffCan("money");
   const params = await searchParams;
-  const month = resolveRegisterMonth(params.month, new Date());
+  const now = new Date();
+  const month = resolveRegisterMonth(params.month, now);
   const bounds = month === null ? null : paymentMonthBounds(month);
   if (month === null || bounds === null) notFound();
 
-  const rows = await listPaymentsForStaff(getStaffDb(), { ...bounds, limit: MONTH_LIMIT });
+  const db = getStaffDb();
+  const [rows, flagged, clients] = await Promise.all([
+    listPaymentsForStaff(db, { ...bounds, limit: MONTH_LIMIT }),
+    readOrNull<PaymentNeedingAttention[]>(() => listPaymentsNeedingAttention(db, { limit: FLAGGED_READ_LIMIT })),
+    readOrNull<ClientSummary[]>(() => listClients(db)),
+  ]);
   await logStaffAccess({ staffUserId: user.id, action: "payment.list_view", targetType: "payments", targetId: month });
 
   const filter = readPaymentFilter(params.show);
   const counts = filterCounts(rows);
-  const rupees = paymentFigures(rows, "INR");
+  const rupeeFigures = paymentFigures(rows, "INR");
   const dollars = paymentFigures(rows, "USD");
-  const shown = rows.filter((row) => matchesFilter(row, filter)).map(paymentRowView);
+  const attentionTitle = (row: (typeof rows)[number]): string | null =>
+    row.attentionReason !== null && row.attentionResolvedAt === null ? PAYMENT_ATTENTION_LABELS[row.attentionReason].title : null;
+  const shown = rows.filter((row) => matchesFilter(row, filter)).map((row) => paymentPanelRow(row, attentionTitle(row)));
+
+  const attention = paymentsAttention(month, rows, flagged ?? []);
+  const renewals = clients === null ? [] : renewalLane(clients, now);
+  const unreadSources = [...(flagged === null ? ["flagged payments"] : []), ...(clients === null ? ["plans"] : [])];
+  const needsLook = unreadSources.length > 0 && attention.count + renewals.length === 0 ? null : moneyNeedsALookCount({ payments: attention.count, renewals: renewals.length });
+
+  const openRaw = params.open;
+  const openId = typeof openRaw === "string" && openRaw !== "" ? openRaw : null;
+  const openSource = openId === null ? undefined : rows.find((row) => row.id === openId);
+  const openRow = openSource === undefined ? null : paymentPanelRow(openSource, attentionTitle(openSource));
+  const fullAmount = openSource === undefined ? "" : rupees(openSource.amountCents);
+
   const links = paymentMonthLinks(month);
+  const next = nextPaymentMonthLink(month, resolveRegisterMonth(undefined, now) ?? month);
   const label = monthLabel(month);
-  const lookLine = rupees.attentionCount === 0 ? "" : rupees.attentionCount === 1 ? " · 1 needs a look" : ` · ${rupees.attentionCount} need a look`;
 
   return (
     <>
       <PageHeader
         title="Payments"
-        meta={`${label} · ${formatMoney(rupees.collectedCents, "INR")} in${lookLine}`}
+        meta={`${label} · ${formatMoney(rupeeFigures.collectedCents, "INR")} in`}
         action={
           <>
             {links.previous === null ? null : (
@@ -78,9 +113,9 @@ export default async function PaymentsPage({ searchParams }: PaymentsPageProps):
                 ‹ {links.previous.label}
               </Link>
             )}
-            {links.next === null ? null : (
-              <Link href={links.next.href} className={buttonSecondary}>
-                {links.next.label} ›
+            {next === null ? null : (
+              <Link href={next.href} className={buttonSecondary}>
+                {next.label} ›
               </Link>
             )}
             <a href={links.exportHref} className={buttonSecondary}>
@@ -89,105 +124,78 @@ export default async function PaymentsPage({ searchParams }: PaymentsPageProps):
           </>
         }
       />
-      <SectionTabs role={viewer.role} page="/payments" />
+      <SectionTabs page="/payments" />
 
-      <Figures
-        items={[
-          { value: formatMoney(rupees.collectedCents, "INR"), label: "Collected", note: `${rupees.paymentsCount} payments`, long: true },
-          { value: formatMoney(rupees.planCents, "INR"), label: "Monthly plans", note: `${rupees.planClients} clients`, long: true },
-          { value: formatMoney(rupees.extrasCents, "INR"), label: "Extras and charges", note: `${rupees.extrasCount} paid`, long: true },
-          {
-            value: formatMoney(rupees.refundedCents, "INR"),
-            label: "Refunded",
-            note: `${rupees.refundedCount} payments`,
-            tone: rupees.refundedCount > 0 ? "warn" : "good",
-            long: true,
-          },
-          {
-            value: rupees.failedCount,
-            label: "Failed",
-            note: rupees.failedCount === 0 ? "None" : `${formatMoney(rupees.failedCents, "INR")} not collected`,
-            tone: rupees.failedCount > 0 ? "bad" : "good",
-          },
-          {
-            value: rupees.attentionCount,
-            label: "Needs a look",
-            note: rupees.attentionCount === 0 ? "All clear" : "Open each one",
-            tone: rupees.attentionCount > 0 ? "warn" : "good",
-          },
-        ]}
+      <section aria-label={`Figures for ${label}`} className="mt-6 grid gap-x-10 gap-y-5 sm:grid-cols-3">
+        <StatTile label="Collected" value={formatMoney(rupeeFigures.collectedCents, "INR")} size="medium" note={`${rupeeFigures.paymentsCount} payments`} deltaTone="neutral" />
+        <StatTile
+          label="Failed"
+          value={rupeeFigures.failedCount}
+          note={rupeeFigures.failedCount === 0 ? "None" : `${formatMoney(rupeeFigures.failedCents, "INR")} not collected`}
+          deltaTone={rupeeFigures.failedCount > 0 ? "negative" : "positive"}
+        />
+        <StatTile
+          label="Needs a look"
+          value={needsLook ?? "?"}
+          note={
+            needsLook === null
+              ? `Could not read ${unreadSources.join(" and ")}`
+              : needsLook === 0 && unreadSources.length === 0
+                ? "All clear"
+                : `${count(attention.count, "payment")}, ${count(renewals.length, "renewal")}${unreadSources.length > 0 ? `. Could not read ${unreadSources.join(" and ")}` : ""}`
+          }
+          deltaTone={needsLook === null || needsLook > 0 ? "warning" : "positive"}
+        />
+      </section>
+
+      <NeedsALookStrip items={attention.items} />
+      <RenewalsLane
+        rows={renewals}
+        readFailed={clients === null}
+        policy={`Payment lapse policy: ${LAPSE_GRACE_PERIOD_DAYS} days grace period with full service after a missed payment, website hosting paused after ${LAPSE_HOSTING_PAUSE_DAYS} days of non-payment, and account data retained for ${LAPSE_DATA_RETENTION_DAYS} days before permanent deletion.`}
       />
 
-      <div className="mt-6 rounded-lg border border-line bg-sunken/40 px-4 py-3">
-        <p className="text-xs font-semibold text-ink-2">Payment lapse policy</p>
-        <p className="mt-1 text-sm text-ink-2">
-          {LAPSE_GRACE_PERIOD_DAYS} days grace period with full service after a missed payment, website hosting paused after {LAPSE_HOSTING_PAUSE_DAYS} days of non-payment, and account data retained for {LAPSE_DATA_RETENTION_DAYS} days before permanent deletion.
-        </p>
-      </div>
-
       {dollars.paymentsCount + dollars.failedCount === 0 ? null : (
-        <Notice tone="ok" className="mt-6">
+        <Notice tone="ok" className="mt-4">
           Dollar payments in {label}: {formatMoney(dollars.collectedCents, "USD")} collected from {dollars.paymentsCount}. They are not in the
           figures above.
         </Notice>
       )}
 
-      <div className="mt-8">
-        <FilterPills
-          label="Show payments"
-          options={PAYMENT_FILTERS.map((option) => ({
-            href: paymentFilterHref(month, option),
-            label: PAYMENT_FILTER_LABELS[option],
-            count: counts[option],
-            current: option === filter,
-          }))}
+      <div className="mt-6">
+        <PaymentsWorkspace
+          rows={shown}
+          month={month}
+          monthLabel={label}
+          filter={filter}
+          counts={counts}
+          openId={openId}
+          openRow={openRow}
+          refundSlot={
+            openSource === undefined || openSource.status !== "captured" ? null : (
+              <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
+                <RefundDialog
+                  businessId={openSource.businessId}
+                  paymentId={openSource.id}
+                  businessName={openSource.businessName}
+                  currency={openSource.currency}
+                  amountCents={openSource.amountCents}
+                  fullAmount={fullAmount}
+                  invoiceNumber={openSource.invoiceNumber}
+                  action={refundPaymentAction}
+                />
+                <ManualRefundDialog
+                  businessId={openSource.businessId}
+                  paymentId={openSource.id}
+                  currency={openSource.currency}
+                  fullAmount={fullAmount}
+                  action={markPaymentRefundedAction}
+                />
+              </div>
+            )
+          }
         />
       </div>
-
-      {shown.length === 0 ? (
-        <EmptyLine>No payments to show for {label}.</EmptyLine>
-      ) : (
-        <section aria-label={`Payments in ${label}`} className={`${LIFT} mt-4 overflow-x-auto px-4`}>
-          <TableScroll label="Payments">
-            <table className={TABLE}>
-              <thead>
-                <tr>
-                  <th className={TH}>When</th>
-                  <th className={TH}>Client</th>
-                  <th className={TH}>For</th>
-                  <th className={TH}>Method</th>
-                  <th className={`${TH} text-right`}>Amount</th>
-                  <th className={TH}>Status</th>
-                  <th className={TH}>Invoice</th>
-                  <th className={TH}>
-                    <span className="sr-only">Open</span>
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {shown.map((row) => (
-                  <tr key={row.id}>
-                    <td className={TD_TIME}>{row.when}</td>
-                    <td className={`${TD} font-semibold`}>{row.client}</td>
-                    <td className={TD}>{row.forLabel}</td>
-                    <td className={`${TD} text-ink-2`}>{row.method}</td>
-                    <td className={TD_NUM}>{row.amount}</td>
-                    <td className={TD}>
-                      <StatusPill tone={row.status.tone}>{row.status.label}</StatusPill>
-                    </td>
-                    <td className={`${TD} font-figure text-xs`}>{row.invoice}</td>
-                    <td className={`${TD} text-right`}>
-                      <Link href={row.href} className={buttonSmall}>
-                        Open
-                      </Link>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </TableScroll>
-        </section>
-      )}
     </>
   );
 }

@@ -1,14 +1,19 @@
 "use client";
 
 import Link from "next/link";
-import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
+import { useEffect, useState, useTransition } from "react";
+import { browserHost, startRefreshing } from "@brandbasket/shared/lib/refresh-while-visible";
 import { PanelError } from "@/components";
 import { formatRelative } from "@/lib/format";
 import type { Loaded } from "@/lib/loaded";
 import { Icon, IconButton, Popover } from "@/ui";
 import { cx } from "@/ui/cx";
-import { markNotificationsSeenAction } from "../actions";
-import { bellAfterOpening, bellHasUnseenWork, type BellView } from "../rules";
+import { markNotificationReadAction, markNotificationsSeenAction } from "../actions";
+import { bellAfterOpening, bellAfterReading, bellHasUnseenWork, type BellItem, type BellView } from "../rules";
+
+/** How often the bell asks the server for news while the page is visible. */
+const REFRESH_MS = 60_000;
 
 /**
  * The bell in the top bar: what waits on the customer and the work we did, newest first.
@@ -18,9 +23,26 @@ import { bellAfterOpening, bellHasUnseenWork, type BellView } from "../rules";
 export function NotificationsBell({ notifications }: { readonly notifications: Loaded<BellView> }) {
   const [open, setOpen] = useState(false);
   const [openedAt, setOpenedAt] = useState<Date | null>(null);
+  const [readIds, setReadIds] = useState<readonly string[]>([]);
   const [, startTransition] = useTransition();
+  const router = useRouter();
   const loaded = notifications.ok ? notifications.data : null;
-  const view = loaded === null || openedAt === null ? loaded : bellAfterOpening(loaded, openedAt);
+  const opened = loaded === null || openedAt === null ? loaded : bellAfterOpening(loaded, openedAt);
+  const view = opened === null ? null : readIds.reduce(bellAfterReading, opened);
+
+  // The server loader re-runs on focus and every minute while the page is visible; no websocket.
+  useEffect(() => startRefreshing(() => router.refresh(), browserHost(window, document), REFRESH_MS), [router]);
+
+  const onOpenItem = (item: BellItem) => {
+    setOpen(false);
+    const id = item.notificationId;
+    if (id === undefined || !item.unread) return;
+    setReadIds((previous) => [...previous, id]);
+    startTransition(async () => {
+      const result = await markNotificationReadAction(id);
+      if (!result.ok) setReadIds((previous) => previous.filter((entry) => entry !== id));
+    });
+  };
   const unread = view?.unread ?? 0;
 
   const onOpenChange = (next: boolean) => {
@@ -76,7 +98,7 @@ export function NotificationsBell({ notifications }: { readonly notifications: L
               <li key={item.id}>
                 <Link
                   href={item.href}
-                  onClick={() => setOpen(false)}
+                  onClick={() => onOpenItem(item)}
                   className="flex items-start gap-3 p-3 transition-colors hover:bg-surface-hover"
                 >
                   <span

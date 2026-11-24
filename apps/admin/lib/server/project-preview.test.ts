@@ -1,3 +1,4 @@
+import { notifyEvent } from "@brandbasket/shared/server/notify-event";
 import { findClientDetail, recordPreviewVersion, recordProjectPreviewSent, savePreviewImage, shouldEmail, type Database } from "@brandbasket/db";
 import { previewReadyEmail } from "@brandbasket/email";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -7,6 +8,7 @@ import { ProjectPreviewRecipientMissingError, resendPreviewEmail, sendProjectPre
 import { addWorkingActivity } from "./website-moves";
 
 vi.mock("server-only", () => ({}));
+vi.mock("@brandbasket/shared/server/notify-event", () => ({ notifyEvent: vi.fn(async () => undefined) }));
 vi.mock("@brandbasket/db", () => ({
   findClientDetail: vi.fn(),
   recordPreviewVersion: vi.fn(),
@@ -16,7 +18,7 @@ vi.mock("@brandbasket/db", () => ({
 }));
 vi.mock("./preview-screenshot", () => ({ captureScreenshot: vi.fn() }));
 vi.mock("./website-moves", () => ({ addWorkingActivity: vi.fn() }));
-vi.mock("@brandbasket/email", () => ({ previewReadyEmail: vi.fn() }));
+vi.mock("@brandbasket/email", async (importOriginal) => ({ ...(await importOriginal<typeof import("@brandbasket/email")>()), previewReadyEmail: vi.fn() }));
 vi.mock("./email", () => ({ customerEmailTransport: vi.fn() }));
 vi.mock("./env", () => ({ serverEnv: () => ({ APP_ORIGIN: "https://app.brandbasket.in" }) }));
 
@@ -64,6 +66,12 @@ beforeEach(() => {
 });
 
 describe("sendProjectPreview", () => {
+  it("notifies the preview ready once per send, keyed on the project and the time", async () => {
+    await sendProjectPreview(db, INPUT, NOW);
+    expect(notifyEvent).toHaveBeenCalledTimes(1);
+    expect(notifyEvent).toHaveBeenCalledWith(db, { event: "website.preview_ready", audience: { kind: "customer", businessId: "business-1" }, dedupeKey: `project-1:${NOW.getTime()}`, data: {} });
+  });
+
   it("reads the client, records the preview against the business's project, then emails the owner", async () => {
     await sendProjectPreview(db, INPUT, NOW);
 
@@ -191,6 +199,22 @@ describe("sendProjectPreview outcomes beyond the happy path", () => {
     await expect(sendProjectPreview(db, INPUT, NOW)).resolves.toBe("emailed");
     expect(console.error).toHaveBeenCalledWith("[preview-version]", expect.anything());
     expect(send).toHaveBeenCalledTimes(1);
+  });
+
+  it("reports email-queued when the transport holds the message for a retry", async () => {
+    send.mockResolvedValue({ status: "queued" });
+    await expect(sendProjectPreview(db, INPUT, NOW)).resolves.toBe("email-queued");
+  });
+
+  it("reports email-failed, not emailed, when the transport answers failed instead of throwing", async () => {
+    send.mockResolvedValue({ status: "failed", error: "Brevo answered 400" });
+    await expect(sendProjectPreview(db, INPUT, NOW)).resolves.toBe("email-failed");
+    expect(mockedRecordSent).toHaveBeenCalledTimes(1);
+  });
+
+  it("tells staff to reach an owner who opted out of mail another way", async () => {
+    send.mockResolvedValue({ status: "suppressed" });
+    await expect(sendProjectPreview(db, INPUT, NOW)).resolves.toBe("no-email");
   });
 
   it("keeps the saved preview and reports email-failed when the send fails", async () => {

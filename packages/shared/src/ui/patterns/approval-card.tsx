@@ -1,4 +1,5 @@
 import type { ReactElement, ReactNode } from "react";
+import { patternButtonPrimary, patternButtonSecondary } from "./button-classes";
 
 export interface ApprovalCardProps {
   readonly title: string;
@@ -53,7 +54,7 @@ export function ApprovalCard({
           type="button"
           disabled={isSubmitting}
           onClick={onApprove}
-          className="inline-flex h-[42px] items-center justify-center rounded-[8px] bg-ink px-5 font-sans text-sm font-semibold text-white shadow-button hover:bg-primary-hover active:translate-y-[1px] disabled:opacity-50"
+          className={patternButtonPrimary}
         >
           {approveLabel}
         </button>
@@ -61,7 +62,7 @@ export function ApprovalCard({
           type="button"
           disabled={isSubmitting}
           onClick={onRequestChanges}
-          className="inline-flex h-[42px] items-center justify-center rounded-[8px] border border-border bg-surface px-5 font-sans text-sm font-semibold text-ink hover:bg-surface-hover active:translate-y-[1px] disabled:opacity-50"
+          className={patternButtonSecondary}
         >
           {requestChangesLabel}
         </button>

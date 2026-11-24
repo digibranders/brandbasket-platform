@@ -1,14 +1,17 @@
+import { NextActionCard } from "@brandbasket/shared/ui/patterns";
 import type { ReactNode } from "react";
 import { FilterBar, PageHeader, Panel, PanelError } from "@/components";
 import type { CustomerContext } from "@/lib/guards";
+import { ASK_OWNER } from "@/lib/ask-owner";
 import type { Loaded } from "@/lib/loaded";
-import { Banner, LinkButton } from "@/ui";
+import { Banner, Icon, LinkButton } from "@/ui";
 import {
   canWrite,
   filterRows,
   KIND_LABELS,
   kindsPresent,
   NEW_REQUEST_PATH,
+  requestPath,
   statusCounts,
   type NoticeLine,
   type RequestRow,
@@ -45,15 +48,28 @@ export function RequestsScreen({ customer, rows, includedLine, status, service, 
       New request
     </LinkButton>
   ) : undefined;
+  // A member who cannot send requests is told who can, where the button would be.
+  const askOwner = customer.billing.hasAccess && !canWrite(customer.role) ? <p className="type-meta">{ASK_OWNER}</p> : undefined;
+  const waitingQuote = rows.ok ? rows.data.find((row) => row.quoteTotal !== null) : undefined;
   const intro = "Ask for a change, send us something, or ask a question.";
 
   return (
     <>
-      <PageHeader title="Requests" description={includedLine === null ? intro : `${intro} ${includedLine}`} actions={newRequest} />
+      <PageHeader title="Requests" description={includedLine === null ? intro : `${intro} ${includedLine}`} actions={newRequest ?? askOwner} />
       {notice === null ? null : (
         <Banner tone={notice.ok ? "pos" : "neg"} className="mb-4">
           {notice.text}
         </Banner>
+      )}
+      {waitingQuote === undefined ? null : (
+        <NextActionCard
+          className="mb-6"
+          serviceName={waitingQuote.kindLabel}
+          serviceIcon={<Icon name="Receipt" />}
+          title={waitingQuote.title}
+          description={`Quote ${waitingQuote.quoteTotal}, waiting for your answer.`}
+          primaryAction={{ label: "Open request", href: requestPath(waitingQuote.ticketId) }}
+        />
       )}
       {!rows.ok ? (
         <Panel title="Requests">

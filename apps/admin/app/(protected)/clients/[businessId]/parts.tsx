@@ -38,6 +38,7 @@ import { registrableDomain } from "@brandbasket/shared/lib/onboarding/domain-dns
 import { safeExternalHref } from "@brandbasket/shared/lib/safe-link";
 import { buttonPrimary, buttonSecondary } from "@/components/console/buttons";
 import { ConfirmDialog } from "@/components/console/confirm-dialog";
+import { ConfirmSubmit } from "@/components/console/confirm-submit";
 import { checkboxClasses, fieldClasses, hintClasses, labelClasses } from "@/components/console/field-styles";
 import { FactList, Quiet, type Fact } from "@/components/console/section";
 import {
@@ -229,7 +230,7 @@ export function WebsiteUrlBlock({
         </GatedSubmitButton>
       </div>
       {notice === null ? null : (
-        <p role="status" className={notice === "invalid" ? "mt-2 text-sm text-accent" : "mt-2 text-sm text-ink-soft"}>
+        <p role="status" className={notice === "invalid" ? "mt-2 text-sm text-accent" : "mt-2 text-sm text-ink-2"}>
           {notice === "invalid" ? "Use an https:// address with no path, like https://their-site.vercel.app." : "Saved."}
         </p>
       )}
@@ -286,12 +287,12 @@ export function HostingBlock({
         </GatedSubmitButton>
       </div>
       {notice === null ? null : (
-        <p role="status" className={notice === "invalid" ? "mt-2 text-sm text-accent" : "mt-2 text-sm text-ink-soft"}>
+        <p role="status" className={notice === "invalid" ? "mt-2 text-sm text-accent" : "mt-2 text-sm text-ink-2"}>
           {notice === "invalid" ? "Use the project id (prj_…) and, if given, the team id (team_…)." : "Saved."}
         </p>
       )}
       {hosting === null ? null : (
-        <p className="mt-2 text-sm text-ink-soft">
+        <p className="mt-2 text-sm text-ink-2">
           {hosting.lastError !== null ? (
             `Last sync failed: ${hosting.lastError}`
           ) : hosting.pausedAt !== null ? (
@@ -368,7 +369,8 @@ export function BillingFacts({
 }: {
   readonly client: ClientDetail;
   readonly state: ClientPaymentState;
-  readonly packageFacts: ClientPackageFacts;
+  /** The package and ad credit rows; null leaves them out (the Overview shows no Package or Ad credit, decision 3 of the v2 notes). */
+  readonly packageFacts: ClientPackageFacts | null;
 }): ReactElement {
   const subscription = client.billing.subscription;
   const hasPaid = state.kind === "paid" || state.kind === "lapsed";
@@ -401,9 +403,13 @@ export function BillingFacts({
           label: "First term ends",
           value: subscription?.commitmentEndsAt ? <When date={subscription.commitmentEndsAt} /> : null,
         },
-        { label: "Package", value: packageFacts.package },
-        { label: "Ad credit", value: packageFacts.adCredit },
-        ...(packageFacts.forfeitedOn === null ? [] : [{ label: "Package offer ended", value: packageFacts.forfeitedOn }]),
+        ...(packageFacts === null
+          ? []
+          : [
+              { label: "Package", value: packageFacts.package },
+              { label: "Ad credit", value: packageFacts.adCredit },
+              ...(packageFacts.forfeitedOn === null ? [] : [{ label: "Package offer ended", value: packageFacts.forfeitedOn }]),
+            ]),
         ...(manual === null
           ? []
           : [
@@ -438,15 +444,15 @@ export function ManualPaymentForm({ businessId, plan, netCents, reactivating, ca
   const amount = reactivating ? monthlyPaymentAmount(plan, netCents) : firstPaymentAmount(plan, netCents);
   return (
     <form action={recordManualPaymentAction} className="mt-8 border-t border-line pt-6">
-      <h3 className="font-serif text-xl">{reactivating ? "Reactivate with a manual payment" : "Record a manual payment"}</h3>
+      <h3 className="font-display text-xl">{reactivating ? "Reactivate with a manual payment" : "Record a manual payment"}</h3>
       {reactivating ? (
-        <p className="mt-2 max-w-xl text-sm leading-relaxed text-ink-soft">
+        <p className="mt-2 max-w-xl text-sm leading-relaxed text-ink-2">
           For money that arrived outside the payment provider, such as a bank transfer. It records {amount}, one month
           from today for the services they lapsed with, {couponPhrase(carriedCode)}, ends their lapsed plan and brings their website back. Your name,
           the reference and the date are kept with it.
         </p>
       ) : (
-        <p className="mt-2 max-w-xl text-sm leading-relaxed text-ink-soft">
+        <p className="mt-2 max-w-xl text-sm leading-relaxed text-ink-2">
           For money that arrived outside the payment provider, such as a bank transfer. It records {amount}, covering{" "}
           {initialTermPhrase(plan.initialTermMonths, "their")} from today, exactly as a checkout would, and marks the lead
           paid. Your name, the reference and the date are kept with it. The customer then sends their setup from Check
@@ -497,7 +503,7 @@ export function ManualPaymentForm({ businessId, plan, netCents, reactivating, ca
 export function SendPreviewForm({ businessId, label = SEND_PREVIEW_LABEL }: { readonly businessId: string; readonly label?: string }): ReactElement {
   return (
     <form action={sendPreviewAction}>
-      <p className="max-w-xl text-ink-soft">
+      <p className="max-w-xl text-ink-2">
         Paste the link to what you’ve built. It’s emailed to the owner and shown on their own dashboard straight
         away.
       </p>
@@ -516,9 +522,20 @@ export function SendPreviewForm({ businessId, label = SEND_PREVIEW_LABEL }: { re
           className={fieldClasses}
         />
       </div>
-      <GatedSubmitButton className={`${buttonPrimary} mt-5`} pendingLabel="Sending…" formNoValidate>
+      <ConfirmSubmit
+        className={`${buttonPrimary} mt-5`}
+        formNoValidate
+        copy={{
+          title: label === SEND_PREVIEW_LABEL ? "Send the preview" : "Send the updated preview",
+          consequence:
+            label === SEND_PREVIEW_LABEL
+              ? "The customer is emailed this link and the build moves to Awaiting client review."
+              : "The customer is emailed the updated preview and the build moves to Awaiting client review.",
+          confirmLabel: label,
+        }}
+      >
         {label}
-      </GatedSubmitButton>
+      </ConfirmSubmit>
     </form>
   );
 }
@@ -526,11 +543,14 @@ export function SendPreviewForm({ businessId, label = SEND_PREVIEW_LABEL }: { re
 export function ResendPreviewEmailForm({ businessId }: { readonly businessId: string }): ReactElement {
   return (
     <form action={resendPreviewEmailAction}>
-      <p className="max-w-xl text-ink-soft">If the customer did not get the email, send it again.</p>
+      <p className="max-w-xl text-ink-2">If the customer did not get the email, send it again.</p>
       <input type="hidden" name="businessId" value={businessId} />
-      <GatedSubmitButton className={`${buttonSecondary} mt-5`} pendingLabel="Sending…">
+      <ConfirmSubmit
+        className={`${buttonSecondary} mt-5`}
+        copy={{ title: "Resend the preview email", consequence: "The customer is emailed the preview link again. The stage does not change.", confirmLabel: "Resend email" }}
+      >
         Resend email
-      </GatedSubmitButton>
+      </ConfirmSubmit>
     </form>
   );
 }
@@ -538,11 +558,14 @@ export function ResendPreviewEmailForm({ businessId }: { readonly businessId: st
 export function ResendLaunchEmailForm({ businessId }: { readonly businessId: string }): ReactElement {
   return (
     <form action={resendLaunchEmailAction}>
-      <p className="max-w-xl text-ink-soft">If the customer did not get the email, send it again.</p>
+      <p className="max-w-xl text-ink-2">If the customer did not get the email, send it again.</p>
       <input type="hidden" name="businessId" value={businessId} />
-      <GatedSubmitButton className={`${buttonSecondary} mt-5`} pendingLabel="Sending…">
+      <ConfirmSubmit
+        className={`${buttonSecondary} mt-5`}
+        copy={{ title: "Resend the launch email", consequence: "The customer is emailed their launch details again.", confirmLabel: "Resend email" }}
+      >
         Resend email
-      </GatedSubmitButton>
+      </ConfirmSubmit>
     </form>
   );
 }
@@ -566,7 +589,7 @@ export function LaunchChecksForm({
           </label>
         ))}
       </div>
-      <p className="mt-5 text-ink-soft">{launchChecksSentence(done)}</p>
+      <p className="mt-5 text-ink-2">{launchChecksSentence(done)}</p>
       <GatedSubmitButton className={`${buttonSecondary} mt-5`} pendingLabel="Saving…">
         Save checks
       </GatedSubmitButton>
@@ -596,7 +619,7 @@ function MarkLiveForm({
 }): ReactElement {
   return (
     <form action={markLiveAction}>
-      <p className="max-w-xl text-ink-soft">
+      <p className="max-w-xl text-ink-2">
         {note ?? "Once the real site is deployed and DNS points at their domain, mark it live here. The client is emailed their website address."}
       </p>
       <input type="hidden" name="businessId" value={businessId} />
@@ -606,9 +629,12 @@ function MarkLiveForm({
           <span>Mark live even though the address did not load</span>
         </label>
       ) : null}
-      <button type="submit" className={`${buttonPrimary} mt-5`}>
+      <ConfirmSubmit
+        className={`${buttonPrimary} mt-5`}
+        copy={{ title: "Mark this website live", consequence: "The website is marked live and the customer is emailed their website address.", confirmLabel: "Mark live" }}
+      >
         Mark live
-      </button>
+      </ConfirmSubmit>
     </form>
   );
 }
@@ -653,7 +679,7 @@ export function GoLivePanel({
 
       {domain.status === "pending" ? (
         <form action={markDomainReadyAction}>
-          <ol className="list-decimal space-y-2 pl-5 text-ink-soft">
+          <ol className="list-decimal space-y-2 pl-5 text-ink-2">
             <li>
               Open the Vercel project behind the site link above and add <span className="font-medium text-ink">{domain.hostname}</span>
               {domain.hostname === root ? <> and <span className="font-medium text-ink">www.{root}</span></> : null} under Domains.
@@ -662,14 +688,21 @@ export function GoLivePanel({
             <li>Then ask the customer to change their DNS. They’re emailed, and the records show on their dashboard.</li>
           </ol>
           <input type="hidden" name="businessId" value={businessId} />
-          <GatedSubmitButton className={`${buttonPrimary} mt-5`} pendingLabel="Emailing…">
+          <ConfirmSubmit
+            className={`${buttonPrimary} mt-5`}
+            copy={{
+              title: "Ask the customer to connect their domain",
+              consequence: "The customer is emailed, and the DNS records show on their dashboard.",
+              confirmLabel: "Email the customer",
+            }}
+          >
             Ready for customer’s DNS
-          </GatedSubmitButton>
+          </ConfirmSubmit>
         </form>
       ) : null}
 
       {domain.status === "awaiting_dns" || domain.status === "misconfigured" ? (
-        <p className="max-w-xl text-ink-soft">
+        <p className="max-w-xl text-ink-2">
           They’ve been asked to add the records and can check it themselves. You’re emailed the moment it’s connected.
         </p>
       ) : null}
@@ -717,7 +750,7 @@ export function MoveDomainPanel({
 
       {movingTo.status === "pending" ? (
         <form action={markDomainReadyAction}>
-          <ol className="list-decimal space-y-2 pl-5 text-ink-soft">
+          <ol className="list-decimal space-y-2 pl-5 text-ink-2">
             <li>
               Open the Vercel project behind the site link above and add <span className="font-medium text-ink">{movingTo.hostname}</span>
               {movingTo.hostname === root ? <> and <span className="font-medium text-ink">www.{root}</span></> : null} under Domains.
@@ -725,21 +758,28 @@ export function MoveDomainPanel({
             <li>Then ask the customer to change their DNS. They’re emailed, and the records show on their dashboard. Their free address keeps working.</li>
           </ol>
           <input type="hidden" name="businessId" value={businessId} />
-          <GatedSubmitButton className={`${buttonPrimary} mt-5`} pendingLabel="Emailing…">
+          <ConfirmSubmit
+            className={`${buttonPrimary} mt-5`}
+            copy={{
+              title: "Ask the customer to connect their domain",
+              consequence: "The customer is emailed, and the DNS records show on their dashboard.",
+              confirmLabel: "Email the customer",
+            }}
+          >
             Ready for customer’s DNS
-          </GatedSubmitButton>
+          </ConfirmSubmit>
         </form>
       ) : null}
 
       {movingTo.status === "awaiting_dns" || movingTo.status === "misconfigured" ? (
-        <p className="max-w-xl text-ink-soft">
+        <p className="max-w-xl text-ink-2">
           They’ve been asked to add the records and can check it themselves. You’re emailed the moment it’s connected.
         </p>
       ) : null}
 
       {movingTo.status === "verifying" ? (
         <div>
-          <p className="max-w-xl text-ink-soft">
+          <p className="max-w-xl text-ink-2">
             Their DNS now points at the site. Open <span className="font-medium text-ink">{movingTo.hostname}</span> and check it loads. Then, in
             the Vercel project, redirect <span className="font-medium text-ink">{current}</span> to it, so old links keep working, and switch.
             The client is emailed their new address.

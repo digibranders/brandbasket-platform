@@ -78,6 +78,15 @@ async function seedClosedAccount(withSupport = false, withChangeQuote = false): 
   await raw(`insert into email_messages (id, to_address, subject, template, body_text, body_html, transport) values ('${id(10)}', 'meera@example.com', 's', 't', 'b', '<p>b</p>', 'outbox')`);
   await raw(`insert into email_messages (id, to_address, subject, template, body_text, body_html, transport) values ('${id(11)}', 'someone-else@example.com', 's', 't', 'b', '<p>b</p>', 'outbox')`);
 
+  // Bell notices (one for her, one for staff that names her business, one for staff about nothing), a browser she turned push on in, the kickoff prompt's state, and an address that unsubscribed.
+  await raw(`insert into notifications (id, audience, business_id, user_id, event_key, title, dedupe_key) values ('${id(20)}', 'customer', '${businessId}', '${USER_ID}', 'kickoff.booked', 'Your kickoff call is booked for 11:00', 'kickoff.booked:1')`);
+  await raw(`insert into notifications (id, audience, business_id, event_key, title, dedupe_key) values ('${id(21)}', 'staff', '${businessId}', 'kickoff.ended', 'Did the kickoff call happen?', 'kickoff.ended:1')`);
+  await raw(`insert into notifications (id, audience, event_key, title, dedupe_key) values ('${id(22)}', 'staff', 'account.security_alert.staff', 'Something else', 'security:1')`);
+  await raw(`insert into push_subscriptions (id, audience, user_id, endpoint, p256dh, auth) values ('${id(23)}', 'customer', '${USER_ID}', 'https://push.example/meera', 'k', 's')`);
+  await raw(`insert into setup_call_bookings (id, business_id, starts_at, ends_at) values ('${id(24)}', '${businessId}', now(), now() + interval '30 minutes')`);
+  await raw(`insert into kickoff_prompt_state (call_id, first_notified_at) values ('${id(24)}', now())`);
+  await raw(`insert into email_suppressions (address, reason) values ('meera@example.com', 'unsubscribe')`);
+
   // The money: a plan that was set to end, paid through before the erase date, and the payment it took.
   const subscription = await insertSubscription(dbs.staff.db, {
     businessId,
@@ -225,6 +234,12 @@ describe("eraseClosedAccount", () => {
     }
     // Kickoff outcomes stay: staff cannot delete them (append only), and the business row is kept, so nothing cascades to them.
     expect(await count("setup_call_outcomes")).toBe(1);
+    // Her bell notice, the staff notice that names her business and her push browser go; a staff notice about nothing stays, and so does the unsubscribe.
+    expect(await count("notifications", `business_id = '${businessId}' or user_id = '${USER_ID}'`)).toBe(0);
+    expect(await count("notifications")).toBe(1);
+    expect(await count("push_subscriptions")).toBe(0);
+    expect(await count("kickoff_prompt_state")).toBe(0);
+    expect(await count("email_suppressions", "address = 'meera@example.com'")).toBe(1);
     expect(await count("email_messages", "to_address = 'meera@example.com'")).toBe(0);
     expect(await count("email_messages", "to_address = 'someone-else@example.com'")).toBe(1);
 
@@ -519,7 +534,7 @@ describe("what the erase knows about", () => {
     "directory_deals", "directory_listings", "directory_pictures", "directory_videos", "domains", "leads", "media_assets", "metric_breakdowns", "metric_daily", "monthly_reports", "monthly_snapshots", "onboarding_progress",
     "patients", "practitioner_hours", "practitioner_leave", "practitioners", "project_briefs", "project_events", "project_feedback_tickets", "project_preview_images", "projects", "report_documents", "report_source_runs", "report_sources", "service_setup", "services",
     "setup_call_bookings", "setup_invites", "signup_attribution", "site_events", "site_hits", "site_keys", "support_tickets", "team_calls", "website_hosting",
-    "ad_campaign_snapshots", "business_invites", "connected_accounts", "enquiries", "notification_preferences", "notification_reads", "site_checks", "website_pages",
+    "ad_campaign_snapshots", "business_invites", "connected_accounts", "enquiries", "notification_preferences", "notification_reads", "notifications", "site_checks", "website_pages",
   ];
 
   it("sorts every table that points at a business into erased or kept, so a new one cannot be forgotten", async () => {

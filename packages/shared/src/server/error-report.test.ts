@@ -1,6 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
 vi.mock("server-only", () => ({}));
-import { createErrorReportCollector, createServerErrorReporter } from "./error-report";
+const mocks = vi.hoisted(() => ({ notifyEvent: vi.fn(async () => undefined), recordErrorReport: vi.fn(), consumeRateLimit: vi.fn(async () => ({ allowed: true })) }));
+vi.mock("./notify-event", () => ({ notifyEvent: mocks.notifyEvent }));
+vi.mock("@brandbasket/db", async (importOriginal) => ({ ...(await importOriginal<typeof import("@brandbasket/db")>()), recordErrorReport: mocks.recordErrorReport, consumeRateLimit: mocks.consumeRateLimit }));
+import { createDatabaseErrorReporter, createErrorReportCollector, createServerErrorReporter } from "./error-report";
 import { createErrorReport } from "../lib/error-report";
 
 const context = { app: "platform" as const, operation: "server_action" as const, route: "/appointments/Alice?token=secret" };
@@ -96,5 +99,17 @@ describe("native browser collector boundary", () => {
     const request = new Request("https://app.example/api/error-reports", { method: "POST", headers: { origin: "https://app.example", "Content-Type": "application/json" }, body: stream, duplex: "half" } as RequestInit);
     expect((await collector(request)).status).toBe(413);
     expect(writeReport).not.toHaveBeenCalled();
+  });
+});
+
+describe("the system error push", () => {
+  it("tells staff once an hour that a server error was recorded, and not when nothing was recorded", async () => {
+    const db = {} as never;
+    mocks.recordErrorReport.mockResolvedValueOnce("issue-1").mockResolvedValueOnce(null);
+    const report = createDatabaseErrorReporter(() => db);
+    await report(new Error("first"), context);
+    await report(new Error("second"), context);
+    expect(mocks.notifyEvent).toHaveBeenCalledTimes(1);
+    expect(mocks.notifyEvent).toHaveBeenCalledWith(db, expect.objectContaining({ event: "account.security_alert.staff", audience: { kind: "staff" }, dedupeKey: expect.stringMatching(/^system-error:\d+$/) }));
   });
 });

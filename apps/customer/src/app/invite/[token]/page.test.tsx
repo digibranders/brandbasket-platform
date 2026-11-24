@@ -111,4 +111,23 @@ describe("the invitation page", () => {
     expect(screen.getByText("This invitation link is not valid. Ask the owner to send a new one.")).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Join the dashboard" })).toBeNull();
   });
+
+  it("shows the state of the invitation as a chip before the Join button", async () => {
+    mocks.session.mockResolvedValue({ id: "u1", email: "front@apex.in", name: "Front", emailConfirmed: true, phone: null });
+    mocks.loadInvite.mockResolvedValue({
+      kind: "valid",
+      invite: { businessId: "b1", businessName: "Apex Dental", email: "front@apex.in", role: "viewer" },
+    });
+    await renderPage(TOKEN);
+    const chip = screen.getByText("Right address");
+    const join = screen.getByRole("button", { name: "Join the dashboard" });
+    expect(chip.compareDocumentPosition(join) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it("shows an Expired chip for an expired invitation", async () => {
+    mocks.session.mockResolvedValue(null);
+    mocks.loadInvite.mockResolvedValue({ kind: "refused", reason: "expired" });
+    await renderPage(TOKEN);
+    expect(screen.getByText("Expired")).toBeTruthy();
+  });
 });

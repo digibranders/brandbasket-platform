@@ -1,5 +1,6 @@
 import type { ReactElement, ReactNode } from "react";
 import { StatusChip } from "./status-chip";
+import { patternButtonPrimary } from "./button-classes";
 
 export interface NextActionCardProps {
   readonly serviceName: string;
@@ -25,7 +26,7 @@ export interface NextActionCardProps {
 
 /**
  * NextActionCard: the single focal card on the screen.
- * 20px radius, 3px gold top border, 40px icon tile with gold wash, elevated warm shadow.
+ * 20px radius, 40px icon tile with gold wash, elevated warm shadow.
  * Only one focal card per screen viewport.
  */
 export function NextActionCard({
@@ -44,7 +45,7 @@ export function NextActionCard({
 }: NextActionCardProps): ReactElement {
   return (
     <article
-      className={`relative flex flex-col rounded-[20px] border border-border border-t-[3px] border-t-accent-gold bg-surface p-6 shadow-hero sm:p-7 ${className}`}
+      className={`relative flex flex-col rounded-[20px] border border-border bg-surface p-6 shadow-hero sm:p-7 ${className}`}
     >
       <header className="flex flex-wrap items-center gap-3">
         <span className="flex h-10 w-10 flex-none items-center justify-center rounded-[10px] bg-accent-wash text-accent-text">
@@ -76,7 +77,7 @@ export function NextActionCard({
                 href={primaryAction.href}
                 target={primaryAction.target}
                 rel={primaryAction.rel}
-                className="inline-flex h-[42px] items-center justify-center rounded-[8px] bg-ink px-5 font-sans text-sm font-semibold text-white shadow-button hover:bg-primary-hover active:translate-y-[1px]"
+                className={patternButtonPrimary}
               >
                 {primaryAction.label}
               </a>
@@ -85,7 +86,7 @@ export function NextActionCard({
                 type="button"
                 disabled={primaryAction.disabled}
                 onClick={primaryAction.onClick}
-                className="inline-flex h-[42px] items-center justify-center rounded-[8px] bg-ink px-5 font-sans text-sm font-semibold text-white shadow-button hover:bg-primary-hover active:translate-y-[1px] disabled:cursor-not-allowed disabled:opacity-50"
+                className={patternButtonPrimary}
               >
                 {primaryAction.label}
               </button>

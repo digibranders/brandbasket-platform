@@ -121,3 +121,25 @@ export function safeInviteReturn(next: string | null | undefined): string | null
   if (typeof next !== "string") return null;
   return /^\/invite\/[A-Za-z0-9_-]{43}$/.test(next) ? next : null;
 }
+
+export type InviteChipState = BusinessInviteRefusal | "valid" | "right_address";
+
+export interface InviteChip {
+  readonly label: string;
+  readonly variant: "active" | "waiting" | "idle" | "failed";
+}
+
+const INVITE_CHIPS: Readonly<Record<InviteChipState, InviteChip>> = {
+  valid: { label: "Invitation open", variant: "active" },
+  right_address: { label: "Right address", variant: "active" },
+  expired: { label: "Expired", variant: "waiting" },
+  used: { label: "Already used", variant: "idle" },
+  revoked: { label: "Withdrawn", variant: "idle" },
+  not_found: { label: "Not valid", variant: "failed" },
+  wrong_email: { label: "Different address", variant: "failed" },
+};
+
+/** The chip shown above the invite page's title, so the state of the invitation is read before any button. */
+export function inviteChip(state: InviteChipState): InviteChip {
+  return INVITE_CHIPS[state];
+}

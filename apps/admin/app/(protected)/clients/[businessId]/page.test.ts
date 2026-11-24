@@ -1,4 +1,15 @@
-import { findClientIntake, findSetupCallBooking, listActivityForBusiness, listAssignableSupportStaff, type ProjectStatus } from "@brandbasket/db";
+import {
+  findClientIntake,
+  findOpenClosureForBusiness,
+  findSetupCallBooking,
+  listActivityForBusiness,
+  listAddOnsToContact,
+  listAssignableSupportStaff,
+  listLiveServiceLines,
+  listOpenPrivacyRequests,
+  listPaymentsNeedingAttention,
+  type ProjectStatus,
+} from "@brandbasket/db";
 import { renderToStaticMarkup } from "react-dom/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { NEXT_STEP_HEADLINES } from "@/lib/delivery-tab";
@@ -24,7 +35,18 @@ vi.mock("./parts", () => ({
 }));
 vi.mock("@brandbasket/db", async () => {
   const actual = await vi.importActual<typeof import("@brandbasket/db")>("@brandbasket/db");
-  return { ...actual, findClientIntake: vi.fn(), findSetupCallBooking: vi.fn(), listActivityForBusiness: vi.fn(), listAssignableSupportStaff: vi.fn() };
+  return {
+    ...actual,
+    findClientIntake: vi.fn(),
+    findSetupCallBooking: vi.fn(),
+    listActivityForBusiness: vi.fn(),
+    listAssignableSupportStaff: vi.fn(),
+    findOpenClosureForBusiness: vi.fn(),
+    listOpenPrivacyRequests: vi.fn(),
+    listPaymentsNeedingAttention: vi.fn(),
+    listLiveServiceLines: vi.fn(),
+    listAddOnsToContact: vi.fn(),
+  };
 });
 
 const BUSINESS = "01a0f71b-8402-7d48-a90a-207e8c8a882c";
@@ -58,6 +80,11 @@ beforeEach(() => {
   vi.mocked(listActivityForBusiness).mockResolvedValue([]);
   vi.mocked(listAssignableSupportStaff).mockResolvedValue([]);
   vi.mocked(loadClientAddOns).mockResolvedValue({ package: {} } as never);
+  vi.mocked(findOpenClosureForBusiness).mockResolvedValue(null);
+  vi.mocked(listOpenPrivacyRequests).mockResolvedValue([]);
+  vi.mocked(listPaymentsNeedingAttention).mockResolvedValue([]);
+  vi.mocked(listLiveServiceLines).mockResolvedValue([]);
+  vi.mocked(listAddOnsToContact).mockResolvedValue([]);
 });
 
 describe("the Overview's next step", () => {
@@ -105,7 +132,13 @@ describe("the Overview's money", () => {
 });
 
 describe("the Overview kickoff call", () => {
-  it("renders timing window and direct join meeting button when kickoff call is booked", async () => {
+  it("does not render redundant kickoff call section on client overview", async () => {
+    vi.mocked(findSetupCallBooking).mockResolvedValue(null);
+    const html = await render("building");
+    expect(html).not.toContain("No kickoff call booked yet.");
+  });
+
+  it("reflects kickoff booking in the CustomerMirrorPanel without a duplicate section", async () => {
     vi.mocked(findSetupCallBooking).mockResolvedValue({
       id: "booking-1",
       businessId: BUSINESS,
@@ -123,17 +156,10 @@ describe("the Overview kickoff call", () => {
     });
 
     const html = await render("building");
-    expect(html).toContain("Kickoff call");
+    expect(html).toContain("What the customer sees");
     expect(html).toContain("3:30 PM to 4:00 PM");
     expect(html).toContain('href="https://app.cal.com/video/cal-uid-456"');
-    expect(html).toContain("Join meeting");
-  });
-
-  it("shows quiet text when no kickoff call is booked", async () => {
-    vi.mocked(findSetupCallBooking).mockResolvedValue(null);
-    const html = await render("building");
-    expect(html).toContain("No kickoff call booked yet.");
-    expect(html).not.toContain("Join meeting");
+    expect(html).not.toContain("No kickoff call booked yet.");
   });
 });
 

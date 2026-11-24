@@ -1,6 +1,7 @@
 "use client";
 
-import { useActionState, useId, useState } from "react";
+import { useId, useState } from "react";
+import { useGuardedActionState } from "@/lib/use-guarded-action-state";
 import { Banner, Button } from "@/ui";
 import { startPaymentAction } from "../actions";
 import type { BillingDetailsView } from "../rules/billing-details-view";
@@ -30,7 +31,7 @@ interface PayFormProps {
 
 export function PayForm({ services, billing, total, billingDetails, summary }: PayFormProps) {
   const formId = useId();
-  const [state, action, pending] = useActionState(startPaymentAction, null);
+  const [state, action, pending] = useGuardedActionState(startPaymentAction, null);
   const opening = useOpeningPayment(pending, state);
   const confirm = useConfirmPayment(state, pending);
   const [changing, setChanging] = useState(false);

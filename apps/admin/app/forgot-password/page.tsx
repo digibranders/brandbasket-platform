@@ -12,7 +12,7 @@ export const metadata: Metadata = { title: "Forgot password" };
 export default async function ForgotPasswordPage(): Promise<ReactElement> {
   if ((await getStaffAccess()).kind === "granted") redirect("/");
   return (
-    <AuthFrame title="Forgot password?" description="It happens. Enter your work email and we'll send you a link to get back in.">
+    <AuthFrame title="Reset your password" description="Enter your staff email. If it belongs to a staff account, a reset link is on its way.">
       <TurnstileScope><ForgotPasswordForm action={requestPasswordResetAction} /></TurnstileScope>
     </AuthFrame>
   );

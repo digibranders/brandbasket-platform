@@ -1,7 +1,8 @@
 "use client";
 
 import { PASSWORD_MIN_LENGTH, PASSWORD_RULE } from "@brandbasket/auth/password-policy";
-import { useActionState, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useGuardedActionState } from "@/lib/use-guarded-action-state";
 import { PasswordInput } from "@/features/entry/components/password-input";
 import { TurnstileWidget } from "@/features/entry/components/turnstile";
 import { LEGAL_LINKS } from "@/features/entry/rules/brand";
@@ -28,8 +29,8 @@ export interface AffiliateSetupFormProps {
 
 /** The form of an affiliate's one-use link. The server decides everything; this walks the person through and keeps focus on the field to fix. */
 export function AffiliateSetupForm({ siteKey, token, initialName, mode }: AffiliateSetupFormProps) {
-  const [state, formAction, pending] = useActionState(completeAffiliateSetupAction, null);
   const formRef = useRef<HTMLFormElement>(null);
+  const [state, formAction, pending] = useGuardedActionState(completeAffiliateSetupAction, null, { formRef });
   const [name, setName] = useState(initialName);
   // Never ticked for the person: agreeing to the Terms and Privacy Notice is their own act (DPDP Act s.6).
   const [agreed, setAgreed] = useState(false);

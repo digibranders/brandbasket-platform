@@ -119,6 +119,25 @@ export async function ensureWorkspace(settings: SocialAutoSettings, business: { 
   return readChannels(answer.body);
 }
 
+const eventEntrySchema = z.object({ id: z.string().min(1), type: z.string().min(1), seq: z.number().int().nonnegative(), createdAt: z.string().default(""), data: z.record(z.string(), z.unknown()).default({}) });
+
+export interface EventsPage {
+  readonly events: readonly { readonly id: string; readonly type: string; readonly seq: number; readonly createdAt: string; readonly data: Readonly<Record<string, unknown>> }[];
+  readonly hasMore: boolean;
+}
+
+/**
+ * The catch up for the webhook: the service's event log after `after` (a seq), oldest first, kept 14 days, at most 100 a page.
+ * An entry that does not read is dropped rather than failing the page.
+ */
+export async function readEvents(settings: SocialAutoSettings, after: number, limit: number, send: typeof fetch = fetch): Promise<EventsPage> {
+  const answer = await call(settings, `/api/v1/events?${new URLSearchParams({ after: String(after), limit: String(Math.min(Math.max(limit, 1), 100)) })}`, { method: "GET" }, send);
+  if (answer.status !== 200) throw refusal(answer, "the events");
+  const body = (answer.body ?? {}) as { events?: unknown; hasMore?: unknown };
+  const events = Array.isArray(body.events) ? body.events.flatMap((entry) => { const parsed = eventEntrySchema.safeParse(entry); return parsed.success ? [parsed.data] : []; }) : [];
+  return { events, hasMore: body.hasMore === true };
+}
+
 /**
  * How the brand's posts and accounts did from `from` to `to` (`YYYY-MM-DD`, India time). Null when the posting service has no analytics to
  * give (an older one, or no workspace yet), so the page can say so instead of showing a made-up zero.

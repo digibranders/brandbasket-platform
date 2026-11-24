@@ -1,4 +1,5 @@
-import { LEAD_STATUSES_TO_CONTACT, type Lead, type LeadInvite, type LeadSource, type LeadStatus } from "@brandbasket/db";
+import type { Lead, LeadInvite, LeadSource, LeadStatus } from "@brandbasket/db";
+import { LEAD_STATUSES_TO_CONTACT } from "@brandbasket/db/lead-statuses";
 import { LEAD_SOURCE_ORDER } from "@brandbasket/shared/lib/lead-source";
 
 /** The stages the Enquiries inbox groups leads into (mock screen 2). */

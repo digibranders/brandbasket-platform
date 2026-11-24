@@ -332,9 +332,12 @@ Cloudflare, or the Access login can be skipped by calling the droplet directly. 
 1. Start in test mode: `rzp_test_` key id and secret in **both** env files (`RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET`).
 2. Webhook (Razorpay → Settings → Webhooks → Add): URL `https://app.brandbasket.in/api/webhooks/razorpay`. The secret is the value
    of `RAZORPAY_WEBHOOK_SECRET` already in `platform.env.local`; **set it in the Razorpay dashboard at the same moment**, because a
-   mismatch makes every delivery fail and Razorpay disables a webhook that keeps failing. Events to tick (all ten):
+   mismatch makes every delivery fail and Razorpay disables a webhook that keeps failing. Events to tick (all twelve; the app handles each of them, and two of the twelve were missing from this list until 2026-11-17):
    `subscription.authenticated`, `subscription.activated`, `subscription.charged`, `subscription.pending`, `subscription.halted`,
-   `subscription.paused`, `subscription.resumed`, `subscription.cancelled`, `subscription.completed`, `order.paid`.
+   `subscription.paused`, `subscription.resumed`, `subscription.cancelled`, `subscription.completed`, `order.paid`, `payment.failed`
+   (the failed payment email to the customer) and `invoice.paid` (a plan add-on's upfront payment). Razorpay sends every delivery with an
+   `x-razorpay-event-id` header; the app records it and answers a repeat with 200 without acting. The owner ticks the two new events in the
+   **live** Razorpay dashboard (Settings, Webhooks), because test mode and live mode each have their own webhook.
 3. Test: pay once in test mode (section 14); Razorpay's webhook page should show 200 for each delivery.
 4. **Going live:** generate live keys, replace the pair in both env files, change the webhook (live mode has its own webhook and
    secret; update `RAZORPAY_WEBHOOK_SECRET` and the dashboard together), restart both apps, and in the staff console open
@@ -452,7 +455,7 @@ Before real customers:
 - [ ] `./setup-database.sh --apply`, `./make-env-files.sh --apply` done; `pnpm env:check` reports no errors; no `rzp_test_` key if this is the live switch.
 - [ ] DNS: `app` grey, `staff` orange; SSL/TLS Full (strict); Access application and policy created and tested with a non-staff email (refused).
 - [ ] Brevo: domain authenticated, one SPF record, DKIM, DMARC at `p=none`.
-- [ ] Razorpay: webhook created with the ten events and the same secret; test payment succeeded; live capture set to automatic.
+- [ ] Razorpay: webhook created with the twelve events and the same secret; test payment succeeded; live capture set to automatic.
 - [ ] First staff user created; signs in through Access then the console.
 - [ ] Timers enabled; one manual backup and restore test passed.
 - [ ] Off-site backup configured, or the owner has accepted in writing that it is not.

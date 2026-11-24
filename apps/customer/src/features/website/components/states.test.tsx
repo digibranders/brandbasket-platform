@@ -96,6 +96,15 @@ describe("Website live overview: one failed panel", () => {
     expect(joinButton.getAttribute("target")).toBe("_blank");
     expect(joinButton.getAttribute("rel")).toContain("noopener");
   });
+
+  it("says the call length the booking has, not a fixed one, when there is no meeting link yet", () => {
+    const overview = liveOverview({
+      kickoffFirst: ok(true),
+      history: ok({ events: [], callStartsAt: new Date("2026-11-03T10:00:00Z"), callEndsAt: new Date("2026-11-03T10:45:00Z"), meetingUrl: null }),
+    });
+    showWebsite({ ...liveCore, live: null, project: { ...LIVE_PROJECT, status: "onboarding" } as Project }, overview, null);
+    expect(screen.getByText(/45 minutes on video or phone\./)).toBeTruthy();
+  });
 });
 
 describe("Website preview: a failed panel", () => {
@@ -162,13 +171,10 @@ describe("NotBoughtScreen states", () => {
 });
 
 describe("Release 2: Website re-theme states", () => {
-  it("renders kickoff state with exact D31 wording and 4-stage stepper", () => {
+  it("renders the kickoff state with the real line, never a sample date, and the 4-stage stepper", () => {
     showWebsite(kickoffCore, liveOverview({ kickoffFirst: ok(true) }), null);
-    expect(
-      screen.getByText(
-        "Kickoff call booked: Thursday, 14 November at 3:30 PM. We will call the primary contact number.",
-      ),
-    ).toBeTruthy();
+    expect(screen.getByText("Book your call and we start building straight after it.")).toBeTruthy();
+    expect(screen.queryByText(/14 November/)).toBeNull();
     const progressNav = screen.getByRole("navigation", { name: "Progress" });
     expect(progressNav).toBeTruthy();
     expect(screen.getAllByText("Kickoff").length).toBeGreaterThanOrEqual(1);

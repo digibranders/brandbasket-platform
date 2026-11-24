@@ -1,3 +1,4 @@
+import { notifyEvent } from "@brandbasket/shared/server/notify-event";
 import {
   findClientDetail,
   LAUNCH_CHECK_KEYS,
@@ -22,6 +23,7 @@ import {
 } from "./project-launch";
 
 vi.mock("server-only", () => ({}));
+vi.mock("@brandbasket/shared/server/notify-event", () => ({ notifyEvent: vi.fn(async () => undefined) }));
 vi.mock("@brandbasket/db", async () => {
   const actual = await vi.importActual<typeof import("@brandbasket/db")>("@brandbasket/db");
   return {
@@ -33,7 +35,7 @@ vi.mock("@brandbasket/db", async () => {
     setLaunchCheck: vi.fn(),
   };
 });
-vi.mock("@brandbasket/email", () => ({ websiteLiveEmail: vi.fn() }));
+vi.mock("@brandbasket/email", async (importOriginal) => ({ ...(await importOriginal<typeof import("@brandbasket/email")>()), websiteLiveEmail: vi.fn() }));
 vi.mock("./email", () => ({ customerEmailTransport: vi.fn() }));
 vi.mock("./site-check", () => ({ checkSiteAddress: vi.fn() }));
 
@@ -96,6 +98,13 @@ beforeEach(() => {
 });
 
 describe("launchProject", () => {
+  it("notifies the website live once, whether or not the owner has an email address", async () => {
+    mockedFindClient.mockResolvedValue(clientReadyToLaunch({ ownerEmail: null }));
+    await launchProject(db, { businessId: "business-1" }, NOW);
+    expect(notifyEvent).toHaveBeenCalledTimes(1);
+    expect(notifyEvent).toHaveBeenCalledWith(db, expect.objectContaining({ event: "website.live", audience: { kind: "customer", businessId: "business-1" } }));
+  });
+
   it("sets their website address to the domain they went live on", async () => {
     await launchProject(db, { businessId: "business-1" }, NOW);
     expect(mockedSetWebsiteUrl).toHaveBeenCalledWith(db, "business-1", "https://riverside-plumbing.com");
@@ -274,6 +283,20 @@ describe("resendLaunchEmail", () => {
 
       await expect(resendLaunchEmail(db, { businessId: "business-1" })).resolves.toBe("no-email");
       expect(send).not.toHaveBeenCalled();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("reports email-queued and email-failed from the transport's answer", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(NOW);
+    try {
+      mockedFindClient.mockResolvedValue(clientReadyToLaunch({ projectStatus: "live", launchedAt: NOW }));
+      send.mockResolvedValueOnce({ status: "queued" });
+      await expect(resendLaunchEmail(db, { businessId: "business-1" })).resolves.toBe("email-queued");
+      send.mockResolvedValueOnce({ status: "failed", error: "Brevo answered 400" });
+      await expect(resendLaunchEmail(db, { businessId: "business-1" })).resolves.toBe("email-failed");
     } finally {
       vi.useRealTimers();
     }

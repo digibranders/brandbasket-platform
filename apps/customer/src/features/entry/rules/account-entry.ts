@@ -27,6 +27,8 @@ const WEBSITE_SERVICE_IDS: ReadonlyMap<string, MonthlyAddOnId> = new Map([
   ["website", "managed-website"],
   ["social", "social-media"],
   ["ads", "paid-ads"],
+  // Dedicated Expert Monitoring, added from its card on the website (2026-11-17). readBundleSelection drops it beside all three plans.
+  ["monitoring", "expert-monitoring"],
   // The id before 2026-11-06, on links shared before then: Social Media and Ads became Social Media Management. Local SEO +
   // AEO ("search") is no longer sold, so it names nothing.
   ["growth", "social-media"],

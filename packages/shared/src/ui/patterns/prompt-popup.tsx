@@ -1,4 +1,5 @@
 import type { ReactElement, ReactNode } from "react";
+import { patternButtonPrimary } from "./button-classes";
 
 export interface PromptPopupProps {
   readonly isOpen: boolean;
@@ -76,7 +77,7 @@ export function PromptPopup({
                 type="button"
                 disabled={primaryAction.disabled}
                 onClick={primaryAction.onClick}
-                className="inline-flex h-[42px] items-center justify-center rounded-[8px] bg-ink px-5 font-sans text-sm font-semibold text-white shadow-button hover:bg-primary-hover active:translate-y-[1px] disabled:opacity-50"
+                className={patternButtonPrimary}
               >
                 {primaryAction.label}
               </button>

@@ -1,5 +1,6 @@
 import "server-only";
 import { addActivityEvent, resumeProject, setProjectBuilding, setProjectOnHold, type Database, type ProjectStatus } from "@brandbasket/db";
+import { notifyEvent } from "@brandbasket/shared/server/notify-event";
 
 /** The database refuses an activity title over 140 characters. */
 const MAX_LINE = 140;
@@ -25,6 +26,8 @@ export async function addWorkingActivity(db: Database, input: { readonly busines
 export async function startBuilding(db: Database, move: WebsiteMove, now: Date): Promise<void> {
   await setProjectBuilding(db, { businessId: move.businessId });
   await addWorkingActivity(db, { ...move, title: "We started building your website", now });
+  // Only this manual move: the kickoff paths tell the customer with their own notices, so they never reach here.
+  await notifyEvent(db, { event: "website.started", audience: { kind: "customer", businessId: move.businessId }, dedupeKey: move.businessId, data: {} });
 }
 
 /** A pausable status to on hold, with the reason the customer reads. */

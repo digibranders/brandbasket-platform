@@ -1,7 +1,8 @@
 "use client";
 
 import { MONITORING_ID, type MonthlyAddOnId } from "@brandbasket/shared/lib/billing/add-ons";
-import { useActionState, useState } from "react";
+import { useState } from "react";
+import { useGuardedActionState } from "@/lib/use-guarded-action-state";
 import { ServiceMark } from "@/components";
 import type { ActionResult } from "@/lib/action-result";
 import { Badge, Banner, Button, Dialog, DialogClose, Field, IconButton, LinkButton, Menu, MenuItem, Select, Textarea, useToast } from "@/ui";
@@ -23,7 +24,7 @@ const CANCEL_FORM = "billing-cancel-form";
 
 function AddDialog({ row, onClose }: { readonly row: ServiceRowView & { readonly action: Extract<ServiceAction, { kind: "add" }> }; readonly onClose: () => void }) {
   const toast = useToast();
-  const [state, action, pending] = useActionState(async (previous: ActionResult | null, formData: FormData) => {
+  const [state, action, pending] = useGuardedActionState(async (previous: ActionResult | null, formData: FormData) => {
     const result = await addServiceAction(previous, formData);
     if (result.ok) {
       toast(`${row.name} is on.`);
@@ -62,7 +63,7 @@ function AddDialog({ row, onClose }: { readonly row: ServiceRowView & { readonly
 
 function KeepButton({ row }: { readonly row: ServiceRowView }) {
   const toast = useToast();
-  const [, action, pending] = useActionState(async (previous: ActionResult | null, formData: FormData) => {
+  const [, action, pending] = useGuardedActionState(async (previous: ActionResult | null, formData: FormData) => {
     const result = await addServiceAction(previous, formData);
     toast(result.ok ? `${row.name} stays. Your monthly payment does not change.` : result.message);
     return result;
@@ -79,7 +80,7 @@ function KeepButton({ row }: { readonly row: ServiceRowView }) {
 
 function CancelDialog({ options, endsOn, initial, onClose }: { readonly options: readonly CancelOption[]; readonly endsOn: string; readonly initial: MonthlyAddOnId; readonly onClose: () => void }) {
   const toast = useToast();
-  const [state, action, pending] = useActionState(async (previous: ActionResult<{ message: string }> | null, formData: FormData) => {
+  const [state, action, pending] = useGuardedActionState(async (previous: ActionResult<{ message: string }> | null, formData: FormData) => {
     const result = await cancelServiceAction(previous, formData);
     if (result.ok) {
       toast(result.data?.message ?? `Cancellation scheduled for ${endsOn}`);

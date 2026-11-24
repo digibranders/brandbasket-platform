@@ -1,5 +1,4 @@
 import type { ReactElement } from "react";
-import Link from "next/link";
 import { buttonSecondary } from "@/components/console/buttons";
 import { Notice } from "@/components/console/notice";
 import { TrustedMark, VerifiedMark } from "@/components/directory-tag-marks";
@@ -45,11 +44,7 @@ export function ClientListingTags({ businessId, businessName, staffVerified, tru
               {staffVerified ? "Given by staff." : "Shown automatically once the client is paying."}
             </p>
           </div>
-          {staffVerified ? (
-            <Link href={`/directory?show=verified&q=${encodeURIComponent(businessName)}`} className="link-underline text-sm">
-              Manage in Directory
-            </Link>
-          ) : (
+          {staffVerified ? null : (
             <form action={giveClientVerifiedAction}>
               {payload}
               <button type="submit" className={`${buttonSecondary} ${BUTTON}`}>

@@ -1,161 +1,106 @@
 "use client";
 
 import { X } from "@phosphor-icons/react";
+import { useRouter } from "next/navigation";
 import { useEffect, useState, type ReactElement } from "react";
-import { completeKickoffAction, rescheduleKickoffAction, theyDidNotJoinAction } from "@/app/(protected)/calls/kickoff-actions";
-import { buttonPrimary, buttonSecondary } from "@/components/console/buttons";
-import { fieldClasses } from "@/components/console/field-styles";
-import { KICKOFF_NOTIFICATION_REPEAT_MS, shouldShowKickoffPrompt } from "@/lib/kickoff-prompt-rule";
+import { markKickoffPromptsShownAction } from "@/app/(protected)/calls/kickoff-actions";
+import { buttonPrimary } from "@/components/console/buttons";
+import { KickoffAnswer } from "@/components/console/kickoff-answer";
 import { clock, weekdayDate } from "@/lib/team-time";
 
-export interface PendingKickoffItem {
+/** How often the console asks the server again, so an answer in another tab or the 15 minute repeat shows up without a reload. */
+const REFRESH_MS = 60_000;
+
+export interface KickoffPromptPopupItem {
+  readonly callId: string;
   readonly businessId: string;
   readonly businessName: string;
   readonly endsAt: Date;
+  readonly due: boolean;
 }
 
 export interface KickoffPromptPopupProps {
-  readonly pendingKickoffs: readonly PendingKickoffItem[];
+  readonly prompts: readonly KickoffPromptPopupItem[];
 }
 
 /**
- * When a booked kickoff time passes, show PromptPopup:
- * "Did the kickoff call with <business> happen?" with three actions:
- * 1. Call completed (notes optional)
- * 2. They did not join
- * 3. Reschedule
- *
- * Includes the 24-hour automatic fallback note.
- * If dismissed, a notification banner repeats until answered (every 15 minutes).
+ * "Did the kickoff call with <business> happen?" for every call that has ended and has no answer, each with the three actions
+ * (Call completed with optional notes, They did not join, Reschedule). The server decides when it opens: a call is due when its
+ * popup was never shown or was last shown 15 minutes ago, so it repeats until answered and stays right after a reload or in a
+ * second tab. Closing it leaves a small notice in the corner; the server's next "due" opens it again.
  */
-export function KickoffPromptPopup({ pendingKickoffs }: KickoffPromptPopupProps): ReactElement | null {
-  const [dismissedAt, setDismissedAt] = useState<number | null>(null);
-  const [manualOpen, setManualOpen] = useState(false);
-  const [now, setNow] = useState(() => Date.now());
+export function KickoffPromptPopup({ prompts }: KickoffPromptPopupProps): ReactElement | null {
+  const router = useRouter();
+  const dueIds = prompts.filter((prompt) => prompt.due).map((prompt) => prompt.callId);
+  const dueKey = dueIds.join(",");
+  const [open, setOpen] = useState(dueKey !== "");
+  const [seenKey, setSeenKey] = useState(dueKey);
+  // A new set of due calls opens the popup (adjusted during render, as React advises, not in an effect).
+  if (dueKey !== seenKey) {
+    setSeenKey(dueKey);
+    if (dueKey !== "") setOpen(true);
+  }
 
   useEffect(() => {
-    const timer = setInterval(() => {
-      setNow(Date.now());
-    }, 30_000);
+    const timer = setInterval(() => router.refresh(), REFRESH_MS);
     return () => clearInterval(timer);
-  }, []);
+  }, [router]);
 
-  if (pendingKickoffs.length === 0) return null;
+  // Tells the server the popup was shown for these calls, which starts the next 15 minutes.
+  useEffect(() => {
+    if (dueKey === "") return;
+    void markKickoffPromptsShownAction(dueKey.split(",")).catch(() => undefined);
+  }, [dueKey]);
 
-  const current = pendingKickoffs[0];
-  if (!current) return null;
+  if (prompts.length === 0) return null;
 
-  const showModal =
-    manualOpen ||
-    shouldShowKickoffPrompt({
-      hasPending: pendingKickoffs.length > 0,
-      dismissedAt,
-      now,
-      repeatMs: KICKOFF_NOTIFICATION_REPEAT_MS,
-    });
-
-  if (showModal) {
+  if (open) {
     return (
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="kickoff-prompt-title"
-        className="fixed inset-0 z-50 flex items-center justify-center p-4"
-      >
-        <div
-          className="fixed inset-0 bg-[#15161A]/40 backdrop-blur-[2px]"
-          onClick={() => {
-            setDismissedAt(Date.now());
-            setManualOpen(false);
-          }}
-          aria-hidden="true"
-        />
+      <div role="dialog" aria-modal="true" aria-labelledby="kickoff-prompt-title" className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 bg-[#15161A]/40 backdrop-blur-[2px]" onClick={() => setOpen(false)} aria-hidden="true" />
 
-        <div className="relative z-10 w-full max-w-[560px] rounded-[20px] border border-line bg-surface p-7 shadow-[0_24px_64px_-16px_rgba(42,28,16,0.28)]">
-          <header className="flex items-start justify-between gap-4">
-            <div>
-              <h2 id="kickoff-prompt-title" className="font-display text-[22px] font-semibold text-ink">
-                Did the kickoff call with {current.businessName} happen?
-              </h2>
-              <p className="mt-1 font-sans text-sm text-ink-2">
-                Ended {weekdayDate(current.endsAt)}, {clock(current.endsAt)}.
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={() => {
-                setDismissedAt(Date.now());
-                setManualOpen(false);
-              }}
-              aria-label="Dismiss prompt"
-              className="flex h-8 w-8 items-center justify-center rounded-full text-ink-2 hover:bg-sunken hover:text-ink"
-            >
-              <X size={18} aria-hidden="true" />
-            </button>
-          </header>
-
-          <p className="mt-3 rounded-[8px] bg-sunken/50 p-3 font-sans text-xs text-ink-2">
-            Call confirmation readies the website build. If not confirmed within 24 hours of scheduled completion, the build starts automatically.
-          </p>
-
-          <form action={completeKickoffAction} className="mt-5 grid gap-3">
-            <input type="hidden" name="businessId" value={current.businessId} />
-            <label htmlFor={`kickoff-notes-${current.businessId}`} className="block font-sans text-sm font-medium text-ink">
-              What was agreed (optional)
-            </label>
-            <textarea
-              id={`kickoff-notes-${current.businessId}`}
-              name="notes"
-              rows={3}
-              maxLength={600}
-              placeholder="Notes (optional)"
-              className={fieldClasses}
-            />
-            <div className="flex flex-wrap items-center gap-2 pt-1">
-              <button type="submit" className={buttonPrimary}>
-                Call completed
-              </button>
-            </div>
-          </form>
-
-          <div className="mt-5 flex flex-wrap gap-2 border-t border-line pt-4">
-            <form action={theyDidNotJoinAction}>
-              <input type="hidden" name="businessId" value={current.businessId} />
-              <button type="submit" className={buttonSecondary}>
-                They did not join
-              </button>
-            </form>
-
-            <form action={rescheduleKickoffAction}>
-              <input type="hidden" name="businessId" value={current.businessId} />
-              <button type="submit" className={buttonSecondary}>
-                Reschedule
-              </button>
-            </form>
-          </div>
+        <div className="relative z-10 grid max-h-[90dvh] w-full max-w-[560px] gap-8 overflow-y-auto rounded-[20px] border border-line bg-surface p-7 shadow-[0_24px_64px_-16px_rgba(42,28,16,0.28)]">
+          {prompts.map((prompt, index) => (
+            <section key={prompt.callId} aria-labelledby={index === 0 ? "kickoff-prompt-title" : `kickoff-prompt-${prompt.callId}`}>
+              <header className="flex items-start justify-between gap-4">
+                <div>
+                  <h2 id={index === 0 ? "kickoff-prompt-title" : `kickoff-prompt-${prompt.callId}`} className="font-display text-[22px] font-semibold text-ink">
+                    Did the kickoff call with {prompt.businessName} happen?
+                  </h2>
+                  <p className="mt-1 font-sans text-sm text-ink-2">
+                    Ended {weekdayDate(prompt.endsAt)}, {clock(prompt.endsAt)}.
+                  </p>
+                </div>
+                {index === 0 ? (
+                  <button
+                    type="button"
+                    onClick={() => setOpen(false)}
+                    aria-label="Dismiss prompt"
+                    className="flex h-8 w-8 items-center justify-center rounded-full text-ink-2 hover:bg-sunken hover:text-ink"
+                  >
+                    <X size={18} aria-hidden="true" />
+                  </button>
+                ) : null}
+              </header>
+              <KickoffAnswer businessId={prompt.businessId} idPrefix="popup" notesRows={3} />
+            </section>
+          ))}
         </div>
       </div>
     );
   }
 
-  // When modal is dismissed, show repeating notification banner in the console
+  const first = prompts[0];
   return (
-    <aside
-      aria-label="Kickoff call notification"
-      className="fixed bottom-4 right-4 z-40 max-w-md rounded-[14px] border border-line bg-surface p-4 shadow-card"
-    >
+    <aside aria-label="Kickoff call notification" className="fixed bottom-4 right-4 z-40 max-w-md rounded-[14px] border border-line bg-surface p-4 shadow-card">
       <div className="flex items-center justify-between gap-3">
         <div className="min-w-0 flex-1">
           <p className="text-xs font-semibold text-rattan-text">Kickoff call waiting</p>
           <p className="truncate text-sm font-medium text-ink">
-            Did the kickoff call with {current.businessName} happen?
+            {prompts.length === 1 && first !== undefined ? `Did the kickoff call with ${first.businessName} happen?` : `${prompts.length} kickoff calls are waiting for your answer`}
           </p>
         </div>
-        <button
-          type="button"
-          onClick={() => setManualOpen(true)}
-          className={buttonPrimary}
-        >
+        <button type="button" onClick={() => setOpen(true)} className={buttonPrimary}>
           Answer
         </button>
       </div>

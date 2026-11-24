@@ -9,7 +9,18 @@ export {
   type EmailOutboxCopy,
 } from "./message";
 export { emailBrandName, emailLogoUrl, emailSenderDefaults, emailTeamInboxDefault, type EmailAddress } from "./brand";
-export { createOutboxTransport, OUTBOX_TRANSPORT_NAME, type EmailTransport, type OutboxOptions } from "./outbox";
+export {
+  createOutboxTransport,
+  emailOutcome,
+  OUTBOX_TRANSPORT_NAME,
+  recordOutboxCopy,
+  type EmailSendOutcome,
+  type EmailTransport,
+  type OutboxOptions,
+} from "./outbox";
+export { isOptionalEmail } from "./optional-mail";
+export { UNSUBSCRIBE_PATH, UNSUBSCRIBE_SECRET_MIN_LENGTH, unsubscribeUrl, verifyUnsubscribe } from "./unsubscribe";
+export { drainEmailQueue, type EmailDrainReport } from "./drain";
 export { channelLinkRequestedEmail, type ChannelLinkRequestedInput } from "./templates/channel-link-requested";
 export { affiliateLinkEmail, type AffiliateLinkInput } from "./templates/affiliate-link";
 export { businessInviteEmail, type BusinessInviteInput } from "./templates/business-invite";
@@ -23,6 +34,7 @@ export { domainConnectedEmail, type DomainConnectedInput } from "./templates/dom
 export { domainMovedEmail, type DomainMovedInput } from "./templates/domain-moved";
 export { domainRequestedEmail, type DomainRequestedInput } from "./templates/domain-requested";
 export { domainReadyEmail, type DomainReadyInput } from "./templates/domain-ready";
+export { notificationEmail, type NotificationEmailInput } from "./templates/notification";
 export { onboardingSentEmail, type OnboardingSentInput } from "./templates/onboarding-sent";
 export { assertMinorUnits, emailDate, emailMoney, type EmailCurrency } from "./format";
 export { firstChargeReminderEmail, type FirstChargeReminderInput } from "./templates/first-charge-reminder";
@@ -57,8 +69,11 @@ export {
   createBrevoTransport,
   createDualTransport,
   createEmailDelivery,
+  EMAIL_RETRY_DELAYS_MS,
   EmailConfigurationError,
   emailFailureSummary,
+  isRetryableEmailError,
+  nextEmailAttemptAt,
   type BrevoConfig,
   type BrevoReceipt,
   type BrevoSender,

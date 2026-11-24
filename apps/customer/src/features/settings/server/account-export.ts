@@ -7,6 +7,8 @@ import {
   readExportedAccount,
   readExportedBusiness,
   readExportedNotificationPreferences,
+  readExportedNotifications,
+  readExportedPushDevices,
   type Database,
 } from "@brandbasket/db";
 import { DATA_RECIPIENTS } from "@brandbasket/shared/lib/privacy/recipients";
@@ -70,11 +72,13 @@ export interface AccountExportDatabases {
 
 export async function buildAccountExport(dbs: AccountExportDatabases, input: AccountExportInput) {
   const { userId, businessId, now } = input;
-  const [account, sessions, businessRecords, emailChoices, consents, ticketIds] = await Promise.all([
+  const [account, sessions, businessRecords, emailChoices, notices, pushDevices, consents, ticketIds] = await Promise.all([
     readExportedAccount(dbs.staff, userId),
     listExportedSessions(dbs.staff, userId),
     businessId === null ? null : readExportedBusiness(dbs.staff, businessId),
     readExportedNotificationPreferences(dbs.staff, userId),
+    readExportedNotifications(dbs.staff, userId),
+    readExportedPushDevices(dbs.staff, userId),
     listConsents(dbs.staff, { type: "user", ref: userId }),
     listSupportTicketIds(dbs.app, userId),
   ]);
@@ -98,7 +102,10 @@ export async function buildAccountExport(dbs: AccountExportDatabases, input: Acc
           },
     signIns: sessions,
     business: businessRecords,
-    emailChoices: emailChoices.map((choice) => ({ businessId: choice.businessId, topic: choice.topic, email: choice.email, changedAt: choice.updatedAt })),
+    // Named "emailChoices" since format 1; each now also says whether the bell and push are on.
+    emailChoices: emailChoices.map((choice) => ({ businessId: choice.businessId, topic: choice.topic, email: choice.email, bell: choice.bell, push: choice.push, changedAt: choice.updatedAt })),
+    notices: notices.map((notice) => ({ businessId: notice.businessId, event: notice.eventKey, title: notice.title, body: notice.body, sentAt: notice.createdAt, readAt: notice.readAt })),
+    pushDevices: pushDevices.map((device) => ({ browser: device.userAgent, turnedOnAt: device.createdAt, turnedOffAt: device.revokedAt })),
     supportRequests: supportRequests.map((detail) => ({
       reference: detail.ticket.displayRef,
       category: detail.ticket.category,
