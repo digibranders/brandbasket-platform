@@ -164,6 +164,14 @@ export {
   type NewAffiliatePayout,
 } from "./queries/affiliates";
 export {
+  listDueSalesRedemptions,
+  markSalesRedemptionDelivered,
+  markSalesRedemptionFailed,
+  queueSalesRedemption,
+  salesRedemptionBackoffMs,
+  type SalesRedemption,
+} from "./queries/sales-redemptions";
+export {
   findProviderDiscountPlan,
   saveProviderDiscountPlan,
   type DiscountPlanKey,
