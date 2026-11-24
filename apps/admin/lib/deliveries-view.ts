@@ -41,12 +41,13 @@ export interface DeliveryFilter {
   readonly search: string | null;
 }
 
-export const DELIVERY_SOURCES: readonly DeliverySource[] = ["razorpay", "calcom", "oyechats", "brevo", "teams"];
+export const DELIVERY_SOURCES: readonly DeliverySource[] = ["razorpay", "calcom", "oyechats", "social_auto", "brevo", "teams"];
 
 export const SOURCE_LABELS: Readonly<Record<DeliverySource, string>> = {
   razorpay: "Razorpay",
   calcom: "Cal.com",
   oyechats: "OyeChats",
+  social_auto: "Social posting",
   brevo: "Brevo",
   teams: "Teams",
 };
@@ -55,6 +56,7 @@ const FIGURE_LABELS: Readonly<Record<DeliverySource, string>> = {
   razorpay: "Razorpay",
   calcom: "Cal.com",
   oyechats: "OyeChats",
+  social_auto: "Social posting",
   brevo: "Brevo email",
   teams: "Teams alerts",
 };

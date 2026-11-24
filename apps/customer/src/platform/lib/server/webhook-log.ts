@@ -5,7 +5,7 @@ import { bodyFingerprint, webhookEventName } from "@/platform/lib/webhook-event"
 import { getStaffDb } from "./db";
 
 /** Where each provider writes the event's name in its body. */
-const EVENT_FIELD: Readonly<Record<WebhookSource, string>> = { razorpay: "event", calcom: "triggerEvent", oyechats: "event", brevo: "event" };
+const EVENT_FIELD: Readonly<Record<WebhookSource, string>> = { razorpay: "event", calcom: "triggerEvent", oyechats: "event", brevo: "event", social_auto: "type" };
 
 export interface WebhookOutcome {
   readonly result: WebhookResult;

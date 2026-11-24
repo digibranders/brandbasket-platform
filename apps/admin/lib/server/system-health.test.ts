@@ -11,6 +11,7 @@ const HEALTH: DeliveryHealth = {
   razorpay: { total: 38, failed: 0, lastOkAt: new Date("2026-11-30T04:28:00.000Z"), lastFailedAt: null },
   calcom: QUIET,
   oyechats: QUIET,
+  social_auto: { total: 4, failed: 0, lastOkAt: new Date("2026-11-30T04:28:00.000Z"), lastFailedAt: null },
   brevo: { total: 81, failed: 2, lastOkAt: new Date("2026-11-30T03:28:00.000Z"), lastFailedAt: new Date("2026-11-30T04:28:00.000Z") },
   teams: { total: 15, failed: 0, lastOkAt: new Date("2026-11-30T04:28:00.000Z"), lastFailedAt: null },
 };
@@ -49,6 +50,7 @@ describe("readSystemHealth", () => {
       { key: "razorpay", label: "Razorpay payments", state: "ok", detail: "last 09:58" },
       { key: "calcom", label: "Cal.com bookings", state: "ok", detail: "none in 24 hours" },
       { key: "oyechats", label: "OyeChats leads", state: "ok", detail: "none in 24 hours" },
+      { key: "social_auto", label: "Social posting events", state: "ok", detail: "last 09:58" },
       { key: "brevo", label: "Brevo email", state: "bad", detail: "2 not sent" },
       { key: "teams", label: "Teams alerts", state: "ok", detail: "all sent" },
       { key: "teams-addresses", label: "Teams addresses", state: "ok", detail: "5 of 5 saved" },
