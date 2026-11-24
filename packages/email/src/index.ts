@@ -10,6 +10,7 @@ export {
 } from "./message";
 export { emailBrandName, emailLogoUrl, emailSenderDefaults, emailTeamInboxDefault, type EmailAddress } from "./brand";
 export { createOutboxTransport, OUTBOX_TRANSPORT_NAME, type EmailTransport, type OutboxOptions } from "./outbox";
+export { channelLinkRequestedEmail, type ChannelLinkRequestedInput } from "./templates/channel-link-requested";
 export { affiliateLinkEmail, type AffiliateLinkInput } from "./templates/affiliate-link";
 export { businessInviteEmail, type BusinessInviteInput } from "./templates/business-invite";
 export { bookingCodeEmail, type BookingCodeInput } from "./templates/booking-code";

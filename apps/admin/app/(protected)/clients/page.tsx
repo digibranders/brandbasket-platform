@@ -1,4 +1,4 @@
-import { listAddOnsToContact, listClients, listLiveServiceLines, listOpenClosures, listPaymentsNeedingAttention } from "@brandbasket/db";
+import { listAddOnsToContact, listClients, listLiveServiceLines, listOpenChannelLinkRequests, listOpenClosures, listPaymentsNeedingAttention } from "@brandbasket/db";
 import type { Metadata } from "next";
 import Link from "next/link";
 import type { ReactElement } from "react";
@@ -71,12 +71,13 @@ export default async function ClientsPage({
   const search = rawSearch.toLowerCase();
   const db = getStaffDb();
   const now = new Date();
-  const [clients, closures, flagged, addOns] = await Promise.all([
+  const [clients, closures, flagged, addOns, linkRequests] = await Promise.all([
     listClients(db, { include: ["paying", "not_paid", "leaving"] }),
     listOpenClosures(db),
     // Flagged payments are money: other roles do not see them, so the query is not run for them.
     staffCan(staff.role, "money") ? listPaymentsNeedingAttention(db, { limit: ATTENTION_READ_LIMIT }) : Promise.resolve([]),
     listAddOnsToContact(db, ATTENTION_READ_LIMIT),
+    listOpenChannelLinkRequests(db),
   ]);
   const services = servicesByBusiness(await listLiveServiceLines(db, clients.map((client) => client.businessId)));
   const closing = new Map(closures.map((closure) => [closure.businessId, closure]));
@@ -95,7 +96,15 @@ export default async function ClientsPage({
 
   return (
     <>
-      <PageHeader title="Clients" meta={`${paying} paying · ${rows.length - paying} signed up, not paid`} />
+      <PageHeader
+        title="Clients"
+        meta={`${paying} paying · ${rows.length - paying} signed up, not paid`}
+        action={
+          <Link href="/clients/channel-requests" className="rounded-lg border border-ink-2/65 bg-surface px-3 py-1.5 text-sm font-semibold text-ink hover:bg-ink/5">
+            Channel requests{linkRequests.length === 0 ? "" : ` (${linkRequests.length})`}
+          </Link>
+        }
+      />
       <SectionTabs role={staff.role} page="/clients" />
 
       <div className="mt-8 space-y-4">

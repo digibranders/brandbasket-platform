@@ -11,6 +11,9 @@ import { CHANNEL_PARAM, channelParamOf, rememberChannel } from "@/legacy-social/
 import type { ReviewCard, ReviewGroup } from "@/legacy-social/lib/social/review-cards";
 import { cardsOfWeek, channelTodo, groupIsFor, isReplacedOriginal, firstOpenWeek, flowWeeks, picturesOn, POST_TIME, postFinal, weekAsked, type FlowWeek, type ReplaceState } from "@/legacy-social/lib/social/review-flow";
 import { ConnectButton } from "./channels-sidebar";
+import { RequestChannel } from "@/features/social/accounts/components/request-channel";
+import type { ChannelRequest, ConnectMode } from "@/features/social/accounts/requests";
+import type { Platform } from "@/features/social/analytics/rules";
 import { AddChannelChoice } from "./add-channel-choice";
 import { EmptyPosts } from "./empty-posts";
 import { WorkingNote } from "./job-progress";
@@ -1248,10 +1251,13 @@ interface ReviewFlowProps {
   readonly jobs?: readonly SiteJob[];
   /** The brand being looked at, so what she has looked at is remembered for it. */
   readonly brandId?: string;
+  /** The networks that ask for a link to her profile in place of the Allow button, and where each request stands. */
+  readonly requests?: ChannelRequests;
   readonly children: ReactNode;
 }
 
 interface Flow {
+  readonly requests: ChannelRequests;
   readonly groups: readonly ReviewGroup[];
   readonly reasons: readonly string[];
   readonly channels: readonly ReviewChannel[];
@@ -1275,6 +1281,14 @@ interface Flow {
   readonly todoOf: (platform: ChannelPlatform) => { readonly count: number; readonly words: string };
 }
 
+/** How each network is connected and where the customer's link requests stand. */
+export interface ChannelRequests {
+  readonly modes: Partial<Record<Platform, ConnectMode>>;
+  readonly list: readonly ChannelRequest[];
+}
+
+const NO_REQUESTS: ChannelRequests = { modes: {}, list: [] };
+
 const FlowContext = createContext<Flow | null>(null);
 
 function useFlow(): Flow {
@@ -1285,7 +1299,7 @@ function useFlow(): Flow {
 
 
 /** Holds which channel and which week the customer is looking at, for the channels column and the workspace beside it. */
-export function ReviewFlowProvider({ groups, drawing = [], reasons, channels, replacing = {}, today = "", own = NO_OWN, carousel = null, renewsOn = null, jobs = [], brandId = "brand", children }: ReviewFlowProps): ReactElement {
+export function ReviewFlowProvider({ groups, drawing = [], reasons, channels, replacing = {}, today = "", own = NO_OWN, carousel = null, renewsOn = null, jobs = [], brandId = "brand", requests = NO_REQUESTS, children }: ReviewFlowProps): ReactElement {
   // The channel she chose on another page is in the address, so this page opens on it (a channel not connected is left out).
   const chosen = channelParamOf(useSearchParams()?.get(CHANNEL_PARAM));
   const [channel, setChannelNow] = useState<"all" | ChannelPlatform>(chosen === "all" || (chosen !== null && channels.some((one) => one.platform === chosen)) ? (chosen as "all" | ChannelPlatform) : (channels[0]?.platform ?? "all"));
@@ -1329,7 +1343,7 @@ export function ReviewFlowProvider({ groups, drawing = [], reasons, channels, re
     },
     [brandId],
   );
-  const value = useMemo<Flow>(() => ({ groups: visible, reasons, channels, replacing, today, own, carousel, renewsOn, stateOf, clearReady, weeks, week, cards, channel, setChannel, setWeekKey, todoOf }), [visible, reasons, channels, replacing, today, own, carousel, renewsOn, stateOf, clearReady, weeks, week, cards, channel, setChannel, todoOf]);
+  const value = useMemo<Flow>(() => ({ requests, groups: visible, reasons, channels, replacing, today, own, carousel, renewsOn, stateOf, clearReady, weeks, week, cards, channel, setChannel, setWeekKey, todoOf }), [requests, visible, reasons, channels, replacing, today, own, carousel, renewsOn, stateOf, clearReady, weeks, week, cards, channel, setChannel, todoOf]);
   return <FlowContext value={value}>{children}</FlowContext>;
 }
 
@@ -1363,7 +1377,7 @@ export function ActiveJobNote({ text, networks }: { readonly text: string; reado
  * Connect button for each network with no account yet. A row shows what is left to do in the week being looked at.
  */
 export function ReviewChannelsColumn(): ReactElement {
-  const { channels, channel, setChannel, todoOf, stateOf, clearReady } = useFlow();
+  const { channels, channel, setChannel, todoOf, stateOf, clearReady, requests } = useFlow();
   const missing = CHANNEL_PLATFORMS.filter((platform) => !channels.some((one) => one.platform === platform));
   return (
     <aside
@@ -1429,12 +1443,16 @@ export function ReviewChannelsColumn(): ReactElement {
           <h3 id="review-add-channel-title" className="type-meta font-medium">
             {channels.length === 0 ? "Connect your accounts" : "Add a channel"}
           </h3>
-          {missing.map((platform) => (
-            <div key={platform} className="grid gap-1">
-              <ConnectButton platform={platform} label={`Connect ${platform === "google" ? "Google" : PLATFORM_NAMES[platform]}`} logo />
-              <span className="type-meta">{PLATFORM_HINTS[platform]}</span>
-            </div>
-          ))}
+          {missing.map((platform) =>
+            requests.modes[platform] === "request" ? (
+              <RequestChannel key={platform} platform={platform} request={requests.list.find((one) => one.network === platform && one.state !== "connected") ?? null} />
+            ) : (
+              <div key={platform} className="grid gap-1">
+                <ConnectButton platform={platform} label={`Connect ${platform === "google" ? "Google" : PLATFORM_NAMES[platform]}`} logo />
+                <span className="type-meta">{PLATFORM_HINTS[platform]}</span>
+              </div>
+            ),
+          )}
         </section>
       )}
     </aside>

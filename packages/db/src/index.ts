@@ -887,6 +887,7 @@ export {
   saveSetupCallSummary,
   type BookedCall,
 } from "./queries/setup-calls";
+export * from "./queries/channel-link-requests";
 export * from "./queries/team-calls";
 export { boughtSetupServicesFrom, listBoughtSetupServices, listServiceSetups, saveServiceSetup } from "./queries/service-setup";
 export {

@@ -11,6 +11,9 @@ import type { AutoPostingState } from "@/legacy-social/lib/social/auto-posting";
 import { renewalDay } from "@/legacy-social/lib/social/plan-window";
 import { addDays } from "@/legacy-social/lib/social/week-days";
 import { addableNetworks, type PostingDays } from "@/legacy-social/lib/social/schedule";
+import { loadChannelRequests } from "@/features/social/accounts/request-store";
+import type { ChannelRequest, ConnectMode } from "@/features/social/accounts/requests";
+import type { Platform } from "@/features/social/analytics/rules";
 import { loadAutoPosting, loadBatches, loadCarousel, loadCarouselList, loadChannels, loadPictureLimits, loadPosters, loadSchedule, loadSiteJobs, loadTopicRequests, loadTopics, loadWorkspaceFacts, socialAutoSettings, type PictureLimits } from "./social-auto";
 
 /** Everything the review page shows: the customer's batches of written posts and where they stand, and the pictures. */
@@ -54,12 +57,14 @@ export interface SocialReview {
   readonly renewsOn: string | null;
   /** True when social-auto could not be asked, so the page says so instead of showing nothing as if it were true. */
   readonly unavailable: boolean;
+  /** How each network is connected (a link to her profile or the Allow button) and where her link requests stand. */
+  readonly requests: { readonly modes: Partial<Record<Platform, ConnectMode>>; readonly list: readonly ChannelRequest[] };
 }
 
-const EMPTY: SocialReview = { jobs: [], batches: [], waiting: [], approved: [], channels: [], topicRequests: [], expired: { batches: [], pictures: [] }, missingNetworks: [], postingDays: null, autoPosting: null, plan: null, website: null, topics: [], reasons: [], limits: null, carousels: [], carousel: null, weeklyCarousel: false, canMakeCarousel: false, renewsOn: null, unavailable: true };
+const EMPTY: SocialReview = { jobs: [], batches: [], waiting: [], approved: [], channels: [], topicRequests: [], expired: { batches: [], pictures: [] }, missingNetworks: [], postingDays: null, autoPosting: null, plan: null, website: null, topics: [], reasons: [], limits: null, carousels: [], carousel: null, weeklyCarousel: false, canMakeCarousel: false, renewsOn: null, unavailable: true, requests: { modes: {}, list: [] } };
 
 /** Asks social-auto for each part. Each is its own failure: what could be read is shown, and the page says the rest could not be. */
-export async function loadSocialReview(customer: Pick<CustomerContext, "businessId" | "businessName" | "billing">): Promise<SocialReview> {
+export async function loadSocialReview(customer: Pick<CustomerContext, "tenant" | "businessId" | "businessName" | "billing">): Promise<SocialReview> {
   const settings = socialAutoSettings();
   if (settings === null) return EMPTY;
   const brand = await brandOf(customer);
@@ -88,6 +93,7 @@ export async function loadSocialReview(customer: Pick<CustomerContext, "business
     read("the posting days", null as PostingDays | null, () => loadSchedule(settings, id)),
     read("automatic posting", null as AutoPostingState, () => loadAutoPosting(settings, id)),
   ]);
+  const asked = await read("the link requests", { modes: {} as Partial<Record<Platform, ConnectMode>>, list: [] as readonly ChannelRequest[] }, () => loadChannelRequests(customer, channels.map((channel) => channel.platform)));
   const carousels = carouselList.carousels;
   const newest = carousels[0];
   const carousel = newest === undefined ? null : await read("the carousel", null as CarouselDetail | null, () => loadCarousel(settings, id, newest.id));
@@ -119,5 +125,6 @@ export async function loadSocialReview(customer: Pick<CustomerContext, "business
     // Without a paid period on record, the plan's own last day decides where the month ends.
     renewsOn: renewalDay(customer.billing.subscription?.paidThroughAt ?? null, (at) => localDateIn(BRAND_TIME_ZONE, at)) ?? (written.plan?.endsOn == null ? null : addDays(written.plan.endsOn, 1)),
     unavailable: failed,
+    requests: asked,
   };
 }
