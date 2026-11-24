@@ -77,3 +77,14 @@ $$;
 CREATE TRIGGER channel_link_requests_guard
   BEFORE INSERT OR UPDATE ON channel_link_requests
   FOR EACH ROW EXECUTE FUNCTION public.channel_link_requests_guard();
+--> statement-breakpoint
+-- A viewer writes no business data (the same rule as every other table the customer role can write, see 0216): one RESTRICTIVE policy
+-- per command, so a viewer's INSERT is refused and their UPDATE or DELETE touches no row.
+CREATE POLICY channel_link_requests_no_viewer_insert ON channel_link_requests AS RESTRICTIVE FOR INSERT TO bb_app
+  WITH CHECK (app_current_member_role() IS DISTINCT FROM 'viewer');
+--> statement-breakpoint
+CREATE POLICY channel_link_requests_no_viewer_update ON channel_link_requests AS RESTRICTIVE FOR UPDATE TO bb_app
+  USING (app_current_member_role() IS DISTINCT FROM 'viewer') WITH CHECK (app_current_member_role() IS DISTINCT FROM 'viewer');
+--> statement-breakpoint
+CREATE POLICY channel_link_requests_no_viewer_delete ON channel_link_requests AS RESTRICTIVE FOR DELETE TO bb_app
+  USING (app_current_member_role() IS DISTINCT FROM 'viewer');
