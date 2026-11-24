@@ -76,7 +76,8 @@ beforeEach(async () => {
   plan = active;
 });
 
-const later = new Date(NOW.getTime() + 1000);
+// The database stamps a new row with its own clock, so "later" is an hour past the real time, whatever day the test runs.
+const later = new Date(Date.now() + 3_600_000);
 
 describe("sales redemption queue", () => {
   it("queues a captured payment on a plain coupon once, even when the provider delivers it twice", async () => {
