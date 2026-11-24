@@ -1,8 +1,9 @@
-import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { Poster, TopicRequest, WrittenBatch, WrittenPost } from "@/legacy-social/lib/social/ai";
 import type { ReviewGroup } from "@/legacy-social/lib/social/review-cards";
-import { askTopicAction, decideBatchAction, decidePosterAction, drawBatchAction, moveTopicAction, replaceTopicAction } from "@/legacy-social/review-actions";
+import { askTopicAction, decideBatchAction, decidePosterAction, drawBatchAction, moveTopicAction, replaceTopicAction, applyDaysEveryWeekAction } from "@/legacy-social/review-actions";
 import type { CarouselSummary } from "@/legacy-social/lib/social/carousel";
 import type { WeekCarousel } from "./carousel-week";
 import { ActiveJobNote, NewChannelChoice, ReviewChannelsColumn, ReviewFlowProvider, ReviewWorkspace, type OwnTopicsData } from "./review-workspace";
@@ -15,6 +16,7 @@ vi.mock("@/legacy-social/review-actions", () => ({
   replaceTopicAction: vi.fn(async () => ({ status: "saved" })),
   moveTopicAction: vi.fn(async () => ({ status: "saved" })),
   askTopicAction: vi.fn(async () => ({ status: "saved" })),
+  applyDaysEveryWeekAction: vi.fn(async () => ({ status: "saved" })),
 }));
 
 const post = (id: string, state: WrittenPost["state"], date: string, extra: Partial<WrittenPost> = {}): WrittenPost => ({ id, headline: `Headline ${id}`, caption: "Words", captions: { instagram: "IG words", facebook: "FB words" }, state, edited: false, advice: null, date, notDrawn: null, ...extra });
@@ -302,8 +304,8 @@ describe("ReviewWorkspace days and times from the posting service", () => {
   it("tells her to read the words again when a moved topic names a day", async () => {
     vi.mocked(moveTopicAction).mockResolvedValueOnce({ status: "partial", message: "Moved. The words of this topic name a day, so read them again to see they still fit." });
     render(<Screen groups={open([post("p1", "pending", "2026-11-16")], [], "waiting")} today="2026-11-15" />);
-    fireEvent.click(screen.getByRole("button", { name: "Change the day" }));
-    fireEvent.change(screen.getByRole("combobox", { name: "Move this topic to" }), { target: { value: "2026-11-19" } });
+    await userEvent.click(screen.getByRole("button", { name: "Change the day" }));
+    await userEvent.click(await screen.findByRole("menuitem", { name: "Thu 19 Nov" }));
     expect(await screen.findByText(/name a day/)).toBeTruthy();
   });
 });
@@ -350,15 +352,25 @@ describe("ReviewWorkspace moving a topic to another day", () => {
     // p1 is on Mon 16 Nov: it can go to Tue 17 and later, not back to a passed day.
     const pickers = screen.getAllByRole("button", { name: "Change the day" });
     expect(pickers.length).toBe(2);
-    fireEvent.click(pickers[0] as HTMLElement);
-    const select = screen.getByRole("combobox", { name: "Move this topic to" });
-    const options = within(select).getAllByRole("option").map((one) => one.textContent);
-    expect(options).toContain("Wed 18 Nov");
-    expect(options).not.toContain("Mon 16 Nov");
-    fireEvent.change(select, { target: { value: "2026-11-19" } });
+    await userEvent.click(pickers[0] as HTMLElement);
+    const days = (await screen.findAllByRole("menuitem")).map((one) => one.textContent);
+    expect(days).toContain("Wed 18 Nov");
+    // The topic's own day is not offered.
+    expect(days.some((one) => one?.startsWith("Mon 16 Nov"))).toBe(false);
+    await userEvent.click(screen.getByRole("menuitem", { name: "Thu 19 Nov" }));
     await waitFor(() => expect(vi.mocked(moveTopicAction)).toHaveBeenCalledTimes(1));
     const form = vi.mocked(moveTopicAction).mock.calls[0]?.[0] as FormData;
     expect([form.get("batchId"), form.get("postId"), form.get("day")]).toEqual(["b1", "p1", "2026-11-19"]);
+  });
+
+  it("lists today in the day picker as a day it cannot go to, and says why", async () => {
+    render(<Screen groups={groups} today="2026-11-16" />);
+    // p2 is on Tue 17 Nov: Mon 16 is today, so it is listed but cannot be chosen.
+    await userEvent.click(screen.getAllByRole("button", { name: "Change the day" })[1] as HTMLElement);
+    const today = await screen.findByRole("menuitem", { name: /Mon 16 Nov/ });
+    expect(today.getAttribute("aria-disabled")).toBe("true");
+    expect(today.textContent).toContain("Today");
+    expect(screen.getByRole("menuitem", { name: /Wed 18 Nov/ }).getAttribute("aria-disabled")).not.toBe("true");
   });
 
   it("moves a topic when its card is dragged to another day column", async () => {
@@ -418,7 +430,7 @@ describe("ReviewWorkspace new topics", () => {
 
   it("offers a new topic for a dropped post, and asks for it", async () => {
     render(<Screen groups={dropped(2)} />);
-    expect(screen.getByText("2 left this week.")).toBeTruthy();
+    expect(screen.getByText("2 left this week")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Write a new topic for this day" }));
     await waitFor(() => expect(vi.mocked(replaceTopicAction)).toHaveBeenCalledTimes(1));
     const form = vi.mocked(replaceTopicAction).mock.calls[0]?.[0] as FormData;
@@ -440,7 +452,7 @@ describe("ReviewWorkspace new topics", () => {
   it("turns the button off when none are left this week", () => {
     render(<Screen groups={dropped(0)} />);
     expect((screen.getByRole("button", { name: "Write a new topic for this day" }) as HTMLButtonElement).disabled).toBe(true);
-    expect(screen.getByText("No new topics are left this week.")).toBeTruthy();
+    expect(screen.getByText("No new topics left this week.")).toBeTruthy();
   });
 
   it("puts the new topic in the place of the dropped one, and marks it", () => {
@@ -452,6 +464,109 @@ describe("ReviewWorkspace new topics", () => {
     expect(screen.queryByText(/A new topic was written for this day/)).toBeNull();
     expect(screen.queryByRole("button", { name: "Write a new topic for this day" })).toBeNull();
     expect(screen.queryByText("Dropped")).toBeNull();
+  });
+});
+
+describe("ReviewWorkspace the swap of a rejected topic", () => {
+  const before = () => open([post("p1", "dropped", "2026-11-16"), post("p2", "kept", "2026-11-17")], [], "waiting", 2);
+  const after = () => open([post("p1", "dropped", "2026-11-16", { replacedBy: "p1-r1" }), post("p1-r1", "pending", "2026-11-16", { replaces: "p1" }), post("p2", "kept", "2026-11-17")], [], "waiting", 1);
+
+  it("rolls a reel under the rejected topic while the new one is written, with a line through the old words and no words about it", () => {
+    render(<Screen groups={before()} replacing={{ p1: "writing" }} />);
+    const old = screen.getByLabelText("Headline p1");
+    expect(old.querySelectorAll(".line-through").length).toBeGreaterThan(5);
+    expect(screen.getByRole("status").textContent).toContain("Writing a new topic for this day");
+    expect(screen.getByRole("status").getAttribute("class")).toContain("overflow-hidden");
+  });
+
+  it("plays the swap for a topic seen being written: the old card stays while the reel lands and the letters scatter, then the new topic is alone", () => {
+    vi.useFakeTimers();
+    window.matchMedia = vi.fn().mockReturnValue({ matches: false, addEventListener: vi.fn(), removeEventListener: vi.fn() }) as never;
+    try {
+      const view = render(<Screen groups={before()} replacing={{ p1: "writing" }} />);
+      view.rerender(<Screen groups={after()} />);
+      // The old words are still there, with the new topic's words on the reel; the new card has not come yet.
+      expect(screen.getByLabelText("Headline p1")).toBeTruthy();
+      expect(screen.queryByText("Headline p1-r1", { selector: "h3" })).toBeNull();
+      act(() => void vi.advanceTimersByTime(1200));
+      const letters = screen.getByLabelText("Headline p1").querySelectorAll(".line-through");
+      expect((letters[0] as HTMLElement).style.opacity).toBe("0");
+      act(() => void vi.advanceTimersByTime(1400));
+      expect(screen.queryByLabelText("Headline p1")).toBeNull();
+      expect(screen.getAllByText("Headline p1-r1").length).toBeGreaterThan(0);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("shows only the new topic when the page is opened after it came", () => {
+    render(<Screen groups={after()} />);
+    expect(screen.queryByLabelText("Headline p1")).toBeNull();
+    expect(screen.getAllByText("Headline p1-r1").length).toBeGreaterThan(0);
+  });
+});
+
+describe("ReviewWorkspace use these days every week", () => {
+  /** Two weeks of Monday, Tuesday and Thursday topics: 16 Nov and 23 Nov. */
+  const threeAndThree = (): ReviewGroup[] => {
+    const posts = [post("a1", "pending", "2026-11-16"), post("a2", "pending", "2026-11-17"), post("a3", "pending", "2026-11-19"), post("b1", "pending", "2026-11-23"), post("b2", "pending", "2026-11-24"), post("b3", "pending", "2026-11-26")];
+    const batch: WrittenBatch = {
+      id: "b1",
+      createdAt: "2026-11-13T10:00:00Z",
+      networks: ["instagram", "facebook"],
+      posts,
+      rules: {},
+      weeks: [
+        { from: "2026-11-16", to: "2026-11-22", state: "waiting", postIds: ["a1", "a2", "a3"], notDrawn: [], missingDays: [] },
+        { from: "2026-11-23", to: "2026-11-29", state: "waiting", postIds: ["b1", "b2", "b3"], notDrawn: [], missingDays: [] },
+      ],
+    };
+    return [{ batchId: "b1", batch, cards: posts.map((one) => ({ key: `b1/${one.id}`, batchId: "b1", postId: one.id, headline: one.headline, written: one, pictures: [], states: [] })) }];
+  };
+
+  it("offers the days to every week after a move, and a yes sends the week she moved in", async () => {
+    vi.mocked(applyDaysEveryWeekAction).mockResolvedValueOnce({ status: "partial", message: "Every week now uses Tue, Wed and Thu. 1 other week changed." });
+    const groups = threeAndThree();
+    const { rerender } = render(<Screen groups={groups} today="2026-11-14" />);
+    await userEvent.click(screen.getAllByRole("button", { name: "Change the day" })[0] as HTMLElement);
+    await userEvent.click(await screen.findByRole("menuitem", { name: "Wed 18 Nov" }));
+    await waitFor(() => expect(vi.mocked(moveTopicAction)).toHaveBeenCalledTimes(1));
+    // What social-auto answers after the move: the topic is on Wednesday now.
+    const moved = threeAndThree();
+    const batch = moved[0]?.batch;
+    const card = moved[0]?.cards[0];
+    if (batch !== undefined && batch !== null && card?.written != null) {
+      const one = batch.posts.find((p) => p.id === "a1");
+      if (one !== undefined) (one as { date: string | null }).date = "2026-11-18";
+      (card.written as { date: string | null }).date = "2026-11-18";
+    }
+    rerender(<Screen groups={moved} today="2026-11-14" />);
+    const offer = await screen.findByRole("group", { name: "Use these days every week" });
+    expect(offer.textContent).toContain("Use these days every week?");
+    expect(offer.textContent).toContain("1 other week will change.");
+    await userEvent.click(within(offer).getByRole("button", { name: "Yes, every week" }));
+    await waitFor(() => expect(vi.mocked(applyDaysEveryWeekAction)).toHaveBeenCalledTimes(1));
+    const form = vi.mocked(applyDaysEveryWeekAction).mock.calls[0]?.[0] as FormData;
+    expect([form.get("batchId"), form.get("weekFrom")]).toEqual(["b1", "2026-11-16"]);
+    expect(await screen.findByText(/Every week now uses Tue, Wed and Thu/)).toBeTruthy();
+    expect(screen.queryByRole("group", { name: "Use these days every week" })).toBeNull();
+  });
+
+  it("closes the question on Just this week and changes nothing", async () => {
+    const groups = threeAndThree();
+    const { rerender } = render(<Screen groups={groups} today="2026-11-14" />);
+    await userEvent.click(screen.getAllByRole("button", { name: "Change the day" })[0] as HTMLElement);
+    await userEvent.click(await screen.findByRole("menuitem", { name: "Wed 18 Nov" }));
+    await waitFor(() => expect(vi.mocked(moveTopicAction)).toHaveBeenCalledTimes(1));
+    const moved = threeAndThree();
+    const one = moved[0]?.batch?.posts.find((p) => p.id === "a1");
+    if (one !== undefined) (one as { date: string | null }).date = "2026-11-18";
+    const written = moved[0]?.cards[0]?.written;
+    if (written !== undefined && written !== null) (written as { date: string | null }).date = "2026-11-18";
+    rerender(<Screen groups={moved} today="2026-11-14" />);
+    await userEvent.click(within(await screen.findByRole("group", { name: "Use these days every week" })).getByRole("button", { name: "Just this week" }));
+    expect(screen.queryByRole("group", { name: "Use these days every week" })).toBeNull();
+    expect(vi.mocked(applyDaysEveryWeekAction)).not.toHaveBeenCalled();
   });
 });
 

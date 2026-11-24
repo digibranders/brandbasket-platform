@@ -116,3 +116,42 @@ export const affiliateEarnings = pgTable(
     ),
   ],
 );
+
+/**
+ * A paid payment made on a plain coupon (no affiliate), waiting to be told to Fynix Sales, which keeps which salesperson
+ * each coupon belongs to. Written in the same transaction as the payment (recordPaymentAndActivate), so a payment
+ * and its row exist together or not at all, and unique on the payment, so a provider delivering it twice queues it once.
+ * Only captured payments get one: a coupon that was applied but never paid for leaves nothing here.
+ *
+ * Delivery is separate: the sender signs and posts each undelivered row to Fynix and stamps `delivered_at`, retrying
+ * with `next_attempt_at` until Fynix accepts it. The message itself is built from the live rows when it is sent.
+ *
+ * Staff-only: `bb_app` is granted nothing.
+ */
+export const salesRedemptionEvents = pgTable(
+  "sales_redemption_events",
+  {
+    id: uuid("id")
+      .primaryKey()
+      .$defaultFn(() => uuidv7()),
+    referralCodeId: uuid("referral_code_id")
+      .notNull()
+      .references(() => referralCodes.id),
+    businessId: uuid("business_id")
+      .notNull()
+      .references(() => businesses.id),
+    paymentId: uuid("payment_id")
+      .notNull()
+      .references(() => payments.id),
+    deliveredAt: timestamp("delivered_at", { withTimezone: true }),
+    attempts: integer("attempts").notNull().default(0),
+    nextAttemptAt: timestamp("next_attempt_at", { withTimezone: true }).notNull().defaultNow(),
+    lastError: text("last_error"),
+    createdAt: createdAt(),
+  },
+  (table) => [
+    uniqueIndex("sales_redemption_events_payment_idx").on(table.paymentId),
+    index("sales_redemption_events_pending_idx").on(table.nextAttemptAt).where(sql`${table.deliveredAt} is null`),
+    check("sales_redemption_events_attempts_check", sql`${table.attempts} >= 0`),
+  ],
+);

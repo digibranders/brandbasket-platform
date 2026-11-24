@@ -523,7 +523,7 @@ describe("what the erase knows about", () => {
    */
   const KEPT = [
     "account_closures", "add_on_payments", "add_on_subscriptions", "affiliate_earnings", "bundled_add_ons", "charges", "credit_notes", "directory_ad_bids",
-    "directory_ad_wins", "directory_promotions", "payments", "plan_upgrades", "press_releases", "setup_call_outcomes", "subscriptions",
+    "directory_ad_wins", "directory_promotions", "payments", "plan_upgrades", "press_releases", "sales_redemption_events", "setup_call_outcomes", "subscriptions",
     "tax_invoices", "webhook_events",
   ];
   /** Tables the erase empties for the business. */
@@ -534,7 +534,7 @@ describe("what the erase knows about", () => {
     "directory_deals", "directory_listings", "directory_pictures", "directory_videos", "domains", "leads", "media_assets", "metric_breakdowns", "metric_daily", "monthly_reports", "monthly_snapshots", "onboarding_progress",
     "patients", "practitioner_hours", "practitioner_leave", "practitioners", "project_briefs", "project_events", "project_feedback_tickets", "project_preview_images", "projects", "report_documents", "report_source_runs", "report_sources", "service_setup", "services",
     "setup_call_bookings", "setup_invites", "signup_attribution", "site_events", "site_hits", "site_keys", "support_tickets", "team_calls", "website_hosting",
-    "ad_campaign_snapshots", "business_invites", "connected_accounts", "enquiries", "notification_preferences", "notification_reads", "notifications", "site_checks", "website_pages",
+    "ad_campaign_snapshots", "business_invites", "channel_link_requests", "connected_accounts", "enquiries", "notification_preferences", "notification_reads", "notifications", "site_checks", "website_pages",
   ];
 
   it("sorts every table that points at a business into erased or kept, so a new one cannot be forgotten", async () => {

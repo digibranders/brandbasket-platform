@@ -164,6 +164,14 @@ export {
   type NewAffiliatePayout,
 } from "./queries/affiliates";
 export {
+  listDueSalesRedemptions,
+  markSalesRedemptionDelivered,
+  markSalesRedemptionFailed,
+  queueSalesRedemption,
+  salesRedemptionBackoffMs,
+  type SalesRedemption,
+} from "./queries/sales-redemptions";
+export {
   findProviderDiscountPlan,
   saveProviderDiscountPlan,
   type DiscountPlanKey,
@@ -908,6 +916,7 @@ export {
   type PendingKickoffPrompt,
   type SoonKickoff,
 } from "./queries/kickoff-prompts";
+export * from "./queries/channel-link-requests";
 export * from "./queries/team-calls";
 export { boughtSetupServicesFrom, listBoughtSetupServices, listServiceSetups, saveServiceSetup } from "./queries/service-setup";
 export {

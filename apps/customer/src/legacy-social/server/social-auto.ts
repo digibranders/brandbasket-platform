@@ -537,6 +537,16 @@ export async function loadSchedule(settings: SocialAutoSettings, externalId: str
 }
 
 /**
+ * Saves the days each channel posts on, for the plans written from now on (a week already written never moves with them). The call replaces the whole
+ * setting, so every channel that should keep days of its own is listed; one left out goes back to the usual spread.
+ */
+export async function saveSchedule(settings: SocialAutoSettings, externalId: string, channels: PostingDays, actor: string, send: typeof fetch = fetch): Promise<PostingDays> {
+  const answer = await call(settings, "/api/v1/schedule", { method: "PUT", body: { externalId, channels }, actor }, send);
+  if (answer.status !== 200) throw refusal(answer, "the posting days");
+  return readSchedule(answer.body);
+}
+
+/**
  * Which channels the system posts for by itself, and how long before posting it may approve a picture. Null when the posting service has no
  * automatic posting (an older one) so the page offers no choice; a business with no workspace yet has nothing automatic.
  */

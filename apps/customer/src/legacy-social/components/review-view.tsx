@@ -46,6 +46,7 @@ export function ReviewView({ review, canChange = true, approvals = null }: { rea
       renewsOn={review.renewsOn}
       jobs={review.jobs}
       brandId={review.brand?.externalId ?? "brand"}
+      requests={review.requests}
       carousel={review.carousels[0] === undefined ? null : { summary: review.carousels[0], detail: review.carousel, canChange }}
       own={{ requests: review.topicRequests, batches: review.batches.filter((batch) => ownBatchIds.has(batch.id)), posters: [...review.waiting, ...review.approved].filter((poster) => ownBatchIds.has(poster.batchId)), canChange }}
     >
@@ -93,7 +94,8 @@ export function ReviewView({ review, canChange = true, approvals = null }: { rea
       )}
       {review.autoPosting !== null && review.channels.length > 0 && review.autoPosting.channels.length > 0 ? <AutoPostingCard auto={review.autoPosting} channels={review.channels} canChange={canChange} /> : null}
       <ReviewRefresher active={active !== undefined || ownBusy} />
-      {active === undefined ? null : <ActiveJobNote text={jobLine(active).replace(/\.$/, "")} networks={active.kind === "write" ? active.networks : undefined} />}
+      {/* A new topic being written shows on its own card (the reel under the rejected one), so it has no note up here. */}
+      {active === undefined || active.kind === "replace" ? null : <ActiveJobNote text={jobLine(active).replace(/\.$/, "")} networks={active.kind === "write" ? active.networks : undefined} />}
       {/* Nothing could be read: say so once, above, and do not also say that nothing is waiting, which would not be true. */}
       {review.unavailable && review.batches.length === 0 && review.waiting.length === 0 && review.approved.length === 0 ? null : (
         <>

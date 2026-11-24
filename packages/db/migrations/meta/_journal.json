@@ -1597,6 +1597,20 @@
       "when": 1794900671234,
       "tag": "0230_social_auto_cursor",
       "breakpoints": true
+    },
+    {
+      "idx": 228,
+      "version": "7",
+      "when": 1795494405193,
+      "tag": "0231_channel_link_requests",
+      "breakpoints": true
+    },
+    {
+      "idx": 229,
+      "version": "7",
+      "when": 1795499316654,
+      "tag": "0232_coupon_payment_events",
+      "breakpoints": true
     }
   ]
 }
