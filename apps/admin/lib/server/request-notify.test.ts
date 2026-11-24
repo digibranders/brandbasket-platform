@@ -1,9 +1,11 @@
+import { notifyEvent } from "@brandbasket/shared/server/notify-event";
 import { findRequestRecipient, shouldEmail } from "@brandbasket/db";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { customerEmailTransport } from "./email";
 import { notifyRequester } from "./request-notify";
 
 vi.mock("server-only", () => ({}));
+vi.mock("@brandbasket/shared/server/notify-event", () => ({ notifyEvent: vi.fn(async () => undefined) }));
 vi.mock("./email", () => ({ customerEmailTransport: vi.fn() }));
 vi.mock("./env", () => ({ serverEnv: () => ({ APP_ORIGIN: "https://app.brandbasket.in" }) }));
 vi.mock("@brandbasket/db", async (importOriginal) => ({ ...(await importOriginal<typeof import("@brandbasket/db")>()), findRequestRecipient: vi.fn(), shouldEmail: vi.fn() }));
@@ -23,6 +25,24 @@ beforeEach(() => {
 });
 
 describe("notifyRequester", () => {
+  it("notifies a ready, quoted or done request once per request, even for an owner who turned email off", async () => {
+    vi.mocked(shouldEmail).mockResolvedValue(false);
+    await notifyRequester(DB, TICKET, { kind: "ready" });
+    expect(notifyEvent).toHaveBeenCalledTimes(1);
+    expect(notifyEvent).toHaveBeenCalledWith(DB, { event: "request.reply", audience: { kind: "customer", businessId: BUSINESS, userIds: ["user-priya"] }, dedupeKey: `${TICKET}:ready`, data: { ticketId: TICKET, update: "ready" } });
+  });
+
+  it("gives every reply its own notice, and sends none for started or closed", async () => {
+    await notifyRequester(DB, TICKET, { kind: "reply", body: "Hello" });
+    await notifyRequester(DB, TICKET, { kind: "reply", body: "Again" });
+    const keys = vi.mocked(notifyEvent).mock.calls.map((call) => call[1].dedupeKey);
+    expect(new Set(keys).size).toBe(2);
+    vi.mocked(notifyEvent).mockClear();
+    await notifyRequester(DB, TICKET, { kind: "started", readyBy: null });
+    await notifyRequester(DB, TICKET, { kind: "closed", reason: null });
+    expect(notifyEvent).not.toHaveBeenCalled();
+  });
+
   it("emails the person who asked, with a link that opens their request in the dashboard", async () => {
     expect(await notifyRequester(DB, TICKET, { kind: "ready" })).toBe("emailed");
     expect(customerEmailTransport).toHaveBeenCalledWith(DB);

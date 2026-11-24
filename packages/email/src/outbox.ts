@@ -1,8 +1,27 @@
 import { recordEmail, type Database, type ScopedTransaction } from "@brandbasket/db";
 import type { EmailMessage, EmailOutboxCopy } from "./message";
 
+/**
+ * What became of a message handed to a transport. `sent`: Brevo took it. `queued`: Brevo did not, and the drainer will try again.
+ * `failed`: it will not go (Brevo refused it, or its body is redacted so it cannot be tried again). `local_only`: kept in the
+ * development inbox. `suppressed`: optional mail to an address that opted out or bounced, so nothing was sent or stored.
+ */
+export interface EmailSendOutcome {
+  readonly status: "sent" | "queued" | "failed" | "local_only" | "suppressed";
+  readonly error?: string | null;
+}
+
+/**
+ * A transport never throws for a delivery failure (an email must not fail the request that triggered it, least of all a
+ * payment webhook); it answers with the outcome. An older or simpler transport may answer nothing, which means sent.
+ */
 export interface EmailTransport {
-  readonly send: (message: EmailMessage) => Promise<void>;
+  readonly send: (message: EmailMessage) => Promise<EmailSendOutcome | void>;
+}
+
+/** The outcome of a send, with a transport that answered nothing counted as sent. */
+export function emailOutcome(answer: EmailSendOutcome | void): EmailSendOutcome {
+  return answer ?? { status: "sent" };
 }
 
 export const OUTBOX_TRANSPORT_NAME = "outbox";
@@ -22,9 +41,11 @@ function storedMessage(message: EmailMessage, options: OutboxOptions): EmailMess
 
 /** What became of a message: sent by Brevo (with Brevo's id), kept locally, or not taken by Brevo (with the reason). */
 export interface EmailDeliveryResult {
-  readonly status: "sent" | "local_only" | "failed";
+  readonly status: "sent" | "local_only" | "failed" | "pending";
   readonly providerMessageId?: string | null;
   readonly error?: string | null;
+  /** For `pending`: when the drainer may try again. */
+  readonly nextAttemptAt?: Date;
 }
 
 const KEPT_LOCALLY: EmailDeliveryResult = { status: "local_only" };
@@ -49,6 +70,7 @@ export async function recordOutboxCopy(
     providerMessageId: result.providerMessageId ?? null,
     error: result.error ?? null,
     bodyRedacted: stored !== message,
+    ...(result.status === "pending" ? { attempts: 1, nextAttemptAt: result.nextAttemptAt ?? new Date() } : {}),
   });
 }
 
@@ -60,6 +82,7 @@ export function createOutboxTransport(db: Database | ScopedTransaction, options:
   return {
     send: async (message) => {
       await recordOutboxCopy(db, message, OUTBOX_TRANSPORT_NAME, options);
+      return { status: "local_only" };
     },
   };
 }

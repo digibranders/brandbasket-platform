@@ -1,7 +1,11 @@
-import type { ReactElement } from "react";
+"use client";
+
+import { PromptPopup, toastStore } from "@brandbasket/shared/ui/patterns";
+import { useState, type ReactElement } from "react";
 import { completeKickoffAction, rescheduleKickoffAction, theyDidNotJoinAction } from "@/app/(protected)/calls/kickoff-actions";
 import { buttonPrimary, buttonSecondary } from "@/components/console/buttons";
 import { fieldClasses } from "@/components/console/field-styles";
+import { KICKOFF_AUTO_START_NOTE } from "@/lib/kickoff-copy";
 import { clock, weekdayDate } from "@/lib/team-time";
 
 export interface TodayKickoffItem {
@@ -11,79 +15,67 @@ export interface TodayKickoffItem {
 }
 
 export interface TodayKickoffPromptProps {
-  readonly kickoffs: readonly TodayKickoffItem[];
+  readonly kickoff: TodayKickoffItem | null;
+  readonly onClose: () => void;
 }
 
+const FAILED = "That did not save. Nothing was changed, and your notes are still here.";
+
 /**
- * The kickoff prompt on Today:
- * "Did the kickoff call with <business> happen?" with three actions:
- * 1. Call completed (notes optional)
- * 2. They did not join
- * 3. Reschedule
- *
- * Includes the 24-hour automatic fallback note.
+ * The kickoff prompt a Today row opens: "Did the kickoff call with <business> happen?" with Call completed (notes optional),
+ * They did not join and Reschedule. It runs the same three actions as the popup and keeps the notes if one fails.
  */
-export function TodayKickoffPrompt({ kickoffs }: TodayKickoffPromptProps): ReactElement | null {
-  if (kickoffs.length === 0) return null;
+export function TodayKickoffPrompt({ kickoff, onClose }: TodayKickoffPromptProps): ReactElement | null {
+  const [problem, setProblem] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  if (kickoff === null) return null;
+
+  const run = async (action: (formData: FormData) => Promise<void>, formData: FormData, done: string): Promise<void> => {
+    setBusy(true);
+    setProblem(null);
+    try {
+      await action(formData);
+      toastStore.show({ message: done });
+      onClose();
+    } catch {
+      setProblem(FAILED);
+    } finally {
+      setBusy(false);
+    }
+  };
+  const outcomeForm = (action: (formData: FormData) => Promise<void>, label: string, done: string): ReactElement => (
+    <form action={(formData) => run(action, formData, done)}>
+      <input type="hidden" name="businessId" value={kickoff.businessId} />
+      <button type="submit" disabled={busy} className={buttonSecondary}>
+        {label}
+      </button>
+    </form>
+  );
 
   return (
-    <div className="grid gap-4">
-      {kickoffs.map((call) => (
-        <section
-          key={call.businessId}
-          aria-labelledby={`today-kickoff-${call.businessId}`}
-          className="rounded-[20px] border border-line bg-surface p-7 shadow-card"
-        >
-          <div className="flex flex-wrap items-baseline justify-between gap-2 border-b border-line pb-3">
-            <h2 id={`today-kickoff-${call.businessId}`} className="font-display text-[22px] font-semibold text-ink">
-              Did the kickoff call with {call.businessName} happen?
-            </h2>
-            <span className="font-sans text-xs font-medium text-ink-2">
-              Ended {weekdayDate(call.endsAt)}, {clock(call.endsAt)}
-            </span>
-          </div>
-
-          <p className="mt-3 rounded-[8px] bg-sunken/50 p-3 font-sans text-xs text-ink-2">
-            Call confirmation readies the website build. If not confirmed within 24 hours of scheduled completion, the build starts automatically.
+    <PromptPopup isOpen title={`Did the kickoff call with ${kickoff.businessName} happen?`} description={`Ended ${weekdayDate(kickoff.endsAt)}, ${clock(kickoff.endsAt)}.`} onClose={onClose}>
+      <p className="rounded-[8px] bg-sunken/50 p-3 font-sans text-xs text-ink-2">{KICKOFF_AUTO_START_NOTE}</p>
+      <form action={(formData) => run(completeKickoffAction, formData, "The 48 hour first preview clock has started.")} className="mt-5 grid gap-3">
+        <input type="hidden" name="businessId" value={kickoff.businessId} />
+        <label htmlFor="today-kickoff-notes" className="block font-sans text-sm font-medium text-ink">
+          What was agreed (optional)
+        </label>
+        <textarea id="today-kickoff-notes" name="notes" rows={3} maxLength={600} placeholder="Notes (optional)" className={fieldClasses} />
+        {problem === null ? null : (
+          <p role="alert" className="text-sm text-error">
+            {problem}
           </p>
-
-          <form action={completeKickoffAction} className="mt-5 grid gap-3">
-            <input type="hidden" name="businessId" value={call.businessId} />
-            <label htmlFor={`today-notes-${call.businessId}`} className="block font-sans text-sm font-medium text-ink">
-              What was agreed (optional)
-            </label>
-            <textarea
-              id={`today-notes-${call.businessId}`}
-              name="notes"
-              rows={2}
-              maxLength={600}
-              placeholder="Notes (optional)"
-              className={fieldClasses}
-            />
-            <div className="flex flex-wrap items-center gap-2 pt-1">
-              <button type="submit" className={buttonPrimary}>
-                Call completed
-              </button>
-            </div>
-          </form>
-
-          <div className="mt-5 flex flex-wrap gap-2 border-t border-line pt-4">
-            <form action={theyDidNotJoinAction}>
-              <input type="hidden" name="businessId" value={call.businessId} />
-              <button type="submit" className={buttonSecondary}>
-                They did not join
-              </button>
-            </form>
-
-            <form action={rescheduleKickoffAction}>
-              <input type="hidden" name="businessId" value={call.businessId} />
-              <button type="submit" className={buttonSecondary}>
-                Reschedule
-              </button>
-            </form>
-          </div>
-        </section>
-      ))}
-    </div>
+        )}
+        <div className="flex flex-wrap items-center gap-2 pt-1">
+          <button type="submit" disabled={busy} className={buttonPrimary}>
+            Call completed
+          </button>
+        </div>
+      </form>
+      <div className="mt-5 flex flex-wrap gap-2 border-t border-border pt-4">
+        {outcomeForm(theyDidNotJoinAction, "They did not join", "The customer will pick a new time.")}
+        {outcomeForm(rescheduleKickoffAction, "Reschedule", "The customer will pick a new time.")}
+      </div>
+    </PromptPopup>
   );
 }

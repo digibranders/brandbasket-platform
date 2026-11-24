@@ -4,12 +4,7 @@ import { uuidv7 } from "uuidv7";
 import { businesses } from "./businesses";
 import { createdAt } from "./columns";
 
-export const WEBHOOK_SOURCES = ["razorpay", "calcom", "oyechats"] as const;
-/**
- * Sources the check constraint already accepts for receivers that come later (Brevo events in package N3, social-auto in N7),
- * so they need no second migration. Add one to WEBHOOK_SOURCES, with its delivery health, when its receiver lands.
- */
-export const RESERVED_WEBHOOK_SOURCES = ["brevo", "social_auto"] as const;
+export const WEBHOOK_SOURCES = ["razorpay", "calcom", "oyechats", "brevo", "social_auto"] as const;
 export type WebhookSource = (typeof WEBHOOK_SOURCES)[number];
 
 export const WEBHOOK_RESULTS = ["handled", "ignored", "failed", "bad_signature"] as const;
@@ -87,3 +82,10 @@ export const alertDeliveries = pgTable(
     check("alert_deliveries_card_check", sql`${table.result} <> 'sent' or ${table.card} is null`),
   ],
 );
+
+/** Where the social-auto catch up stopped: one row, the highest event seq it has read. Staff and system work only. */
+export const socialAutoCursor = pgTable("social_auto_cursor", {
+  name: text("name").primaryKey(),
+  seq: integer("seq").notNull().default(0),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});

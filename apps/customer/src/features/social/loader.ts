@@ -10,7 +10,10 @@ import {
   withTenantScope,
 } from "@brandbasket/db";
 import { getAppDb } from "@/lib/db";
+import { reportError } from "@/lib/report";
 import { loadLiveAccounts } from "./accounts/loader";
+import { loadChannelRequests } from "./accounts/request-store";
+import type { ChannelRequest, ConnectMode } from "./accounts/requests";
 import { loadChannelState } from "@/legacy-social/server/channel-todos";
 import { sortChannels } from "@/legacy-social/lib/social/review-flow";
 import { postingServiceSettings, type Platform } from "./analytics/rules";
@@ -125,6 +128,8 @@ export interface ChannelsColumnData {
   readonly rows: readonly ChannelsColumnRow[];
   /** The networks with no account yet, which get a Connect button. Empty without a posting service. */
   readonly missing: readonly Platform[];
+  /** The networks that ask for a link to the customer's profile in place of the Allow button, and where each request stands. */
+  readonly requests?: { readonly modes: Partial<Record<Platform, ConnectMode>>; readonly list: readonly ChannelRequest[] };
   /** True when the rows come from the posting service, so the person can connect and reconnect here. */
   readonly live: boolean;
 }
@@ -137,8 +142,12 @@ export async function loadChannelsColumn(customer: Reader, now: Date): Promise<C
   if (postingServiceSettings(process.env) !== null) {
     const live = await loadLiveAccounts(customer, now);
     const state = await loadChannelState(customer, live.rows.map((row) => row.platform));
+    const asked = await loadChannelRequests(customer, live.rows.map((row) => row.platform)).catch((error: unknown) => {
+      reportError(error, { area: "social.channel-requests" });
+      return { modes: {}, list: [] };
+    });
     // The channels in the same order on every page, each with the number of things waiting for the customer, as on the Posts page.
-    return { rows: sortChannels(live.rows).map((row) => ({ id: row.id, platform: row.platform, account: row.account, ending: row.ending, paused: row.paused, todo: state.todos[row.platform] ?? 0, working: state.working.includes(row.platform), doneAt: state.doneAt[row.platform] })), missing: live.missing, live: true, brandId: state.brandId };
+    return { rows: sortChannels(live.rows).map((row) => ({ id: row.id, platform: row.platform, account: row.account, ending: row.ending, paused: row.paused, todo: state.todos[row.platform] ?? 0, working: state.working.includes(row.platform), doneAt: state.doneAt[row.platform] })), missing: live.missing, live: true, brandId: state.brandId, requests: asked };
   }
   const rows = await loadAccounts(customer);
   const shown = rows.flatMap((row): ChannelsColumnRow[] => {

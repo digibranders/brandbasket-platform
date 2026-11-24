@@ -12,6 +12,7 @@ import {
   listChatbotsForBusiness,
   listChatbotsForStaff,
   recordChatbotLead,
+  recordChatbotLeadReportingNew,
   registerChatbot,
   removeChatbot,
   renameChatbot,
@@ -159,6 +160,14 @@ describe("recordChatbotLead", () => {
     const rows = await dbs.staff.db.select().from(chatbotLeads);
     expect(rows).toHaveLength(1);
     expect(rows[0]).toMatchObject({ sessionId: "s1", name: "Meera Shah", email: "meera@example.com", phone: "+919820011223", company: "Shah Dental" });
+  });
+
+  it("says a lead is new only on the first delivery of its session", async () => {
+    const created = await bot(businessA, 41);
+    const lead = { chatbotId: created.id, businessId: businessA, sessionId: "s1", name: "Meera", email: null, phone: null, company: null, capturedAt: NOW };
+    expect((await recordChatbotLeadReportingNew(dbs.staff.db, lead)).created).toBe(true);
+    expect((await recordChatbotLeadReportingNew(dbs.staff.db, lead)).created).toBe(false);
+    expect((await recordChatbotLeadReportingNew(dbs.staff.db, { ...lead, sessionId: "s2" })).created).toBe(true);
   });
 
   it("keeps two sessions as two leads", async () => {

@@ -12,7 +12,7 @@ import {
   withTenantScope,
   type RateLimitRule,
 } from "@brandbasket/db";
-import { businessInviteEmail } from "@brandbasket/email";
+import { businessInviteEmail, emailOutcome } from "@brandbasket/email";
 import { ACTIVE_BUSINESS_COOKIE } from "@brandbasket/shared/lib/access";
 import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
@@ -69,7 +69,7 @@ export async function inviteAction(formData: FormData): Promise<ActionResult> {
     );
     try {
       // The intake connection may only add outbox messages, which is all an email needs (as the password reset does).
-      await customerEmailTransport(getPublicDb()).send(
+      const outcome = emailOutcome(await customerEmailTransport(getPublicDb()).send(
         businessInviteEmail({
           to: email,
           inviterName: customer.user.name,
@@ -78,7 +78,9 @@ export async function inviteAction(formData: FormData): Promise<ActionResult> {
           acceptUrl: new URL(invitePath(token), serverEnv().APP_ORIGIN).toString(),
           expiresInDays: BUSINESS_INVITE_DAYS,
         }),
-      );
+      ));
+      // The transport reports a refused message instead of throwing. A queued one is kept: the queue sends it within the hour.
+      if (outcome.status === "failed") throw new Error("The invitation email was refused.");
     } catch (error) {
       unstable_rethrow(error);
       reportError(error, { area: "team.invite.email" });

@@ -4,6 +4,14 @@ import { describe, expect, it, vi } from "vitest";
 import { createNotifier, type NotifyDeps, type NotifyStore } from "./notify";
 import { createFakePushSender } from "./push-sender";
 
+/** Every event has words now, so the "no wording" paths are reached by blanking one event's words. */
+const NO_WORDS: string = "social.week_lapsed";
+vi.mock("../lib/notification-events", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../lib/notification-events")>();
+  const blank = <F extends (key: never, data: never) => unknown>(copyFor: F): F => ((key: never, data: never) => (key === NO_WORDS ? null : copyFor(key, data))) as F;
+  return { ...actual, bellCopyFor: blank(actual.bellCopyFor), emailCopyFor: blank(actual.emailCopyFor), pushCopyFor: blank(actual.pushCopyFor) };
+});
+
 const BUSINESS = "11111111-1111-4111-8111-111111111111";
 const OWNER: NotificationRecipient = { userId: "user-owner", name: "Asha", email: "asha@example.com" };
 const PHONE_OWNER: NotificationRecipient = { userId: "user-phone", name: "Ravi", email: null };
@@ -171,6 +179,15 @@ describe("notify, a customer event", () => {
     expect(errors.map((entry) => entry.step)).toEqual(["email"]);
   });
 
+  it("treats a failed outcome from the transport like a failure, and a queued one as delivered", async () => {
+    const { deps, errors } = setup({ choices: async () => ({ bell: true, email: true, push: false }) });
+    const failed = await createNotifier({ ...deps, sendEmail: async () => ({ status: "failed", error: "Brevo answered 400" }) })({ event: "kickoff.soon", audience: CUSTOMER, dedupeKey: "call-f", data: { when: "11:00" } });
+    expect(failed.recipients[0]).toMatchObject({ status: "failed", delivered: ["bell"] });
+    expect(errors.map((entry) => entry.step)).toEqual(["email"]);
+    const queued = await createNotifier({ ...deps, sendEmail: async () => ({ status: "queued" }) })({ event: "kickoff.soon", audience: CUSTOMER, dedupeKey: "call-q", data: { when: "11:00" } });
+    expect(queued.recipients[0]).toMatchObject({ delivered: ["bell", "email"] });
+  });
+
   it("keeps going for the next person when one recipient fails", async () => {
     const second: NotificationRecipient = { userId: "user-two", name: "Dev", email: "dev@example.com" };
     const { notify, rows, store } = setup({ recipients: [OWNER, second] });
@@ -198,10 +215,10 @@ describe("notify, a customer event", () => {
 
   it("skips a channel that has no wording yet and says so, still recording the ledger", async () => {
     const { notify, rows, emails, push } = setup();
-    const result = await notify({ event: "billing.renewal_upcoming", audience: CUSTOMER, dedupeKey: "r1", data: {} });
+    const result = await notify({ event: "social.week_lapsed", audience: CUSTOMER, dedupeKey: "r1", data: {} });
     expect(emails).toEqual([]);
     expect(push.sent).toEqual([]);
-    expect(rows).toEqual([expect.objectContaining({ listed: false, title: "billing.renewal_upcoming" })]);
+    expect(rows).toEqual([expect.objectContaining({ listed: false, title: "social.week_lapsed" })]);
     expect(result.recipients[0]?.skipped).toEqual(expect.arrayContaining([{ channel: "bell", reason: "no_wording" }, { channel: "email", reason: "no_wording" }]));
   });
 
@@ -220,11 +237,11 @@ describe("notify, a staff event", () => {
   it("writes one staff row, emails the team address and pushes to the staff account", async () => {
     const { notify, rows, emails, push } = setup();
     await notify({ event: "kickoff.ended", audience: STAFF, dedupeKey: "call-1", data: { businessName: "Asha Cafe" } });
-    expect(rows).toEqual([expect.objectContaining({ audience: "staff", userId: null, businessId: null, title: "Did the kickoff call with Asha Cafe happen?", link: "/calls", listed: true })]);
+    expect(rows).toEqual([expect.objectContaining({ audience: "staff", userId: null, businessId: null, title: "Did the kickoff call with Asha Cafe happen?", link: "/", listed: true })]);
     expect(emails[0]).toMatchObject({ to: "team@example.test", subject: "Did the kickoff call with Asha Cafe happen?" });
-    expect(emails[0]?.bodyText).toContain("https://console.example.test/calls");
+    expect(emails[0]?.bodyText).toContain("https://console.example.test/");
     expect(push.sent).toEqual([
-      { target: { audience: "staff", userId: null }, message: { title: "Did the kickoff call happen?", url: "https://console.example.test/calls", tag: "kickoff.ended", event: "kickoff.ended" } },
+      { target: { audience: "staff", userId: null }, message: { title: "Did the kickoff call happen?", url: "https://console.example.test/", tag: "kickoff.ended", event: "kickoff.ended" } },
     ]);
   });
 

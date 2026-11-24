@@ -5,7 +5,7 @@ import type { PlanStatusAlert } from "@brandbasket/shared/lib/payment-alert-card
 import { announceCustomerEvent } from "@brandbasket/shared/server/customer-alerts";
 import { registerBillingErrorAlerts } from "@brandbasket/shared/server/billing-error-alerts";
 import { announcePayment, announcePlanStatus } from "@brandbasket/shared/server/payment-alerts";
-import { sendTeamsAlert } from "@brandbasket/shared/server/teams-alerts";
+import { sendTeamsAlert, type SendTeamsAlertOptions } from "@brandbasket/shared/server/teams-alerts";
 import { serverEnv } from "./env";
 import { getStaffDb } from "./db";
 
@@ -14,9 +14,9 @@ import { getStaffDb } from "./db";
  * Reads the channel's address on the staff connection, because the sealed address sits in staff-only site_settings; the
  * public and customer roles cannot read it.
  */
-export async function alertTeams(destination: TeamsDestination, message: TeamsMessage): Promise<void> {
+export async function alertTeams(destination: TeamsDestination, message: TeamsMessage, options?: SendTeamsAlertOptions): Promise<void> {
   try {
-    await sendTeamsAlert(getStaffDb(), serverEnv().BETTER_AUTH_SECRET, destination, message);
+    await sendTeamsAlert(getStaffDb(), serverEnv().BETTER_AUTH_SECRET, destination, message, fetch, options);
   } catch (error) {
     console.error(`[teams-alert] The ${destination} alert could not be sent.`, error instanceof Error ? error.name : "error");
   }

@@ -6,6 +6,7 @@ import { cx } from "@/ui/cx";
 import { ChannelLabel } from "@/legacy-social/components/channel-label";
 import { ChannelLogo } from "@/legacy-social/components/channel-logo";
 import { ConnectButton } from "../accounts/components/connect-button";
+import { RequestChannel } from "../accounts/components/request-channel";
 import type { Platform } from "../analytics/rules";
 import { CHANNEL_NAMES } from "../analytics/rules";
 import { PLATFORM_HINTS } from "../accounts/rules";
@@ -43,7 +44,7 @@ export function ChannelsColumn({ data, selected, hrefFor, canChange }: ChannelsC
 }
 
 function Body({ data, selected, hrefFor, canChange }: Omit<ChannelsColumnProps, "data"> & { readonly data: ChannelsColumnData }) {
-  const { rows, missing, live, brandId = "brand" } = data;
+  const { rows, missing, live, brandId = "brand", requests } = data;
   return (
     <>
       {rows.some((row) => (row.todo ?? 0) > 0) ? <p className="-mt-2 px-1 text-xs text-ink-3">The number is what waits for you on Posts.</p> : null}
@@ -91,12 +92,16 @@ function Body({ data, selected, hrefFor, canChange }: Omit<ChannelsColumnProps, 
           <h3 id="add-channel-title" className="type-meta font-medium">
             {rows.length === 0 ? "Connect your accounts" : "Add a channel"}
           </h3>
-          {missing.map((platform) => (
+          {missing.map((platform) =>
+            requests?.modes[platform] === "request" ? (
+              <RequestChannel key={platform} platform={platform} request={requests.list.find((one) => one.network === platform && one.state !== "connected") ?? null} />
+            ) : (
             <div key={platform} className="flex flex-col items-start gap-1">
               <ConnectButton platform={platform} size="sm" className="h-auto min-h-8 w-full justify-start py-1.5 text-left leading-tight" leading={<span aria-hidden="true"><ChannelLogo platform={platform} small /></span>}>{`Connect ${platform === "google" ? "Google" : CHANNEL_NAMES[platform]}`}</ConnectButton>
               <p className="type-meta">{PLATFORM_HINTS[platform]}</p>
             </div>
-          ))}
+            ),
+          )}
         </section>
       )}
     </>

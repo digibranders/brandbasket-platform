@@ -26,7 +26,7 @@ import { requireStaffCan } from "@/lib/server/staff-role";
 import { logStaffAccess } from "@/lib/server/staff-access-log";
 import { TableScroll } from "@/components/console/table-scroll";
 
-export const metadata: Metadata = { title: "Affiliates" };
+export const metadata: Metadata = { title: "Plans and offers" };
 
 const LIST_LIMIT = 200;
 
@@ -47,7 +47,7 @@ function owedByCurrency(rows: readonly { readonly totals: readonly AffiliateTota
 }
 
 export default async function AffiliatesPage(): Promise<ReactElement> {
-  const { user, staff: viewer } = await requireStaffCan("money");
+  const { user } = await requireStaffCan("money");
   await logStaffAccess({ staffUserId: user.id, action: "affiliates.list", targetType: "affiliates" });
   const affiliates = await listAffiliates(getStaffDb(), LIST_LIMIT);
   const members = affiliates.reduce((total, affiliate) => total + affiliate.members, 0);
@@ -56,8 +56,8 @@ export default async function AffiliatesPage(): Promise<ReactElement> {
   return (
     <>
       <PageHeader
-        title="Affiliates"
-        meta="People we pay for every month a member they brought pays."
+        title="Plans and offers"
+        meta="Partners who bring members, and what they are owed: we pay them every month a member they brought pays."
         action={
           <Link href="/affiliates/new" className={buttonPrimary}>
             <Plus className="size-4" aria-hidden="true" />
@@ -65,7 +65,7 @@ export default async function AffiliatesPage(): Promise<ReactElement> {
           </Link>
         }
       />
-      <SectionTabs role={viewer.role} page="/affiliates" />
+      <SectionTabs page="/affiliates" />
 
       <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
         <StatCard label="Affiliates" value={affiliates.length} icon={<Handshake className="size-4" weight="regular" />} />

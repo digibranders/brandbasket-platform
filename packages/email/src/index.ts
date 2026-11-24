@@ -9,7 +9,19 @@ export {
   type EmailOutboxCopy,
 } from "./message";
 export { emailBrandName, emailLogoUrl, emailSenderDefaults, emailTeamInboxDefault, type EmailAddress } from "./brand";
-export { createOutboxTransport, OUTBOX_TRANSPORT_NAME, type EmailTransport, type OutboxOptions } from "./outbox";
+export {
+  createOutboxTransport,
+  emailOutcome,
+  OUTBOX_TRANSPORT_NAME,
+  recordOutboxCopy,
+  type EmailSendOutcome,
+  type EmailTransport,
+  type OutboxOptions,
+} from "./outbox";
+export { isOptionalEmail } from "./optional-mail";
+export { UNSUBSCRIBE_PATH, UNSUBSCRIBE_SECRET_MIN_LENGTH, unsubscribeUrl, verifyUnsubscribe } from "./unsubscribe";
+export { drainEmailQueue, type EmailDrainReport } from "./drain";
+export { channelLinkRequestedEmail, type ChannelLinkRequestedInput } from "./templates/channel-link-requested";
 export { affiliateLinkEmail, type AffiliateLinkInput } from "./templates/affiliate-link";
 export { businessInviteEmail, type BusinessInviteInput } from "./templates/business-invite";
 export { bookingCodeEmail, type BookingCodeInput } from "./templates/booking-code";
@@ -57,8 +69,11 @@ export {
   createBrevoTransport,
   createDualTransport,
   createEmailDelivery,
+  EMAIL_RETRY_DELAYS_MS,
   EmailConfigurationError,
   emailFailureSummary,
+  isRetryableEmailError,
+  nextEmailAttemptAt,
   type BrevoConfig,
   type BrevoReceipt,
   type BrevoSender,

@@ -13,6 +13,7 @@ export * from "./queries/support-staff";
 export * from "./queries/error-issues";
 export * from "./queries/support-ticket-error-links";
 export * from "./queries/deliveries";
+export * from "./queries/social-auto-events";
 export * from "./queries/staff-payments";
 export * from "./queries/staff-domains";
 export { assertValidRule, consumeRateLimit, windowStartFor, type RateLimitResult, type RateLimitRule } from "./rate-limit";
@@ -163,6 +164,14 @@ export {
   type NewAffiliatePayout,
 } from "./queries/affiliates";
 export {
+  listDueSalesRedemptions,
+  markSalesRedemptionDelivered,
+  markSalesRedemptionFailed,
+  queueSalesRedemption,
+  salesRedemptionBackoffMs,
+  type SalesRedemption,
+} from "./queries/sales-redemptions";
+export {
   findProviderDiscountPlan,
   saveProviderDiscountPlan,
   type DiscountPlanKey,
@@ -187,12 +196,16 @@ export {
 } from "./queries/staff";
 export {
   findEmail,
+  claimDueEmails,
   hasEmailContaining,
+  isEmailSuppressed,
   listEmailDeliveries,
   listRecentEmails,
+  markEmailBounced,
   purgeOldEmailMessages,
   recordEmail,
   SIGN_IN_LINK_TEMPLATES,
+  suppressEmailAddress,
   updateEmailDelivery,
   type RecordedEmail,
   type StoredEmail,
@@ -798,6 +811,7 @@ export {
   listChatbotsForBusiness,
   listChatbotsForStaff,
   recordChatbotLead,
+  recordChatbotLeadReportingNew,
   registerChatbot,
   removeChatbot,
   renameChatbot,
@@ -887,6 +901,22 @@ export {
   saveSetupCallSummary,
   type BookedCall,
 } from "./queries/setup-calls";
+export {
+  clearKickoffPromptState,
+  clearKickoffPromptStateForBusiness,
+  isKickoffPromptDue,
+  KICKOFF_PROMPT_REPEAT_MS,
+  KICKOFF_REMINDER_PUSH_AFTER_MS,
+  listKickoffsStartingSoon,
+  listPendingKickoffPrompts,
+  markKickoffFirstNotified,
+  markKickoffPromptAnswered,
+  markKickoffPromptsShown,
+  markKickoffReminderPushed,
+  type PendingKickoffPrompt,
+  type SoonKickoff,
+} from "./queries/kickoff-prompts";
+export * from "./queries/channel-link-requests";
 export * from "./queries/team-calls";
 export { boughtSetupServicesFrom, listBoughtSetupServices, listServiceSetups, saveServiceSetup } from "./queries/service-setup";
 export {
@@ -1670,6 +1700,7 @@ export {
   type BellNotification,
   type ChannelChoices,
 } from "./queries/notifications";
+export { listSubscriptionsEndingFirstTerm, listSubscriptionsPaidThroughBetween } from "./queries/billing-notices";
 export {
   listNotificationRecipients,
   recordNotification,

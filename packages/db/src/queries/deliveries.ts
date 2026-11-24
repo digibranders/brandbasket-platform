@@ -212,7 +212,7 @@ export async function deliveryHealth(db: Runner, since: Date): Promise<DeliveryH
     .where(gte(webhookEvents.receivedAt, since))
     .groupBy(webhookEvents.source);
   const [email] = await db
-    .select(healthColumns(sql`${emailMessages.status} = 'failed'`, sql`${emailMessages.createdAt}`))
+    .select(healthColumns(sql`${emailMessages.status} in ('failed', 'bounced')`, sql`${emailMessages.createdAt}`))
     .from(emailMessages)
     .where(gte(emailMessages.createdAt, since));
   const [teams] = await db
@@ -224,6 +224,7 @@ export async function deliveryHealth(db: Runner, since: Date): Promise<DeliveryH
     razorpay: bySource("razorpay"),
     calcom: bySource("calcom"),
     oyechats: bySource("oyechats"),
+    social_auto: bySource("social_auto"),
     brevo: email === undefined || Number(email.total) === 0 ? QUIET : asHealth(email),
     teams: teams === undefined || Number(teams.total) === 0 ? QUIET : asHealth(teams),
   };

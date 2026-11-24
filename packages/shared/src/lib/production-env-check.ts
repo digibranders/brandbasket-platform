@@ -34,6 +34,8 @@ export function parseEnvFile(text: string): Record<string, string> {
 }
 
 const MIN_SECRET_LENGTH = 32;
+/** The shortest webhook secret social-auto accepts for a product. */
+const MIN_SOCIAL_SECRET_LENGTH = 16;
 /** Never set where real customers can reach the app. */
 const FORBIDDEN = ["EMAIL_CODE_BYPASS", "BRANDBASKET_ALLOW_FAKE_BILLING"] as const;
 const SHARED_EQUAL = ["BETTER_AUTH_SECRET", "PAYLOAD_SECRET", "APP_ORIGIN", "ADMIN_ORIGIN", "DATABASE_URL_PAYLOAD"] as const;
@@ -118,6 +120,10 @@ export function checkProductionEnv(files: { readonly platform?: EnvValues; reado
     checkVapid("platform", platform, errors, warnings);
     if (blank(platform.RAZORPAY_WEBHOOK_SECRET)) errors.push("platform: RAZORPAY_WEBHOOK_SECRET is missing or blank (BILLING_PROVIDER=razorpay).");
     else if ((platform.RAZORPAY_WEBHOOK_SECRET ?? "").length < MIN_SECRET_LENGTH) errors.push(`platform: RAZORPAY_WEBHOOK_SECRET must be at least ${MIN_SECRET_LENGTH} characters.`);
+    if (!blank(platform.SOCIAL_AUTO_URL)) {
+      if (blank(platform.SOCIAL_AUTO_WEBHOOK_SECRET)) warnings.push("platform: SOCIAL_AUTO_WEBHOOK_SECRET is unset, so social-auto's events (a post failed, a connection expiring) are refused and send no notices.");
+      else if ((platform.SOCIAL_AUTO_WEBHOOK_SECRET ?? "").length < MIN_SOCIAL_SECRET_LENGTH) errors.push(`platform: SOCIAL_AUTO_WEBHOOK_SECRET must be at least ${MIN_SOCIAL_SECRET_LENGTH} characters (social-auto refuses a shorter one).`);
+    }
     const app = urlOf(platform.APP_ORIGIN);
     const publicApp = urlOf(platform.NEXT_PUBLIC_APP_URL);
     if (app !== null && (publicApp === null || publicApp.origin !== app.origin)) errors.push("platform: NEXT_PUBLIC_APP_URL must be the same address as APP_ORIGIN (it is compiled into the build).");

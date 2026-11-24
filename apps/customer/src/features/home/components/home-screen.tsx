@@ -10,6 +10,8 @@ import type { LoadFailure } from "@/lib/loaded";
 import { formatDate, formatDateTime } from "@/lib/format";
 import { Button, Icon, LinkButton } from "@/ui";
 import { NextActionCard, ServiceCard, StatusChip } from "@brandbasket/shared/ui/patterns";
+import type { LiveAccounts } from "@/features/social/accounts/rules";
+import { ChannelLogo } from "@/legacy-social/components/channel-logo";
 import type { HomePanels, HomeStateView } from "../loader";
 import {
   firstName,
@@ -137,6 +139,43 @@ function PaymentTask({ view, person, now }: Pick<HomeScreenProps, "view" | "pers
 }
 
 /** The kickoff states: book it, the booked call with the checklist, or a call nobody has confirmed. */
+/** The networks the Social media card lists, in order, with the name of each as the customer knows it. */
+const SOCIAL_ROWS = [
+  { platform: "instagram", name: "Instagram" },
+  { platform: "facebook", name: "Facebook Pages" },
+  { platform: "google", name: "Google Business" },
+] as const;
+
+/**
+ * One plain line a network: its logo and name, and on the right either a boxed Connect (not connected) or "Connected" in semibold green italics in the same line (connected). When the connected accounts could not be read (`accounts` is null) every line offers Connect and claims nothing.
+ */
+function SocialAccountRows({ accounts }: { readonly accounts: LiveAccounts | null }) {
+  return (
+    <ul className="m-0 flex list-none flex-col divide-y divide-border p-0">
+      {SOCIAL_ROWS.map(({ platform, name }) => {
+        const connected = accounts?.rows.find((row) => row.platform === platform);
+        return (
+          <li key={platform} className="flex items-center gap-3 py-3">
+            <span className="flex h-9 w-9 flex-none items-center justify-center" aria-hidden="true">
+              <ChannelLogo platform={platform} medium />
+            </span>
+            <span className="flex-none font-sans text-sm font-semibold text-ink">{name}</span>
+            <span className="flex min-w-0 flex-1 justify-end">
+              {connected === undefined ? (
+                <LinkButton href="/social/accounts" size="sm">
+                  Connect
+                </LinkButton>
+              ) : (
+                <span className="font-sans text-sm font-semibold italic text-ok">Connected</span>
+              )}
+            </span>
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
 function KickoffTask({ view, panels, person, services, now, purchase }: HomeScreenProps) {
   const { state } = view;
   const canBook = person.role !== "viewer" && !person.isPhoneAccount;
@@ -202,43 +241,7 @@ function KickoffTask({ view, panels, person, services, now, purchase }: HomeScre
               statusHasDot
               summary="Connect once and we write and post for you. About 5 minutes, no call needed."
             >
-              <ul className="flex flex-col gap-2.5 p-0 list-none">
-                <li className="flex items-center gap-3 rounded-control border border-border p-2.5">
-                  <span className="flex h-9 w-9 flex-none items-center justify-center rounded-control bg-canvas text-ink">
-                    <Icon name="InstagramLogo" size="sm" />
-                  </span>
-                  <span className="flex-1 font-sans text-sm font-semibold text-ink">Instagram</span>
-                  <StatusChip label="Not connected" variant="idle" />
-                  <LinkButton href="/social/accounts" size="sm">
-                    Connect
-                  </LinkButton>
-                </li>
-                <li className="flex items-center gap-3 rounded-control border border-border p-2.5">
-                  <span className="flex h-9 w-9 flex-none items-center justify-center rounded-control bg-canvas text-ink">
-                    <Icon name="FacebookLogo" size="sm" />
-                  </span>
-                  <span className="flex-1 font-sans text-sm font-semibold text-ink">Facebook Pages</span>
-                  <StatusChip label="Not connected" variant="idle" />
-                  <LinkButton href="/social/accounts" size="sm">
-                    Connect
-                  </LinkButton>
-                </li>
-                <li className="flex items-center gap-3 rounded-control border border-border p-2.5">
-                  <span className="flex h-9 w-9 flex-none items-center justify-center rounded-control bg-canvas text-ink">
-                    <Icon name="Storefront" size="sm" />
-                  </span>
-                  <span className="flex-1 font-sans text-sm font-semibold text-ink">Google Business</span>
-                  <StatusChip label="Not connected" variant="idle" />
-                  <LinkButton href="/social/accounts" size="sm">
-                    Connect
-                  </LinkButton>
-                </li>
-              </ul>
-              <div className="mt-4 flex items-center gap-2.5 border-t border-border pt-4 text-sm text-ink-2">
-                <b className="font-semibold text-ink">Status</b>
-                <span className="h-2 w-2 rounded-full bg-accent-gold" aria-hidden="true" />
-                <span className="font-sans text-sm">Waiting for your accounts</span>
-              </div>
+              <SocialAccountRows accounts={panels.social?.ok ? panels.social.data : null} />
             </ServiceCard>
           ) : null}
           {services.includes("search") ? (

@@ -9,6 +9,7 @@ import { eraseSupportDataForUser } from "./support";
 import type { ScopedTransaction } from "../scope";
 import {
   businessInvites,
+  channelLinkRequests,
   siteChecks,
   connectedAccounts,
   notificationPreferences,
@@ -374,6 +375,8 @@ export async function eraseClosedAccount(db: Database, input: { readonly closure
     await tx.delete(siteChecks).where(eq(siteChecks.businessId, businessId));
     await tx.delete(connectedAccounts).where(eq(connectedAccounts.businessId, businessId));
     await tx.delete(businessInvites).where(eq(businessInvites.businessId, businessId));
+    // The Instagram and Facebook links the customer sent for the team to set up.
+    await tx.delete(channelLinkRequests).where(eq(channelLinkRequests.businessId, businessId));
     await tx.delete(notificationPreferences).where(or(eq(notificationPreferences.businessId, businessId), eq(notificationPreferences.userId, userId)));
     await tx.delete(notificationReads).where(or(eq(notificationReads.businessId, businessId), eq(notificationReads.userId, userId)));
     // Their bell notices and the staff notices about this business (they name it), and the browsers they turned push on in. The kickoff prompt

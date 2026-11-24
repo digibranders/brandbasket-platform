@@ -32,7 +32,7 @@ const DB = { name: "staff" } as unknown as ReturnType<typeof getStaffDb>;
 const NOW = new Date("2026-11-30T10:00:00.000Z");
 const ID = "0198f2c0-0000-7000-8000-0000000000aa";
 const QUIET = { total: 0, failed: 0, lastOkAt: null, lastFailedAt: null };
-const HEALTH = { razorpay: QUIET, calcom: { ...QUIET, total: 2, failed: 1 }, oyechats: QUIET, brevo: { ...QUIET, total: 5, failed: 2 }, teams: QUIET };
+const HEALTH = { razorpay: QUIET, calcom: { ...QUIET, total: 2, failed: 1 }, oyechats: QUIET, social_auto: QUIET, brevo: { ...QUIET, total: 5, failed: 2 }, teams: QUIET };
 const FAILED: StoredEmail = {
   id: ID,
   toAddress: "kavya@example.in",
@@ -44,7 +44,7 @@ const FAILED: StoredEmail = {
   status: "failed",
   providerMessageId: null,
   error: "Brevo could not be reached",
-  attempts: 1,
+  attempts: 1, maxAttempts: 3, nextAttemptAt: null,
   lastAttemptAt: NOW,
   bodyRedacted: false,
   createdAt: NOW,

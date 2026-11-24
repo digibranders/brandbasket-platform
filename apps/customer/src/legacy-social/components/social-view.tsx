@@ -8,7 +8,7 @@ import type { LegacySocialData } from "@/legacy-social/server/load";
 import Link from "next/link";
 import { BrandControl } from "./brand-switcher";
 import { ChannelFilterProvider } from "./channel-filter";
-import { ChannelsSidebar, type ChannelRow } from "./channels-sidebar";
+import { ChannelsSidebar, type ChannelRequests, type ChannelRow } from "./channels-sidebar";
 import { MoveAccountPrompt, type MoveOffer } from "./move-account";
 import { ConnectStatusCard } from "./connect-status";
 import { NewPostButton, NewPostRequestProvider } from "./new-post-request";
@@ -30,6 +30,8 @@ export interface LegacySocialViewProps {
   readonly reportHref: string | null;
   /** What each channel has waiting for the customer and whether posts are being written for it, beside its name. */
   readonly channelState?: ChannelState;
+  /** Networks that ask for a link to the customer's profile in place of the Allow button, and where each request stands. */
+  readonly requests?: ChannelRequests;
   /** An account the customer tried to connect is connected to another of her brands: offer to move it here. */
   readonly move?: MoveOffer | null;
 }
@@ -54,7 +56,7 @@ function channelsColumn(data: LegacySocialData, now: Date, state: ChannelState |
  * Social media as it was in the old dashboard: the channels column against the rail, the title with New post, the Posts and Analytics
  * tabs, and the week calendar. Copied from the old app and left as it was.
  */
-export function LegacySocialView({ data, notice, now, hasNumbers, canChange, reportHref, savedWebsite, channelState, move = null }: LegacySocialViewProps): ReactElement {
+export function LegacySocialView({ data, notice, now, hasNumbers, canChange, reportHref, savedWebsite, channelState, requests, move = null }: LegacySocialViewProps): ReactElement {
   const status = connectStatus(data.channels, data.posts, now);
   const canPost = canChange;
   const hasAccounts = data.channels.length > 0;
@@ -64,7 +66,7 @@ export function LegacySocialView({ data, notice, now, hasNumbers, canChange, rep
       <ChannelFilterProvider>
         {/* On a wide screen the channels column steps out of the shell's gutter and sits against the menu, as it did in the old dashboard. */}
         <div className="flex flex-col gap-6 lg:-mt-5 lg:-ml-gutter lg:flex-row lg:gap-8">
-          <ChannelsSidebar rows={rows} brandId={channelState?.brandId} bookedLine={bookedLine} />
+          <ChannelsSidebar rows={rows} brandId={channelState?.brandId} bookedLine={bookedLine} {...(requests === undefined ? {} : { requests })} />
           <div className="order-first min-w-0 flex-1 lg:order-none lg:pt-5">
             <div className="mr-auto grid w-full max-w-[97.5rem] grid-cols-[minmax(0,1fr)] gap-6 md:gap-8">
               <header className="flex flex-wrap items-start justify-between gap-4">

@@ -23,6 +23,7 @@ import {
 } from "@brandbasket/db";
 import { afterEach, beforeEach, describe, expect, it, vi, type MockInstance } from "vitest";
 import { getBillingProvider } from "@/features/checkout/server/billing";
+import { notifyEvent } from "@brandbasket/shared/server/notify-event";
 import { announceCustomerToTeams } from "@/features/checkout/server/teams";
 import { getAppDb, getStaffDb } from "@/lib/db";
 import { closeAccountFor, hasRunningAddOnsFor, loadPackageEndsFor, type AccountCustomer } from "./account-exit";
@@ -34,6 +35,7 @@ import { checkPasswordFor } from "./account-security";
 vi.mock("@/features/checkout/server/billing", () => ({ getBillingProvider: vi.fn() }));
 vi.mock("./account-security", () => ({ checkPasswordFor: vi.fn() }));
 vi.mock("@/lib/db", () => ({ getAppDb: vi.fn(), getStaffDb: vi.fn() }));
+vi.mock("@brandbasket/shared/server/notify-event", () => ({ notifyEvent: vi.fn(async () => undefined) }));
 vi.mock("@/features/checkout/server/teams", () => ({ announceCustomerToTeams: vi.fn() }));
 vi.mock("@brandbasket/db", () => ({
   ACCOUNT_CLOSURE_GRACE_DAYS: 30,
@@ -167,6 +169,7 @@ describe("closeAccountFor with add-ons", () => {
     expect(announceCustomerToTeams).toHaveBeenCalledExactlyOnceWith(
       expect.objectContaining({ businessId: expect.any(String), event: "account_closed" }),
     );
+    expect(notifyEvent).toHaveBeenCalledExactlyOnceWith(expect.anything(), expect.objectContaining({ event: "account.closure", audience: expect.objectContaining({ kind: "customer" }) }));
   });
 
   it("stops an active add-on at the end of the month it has paid for, then records a cancel by the customer", async () => {

@@ -1,12 +1,11 @@
 import "server-only";
-import { countCallsBetween, countLateProjects, countLeadsToContact, countSupportQueues, type StaffRole } from "@brandbasket/db";
+import { countLeadsToContact, countSupportQueues, type StaffRole } from "@brandbasket/db";
 import { staffCan } from "@brandbasket/shared/lib/access";
 import { errorLogInfo } from "@brandbasket/shared/server/error-log-info";
 import type { RailCountKey, RailCounts } from "@/lib/console-rail";
-import { todayRange } from "@/lib/team-time";
 import { getStaffDb } from "./db";
 import { countFailedDeliveries24h } from "./deliveries";
-import { readPaymentsCount } from "./payments-count";
+import { readMoneyCount } from "./money-count";
 import { countTodayItems } from "./today";
 
 /** One count, or nothing when it cannot be read: the failure is logged and only that count is left off the rail. */
@@ -24,22 +23,17 @@ export async function readRailCounts(role: StaffRole): Promise<RailCounts> {
   const canSeeMoney = staffCan(role, "money");
   const db = getStaffDb();
   const now = new Date();
-  const day = todayRange(now);
-  const [today, leads, requests, projects, calls, payments, deliveries] = await Promise.all([
-    countOrNothing("today", () => countTodayItems(canSeeMoney, staffCan(role, "integrations"))),
+  const [today, leads, requests, payments, deliveries] = await Promise.all([
+    countOrNothing("today", () => countTodayItems(canSeeMoney, staffCan(role, "integrations"), staffCan(role, "oversight"))),
     countOrNothing("leads", () => countLeadsToContact(db)),
     countOrNothing("requests", async () => (await countSupportQueues(db)).needsReply),
-    countOrNothing("projects", () => countLateProjects(db, now)),
-    countOrNothing("calls", () => countCallsBetween(db, day.start, day.end)),
-    canSeeMoney ? countOrNothing("payments", () => readPaymentsCount(now)) : Promise.resolve(undefined),
+    canSeeMoney ? countOrNothing("payments", () => readMoneyCount(now)) : Promise.resolve(undefined),
     countOrNothing("deliveries", () => countFailedDeliveries24h(now)),
   ]);
   const read: readonly (readonly [RailCountKey, number | undefined])[] = [
     ["today", today],
     ["leads", leads],
     ["requests", requests],
-    ["projects", projects],
-    ["calls", calls],
     ["payments", payments],
     ["deliveries", deliveries],
   ];
