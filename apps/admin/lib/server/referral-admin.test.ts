@@ -16,6 +16,7 @@ import {
   deleteReferralCodeFor,
   referralWorth,
   retireReferralCodeFor,
+  turnOffReferralCodeFor,
   type ReferralAdminOutcome,
 } from "./referral-admin";
 
@@ -365,6 +366,46 @@ describe("retireReferralCodeFor", () => {
     vi.mocked(findReferralCodeById).mockResolvedValue(null);
     const outcome = await retireReferralCodeFor({ codeId: "gone", formData: new FormData() });
     expect(refusalOf(outcome).field).toBeNull();
+    expect(updateReferralCode).not.toHaveBeenCalled();
+  });
+});
+
+describe("turnOffReferralCodeFor", () => {
+  const EXISTING = {
+    id: "code-1",
+    code: "SAVE15",
+    currency: "INR",
+    discount: { kind: "amount", amountCents: 52_500 },
+    active: true,
+    expiresAt: new Date("2026-12-31T23:59:59.999Z"),
+    maxRedemptions: 5,
+  } as ReferralCode;
+
+  it("turns the code off and keeps its expiry and limit as they were", async () => {
+    vi.mocked(findReferralCodeById).mockResolvedValue(EXISTING);
+    vi.mocked(updateReferralCode).mockImplementation(async (_db, input) => ({ ...EXISTING, ...input }) as ReferralCode);
+    const outcome = await turnOffReferralCodeFor("code-1");
+
+    expect(outcome.kind).toBe("updated");
+    expect(updateReferralCode).toHaveBeenCalledWith(expect.anything(), {
+      id: "code-1",
+      active: false,
+      expiresAt: EXISTING.expiresAt,
+      maxRedemptions: 5,
+    });
+  });
+
+  it("succeeds without writing when the code is already off", async () => {
+    vi.mocked(findReferralCodeById).mockResolvedValue({ ...EXISTING, active: false });
+    const outcome = await turnOffReferralCodeFor("code-1");
+    expect(outcome.kind).toBe("updated");
+    expect(updateReferralCode).not.toHaveBeenCalled();
+  });
+
+  it("refuses a code that does not exist", async () => {
+    vi.mocked(findReferralCodeById).mockResolvedValue(null);
+    const outcome = await turnOffReferralCodeFor("gone");
+    expect(outcome.kind).toBe("refused");
     expect(updateReferralCode).not.toHaveBeenCalled();
   });
 });
