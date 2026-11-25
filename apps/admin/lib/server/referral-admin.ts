@@ -266,6 +266,26 @@ export async function retireReferralCodeFor(input: ReferralRetirementInput): Pro
   return { kind: "updated", code: updated };
 }
 
+/**
+ * Turns a code off and leaves everything else as it was, for a caller that has no form to submit (Fynix Sales).
+ * Turning off, never deleting, is deliberate: a code a subscription points at is part of that customer's billing
+ * record. Turning off a code that is already off succeeds, so a retried call is harmless.
+ */
+export async function turnOffReferralCodeFor(codeId: string): Promise<ReferralAdminOutcome> {
+  const staffDb = getStaffDb();
+  const existing = await findReferralCodeById(staffDb, codeId);
+  if (existing === null) return refused("That code no longer exists.", null);
+  if (!existing.active) return { kind: "updated", code: existing };
+  const updated = await updateReferralCode(staffDb, {
+    id: existing.id,
+    active: false,
+    expiresAt: existing.expiresAt,
+    maxRedemptions: existing.maxRedemptions,
+  });
+  if (updated === null) return refused("That code no longer exists.", null);
+  return { kind: "updated", code: updated };
+}
+
 /** What a code means in money against today's cheapest service, for the console's summary. */
 export interface ReferralWorth {
   /** What the cheapest service charges each month without the code (every price includes GST). */
