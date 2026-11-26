@@ -17,6 +17,8 @@ export interface ChannelRequest {
   /** The account name read from the link, for example `acme_foods`. */
   readonly handle: string;
   readonly state: RequestState;
+  /** For an invited request: the steps she follows, worded for her network and the Meta app. Empty otherwise. */
+  readonly steps: readonly string[];
   /** Why the team could not set it up, in words for the customer. Only with `refused`. */
   readonly reason: string | null;
 }
@@ -47,4 +49,12 @@ export function requestWords(request: ChannelRequest): { readonly short: string;
     case "connected":
       return { short: "Connected", long: `${name} is connected.` };
   }
+}
+
+/** The businesses that keep the direct Connect buttons while everyone else gives a link, from DIRECT_CONNECT_BUSINESSES (a comma list of business ids). */
+export function directConnectBusinessesOf(setting: string | undefined): readonly string[] {
+  return (setting ?? "")
+    .split(",")
+    .map((id) => id.trim().toLowerCase())
+    .filter((id) => id !== "");
 }

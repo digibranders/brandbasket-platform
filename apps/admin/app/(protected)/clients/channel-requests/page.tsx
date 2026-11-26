@@ -75,6 +75,14 @@ export default async function ChannelRequestsPage({ searchParams }: { readonly s
                       <a href={row.url} target="_blank" rel="noopener noreferrer" className="underline-offset-2 hover:underline">
                         {row.handle}
                       </a>
+                      {row.adminProfileUrl === null ? null : (
+                        <div className="mt-1 text-xs text-ink-2">
+                          Tester:{" "}
+                          <a href={row.adminProfileUrl} target="_blank" rel="noopener noreferrer" className="underline-offset-2 hover:underline">
+                            {row.adminProfileUrl.replace(/^https:\/\/(www\.)?/, "")}
+                          </a>
+                        </div>
+                      )}
                     </td>
                     <td className={TD_TIME}>
                       <LocalDate iso={row.createdAt.toISOString()} />

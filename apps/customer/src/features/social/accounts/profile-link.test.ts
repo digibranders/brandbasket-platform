@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { readProfileLink } from "./profile-link";
+import { readPersonProfileLink, readProfileLink } from "./profile-link";
 
 describe("readProfileLink, Instagram", () => {
   it("cleans a profile link and reads the account name", () => {
@@ -42,5 +42,13 @@ describe("readProfileLink, Facebook", () => {
   it("refuses another site and the home page", () => {
     expect(readProfileLink("facebook", "instagram.com/acmefoods")).toMatchObject({ ok: false });
     expect(readProfileLink("facebook", "https://facebook.com/")).toMatchObject({ ok: false });
+  });
+});
+
+describe("readPersonProfileLink", () => {
+  it("reads a personal profile link and speaks of the person, not the page", () => {
+    expect(readPersonProfileLink("https://www.facebook.com/asha.mehta?mibextid=x")).toEqual({ ok: true, url: "https://www.facebook.com/asha.mehta", handle: "asha.mehta" });
+    expect(readPersonProfileLink("instagram.com/asha")).toMatchObject({ ok: false, message: expect.stringContaining("your own Facebook profile") });
+    expect(readPersonProfileLink("facebook.com/share/abc")).toMatchObject({ ok: false, message: expect.stringContaining("own profile") });
   });
 });

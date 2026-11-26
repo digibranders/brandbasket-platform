@@ -264,3 +264,24 @@ describe("browser safety", () => {
     expect(imports.filter(({ typeOnly }) => !typeOnly)).toEqual([]);
   });
 });
+
+describe("bellView, Instagram and Facebook profile links", () => {
+  const empty = { needs: [], waiting: [], replies: [], activity: [], stored: [], seenAt: null };
+  const at = (iso: string) => new Date(iso);
+
+  it("tells her it is her turn when she is invited, for each network, and keeps it until she acts", () => {
+    const view = bellView({ ...empty, seenAt: at("2026-11-20T00:00:00Z"), channelSteps: [{ network: "instagram", state: "invited", at: at("2026-11-10T00:00:00Z") }, { network: "facebook", state: "invited", at: at("2026-11-11T00:00:00Z") }] });
+    expect(view.items.map((item) => item.title)).toEqual(["Your Instagram is ready: accept the invite, then press Allow", "Your Facebook is ready: accept the invite, then press Allow"]);
+    expect(view.items.every((item) => item.needsYou && item.unread && item.href === "/social/review")).toBe(true);
+  });
+
+  it("says why when the team could not set the account up", () => {
+    expect(bellView({ ...empty, channelSteps: [{ network: "facebook", state: "refused", at: at("2026-11-11T00:00:00Z") }] }).items[0]?.title).toBe("We could not set up your Facebook: see why");
+  });
+
+  it("is news once when the account connects, and read after she opens the bell", () => {
+    const connected = [{ network: "instagram" as const, state: "connected" as const, at: at("2026-11-12T00:00:00Z") }];
+    expect(bellView({ ...empty, channelSteps: connected }).items[0]).toMatchObject({ title: "Instagram is connected", kind: "activity", needsYou: false, unread: true });
+    expect(bellView({ ...empty, seenAt: at("2026-11-13T00:00:00Z"), channelSteps: connected }).unread).toBe(0);
+  });
+});

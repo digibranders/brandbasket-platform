@@ -12,6 +12,7 @@ import { AutoPostingCard } from "./auto-posting-card";
 import { BrandControl } from "./brand-switcher";
 import { DismissibleNotice } from "./dismissible-notice";
 import { ActiveJobNote, NewChannelChoice, ReviewChannelsColumn, ReviewFlowProvider, ReviewWorkspace } from "./review-workspace";
+import { RequestBanner } from "@/features/social/accounts/components/request-banner";
 import { ReviewRefresher } from "./review-refresher";
 import { SocialTabs } from "./social-tabs";
 
@@ -93,6 +94,7 @@ export function ReviewView({ review, canChange = true, approvals = null }: { rea
         <AiStartCard jobs={review.jobs} channels={review.channels} drawWaiting={review.batches.some((batch) => batch.posts.some((post) => post.state === "kept" && post.drawn !== true))} postingDays={review.postingDays} website={review.website} expired={{ batches: review.expired.batches.length, pictures: review.expired.pictures.length }} nextMonth={review.plan?.canStartNext === true && review.plan.nextStartDate !== null ? { startDate: nextStartDay({ today: localDateIn(BRAND_TIME_ZONE, new Date()), earliest: review.plan.nextStartDate, renewsOn: review.renewsOn }), endsOn: review.plan.endsOn } : null} />
       )}
       {review.autoPosting !== null && review.channels.length > 0 && review.autoPosting.channels.length > 0 ? <AutoPostingCard auto={review.autoPosting} channels={review.channels} canChange={canChange} /> : null}
+      <RequestBanner requests={review.requests.list} />
       <ReviewRefresher active={active !== undefined || ownBusy} />
       {/* A new topic being written shows on its own card (the reel under the rejected one), so it has no note up here. */}
       {active === undefined || active.kind === "replace" ? null : <ActiveJobNote text={jobLine(active).replace(/\.$/, "")} networks={active.kind === "write" ? active.networks : undefined} />}
