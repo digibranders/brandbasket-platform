@@ -11,16 +11,18 @@ import { ContinueButton, ToggleServiceButton } from "./basket-form";
 import { QuestionForm } from "./question-form";
 
 /**
- * The short questions between creating an account and paying (old /personalize). The services are already chosen, so this
- * personalises what they chose and never recommends a plan.
+ * The short questions before checkout (old /personalize), or, for a member who has paid, after payment (plan 64): the services
+ * are already chosen, so this personalises what they chose and never recommends a plan. After payment there is no price, no
+ * basket to change and no checkout: it ends at Home.
  */
 export function StartScreen({ view }: { readonly view: StartView }) {
   const basket = view.services.join(",");
+  const afterPayment = view.phase === "after-payment";
   return (
     <div className="grid items-start gap-6 lg:grid-cols-3">
       <section
         aria-label="Personalise your setup"
-        className="relative flex flex-col gap-6 rounded-overlay border border-border bg-surface p-6 shadow-hero sm:p-7 lg:col-span-2"
+        className={`relative flex flex-col gap-6 rounded-overlay border border-border bg-surface p-6 shadow-hero sm:p-7 ${afterPayment ? "lg:col-span-3" : "lg:col-span-2"}`}
       >
         {view.step.kind === "question" ? (
           <>
@@ -41,10 +43,10 @@ export function StartScreen({ view }: { readonly view: StartView }) {
             <QuestionForm key={view.step.question.field} question={view.step.question} services={basket} />
           </>
         ) : (
-          <SummaryStep summary={view.step.summary} services={view.services} basket={basket} />
+          <SummaryStep summary={view.step.summary} services={view.services} basket={basket} afterPayment={afterPayment} />
         )}
       </section>
-      {view.aside.ok ? (
+      {afterPayment ? null : view.aside.ok ? (
         view.aside.data === null ? null : <Aside aside={view.aside.data} />
       ) : (
         <PanelError failure={view.aside.error} what="your prices" />
@@ -53,7 +55,17 @@ export function StartScreen({ view }: { readonly view: StartView }) {
   );
 }
 
-function SummaryStep({ summary, services, basket }: { readonly summary: StartSummary; readonly services: StartView["services"]; readonly basket: string }) {
+function SummaryStep({
+  summary,
+  services,
+  basket,
+  afterPayment,
+}: {
+  readonly summary: StartSummary;
+  readonly services: StartView["services"];
+  readonly basket: string;
+  readonly afterPayment: boolean;
+}) {
   return (
     <div className="flex flex-col gap-8">
       <header className="flex flex-col gap-1">
@@ -61,7 +73,7 @@ function SummaryStep({ summary, services, basket }: { readonly summary: StartSum
         <p className="type-body text-ink-3">We will carry this into your kickoff call. It is a starting point, not a brief, and nothing in it is final.</p>
       </header>
 
-      <section aria-labelledby="start-services" className="flex flex-col gap-2">
+      {afterPayment ? null : <section aria-labelledby="start-services" className="flex flex-col gap-2">
         <h2 id="start-services" className="type-section text-ink">Your services</h2>
         <p className="type-body text-ink-3">Already chosen by you. Add another before checkout and any package saving updates by itself.</p>
         <ul className="divide-y divide-border-subtle rounded-control border border-border">
@@ -73,7 +85,7 @@ function SummaryStep({ summary, services, basket }: { readonly summary: StartSum
               <li key={id} className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
                 <span className="flex flex-col">
                   <span className="type-sub text-ink">{title}</span>
-                  <span className="type-meta tabular-nums">{summary.prices[id]} a month</span>
+                  <span className="type-meta tabular-nums">{summary.prices[id] ?? ""} a month</span>
                 </span>
                 <ToggleServiceButton services={basket} toggle={id} variant="secondary" disabled={onlyOne} aria-label={`${on ? "Remove" : "Add"} ${title}`}>
                   {on ? "Remove" : "Add"}
@@ -82,7 +94,7 @@ function SummaryStep({ summary, services, basket }: { readonly summary: StartSum
             );
           })}
         </ul>
-      </section>
+      </section>}
 
       <section aria-labelledby="start-answers" className="flex flex-col gap-2">
         <h2 id="start-answers" className="type-section text-ink">About your business</h2>
@@ -110,7 +122,7 @@ function SummaryStep({ summary, services, basket }: { readonly summary: StartSum
 
       <div className="flex justify-end border-t border-border-subtle pt-4">
         <ContinueButton services={basket} variant="primary">
-          Continue to checkout
+          {afterPayment ? "Finish" : "Continue to checkout"}
         </ContinueButton>
       </div>
     </div>

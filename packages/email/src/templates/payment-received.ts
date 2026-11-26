@@ -1,5 +1,5 @@
 import { emailBrandName } from "../brand";
-import { assertWebUrl, sanitizeHeaderValue, type EmailMessage } from "../message";
+import { assertWebUrl, sanitizeHeaderValue, withheldLinkCopy, type EmailMessage } from "../message";
 import { receiptButton, receiptDocument, receiptParagraph } from "../receipt";
 import { assertMinorUnits, emailDate, emailGreeting, emailMoney, joinNames, type EmailCurrency } from "../format";
 
@@ -20,6 +20,13 @@ export interface PaymentReceivedInput {
   readonly nextPayment: { readonly amountCents: number; readonly on: Date } | null;
   /** Where the customer downloads the receipt: an absolute address on the dashboard. */
   readonly receiptUrl: string;
+  /**
+   * A customer who paid first has no password yet (plan 64): the link to set one, and how many days it works. The email then
+   * names the address they sign in with, and the outbox keeps a copy without the link.
+   */
+  readonly setPassword?: { readonly url: string; readonly lifetimeDays: number };
+  /** True when the invoice or receipt PDF travels with this email. */
+  readonly pdfAttached?: boolean;
 }
 
 function paidUpLine(input: PaymentReceivedInput): string | null {
@@ -52,17 +59,53 @@ export function paymentReceivedEmail(input: PaymentReceivedInput): EmailMessage 
     ...[paidUpLine(input)].filter((line): line is string => line !== null),
   ];
   const signOff = emailBrandName();
+  const attached = input.pdfAttached === true ? ["Your invoice is attached to this email."] : [];
+  const setPassword = input.setPassword === undefined ? null : { ...input.setPassword, url: assertWebUrl(input.setPassword.url, "setPassword.url") };
+  const days = setPassword === null ? 0 : setPassword.lifetimeDays;
+  const passwordIntro = "Set your password to sign in to your Brandbasket dashboard:";
+  const passwordNotes = setPassword === null
+    ? []
+    : [
+        `Sign in with ${input.to}.`,
+        `This link works for ${days} ${days === 1 ? "day" : "days"}. After that, choose Forgot password on the sign-in page and we will send a new one.`,
+      ];
+  const receiptLine = `Download your receipt: ${receiptUrl}`;
 
   return {
     to: sanitizeHeaderValue(input.to),
     subject,
     template: "payment-received",
-    bodyText: [...lines, `Download your receipt: ${receiptUrl}`, signOff].join("\n\n"),
+    bodyText: [...lines, ...attached, receiptLine, ...(setPassword === null ? [] : [passwordIntro, setPassword.url, ...passwordNotes]), signOff].join("\n\n"),
     bodyHtml: receiptDocument({
       title: subject,
       kicker: "Receipt",
       heading: subject,
-      body: [...lines.map(receiptParagraph), receiptParagraph("Download your receipt:"), receiptButton(receiptUrl, "Download receipt"), receiptParagraph(signOff)],
+      body: [
+        ...lines.map(receiptParagraph),
+        ...attached.map(receiptParagraph),
+        receiptParagraph("Download your receipt:"),
+        receiptButton(receiptUrl, "Download receipt"),
+        ...(setPassword === null ? [] : [receiptParagraph(passwordIntro), receiptButton(setPassword.url, "Set your password"), ...passwordNotes.map(receiptParagraph)]),
+        receiptParagraph(signOff),
+      ],
     }),
+    // What the outbox keeps, and what a retried send would send (a retry carries no file): never the set-password link, which signs
+    // someone in, and never the line saying a file is attached. The receipt link stays: it is what says this was sent.
+    ...(setPassword !== null
+      ? { outboxCopy: withheldLinkCopy(subject, [...lines, receiptLine, ...passwordNotes, signOff]) }
+      : attached.length > 0
+        ? {
+            outboxCopy: {
+              subject,
+              bodyText: [...lines, receiptLine, signOff].join("\n\n"),
+              bodyHtml: receiptDocument({
+                title: subject,
+                kicker: "Receipt",
+                heading: subject,
+                body: [...lines.map(receiptParagraph), receiptParagraph("Download your receipt:"), receiptButton(receiptUrl, "Download receipt"), receiptParagraph(signOff)],
+              }),
+            },
+          }
+        : {}),
   };
 }

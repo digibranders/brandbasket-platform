@@ -8,6 +8,7 @@ import { BillingSwitch } from "./billing-switch";
 import { CodeForm } from "./code-form";
 import { PayForm } from "./pay-form";
 import { PaymentWaiting } from "./payment-waiting";
+import { SignupCheckoutScreen } from "./signup-checkout-screen";
 
 /**
  * The checkout (old /plan, and the payment on the old Check and send): the services, what they cost together, a code, the
@@ -54,6 +55,9 @@ export function CheckoutScreen({ view }: { readonly view: CheckoutView }) {
       );
     case "pay":
       return <PayScreen view={view} />;
+    case "signup-pay":
+      // The pay frame already draws the page's header and main; the screen is the same one /signup draws, with the account done.
+      return <SignupCheckoutScreen account="signed-in" standalone={false} table={view.table} initialServices={view.services} paymentFailed={view.paymentFailed} />;
     default: {
       const unhandled: never = view;
       throw new Error(`Unhandled checkout view: ${JSON.stringify(unhandled)}`);

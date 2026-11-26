@@ -130,7 +130,7 @@ export interface JoinCodeStep {
 
 export type JoinParseResult = { readonly success: true; readonly data: JoinInput } | { readonly success: false; readonly message: string };
 
-function textValue(formData: FormData, key: string): string {
+export function textValue(formData: FormData, key: string): string {
   const value = formData.get(key);
   return typeof value === "string" ? value : "";
 }
@@ -149,7 +149,7 @@ function readCode(formData: FormData): { readonly ok: true; readonly code: JoinC
 }
 
 /** The form's address, lowercase, or the message to put right. */
-function readContact(formData: FormData): { readonly success: true; readonly contact: JoinContact } | { readonly success: false; readonly message: string } {
+export function readContact(formData: FormData): { readonly success: true; readonly contact: JoinContact } | { readonly success: false; readonly message: string } {
   const email = emailSchema.safeParse(textValue(formData, "email"));
   return email.success ? { success: true, contact: { email: email.data } } : { success: false, message: firstMessage(email.error) };
 }
@@ -163,7 +163,7 @@ const PHONE_COUNTRY_SHAPE = /^[A-Z]{2}$/;
  * The mobile number, required: a number typed, and a two-letter country code picked from the list. Whether the digits are
  * a real number of that country is for the server, which loads the phone metadata this file must not.
  */
-function readPhone(formData: FormData): { readonly success: true; readonly phone: JoinPhone } | { readonly success: false; readonly message: string } {
+export function readPhone(formData: FormData): { readonly success: true; readonly phone: JoinPhone } | { readonly success: false; readonly message: string } {
   const number = cleanLine(textValue(formData, "phone"));
   if (number === "") return { success: false, message: PHONE_MISSING_MESSAGE };
   if (number.length > MAX_PHONE_LENGTH) return { success: false, message: PHONE_TOO_LONG_MESSAGE };

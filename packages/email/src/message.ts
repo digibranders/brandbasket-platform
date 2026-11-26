@@ -11,6 +11,12 @@ export interface EmailOutboxCopy {
   readonly linkWithheld?: true;
 }
 
+/** A file sent with an email. The bytes go to the recipient only; the outbox stores the file name, never the content. */
+export interface EmailAttachment {
+  readonly name: string;
+  readonly content: Uint8Array;
+}
+
 export interface EmailMessage {
   readonly to: string;
   readonly subject: string;
@@ -23,6 +29,7 @@ export interface EmailMessage {
    * stores this copy instead.
    */
   readonly outboxCopy?: EmailOutboxCopy;
+  readonly attachments?: readonly EmailAttachment[];
 }
 
 const HEADER_UNSAFE = /[\r\n\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g;

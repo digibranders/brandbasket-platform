@@ -1,5 +1,5 @@
 import "server-only";
-import { findBusinessEntry, withTenantScope, type BusinessEntry } from "@brandbasket/db";
+import { findBusinessEntry, findClientIntake, withTenantScope, type BusinessEntry } from "@brandbasket/db";
 import { CustomerBusinessMissingError, type CustomerContext } from "@/lib/guards";
 import { getAppDb } from "./db";
 
@@ -13,6 +13,16 @@ export async function loadBusinessEntry(customer: Pick<CustomerContext, "tenant"
   const entry = await withTenantScope(getAppDb(), tenant, (tx) => findBusinessEntry(tx, tenant.businessId));
   if (entry === null) throw new CustomerBusinessMissingError(tenant.businessId);
   return entry;
+}
+
+/**
+ * The basket the questions were last asked for, as catalogue ids, or none when nothing was saved: what the one-screen checkout
+ * opens on when the address names no services. The caller has run a guard.
+ */
+export async function loadSavedServices(customer: Pick<CustomerContext, "tenant">): Promise<readonly string[]> {
+  const { tenant } = customer;
+  const intake = await withTenantScope(getAppDb(), tenant, (tx) => findClientIntake(tx, tenant.businessId));
+  return intake?.askedForServices ?? [];
 }
 
 /**

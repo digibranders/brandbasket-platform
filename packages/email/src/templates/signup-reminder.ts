@@ -1,22 +1,27 @@
-import { assertWebUrl, sanitizeHeaderValue, type EmailMessage } from "../message";
+import { assertWebUrl, sanitizeHeaderValue, withheldLinkCopy, type EmailMessage } from "../message";
 import { receiptButton, receiptDocument, receiptParagraph } from "../receipt";
 import { emailBrandName } from "../brand";
 
 export interface SignupReminderInput {
   readonly to: string;
-  readonly businessName: string;
   readonly continueUrl: string;
+  /**
+   * True when `continueUrl` signs the person in or sets their password (a customer who paid first has no password, plan 64): the
+   * outbox then keeps the wording without the link.
+   */
+  readonly linkWithheld?: boolean;
 }
 
 /**
  * Sent to an abandoned sign-up 1 day after account creation (D21): reminds the customer
- * to complete their setup and pick their plan.
+ * to complete their setup and pick their plan. It names no text the sign-up form supplied (a business name is typed by whoever
+ * used the address, before the address was proven), so it cannot be used to put words in Brandbasket's mouth.
  */
 export function signupReminderEmail(input: SignupReminderInput): EmailMessage {
   const brand = emailBrandName();
   const continueUrl = assertWebUrl(input.continueUrl, "continueUrl");
-  const subject = `Finish setting up ${input.businessName} on ${brand}`;
-  const intro = `Your account for ${input.businessName} is ready, but your setup is not complete yet.`;
+  const subject = `Finish setting up your ${brand} account`;
+  const intro = `Your ${brand} account is ready, but your setup is not complete yet.`;
   const instruction = "Pick your plan and complete your setup to get started with your new website and services:";
   const help = "If you have any questions or need a hand, simply reply to this email and our team will help you.";
   const ignore = `If you did not sign up for ${brand}, you can safely ignore this email.`;
@@ -40,5 +45,6 @@ export function signupReminderEmail(input: SignupReminderInput): EmailMessage {
       ],
       footer: [ignore],
     }),
+    ...(input.linkWithheld === true ? { outboxCopy: withheldLinkCopy(subject, [intro, instruction, help, ignore]) } : {}),
   };
 }

@@ -216,7 +216,7 @@ export async function createListingAccount(
  * Keeps which ad the account came from (plan 59). Best effort, like the lead: the owner is about to be signed in, and a failure
  * here is reported for staff to see and never stops the sign-up.
  */
-async function recordAttributionForSignup(businessId: string, attribution: NewSignupAttribution): Promise<void> {
+export async function recordAttributionForSignup(businessId: string, attribution: NewSignupAttribution): Promise<void> {
   try {
     await recordSignupAttribution(getStaffDb(), businessId, attribution);
   } catch (error) {
@@ -229,7 +229,7 @@ async function recordAttributionForSignup(businessId: string, attribution: NewSi
  * followed up. Best effort: the account and business already exist and the owner is about to be signed in, so a failure
  * here is reported for staff to see and never stops the sign-up.
  */
-async function recordLeadForSignup(signup: {
+export async function recordLeadForSignup(signup: {
   readonly name: string;
   readonly businessName: string;
   readonly email: string;

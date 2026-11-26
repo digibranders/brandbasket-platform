@@ -43,3 +43,38 @@ describe("createOutboxTransport", () => {
     expect(recordEmail).toHaveBeenCalledWith(db, expect.objectContaining({ bodyText: "copy without the link" }));
   });
 });
+
+describe("createOutboxTransport with attachments", () => {
+  const plain: EmailMessage = { to: "asha@example.in", subject: "Receipt", template: "payment-received", bodyText: "thanks", bodyHtml: "<p>thanks</p>" };
+  const bytes = new TextEncoder().encode("%PDF-1.4 test");
+
+  it("lists the file names in the stored copy and holds no bytes", async () => {
+    await createOutboxTransport(db).send({
+      ...plain,
+      attachments: [
+        { name: "invoice.pdf", content: bytes },
+        { name: "terms<1>.pdf", content: bytes },
+      ],
+    });
+    const stored = vi.mocked(recordEmail).mock.calls[0]?.[1];
+    expect(stored?.bodyText).toBe("thanks\nAttachments: invoice.pdf, terms<1>.pdf");
+    expect(stored?.bodyHtml).toBe("<p>thanks</p>\n<p>Attachments: invoice.pdf, terms&lt;1&gt;.pdf</p>");
+    expect(JSON.stringify(stored)).not.toContain("PDF-1.4");
+    expect(stored?.bodyRedacted).toBe(false);
+  });
+
+  it("adds the line to a redacted copy too", async () => {
+    await createOutboxTransport(db).send({ ...message(true), attachments: [{ name: "a.pdf", content: bytes }] });
+    const stored = vi.mocked(recordEmail).mock.calls[0]?.[1];
+    expect(stored?.bodyText).toBe("copy without the link\nAttachments: a.pdf");
+    expect(stored?.bodyRedacted).toBe(true);
+  });
+
+  it("stores a message without attachments exactly as before", async () => {
+    await createOutboxTransport(db).send(plain);
+    expect(vi.mocked(recordEmail).mock.calls[0]?.[1]).toMatchObject({ bodyText: "thanks", bodyHtml: "<p>thanks</p>", bodyRedacted: false });
+    vi.mocked(recordEmail).mockClear();
+    await createOutboxTransport(db).send({ ...plain, attachments: [] });
+    expect(vi.mocked(recordEmail).mock.calls[0]?.[1]).toMatchObject({ bodyText: "thanks", bodyHtml: "<p>thanks</p>" });
+  });
+});

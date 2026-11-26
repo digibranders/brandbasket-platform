@@ -38,7 +38,7 @@ The scope is still `@brandbasket/*`; renaming it is planned.
 
 - Three database roles, three connections. The customer app uses the app role for customer work (row-level security, scope every query with `withUserScope` or `withTenantScope` from `@brandbasket/db`), the public role only for lead intake, and the staff role for console and system work. The console has only the staff connection.
 - Every page, route handler and server action checks access itself. Layouts are never the only guard.
-- Accounts are only created by server code: the email-confirmed sign-up and `pnpm staff:create`. There is no public account API.
+- Accounts are only created by server code: the pay-first checkout (`startSignupCheckoutAction`, plan 64: no email code, a random password nobody sees, `users.password_pending` until the owner sets one through the emailed link), the email-confirmed sign-up used for invited team members, and `pnpm staff:create`. There is no public account API.
 - The customer app and the console are separate origins with host-only session cookies. Never add a `Domain=.brandbasket.in` cookie or Better Auth `crossSubDomainCookies` (`docs/STAFF-ACCESS.md`).
 - Nothing is sent to phones; every code is emailed. Without `BREVO_API_KEY`, mail is only written to the outbox, which staff read in the console. A server with an https `APP_ORIGIN` refuses to start without Brevo or with `EMAIL_CODE_BYPASS`.
 - Unset `BILLING_PROVIDER` means the fake provider: no money moves. Razorpay test mode needs the signed webhook, so run `pnpm dev:tunnel`.

@@ -1,14 +1,19 @@
 "use server";
 
 import { AccountAlreadyExistsError } from "@brandbasket/auth";
-import { InviteNoLongerRedeemableError } from "@brandbasket/db";
+import { consumeRateLimit, InviteNoLongerRedeemableError } from "@brandbasket/db";
+import { clientIpFrom } from "@brandbasket/shared/lib/client-ip";
+import { retryMessage } from "@brandbasket/shared/lib/sign-in-limits";
 import { readBundleSelection } from "@brandbasket/shared/lib/billing/bundle";
 import { checkHuman } from "@brandbasket/shared/server/turnstile-request";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { actionFail, type ActionFailure, type ActionResult, type ActionSuccess } from "@/lib/action-result";
 import { getAuth } from "@/lib/auth";
+import { getStaffDb } from "@/lib/db";
 import { startHref } from "@/features/start/rules";
+import { parseCheckoutSignupForm, type CheckoutField } from "./rules/checkout-form";
+import { CHECKOUT_ACCOUNT_EXISTS_MESSAGE } from "./rules/checkout-signup-messages";
 import { parseResetPasswordForm } from "./rules/account-recovery-form";
 import { inviteReturn, NEXT_FIELD, SIGN_IN_PATH } from "./rules/account-entry";
 import { otpLimitMessage, type OtpRetry } from "./rules/auth-retry";
@@ -17,13 +22,16 @@ import { parseJoinForm, type JoinCodeStep } from "./rules/join-form";
 import { attributionFromStart } from "./rules/start-attribution";
 import { parseSetupForm, SETUP_AGREE_MESSAGE, type SetupField } from "./rules/setup-form";
 import { requestPasswordReset, resetPassword } from "./server/account-recovery";
+import { createCheckoutAccount } from "./server/checkout-account";
 import { parseAccountIdentifier } from "./server/customer-sign-in-form";
 import { landingForSignedInUser } from "./server/entry-access";
 import { leadsApiToken } from "./server/env";
+import { ipRateLimitKey } from "./server/ip-key";
 import { createListingAccount, requestJoinCode } from "./server/listing-account";
 import { clearPendingSignupCookie, setPendingSignupCookie } from "./server/pending-signup-cookie";
 import { InviteNotUsableError, redeemSetupInvite, TermsNotAgreedError, TooManySetupAttemptsError } from "./server/setup";
 import { signInWithPassword } from "./server/sign-in";
+import { visitorCountry } from "./server/visitor-country";
 
 /*
  * The entry screens' actions. They are public: nobody is signed in yet, so instead of a guard each one runs the robot check
@@ -121,6 +129,43 @@ export async function signUpAction(previous: SignUpResult | null, formData: Form
   await clearPendingSignupCookie();
   // The basket rides along so checkout opens on those services; only catalogue ids survive.
   redirect(nextReturn ?? startHref(readBundleSelection(String(formData.get("services") ?? "").split(","))));
+}
+
+/**
+ * `field`: where to put the message and the focus. `accountExists`: the address already has an account, so the screen adds
+ * the Sign in and Forgot password links under it.
+ */
+export type CheckoutSignupResult = ActionSuccess<never> | (ActionFailure & { readonly field?: CheckoutField; readonly accountExists?: true });
+
+const CHECKOUT_SIGNUP_ATTEMPTS_PER_HOUR = 5;
+const ONE_HOUR_SECONDS = 60 * 60;
+
+/**
+ * Pay first (plan 64): the one-screen checkout's first post. It opens the account and its business without a code or a
+ * password and signs the visitor in; the browser then posts startPaymentAction, because a session set here cannot be read in
+ * this request. Public, so it is guarded by the robot check (Turnstile, like every other entry form: off until its keys are set,
+ * which the owner chose on 2026-11-26 rather than refusing sign-ups without them), the form's own checks, and a per-network
+ * budget. The emailed code that used to be the real barrier against bots is gone here, so set the keys when you can.
+ */
+export async function startSignupCheckoutAction(_previous: CheckoutSignupResult | null, formData: FormData): Promise<CheckoutSignupResult> {
+  const fail = (message: string, field?: CheckoutField): CheckoutSignupResult => (field === undefined ? actionFail(message) : { ...actionFail(message, { [field]: message }), field });
+  const requestHeaders = await headers();
+  const human = await checkHuman(formData, "join");
+  if (!human.ok) return fail(human.message);
+
+  const parsed = parseCheckoutSignupForm(formData, visitorCountry(requestHeaders));
+  if (!parsed.success) return fail(parsed.message, parsed.field);
+
+  const budget = await consumeRateLimit(getStaffDb(), `checkout-signup:ip:${ipRateLimitKey(clientIpFrom(requestHeaders))}`, {
+    limit: CHECKOUT_SIGNUP_ATTEMPTS_PER_HOUR,
+    windowSeconds: ONE_HOUR_SECONDS,
+  });
+  if (!budget.allowed) return fail(retryMessage(budget.retryAfterSeconds));
+
+  const outcome = await createCheckoutAccount(parsed.data, attributionFromStart(formData, leadsApiToken()));
+  if (outcome.kind === "exists") return { ...actionFail(CHECKOUT_ACCOUNT_EXISTS_MESSAGE, { email: CHECKOUT_ACCOUNT_EXISTS_MESSAGE }), field: "email", accountExists: true };
+  if (outcome.kind === "refused") return fail(outcome.message, outcome.field);
+  return { ok: true };
 }
 
 /** Clears any pending sign-up cookie so the form can return to the initial details step. */

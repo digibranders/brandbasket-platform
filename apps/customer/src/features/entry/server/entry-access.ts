@@ -1,11 +1,14 @@
 import "server-only";
-import { findAffiliateByUserId, findOpenClosureForUser, listMembershipsForUser } from "@brandbasket/db";
+import { findAffiliateByUserId, findBillingState, findBusinessEntry, findClientIntake, findOpenClosureForUser, listMembershipsForUser, withTenantScope } from "@brandbasket/db";
 import { AFFILIATE_PATH } from "@brandbasket/shared/lib/affiliate-links";
 import { ACTIVE_BUSINESS_COOKIE, decideCustomerAccess, type CustomerAccess, type SessionUser } from "@brandbasket/shared/lib/access";
 import { displayPhone } from "@brandbasket/shared/server/phone-display";
+import { summariseBilling } from "@brandbasket/shared/lib/billing/status";
+import type { MoneyCurrency } from "@brandbasket/shared/lib/money";
 import { cookies } from "next/headers";
 import { cache } from "react";
 import { getAppDb, getStaffDb } from "@/lib/db";
+import { isAwaitingFirstPayment } from "@/features/checkout/server/entry";
 import { getSessionUser } from "@/lib/session";
 
 /*
@@ -75,4 +78,31 @@ export async function signedInEntry(namesPlan: boolean, next?: string | null): P
       throw new Error(`Unhandled customer access: ${JSON.stringify(unhandled)}`);
     }
   }
+}
+
+/** A signed-in owner whose sign-up has not paid: what /signup needs to show them the Pay screen instead of sending them away. */
+export interface UnpaidSignupOwner {
+  /** The currency the business is billed in, which prices the screen (never the visitor's header). */
+  readonly currency: MoneyCurrency;
+  /** The basket the questions were last asked for, catalogue ids, when one was saved. */
+  readonly savedServices: readonly string[];
+}
+
+/**
+ * The signed-in owner of a sign-up account that chose Managed Website and has not paid, or null for anyone else (a paid or
+ * lapsed member, a team member, a client invited by staff, nobody signed in). Reads through row-level security for the session's
+ * own business.
+ */
+export async function unpaidSignupOwner(): Promise<UnpaidSignupOwner | null> {
+  const access = await getEntryAccess();
+  if (access.kind !== "granted" || access.tenant.role !== "owner") return null;
+  const { tenant } = access;
+  const { entry, state, intake } = await withTenantScope(getAppDb(), tenant, async (tx) => ({
+    entry: await findBusinessEntry(tx, tenant.businessId),
+    state: await findBillingState(tx, tenant.businessId),
+    intake: await findClientIntake(tx, tenant.businessId),
+  }));
+  if (entry === null || state === null || !isAwaitingFirstPayment(entry)) return null;
+  if (summariseBilling(state, new Date()).status !== "unpaid") return null;
+  return { currency: state.currency, savedServices: intake?.askedForServices ?? [] };
 }

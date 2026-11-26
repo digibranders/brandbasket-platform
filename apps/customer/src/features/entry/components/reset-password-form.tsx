@@ -2,14 +2,17 @@
 
 import { PASSWORD_MIN_LENGTH, PASSWORD_RULE } from "@brandbasket/auth/password-policy";
 import { useGuardedActionState } from "@/lib/use-guarded-action-state";
-import { Banner, Button, Field, LinkButton } from "@/ui";
+import { Banner, Button, Field, Input, LinkButton } from "@/ui";
 import { resetPasswordAction } from "../actions";
 import { FORGOT_PASSWORD_PATH } from "../rules/account-recovery-form";
 import { PasswordInput } from "./password-input";
 import { TurnstileWidget } from "./turnstile";
 
-/** Chooses the new password for the account a reset link belongs to. A dead link offers a new one instead. */
-export function ResetPasswordForm({ siteKey, token }: { readonly siteKey: string | null; readonly token: string }) {
+/**
+ * Chooses the new password for the account a reset link belongs to. A dead link offers a new one instead. A customer setting
+ * their first password sees their address (`email`) first, as the name they will sign in with.
+ */
+export function ResetPasswordForm({ siteKey, token, email = null }: { readonly siteKey: string | null; readonly token: string; readonly email?: string | null }) {
   const [state, formAction, pending] = useGuardedActionState(resetPasswordAction, null);
 
   if (state !== null && !state.ok && state.deadLink === true) {
@@ -27,6 +30,11 @@ export function ResetPasswordForm({ siteKey, token }: { readonly siteKey: string
   return (
     <form action={formAction} noValidate className="flex flex-col gap-4">
       <input type="hidden" name="token" value={token} />
+      {email === null ? null : (
+        <Field label="Email" name="email" hint="You will sign in with this address.">
+          <Input name="email" type="email" value={email} readOnly autoComplete="username" />
+        </Field>
+      )}
       <Field label="New password" name="password" hint={PASSWORD_RULE}>
         <PasswordInput name="password" required autoComplete="new-password" minLength={PASSWORD_MIN_LENGTH} maxLength={128} />
       </Field>

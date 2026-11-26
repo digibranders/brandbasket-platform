@@ -1,11 +1,12 @@
 import "server-only";
-import { findBillingProfile, findBusinessCurrency, findPincode, getBusinessProfile, hasPincodeDirectory, saveBillingProfile, withTenantScope } from "@brandbasket/db";
+import { findBillingProfile, findBusinessCurrency, findBusinessEntry, findInvoiceFallbackRecipient, findPincode, getBusinessProfile, hasPincodeDirectory, saveBillingProfile, withTenantScope } from "@brandbasket/db";
 import { firstCustomerBillingProblem, parseCustomerBillingDetails, pincodeStateProblem } from "@brandbasket/shared/lib/billing/billing-details-form";
+import { isPrintableOnInvoice, normaliseInvoiceText } from "@brandbasket/shared/lib/billing/invoice-text";
 import { stateName } from "@brandbasket/shared/lib/directory/india-states";
 import { actionFail, actionOk, type ActionResult } from "@/lib/action-result";
 import { billingDetailsStart, savedBillingDetails } from "@brandbasket/shared/lib/billing/billing-details-start";
 import { savedPhoneStart } from "@brandbasket/shared/server/phone-defaults";
-import { billsInRupees, type BillingDetailsView } from "../rules/billing-details-view";
+import { billsInRupees, needsBillingDetails, type BillingDetailsView } from "../rules/billing-details-view";
 import type { GrantedCustomer } from "./customer-access";
 import { getAppDb } from "./db";
 
@@ -47,13 +48,31 @@ export async function loadBillingDetailsView(
 }
 
 /**
- * Whether this business is billed in rupees and has saved no billing details yet. Its first tax invoice is made out from
- * them and cannot be changed once issued, so a checkout waits for them. A business that gets no tax invoice never lacks them.
+ * Whether the checkout must wait for billing details: the business is billed in rupees, has saved none, and is not a paid
+ * sign-up that gave its state (needsBillingDetails). The first tax invoice is made out from them and cannot be changed once
+ * issued. A business that gets no tax invoice never lacks them. With details saved nothing else is read.
  */
+/** Whether every part an invoice would print from the fallback is printable once phone-keyboard punctuation is plain (the invoice's own rule). */
+function invoiceTextPrintable(parts: readonly (string | null)[]): boolean {
+  return parts.every((part) => part === null || isPrintableOnInvoice(normaliseInvoiceText(part)));
+}
+
 export async function billingDetailsMissing(customer: Pick<GrantedCustomer, "tenant" | "billing">): Promise<boolean> {
   if (!(await billedInRupees(customer))) return false;
   const { tenant } = customer;
-  return (await withTenantScope(getAppDb(), tenant, (tx) => findBillingProfile(tx, tenant.businessId))) === null;
+  return withTenantScope(getAppDb(), tenant, async (tx) => {
+    if ((await findBillingProfile(tx, tenant.businessId)) !== null) return false;
+    const [entry, fallback] = await Promise.all([findBusinessEntry(tx, tenant.businessId), findInvoiceFallbackRecipient(tx, tenant.businessId)]);
+    // An entry that cannot be read counts as a client invited by staff, which is asked.
+    return needsBillingDetails({
+      rupees: true,
+      hasProfile: false,
+      kind: entry?.kind ?? "website",
+      signupChoice: entry?.signupChoice ?? null,
+      stateCode: fallback.registeredStateCode,
+      fallbackPrintable: invoiceTextPrintable([fallback.name, ...fallback.addressLines, fallback.region, fallback.postalCode]),
+    });
+  });
 }
 
 /**

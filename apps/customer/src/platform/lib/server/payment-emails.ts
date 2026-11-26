@@ -1,13 +1,12 @@
 import "server-only";
 import { sendPaymentFailed as sendFailed, sendPaymentReceipt as sendReceipt, type FailedPaymentEmail, type PaymentEmailDeps } from "@brandbasket/shared/server/payment-emails";
+import { paymentEmailDeps } from "@/features/checkout/server/payment-emails";
 import { getStaffDb } from "./db";
-import { customerEmailTransport } from "./email";
-import { serverEnv } from "./env";
 
 // The staff connection writes the outbox, which the customer's own connection cannot; the transport is built per send so a
 // missing email configuration is caught by the best-effort wrapper instead of failing a payment that has already committed.
 function deps(): PaymentEmailDeps {
-  return { send: (message) => customerEmailTransport(getStaffDb()).send(message), dashboardOrigin: serverEnv().APP_ORIGIN };
+  return paymentEmailDeps();
 }
 
 /**

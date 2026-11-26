@@ -895,12 +895,21 @@ describe("domainMovedEmail", () => {
 describe("signupReminderEmail (D21)", () => {
   const email = signupReminderEmail({
     to: "owner@example.com",
-    businessName: "Riverside Plumbing",
     continueUrl: "https://brandbasket.in/checkout",
   });
 
-  it("names the business in the subject", () => {
-    expect(email.subject).toContain("Finish setting up Riverside Plumbing");
+  it("uses fixed wording, so nothing typed on the sign-up form reaches the subject or body", () => {
+    expect(email.subject).toBe("Finish setting up your Brandbasket account");
+    expect(email.bodyText).toContain("Your Brandbasket account is ready");
+  });
+
+  it("has no outbox copy for an ordinary link, and a copy without the link when it is withheld", () => {
+    expect(email.outboxCopy).toBeUndefined();
+    const withheld = signupReminderEmail({ to: "owner@example.com", continueUrl: "https://app.brandbasket.in/reset-password/tok-7", linkWithheld: true });
+    expect(withheld.outboxCopy?.linkWithheld).toBe(true);
+    expect(withheld.outboxCopy?.bodyText).not.toContain("tok-7");
+    expect(withheld.outboxCopy?.bodyHtml).not.toContain("tok-7");
+    expect(withheld.bodyText).toContain("tok-7");
   });
 
   it("contains the continue URL in text and html", () => {
@@ -919,7 +928,6 @@ describe("signupReminderEmail (D21)", () => {
     expect(() =>
       signupReminderEmail({
         to: "owner@example.com",
-        businessName: "Riverside Plumbing",
         continueUrl: "javascript:alert(1)",
       }),
     ).toThrow();

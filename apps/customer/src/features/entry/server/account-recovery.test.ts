@@ -1,8 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { consumeRateLimit, findUserByPhone, type Database, type RecordedEmail } from "@brandbasket/db";
+import { consumeRateLimit, findPendingResetAccountEmail, findUserByPhone, type Database, type RecordedEmail } from "@brandbasket/db";
 import { passwordResetEmail } from "@brandbasket/email";
 import { after } from "next/server";
-import { requestPasswordReset } from "./account-recovery";
+import { pendingResetEmail, requestPasswordReset } from "./account-recovery";
 import { generatePasswordResetEmail, getAuth } from "@/lib/auth";
 import { getAppDb, getPublicDb } from "@/lib/db";
 
@@ -17,7 +17,7 @@ vi.mock("@brandbasket/email", async (importOriginal) => ({
   createEmailDelivery: vi.fn(() => ({ send })),
 }));
 vi.mock("@brandbasket/db", async () => ({
-  ...await vi.importActual<typeof import("@brandbasket/db")>("@brandbasket/db"), consumeRateLimit: vi.fn(), findUserByPhone: vi.fn(),
+  ...await vi.importActual<typeof import("@brandbasket/db")>("@brandbasket/db"), consumeRateLimit: vi.fn(), findUserByPhone: vi.fn(), findPendingResetAccountEmail: vi.fn(),
 }));
 
 const committed: RecordedEmail[] = [];
@@ -148,5 +148,18 @@ describe("reset by mobile number", () => {
     vi.mocked(consumeRateLimit).mockResolvedValueOnce({ allowed: false, remaining: 0, retryAfterSeconds: 600 });
     expect(await requestPasswordReset(PHONE)).toBe("limited");
     expect(findUserByPhone).not.toHaveBeenCalled();
+  });
+});
+
+describe("pendingResetEmail", () => {
+  it("names the address of a live link waiting for a first password", async () => {
+    vi.mocked(findPendingResetAccountEmail).mockResolvedValue("owner@example.com");
+    expect(await pendingResetEmail("tok")).toBe("owner@example.com");
+    expect(findPendingResetAccountEmail).toHaveBeenCalledWith(expect.anything(), "tok", expect.any(Date));
+  });
+
+  it("names nothing for any other link", async () => {
+    vi.mocked(findPendingResetAccountEmail).mockResolvedValue(null);
+    expect(await pendingResetEmail("tok")).toBeNull();
   });
 });

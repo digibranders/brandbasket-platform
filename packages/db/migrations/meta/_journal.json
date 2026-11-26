@@ -1618,6 +1618,13 @@
       "when": 1795679997593,
       "tag": "0233_channel_link_admin_profile",
       "breakpoints": true
+    },
+    {
+      "idx": 231,
+      "version": "7",
+      "when": 1795681146761,
+      "tag": "0234_users_password_pending",
+      "breakpoints": true
     }
   ]
 }

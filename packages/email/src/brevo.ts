@@ -125,6 +125,12 @@ export function createBrevoTransport(config: BrevoConfig): BrevoTransport {
         textContent: message.bodyText,
       };
 
+      if (message.attachments !== undefined && message.attachments.length > 0) {
+        // Brevo: "Each attachment must include either an absolute URL ... or base64-encoded content" and "name ... Required when content is provided"
+        // (https://developers.brevo.com/reference/sendtransacemail)
+        payload.attachment = message.attachments.map((file) => ({ name: file.name, content: Buffer.from(file.content).toString("base64") }));
+      }
+
       const unsubscribe = isOptionalEmail(message.template) && config.unsubscribe !== undefined ? unsubscribeUrl(message.to, config.unsubscribe) : null;
       if (unsubscribe !== null) {
         payload.headers = { "List-Unsubscribe": `<${unsubscribe}>`, "List-Unsubscribe-Post": "List-Unsubscribe=One-Click" };

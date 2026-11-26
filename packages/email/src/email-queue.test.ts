@@ -1,13 +1,16 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { Database } from "@brandbasket/db";
+import type { Database, StoredEmail } from "@brandbasket/db";
 
 const suppressed = new Set<string>();
 vi.mock("@brandbasket/db", () => ({
   recordEmail: vi.fn(async () => undefined),
   isEmailSuppressed: vi.fn(async (_db: unknown, address: string) => suppressed.has(address)),
+  claimDueEmails: vi.fn(async () => [] as StoredEmail[]),
+  updateEmailDelivery: vi.fn(async () => undefined),
 }));
 
-const { recordEmail } = await import("@brandbasket/db");
+const { recordEmail, claimDueEmails, updateEmailDelivery } = await import("@brandbasket/db");
+const { drainEmailQueue } = await import("./drain");
 const { createBrevoTransport, createDualTransport, BrevoDeliveryError, nextEmailAttemptAt } = await import("./brevo");
 const { isOptionalEmail } = await import("./optional-mail");
 const { unsubscribeUrl, verifyUnsubscribe } = await import("./unsubscribe");
@@ -97,5 +100,22 @@ describe("a Brevo outage during a webhook", () => {
     const down = { send: async () => { throw new BrevoDeliveryError("down", 503, ""); } };
     await expect(createDualTransport(down, db).send(receipt)).resolves.toMatchObject({ status: "queued" });
     error.mockRestore();
+  });
+});
+
+describe("a retry of a message that had attachments", () => {
+  it("is queued unredacted, then drained as the stored text with no attachment and no error", async () => {
+    const message = { ...receipt, attachments: [{ name: "invoice.pdf", content: new TextEncoder().encode("%PDF-1.4 test") }] };
+    const down = { send: vi.fn(async () => { throw new BrevoDeliveryError("down", 503, ""); }) };
+    expect(await createDualTransport(down, db).send(message)).toMatchObject({ status: "queued" });
+    const queued = vi.mocked(recordEmail).mock.calls[0]?.[1];
+    expect(queued).toMatchObject({ status: "pending", bodyRedacted: false, bodyText: "t\nAttachments: invoice.pdf" });
+
+    const row = { ...queued, id: "e1", attempts: 1, maxAttempts: 3 } as unknown as StoredEmail;
+    vi.mocked(claimDueEmails).mockResolvedValueOnce([row]);
+    const up = { send: vi.fn(async () => ({ providerMessageId: "<r1>" })) };
+    expect(await drainEmailQueue(db, up, new Date())).toMatchObject({ claimed: 1, sent: 1, failed: 0 });
+    expect(up.send).toHaveBeenCalledWith({ to: row.toAddress, subject: row.subject, template: row.template, bodyText: row.bodyText, bodyHtml: row.bodyHtml });
+    expect(updateEmailDelivery).toHaveBeenCalledWith(db, "e1", expect.objectContaining({ status: "sent" }));
   });
 });

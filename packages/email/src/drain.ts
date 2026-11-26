@@ -55,6 +55,7 @@ async function attempt(db: Database, brevo: BrevoTransport, email: StoredEmail, 
       await updateEmailDelivery(db, email.id, { status: "bounced", providerMessageId: null, error: "Not sent: the address is suppressed", now });
       return "suppressed";
     }
+    // Attachment bytes are never stored, so a retry sends the stored text alone (the stored copy names the files that were lost).
     const receipt = await brevo.send({ to: email.toAddress, subject: email.subject, template: email.template, bodyText: email.bodyText, bodyHtml: email.bodyHtml });
     await updateEmailDelivery(db, email.id, { status: "sent", providerMessageId: receipt.providerMessageId, error: null, now });
     return "sent";

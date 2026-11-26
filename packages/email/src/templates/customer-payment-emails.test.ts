@@ -46,6 +46,53 @@ describe("paymentReceivedEmail", () => {
     }
   });
 
+  it("is unchanged without a set-password block: no extra text, no outbox copy", () => {
+    const email = paymentReceivedEmail(inr);
+    expect(email.bodyText).not.toContain("password");
+    expect(email.bodyHtml).not.toContain("Set your password");
+    expect(email.outboxCopy).toBeUndefined();
+  });
+
+  it("adds the set-password button, the sign-in address and the lifetime for a customer with no password yet", () => {
+    const url = "https://app.brandbasket.in/reset-password/tok-1";
+    const email = paymentReceivedEmail({ ...inr, setPassword: { url, lifetimeDays: 3 }, pdfAttached: true });
+    expect(email.bodyText).toContain(`Set your password to sign in to your Brandbasket dashboard:\n\n${url}`);
+    expect(email.bodyText).toContain("Sign in with asha@example.com.");
+    expect(email.bodyText).toContain("This link works for 3 days. After that, choose Forgot password on the sign-in page and we will send a new one.");
+    expect(email.bodyText).toContain("Your invoice is attached to this email.");
+    expect(email.bodyHtml).toContain(`href="${url}"`);
+    expect(email.bodyHtml).toContain("Set your password");
+    expect(email.bodyHtml).toContain(`href="${RECEIPT_URL}"`);
+  });
+
+  it("keeps the set-password link out of the stored copy but keeps the receipt link that dedupes the send", () => {
+    const url = "https://app.brandbasket.in/reset-password/tok-1";
+    const email = paymentReceivedEmail({ ...inr, setPassword: { url, lifetimeDays: 3 } });
+    expect(email.outboxCopy?.linkWithheld).toBe(true);
+    expect(email.outboxCopy?.bodyText).toContain(RECEIPT_URL);
+    expect(email.outboxCopy?.bodyText).not.toContain("tok-1");
+    expect(email.outboxCopy?.bodyHtml).not.toContain("tok-1");
+  });
+
+  it("stores, and so retries with, wording that does not claim a file is attached", () => {
+    const withFile = paymentReceivedEmail({ ...inr, pdfAttached: true });
+    expect(withFile.bodyText).toContain("Your invoice is attached to this email.");
+    expect(withFile.outboxCopy?.bodyText).not.toContain("attached");
+    expect(withFile.outboxCopy?.bodyHtml).not.toContain("attached");
+    expect(withFile.outboxCopy?.bodyText).toContain(RECEIPT_URL);
+    const withBoth = paymentReceivedEmail({ ...inr, pdfAttached: true, setPassword: { url: "https://app.brandbasket.in/reset-password/tok-1", lifetimeDays: 3 } });
+    expect(withBoth.outboxCopy?.bodyText).not.toContain("attached");
+  });
+
+  it("refuses a set-password link that is not a web address", () => {
+    expect(() => paymentReceivedEmail({ ...inr, setPassword: { url: "javascript:alert(1)", lifetimeDays: 3 } })).toThrow();
+  });
+
+  it("says a single day in the singular", () => {
+    const email = paymentReceivedEmail({ ...inr, setPassword: { url: "https://app.brandbasket.in/reset-password/t", lifetimeDays: 1 } });
+    expect(email.bodyText).toContain("works for 1 day.");
+  });
+
   it("names several services in a list", () => {
     const email = paymentReceivedEmail({ ...inr, items: ["Managed Website", "Social Media and Ads", "Local SEO"] });
     expect(email.bodyText).toContain("for Managed Website, Social Media and Ads and Local SEO.");

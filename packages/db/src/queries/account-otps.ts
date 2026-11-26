@@ -1,6 +1,6 @@
 import { and, eq, gt, lt, sql } from "drizzle-orm";
 import type { Database } from "../client";
-import { accountOtps, users, type AccountOtpPurpose } from "../schema";
+import { accountOtps, users, verifications, type AccountOtpPurpose } from "../schema";
 import { hasPostgresCode, isUuid, UNIQUE_VIOLATION } from "./tenant";
 
 /*
@@ -132,4 +132,31 @@ export async function findUserByEmail(db: Database, email: string): Promise<Phon
     .where(eq(users.email, email.trim().toLowerCase()))
     .limit(1);
   return rows[0] ?? null;
+}
+
+/** Whether the account at `email` was opened without its owner choosing a password and has not yet set one (plan 64). False when there is no such account. */
+export async function isPasswordPending(db: Database, email: string): Promise<boolean> {
+  const rows = await db
+    .select({ passwordPending: users.passwordPending })
+    .from(users)
+    .where(eq(users.email, email.trim().toLowerCase()))
+    .limit(1);
+  return rows[0]?.passwordPending === true;
+}
+
+/**
+ * The address of the account a password reset link belongs to, when that account is still waiting for its owner's first
+ * password. Null for a link that is unknown, used up or expired, and for any account that already has a password: the
+ * reset page then shows nothing about whose it is. Reads Better Auth's own reset row ("reset-password:<token>", its value is
+ * the user's id), so it never consumes the link.
+ */
+export async function findPendingResetAccountEmail(db: Database, token: string, now: Date): Promise<string | null> {
+  if (token === "" || token.length > 128) return null;
+  const rows = await db
+    .select({ email: users.email })
+    .from(verifications)
+    .innerJoin(users, eq(users.id, verifications.value))
+    .where(and(eq(verifications.identifier, `reset-password:${token}`), gt(verifications.expiresAt, now), eq(users.passwordPending, true)))
+    .limit(1);
+  return rows[0]?.email ?? null;
 }
