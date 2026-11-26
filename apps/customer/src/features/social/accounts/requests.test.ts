@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { connectModesOf, requestWords } from "./requests";
+import { connectModesOf, directConnectBusinessesOf, requestWords } from "./requests";
 
 describe("connectModesOf", () => {
   it("puts the networks on the list on links and leaves the rest on the button", () => {
@@ -14,8 +14,15 @@ describe("connectModesOf", () => {
   });
 });
 
+describe("directConnectBusinessesOf", () => {
+  it("reads the businesses that keep the direct buttons, trimmed and lower case", () => {
+    expect(directConnectBusinessesOf(" ABC-1 , def-2,, ")).toEqual(["abc-1", "def-2"]);
+    expect(directConnectBusinessesOf(undefined)).toEqual([]);
+  });
+});
+
 describe("requestWords", () => {
-  const base = { network: "instagram", url: "https://instagram.com/acme_foods", handle: "acme_foods", reason: null } as const;
+  const base = { network: "instagram", url: "https://instagram.com/acme_foods", handle: "acme_foods", steps: [], reason: null } as const;
 
   it("tells her we are reviewing her profile", () => {
     expect(requestWords({ ...base, state: "requested" })).toEqual({ short: "Reviewing your profile", long: "We are reviewing @acme_foods so you can keep using Instagram. We will tell you here as soon as it is your turn." });

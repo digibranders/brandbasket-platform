@@ -1,7 +1,7 @@
 import { and, asc, eq, inArray, isNull, sql } from "drizzle-orm";
 import type { Database } from "../client";
 import type { ScopedTransaction } from "../scope";
-import { businesses, channelLinkRequests, type ChannelLinkNetwork, type ChannelLinkRequest } from "../schema";
+import { businesses, channelLinkRequests, users, type ChannelLinkNetwork, type ChannelLinkRequest } from "../schema";
 
 type Runner = Database | ScopedTransaction;
 
@@ -16,6 +16,8 @@ export interface NewChannelLinkRequest {
   readonly network: ChannelLinkNetwork;
   readonly url: string;
   readonly handle: string;
+  /** The personal Facebook profile of the person who manages the account, for the networks that ask for it; null otherwise. */
+  readonly adminProfileUrl: string | null;
   readonly userId: string;
 }
 
@@ -27,10 +29,10 @@ export interface NewChannelLinkRequest {
 export async function upsertChannelLinkRequest(db: Runner, input: NewChannelLinkRequest): Promise<ChannelLinkRequest | null> {
   const rows = await db
     .insert(channelLinkRequests)
-    .values({ businessId: input.businessId, brandId: input.brandId, network: input.network, url: input.url, handle: input.handle, requestedByUserId: input.userId })
+    .values({ businessId: input.businessId, brandId: input.brandId, network: input.network, url: input.url, handle: input.handle, adminProfileUrl: input.adminProfileUrl, requestedByUserId: input.userId })
     .onConflictDoUpdate({
       target: [channelLinkRequests.businessId, channelLinkRequests.brandId, channelLinkRequests.network],
-      set: { url: input.url, handle: input.handle, state: "requested", reason: null, requestedByUserId: input.userId, notifiedAt: null, answeredAt: null, answeredByStaffId: null },
+      set: { url: input.url, handle: input.handle, adminProfileUrl: input.adminProfileUrl, state: "requested", reason: null, requestedByUserId: input.userId, notifiedAt: null, answeredAt: null, answeredByStaffId: null },
       setWhere: inArray(channelLinkRequests.state, ["requested", "refused"]),
     })
     .returning();
@@ -81,10 +83,42 @@ export async function answerChannelLinkRequest(db: Database, input: { readonly i
   return rows.length > 0;
 }
 
-/** Marks a request connected once the account shows among the brand's channels. Staff connection (or the customer's own read of it). */
-export async function markChannelLinkConnected(db: Database, businessId: string, brandId: string, network: ChannelLinkNetwork, now: Date): Promise<void> {
-  await db
+/**
+ * Marks a request connected once the account shows among the brand's channels. Staff connection. True when it changed (it was not connected
+ * before), so the one message about it is sent once.
+ */
+export async function markChannelLinkConnected(db: Database, businessId: string, brandId: string, network: ChannelLinkNetwork, now: Date): Promise<boolean> {
+  const rows = await db
     .update(channelLinkRequests)
     .set({ state: "connected", reason: null, answeredAt: now })
-    .where(and(eq(channelLinkRequests.businessId, businessId), eq(channelLinkRequests.brandId, brandId), eq(channelLinkRequests.network, network), sql`${channelLinkRequests.state} <> 'connected'`));
+    .where(and(eq(channelLinkRequests.businessId, businessId), eq(channelLinkRequests.brandId, brandId), eq(channelLinkRequests.network, network), sql`${channelLinkRequests.state} <> 'connected'`))
+    .returning({ id: channelLinkRequests.id });
+  return rows.length > 0;
+}
+
+/** Every request of a business, any brand, read through row-level security as the customer: the bell lists what waits on her. */
+export async function listChannelLinkRequestsForBusiness(db: Runner, businessId: string): Promise<ChannelLinkRequest[]> {
+  return db.select().from(channelLinkRequests).where(eq(channelLinkRequests.businessId, businessId));
+}
+
+/** Who to write to about a request, and the business it is for. Staff connection. */
+export interface ChannelLinkMailInfo {
+  readonly request: ChannelLinkRequest;
+  readonly businessName: string;
+  /** The person who sent the link; null when they cannot be found. */
+  readonly requester: { readonly name: string; readonly email: string } | null;
+}
+
+/** The request with its business and the person who sent it, for the customer emails. Staff connection. */
+export async function findChannelLinkMailInfo(db: Database, id: string): Promise<ChannelLinkMailInfo | null> {
+  const rows = await db
+    .select({ request: channelLinkRequests, businessName: businesses.name, name: users.name, email: users.email })
+    .from(channelLinkRequests)
+    .innerJoin(businesses, eq(businesses.id, channelLinkRequests.businessId))
+    .leftJoin(users, eq(users.id, channelLinkRequests.requestedByUserId))
+    .where(eq(channelLinkRequests.id, id))
+    .limit(1);
+  const row = rows[0];
+  if (row === undefined) return null;
+  return { request: row.request, businessName: row.businessName, requester: row.email === null || row.name === null ? null : { name: row.name, email: row.email } };
 }

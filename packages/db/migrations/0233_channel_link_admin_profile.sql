@@ -1,0 +1,2 @@
+ALTER TABLE "channel_link_requests" ADD COLUMN "admin_profile_url" text;--> statement-breakpoint
+ALTER TABLE "channel_link_requests" ADD CONSTRAINT "channel_link_requests_admin_profile_check" CHECK ("channel_link_requests"."admin_profile_url" is null or (char_length("channel_link_requests"."admin_profile_url") <= 300 and "channel_link_requests"."admin_profile_url" ~ '^https://'));

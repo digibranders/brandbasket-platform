@@ -1,5 +1,6 @@
 import "server-only";
 import {
+  listChannelLinkRequestsForBusiness,
   countNewEnquiries,
   getNotificationsSeenAt,
   listBellNotifications,
@@ -49,6 +50,8 @@ export interface ShellView {
  * The shell's view model. Each read is its own `load()`, so one failure costs only its own number or panel: a link is never
  * hidden because a read failed (apps/platform hid Social and Search when the services read failed).
  */
+const CONNECTED_NEWS_MS = 30 * 24 * 60 * 60 * 1000;
+
 export const loadShell = cache(async (customer: CustomerContext): Promise<ShellView> => {
   const { tenant, user, businessId } = customer;
   const db = getAppDb();
@@ -74,6 +77,12 @@ export const loadShell = cache(async (customer: CustomerContext): Promise<ShellV
             occurredAt: event.occurredAt,
           })),
           stored: await listBellNotifications(tx, user.id),
+          channelSteps: (await listChannelLinkRequestsForBusiness(tx, businessId)).flatMap((request) => {
+            if (request.state === "requested" || request.answeredAt === null) return [];
+            // A connection is news for a month; an invite or a refusal waits until she acts on it.
+            if (request.state === "connected" && Date.now() - request.answeredAt.getTime() > CONNECTED_NEWS_MS) return [];
+            return [{ network: request.network, state: request.state, at: request.answeredAt }];
+          }),
           seenAt: await getNotificationsSeenAt(tx, user.id),
         }),
       ),

@@ -19,10 +19,11 @@ const ASK: Readonly<Record<"instagram" | "facebook", { readonly label: string; r
  * A network that cannot be connected with its Allow button yet: the customer sends the link to her profile, our team sets it up with
  * her, and the row says where that stands. Once she is added she presses Allow here as for any network.
  */
-export function RequestChannel({ platform, request }: { readonly platform: Platform; readonly request: ChannelRequest | null }) {
+export function RequestChannel({ platform, request, needsPerson = false }: { readonly platform: Platform; readonly request: ChannelRequest | null; /** Also ask for the personal Facebook profile of the person who manages the account. */ readonly needsPerson?: boolean }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [url, setUrl] = useState("");
+  const [person, setPerson] = useState("");
   const [message, setMessage] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const name = CHANNEL_NAMES[platform];
@@ -33,10 +34,11 @@ export function RequestChannel({ platform, request }: { readonly platform: Platf
     event.preventDefault();
     setMessage(null);
     startTransition(async () => {
-      const result = await requestChannelAction(platform, url);
+      const result = await requestChannelAction(platform, url, needsPerson ? person : undefined);
       if (!result.ok) return setMessage(result.message);
       setOpen(false);
       setUrl("");
+      setPerson("");
       router.refresh();
     });
   }
@@ -61,7 +63,7 @@ export function RequestChannel({ platform, request }: { readonly platform: Platf
       {words === null ? <p className="type-meta">{ask.hint}</p> : <p className="type-meta">{words.long}</p>}
       {request?.state === "invited" ? <ConnectButton platform={platform} size="sm">{`Allow ${name}`}</ConnectButton> : null}
       {waiting ? (
-        <Button variant="ghost" size="sm" pending={pending} onClick={cancel}>
+        <Button variant="ghost" size="sm" pending={pending} onClick={cancel} className="h-auto! min-h-8 w-full min-w-0 justify-start whitespace-normal! py-1.5 text-left leading-tight">
           Send a different link
         </Button>
       ) : open ? (
@@ -70,6 +72,14 @@ export function RequestChannel({ platform, request }: { readonly platform: Platf
             Paste the link, for example {ask.example}
           </label>
           <input id={`profile-link-${platform}`} value={url} onChange={(event) => setUrl(event.target.value)} inputMode="url" autoComplete="off" spellCheck={false} className="h-control w-full min-w-0 rounded-control border border-border-control bg-surface px-3 type-body" />
+          {needsPerson ? (
+            <>
+              <label className="type-meta" htmlFor={`person-link-${platform}`}>
+                Your own Facebook profile, the person who manages it, for example facebook.com/yourname
+              </label>
+              <input id={`person-link-${platform}`} value={person} onChange={(event) => setPerson(event.target.value)} inputMode="url" autoComplete="off" spellCheck={false} className="h-control w-full min-w-0 rounded-control border border-border-control bg-surface px-3 type-body" />
+            </>
+          ) : null}
           <div className="flex flex-wrap gap-2">
             <Button type="submit" size="sm" pending={pending}>
               Send my link
@@ -80,7 +90,7 @@ export function RequestChannel({ platform, request }: { readonly platform: Platf
           </div>
         </form>
       ) : (
-        <Button variant="secondary" size="sm" onClick={() => setOpen(true)}>
+        <Button variant="secondary" size="sm" onClick={() => setOpen(true)} className="h-auto! min-h-8 w-full min-w-0 justify-start whitespace-normal! py-1.5 text-left leading-tight">
           {request?.state === "refused" ? "Send a new link" : ask.label}
         </Button>
       )}

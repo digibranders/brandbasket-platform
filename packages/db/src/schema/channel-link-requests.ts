@@ -40,6 +40,8 @@ export const channelLinkRequests = pgTable(
     /** The account name read from the link, for example `acme_foods`. */
     handle: text("handle").notNull(),
     state: text("state").$type<ChannelLinkState>().notNull().default("requested"),
+    /** The link to the personal Facebook profile of the person who manages the account: Meta's tester list takes a person. Asked only for the networks in PERSON_PROFILE_NETWORKS. */
+    adminProfileUrl: text("admin_profile_url"),
     /** Why the team could not set it up, in words for the customer. Only with `refused`. */
     reason: text("reason"),
     requestedByUserId: text("requested_by_user_id").references(() => users.id),
@@ -56,6 +58,7 @@ export const channelLinkRequests = pgTable(
     check("channel_link_requests_state_check", sql`${table.state} in (${sql.raw(list(CHANNEL_LINK_STATES))})`),
     check("channel_link_requests_url_check", sql`char_length(${table.url}) between 8 and 300 and ${table.url} ~ '^https://'`),
     check("channel_link_requests_handle_check", sql`char_length(btrim(${table.handle})) between 1 and 120`),
+    check("channel_link_requests_admin_profile_check", sql`${table.adminProfileUrl} is null or (char_length(${table.adminProfileUrl}) <= 300 and ${table.adminProfileUrl} ~ '^https://')`),
     check("channel_link_requests_reason_check", sql`${table.reason} is null or (${table.state} = 'refused' and char_length(btrim(${table.reason})) between 3 and 400)`),
   ],
 );
