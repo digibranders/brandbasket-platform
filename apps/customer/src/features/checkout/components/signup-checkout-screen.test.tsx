@@ -1,15 +1,18 @@
+import { MAX_REFERRAL_CODE_LENGTH } from "@brandbasket/billing/referral";
 import { cleanup, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { startSignupCheckoutAction, type CheckoutSignupResult } from "@/features/entry/actions";
 import { CHECKOUT_ACCOUNT_EXISTS_MESSAGE, CHECKOUT_AGREE_MESSAGE } from "@/features/entry/rules/checkout-signup-messages";
 import type { ActionResult } from "@/lib/action-result";
-import { startPaymentAction } from "../actions";
+import { applyCodeAction, startPaymentAction } from "../actions";
 import { buildSignupBasketTable, type SignupBasketTable } from "../rules/signup-basket";
 import { SignupCheckoutScreen } from "./signup-checkout-screen";
 
 vi.mock("@/features/entry/actions", () => ({ startSignupCheckoutAction: vi.fn() }));
-vi.mock("../actions", () => ({ startPaymentAction: vi.fn() }));
+const push = vi.fn();
+vi.mock("next/navigation", () => ({ useRouter: () => ({ push }) }));
+vi.mock("../actions", () => ({ startPaymentAction: vi.fn(), applyCodeAction: vi.fn() }));
 
 const INDIA = buildSignupBasketTable("INR", "razorpay");
 const ABROAD = buildSignupBasketTable("USD", "razorpay");
@@ -32,6 +35,8 @@ const summaryRowsEmpty = (): boolean => summary().queryByText("Your basket is em
 
 beforeEach(() => {
   vi.mocked(startSignupCheckoutAction).mockReset().mockResolvedValue(allowed);
+  push.mockReset();
+  vi.mocked(applyCodeAction).mockReset().mockResolvedValue({ ok: true });
   vi.mocked(startPaymentAction).mockReset().mockResolvedValue({ ok: false, message: "We could not open the payment." } satisfies ActionResult);
 });
 
@@ -343,5 +348,122 @@ describe("once the account is opened in this mount", () => {
     await userEvent.click(payButtons()[0]!);
     await screen.findByText(CHECKOUT_ACCOUNT_EXISTS_MESSAGE);
     expect((screen.getByLabelText("Email") as HTMLInputElement).readOnly).toBe(false);
+  });
+});
+
+describe("the code box", () => {
+  const agree = () => userEvent.click(screen.getByRole("checkbox", { name: /I agree to the/ }));
+  const codeBox = () => screen.getByLabelText("Code") as HTMLInputElement;
+  const disclosure = () => screen.getByText("Have a code? (optional)").closest("details") as HTMLDetailsElement;
+  const typeCode = async (code: string) => {
+    await userEvent.click(screen.getByText("Have a code? (optional)"));
+    await userEvent.type(codeBox(), code);
+  };
+
+  it("is closed until it is asked for, then shows one field and no Apply button", async () => {
+    screenWith(INDIA);
+    expect(disclosure().hasAttribute("open")).toBe(false);
+    await userEvent.click(screen.getByText("Have a code? (optional)"));
+    expect(disclosure().hasAttribute("open")).toBe(true);
+    expect(codeBox().maxLength).toBe(MAX_REFERRAL_CODE_LENGTH);
+    expect(codeBox().placeholder).toBe("e.g. FRIEND15");
+    expect(screen.queryByRole("button", { name: "Apply" })).toBeNull();
+  });
+
+  it("with no code, posts the account and then the payment, as before", async () => {
+    screenWith(INDIA);
+    await agree();
+    await userEvent.click(payButtons()[0]!);
+    await waitFor(() => expect(startPaymentAction).toHaveBeenCalledTimes(1));
+    expect(applyCodeAction).not.toHaveBeenCalled();
+    expect(push).not.toHaveBeenCalled();
+  });
+
+  it("with a code, opens the account, applies the code to the same services, goes to the checkout and posts no payment", async () => {
+    screenWith(INDIA, ["managed-website", "social-media"]);
+    await typeCode("FRIEND15");
+    await agree();
+    await userEvent.click(payButtons()[0]!);
+    await waitFor(() => expect(push).toHaveBeenCalledTimes(1));
+    expect(push).toHaveBeenCalledWith("/checkout?services=managed-website,social-media");
+    expect(startSignupCheckoutAction).toHaveBeenCalledTimes(1);
+    const applied = vi.mocked(applyCodeAction).mock.calls[0]![1];
+    expect(applied.get("referralCode")).toBe("FRIEND15");
+    expect(applied.getAll("service")).toEqual(["managed-website", "social-media"]);
+    expect([...applied.keys()].sort()).toEqual(["referralCode", "service", "service"]);
+    expect(vi.mocked(startSignupCheckoutAction).mock.invocationCallOrder[0]!).toBeLessThan(vi.mocked(applyCodeAction).mock.invocationCallOrder[0]!);
+    expect(startPaymentAction).not.toHaveBeenCalled();
+  });
+
+  it("keeps the yearly choice on the way to the checkout", async () => {
+    screenWith(INDIA);
+    await userEvent.click(screen.getByRole("button", { name: /Yearly/ }));
+    await typeCode("FRIEND15");
+    await agree();
+    await userEvent.click(payButtons()[0]!);
+    await waitFor(() => expect(push).toHaveBeenCalledWith("/checkout?services=managed-website&billing=yearly"));
+  });
+
+  it("shows a refused code under the field, opens the box, posts no payment, and on a retry applies only", async () => {
+    vi.mocked(applyCodeAction).mockResolvedValueOnce({ ok: false, message: "That code isn’t valid.", fieldErrors: { referralCode: "Enter the code again." } });
+    screenWith(INDIA);
+    await typeCode("NOPE");
+    await agree();
+    await userEvent.click(payButtons()[0]!);
+    expect(await screen.findByText("Enter the code again.")).toBeTruthy();
+    expect(disclosure().hasAttribute("open")).toBe(true);
+    expect(startPaymentAction).not.toHaveBeenCalled();
+    expect(push).not.toHaveBeenCalled();
+    expect(screen.queryByText("That code isn’t valid.")).toBeNull();
+
+    await userEvent.clear(codeBox());
+    await userEvent.type(codeBox(), "FRIEND15");
+    await userEvent.click(payButtons()[0]!);
+    await waitFor(() => expect(push).toHaveBeenCalledTimes(1));
+    expect(startSignupCheckoutAction).toHaveBeenCalledTimes(1);
+    expect(applyCodeAction).toHaveBeenCalledTimes(2);
+  });
+
+  it("lets a refused code be cleared, and then pays without opening the account again", async () => {
+    vi.mocked(applyCodeAction).mockResolvedValueOnce({ ok: false, message: "That code isn’t valid.", fieldErrors: { referralCode: "Enter the code again." } });
+    screenWith(INDIA);
+    await typeCode("NOPE");
+    await agree();
+    await userEvent.click(payButtons()[0]!);
+    await screen.findByText("Enter the code again.");
+    await userEvent.clear(codeBox());
+    await userEvent.click(payButtons()[0]!);
+    await waitFor(() => expect(startPaymentAction).toHaveBeenCalledTimes(1));
+    expect(startSignupCheckoutAction).toHaveBeenCalledTimes(1);
+  });
+
+  it("shows a refusal that names no field in the banner", async () => {
+    vi.mocked(applyCodeAction).mockResolvedValueOnce({ ok: false, message: "We could not check that code just now." });
+    screenWith(INDIA);
+    await typeCode("NOPE");
+    await agree();
+    await userEvent.click(payButtons()[0]!);
+    expect(await screen.findByRole("alert")).toBeTruthy();
+    expect(screen.getByText("We could not check that code just now.")).toBeTruthy();
+    expect(disclosure().hasAttribute("open")).toBe(true);
+  });
+
+  it("for a signed-in owner applies the code and nothing else", async () => {
+    render(<SignupCheckoutScreen account="signed-in" table={INDIA} initialServices={["managed-website", "social-media"]} />);
+    await typeCode("FRIEND15");
+    await agree();
+    await userEvent.click(payButtons()[0]!);
+    await waitFor(() => expect(push).toHaveBeenCalledWith("/checkout?services=managed-website,social-media"));
+    expect(startSignupCheckoutAction).not.toHaveBeenCalled();
+    expect(startPaymentAction).not.toHaveBeenCalled();
+    expect(vi.mocked(applyCodeAction).mock.calls[0]![1].get("referralCode")).toBe("FRIEND15");
+  });
+
+  it("never changes the total, the rows or the Pay label when a code is typed", async () => {
+    screenWith(INDIA, ["managed-website", "social-media"]);
+    const before = [summary().getByText("Due today").parentElement?.textContent, payButtons()[0]?.textContent, summary().getByRole("list").textContent];
+    await typeCode("FRIEND15");
+    const after = [summary().getByText("Due today").parentElement?.textContent, payButtons()[0]?.textContent, summary().getByRole("list").textContent];
+    expect(after).toEqual(before);
   });
 });
