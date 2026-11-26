@@ -13,6 +13,12 @@ describe("channelLinkRequestedEmail", () => {
     expect(message.bodyHtml).toContain("acme_foods");
   });
 
+  it("shows the person to add as the tester when the network asks for one", () => {
+    const message = channelLinkRequestedEmail({ ...input, adminProfileUrl: "https://www.facebook.com/asha.mehta" });
+    expect(message.bodyText).toContain("Add this person as the tester: https://www.facebook.com/asha.mehta");
+    expect(channelLinkRequestedEmail(input).bodyText).not.toContain("tester:");
+  });
+
   it("cannot be turned into a header attack through a name", () => {
     expect(channelLinkRequestedEmail({ ...input, businessName: "Acme\r\nBcc: x@y.test" }).subject).not.toMatch(/[\r\n]/);
   });

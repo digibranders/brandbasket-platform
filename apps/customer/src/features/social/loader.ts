@@ -129,7 +129,7 @@ export interface ChannelsColumnData {
   /** The networks with no account yet, which get a Connect button. Empty without a posting service. */
   readonly missing: readonly Platform[];
   /** The networks that ask for a link to the customer's profile in place of the Allow button, and where each request stands. */
-  readonly requests?: { readonly modes: Partial<Record<Platform, ConnectMode>>; readonly list: readonly ChannelRequest[] };
+  readonly requests?: { readonly modes: Partial<Record<Platform, ConnectMode>>; readonly list: readonly ChannelRequest[]; readonly personNetworks: readonly Platform[] };
   /** True when the rows come from the posting service, so the person can connect and reconnect here. */
   readonly live: boolean;
 }
@@ -144,7 +144,7 @@ export async function loadChannelsColumn(customer: Reader, now: Date): Promise<C
     const state = await loadChannelState(customer, live.rows.map((row) => row.platform));
     const asked = await loadChannelRequests(customer, live.rows.map((row) => row.platform)).catch((error: unknown) => {
       reportError(error, { area: "social.channel-requests" });
-      return { modes: {}, list: [] };
+      return { modes: {}, list: [], personNetworks: [] };
     });
     // The channels in the same order on every page, each with the number of things waiting for the customer, as on the Posts page.
     return { rows: sortChannels(live.rows).map((row) => ({ id: row.id, platform: row.platform, account: row.account, ending: row.ending, paused: row.paused, todo: state.todos[row.platform] ?? 0, working: state.working.includes(row.platform), doneAt: state.doneAt[row.platform] })), missing: live.missing, live: true, brandId: state.brandId, requests: asked };

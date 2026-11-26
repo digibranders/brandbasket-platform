@@ -58,10 +58,10 @@ export interface SocialReview {
   /** True when social-auto could not be asked, so the page says so instead of showing nothing as if it were true. */
   readonly unavailable: boolean;
   /** How each network is connected (a link to her profile or the Allow button) and where her link requests stand. */
-  readonly requests: { readonly modes: Partial<Record<Platform, ConnectMode>>; readonly list: readonly ChannelRequest[] };
+  readonly requests: { readonly modes: Partial<Record<Platform, ConnectMode>>; readonly list: readonly ChannelRequest[]; readonly personNetworks: readonly Platform[] };
 }
 
-const EMPTY: SocialReview = { jobs: [], batches: [], waiting: [], approved: [], channels: [], topicRequests: [], expired: { batches: [], pictures: [] }, missingNetworks: [], postingDays: null, autoPosting: null, plan: null, website: null, topics: [], reasons: [], limits: null, carousels: [], carousel: null, weeklyCarousel: false, canMakeCarousel: false, renewsOn: null, unavailable: true, requests: { modes: {}, list: [] } };
+const EMPTY: SocialReview = { jobs: [], batches: [], waiting: [], approved: [], channels: [], topicRequests: [], expired: { batches: [], pictures: [] }, missingNetworks: [], postingDays: null, autoPosting: null, plan: null, website: null, topics: [], reasons: [], limits: null, carousels: [], carousel: null, weeklyCarousel: false, canMakeCarousel: false, renewsOn: null, unavailable: true, requests: { modes: {}, list: [], personNetworks: [] } };
 
 /** Asks social-auto for each part. Each is its own failure: what could be read is shown, and the page says the rest could not be. */
 export async function loadSocialReview(customer: Pick<CustomerContext, "tenant" | "businessId" | "businessName" | "billing">): Promise<SocialReview> {
@@ -93,7 +93,7 @@ export async function loadSocialReview(customer: Pick<CustomerContext, "tenant" 
     read("the posting days", null as PostingDays | null, () => loadSchedule(settings, id)),
     read("automatic posting", null as AutoPostingState, () => loadAutoPosting(settings, id)),
   ]);
-  const asked = await read("the link requests", { modes: {} as Partial<Record<Platform, ConnectMode>>, list: [] as readonly ChannelRequest[] }, () => loadChannelRequests(customer, channels.map((channel) => channel.platform)));
+  const asked = await read("the link requests", { modes: {} as Partial<Record<Platform, ConnectMode>>, list: [] as readonly ChannelRequest[], personNetworks: [] as readonly Platform[] }, () => loadChannelRequests(customer, channels.map((channel) => channel.platform)));
   const carousels = carouselList.carousels;
   const newest = carousels[0];
   const carousel = newest === undefined ? null : await read("the carousel", null as CarouselDetail | null, () => loadCarousel(settings, id, newest.id));

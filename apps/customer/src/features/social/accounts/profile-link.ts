@@ -48,3 +48,15 @@ export function readProfileLink(network: ChannelLinkNetwork, input: string): Pro
   if (!valid) return { ok: false, message: `That does not look like a ${label} ${network === "instagram" ? "profile" : "page"} link. Check it and try again.` };
   return network === "instagram" ? { ok: true, url: `https://www.instagram.com/${name}`, handle: name } : { ok: true, url: `https://www.facebook.com/${name}`, handle: name };
 }
+
+const PERSON_HINT = "Paste the link to your own Facebook profile, the person who manages the account, for example facebook.com/yourname.";
+
+/**
+ * The personal Facebook profile of the person who manages the account: Meta's tester list takes a person, not a Page. It is read like a
+ * Facebook link, with the words for a person.
+ */
+export function readPersonProfileLink(input: string): ProfileLink {
+  const link = readProfileLink("facebook", input);
+  if (link.ok) return link;
+  return { ok: false, message: link.message === NOT_A_PROFILE ? "That is a post, not a profile. Open your own profile and copy the link from there." : PERSON_HINT };
+}
