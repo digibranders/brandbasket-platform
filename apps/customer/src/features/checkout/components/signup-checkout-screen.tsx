@@ -4,6 +4,7 @@ import type { BillingInterval } from "@brandbasket/db";
 import type { MonthlyAddOnId } from "@brandbasket/shared/lib/billing/add-ons";
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useRef, useState, startTransition, type FormEvent, type ReactNode } from "react";
 import { startSignupCheckoutAction, type CheckoutSignupResult } from "@/features/entry/actions";
 import type { PhoneCountryChoice } from "@/features/entry/components/sign-up-form";
@@ -16,11 +17,12 @@ import { actionFail } from "@/lib/action-result";
 import { useGuardedActionState } from "@/lib/use-guarded-action-state";
 import { Badge, Banner, Segmented } from "@/ui";
 import { cx } from "@/ui/cx";
-import { startPaymentAction } from "../actions";
-import { billingParamValue } from "../rules/membership";
+import { applyCodeAction, startPaymentAction } from "../actions";
+import { billingParamValue, MEMBERSHIP_BILLING_PARAM, membershipHrefWithServices } from "../rules/membership";
 import { useOpeningPayment } from "../rules/opening-payment";
 import { checkoutLead, checkoutSteps } from "../rules/plans";
 import { basketView, payLabel, purchasableServices, type SignupBasketTable } from "../rules/signup-basket";
+import { CodeDisclosure } from "./code-disclosure";
 import { DetailsFields } from "./details-fields";
 import { OrderPanel } from "./order-panel";
 import { PayBar, PayBarSpacer } from "./pay-bar";
@@ -73,6 +75,20 @@ function paymentForm(opened: FormData): FormData {
   return payment;
 }
 
+/** The code step: the typed code against the same services. */
+function codeForm(opened: FormData, code: string): FormData {
+  const applying = new FormData();
+  applying.set("referralCode", code);
+  for (const service of opened.getAll("service")) applying.append("service", service);
+  return applying;
+}
+
+/** The full checkout for these services, paid the way the visitor chose: where a code in force is shown with what it is worth. */
+function checkoutHref(table: SignupBasketTable, opened: FormData): string {
+  const href = membershipHrefWithServices("managed", purchasableServices(table, opened.getAll("service").map(String)));
+  return opened.get("billing") === billingParamValue("year") ? `${href}&${MEMBERSHIP_BILLING_PARAM}=${billingParamValue("year")}` : href;
+}
+
 export function SignupCheckoutScreen({ table, initialServices, account, details, standalone = true, paymentFailed = false }: SignupCheckoutScreenProps) {
   const [ticked, setTicked] = useState<readonly MonthlyAddOnId[]>(() => purchasableServices(table, initialServices));
   const [interval, setBilling] = useState<BillingInterval>("month");
@@ -82,6 +98,8 @@ export function SignupCheckoutScreen({ table, initialServices, account, details,
   // `opened` is the same fact for drawing: the details it was opened with are locked, so an edit cannot be silently ignored.
   const accountOpen = useRef(false);
   const [opened, setOpened] = useState(false);
+  const [codeOpen, setCodeOpen] = useState(false);
+  const router = useRouter();
 
   const run = async (previous: CheckoutSignupResult | null, formData: FormData): Promise<CheckoutSignupResult> => {
     if (account === "new" && !accountOpen.current) {
@@ -89,6 +107,17 @@ export function SignupCheckoutScreen({ table, initialServices, account, details,
       if (!result.ok) return result;
       accountOpen.current = true;
       setOpened(true);
+    }
+    // A code typed is applied now, and the payment is the checkout's to take: it shows the discount, which this screen cannot.
+    const code = String(formData.get("referralCode") ?? "").trim();
+    if (code !== "") {
+      const applied = await applyCodeAction(null, codeForm(formData, code));
+      if (!applied.ok) {
+        setCodeOpen(true);
+        return actionFail(applied.message, applied.fieldErrors);
+      }
+      router.push(checkoutHref(table, formData));
+      return { ok: true };
     }
     const payment = await startPaymentAction(null, paymentForm(formData));
     return payment.ok ? { ok: true } : actionFail(payment.message, payment.fieldErrors);
@@ -98,7 +127,8 @@ export function SignupCheckoutScreen({ table, initialServices, account, details,
 
   const view = basketView(table, ticked, interval);
   const failure = state !== null && !state.ok && !pending ? state : null;
-  const bannerMessage = failure !== null && (failure.field === undefined || !FIELDS_ON_SCREEN.has(failure.field)) ? failure.message : null;
+  const codeError = failure?.fieldErrors?.referralCode;
+  const bannerMessage = failure !== null && codeError === undefined && (failure.field === undefined || !FIELDS_ON_SCREEN.has(failure.field)) ? failure.message : null;
   const agreeError = !agreed && agreeMissing ? CHECKOUT_AGREE_MESSAGE : failure?.fieldErrors?.agree;
   const inIndia = table.currency === "INR";
   // The details stay on screen, locked, for the mount that opened the account; a signed-in unpaid owner never sees them.
@@ -181,7 +211,16 @@ export function SignupCheckoutScreen({ table, initialServices, account, details,
               />
             ) : null}
             <aside className={cx("lg:sticky lg:top-6 lg:col-span-5", !showDetails && "lg:col-start-8")}>
-              <OrderPanel view={view} payLabel={label} pending={opening} agreed={agreed} onAgreedChange={agree} agreeError={agreeError} failure={bannerMessage}>
+              <OrderPanel
+                view={view}
+                payLabel={label}
+                pending={opening}
+                agreed={agreed}
+                onAgreedChange={agree}
+                agreeError={agreeError}
+                failure={bannerMessage}
+                footer={<CodeDisclosure open={codeOpen} onOpenChange={setCodeOpen} error={codeError} />}
+              >
                 {first === undefined ? null : <TurnstileWidget siteKey={first.siteKey} action="join" resetKey={state} />}
               </OrderPanel>
             </aside>

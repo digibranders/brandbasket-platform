@@ -23,9 +23,11 @@ interface OrderPanelProps {
   readonly failure: string | null;
   /** The robot check, kept beside Pay. */
   readonly children?: ReactNode;
+  /** What closes the panel, below the renewal line: the code box. */
+  readonly footer?: ReactNode;
 }
 
-export function OrderPanel({ view, payLabel, pending, agreed, onAgreedChange, agreeError, failure, children }: OrderPanelProps) {
+export function OrderPanel({ view, payLabel, pending, agreed, onAgreedChange, agreeError, failure, children, footer }: OrderPanelProps) {
   const agreeMessage = useRef<HTMLParagraphElement>(null);
   useEffect(() => {
     if (agreeError !== undefined) agreeMessage.current?.scrollIntoView?.({ block: "center" });
@@ -93,6 +95,7 @@ export function OrderPanel({ view, payLabel, pending, agreed, onAgreedChange, ag
       {children}
       <PayButton label={payLabel} disabled={view.services.length === 0} pending={pending} className="max-lg:hidden w-full" />
       {view.renewal === null ? null : <p className="type-meta">{view.renewal}</p>}
+      {footer}
     </article>
   );
 }
