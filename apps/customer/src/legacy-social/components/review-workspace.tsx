@@ -1285,9 +1285,11 @@ interface Flow {
 export interface ChannelRequests {
   readonly modes: Partial<Record<Platform, ConnectMode>>;
   readonly list: readonly ChannelRequest[];
+  /** The networks whose form also asks for the personal Facebook profile of the person who manages the account. */
+  readonly personNetworks: readonly Platform[];
 }
 
-const NO_REQUESTS: ChannelRequests = { modes: {}, list: [] };
+const NO_REQUESTS: ChannelRequests = { modes: {}, list: [], personNetworks: [] };
 
 const FlowContext = createContext<Flow | null>(null);
 
@@ -1445,7 +1447,7 @@ export function ReviewChannelsColumn(): ReactElement {
           </h3>
           {missing.map((platform) =>
             requests.modes[platform] === "request" ? (
-              <RequestChannel key={platform} platform={platform} request={requests.list.find((one) => one.network === platform && one.state !== "connected") ?? null} />
+              <RequestChannel key={platform} platform={platform} needsPerson={requests.personNetworks.includes(platform)} request={requests.list.find((one) => one.network === platform && one.state !== "connected") ?? null} />
             ) : (
               <div key={platform} className="grid gap-1">
                 <ConnectButton platform={platform} label={`Connect ${platform === "google" ? "Google" : PLATFORM_NAMES[platform]}`} logo />

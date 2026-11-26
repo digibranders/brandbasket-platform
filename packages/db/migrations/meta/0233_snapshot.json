@@ -1,5 +1,5 @@
 {
-  "id": "1515e541-6f01-4304-b8f4-e59ca1fc837e",
+  "id": "71e50cfa-6aad-42ee-9765-8fb81975e3cb",
   "prevId": "97a34b21-213b-45f0-a67b-228c8d9b262a",
   "version": "7",
   "dialect": "postgresql",
@@ -2940,13 +2940,6 @@
         },
         "phone_number_verified": {
           "name": "phone_number_verified",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": true,
-          "default": false
-        },
-        "password_pending": {
-          "name": "password_pending",
           "type": "boolean",
           "primaryKey": false,
           "notNull": true,
@@ -20166,6 +20159,12 @@
           "notNull": true,
           "default": "'requested'"
         },
+        "admin_profile_url": {
+          "name": "admin_profile_url",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
         "reason": {
           "name": "reason",
           "type": "text",
@@ -20300,6 +20299,10 @@
         "channel_link_requests_handle_check": {
           "name": "channel_link_requests_handle_check",
           "value": "char_length(btrim(\"channel_link_requests\".\"handle\")) between 1 and 120"
+        },
+        "channel_link_requests_admin_profile_check": {
+          "name": "channel_link_requests_admin_profile_check",
+          "value": "\"channel_link_requests\".\"admin_profile_url\" is null or (char_length(\"channel_link_requests\".\"admin_profile_url\") <= 300 and \"channel_link_requests\".\"admin_profile_url\" ~ '^https://')"
         },
         "channel_link_requests_reason_check": {
           "name": "channel_link_requests_reason_check",

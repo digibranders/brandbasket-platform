@@ -94,7 +94,7 @@ function Body({ data, selected, hrefFor, canChange }: Omit<ChannelsColumnProps, 
           </h3>
           {missing.map((platform) =>
             requests?.modes[platform] === "request" ? (
-              <RequestChannel key={platform} platform={platform} request={requests.list.find((one) => one.network === platform && one.state !== "connected") ?? null} />
+              <RequestChannel key={platform} platform={platform} needsPerson={requests.personNetworks.includes(platform)} request={requests.list.find((one) => one.network === platform && one.state !== "connected") ?? null} />
             ) : (
             <div key={platform} className="flex flex-col items-start gap-1">
               <ConnectButton platform={platform} size="sm" className="h-auto min-h-8 w-full justify-start py-1.5 text-left leading-tight" leading={<span aria-hidden="true"><ChannelLogo platform={platform} small /></span>}>{`Connect ${platform === "google" ? "Google" : CHANNEL_NAMES[platform]}`}</ConnectButton>

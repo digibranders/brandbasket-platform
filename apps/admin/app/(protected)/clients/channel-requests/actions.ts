@@ -1,10 +1,14 @@
 "use server";
 
 import { answerChannelLinkRequest, type ChannelLinkAnswer } from "@brandbasket/db";
+import { metaAppModeOf } from "@brandbasket/shared/lib/channel-link-steps";
+import { sendChannelLinkUpdate } from "@brandbasket/shared/server/channel-link-mail";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { getStaffDb } from "@/lib/server/db";
+import { customerEmailTransport } from "@/lib/server/email";
+import { serverEnv } from "@/lib/server/env";
 import { requireStaffAccess } from "@/lib/server/staff-access";
 import { logStaffAccessOrThrow } from "@/lib/server/staff-access-log";
 
@@ -38,8 +42,11 @@ export async function answerChannelRequestAction(formData: FormData): Promise<vo
   } else {
     answer = { state: intent };
   }
-  const found = await answerChannelLinkRequest(getStaffDb(), { id, staffId: user.id, answer, now: new Date() });
+  const db = getStaffDb();
+  const found = await answerChannelLinkRequest(db, { id, staffId: user.id, answer, now: new Date() });
   if (!found) finish("not-found");
+  // The customer is told by email what happened and what to do next. Best effort: it never undoes the answer.
+  await sendChannelLinkUpdate(db, customerEmailTransport(db), { requestId: id, update: intent, appOrigin: serverEnv().APP_ORIGIN, mode: metaAppModeOf(process.env.META_APP_MODE) });
   await logStaffAccessOrThrow({ staffUserId: user.id, action: `channel-request.${intent}`, targetType: "business", targetId: businessId, businessId });
   finish("saved");
 }

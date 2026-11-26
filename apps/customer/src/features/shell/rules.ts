@@ -247,6 +247,8 @@ export interface BellSource {
   readonly activity: readonly { readonly id: string; readonly title: string; readonly service: Service | null; readonly occurredAt: Date }[];
   /** Stored notices for this person and business (notifications), newest first. */
   readonly stored: readonly { readonly id: string; readonly eventKey: string; readonly title: string; readonly link: string | null; readonly createdAt: Date; readonly readAt: Date | null }[];
+  /** Where her Instagram and Facebook profile links stand once the team answered: invited (her turn), refused, or connected. */
+  readonly channelSteps?: readonly { readonly network: "instagram" | "facebook"; readonly state: "invited" | "refused" | "connected"; readonly at: Date }[];
   /** When the person last opened the bell (notification_reads.seen_at); null if never. */
   readonly seenAt: Date | null;
 }
@@ -359,9 +361,24 @@ export function bellView(source: BellSource): BellView {
       notificationId: notice.id,
     }),
   );
+  const channelName = { instagram: "Instagram", facebook: "Facebook" } as const;
+  const channels = (source.channelSteps ?? []).map((step): BellItem => {
+    const name = channelName[step.network];
+    const connected = step.state === "connected";
+    return {
+      id: `channel-${step.network}-${step.state}`,
+      kind: connected ? "activity" : "need",
+      icon: connected ? "CheckCircle" : "ChatCircleDots",
+      title: connected ? `${name} is connected` : step.state === "invited" ? `Your ${name} is ready: accept the invite, then press Allow` : `We could not set up your ${name}: see why`,
+      href: "/social/review",
+      at: step.at,
+      needsYou: !connected,
+      unread: !connected || source.seenAt === null || step.at.getTime() > source.seenAt.getTime(),
+    };
+  });
   // Stored notices and work we did are one timeline, newest first, after what waits on the customer.
-  const timeline = [...notices, ...activity].sort((left, right) => (right.at?.getTime() ?? 0) - (left.at?.getTime() ?? 0));
-  const items = [...needs, ...waiting, ...replies, ...timeline];
+  const timeline = [...notices, ...channels.filter((item) => !item.needsYou), ...activity].sort((left, right) => (right.at?.getTime() ?? 0) - (left.at?.getTime() ?? 0));
+  const items = [...needs, ...channels.filter((item) => item.needsYou), ...waiting, ...replies, ...timeline];
   return { items, unread: items.filter((item) => item.unread).length };
 }
 

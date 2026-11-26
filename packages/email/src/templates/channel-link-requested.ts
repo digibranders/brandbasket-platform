@@ -9,6 +9,8 @@ export interface ChannelLinkRequestedInput {
   readonly profileUrl: string;
   /** The account name read from the link. */
   readonly handle: string;
+  /** The personal Facebook profile of the person who manages the account, when the network asks for it: add this person as the tester. */
+  readonly adminProfileUrl?: string | null;
   /** Who sent it, as the account knows them. */
   readonly requesterName: string;
   readonly requesterEmail: string;
@@ -27,6 +29,7 @@ export function channelLinkRequestedEmail(input: ChannelLinkRequestedInput): Ema
     `${input.businessName} sent the link to their ${network} profile, so you can set it up with them.`,
     `Account: ${input.handle}`,
     `Link: ${profileUrl}`,
+    ...(input.adminProfileUrl ? [`Add this person as the tester: ${assertWebUrl(input.adminProfileUrl, "adminProfileUrl")}`] : []),
     `Sent by: ${input.requesterName} (${input.requesterEmail})`,
     `Add them as a tester, then mark the request invited: ${adminUrl}`,
   ];
@@ -44,6 +47,7 @@ export function channelLinkRequestedEmail(input: ChannelLinkRequestedInput): Ema
         receiptRows([
           { label: "Account", value: input.handle },
           { label: "Link", value: profileUrl },
+          ...(input.adminProfileUrl ? [{ label: "Tester", value: input.adminProfileUrl }] : []),
           { label: "Sent by", value: `${input.requesterName} (${input.requesterEmail})` },
         ]),
         receiptButton(adminUrl, "Open the requests"),
