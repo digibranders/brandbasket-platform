@@ -1,6 +1,7 @@
 import { NO_ANSWERS } from "@brandbasket/shared/lib/intake/questions";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { requireCustomer } from "@/lib/guards";
+import { loadBusinessEntry } from "../checkout/server/entry";
 import { continueToCheckoutAction, saveAnswerAction, toggleServiceAction } from "./actions";
 import { VIEWER_MESSAGE } from "./rules";
 import { completeIntake, loadIntake, saveIntakeAnswer, saveIntakeServices } from "./server";
@@ -12,6 +13,7 @@ vi.mock("next/navigation", () => ({
   }),
 }));
 vi.mock("@/lib/guards", () => ({ requireCustomer: vi.fn() }));
+vi.mock("../checkout/server/entry", () => ({ loadBusinessEntry: vi.fn() }));
 vi.mock("./server", () => ({ completeIntake: vi.fn(), loadIntake: vi.fn(), saveIntakeAnswer: vi.fn(), saveIntakeServices: vi.fn() }));
 
 const TENANT = { userId: "user-1", businessId: "biz-1", businessName: "Apex", role: "owner" } as const;
@@ -25,6 +27,7 @@ function form(entries: Record<string, string | readonly string[]>): FormData {
 beforeEach(() => {
   vi.clearAllMocks();
   vi.mocked(requireCustomer).mockResolvedValue({ tenant: TENANT, role: "owner" } as never);
+  vi.mocked(loadBusinessEntry).mockResolvedValue({ kind: "listing", signupChoice: "managed" });
   vi.mocked(loadIntake).mockResolvedValue({ answers: { ...NO_ANSWERS, businessType: "clinic" }, completedAt: null });
 });
 
@@ -89,5 +92,18 @@ describe("the basket", () => {
   it("finishes the questions and opens the checkout on the basket", async () => {
     await expect(continueToCheckoutAction(null, form({ services: "managed-website,social-media" }))).rejects.toThrow("redirect:/checkout?services=managed-website,social-media");
     expect(completeIntake).toHaveBeenCalledWith(TENANT, expect.any(Date));
+  });
+
+  it("finishes a paid member's questions and sends them Home, not to checkout, writing no basket", async () => {
+    vi.mocked(loadBusinessEntry).mockResolvedValue({ kind: "website", signupChoice: "managed" });
+    await expect(continueToCheckoutAction(null, form({ services: "managed-website,social-media" }))).rejects.toThrow("redirect:/");
+    expect(completeIntake).toHaveBeenCalledWith(TENANT, expect.any(Date));
+    expect(saveIntakeServices).not.toHaveBeenCalled();
+  });
+
+  it("does not let a paid member change the basket", async () => {
+    vi.mocked(loadBusinessEntry).mockResolvedValue({ kind: "website", signupChoice: "managed" });
+    await expect(toggleServiceAction(null, form({ services: "managed-website", toggle: "social-media" }))).rejects.toThrow("redirect:/start?services=managed-website&q=summary");
+    expect(saveIntakeServices).not.toHaveBeenCalled();
   });
 });

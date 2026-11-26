@@ -8,6 +8,7 @@ import { actionFail, type ActionResult } from "@/lib/action-result";
 import { parseForm } from "@/lib/form";
 import { requireCustomer } from "@/lib/guards";
 import { membershipHrefWithServices, readSelectedServices, servicesAfterToggle } from "../checkout/rules/membership";
+import { loadBusinessEntry } from "../checkout/server/entry";
 import { INTAKE_SUMMARY_STEP, startHref, VIEWER_MESSAGE } from "./rules";
 import { completeIntake, loadIntake, saveIntakeAnswer, saveIntakeServices } from "./server";
 
@@ -58,6 +59,8 @@ export async function toggleServiceAction(_previous: ActionResult | null, formDa
   const parsed = parseForm(ToggleForm, formData);
   if (!parsed.ok) return parsed;
   const services = basketOf(parsed.data.services);
+  // A member who has paid does not choose services here: nothing is written.
+  if ((await loadBusinessEntry({ tenant })).kind !== "listing") redirect(startHref(services, INTAKE_SUMMARY_STEP));
   const [toggled] = readBundleSelection([parsed.data.toggle]);
   const next = toggled === undefined ? services : servicesAfterToggle(services, toggled);
   await saveIntakeServices(tenant, next, new Date());
@@ -66,7 +69,8 @@ export async function toggleServiceAction(_previous: ActionResult | null, formDa
 
 /**
  * Continue to checkout from the summary, and Skip for now from any question: the questions are done, answered or not, and the
- * checkout opens on this basket. The kickoff call covers what was left.
+ * checkout opens on this basket. The kickoff call covers what was left. For a member who has paid (the questions come after
+ * payment) the same two buttons, labelled Finish and Skip for now, end the questions and go Home.
  */
 export async function continueToCheckoutAction(_previous: ActionResult | null, formData: FormData): Promise<ActionResult> {
   const { tenant, role } = await requireCustomer();
@@ -75,6 +79,10 @@ export async function continueToCheckoutAction(_previous: ActionResult | null, f
   if (!parsed.ok) return parsed;
   const services = basketOf(parsed.data.services);
   const now = new Date();
+  if ((await loadBusinessEntry({ tenant })).kind !== "listing") {
+    await completeIntake(tenant, now);
+    redirect("/");
+  }
   await saveIntakeServices(tenant, services, now);
   await completeIntake(tenant, now);
   redirect(membershipHrefWithServices("managed", services));

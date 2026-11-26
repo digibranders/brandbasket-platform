@@ -17,7 +17,7 @@ import {
   type Payment,
   type TaxInvoice,
 } from "@brandbasket/db";
-import { emailDate, firstChargeReminderEmail, paymentFailedEmail, paymentReceivedEmail, paymentRefundedEmail, type EmailMessage, type EmailSendOutcome, type PaymentFailedPlan } from "@brandbasket/email";
+import { emailDate, emailOutcome, firstChargeReminderEmail, paymentFailedEmail, paymentReceivedEmail, paymentRefundedEmail, type EmailAttachment, type EmailMessage, type EmailSendOutcome, type PaymentFailedPlan } from "@brandbasket/email";
 import { nextBundledNetCents, nextDiscountCents } from "../lib/billing/bundle";
 import { nextPaymentDate } from "../lib/billing/period";
 import { paymentsContinue } from "../lib/billing/payments-continue";
@@ -26,6 +26,7 @@ import { renewalChargeCents } from "../lib/billing/terms";
 import { emailPreferenceAllows } from "./email-preference";
 import { notifyEvent } from "./notify-event";
 import { paymentServiceNames, serviceTitle } from "./payment-alerts";
+import { renderTaxInvoicesPdf } from "./tax-invoice-pdf";
 
 /** Where the customer pays: the payment and details step on the dashboard. */
 const PAY_STEP_PATH = "/billing/payment";
@@ -40,6 +41,34 @@ export interface PaymentEmailDeps {
   readonly send: (message: EmailMessage) => Promise<EmailSendOutcome | void>;
   /** The dashboard's origin, for the links in the email. */
   readonly dashboardOrigin: string;
+  /**
+   * The PDF to attach when a payment has no tax invoice (a payment in dollars): its receipt. Null when it cannot be made.
+   * Left out, such an email goes with the receipt link alone.
+   */
+  readonly renderReceiptPdf?: (payment: Pick<Payment, "id" | "businessId">) => Promise<EmailAttachment | null>;
+  /**
+   * For a customer who paid first (plan 64): a link to set their first password and how many days it works, or null when the
+   * account already has a password. Asked only once the dedupe check has passed, so no link is made for a send that is skipped.
+   */
+  readonly setPassword?: (email: string) => Promise<{ readonly url: string; readonly lifetimeDays: number } | null>;
+}
+
+/** The tax invoice as the PDF that goes with the email, named as the dashboard's download names it. */
+async function invoiceAttachment(invoice: TaxInvoice): Promise<EmailAttachment> {
+  return { name: `brandbasket-invoice-${invoice.number.replaceAll("/", "-")}.pdf`, content: await renderTaxInvoicesPdf([invoice]) };
+}
+
+/**
+ * The PDF for a receipt email: the tax invoice when there is one, else the receipt. Never throws and never blocks the email: a PDF that
+ * cannot be made leaves the receipt link, which the email always carries.
+ */
+async function paymentPdf(deps: PaymentEmailDeps, payment: Payment, invoice: TaxInvoice | null): Promise<EmailAttachment | null> {
+  try {
+    return invoice !== null ? await invoiceAttachment(invoice) : ((await deps.renderReceiptPdf?.(payment)) ?? null);
+  } catch (error) {
+    console.error("[payment-email] A payment PDF could not be made, so the email goes without it.", { paymentId: payment.id, error: error instanceof Error ? error.name : "error" });
+    return null;
+  }
 }
 
 /** The address to write to for a business: its owner's, unless the owner signs in with a phone number and has none. */
@@ -71,6 +100,9 @@ async function planPeriodOf(db: Database, payment: Payment, now: Date) {
  * Call it after the payment's transaction has committed, for a payment that was applied, beside announcePaymentToTeams. A payment
  * that bought nothing (kept for staff to refund) or has been refunded sends nothing.
  *
+ * Every receipt carries its PDF (the tax invoice, else the receipt). The first payment of a customer who paid before choosing a
+ * password also carries the link to set one (deps.setPassword, plan 64); the stored copy leaves that link out.
+ *
  * Idempotent without a key of its own: the receipt link names the payment, so an outbox row of this template to this address that
  * holds the link says it was sent. The caller sends only for a payment recorded for the first time, which is what keeps two
  * deliveries that race (the webhook and the return page) from both passing this check. Best-effort: it never throws.
@@ -99,8 +131,9 @@ export async function sendPaymentReceipt(db: Database, deps: PaymentEmailDeps, p
       findTaxInvoiceByPaymentId(db, payment.id),
       planPeriodOf(db, payment, now),
     ]);
-    await deps.send(
-      paymentReceivedEmail({
+    const [pdf, setPassword] = await Promise.all([paymentPdf(deps, payment, invoice), deps.setPassword?.(to) ?? Promise.resolve(null)]);
+    const build = (attach: EmailAttachment | null): EmailMessage => {
+      const email = paymentReceivedEmail({
         to,
         name: owner.name,
         currency: payment.currency,
@@ -110,8 +143,15 @@ export async function sendPaymentReceipt(db: Database, deps: PaymentEmailDeps, p
         paidThrough: period.paidThrough,
         nextPayment: period.nextPayment,
         receiptUrl,
-      }),
-    );
+        ...(setPassword === null ? {} : { setPassword }),
+        ...(attach === null ? {} : { pdfAttached: true }),
+      });
+      return attach === null ? email : { ...email, attachments: [attach] };
+    };
+    const outcome = emailOutcome(await deps.send(build(pdf)));
+    // A provider that refuses the file (a failure no retry would cure) must not cost the customer the receipt and the link to set a
+    // password: the same email goes again without it, saying nothing about an attachment.
+    if (outcome.status === "failed" && pdf !== null) await deps.send(build(null));
   } catch (error) {
     console.error("[payment-email] A payment receipt could not be sent.", { paymentId, error: error instanceof Error ? error.name : "error" });
   }

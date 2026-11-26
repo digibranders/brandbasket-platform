@@ -1,4 +1,5 @@
 import { accounts, sessions, users, verifications, type Database } from "@brandbasket/db";
+import { and, eq } from "drizzle-orm";
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { APIError, createAuthMiddleware } from "better-auth/api";
@@ -73,6 +74,8 @@ export interface AuthConfig {
   readonly mailer?: AuthMailer;
   /** How long a session lasts, in seconds. Left out, a week: the customer default. The staff console passes a shorter one. */
   readonly sessionLifetimeSeconds?: number;
+  /** How long a password reset link works, in seconds. Left out, an hour (PASSWORD_RESET_LIFETIME_SECONDS). */
+  readonly resetPasswordLifetimeSeconds?: number;
 }
 
 export function createAuth(config: AuthConfig) {
@@ -90,6 +93,11 @@ export function createAuth(config: AuthConfig) {
   const sessionLifetimeSeconds = config.sessionLifetimeSeconds ?? SESSION_LIFETIME_SECONDS;
   if (!Number.isInteger(sessionLifetimeSeconds) || sessionLifetimeSeconds < 1) {
     throw new Error(`The session lifetime must be a positive whole number of seconds, received ${sessionLifetimeSeconds}.`);
+  }
+
+  const resetPasswordLifetimeSeconds = config.resetPasswordLifetimeSeconds ?? PASSWORD_RESET_LIFETIME_SECONDS;
+  if (!Number.isInteger(resetPasswordLifetimeSeconds) || resetPasswordLifetimeSeconds < 1) {
+    throw new Error(`The reset link lifetime must be a positive whole number of seconds, received ${resetPasswordLifetimeSeconds}.`);
   }
 
   const { mailer } = config;
@@ -112,7 +120,15 @@ export function createAuth(config: AuthConfig) {
       // A reset is how someone locked out, or someone who fears their password is known, gets back in: every other
       // session of the account ends with it.
       revokeSessionsOnPasswordReset: true,
-      resetPasswordTokenExpiresIn: PASSWORD_RESET_LIFETIME_SECONDS,
+      resetPasswordTokenExpiresIn: resetPasswordLifetimeSeconds,
+      // Opening the emailed link proves the inbox, and choosing a password ends "never chose one". One conditional
+      // update: an account that is not pending changes nothing, so a normal reset never confirms an email.
+      onPasswordReset: async ({ user }: { user: { id: string } }): Promise<void> => {
+        await config.db
+          .update(users)
+          .set({ passwordPending: false, emailVerified: true })
+          .where(and(eq(users.id, user.id), eq(users.passwordPending, true)));
+      },
       ...(mailer === undefined
         ? {}
         : {

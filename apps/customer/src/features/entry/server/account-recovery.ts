@@ -1,6 +1,6 @@
 import "server-only";
 import { isInvalidTokenError } from "@brandbasket/auth";
-import { consumeRateLimit, findUserByPhone, isPhoneAccountEmail, phoneAccountEmail, type RateLimitRule } from "@brandbasket/db";
+import { consumeRateLimit, findPendingResetAccountEmail, findUserByPhone, isPhoneAccountEmail, phoneAccountEmail, type RateLimitRule } from "@brandbasket/db";
 import { clientIpFrom } from "@brandbasket/shared/lib/client-ip";
 import { headers } from "next/headers";
 import { generatePasswordResetEmail, getAuth } from "@/lib/auth";
@@ -118,4 +118,13 @@ export async function resetPassword(token: string, newPassword: string): Promise
     if (isInvalidTokenError(error)) return "dead-link";
     throw error;
   }
+}
+
+/**
+ * The address a reset link will set the first password for, or null. Only an account that has never chosen a password
+ * (a customer who paid first, plan 64) gets its address shown on the page; for any other link, live or dead, the page shows
+ * nothing about whose it is. The link is not used up by looking at it.
+ */
+export async function pendingResetEmail(token: string): Promise<string | null> {
+  return findPendingResetAccountEmail(getAppDb(), token, new Date());
 }

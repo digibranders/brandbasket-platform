@@ -3,7 +3,6 @@
 import { PASSWORD_MIN_LENGTH, PASSWORD_RULE } from "@brandbasket/auth/password-policy";
 import { OTP_LENGTH } from "@brandbasket/shared/lib/appointments/otp";
 import { HOME_COUNTRY } from "@brandbasket/shared/lib/countries";
-import { INDIA_STATES } from "@brandbasket/shared/lib/directory/india-states";
 import type { MoneyCurrency } from "@brandbasket/shared/lib/money";
 import { PHONE_COUNTRY_FIELD } from "@brandbasket/shared/lib/phone/fields";
 import { currencyForCountry } from "@brandbasket/shared/lib/pricing";
@@ -14,6 +13,7 @@ import { Banner, Button, Checkbox, Field, Input, Select, type SelectOption } fro
 import { clearPendingSignupAction, signUpAction, type SignUpResult } from "../actions";
 import { NEXT_FIELD, SIGN_IN_PATH, withInviteReturn } from "../rules/account-entry";
 import { LEGAL_LINKS } from "../rules/brand";
+import { INDIA_STATE_OPTIONS } from "../rules/india-state-options";
 import { AGREE_FIELD, AGREE_VALUE, JOIN_BUSINESS_NAME_MAX_LENGTH, JOIN_NAME_MAX_LENGTH, START_FIELD, type JoinCodeStep } from "../rules/join-form";
 import type { StartPrefill } from "../rules/start-token";
 import { PasswordInput } from "./password-input";
@@ -61,10 +61,6 @@ export interface SignUpFormProps {
     };
   } | null;
 }
-
-const STATE_OPTIONS: readonly SelectOption[] = [...INDIA_STATES]
-  .sort((a, b) => a.name.localeCompare(b.name, "en"))
-  .map((state) => ({ value: state.code, label: state.name }));
 
 /**
  * Creating an account, in two steps on one form: the owner's details, then the code we email to their address. Every value
@@ -222,7 +218,7 @@ export function SignUpForm({
       </Field>
       {country === HOME_COUNTRY ? (
         <Field label="State" nativeLabel={false} hint="Used for GST on your invoices.">
-          <Select name="stateCode" required options={STATE_OPTIONS} placeholder="Choose your state" value={stateCode} onValueChange={(next) => setStateCode(next ?? "")} />
+          <Select name="stateCode" required options={INDIA_STATE_OPTIONS} placeholder="Choose your state" value={stateCode} onValueChange={(next) => setStateCode(next ?? "")} />
         </Field>
       ) : null}
       {/* Two Fields, not one: a Field names every control inside it after its own name, which posted the code as "phone". */}

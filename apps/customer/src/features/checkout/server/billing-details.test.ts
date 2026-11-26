@@ -1,4 +1,4 @@
-import { findBillingProfile, findBusinessCurrency, getBusinessProfile } from "@brandbasket/db";
+import { findBillingProfile, findBusinessCurrency, findBusinessEntry, findInvoiceFallbackRecipient, getBusinessProfile } from "@brandbasket/db";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { billingDetailsMissing, loadBillingDetailsView } from "./billing-details";
 
@@ -8,6 +8,8 @@ vi.mock("@brandbasket/shared/server/phone-defaults", () => ({ savedPhoneStart: (
 vi.mock("@brandbasket/db", () => ({
   findBillingProfile: vi.fn(),
   findBusinessCurrency: vi.fn(),
+  findBusinessEntry: vi.fn(),
+  findInvoiceFallbackRecipient: vi.fn(),
   getBusinessProfile: vi.fn(),
   withTenantScope: vi.fn((_db: unknown, _tenant: unknown, work: (tx: unknown) => unknown) => work({ name: "app-tx" })),
 }));
@@ -28,6 +30,8 @@ beforeEach(() => {
   vi.clearAllMocks();
   vi.mocked(findBillingProfile).mockResolvedValue(null);
   vi.mocked(getBusinessProfile).mockResolvedValue(null);
+  vi.mocked(findBusinessEntry).mockResolvedValue({ kind: "website", signupChoice: null });
+  vi.mocked(findInvoiceFallbackRecipient).mockResolvedValue({ name: "Riverside", addressLines: [], region: null, postalCode: null, registeredStateCode: "mh" });
 });
 
 describe("loadBillingDetailsView", () => {
@@ -61,9 +65,38 @@ describe("billingDetailsMissing", () => {
     expect(await billingDetailsMissing(customer("INR"))).toBe(true);
   });
 
-  it("is false once details are saved", async () => {
+  it("is false once details are saved, without reading anything else", async () => {
     vi.mocked(findBillingProfile).mockResolvedValue({ legalName: "Riverside" } as never);
     expect(await billingDetailsMissing(customer("INR"))).toBe(false);
+    expect(findBusinessEntry).not.toHaveBeenCalled();
+    expect(findInvoiceFallbackRecipient).not.toHaveBeenCalled();
+  });
+
+  it("is false for a paid sign-up that gave its state and saved nothing: its invoice is made out to the business name and state", async () => {
+    vi.mocked(findBusinessEntry).mockResolvedValue({ kind: "listing", signupChoice: "managed" });
+    expect(await billingDetailsMissing(customer("INR"))).toBe(false);
+  });
+
+  it("is true for a paid sign-up with no state, and for a website client invited by staff whose state is known", async () => {
+    vi.mocked(findBusinessEntry).mockResolvedValue({ kind: "listing", signupChoice: "managed" });
+    vi.mocked(findInvoiceFallbackRecipient).mockResolvedValue({ name: "Riverside", addressLines: [], region: null, postalCode: null, registeredStateCode: null });
+    expect(await billingDetailsMissing(customer("INR"))).toBe(true);
+    vi.mocked(findBusinessEntry).mockResolvedValue({ kind: "website", signupChoice: null });
+    vi.mocked(findInvoiceFallbackRecipient).mockResolvedValue({ name: "Riverside", addressLines: [], region: null, postalCode: null, registeredStateCode: "mh" });
+    expect(await billingDetailsMissing(customer("INR"))).toBe(true);
+  });
+
+  it("is true for a paid sign-up whose name or onboarding address an invoice cannot print", async () => {
+    vi.mocked(findBusinessEntry).mockResolvedValue({ kind: "listing", signupChoice: "managed" });
+    vi.mocked(findInvoiceFallbackRecipient).mockResolvedValue({ name: "शाह मिठाई", addressLines: [], region: null, postalCode: null, registeredStateCode: "mh" });
+    expect(await billingDetailsMissing(customer("INR"))).toBe(true);
+    vi.mocked(findInvoiceFallbackRecipient).mockResolvedValue({ name: "Riverside", addressLines: ["१२ बाज़ार रोड"], region: null, postalCode: null, registeredStateCode: "mh" });
+    expect(await billingDetailsMissing(customer("INR"))).toBe(true);
+  });
+
+  it("treats a business whose entry cannot be read as a client, so it is asked", async () => {
+    vi.mocked(findBusinessEntry).mockResolvedValue(null);
+    expect(await billingDetailsMissing(customer("INR"))).toBe(true);
   });
 
   it("is false for a business billed in dollars, which gets no tax invoice, without reading any details", async () => {

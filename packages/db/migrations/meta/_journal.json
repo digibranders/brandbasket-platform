@@ -1611,6 +1611,13 @@
       "when": 1795499316654,
       "tag": "0232_coupon_payment_events",
       "breakpoints": true
+    },
+    {
+      "idx": 230,
+      "version": "7",
+      "when": 1795681146761,
+      "tag": "0233_users_password_pending",
+      "breakpoints": true
     }
   ]
 }

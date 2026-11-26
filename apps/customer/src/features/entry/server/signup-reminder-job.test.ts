@@ -5,6 +5,7 @@ import type { EmailMessage, EmailTransport } from "@brandbasket/email";
 import { processSignupReminders, signupReminderToken } from "./signup-reminder-job";
 
 vi.mock("server-only", () => ({}));
+vi.mock("@/lib/auth", () => ({ generateSetPasswordUrl: vi.fn(async () => null) }));
 vi.mock("@/lib/db", () => ({ getStaffDb: vi.fn(() => ({}) as Database) }));
 vi.mock("@brandbasket/db", () => ({
   findBillingState: vi.fn(),
@@ -69,7 +70,7 @@ describe("processSignupReminders", () => {
     expect(send).toHaveBeenCalledTimes(1);
     const sentEmail = send.mock.calls[0]![0];
     expect(sentEmail.to).toBe("alex@smithbakery.test");
-    expect(sentEmail.subject).toContain("Finish setting up Smith Bakery");
+    expect(sentEmail.subject).toBe("Finish setting up your Brandbasket account");
     expect(sentEmail.bodyText).toContain("/checkout");
     // Ensure no em or en dashes in the sent message
     expect(sentEmail.subject).not.toMatch(/[\u2014\u2013]/);
@@ -163,5 +164,34 @@ describe("signupReminderToken", () => {
   it("returns token when sufficiently long", () => {
     process.env.SIGNUP_REMINDER_TOKEN = "0123456789abcdef0123456789abcdef";
     expect(signupReminderToken()).toBe("0123456789abcdef0123456789abcdef");
+  });
+});
+
+describe("the reminder's link", () => {
+  async function runWith(setPasswordUrl: (email: string) => Promise<string | null>): Promise<string> {
+    vi.mocked(listAbandonedSignupLeads).mockResolvedValueOnce([makeMockLead()]);
+    vi.mocked(findBillingState).mockResolvedValueOnce({ hasEverPaid: false } as unknown as Awaited<ReturnType<typeof findBillingState>>);
+    await processSignupReminders(NOW, { emailTransport: mockTransport, setPasswordUrl });
+    const sent = send.mock.calls[0]![0];
+    return `${sent.bodyText}\n${sent.bodyHtml ?? ""}`;
+  }
+
+  it("is a set-password link for an account that never chose a password", async () => {
+    const body = await runWith(async () => "https://app.brandbasket.in/reset-password/tok-xyz");
+    expect(body).toContain("https://app.brandbasket.in/reset-password/tok-xyz");
+    expect(body).not.toContain("/checkout");
+  });
+
+  it("keeps the set-password link out of the stored copy", async () => {
+    await runWith(async () => "https://app.brandbasket.in/reset-password/tok-xyz");
+    const sent = send.mock.calls[0]![0];
+    expect(sent.outboxCopy?.linkWithheld).toBe(true);
+    expect(sent.outboxCopy?.bodyText).not.toContain("tok-xyz");
+  });
+
+  it("is still checkout for any other account", async () => {
+    const body = await runWith(async () => null);
+    expect(body).toContain("/checkout");
+    expect(body).not.toContain("reset-password");
   });
 });

@@ -8,6 +8,7 @@ import {
 } from "@brandbasket/db";
 import { emailOutcome, signupReminderEmail, type EmailTransport } from "@brandbasket/email";
 import { customerEmailTransport } from "@/features/server-common/email";
+import { generateSetPasswordUrl } from "@/lib/auth";
 import { getStaffDb } from "@/lib/db";
 import { LEADS_API_TOKEN_MIN_LENGTH } from "@/platform/lib/leads-api";
 
@@ -27,6 +28,8 @@ export interface SignupReminderJobOptions {
   readonly emailTransport?: EmailTransport;
   readonly cutoffMs?: number;
   readonly limit?: number;
+  /** A set-password link for an account that never chose a password, else null. Defaults to the real one (plan 64). */
+  readonly setPasswordUrl?: (email: string) => Promise<string | null>;
 }
 
 /** The shared secret the scheduled reminder runner sends. Unset or too short refuses every request. */
@@ -37,7 +40,9 @@ export function signupReminderToken(): string | null {
 
 /**
  * Finds abandoned sign-ups older than 1 day that have not paid or received a reminder (D21).
- * Sends one reminder email with a link to checkout, and records the sent timestamp so it is never repeated.
+ * Sends one reminder email with a link to checkout, and records the sent timestamp so it is never repeated. A lead who paid
+ * first checks out without a password (plan 64): the link is a set-password link instead, since checkout needs a sign-in
+ * they cannot make yet, and signing in with it lands on checkout.
  * If the customer has paid, skips the email and marks the lead paid.
  */
 export async function processSignupReminders(
@@ -48,6 +53,7 @@ export async function processSignupReminders(
   const transport = options.emailTransport ?? customerEmailTransport(db);
   const cutoffMs = options.cutoffMs ?? DEFAULT_CUTOFF_MS;
   const limit = options.limit ?? BATCH_LIMIT;
+  const setPasswordUrl = options.setPasswordUrl ?? generateSetPasswordUrl;
 
   const cutoff = new Date(now.getTime() - cutoffMs);
   const candidates = await listAbandonedSignupLeads(db, { cutoff, limit });
@@ -81,11 +87,8 @@ export async function processSignupReminders(
     }
 
     try {
-      const email = signupReminderEmail({
-        to: lead.email,
-        businessName: lead.businessName,
-        continueUrl,
-      });
+      const passwordLink = await setPasswordUrl(lead.email);
+      const email = signupReminderEmail({ to: lead.email, continueUrl: passwordLink ?? continueUrl, linkWithheld: passwordLink !== null });
       const outcome = emailOutcome(await transport.send(email));
       // Marked reminded when Brevo took it or the queue holds it. A message that failed for good is left unmarked, so the
       // next run tries the lead again instead of silently dropping the reminder.

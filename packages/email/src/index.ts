@@ -5,6 +5,7 @@ export {
   sanitizeHeaderValue,
   withheldCodeCopy,
   withheldLinkCopy,
+  type EmailAttachment,
   type EmailMessage,
   type EmailOutboxCopy,
 } from "./message";

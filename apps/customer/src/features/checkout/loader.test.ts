@@ -1,7 +1,8 @@
+import { redirect } from "next/navigation";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { loadIntake } from "../start/server";
 import { loadCheckout } from "./loader";
-import { loadBusinessEntry } from "./server/entry";
+import { billingDetailsMissing } from "./server/billing-details";
+import { loadBusinessEntry, loadSavedServices } from "./server/entry";
 import { recordFirstPaymentIfHeld } from "./server/first-payment-lookup";
 import { loadMembershipCheckout, type MembershipCheckoutView } from "./server/membership-checkout";
 
@@ -11,8 +12,8 @@ vi.mock("next/navigation", () => ({
     throw new Error(`redirect:${href}`);
   }),
 }));
-vi.mock("../start/server", () => ({ loadIntake: vi.fn() }));
-vi.mock("./server/entry", () => ({ loadBusinessEntry: vi.fn() }));
+vi.mock("./server/billing-details", () => ({ billingDetailsMissing: vi.fn() }));
+vi.mock("./server/entry", () => ({ loadBusinessEntry: vi.fn(), loadSavedServices: vi.fn() }));
 vi.mock("./server/first-payment-lookup", () => ({ recordFirstPaymentIfHeld: vi.fn() }));
 vi.mock("./server/membership-checkout", () => ({ loadMembershipCheckout: vi.fn() }));
 
@@ -42,7 +43,10 @@ beforeEach(() => {
   vi.clearAllMocks();
   vi.mocked(loadBusinessEntry).mockResolvedValue({ kind: "listing", signupChoice: "managed" });
   vi.mocked(loadMembershipCheckout).mockResolvedValue(view());
-  vi.mocked(loadIntake).mockResolvedValue({ answers: {} as never, completedAt: new Date() });
+  vi.mocked(loadSavedServices).mockResolvedValue([]);
+  // Most tests below read the full checkout's figures, which a sign-up gets only when it still owes billing details. The
+  // one-screen checkout a sign-up with its state saved gets has its own tests at the end.
+  vi.mocked(billingDetailsMissing).mockResolvedValue(true);
   vi.mocked(recordFirstPaymentIfHeld).mockResolvedValue(false);
 });
 
@@ -62,13 +66,6 @@ describe("loadCheckout", () => {
       expect(await loadCheckout(member, {})).toEqual({ kind: "owner-only" });
     }
     expect(loadMembershipCheckout).not.toHaveBeenCalled();
-  });
-
-  it("asks a new account the questions first", async () => {
-    vi.mocked(loadIntake).mockResolvedValue({ answers: {} as never, completedAt: null });
-    await expect(loadCheckout(customer(), { services: "managed-website,social-media,paid-ads" })).rejects.toThrow(
-      "redirect:/start?services=managed-website,social-media,paid-ads",
-    );
   });
 
   it("prices all three services at list, GST inside and no ad money", async () => {
@@ -107,10 +104,10 @@ describe("loadCheckout", () => {
 
   it("charges a website client invited by staff for the website alone, with no questions to answer", async () => {
     vi.mocked(loadBusinessEntry).mockResolvedValue({ kind: "website", signupChoice: null });
-    vi.mocked(loadIntake).mockResolvedValue({ answers: {} as never, completedAt: null });
     vi.mocked(loadMembershipCheckout).mockResolvedValue(view({ services: ["managed-website"] }));
     const result = await loadCheckout(customer(), { services: "paid-ads" });
     expect(loadMembershipCheckout).toHaveBeenCalledWith(expect.anything(), "managed", ["managed-website"], expect.any(Date), "month");
+    expect(billingDetailsMissing).not.toHaveBeenCalled();
     if (result.kind !== "pay") throw new Error("expected the pay view");
     expect(result.ledger.changeServicesHref).toBeNull();
   });
@@ -135,5 +132,66 @@ describe("loadCheckout", () => {
   it("says when no plan is on sale", async () => {
     vi.mocked(loadMembershipCheckout).mockResolvedValue(view({ plan: null }));
     expect(await loadCheckout(customer(), {})).toEqual({ kind: "no-plan" });
+  });
+});
+
+describe("loadCheckout for a sign-up account that has not paid", () => {
+  beforeEach(() => {
+    vi.mocked(billingDetailsMissing).mockResolvedValue(false);
+    vi.mocked(loadMembershipCheckout).mockResolvedValue(
+      view({ services: ["managed-website", "social-media"], firstMonth: { provider: "razorpay", hadService: { "social-media": false, "paid-ads": false } } }),
+    );
+  });
+
+  it("shows the one-screen checkout and never sends the account to the questions, finished or not", async () => {
+    const result = await loadCheckout(customer(), { services: "managed-website,social-media" });
+    expect(result).toMatchObject({ kind: "signup-pay", services: ["managed-website", "social-media"], paymentFailed: false });
+    // The questions come after payment: nothing here reads them or redirects.
+    expect(redirect).not.toHaveBeenCalled();
+  });
+
+  it("prices the business's own currency, with the first-month offer it is owed", async () => {
+    const result = await loadCheckout(customer(), {});
+    if (result.kind !== "signup-pay") throw new Error("expected the one-screen checkout");
+    expect(result.table.currency).toBe("INR");
+    expect(result.table.services.find((service) => service.id === "social-media")).toMatchObject({ onOffer: true, firstMonthCents: 100 });
+
+    vi.mocked(loadMembershipCheckout).mockResolvedValue(view({ plan: { ...PLAN, currency: "USD", taxRateBasisPoints: 0 } as never }));
+    const dollars = await loadCheckout(customer(), {});
+    if (dollars.kind !== "signup-pay") throw new Error("expected the one-screen checkout");
+    expect(dollars.table).toMatchObject({ currency: "USD", taxRateBasisPoints: 0 });
+  });
+
+  it("gives no offer on a service the business has had", async () => {
+    vi.mocked(loadMembershipCheckout).mockResolvedValue(view({ firstMonth: { provider: "razorpay", hadService: { "social-media": true, "paid-ads": false } } }));
+    const result = await loadCheckout(customer(), {});
+    if (result.kind !== "signup-pay") throw new Error("expected the one-screen checkout");
+    expect(result.table.services.find((service) => service.id === "social-media")?.onOffer).toBe(false);
+  });
+
+  it("opens on the services the address names, else the basket the questions were last asked for, else none", async () => {
+    vi.mocked(loadSavedServices).mockResolvedValue(["social-media"]);
+    expect(await loadCheckout(customer(), { services: "managed-website" })).toMatchObject({ services: ["managed-website"] });
+    expect(await loadCheckout(customer(), {})).toMatchObject({ services: ["social-media"] });
+    vi.mocked(loadSavedServices).mockResolvedValue([]);
+    expect(await loadCheckout(customer(), {})).toMatchObject({ services: [] });
+  });
+
+  it("says when it is back from a payment that did not go through", async () => {
+    expect(await loadCheckout(customer(), { payment: "failed" })).toMatchObject({ kind: "signup-pay", paymentFailed: true });
+  });
+
+  it("keeps the full checkout for a business with a code applied, or one that still owes billing details", async () => {
+    vi.mocked(loadMembershipCheckout).mockResolvedValue(view({ discount: { code: "SAVE20", stated: null, months: null } as never }));
+    expect((await loadCheckout(customer(), {})).kind).toBe("pay");
+    vi.mocked(loadMembershipCheckout).mockResolvedValue(view());
+    vi.mocked(billingDetailsMissing).mockResolvedValue(true);
+    expect((await loadCheckout(customer(), {})).kind).toBe("pay");
+  });
+
+  it("still says a payment is waiting, under review or for the owner before showing Pay", async () => {
+    const open = { id: "sub-1", status: "incomplete", activatedAt: null };
+    expect(await loadCheckout(customer({ subscription: open }), { payment: "received" })).toEqual({ kind: "waiting", waitKey: "membership:sub-1" });
+    expect(await loadCheckout(customer({ paymentUnderReview: true }), {})).toMatchObject({ kind: "under-review" });
   });
 });

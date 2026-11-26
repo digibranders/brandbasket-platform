@@ -1,5 +1,5 @@
 import { recordEmail, type Database, type ScopedTransaction } from "@brandbasket/db";
-import type { EmailMessage, EmailOutboxCopy } from "./message";
+import { escapeHtml, type EmailMessage, type EmailOutboxCopy } from "./message";
 
 /**
  * What became of a message handed to a transport. `sent`: Brevo took it. `queued`: Brevo did not, and the drainer will try again.
@@ -39,6 +39,13 @@ function storedMessage(message: EmailMessage, options: OutboxOptions): EmailMess
   return message.outboxCopy ?? message;
 }
 
+/** The stored text of a message with attachments says which files went out; the bytes are never stored. */
+function withAttachmentNames(stored: { readonly subject: string; readonly bodyText: string; readonly bodyHtml: string }, message: EmailMessage): { readonly subject: string; readonly bodyText: string; readonly bodyHtml: string } {
+  if (message.attachments === undefined || message.attachments.length === 0) return stored;
+  const names = message.attachments.map((file) => file.name).join(", ");
+  return { subject: stored.subject, bodyText: `${stored.bodyText}\nAttachments: ${names}`, bodyHtml: `${stored.bodyHtml}\n<p>Attachments: ${escapeHtml(names)}</p>` };
+}
+
 /** What became of a message: sent by Brevo (with Brevo's id), kept locally, or not taken by Brevo (with the reason). */
 export interface EmailDeliveryResult {
   readonly status: "sent" | "local_only" | "failed" | "pending";
@@ -59,12 +66,13 @@ export async function recordOutboxCopy(
   result: EmailDeliveryResult = KEPT_LOCALLY,
 ): Promise<void> {
   const stored = storedMessage(message, options);
+  const text = withAttachmentNames(stored, message);
   await recordEmail(db, {
     toAddress: message.to,
-    subject: stored.subject,
+    subject: text.subject,
     template: message.template,
-    bodyText: stored.bodyText,
-    bodyHtml: stored.bodyHtml,
+    bodyText: text.bodyText,
+    bodyHtml: text.bodyHtml,
     transport,
     status: result.status,
     providerMessageId: result.providerMessageId ?? null,

@@ -25,6 +25,11 @@ export const users = pgTable(
     phoneNumber: text("phone_number").unique(),
     /** The number was proven when the account was made. Only a verified number signs in. Nothing opens an account with a number any more. */
     phoneNumberVerified: boolean("phone_number_verified").notNull().default(false),
+    /**
+     * True for an account opened without its owner choosing a password (the checkout, plan 64). Cleared, with
+     * email_verified set, when they set one through a reset link.
+     */
+    passwordPending: boolean("password_pending").notNull().default(false),
     image: text("image"),
     createdAt: createdAt(),
     updatedAt: updatedAt(),

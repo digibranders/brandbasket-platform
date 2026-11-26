@@ -10,6 +10,40 @@ const sampleMessage: EmailMessage = {
   bodyHtml: "<p>A customer reported a broken button.</p>",
 };
 
+const pdfBytes = new TextEncoder().encode("%PDF-1.4 test");
+
+async function sentBody(message: EmailMessage): Promise<Record<string, unknown>> {
+  const fetchFn = vi.fn(async (_url: string | URL | Request, _init?: RequestInit) => new Response("{}", { status: 201 })) as unknown as typeof fetch;
+  await createBrevoTransport({ apiKey: "k", fetchFn }).send(message);
+  return JSON.parse(String(vi.mocked(fetchFn).mock.calls[0]?.[1]?.body)) as Record<string, unknown>;
+}
+
+describe("createBrevoTransport attachments", () => {
+  it("sends base64 content and the file name under Brevo's attachment field", async () => {
+    const body = await sentBody({ ...sampleMessage, attachments: [{ name: "invoice.pdf", content: pdfBytes }] });
+    expect(body.attachment).toEqual([{ name: "invoice.pdf", content: Buffer.from("%PDF-1.4 test").toString("base64") }]);
+  });
+
+  it("sends no attachment key when the message has none", async () => {
+    expect("attachment" in (await sentBody(sampleMessage))).toBe(false);
+    expect("attachment" in (await sentBody({ ...sampleMessage, attachments: [] }))).toBe(false);
+  });
+
+  it("sends two attachments in order", async () => {
+    const body = await sentBody({
+      ...sampleMessage,
+      attachments: [
+        { name: "a.pdf", content: pdfBytes },
+        { name: "b.pdf", content: new TextEncoder().encode("second") },
+      ],
+    });
+    expect(body.attachment).toEqual([
+      { name: "a.pdf", content: Buffer.from("%PDF-1.4 test").toString("base64") },
+      { name: "b.pdf", content: Buffer.from("second").toString("base64") },
+    ]);
+  });
+});
+
 describe("createBrevoTransport", () => {
   it("sends payload to Brevo API with api-key header", async () => {
     let capturedUrl = "";

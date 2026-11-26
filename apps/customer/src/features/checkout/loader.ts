@@ -10,15 +10,16 @@ import { redirect } from "next/navigation";
 import { formatDate, formatMoney, formatPercent } from "@/lib/format";
 import type { CustomerContext } from "@/lib/guards";
 import { INTAKE_SUMMARY_STEP, startHref } from "../start/rules";
-import { loadIntake } from "../start/server";
 import type { BillingDetailsView } from "./rules/billing-details-view";
 import { MEMBER_WELCOME_HREF } from "./rules/confirm-href";
 import { ledgerOffer, ledgerRows, ledgerSummary, type LedgerRow } from "./rules/ledger";
+import { buildSignupBasketTable, type SignupBasketTable } from "./rules/signup-basket";
 import {
   billingParamValue,
   billingSwitchHrefs,
   isWaitingOnPayment,
   MEMBERSHIP_PATH,
+  MEMBERSHIP_SERVICES_PARAM,
   readBillingInterval,
   readMembershipPaymentNotice,
   readSelectedServices,
@@ -26,7 +27,8 @@ import {
   unsettledCheckout,
 } from "./rules/membership";
 import { CHECKOUT_COPY, CHECKOUT_PLAN_COPY, checkoutLead, checkoutSteps, type CheckoutStep } from "./rules/plans";
-import { loadBusinessEntry } from "./server/entry";
+import { billingDetailsMissing } from "./server/billing-details";
+import { loadBusinessEntry, loadSavedServices } from "./server/entry";
 import { recordFirstPaymentIfHeld } from "./server/first-payment-lookup";
 import { loadMembershipCheckout } from "./server/membership-checkout";
 
@@ -66,6 +68,8 @@ export interface CheckoutAbout {
 
 export type CheckoutView =
   | { readonly kind: "pay"; readonly title: string; readonly lead: string; readonly ledger: CheckoutLedgerView; readonly about: CheckoutAbout }
+  /** A sign-up account that has not paid: the one-screen checkout (plan 64) in its signed-in mode, with its own figures. */
+  | { readonly kind: "signup-pay"; readonly table: SignupBasketTable; readonly services: readonly string[]; readonly paymentFailed: boolean }
   /** Money arrived that bought nothing; staff are sorting it out, so nothing is offered. */
   | { readonly kind: "under-review"; readonly message: string }
   /** Back from the provider before its word arrived: the page reloads until the payment is recorded. */
@@ -79,8 +83,8 @@ type Params = Readonly<Record<string, string | string[] | undefined>>;
 
 /**
  * Reads the checkout for the signed-in business, or redirects: a business that has paid goes Home (with the welcome when this
- * payment opened it), a lapsed one to Plan & billing to reactivate, and a new account that has not finished the questions to
- * /start. The caller has run the guard.
+ * payment opened it) and a lapsed one to Plan & billing to reactivate. A sign-up account that has not paid is shown the one-screen
+ * checkout whatever the questions say: they are asked after the payment. The caller has run the guard.
  */
 export async function loadCheckout(customer: CustomerContext, params: Params, now: Date = new Date()): Promise<CheckoutView> {
   const { billing } = customer;
@@ -103,17 +107,23 @@ export async function loadCheckout(customer: CustomerContext, params: Params, no
   const view = await loadMembershipCheckout(customer, "managed", signUp ? readSelectedServices(params) : WEBSITE_ALONE, now, interval);
   const waiting = isWaitingOnPayment(billing.subscription, notice);
 
-  // A new account answers the short questions first. A payment on its way, or under review, is never sent away from the page
-  // that says so.
-  if (signUp && view.offer.kind === "available" && notice === null && !waiting && !billing.paymentUnderReview) {
-    if ((await loadIntake(customer.tenant)).completedAt === null) redirect(startHref(view.services));
-  }
-
   if (billing.paymentUnderReview) return { kind: "under-review", message: PAYMENT_RECEIVED_MESSAGE };
   const checkout = unsettledCheckout(billing.subscription);
   if (waiting && checkout !== null) return { kind: "waiting", waitKey: `membership:${checkout.id}` };
   const { plan } = view;
   if (plan === null) return { kind: "no-plan" };
+
+  // The one-screen checkout prices every service on sale itself, so it cannot show a code's discount, and it asks for no billing
+  // address: a sign-up that gave its state needs none. A business with either of those keeps the full checkout below.
+  if (signUp && view.firstMonth !== null && view.discount === null && view.lapsedCode === null && !(await billingDetailsMissing(customer))) {
+    const named = params[MEMBERSHIP_SERVICES_PARAM] !== undefined;
+    return {
+      kind: "signup-pay",
+      table: buildSignupBasketTable(plan.currency, view.firstMonth.provider, view.firstMonth.hadService),
+      services: named ? readSelectedServices(params) : await loadSavedServices(customer),
+      paymentFailed: notice === "failed",
+    };
+  }
 
   const pricing = {
     planInitialAmountCents: plan.initialAmountCents,

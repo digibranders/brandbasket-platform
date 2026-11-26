@@ -15,4 +15,5 @@ export {
   type AuthMailer,
 } from "./create-auth";
 export { createVerifiedEmailAccountWithGrant } from "./email-account";
+export { createPendingPasswordAccountWithGrant } from "./pending-password-account";
 export { isAuthApiError, isInvalidCredentialsError, isInvalidTokenError, isWrongPasswordError } from "./errors";

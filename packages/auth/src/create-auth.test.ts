@@ -1,6 +1,6 @@
 import { createDatabase } from "@brandbasket/db";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { createAuth } from "./create-auth";
+import { createAuth, PASSWORD_RESET_LIFETIME_SECONDS } from "./create-auth";
 
 const ORIGIN = "http://app.localhost:3000";
 const VALID_SECRET = "a".repeat(32);
@@ -95,5 +95,31 @@ describe("createAuth session lifetime", () => {
   it("refuses a lifetime that is not a positive whole number of seconds", async () => {
     await expect(lifetimeWith({ sessionLifetimeSeconds: 0 })).rejects.toThrow("whole number of seconds");
     await expect(lifetimeWith({ sessionLifetimeSeconds: 1.5 })).rejects.toThrow("whole number of seconds");
+  });
+});
+
+describe("createAuth reset link lifetime", () => {
+  async function resetLifetimeWith(extra: { readonly resetPasswordLifetimeSeconds?: number }): Promise<number | undefined> {
+    const handle = createDatabase(UNREACHABLE_DATABASE_URL);
+    try {
+      const auth = createAuth({ db: handle.db, secret: VALID_SECRET, baseURL: ORIGIN, trustedOrigins: [ORIGIN], nextCookies: false, ...extra });
+      return auth.options.emailAndPassword?.resetPasswordTokenExpiresIn;
+    } finally {
+      await handle.close();
+    }
+  }
+
+  it("keeps the reset link for an hour unless told otherwise", async () => {
+    expect(await resetLifetimeWith({})).toBe(PASSWORD_RESET_LIFETIME_SECONDS);
+    expect(PASSWORD_RESET_LIFETIME_SECONDS).toBe(3600);
+  });
+
+  it("uses the lifetime it is given", async () => {
+    expect(await resetLifetimeWith({ resetPasswordLifetimeSeconds: 3 * 24 * 3600 })).toBe(3 * 24 * 3600);
+  });
+
+  it("refuses a lifetime that is not a positive whole number of seconds", async () => {
+    await expect(resetLifetimeWith({ resetPasswordLifetimeSeconds: 0 })).rejects.toThrow("reset link lifetime");
+    await expect(resetLifetimeWith({ resetPasswordLifetimeSeconds: 1.5 })).rejects.toThrow("reset link lifetime");
   });
 });
