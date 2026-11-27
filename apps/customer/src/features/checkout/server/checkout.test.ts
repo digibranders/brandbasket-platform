@@ -748,9 +748,15 @@ describe("startMembershipCheckoutFor", () => {
         services: ["managed-website", "social-media"],
         billingInterval: "year",
         websiteKind: "ecommerce",
+        dealType: "paid",
+        advanceCents: 2_000_000,
         setupFeeListCents: 6_500_000,
         setupFeeDiscountCents: 1_500_000,
         setupFeeNote: "As agreed on call",
+        websitePriceCents: null,
+        socialPriceCents: null,
+        adsPriceCents: null,
+        monitoringPriceCents: null,
         referralCodeId: null,
         ...overrides,
       }) as unknown as Awaited<ReturnType<typeof findOpenPaymentLinkForBusiness>>;
@@ -794,14 +800,30 @@ describe("startMembershipCheckoutFor", () => {
       expect(opened()?.bundledAddOns?.map((line) => line.addOn)).toEqual(["managed-website", "social-media"]);
     });
 
-    it("records a waived fee with its discount but takes no free month: the checkout is the ordinary one", async () => {
+    const freeLink = (overrides: Record<string, unknown> = {}) =>
+      link({ dealType: "free", advanceCents: null, setupFeeListCents: null, setupFeeDiscountCents: null, setupFeeNote: null, billingInterval: "month", ...overrides });
+
+    it("charges a free link no build fee and no free month: the checkout is the ordinary one", async () => {
       neverHad();
-      vi.mocked(findOpenPaymentLinkForBusiness).mockResolvedValue(link({ billingInterval: "month", services: ["managed-website"], setupFeeDiscountCents: 6_500_000 }));
+      vi.mocked(findOpenPaymentLinkForBusiness).mockResolvedValue(freeLink({ services: ["managed-website"] }));
 
       await startMembershipCheckoutFor(owner, NOW, "managed", WEBSITE_ALONE);
 
-      expect(opened()).toMatchObject({ setupFeeListCents: 6_500_000, setupFeeDiscountCents: 6_500_000, paymentLinkId: "link-1" });
+      expect(opened()).toMatchObject({ setupFeeListCents: null, setupFeeDiscountCents: null, paymentLinkId: "link-1" });
       expect(opened()).not.toHaveProperty("firstPaymentCents");
+    });
+
+    it("freezes a free link's custom website price on the line, and takes it with Social's first month: 1,999 + 1 = 2,000", async () => {
+      neverHad();
+      vi.mocked(findOpenPaymentLinkForBusiness).mockResolvedValue(freeLink({ websiteKind: "b2b", websitePriceCents: 199_900 }));
+
+      await startMembershipCheckoutFor(owner, NOW, "managed", WEBSITE_ALONE);
+
+      expect(opened()).toMatchObject({ firstPaymentCents: 200_000, setupFeeListCents: null, paymentLinkId: "link-1" });
+      expect(opened()?.bundledAddOns?.map((line) => [line.addOn, line.listAmountCents, line.offerDiscountAmountCents, line.netAmountCents, line.trialPriceCents ?? null])).toEqual([
+        ["managed-website", 199_900, 0, 199_900, null],
+        ["social-media", 299_900, 0, 299_900, 100],
+      ]);
     });
 
     it("owes no fee to a business that has had the website before, even on a link", async () => {

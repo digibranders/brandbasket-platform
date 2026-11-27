@@ -111,9 +111,14 @@ describe("loadMembershipCheckout", () => {
         services: ["managed-website", "social-media"],
         billingInterval: "year",
         websiteKind: "ecommerce",
+        dealType: "paid",
         setupFeeListCents: 6_500_000,
         setupFeeDiscountCents: 1_500_000,
         setupFeeNote: "As agreed on call",
+        websitePriceCents: null,
+        socialPriceCents: null,
+        adsPriceCents: null,
+        monitoringPriceCents: null,
       } as never);
 
       // The address names a B2B website, monthly, alone: the link's deal wins.
@@ -125,6 +130,28 @@ describe("loadMembershipCheckout", () => {
         locked: true,
         deal: { kind: "ecommerce", fee: { listCents: 6_500_000, discountCents: 1_500_000, netCents: 5_000_000 }, note: "As agreed on call" },
       });
+    });
+
+    it("owes a free link no build fee, and carries its custom prices", async () => {
+      vi.mocked(findBillingState).mockResolvedValue(stateWith(false));
+      vi.mocked(findOpenPaymentLinkForBusiness).mockResolvedValue({
+        currency: "INR",
+        services: ["managed-website", "social-media"],
+        billingInterval: "month",
+        websiteKind: "b2b",
+        dealType: "free",
+        setupFeeListCents: null,
+        setupFeeDiscountCents: null,
+        setupFeeNote: null,
+        websitePriceCents: 199_900,
+        socialPriceCents: null,
+        adsPriceCents: null,
+        monitoringPriceCents: null,
+      } as never);
+
+      const view = await loadMembershipCheckout(customer, "managed", WEBSITE, NOW, "month", { chosenKind: "b2b", chargeListFee: true });
+
+      expect(view).toMatchObject({ locked: true, deal: { fee: null }, customPrices: { "managed-website": 199_900 }, linkBuildListCents: null });
     });
 
     it("ignores a link made in another currency than the business's", async () => {

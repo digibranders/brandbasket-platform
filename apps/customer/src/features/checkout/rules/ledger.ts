@@ -1,6 +1,7 @@
 import { discountCentsFor, firstYearDiscountCents, isChargeableDiscount } from "@brandbasket/billing/referral";
 import type { BillingInterval, BillingProviderName, ReferralDiscount } from "@brandbasket/db";
 import { addOnById, ANNUAL_DISCOUNT_BASIS_POINTS, annualListCents, cyclePriceCents, type MonthlyAddOnId } from "@brandbasket/shared/lib/billing/add-ons";
+import type { DealCustomPrices } from "@brandbasket/shared/lib/billing/deal";
 import { planFirstPayment } from "@brandbasket/shared/lib/billing/first-payment";
 import { packageBasisPointsFor, percentOf } from "@brandbasket/shared/lib/billing/packages";
 import { formatMoney, type MoneyCurrency } from "@brandbasket/shared/lib/money";
@@ -96,12 +97,14 @@ export function ledgerRows(
   firstMonth: LedgerOffer | null = null,
   /** The website build fee owed with this basket (plan 65), or null: then the website is shown as it always was. */
   deal: BuildDeal | null = null,
+  /** A staff deal's custom prices (plan 66): a custom line shows its own price, whatever the period. */
+  customPrices: DealCustomPrices = {},
 ): readonly LedgerRow[] {
   const money = (cents: number): string => formatMoney(cents, currency);
   const yearly = summary.annual !== null;
   const months = yearly ? ", 12 months" : "";
   const kind = deal?.kind ?? "b2b";
-  const listOf = (line: OrderSummary["lines"][number]): string => money(yearly ? annualListCents(cyclePriceCents(addOnById(line.addOn), currency, "month", kind)) : line.listCents);
+  const listOf = (line: OrderSummary["lines"][number]): string => money(yearly && customPrices[line.addOn] === undefined ? annualListCents(cyclePriceCents(addOnById(line.addOn), currency, "month", kind)) : line.listCents);
   // A monthly deal that pays for the build leaves the website's own first month, and the code, to the first monthly charge.
   const laterMonth = monthlyFeeDeal(deal, summary.annual === null ? "month" : "year");
   const trialCents = (line: OrderSummary["lines"][number]): number | null => firstMonth?.trialPriceByAddOn[line.addOn] ?? null;
@@ -121,7 +124,7 @@ export function ledgerRows(
     const trial = trialCents(line);
     return [trial === null ? { key: line.addOn, label: `${line.title}${months}`, amount: listOf(line), tone: "plain" } : { key: line.addOn, label: `${line.title}, first month`, amount: money(trial), tone: "plain" }];
   });
-  if (summary.annual !== null) {
+  if (summary.annual !== null && summary.annual.savingCents > 0) {
     rows.push({ key: "annual", label: `Paid yearly, ${percentOf(ANNUAL_DISCOUNT_BASIS_POINTS)}% off`, amount: `-${money(summary.annual.savingCents)}`, tone: "save" });
   }
   if (summary.offer !== null) {

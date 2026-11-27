@@ -4,6 +4,8 @@ import { couponProblem, parsePaymentLinkForm, type ParsedPaymentLinkForm } from 
 vi.mock("server-only", () => ({}));
 
 const COUPON = "0194b0a0-0000-7000-8000-000000000001";
+/** The fields a paid deal sends: the finalised price, no discount, and a 10,000 advance. */
+const PAID = { dealType: "paid", buildPrice: "35000", discountKind: "none", advanceKind: "amount", advanceValue: "10000" } as const;
 
 function form(overrides: Record<string, string | string[]> = {}): FormData {
   const values: Record<string, string | string[]> = {
@@ -11,7 +13,7 @@ function form(overrides: Record<string, string | string[]> = {}): FormData {
     service: ["managed-website"],
     websiteKind: "b2b",
     billingInterval: "month",
-    discountKind: "none",
+    dealType: "free",
     ...overrides,
   };
   const data = new FormData();
@@ -32,22 +34,37 @@ function draft(overrides: Record<string, string | string[]> = {}) {
 }
 
 describe("parsePaymentLinkForm", () => {
-  it("reads a plain B2B deal in rupees with the list fee and nothing else", () => {
+  it("reads a free deal in rupees with no build fields and the list recurring prices", () => {
     expect(draft()).toMatchObject({
       countryCode: "IN",
       currency: "INR",
       services: ["managed-website"],
       billingInterval: "month",
       websiteKind: "b2b",
-      setupFeeListCents: 3_500_000,
-      setupFeeDiscountCents: 0,
+      dealType: "free",
+      setupFeeListCents: null,
+      setupFeeDiscountCents: null,
       setupFeeNote: null,
+      advanceCents: null,
+      websitePriceCents: null,
+      socialPriceCents: null,
+      adsPriceCents: null,
+      monitoringPriceCents: null,
       couponId: null,
     });
   });
 
-  it("bills any country but India in dollars, at the dollar fee for the kind", () => {
-    expect(draft({ countryCode: "US", websiteKind: "ecommerce" })).toMatchObject({ currency: "USD", setupFeeListCents: 450_000 });
+  it("needs a free or a paid deal", () => {
+    expect(refusal({ dealType: "" })).toMatchObject({ field: "dealType" });
+    expect(refusal({ dealType: "gift" })).toMatchObject({ field: "dealType" });
+  });
+
+  it("drops what a free deal does not carry, even when the form sent it", () => {
+    expect(draft({ discountKind: "amount", discountValue: "500", buildPrice: "100", advanceValue: "5", setupFeeNote: "x" })).toMatchObject({ setupFeeListCents: null, setupFeeDiscountCents: null, setupFeeNote: null, advanceCents: null });
+  });
+
+  it("bills any country but India in dollars", () => {
+    expect(draft({ countryCode: "US", websiteKind: "ecommerce" })).toMatchObject({ currency: "USD", websiteKind: "ecommerce" });
   });
 
   it("refuses an unknown country", () => {
@@ -66,58 +83,122 @@ describe("parsePaymentLinkForm", () => {
     expect(draft({ service: ["social-media", "expert-monitoring"] }).services).toEqual(["social-media", "expert-monitoring"]);
   });
 
-  it("needs a website kind with the website, and carries no kind or fee without it", () => {
+  it("needs a website kind with the website, and carries no kind without it", () => {
     expect(refusal({ websiteKind: "" })).toMatchObject({ field: "websiteKind" });
     expect(refusal({ websiteKind: "shop" })).toMatchObject({ field: "websiteKind" });
-    expect(draft({ service: ["social-media"], websiteKind: "ecommerce", discountKind: "amount", discountValue: "500" })).toMatchObject({
-      websiteKind: null,
-      setupFeeListCents: null,
-      setupFeeDiscountCents: null,
-      setupFeeNote: null,
-    });
+    expect(draft({ service: ["social-media"], websiteKind: "ecommerce" })).toMatchObject({ websiteKind: null });
   });
 
   it("refuses an interval that is neither monthly nor yearly", () => {
     expect(refusal({ billingInterval: "week" })).toMatchObject({ field: "billingInterval" });
   });
 
-  it("turns an amount, a percentage or a final price into the discount, with its note", () => {
-    expect(draft({ discountKind: "amount", discountValue: "10000", setupFeeNote: "Agreed on call" })).toMatchObject({ setupFeeDiscountCents: 1_000_000, setupFeeNote: "Agreed on call" });
-    expect(draft({ websiteKind: "ecommerce", discountKind: "percent", discountValue: "20", setupFeeNote: "Launch offer" })).toMatchObject({ setupFeeDiscountCents: 1_300_000 });
-    expect(draft({ discountKind: "final", discountValue: "20000", setupFeeNote: "Agreed on call" })).toMatchObject({ setupFeeDiscountCents: 1_500_000 });
+  describe("paid deal", () => {
+    it("keeps the typed build price, whatever the catalogue says, and the advance as an amount", () => {
+      expect(draft({ ...PAID, buildPrice: "42,500" })).toMatchObject({
+        dealType: "paid",
+        setupFeeListCents: 4_250_000,
+        setupFeeDiscountCents: 0,
+        setupFeeNote: null,
+        advanceCents: 1_000_000,
+      });
+    });
+
+    it("reads a percentage advance of the net price, rounded down to a whole rupee", () => {
+      expect(draft({ ...PAID, buildPrice: "33333", advanceKind: "percent", advanceValue: "30" }).advanceCents).toBe(999_900);
+      expect(draft({ ...PAID, discountKind: "amount", discountValue: "5000", setupFeeNote: "Agreed", advanceKind: "percent", advanceValue: "50" }).advanceCents).toBe(1_500_000);
+    });
+
+    it("needs the website", () => {
+      expect(refusal({ ...PAID, service: ["social-media"] })).toMatchObject({ field: "service" });
+    });
+
+    it("holds the advance from 1 to the net price", () => {
+      expect(draft({ ...PAID, advanceValue: "35000" }).advanceCents).toBe(3_500_000);
+      expect(draft({ ...PAID, advanceValue: "1" }).advanceCents).toBe(100);
+      for (const advanceValue of ["0", "35001", "lots", ""]) expect(refusal({ ...PAID, advanceValue })).toMatchObject({ field: "advanceValue" });
+      expect(refusal({ ...PAID, advanceKind: "percent", advanceValue: "0" })).toMatchObject({ field: "advanceValue" });
+      expect(refusal({ ...PAID, advanceKind: "percent", advanceValue: "101" })).toMatchObject({ field: "advanceValue" });
+      expect(refusal({ ...PAID, advanceKind: "" })).toMatchObject({ field: "advanceKind" });
+    });
+
+    it("refuses a build price that cannot be read or is out of bounds", () => {
+      for (const buildPrice of ["", "free", "0", "0.50", "20000001"]) expect(refusal({ ...PAID, buildPrice })).toMatchObject({ field: "buildPrice" });
+    });
+
+    it("turns an amount, a percentage or a final price into the discount of the typed price, with its note", () => {
+      expect(draft({ ...PAID, discountKind: "amount", discountValue: "10000", setupFeeNote: "Agreed on call" })).toMatchObject({ setupFeeListCents: 3_500_000, setupFeeDiscountCents: 1_000_000, setupFeeNote: "Agreed on call" });
+      expect(draft({ ...PAID, buildPrice: "65000", discountKind: "percent", discountValue: "20", setupFeeNote: "Launch offer" })).toMatchObject({ setupFeeDiscountCents: 1_300_000 });
+      expect(draft({ ...PAID, discountKind: "final", discountValue: "20000", setupFeeNote: "Agreed on call" })).toMatchObject({ setupFeeDiscountCents: 1_500_000 });
+    });
+
+    it("refuses a waived build, which is a free deal", () => {
+      expect(refusal({ ...PAID, discountKind: "final", discountValue: "0", setupFeeNote: "Promised" })).toMatchObject({ field: "discountValue", message: expect.stringContaining("free deal") });
+      expect(refusal({ ...PAID, discountKind: "percent", discountValue: "100", setupFeeNote: "Promised" })).toMatchObject({ field: "discountValue" });
+    });
+
+    it("refuses a discount that cannot be read or is past the price", () => {
+      expect(refusal({ ...PAID, discountKind: "amount", discountValue: "lots", setupFeeNote: "x" })).toMatchObject({ field: "discountValue" });
+      expect(refusal({ ...PAID, discountKind: "amount", discountValue: "35001", setupFeeNote: "x" })).toMatchObject({ field: "discountValue" });
+      expect(refusal({ ...PAID, discountKind: "percent", discountValue: "101", setupFeeNote: "x" })).toMatchObject({ field: "discountValue" });
+      expect(refusal({ ...PAID, discountKind: "final", discountValue: "35001", setupFeeNote: "x" })).toMatchObject({ field: "discountValue" });
+      expect(refusal({ ...PAID, discountKind: "" })).toMatchObject({ field: "discountKind" });
+    });
+
+    it("requires a note once the discount is above zero, and drops it when there is no discount", () => {
+      expect(refusal({ ...PAID, discountKind: "amount", discountValue: "500" })).toMatchObject({ field: "setupFeeNote" });
+      expect(refusal({ ...PAID, discountKind: "amount", discountValue: "500", setupFeeNote: "   " })).toMatchObject({ field: "setupFeeNote" });
+      expect(draft({ ...PAID, discountKind: "amount", discountValue: "0", setupFeeNote: "ignored" })).toMatchObject({ setupFeeDiscountCents: 0, setupFeeNote: null });
+    });
+
+    it("holds the note to printable ASCII, 1 to 200 characters", () => {
+      const discounted = { ...PAID, discountKind: "amount", discountValue: "500" } as const;
+      expect(refusal({ ...discounted, setupFeeNote: "छूट" })).toMatchObject({ field: "setupFeeNote" });
+      expect(refusal({ ...discounted, setupFeeNote: "a".repeat(201) })).toMatchObject({ field: "setupFeeNote" });
+      expect(draft({ ...discounted, setupFeeNote: "a".repeat(200) }).setupFeeNote).toHaveLength(200);
+      // A typographic apostrophe is made plain, as on every other invoice text.
+      expect(draft({ ...discounted, setupFeeNote: "Rao’s offer" }).setupFeeNote).toBe("Rao's offer");
+    });
+
+    it("types the build price in dollars for a dollar deal", () => {
+      expect(draft({ ...PAID, countryCode: "US", buildPrice: "450", advanceValue: "100" })).toMatchObject({ currency: "USD", setupFeeListCents: 45_000, advanceCents: 10_000 });
+    });
   });
 
-  it("allows the whole fee off, with its note", () => {
-    expect(draft({ discountKind: "final", discountValue: "0", setupFeeNote: "Promised at sign-up" })).toMatchObject({ setupFeeDiscountCents: 3_500_000 });
-    expect(draft({ discountKind: "percent", discountValue: "100", setupFeeNote: "Promised at sign-up" })).toMatchObject({ setupFeeDiscountCents: 3_500_000 });
+  describe("custom recurring prices", () => {
+    it("are null when blank, and whole rupees as minor units when typed", () => {
+      expect(draft({ service: ["managed-website", "social-media"], websitePrice: "1,999", socialPrice: "" })).toMatchObject({ websitePriceCents: 199_900, socialPriceCents: null, adsPriceCents: null, monitoringPriceCents: null });
+      expect(draft({ service: ["social-media", "expert-monitoring"], socialPrice: "2499", monitoringPrice: "3000" })).toMatchObject({ socialPriceCents: 249_900, monitoringPriceCents: 300_000 });
+    });
+
+    it("are whole dollars as cents for a dollar deal", () => {
+      expect(draft({ countryCode: "US", websitePrice: "49" }).websitePriceCents).toBe(4_900);
+    });
+
+    it("go with a paid deal too", () => {
+      expect(draft({ ...PAID, websitePrice: "2000" })).toMatchObject({ dealType: "paid", websitePriceCents: 200_000 });
+    });
+
+    it("refuse zero, a fraction or text, on the price's own field", () => {
+      for (const websitePrice of ["0", "12.5", "-1", "free"]) expect(refusal({ websitePrice })).toMatchObject({ field: "websitePrice" });
+    });
+
+    it("refuse a price for a service that is not on the link", () => {
+      expect(refusal({ socialPrice: "999" })).toMatchObject({ field: "socialPrice", message: expect.stringContaining("not on this link") });
+    });
+
+    it("refuse a coupon beside any price, on the price", () => {
+      expect(refusal({ couponId: COUPON, websitePrice: "1999" })).toMatchObject({ field: "websitePrice", message: expect.stringContaining("not both") });
+      expect(refusal({ service: ["managed-website", "social-media"], couponId: COUPON, socialPrice: "999" })).toMatchObject({ field: "socialPrice" });
+      expect(draft({ couponId: COUPON, websitePrice: "" }).couponId).toBe(COUPON);
+    });
   });
 
-  it("refuses a discount that cannot be read or is past the fee", () => {
-    expect(refusal({ discountKind: "amount", discountValue: "lots", setupFeeNote: "x" })).toMatchObject({ field: "discountValue" });
-    expect(refusal({ discountKind: "amount", discountValue: "35001", setupFeeNote: "x" })).toMatchObject({ field: "discountValue" });
-    expect(refusal({ discountKind: "percent", discountValue: "101", setupFeeNote: "x" })).toMatchObject({ field: "discountValue" });
-    expect(refusal({ discountKind: "final", discountValue: "35001", setupFeeNote: "x" })).toMatchObject({ field: "discountValue" });
-  });
-
-  it("requires a note once the discount is above zero, and drops it when there is no discount", () => {
-    expect(refusal({ discountKind: "amount", discountValue: "500" })).toMatchObject({ field: "setupFeeNote" });
-    expect(refusal({ discountKind: "amount", discountValue: "500", setupFeeNote: "   " })).toMatchObject({ field: "setupFeeNote" });
-    expect(draft({ discountKind: "amount", discountValue: "0", setupFeeNote: "ignored" })).toMatchObject({ setupFeeDiscountCents: 0, setupFeeNote: null });
-  });
-
-  it("holds the note to printable ASCII, 1 to 200 characters", () => {
-    expect(refusal({ discountKind: "amount", discountValue: "500", setupFeeNote: "छूट" })).toMatchObject({ field: "setupFeeNote" });
-    expect(refusal({ discountKind: "amount", discountValue: "500", setupFeeNote: "a".repeat(201) })).toMatchObject({ field: "setupFeeNote" });
-    expect(draft({ discountKind: "amount", discountValue: "500", setupFeeNote: "a".repeat(200) }).setupFeeNote).toHaveLength(200);
-    // A typographic apostrophe is made plain, as on every other invoice text.
-    expect(draft({ discountKind: "amount", discountValue: "500", setupFeeNote: "Rao’s offer" }).setupFeeNote).toBe("Rao's offer");
-  });
-
-  it("refuses a coupon on a yearly link that has a build fee, and says why", () => {
-    expect(refusal({ billingInterval: "year", couponId: COUPON })).toMatchObject({ field: "couponId", message: expect.stringContaining("yearly link that has a build fee") });
-    // A fully waived fee leaves nothing to refuse, and a monthly link takes the coupon.
-    expect(draft({ billingInterval: "year", couponId: COUPON, discountKind: "percent", discountValue: "100", setupFeeNote: "Waived" }).couponId).toBe(COUPON);
-    expect(draft({ billingInterval: "month", couponId: COUPON }).couponId).toBe(COUPON);
+  it("refuses a coupon on a yearly paid deal, and says why", () => {
+    expect(refusal({ ...PAID, billingInterval: "year", couponId: COUPON })).toMatchObject({ field: "couponId", message: expect.stringContaining("yearly link that has a build fee") });
+    // A free deal has no build fee, and a monthly paid deal takes the coupon.
+    expect(draft({ billingInterval: "year", couponId: COUPON }).couponId).toBe(COUPON);
+    expect(draft({ ...PAID, billingInterval: "month", couponId: COUPON }).couponId).toBe(COUPON);
     expect(draft({ billingInterval: "year", couponId: COUPON, service: ["social-media"] }).couponId).toBe(COUPON);
   });
 

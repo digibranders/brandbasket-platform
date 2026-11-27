@@ -1,6 +1,7 @@
 import "server-only";
 import { businessHasHadService, findBillingState, findOpenPaymentLinkForBusiness, isPackageOfferForfeited, type BillingInterval, type Plan } from "@brandbasket/db";
 import { readBundleSelection } from "@brandbasket/shared/lib/billing/bundle";
+import { type DealCustomPrices, linkCustomPrices } from "@brandbasket/shared/lib/billing/deal";
 import { setupFeeFor } from "@brandbasket/shared/lib/billing/setup-fee";
 import { isWebsiteKind, type WebsiteKind } from "@brandbasket/shared/lib/billing/website-kind";
 import type { BuildDeal } from "../rules/build-fee";
@@ -49,6 +50,10 @@ export interface MembershipCheckoutView {
   readonly deal: BuildDeal;
   /** A staff payment link decides the services, interval, kind and fee: the page offers no way to change them. */
   readonly locked: boolean;
+  /** The custom recurring prices of the staff link in force (plan 66), for the link's period; empty with no link or none set. */
+  readonly customPrices: DealCustomPrices;
+  /** The finalised build price of a paid link, which the page shows instead of the catalogue's; null for any other checkout. */
+  readonly linkBuildListCents: number | null;
 }
 
 /** What a checkout may add to the basket its address names (plan 65): the kind of website, and whether the list build fee is owed when no payment link names one. */
@@ -108,8 +113,31 @@ export async function loadMembershipCheckout(
     plan !== null && reactivation === null && services.includes("managed-website") && hadService?.["managed-website"] === false && (link !== null || options.chargeListFee);
   const deal: BuildDeal = {
     kind,
-    fee: owesFee ? setupFeeFor(kind, plan.currency, link?.setupFeeDiscountCents ?? 0) : null,
+    // A free link (plan 66) owes no build. A paid link keeps charging its net build price with the first payment until the advance flow
+    // exists (plan 66 step 4 replaces this), at the price staff finalised.
+    fee: !owesFee
+      ? null
+      : link === null
+        ? setupFeeFor(kind, plan.currency, 0)
+        : link.dealType === "paid" && link.setupFeeListCents !== null
+          ? { listCents: link.setupFeeListCents, discountCents: link.setupFeeDiscountCents ?? 0, netCents: link.setupFeeListCents - (link.setupFeeDiscountCents ?? 0) }
+          : null,
     note: owesFee ? (link?.setupFeeNote ?? null) : null,
   };
-  return { plan, services, discount, lapsedCode: discount === null ? lapsedCode : null, forfeited, hasEverPaid, billingDetails, offer, firstMonth, interval, deal, locked: link !== null };
+  return {
+    plan,
+    services,
+    discount,
+    lapsedCode: discount === null ? lapsedCode : null,
+    forfeited,
+    hasEverPaid,
+    billingDetails,
+    offer,
+    firstMonth,
+    interval,
+    deal,
+    locked: link !== null,
+    customPrices: link === null ? {} : linkCustomPrices(link),
+    linkBuildListCents: link?.dealType === "paid" ? link.setupFeeListCents : null,
+  };
 }

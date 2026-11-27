@@ -3,14 +3,14 @@
 import Link from "next/link";
 import { useEffect, useRef, useState, type ReactElement, type ReactNode } from "react";
 import type { BillingCurrency, ReferralDiscount } from "@brandbasket/db";
-import { addOnById } from "@brandbasket/shared/lib/billing/add-ons";
+import { addOnById, cyclePriceCents, perCycle } from "@brandbasket/shared/lib/billing/add-ons";
 import { describeDiscountMonths, describeReferralDiscount } from "@brandbasket/shared/lib/billing/referral-value";
 import { WEBSITE_KINDS, WEBSITE_KIND_LABELS, type WebsiteKind, websiteBuildFeeCents } from "@brandbasket/shared/lib/billing/website-kind";
 import { cn } from "@brandbasket/shared/lib/cn";
 import { HOME_COUNTRY } from "@brandbasket/shared/lib/countries";
 import { INDIA_STATES } from "@brandbasket/shared/lib/directory/india-states";
 import { FIELD_PATTERNS } from "@brandbasket/shared/lib/forms/input-rules";
-import { formatMoney } from "@brandbasket/shared/lib/money";
+import { formatMoney, parseMoney } from "@brandbasket/shared/lib/money";
 import { RuleInput } from "@brandbasket/shared/ui/forms/rule-input";
 import { GatedSubmitButton } from "@brandbasket/shared/ui/forms/submit-gate";
 import { SelectField, type SelectOption } from "@brandbasket/shared/ui/select-field";
@@ -21,11 +21,15 @@ import { Field } from "@/components/referral-code-form";
 import { initialPaymentLinkFormState, type PaymentLinkFormState } from "@/components/payment-link-form-state";
 import type { PaymentLinkField } from "@/lib/payment-link-form";
 import {
+  CUSTOM_PRICE_FIELDS,
   LINK_SERVICE_IDS,
   NOTE_MAX_LENGTH,
   SUMMARY_REFUSALS,
   type BuildDiscountKind,
+  type DealAdvanceKind,
   readBuildDiscount,
+  readCustomPrice,
+  readDealAdvance,
   summariseLink,
 } from "@/lib/payment-link-summary";
 import { typedValues, useGuardedFormState } from "@/lib/use-guarded-form-state";
@@ -50,6 +54,16 @@ const DISCOUNT_KINDS: readonly { readonly value: BuildDiscountKind; readonly lab
   { value: "amount", label: "Amount off" },
   { value: "percent", label: "Percentage off" },
   { value: "final", label: "Final price" },
+];
+
+const DEAL_TYPES = [
+  { value: "free", label: "Free website" },
+  { value: "paid", label: "Paid website" },
+] as const;
+
+const ADVANCE_KINDS: readonly { readonly value: DealAdvanceKind; readonly label: string }[] = [
+  { value: "amount", label: "Amount" },
+  { value: "percent", label: "Percentage" },
 ];
 
 const INTERVALS = [
@@ -102,7 +116,7 @@ function Block({ title, hint, children }: { readonly title: string; readonly hin
 }
 
 /** What the customer pays, worked out by the shared billing rules on every change (lib/payment-link-summary), never typed here. */
-function PaysSummary({ summary, currency, kind, hasCoupon, interval }: { readonly summary: ReturnType<typeof summariseLink>; readonly currency: BillingCurrency; readonly kind: WebsiteKind | null; readonly hasCoupon: boolean; readonly interval: "month" | "year" }): ReactElement {
+function PaysSummary({ summary, currency, kind, interval }: { readonly summary: ReturnType<typeof summariseLink>; readonly currency: BillingCurrency; readonly kind: WebsiteKind | null; readonly interval: "month" | "year" }): ReactElement {
   const money = (cents: number): string => formatMoney(cents, currency);
   if (summary.kind === "refused") {
     return (
@@ -111,39 +125,45 @@ function PaysSummary({ summary, currency, kind, hasCoupon, interval }: { readonl
       </p>
     );
   }
-  const { fee } = summary;
-  const services = summary.payTodayCents - (fee === null ? 0 : fee.netCents);
+  const { deal } = summary;
   const cycle = interval === "year" ? "a year" : "a month";
-  const when = summary.chargeInMonths === 1 ? "one month after payment" : `${summary.chargeInMonths} months after payment`;
+  const after = deal === null ? "payment" : "the balance payment";
+  const when = summary.chargeInMonths === 1 ? `one month after ${after}` : `${summary.chargeInMonths} months after ${after}`;
   return (
     <section role="status" aria-label="The customer pays" className="border-l-2 border-gold-deep py-1 pl-4 text-sm leading-relaxed text-ink">
       <h2 className="font-display text-[0.9375rem] font-semibold">The customer pays</h2>
       <dl className="mt-2 grid max-w-md grid-cols-[1fr_auto] gap-x-6 gap-y-1">
-        {fee === null || kind === null ? null : (
+        {deal === null || kind === null ? null : (
           <>
             <dt>Website build ({WEBSITE_KIND_LABELS[kind]})</dt>
-            <dd className="text-right font-figure tabular-nums">{money(fee.listCents)}</dd>
-            {fee.discountCents === 0 ? null : (
+            <dd className="text-right font-figure tabular-nums">{money(deal.listCents)}</dd>
+            {deal.discountCents === 0 ? null : (
               <>
                 <dt>Build discount</dt>
-                <dd className="text-right font-figure tabular-nums">-{money(fee.discountCents)}</dd>
+                <dd className="text-right font-figure tabular-nums">-{money(deal.discountCents)}</dd>
               </>
             )}
           </>
         )}
-        {services <= 0 ? null : (
+        {deal === null ? (
           <>
-            <dt>{fee === null ? "First payment for the services" : "Services in the first payment"}</dt>
-            <dd className="text-right font-figure tabular-nums">{money(services)}</dd>
+            <dt>First payment for the services</dt>
+            <dd className="text-right font-figure tabular-nums">{money(summary.payTodayCents)}</dd>
+            <dt className="font-semibold">To pay today</dt>
+            <dd className="text-right font-figure font-semibold tabular-nums">{money(summary.payTodayCents)}</dd>
+          </>
+        ) : (
+          <>
+            <dt className="font-semibold">Advance now</dt>
+            <dd className="text-right font-figure font-semibold tabular-nums">{money(summary.payTodayCents)}</dd>
+            <dt className="font-semibold">Balance at go-live</dt>
+            <dd className="text-right font-figure font-semibold tabular-nums">{money(summary.secondPaymentCents ?? 0)}</dd>
           </>
         )}
-        <dt className="font-semibold">To pay today</dt>
-        <dd className="text-right font-figure font-semibold tabular-nums">{money(summary.payTodayCents)}</dd>
       </dl>
       <p className="mt-2">
         Then <strong className="font-figure tabular-nums">{money(summary.thenCents)}</strong> {cycle}, GST included, from {when}.
       </p>
-      {hasCoupon && fee !== null && fee.netCents > 0 && interval === "month" ? <p className="mt-1 text-ink-2">The coupon starts with the first monthly payment.</p> : null}
     </section>
   );
 }
@@ -191,6 +211,12 @@ export function PaymentLinkForm({
   const [services, setServices] = useState<readonly string[]>(Array.isArray(echoedServices) ? echoedServices : ["managed-website"]);
   const [kind, setKind] = useState<WebsiteKind>(valueOf("websiteKind") === "ecommerce" ? "ecommerce" : "b2b");
   const [interval, setInterval] = useState<"month" | "year">(valueOf("billingInterval") === "year" ? "year" : "month");
+  const [dealType, setDealType] = useState<"free" | "paid">(valueOf("dealType") === "paid" ? "paid" : "free");
+  // Null until staff type a price: the catalogue price for the kind and country shows meanwhile, so changing either re-prefills it.
+  const [typedBuildPrice, setTypedBuildPrice] = useState<string | null>(echoed?.buildPrice === undefined ? null : valueOf("buildPrice"));
+  const [advanceKind, setAdvanceKind] = useState<DealAdvanceKind>(valueOf("advanceKind") === "percent" ? "percent" : "amount");
+  const [advanceValue, setAdvanceValue] = useState(valueOf("advanceValue"));
+  const [customTyped, setCustomTyped] = useState<Readonly<Record<string, string>>>(() => Object.fromEntries(LINK_SERVICE_IDS.map((id) => [id, valueOf(CUSTOM_PRICE_FIELDS[id])])));
   const [discountKind, setDiscountKind] = useState<BuildDiscountKind>((["amount", "percent", "final"] as const).find((candidate) => candidate === valueOf("discountKind")) ?? "none");
   const [discountValue, setDiscountValue] = useState(valueOf("discountValue"));
   const [couponId, setCouponId] = useState(valueOf("couponId"));
@@ -200,14 +226,35 @@ export function PaymentLinkForm({
   const currency: BillingCurrency = country === HOME_COUNTRY ? "INR" : "USD";
   const hasWebsite = services.includes("managed-website");
   const websiteKind = hasWebsite ? kind : null;
-  const listCents = websiteKind === null ? 0 : websiteBuildFeeCents(websiteKind, currency);
-  const discount = websiteKind === null ? { ok: true as const, cents: 0 } : readBuildDiscount(discountKind, discountValue, listCents);
+  const paid = hasWebsite && dealType === "paid";
+  const catalogueCents = websiteBuildFeeCents(kind, currency);
+  const buildPriceText = typedBuildPrice ?? (catalogueCents % 100 === 0 ? String(catalogueCents / 100) : (catalogueCents / 100).toFixed(2));
+  const listCents = parseMoney(buildPriceText);
+  const discount = !paid || listCents === null ? { ok: true as const, cents: 0 } : readBuildDiscount(discountKind, discountValue, listCents);
+  const advance = !paid || listCents === null || !discount.ok || websiteKind === null ? null : readDealAdvance(advanceKind, advanceValue, { currency, kind: websiteKind, listCents, discountCents: discount.cents });
+  const chosen = LINK_SERVICE_IDS.filter((id) => services.includes(id));
+  const customPrices = Object.fromEntries(
+    chosen.flatMap((id) => {
+      const read = readCustomPrice(customTyped[id] ?? "");
+      return read.ok && read.cents !== null ? [[id, read.cents] as const] : [];
+    }),
+  );
   const couponsHere = coupons.filter((coupon) => coupon.currency === currency);
   const coupon = couponsHere.find((candidate) => candidate.id === couponId) ?? null;
+  const pricesReadable = chosen.every((id) => readCustomPrice(customTyped[id] ?? "").ok);
   const summary =
-    country === "" || services.length === 0 || !discount.ok
+    country === "" || services.length === 0 || !pricesReadable || (paid && (listCents === null || advance === null || !advance.ok))
       ? null
-      : summariseLink({ services: LINK_SERVICE_IDS.filter((id) => services.includes(id)), interval, currency, websiteKind, buildDiscountCents: discount.cents, coupon: coupon === null ? null : { discount: coupon.discount, discountMonths: coupon.discountMonths }, provider });
+      : summariseLink({
+          services: chosen,
+          interval,
+          currency,
+          websiteKind,
+          build: paid && listCents !== null && discount.ok ? { listCents, discountCents: discount.cents, advanceCents: advance !== null && advance.ok ? advance.amounts.advanceCents : 0 } : null,
+          customPrices,
+          coupon: coupon === null ? null : { discount: coupon.discount, discountMonths: coupon.discountMonths },
+          provider,
+        });
   const couponOptions: readonly SelectOption[] = [{ value: "", label: "No coupon" }, ...couponsHere.map((choice) => ({ value: choice.id, label: `${choice.code}: ${describeReferralDiscount(choice.discount, choice.currency)}, ${describeDiscountMonths(choice.discountMonths)}` }))];
   const stateOptions: readonly SelectOption[] = [{ value: "", label: "Not known yet" }, ...INDIA_STATES.map((entry) => ({ value: entry.code, label: entry.name }))];
   const inIndia = country === HOME_COUNTRY;
@@ -256,9 +303,25 @@ export function PaymentLinkForm({
           <span className="block text-sm font-medium text-ink">Billed</span>
           <Choice name="billingInterval" label="Billed" options={INTERVALS} value={interval} onChange={setInterval} />
         </div>
+        {hasWebsite ? (
+          <div>
+            <span className="block text-sm font-medium text-ink">Website deal</span>
+            <Choice name="dealType" label="Website deal" options={DEAL_TYPES} value={dealType} onChange={setDealType} invalid={errorField === "dealType"} />
+          </div>
+        ) : (
+          <input type="hidden" name="dealType" value="free" />
+        )}
       </Block>
 
-      {hasWebsite ? (
+      {paid ? (
+        <Block title="Build price">
+          <Field id="link-build-price" label="Finalised build price" hint={`List price ${formatMoney(catalogueCents, currency)}. Type the price agreed with the customer.`} required>
+            <RuleInput rule="amount" id="link-build-price" name="buildPrice" required pattern={FIELD_PATTERNS.amount} autoComplete="off" value={buildPriceText} onChange={(event) => setTypedBuildPrice(event.target.value)} className={fieldClasses} {...status("buildPrice")} />
+          </Field>
+        </Block>
+      ) : null}
+
+      {paid ? (
         <Block title="Build fee discount" hint="Takes from nothing to the whole build fee off. The monthly price is only discounted by a coupon.">
           <div>
             <span className="block text-sm font-medium text-ink">Discount as</span>
@@ -269,7 +332,7 @@ export function PaymentLinkForm({
               <Field
                 id="link-discount"
                 label={discountKind === "percent" ? "Percentage off the build fee" : discountKind === "final" ? "Final price of the build" : "Amount off the build fee"}
-                hint={discountKind === "percent" ? "Up to 100." : `Out of ${formatMoney(listCents, currency)}. A final price of 0 waives the fee.`}
+                hint={discountKind === "percent" ? "Up to 100." : `Out of ${formatMoney(listCents ?? 0, currency)}.`}
                 required
               >
                 <RuleInput rule="amount" id="link-discount" name="discountValue" required pattern={FIELD_PATTERNS.amount} autoComplete="off" value={discountValue} onChange={(event) => setDiscountValue(event.target.value)} className={fieldClasses} {...status("discountValue")} />
@@ -286,6 +349,49 @@ export function PaymentLinkForm({
           )}
         </Block>
       ) : null}
+
+      {paid ? (
+        <Block title="Advance">
+          <div>
+            <span className="block text-sm font-medium text-ink">Advance as</span>
+            <Choice name="advanceKind" label="Advance as" options={ADVANCE_KINDS} value={advanceKind} onChange={setAdvanceKind} invalid={errorField === "advanceKind"} />
+          </div>
+          <Field
+            id="link-advance"
+            label={advanceKind === "percent" ? "Percentage of the net build price" : "Advance amount"}
+            hint={advanceKind === "percent" ? "Rounded down to a whole rupee or dollar." : advance !== null && advance.ok ? `Out of ${formatMoney(advance.amounts.netCents, currency)}.` : undefined}
+            required
+          >
+            <RuleInput rule="amount" id="link-advance" name="advanceValue" required pattern={FIELD_PATTERNS.amount} autoComplete="off" value={advanceValue} onChange={(event) => setAdvanceValue(event.target.value)} className={fieldClasses} {...status("advanceValue")} />
+          </Field>
+          {advance === null || advance.ok ? null : (
+            <p role="status" className="text-sm text-error">
+              {advance.reason === "out-of-range" ? "The advance is from 1 to the net build price." : "Type the advance as a number."}
+            </p>
+          )}
+        </Block>
+      ) : null}
+
+      {chosen.length === 0 ? null : (
+        <Block title="Custom prices" hint={`Leave a price blank to use the list price. Typed for each ${interval === "year" ? "year" : "month"}, GST included. A link takes custom prices or a coupon, not both.`}>
+          <div className="grid gap-6 sm:grid-cols-2">
+            {chosen.map((id) => (
+              <Field key={id} id={`link-price-${id}`} label={`${addOnById(id).title} price ${perCycle(interval)}`} hint={`List price ${formatMoney(cyclePriceCents(addOnById(id), currency, interval, kind), currency)}.`}>
+                <RuleInput
+                  rule="digits"
+                  id={`link-price-${id}`}
+                  name={CUSTOM_PRICE_FIELDS[id]}
+                  autoComplete="off"
+                  value={customTyped[id] ?? ""}
+                  onChange={(event) => setCustomTyped((held) => ({ ...held, [id]: event.target.value }))}
+                  className={fieldClasses}
+                  {...status(CUSTOM_PRICE_FIELDS[id])}
+                />
+              </Field>
+            ))}
+          </div>
+        </Block>
+      )}
 
       <Block title="Coupon" hint="Takes money off the monthly price once the customer is paying monthly. Only live coupons in this currency are listed.">
         <Field id="link-coupon" label="Coupon">
@@ -337,7 +443,7 @@ export function PaymentLinkForm({
         </div>
       </Block>
 
-      {summary === null ? null : <PaysSummary summary={summary} currency={currency} kind={websiteKind} hasCoupon={coupon !== null} interval={interval} />}
+      {summary === null ? null : <PaysSummary summary={summary} currency={currency} kind={websiteKind} interval={interval} />}
 
       <GatedSubmitButton className={buttonPrimary} pendingLabel="Creating…">
         Create payment link

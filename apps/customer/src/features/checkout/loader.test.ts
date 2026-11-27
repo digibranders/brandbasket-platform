@@ -39,6 +39,8 @@ function view(overrides: Partial<MembershipCheckoutView> = {}): MembershipChecko
     // No build fee owed, unless a test says otherwise: the figures these tests read are the services' alone.
     deal: { kind: "b2b", fee: null, note: null },
     locked: false,
+    customPrices: {},
+    linkBuildListCents: null,
     ...overrides,
   };
 }

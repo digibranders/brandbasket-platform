@@ -68,12 +68,21 @@ const DRAFT: PaymentLinkDraft = {
   services: ["managed-website", "social-media"],
   billingInterval: "month",
   websiteKind: "ecommerce",
+  dealType: "paid",
   setupFeeListCents: 6_500_000,
   setupFeeDiscountCents: 1_500_000,
   setupFeeNote: "Agreed on call",
+  advanceCents: 2_000_000,
+  websitePriceCents: null,
+  socialPriceCents: null,
+  adsPriceCents: null,
+  monitoringPriceCents: null,
   couponId: null,
   customer: CUSTOMER,
 };
+
+/** A free deal with a custom website price and Social at list. */
+const FREE_DRAFT: PaymentLinkDraft = { ...DRAFT, dealType: "free", setupFeeListCents: null, setupFeeDiscountCents: null, setupFeeNote: null, advanceCents: null, websitePriceCents: 199_900 };
 
 const COUPON = { id: COUPON_ID, code: "LAUNCH", currency: "INR", affiliateId: null, discount: { kind: "amount", amountCents: 50_000 }, discountMonths: 3, active: true, expiresAt: null, maxRedemptions: null, createdAt: NOW } as unknown as ReferralCode;
 
@@ -102,9 +111,15 @@ describe("createPaymentLinkFor", () => {
       services: ["managed-website", "social-media"],
       billingInterval: "month",
       websiteKind: "ecommerce",
+      dealType: "paid",
       setupFeeListCents: 6_500_000,
       setupFeeDiscountCents: 1_500_000,
       setupFeeNote: "Agreed on call",
+      advanceCents: 2_000_000,
+      websitePriceCents: null,
+      socialPriceCents: null,
+      adsPriceCents: null,
+      monitoringPriceCents: null,
       referralCodeId: null,
       createdByStaffId: "staff-1",
       businessName: "Rao Dental",
@@ -112,7 +127,29 @@ describe("createPaymentLinkFor", () => {
     });
     expect(stored?.expiresAt).toEqual(new Date("2026-12-04T10:00:00.000Z"));
     expect(JSON.stringify(stored)).not.toContain(outcome.token);
-    expect(recordStaffAction).toHaveBeenCalledWith(STAFF, expect.objectContaining({ kind: "payment_link.created", data: { linkId: LINK_ID, setupFeeListCents: 6_500_000, setupFeeDiscountCents: 1_500_000 } }));
+    expect(recordStaffAction).toHaveBeenCalledWith(STAFF, expect.objectContaining({ kind: "payment_link.created", data: expect.objectContaining({ linkId: LINK_ID, dealType: "paid", advanceCents: 2_000_000, setupFeeListCents: 6_500_000 }) }));
+  });
+
+  it("stores a free deal with no build columns and the custom price it was given", async () => {
+    const outcome = await createPaymentLinkFor({ form: FREE_DRAFT, staff: STAFF, now: NOW });
+    expect(outcome.kind).toBe("created");
+    expect(vi.mocked(insertPaymentLink).mock.calls[0]?.[1]).toMatchObject({
+      dealType: "free",
+      websiteKind: "ecommerce",
+      setupFeeListCents: null,
+      setupFeeDiscountCents: null,
+      setupFeeNote: null,
+      advanceCents: null,
+      websitePriceCents: 199_900,
+      socialPriceCents: null,
+    });
+  });
+
+  it("refuses a coupon beside a custom price even if the form let it through", async () => {
+    vi.mocked(findReferralCodeById).mockResolvedValue(COUPON);
+    const outcome = await createPaymentLinkFor({ form: { ...FREE_DRAFT, couponId: COUPON_ID }, staff: STAFF, now: NOW });
+    expect(outcome).toMatchObject({ kind: "refused", message: expect.stringContaining("not both") });
+    expect(insertPaymentLink).not.toHaveBeenCalled();
   });
 
   it("makes a link for an account that never paid", async () => {
@@ -167,7 +204,7 @@ describe("createPaymentLinkFor", () => {
     expect(await createPaymentLinkFor({ form: { ...DRAFT, couponId: COUPON_ID }, staff: STAFF, now: NOW })).toMatchObject({ kind: "refused", field: "couponId" });
   });
 
-  it("refuses a coupon on a yearly link that has a build fee even if the form let it through", async () => {
+  it("refuses a coupon on a yearly paid deal even if the form let it through", async () => {
     vi.mocked(findReferralCodeById).mockResolvedValue(COUPON);
     const outcome = await createPaymentLinkFor({ form: { ...DRAFT, billingInterval: "year", couponId: COUPON_ID }, staff: STAFF, now: NOW });
     expect(outcome).toMatchObject({ kind: "refused", message: expect.stringContaining("yearly link that has a build fee") });

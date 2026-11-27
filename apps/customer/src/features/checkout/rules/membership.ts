@@ -2,6 +2,7 @@ import { chargedAmountCents, gstInsideCents } from "@brandbasket/billing/tax";
 import type { BillingInterval } from "@brandbasket/db";
 import { annualListCents, MONTHLY_ADD_ON_IDS, PAUSED_ADD_ON_IDS, type MonthlyAddOnId } from "@brandbasket/shared/lib/billing/add-ons";
 import { bundleLines, bundleNetCents, readBundleSelection, WEBSITE_ALONE, type BundleLine } from "@brandbasket/shared/lib/billing/bundle";
+import type { DealCustomPrices } from "@brandbasket/shared/lib/billing/deal";
 import { adCreditCentsAtCheckout, packageBasisPointsFor } from "@brandbasket/shared/lib/billing/packages";
 import { initialTermPhrase, renewalChargeCents } from "@brandbasket/shared/lib/billing/terms";
 import { isWebsiteKind, type WebsiteKind } from "@brandbasket/shared/lib/billing/website-kind";
@@ -242,6 +243,8 @@ export interface OrderSummaryInput {
   readonly interval?: BillingInterval;
   /** The kind of website the basket's Website Management line is for (plan 65). Absent is B2B. */
   readonly kind?: WebsiteKind;
+  /** A staff deal's custom prices for the period (plan 66): each replaces its line's catalogue price, with no offer. */
+  readonly customPrices?: DealCustomPrices;
 }
 
 /**
@@ -255,7 +258,8 @@ export function orderSummary(input: OrderSummaryInput, discountCents: number): O
   const { planInitialAmountCents, services, currency, taxRateBasisPoints, forfeited, hasEverPaid } = input;
   const interval = input.interval ?? "month";
   const kind = input.kind ?? "b2b";
-  const lines = bundleLines(services, currency, forfeited, interval, kind);
+  const customPrices = input.customPrices ?? {};
+  const lines = bundleLines(services, currency, forfeited, interval, kind, customPrices);
   if (lines.length === 0) throw new RangeError("An order needs at least one service");
   const chargeableCents = planInitialAmountCents + lines.reduce((total, line) => total + line.netCents, 0);
   const totalCents = chargedAmountCents(chargeableCents, discountCents);
@@ -271,13 +275,21 @@ export function orderSummary(input: OrderSummaryInput, discountCents: number): O
     totalCents,
     totalWithoutCodeCents: chargedAmountCents(chargeableCents, 0),
     adCredit: adCreditCents === 0 ? null : { cents: adCreditCents, label: `We add ${formatMoney(adCreditCents, currency)} a month to your ads` },
-    annual: interval === "year" ? annualParts(services, currency, forfeited, lines, kind) : null,
+    annual: interval === "year" ? annualParts(services, currency, forfeited, lines, kind, customPrices) : null,
   };
 }
 
 /** Twelve months of the lines at their monthly prices, and what paying for the year takes off that. */
-function annualParts(services: readonly MonthlyAddOnId[], currency: MoneyCurrency, forfeited: boolean, yearly: readonly BundleLine[], kind: WebsiteKind): { readonly listCents: number; readonly savingCents: number } {
-  const listCents = bundleLines(services, currency, forfeited, "month", kind).reduce((total, line) => total + annualListCents(line.netCents), 0);
+function annualParts(
+  services: readonly MonthlyAddOnId[],
+  currency: MoneyCurrency,
+  forfeited: boolean,
+  yearly: readonly BundleLine[],
+  kind: WebsiteKind,
+  customPrices: DealCustomPrices,
+): { readonly listCents: number; readonly savingCents: number } {
+  // A custom price is already the year's price: it has no annual saving.
+  const listCents = bundleLines(services, currency, forfeited, "month", kind).reduce((total, line) => total + (customPrices[line.addOn] === undefined ? annualListCents(line.netCents) : (yearly.find((year) => year.addOn === line.addOn)?.netCents ?? 0)), 0);
   return { listCents, savingCents: listCents - yearly.reduce((total, line) => total + line.netCents, 0) };
 }
 

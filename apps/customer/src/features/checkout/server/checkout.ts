@@ -34,7 +34,8 @@ import { readBundleSelection, WEBSITE_ALONE, type ReactivationBasket } from "@br
 import { BUILD_FEE_ADD_ON, planFirstPayment } from "@brandbasket/shared/lib/billing/first-payment";
 import { setupFeeFor, type SetupFee } from "@brandbasket/shared/lib/billing/setup-fee";
 import { isWebsiteKind, type WebsiteKind } from "@brandbasket/shared/lib/billing/website-kind";
-import { adCreditCentsAtCheckout, packageLines } from "@brandbasket/shared/lib/billing/packages";
+import { linkCustomPrices } from "@brandbasket/shared/lib/billing/deal";
+import { adCreditCentsAtCheckout, packageLines, priceLinesFor } from "@brandbasket/shared/lib/billing/packages";
 import { addMonthsUtc } from "@brandbasket/billing/term";
 import { PAYMENT_RECEIVED_MESSAGE, REACTIVATE_HREF } from "@brandbasket/shared/lib/billing/payment-step";
 import { firstMissing, onboardingChecklist } from "@brandbasket/shared/lib/onboarding/checklist";
@@ -510,7 +511,9 @@ async function openPlanCheckout(
     const pickedInterval = reactivation === null || reactivation.cancelled ? chosenInterval : reactivation.billingInterval;
     const interval: BillingInterval = link === null ? pickedInterval : link.billingInterval === "year" ? "year" : "month";
     const websiteKind: WebsiteKind = link?.websiteKind != null && isWebsiteKind(link.websiteKind) ? link.websiteKind : options.chosenKind;
-    const pricedLines = packageLines({ services, forfeited }, plan.currency, interval, websiteKind);
+    // Plan 66: a link's custom prices (a free deal's, or a paid deal's recurring ones) replace the catalogue's, with no offer discount.
+    const pricedLines =
+      link === null ? packageLines({ services, forfeited }, plan.currency, interval, websiteKind) : priceLinesFor({ services, forfeited }, plan.currency, interval, websiteKind, linkCustomPrices(link));
     const fullBundle: readonly NewBundledAddOn[] = pricedLines.map((line) => ({
       addOn: line.addOn,
       listAmountCents: line.listCents,
@@ -533,12 +536,17 @@ async function openPlanCheckout(
     // The build fee (plan 65): owed for a first purchase of Website Management by a sign-up checkout, or as a payment link states it. A
     // fee waived in full is still recorded, so the invoice can say so, but takes no free month (planFirstPayment: no fee, ordinary).
     const owesFee = pricedLines.some((line) => line.addOn === BUILD_FEE_ADD_ON) && reactivation === null && hadService.get(BUILD_FEE_ADD_ON) === false;
-    const setupFee: SetupFee | null =
-      !owesFee || (link === null && !options.chargeListFee)
-        ? null
-        : link?.setupFeeListCents != null
-          ? setupFeeFor(websiteKind, plan.currency, link.setupFeeDiscountCents ?? 0)
-          : setupFeeFor(websiteKind, plan.currency, 0);
+    // A free link (plan 66) owes no build at all; the old charge of the list fee belongs to a sign-up checkout only.
+    const setupFee: SetupFee | null = !owesFee
+      ? null
+      : link !== null
+        ? link.dealType === "paid" && link.setupFeeListCents !== null
+          ? // plan 66 step 4 replaces this: a paid link charges its net build price with the first payment until the advance flow exists.
+            { listCents: link.setupFeeListCents, discountCents: link.setupFeeDiscountCents ?? 0, netCents: link.setupFeeListCents - (link.setupFeeDiscountCents ?? 0) }
+          : null
+        : options.chargeListFee
+          ? setupFeeFor(websiteKind, plan.currency, 0)
+          : null;
     const firstPayment = planFirstPayment({
       lines: pricedLines.map((line) => ({ addOn: line.addOn, netCents: line.netCents, hadService: hadService.get(line.addOn) ?? true })),
       interval,

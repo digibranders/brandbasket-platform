@@ -15,7 +15,7 @@ import type { BillingDetailsView } from "./rules/billing-details-view";
 import { feeRenewalTerms } from "./rules/build-fee";
 import { MEMBER_WELCOME_HREF } from "./rules/confirm-href";
 import { ledgerOffer, ledgerRows, ledgerSummary, type LedgerRow } from "./rules/ledger";
-import { buildSignupBasketTable, type SignupBasketTable } from "./rules/signup-basket";
+import { buildSignupBasketTable, type SignupBasketTable, withCustomPrices } from "./rules/signup-basket";
 import {
   billingParamValue,
   billingSwitchHrefs,
@@ -33,7 +33,7 @@ import { CHECKOUT_COPY, CHECKOUT_PLAN_COPY, checkoutLead, checkoutSteps, type Ch
 import { billingDetailsMissing } from "./server/billing-details";
 import { loadBusinessEntry, loadSavedServices } from "./server/entry";
 import { recordFirstPaymentIfHeld } from "./server/first-payment-lookup";
-import { loadMembershipCheckout } from "./server/membership-checkout";
+import { loadMembershipCheckout, type MembershipCheckoutView } from "./server/membership-checkout";
 
 /*
  * The view behind /checkout: the old /plan page (apps/platform components/panel/membership/membership-page.tsx) for an
@@ -84,7 +84,7 @@ export type CheckoutView =
       /** The kind of website to open on (plan 65). */
       readonly websiteKind: WebsiteKind;
       /** Set when a staff payment link decided the deal: the screen then offers no way to change it. */
-      readonly link: { readonly interval: BillingInterval; readonly discountCents: number; readonly note: string | null } | null;
+      readonly link: { readonly interval: BillingInterval; readonly discountCents: number; readonly note: string | null; readonly listCents?: number } | null;
     }
   /** Money arrived that bought nothing; staff are sorting it out, so nothing is offered. */
   | { readonly kind: "under-review"; readonly message: string }
@@ -94,6 +94,13 @@ export type CheckoutView =
   | { readonly kind: "no-plan" }
   /** A member who is not the owner: paying is the owner's (the actions refuse anyone else). */
   | { readonly kind: "owner-only" };
+
+/** The one-screen table for a staff link (plan 66): its custom prices in, and a build fee only where the link owes one (a free link owes none). */
+function lockedTable(table: SignupBasketTable, view: Pick<MembershipCheckoutView, "locked" | "customPrices" | "deal" | "interval">): SignupBasketTable {
+  if (!view.locked) return table;
+  const priced = withCustomPrices(table, view.customPrices, view.interval);
+  return { ...priced, website: { ...priced.website, feeOwed: view.deal.fee !== null } };
+}
 
 type Params = Readonly<Record<string, string | string[] | undefined>>;
 
@@ -139,11 +146,11 @@ export async function loadCheckout(customer: CustomerContext, params: Params, no
     const named = params[MEMBERSHIP_SERVICES_PARAM] !== undefined;
     return {
       kind: "signup-pay",
-      table: buildSignupBasketTable(plan.currency, view.firstMonth.provider, view.firstMonth.hadService),
+      table: lockedTable(buildSignupBasketTable(plan.currency, view.firstMonth.provider, view.firstMonth.hadService), view),
       services: view.locked ? view.services : named ? readSelectedServices(params) : await loadSavedServices(customer),
       paymentFailed: notice === "failed",
       websiteKind: view.deal.kind,
-      link: view.locked ? { interval, discountCents: view.deal.fee?.discountCents ?? 0, note: view.deal.note } : null,
+      link: view.locked ? { interval, discountCents: view.deal.fee?.discountCents ?? 0, note: view.deal.note, ...(view.linkBuildListCents === null ? {} : { listCents: view.linkBuildListCents }) } : null,
     };
   }
 
@@ -155,6 +162,7 @@ export async function loadCheckout(customer: CustomerContext, params: Params, no
     hasEverPaid: view.hasEverPaid,
     interval,
     kind: view.deal.kind,
+    customPrices: view.customPrices,
   };
   const code = view.discount === null ? null : { code: view.discount.code, stated: view.discount.stated, months: view.discount.months };
   const summary = ledgerSummary(pricing, view.services, code);
@@ -169,7 +177,7 @@ export async function loadCheckout(customer: CustomerContext, params: Params, no
     ledger: {
       services: view.services,
       billing: { interval, value: billingParamValue(interval), ...billingSwitchHrefs(MEMBERSHIP_PATH, params) },
-      rows: ledgerRows(summary, plan.currency, code, firstMonth, view.deal),
+      rows: ledgerRows(summary, plan.currency, code, firstMonth, view.deal, view.customPrices),
       total: formatMoney(dueCents, plan.currency),
       gstLine: taxed ? `Includes ${formatMoney(gstInsideCents(dueCents, plan.taxRateBasisPoints), plan.currency)} of GST at ${formatPercent(plan.taxRateBasisPoints / 100)}` : null,
       adCredit: summary.adCredit?.label ?? null,

@@ -21,7 +21,7 @@ import { hashLinkToken, newLinkToken } from "@brandbasket/shared/server/link-tok
 import { HOME_COUNTRY } from "@brandbasket/shared/lib/countries";
 import { type PaymentLinkDraft, type PaymentLinkField, couponProblem } from "@/lib/payment-link-form";
 import { type PaymentLinkRow, toPaymentLinkRow } from "@/lib/payment-link-rows";
-import { summariseLink, SUMMARY_REFUSALS } from "@/lib/payment-link-summary";
+import { customPricesOf, summariseLink, SUMMARY_REFUSALS } from "@/lib/payment-link-summary";
 import { recordStaffAction } from "./activity";
 import { getStaffDb } from "./db";
 import type { GrantedStaff } from "./staff-access";
@@ -96,14 +96,16 @@ export async function createPaymentLinkFor(input: CreatePaymentLinkInput): Promi
     interval: form.billingInterval,
     currency: form.currency,
     websiteKind: form.websiteKind,
-    buildDiscountCents: form.setupFeeDiscountCents ?? 0,
+    build:
+      form.dealType === "paid" && form.setupFeeListCents !== null && form.advanceCents !== null
+        ? { listCents: form.setupFeeListCents, discountCents: form.setupFeeDiscountCents ?? 0, advanceCents: form.advanceCents }
+        : null,
+    customPrices: customPricesOf(form),
     coupon: coupon === null || coupon.discount === null ? null : { discount: coupon.discount, discountMonths: coupon.discountMonths },
     provider: activeProviderName(),
   });
-  if (summary.kind === "refused") return refused(SUMMARY_REFUSALS[summary.reason], "couponId");
+  if (summary.kind === "refused") return refused(SUMMARY_REFUSALS[summary.reason], summary.reason === "coupon-with-custom-price" ? null : "couponId");
 
-  // A fully waived fee leaves nothing to take in advance, so it is a free deal.
-  const netFeeCents = form.setupFeeListCents === null ? 0 : form.setupFeeListCents - (form.setupFeeDiscountCents ?? 0);
   const token = newLinkToken();
   const { customer } = form;
   const link = await insertPaymentLink(db, {
@@ -126,13 +128,16 @@ export async function createPaymentLinkFor(input: CreatePaymentLinkInput): Promi
     currency: form.currency,
     services: [...form.services],
     billingInterval: form.billingInterval,
-    // Temporary mapping, plan 66 step 3 replaces this: a link with a fee is a paid deal whose advance is the whole net fee, one without is free.
-    dealType: netFeeCents > 0 ? "paid" : "free",
-    advanceCents: netFeeCents > 0 ? netFeeCents : null,
-    websiteKind: form.websiteKind ?? (form.services.includes("managed-website") ? "b2b" : null),
-    setupFeeListCents: netFeeCents > 0 ? form.setupFeeListCents : null,
-    setupFeeDiscountCents: netFeeCents > 0 ? form.setupFeeDiscountCents : null,
-    setupFeeNote: netFeeCents > 0 ? form.setupFeeNote : null,
+    dealType: form.dealType,
+    advanceCents: form.advanceCents,
+    websiteKind: form.websiteKind,
+    setupFeeListCents: form.setupFeeListCents,
+    setupFeeDiscountCents: form.setupFeeDiscountCents,
+    setupFeeNote: form.setupFeeNote,
+    websitePriceCents: form.websitePriceCents,
+    socialPriceCents: form.socialPriceCents,
+    adsPriceCents: form.adsPriceCents,
+    monitoringPriceCents: form.monitoringPriceCents,
     referralCodeId: coupon?.id ?? null,
     expiresAt: new Date(now.getTime() + PAYMENT_LINK_DAYS * DAY_MS),
     createdByStaffId: staff.user.id,
@@ -141,7 +146,17 @@ export async function createPaymentLinkFor(input: CreatePaymentLinkInput): Promi
     businessId,
     kind: "payment_link.created",
     summary: "Created a payment link",
-    data: { linkId: link.id, setupFeeListCents: form.setupFeeListCents, setupFeeDiscountCents: form.setupFeeDiscountCents },
+    data: {
+      linkId: link.id,
+      dealType: form.dealType,
+      setupFeeListCents: form.setupFeeListCents,
+      setupFeeDiscountCents: form.setupFeeDiscountCents,
+      advanceCents: form.advanceCents,
+      websitePriceCents: form.websitePriceCents,
+      socialPriceCents: form.socialPriceCents,
+      adsPriceCents: form.adsPriceCents,
+      monitoringPriceCents: form.monitoringPriceCents,
+    },
   });
   return { kind: "created", link, token };
 }

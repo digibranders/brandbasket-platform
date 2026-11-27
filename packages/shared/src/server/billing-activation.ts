@@ -5,6 +5,7 @@ import {
   bundledNetCents,
   findBundledAddOnsForSubscription,
   openMembershipForListingBusiness,
+  findPaymentLinkById,
   findSubscriptionById,
   markPaymentLinkPaid,
   recordPaymentAndActivate,
@@ -19,7 +20,9 @@ import {
   type Plan,
   type RecordedActivation,
   type ScopedTransaction,
+  upsertPriceOverride,
 } from "@brandbasket/db";
+import { linkCustomPrices } from "../lib/billing/deal";
 import { BUILD_FEE_ADD_ON } from "../lib/billing/first-payment";
 import type { WebsiteKind } from "../lib/billing/website-kind";
 import { accrueAffiliateEarning } from "./affiliate-accrual";
@@ -148,7 +151,16 @@ export async function activateFirstPayment(tx: ScopedTransaction, payment: First
   const activeBundle = await activateBundledAddOns(tx, { subscriptionId: payment.subscriptionId, now: payment.paidAt });
   if (offer !== null) await startBundledTrials(tx, { subscriptionId: payment.subscriptionId, trialEndsAt: offer.chargeAt, now: payment.paidAt });
   // Plan 65: the staff payment link this checkout came from is paid, in the same transaction as the payment.
-  if (opened?.paymentLinkId != null) await markPaymentLinkPaid(tx, { linkId: opened.paymentLinkId, subscriptionId: payment.subscriptionId, paidAt: payment.paidAt });
+  if (opened?.paymentLinkId != null) {
+    await markPaymentLinkPaid(tx, { linkId: opened.paymentLinkId, subscriptionId: payment.subscriptionId, paidAt: payment.paidAt });
+    // Plan 66: the link's custom prices outlive the checkout, so a later re-pricing from the catalogue can honour them.
+    const link = await findPaymentLinkById(tx, opened.paymentLinkId);
+    if (link !== null) {
+      for (const [addOn, netCents] of Object.entries(linkCustomPrices(link))) {
+        await upsertPriceOverride(tx, { businessId: payment.businessId, addOn, billingInterval: link.billingInterval === "year" ? "year" : "month", netCents, paymentLinkId: link.id });
+      }
+    }
+  }
   // A first-month payment does not use up one of a code's months: the provider's subscription has not started, and its first full
   // charge is still on the discounted plan, which is where the code's months are counted from (plan 63).
   const settlement = await settleDiscountAfterPayment(tx, {

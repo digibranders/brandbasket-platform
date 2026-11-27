@@ -102,7 +102,10 @@ export default async function PaymentLinksPage({ searchParams }: { readonly sear
                   </td>
                   <td className={TD}>
                     {row.services}
-                    <span className="block text-xs text-ink-2">{row.interval === "year" ? "Yearly" : "Monthly"}</span>
+                    <span className="block text-xs text-ink-2">
+                      {row.interval === "year" ? "Yearly" : "Monthly"}, {row.deal}
+                      {row.balance === null ? "" : `, balance ${row.balance} at go-live`}
+                    </span>
                   </td>
                   <td className={TD_NUM}>{row.payToday ?? "Not priced"}</td>
                   <td className={TD}>

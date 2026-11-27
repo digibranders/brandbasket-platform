@@ -100,3 +100,18 @@ export function dealLines(input: DealLinesInput): DealLine[] {
     isCustom: input.customPrices[line.addOn] !== undefined,
   }));
 }
+
+/** The custom recurring prices a link row holds (null columns are the list price), as the map the deal rules read. */
+export function linkCustomPrices(link: {
+  readonly websitePriceCents: number | null;
+  readonly socialPriceCents: number | null;
+  readonly adsPriceCents: number | null;
+  readonly monitoringPriceCents: number | null;
+}): DealCustomPrices {
+  return {
+    ...(link.websitePriceCents === null ? {} : { "managed-website": link.websitePriceCents }),
+    ...(link.socialPriceCents === null ? {} : { "social-media": link.socialPriceCents }),
+    ...(link.adsPriceCents === null ? {} : { "paid-ads": link.adsPriceCents }),
+    ...(link.monitoringPriceCents === null ? {} : { "expert-monitoring": link.monitoringPriceCents }),
+  };
+}

@@ -15,7 +15,7 @@ const NOBODY = { leadId: null, businessId: null } as const;
 
 function form(extra: Record<string, string> = {}): FormData {
   const data = new FormData();
-  const values: Record<string, string> = { countryCode: "IN", websiteKind: "b2b", billingInterval: "month", discountKind: "none", businessName: "Rao Dental", ...extra };
+  const values: Record<string, string> = { countryCode: "IN", websiteKind: "b2b", billingInterval: "month", dealType: "paid", buildPrice: "35000", discountKind: "none", advanceKind: "amount", advanceValue: "10000", businessName: "Rao Dental", ...extra };
   for (const [name, value] of Object.entries(values)) data.set(name, value);
   data.append("service", "managed-website");
   return data;
@@ -48,7 +48,7 @@ describe("createPaymentLinkAction", () => {
       link: { businessName: "Rao Dental", contactName: null, email: null, expiresAt: new Date("2026-12-04T10:00:00.000Z") },
     } as never);
     const state = await createPaymentLinkAction({ leadId: LEAD, businessId: null }, { status: "idle" }, form());
-    expect(createPaymentLinkFor).toHaveBeenCalledWith(expect.objectContaining({ leadId: LEAD, businessId: null, staff: STAFF, form: expect.objectContaining({ websiteKind: "b2b", setupFeeListCents: 3_500_000 }) }));
+    expect(createPaymentLinkFor).toHaveBeenCalledWith(expect.objectContaining({ leadId: LEAD, businessId: null, staff: STAFF, form: expect.objectContaining({ websiteKind: "b2b", setupFeeListCents: 3_500_000, advanceCents: 1_000_000, dealType: "paid" }) }));
     expect(state).toEqual({ status: "created", address: `https://app.brandbasket.in/pay/${"T".repeat(43)}`, customer: "Rao Dental", expiresAt: "2026-12-04T10:00:00.000Z" });
   });
 

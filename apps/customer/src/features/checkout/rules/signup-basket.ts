@@ -148,7 +148,40 @@ export interface BasketOptions {
   /** The kind of website chosen. B2B when absent. */
   readonly kind?: WebsiteKind;
   /** A staff payment link's discount on the build fee and the note beside it. Absent for the public checkout, which charges the list fee. */
-  readonly deal?: { readonly discountCents: number; readonly note: string | null } | null;
+  readonly deal?: {
+    readonly discountCents: number;
+    readonly note: string | null;
+    /** The finalised build price of a paid link (plan 66), when it is not the catalogue's. */
+    readonly listCents?: number;
+  } | null;
+}
+
+/**
+ * The table with a staff deal's custom prices in it (plan 66): each is for the deal's own period, so a monthly deal replaces the
+ * month's price (the first month too, unless the service is on the first-month offer) and a yearly one the year's, with no annual
+ * saving beside it. Browser-safe and pure; a service without a custom price is left as it was.
+ */
+export function withCustomPrices(table: SignupBasketTable, customPrices: Readonly<Partial<Record<MonthlyAddOnId, number>>>, interval: BillingInterval): SignupBasketTable {
+  const priced = <T extends { readonly monthlyCents: number; readonly yearlyListCents: number; readonly yearlyCents: number }>(service: T, custom: number): T =>
+    interval === "year" ? { ...service, yearlyListCents: custom, yearlyCents: custom } : { ...service, monthlyCents: custom };
+  return {
+    ...table,
+    services: table.services.map((service) => {
+      const custom = customPrices[service.id];
+      if (custom === undefined || service.id === "managed-website") return service;
+      return { ...priced(service, custom), firstMonthCents: service.onOffer || interval === "year" ? service.firstMonthCents : custom };
+    }),
+    website: {
+      ...table.website,
+      kinds: Object.fromEntries(
+        WEBSITE_KINDS.map((kind) => {
+          const custom = customPrices["managed-website"];
+          const prices = table.website.kinds[kind];
+          return [kind, custom === undefined ? prices : { ...priced(prices, custom), feeCents: prices.feeCents }] as const;
+        }),
+      ) as Record<WebsiteKind, WebsiteKindPrices>,
+    },
+  };
 }
 
 /** The summary for the services ticked and how often they are paid: the rows, the amount due today and what follows. */
@@ -163,7 +196,7 @@ export function basketView(table: SignupBasketTable, ticked: readonly string[], 
   const hasWebsite = services.includes("managed-website");
   // The build fee (plan 65): owed on a first purchase of the website, at its list price less the deal's discount, if any.
   const feeOwed = hasWebsite && table.website.feeOwed;
-  const feeCents = feeOwed ? Math.max(0, web.feeCents - (options.deal?.discountCents ?? 0)) : 0;
+  const feeCents = feeOwed ? Math.max(0, (options.deal?.listCents ?? web.feeCents) - (options.deal?.discountCents ?? 0)) : 0;
   // A monthly deal that pays something for the build leaves the website's own first month to the first monthly charge.
   const monthlyDeal = feeOwed && feeCents > 0 && !yearly;
   const monthlyOf = (service: SignupBasketService): number => (service.id === "managed-website" ? web.monthlyCents : service.monthlyCents);
@@ -179,7 +212,7 @@ export function basketView(table: SignupBasketTable, ticked: readonly string[], 
           { key: "maintenance", label: `Maintenance${months}`, note: null, amount: list, tone: "plain" },
         ];
       }
-      const build = buildRows({ kind, fee: { listCents: web.feeCents, discountCents: options.deal?.discountCents ?? 0, netCents: feeCents }, note: options.deal?.note ?? null }, table.currency);
+      const build = buildRows({ kind, fee: { listCents: options.deal?.listCents ?? web.feeCents, discountCents: options.deal?.discountCents ?? 0, netCents: feeCents }, note: options.deal?.note ?? null }, table.currency);
       return [
         ...build.map((row): BasketRow => ({ key: row.key, label: row.label, note: null, amount: row.amount, tone: row.tone })),
         monthlyDeal
@@ -196,8 +229,8 @@ export function basketView(table: SignupBasketTable, ticked: readonly string[], 
     ? sum(chosen.map(yearlyOf))
     : sum(chosen.map((service) => (service.id === "managed-website" ? (monthlyDeal ? 0 : web.monthlyCents) : service.firstMonthCents)));
   const dueCents = servicesDueCents + feeCents;
-  if (yearly && chosen.length > 0) {
-    const savingCents = sum(chosen.map(yearlyListOf)) - servicesDueCents;
+  const savingCents = sum(chosen.map(yearlyListOf)) - servicesDueCents;
+  if (yearly && chosen.length > 0 && savingCents > 0) {
     rows.push({ key: "annual", label: `Paid yearly, ${percentOf(ANNUAL_DISCOUNT_BASIS_POINTS)}% off`, note: null, amount: `-${money(savingCents)}`, tone: "save" });
   }
 
