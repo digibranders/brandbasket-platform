@@ -9,6 +9,8 @@ import { canAddOn, earliestDay, isTime, latestDay, MAX_CAPTION_LENGTH, momentHas
 import { postPictureSrc } from "@/legacy-social/lib/social/post-picture";
 import { ChannelLogo } from "./channel-logo";
 import { SMALL_DARK, SMALL_SOFT } from "./small-buttons";
+import { DatePicker } from "./date-picker";
+import { TimePicker } from "./time-picker";
 import { useScrollLock } from "./use-scroll-lock";
 
 interface NewPostDialogProps {
@@ -250,21 +252,13 @@ export function NewPostDialog({ day, onDayChange, time: startTime, today, channe
                   <label htmlFor="new-post-day" className="text-xs font-semibold text-ink-2">
                     Day
                   </label>
-                  <input
-                    id="new-post-day"
-                    type="date"
-                    value={day}
-                    min={post !== undefined && post.day < earliestDay(today) ? post.day : earliestDay(today)}
-                    max={latestDay(today)}
-                    onChange={(event) => event.target.value !== "" && onDayChange(event.target.value)}
-                    className={cn(FIELD, "h-10 w-40")}
-                  />
+                  <DatePicker id="new-post-day" value={day} min={post !== undefined && post.day < earliestDay(today) ? post.day : earliestDay(today)} max={latestDay(today)} today={today} onChange={onDayChange} className="w-44" />
                 </div>
                 <div className="grid gap-1.5">
                   <label htmlFor="new-post-time" className="text-xs font-semibold text-ink-2">
                     Time
                   </label>
-                  <input id="new-post-time" type="time" value={time} onChange={(event) => setTime(event.target.value)} className={cn(FIELD, "h-10 w-32")} />
+                  <TimePicker id="new-post-time" value={time} onChange={setTime} className="w-36" />
                 </div>
               </div>
               <p className="mt-1.5 text-xs text-ink-3">India time. It goes out within a few minutes of the time you choose.</p>
