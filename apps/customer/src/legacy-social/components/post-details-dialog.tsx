@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useTransition, type FormEvent, type ReactElement } from "react";
 import { changeWrittenCaptionAction, changeWrittenPostTimeAction } from "@/legacy-social/actions";
 import { ASK_FOR_A_CHANGE_PATH } from "@/legacy-social/shims";
-import { CHANNEL_PLATFORMS, dayLabel, PLATFORM_NAMES, postStatus, time12, type CalendarPost } from "@/legacy-social/lib/social/auto";
+import { CHANNEL_PLATFORMS, dayLabel, PLATFORM_NAMES, postStatus, time12, type CalendarPost, type ChannelPlatform } from "@/legacy-social/lib/social/auto";
 import { localDateIn } from "@brandbasket/shared/lib/calendar/local-date";
 import { BRAND_TIME_ZONE } from "@/legacy-social/shims";
 import { canAddOn, earliestDay, isTime, latestDay, momentHasPassed } from "@/legacy-social/lib/social/new-post";
@@ -17,6 +17,8 @@ import { useScrollLock } from "./use-scroll-lock";
 
 interface PostDetailsDialogProps {
   readonly post: CalendarPost;
+  /** The networks the calendar is showing. Alone, a network gets its own view of the post: its own picture, its own words and its own account, nothing of the others. */
+  readonly shown?: ReadonlySet<ChannelPlatform>;
   readonly onClose: () => void;
 }
 
@@ -195,7 +197,13 @@ const safeLink = (value: string | null): string | null => (value !== null && val
  * A post the customer cannot change, opened to read: the day and time, how it is doing on each account, the picture and the
  * words. It is a native dialog, so focus stays inside it and Escape closes it.
  */
-export function PostDetailsDialog({ post, onClose }: PostDetailsDialogProps): ReactElement {
+export function PostDetailsDialog({ post, shown, onClose }: PostDetailsDialogProps): ReactElement {
+  // On one network's calendar the post is that network's post: its own picture and words when it has them, the main ones when it has none, and only its own account.
+  const only: ChannelPlatform | null = shown !== undefined && shown.size === 1 ? ([...shown][0] ?? null) : null;
+  const seen = (platform: ChannelPlatform): boolean => shown === undefined || shown.has(platform);
+  const mainPicture = only === null ? post.imageUrl : (post.variantImages?.[only] ?? post.imageUrl);
+  const mainCaption = only === null ? post.caption : (post.variants?.[only] ?? post.caption);
+  const accounts = post.channels.filter((channel) => seen(channel.platform));
   const dialog = useRef<HTMLDialogElement>(null);
   useScrollLock();
   useEffect(() => {
@@ -245,14 +253,16 @@ export function PostDetailsDialog({ post, onClose }: PostDetailsDialogProps): Re
               </li>
             ))}
           </ol>
-        ) : post.imageUrl === undefined ? null : (
+        ) : mainPicture === undefined ? null : (
           // The post's picture, served by social-auto, which Next's image optimiser cannot reach.
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={postPictureSrc(post.imageUrl)} alt="The picture of this post" className="size-40 rounded-xl object-cover" />
+          <img src={postPictureSrc(mainPicture)} alt="The picture of this post" className="size-40 rounded-xl object-cover" />
         )}
 
-        <p className="whitespace-pre-wrap break-words text-[0.875rem] leading-relaxed text-ink">{post.caption}</p>
+        <p className="whitespace-pre-wrap break-words text-[0.875rem] leading-relaxed text-ink">{mainCaption}</p>
         {CHANNEL_PLATFORMS.flatMap((platform) => {
+          // A network's own picture and words are shown beside the main ones only when the calendar shows more than that network.
+          if (only !== null || !seen(platform)) return [];
           const own = post.variants?.[platform];
           const ownPicture = post.variantImages?.[platform];
           // A network that has its own caption or its own picture (LinkedIn's is wide) is shown with both: the main picture and words stand only for the networks with none of their own.
@@ -272,9 +282,9 @@ export function PostDetailsDialog({ post, onClose }: PostDetailsDialogProps): Re
           ];
         })}
 
-        {post.channels.length === 0 ? null : (
+        {accounts.length === 0 ? null : (
           <ul className="grid gap-2" aria-label="Where this post goes">
-            {post.channels.map((channel) => {
+            {accounts.map((channel) => {
               const status = postStatus({ ...post, channels: [channel] }, new Set([channel.platform]));
               const link = safeLink(channel.permalink);
               return (

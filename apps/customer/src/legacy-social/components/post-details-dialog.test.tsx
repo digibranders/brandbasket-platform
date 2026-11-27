@@ -53,4 +53,50 @@ describe("PostDetailsDialog", () => {
     expect(screen.getByText("LinkedIn picture")).toBeTruthy();
     expect(screen.getAllByRole("img", { hidden: true }).filter((img) => img.getAttribute("alt")?.startsWith("The ") === true)).toHaveLength(2);
   });
+
+  const both: CalendarPost = {
+    ...base,
+    caption: "Instagram words.",
+    imageUrl: "https://x.example/posts/ig.png",
+    variants: { linkedin: "LinkedIn words." },
+    variantImages: { linkedin: "https://x.example/posts/li.png" },
+    channels: [
+      { platform: "instagram", account: "alsonotify", state: "scheduled", permalink: null },
+      { platform: "linkedin", account: "Steff Jay", state: "scheduled", permalink: null },
+    ],
+  } as CalendarPost;
+  const srcs = (): string[] => screen.getAllByRole("img", { hidden: true }).map((img) => img.getAttribute("src") ?? "").filter((src) => src.includes("posts"));
+
+  it("on LinkedIn's own calendar shows LinkedIn's picture, LinkedIn's words and LinkedIn's account, and nothing of Instagram", () => {
+    render(<PostDetailsDialog post={both} shown={new Set(["linkedin"])} onClose={() => undefined} />);
+    expect(srcs()).toHaveLength(1);
+    expect(srcs()[0]).toContain(encodeURIComponent("https://x.example/posts/li.png"));
+    expect(screen.getByText("LinkedIn words.")).toBeTruthy();
+    expect(screen.queryByText("Instagram words.")).toBeNull();
+    expect(screen.queryByText("LinkedIn picture and caption")).toBeNull();
+    expect(screen.getByText("Steff Jay")).toBeTruthy();
+    expect(screen.queryByText("alsonotify")).toBeNull();
+  });
+
+  it("on Instagram's own calendar shows the main picture and words, and not LinkedIn's", () => {
+    render(<PostDetailsDialog post={both} shown={new Set(["instagram"])} onClose={() => undefined} />);
+    expect(srcs()).toHaveLength(1);
+    expect(srcs()[0]).toContain(encodeURIComponent("https://x.example/posts/ig.png"));
+    expect(screen.getByText("Instagram words.")).toBeTruthy();
+    expect(screen.queryByText("LinkedIn words.")).toBeNull();
+    expect(screen.queryByText("Steff Jay")).toBeNull();
+  });
+
+  it("on a network with no picture or words of its own shows the main ones", () => {
+    render(<PostDetailsDialog post={both} shown={new Set(["facebook"])} onClose={() => undefined} />);
+    expect(srcs()[0]).toContain(encodeURIComponent("https://x.example/posts/ig.png"));
+    expect(screen.getByText("Instagram words.")).toBeTruthy();
+  });
+
+  it("with every network shown, keeps showing each network's own picture and words beside the main ones", () => {
+    render(<PostDetailsDialog post={both} shown={new Set(["instagram", "facebook", "linkedin", "google"])} onClose={() => undefined} />);
+    expect(srcs()).toHaveLength(2);
+    expect(screen.getByText("Instagram words.")).toBeTruthy();
+    expect(screen.getByText("LinkedIn words.")).toBeTruthy();
+  });
 });

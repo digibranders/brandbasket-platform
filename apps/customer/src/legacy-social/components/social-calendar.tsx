@@ -500,7 +500,7 @@ export function SocialCalendar({ posts, today, lede = "", businessName, channels
         </p>
       )}
       {adding === null || !canAdd ? null : <NewPostDialog day={adding.day} onDayChange={(day) => setAdding({ day, time: adding.time })} time={adding.time} today={today} channels={channels} onClose={() => setAdding(null)} />}
-      {reading === null ? null : <PostDetailsDialog key={reading.id} post={reading} onClose={() => setReading(null)} />}
+      {reading === null ? null : <PostDetailsDialog key={reading.id} post={reading} shown={shown} onClose={() => setReading(null)} />}
       {moveError === null ? null : (
         <p role="alert" className="text-[0.84375rem] font-semibold text-error">
           {moveError}
