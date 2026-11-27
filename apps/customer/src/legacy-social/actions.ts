@@ -236,6 +236,9 @@ async function moveToMoment(formData: FormData, written: boolean): Promise<NewPo
   const postId = formData.get("postId");
   const day = formData.get("day");
   const time = formData.get("time");
+  // For a post we wrote: the one network whose time is changed, or none for every network of the post.
+  const asked = formData.get("network");
+  const network = written && typeof asked === "string" && (CHANNEL_PLATFORMS as readonly string[]).includes(asked) ? (asked as ChannelPlatform) : undefined;
   if (typeof postId !== "string" || !(written ? isWrittenPostId(postId) : isChangeablePostId(postId))) return { status: "error", message: "That post could not be found. Reload the page." };
   const today = localDateIn(BRAND_TIME_ZONE, new Date());
   if (typeof day !== "string" || !canAddOn(day, today)) return { status: "error", message: "Choose a day from today to 89 days ahead." };
@@ -243,7 +246,7 @@ async function moveToMoment(formData: FormData, written: boolean): Promise<NewPo
   try {
     const settings = socialAutoSettings();
     if (settings === null) return { status: "error", message: "Posting is not available just now. Try again later." };
-    await movePost(settings, (await brandOf(customer)).externalId, postId, { day, time });
+    await movePost(settings, (await brandOf(customer)).externalId, postId, { day, time, ...(network === undefined ? {} : { network }) });
   } catch (error) {
     unstable_rethrow(error);
     const refused = refusalState(error);
@@ -427,7 +430,7 @@ export async function changeWrittenCaptionAction(formData: FormData): Promise<Ne
     if (settings === null) return { status: "error", message: "Posting is not available just now. Try again later." };
     const brand = await brandOf(customer);
     const { posters } = await loadPosters(settings, brand.externalId, "approved");
-    const poster = posters.find((one) => one.network === parsed.data.network && `${one.id.split(".")[0]}-${one.postId}` === parsed.data.postId);
+    const poster = posters.find((one) => one.network === parsed.data.network && `${one.id.split(".")[0]}-${one.postId}` === parsed.data.postId.split("~")[0]);
     if (poster === undefined) return { status: "error", message: "That post could not be found. Reload the page." };
     const answer = await decidePoster(settings, brand.externalId, { action: "change-words", id: poster.id, caption: parsed.data.caption }, actorOf(customer.tenant));
     revalidatePath("/social");

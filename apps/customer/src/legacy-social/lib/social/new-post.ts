@@ -63,7 +63,7 @@ export interface NewPostInput {
 export const isChangeablePostId = (value: unknown): value is string => typeof value === "string" && /^manual-[0-9a-f]{12}$/.test(value);
 
 /** The id of a post we wrote and released for the business: letters, digits and dashes, such as `w01-d1`. social-auto decides whether it can be moved. */
-export const isWrittenPostId = (value: unknown): value is string => typeof value === "string" && /^[A-Za-z0-9][A-Za-z0-9_-]{0,79}$/.test(value);
+export const isWrittenPostId = (value: unknown): value is string => typeof value === "string" && /^[A-Za-z0-9][A-Za-z0-9_-]{0,79}(~(instagram|facebook|linkedin|google))?$/.test(value);
 
 export interface NewPost {
   readonly day: string;
