@@ -14,6 +14,11 @@ function whole(value: number, what: string, max: number): void {
   if (!Number.isSafeInteger(value) || value < 0 || value > max) throw new RangeError(`${what} must be a whole number from 0 to ${max}, received ${value}`);
 }
 
+/** A share of an amount in basis points, rounded down to a whole rupee or dollar. */
+export function wholeUnitShareCents(cents: number, basisPoints: number): number {
+  return Math.floor((cents * basisPoints) / WHOLE / MINOR) * MINOR;
+}
+
 /** What a deal takes off a build fee, in minor units: from nothing to the whole fee. A percentage rounds down to a whole rupee or dollar. */
 export function buildDiscountCents(listCents: number, input: BuildDiscountInput): number {
   whole(listCents, "A build fee", Number.MAX_SAFE_INTEGER);
@@ -23,7 +28,7 @@ export function buildDiscountCents(listCents: number, input: BuildDiscountInput)
       return input.cents;
     case "percent":
       whole(input.basisPoints, "A build discount percentage", WHOLE);
-      return Math.floor((listCents * input.basisPoints) / WHOLE / MINOR) * MINOR;
+      return wholeUnitShareCents(listCents, input.basisPoints);
     case "final":
       whole(input.cents, "An agreed build price", listCents);
       return listCents - input.cents;

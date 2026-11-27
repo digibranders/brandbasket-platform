@@ -1,4 +1,6 @@
 import type { BillingInterval } from "@brandbasket/db";
+// Subpath, not the package index: this module reaches client components.
+import { chargedAmountCents } from "@brandbasket/billing/tax";
 import type { MoneyCurrency } from "../money";
 import { type WebsiteKind } from "./website-kind";
 import { addOnById, addOnPrice, cyclePriceCents, MONITORING_ID, MONTHLY_ADD_ON_IDS, type AddOnPrice, type MonthlyAddOnId, type PlanAddOnId } from "./add-ons";
@@ -180,4 +182,25 @@ export function soldPackageBasisPoints(listCents: number, offerCents: number): n
  */
 export function packageOfferNote(basisPoints: number): string {
   return `Package offer, ${percentOf(basisPoints)}% off`;
+}
+
+/** A per-service price that replaces the catalogue's, in minor units for the billing period, GST included. */
+export type PriceOverrides = Partial<Record<MonthlyAddOnId, number>>;
+
+/**
+ * `packageLines` with a custom price applied per service (a staff deal): the override becomes the line's list price, with no
+ * discount. The one helper every re-pricing site calls, so a custom price is never lost. An override for a service not in the
+ * basket is an error, not ignored.
+ */
+export function priceLinesFor(input: PackageInput, currency: MoneyCurrency, interval: BillingInterval, kind: WebsiteKind, overrides: PriceOverrides): PackageLine[] {
+  const lines = packageLines(input, currency, interval, kind);
+  for (const [id, cents] of Object.entries(overrides)) {
+    if (cents === undefined) continue;
+    if (!lines.some((line) => line.addOn === id)) throw new RangeError(`A custom price was given for ${id}, which is not in the basket`);
+    if (!Number.isSafeInteger(cents) || cents <= 0) throw new RangeError(`A custom price for ${id} must be whole, positive minor units, received ${cents}`);
+  }
+  return lines.map((line) => {
+    const custom = overrides[line.addOn];
+    return custom === undefined ? line : { ...line, listCents: custom, discountCents: 0, offerCents: 0, netCents: custom, chargedCents: chargedAmountCents(custom, 0) };
+  });
 }
