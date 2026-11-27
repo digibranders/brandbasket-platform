@@ -22,4 +22,13 @@ describe("withScheduledMoments", () => {
     const original = poster({});
     expect(withScheduledMoments([original], [])[0]).toBe(original);
   });
+
+  it("gives a network with a time of its own that time, and the others the post's", () => {
+    const list = withScheduledMoments(
+      [poster({ id: "v-ig", network: "instagram" } as Partial<Poster>), poster({ id: "v-li", network: "linkedin" } as Partial<Poster>)],
+      [scheduled("brandbasket-abc-w01-d1", "2026-11-30T10:00:00+05:30"), scheduled("brandbasket-abc-w01-d1~linkedin", "2026-12-01T16:30:00+05:30")],
+    );
+    expect([list[0]?.date, list[0]?.time]).toEqual(["2026-11-30", "10:00"]);
+    expect([list[1]?.date, list[1]?.time]).toEqual(["2026-12-01", "16:30"]);
+  });
 });

@@ -293,9 +293,9 @@ export async function sendPostNow(settings: SocialAutoSettings, businessId: stri
 }
 
 /** Moves a post the business made to another day and time, leaving everything else as it is. */
-export async function movePost(settings: SocialAutoSettings, businessId: string, postId: string, to: { readonly day: string; readonly time: string }, send: typeof fetch = fetch): Promise<AutoPost> {
+export async function movePost(settings: SocialAutoSettings, businessId: string, postId: string, to: { readonly day: string; readonly time: string; /** Only this network's time changes (the post is then two posts, one at each time); left out, every network of the post moves. */ readonly network?: ChannelPlatform }, send: typeof fetch = fetch): Promise<AutoPost> {
   const query = new URLSearchParams({ externalId: businessId, postId });
-  const answer = await call(settings, `/api/v1/posts?${query}`, { method: "PATCH", body: { day: to.day, time: to.time } }, send);
+  const answer = await call(settings, `/api/v1/posts?${query}`, { method: "PATCH", body: { day: to.day, time: to.time, ...(to.network === undefined ? {} : { network: to.network }) } }, send);
   if (answer.status !== 200) throw refusal(answer, "the move");
   const moved = readPosts({ posts: [(answer.body as { post?: unknown } | null)?.post] })[0];
   if (moved === undefined) throw new SocialAutoError("social-auto answered with a post that could not be read");

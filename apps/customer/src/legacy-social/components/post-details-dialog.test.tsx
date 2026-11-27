@@ -4,7 +4,8 @@ import { viewForChannels, type CalendarPost } from "@/legacy-social/lib/social/a
 
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
 const captionAction = vi.hoisted(() => vi.fn());
-vi.mock("@/legacy-social/actions", () => ({ changeWrittenCaptionAction: captionAction, changeWrittenPostTimeAction: vi.fn() }));
+const timeAction = vi.hoisted(() => vi.fn());
+vi.mock("@/legacy-social/actions", () => ({ changeWrittenCaptionAction: captionAction, changeWrittenPostTimeAction: timeAction }));
 
 import { PostDetailsDialog } from "./post-details-dialog";
 
@@ -130,6 +131,51 @@ describe("PostDetailsDialog", () => {
       fireEvent.click(screen.getByRole("button", { name: "Save caption" }));
       await waitFor(() => expect(captionAction).toHaveBeenCalledTimes(1));
       expect((captionAction.mock.calls[0]?.[0] as FormData).get("network")).toBe("linkedin");
+    });
+  });
+
+  describe("changing the time", () => {
+    const future: CalendarPost = { ...both, day: "2099-01-05" } as CalendarPost;
+    const save = async (): Promise<FormData> => {
+      // A day the form allows: from today to 89 days ahead.
+      const soon = new Date(Date.now() + 10 * 86_400_000).toISOString().slice(0, 10);
+      fireEvent.change(screen.getByLabelText("Day"), { target: { value: soon } });
+      fireEvent.change(screen.getByLabelText("Time"), { target: { value: "16:30" } });
+      fireEvent.click(screen.getByRole("button", { name: "Save time" }));
+      await waitFor(() => expect(timeAction).toHaveBeenCalledTimes(1));
+      return timeAction.mock.calls[0]?.[0] as FormData;
+    };
+
+    it("moves every channel of the post unless one channel is chosen", async () => {
+      timeAction.mockReset();
+      timeAction.mockResolvedValue({ status: "saved" });
+      render(<PostDetailsDialog post={future} onClose={() => undefined} />);
+      fireEvent.click(screen.getByRole("button", { name: /Change time/ }));
+      expect((screen.getByLabelText("Change the time for") as HTMLSelectElement).value).toBe("all");
+      const form = await save();
+      expect([form.get("postId"), form.get("time"), form.get("network")]).toEqual([future.id, "16:30", null]);
+      expect(String(form.get("day"))).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    });
+
+    it("moves only the chosen channel, which then goes out at its own time", async () => {
+      timeAction.mockReset();
+      timeAction.mockResolvedValue({ status: "saved" });
+      render(<PostDetailsDialog post={future} onClose={() => undefined} />);
+      fireEvent.click(screen.getByRole("button", { name: /Change time/ }));
+      fireEvent.change(screen.getByLabelText("Change the time for"), { target: { value: "linkedin" } });
+      expect(screen.getByText(/Only LinkedIn goes out at this time/)).toBeTruthy();
+      const form = await save();
+      expect(form.get("network")).toBe("linkedin");
+    });
+
+    it("on one channel's own post (its calendar, or its part of a post) is that channel's time, with no choice", async () => {
+      timeAction.mockReset();
+      timeAction.mockResolvedValue({ status: "saved" });
+      render(<PostDetailsDialog post={viewForChannels(future, new Set(["linkedin"]))} shown={new Set(["linkedin"])} onClose={() => undefined} />);
+      fireEvent.click(screen.getByRole("button", { name: /Change time/ }));
+      expect(screen.queryByLabelText("Change the time for")).toBeNull();
+      const form = await save();
+      expect(form.get("network")).toBe("linkedin");
     });
   });
 });

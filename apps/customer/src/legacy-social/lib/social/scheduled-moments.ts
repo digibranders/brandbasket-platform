@@ -14,8 +14,9 @@ export function withScheduledMoments(posters: readonly Poster[], scheduled: read
   }
   if (moments.size === 0) return [...posters];
   return posters.map((poster) => {
-    // A scheduled post is named `<workspace brand>-<post id>`; the post id is what the picture knows.
-    const found = [...moments].find(([id]) => id.endsWith(`-${poster.postId}`));
+    // A scheduled post is named `<workspace brand>-<post id>`; the post id is what the picture knows. A network with a time of its own is a post of its own,
+    // `<workspace brand>-<post id>~<network>`: that is the time of the picture of that network, the post's own is for the networks still on it.
+    const found = [...moments].find(([id]) => id.endsWith(`-${poster.postId}~${poster.network}`)) ?? [...moments].find(([id]) => id.endsWith(`-${poster.postId}`));
     if (found === undefined) return poster;
     const [, moment] = found;
     return poster.date === moment.day && poster.time === moment.time ? poster : { ...poster, date: moment.day, time: moment.time };

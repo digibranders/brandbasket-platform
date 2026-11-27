@@ -48,6 +48,10 @@ function TimePanel({ post, onClose }: { readonly post: CalendarPost; readonly on
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const today = localDateIn(BRAND_TIME_ZONE, new Date());
+  // A post that goes to several networks can be moved as a whole, or one network at a time (that network is then sent at its own time and the others at the post's).
+  // What shows one network's post (a calendar of one network, or a network's own part of a post) is that network's time.
+  const platforms = [...new Set(post.channels.map((channel) => channel.platform))];
+  const [network, setNetwork] = useState<"all" | ChannelPlatform>(platforms.length === 1 && platforms[0] !== undefined ? platforms[0] : "all");
 
   const submit = (event: FormEvent): void => {
     event.preventDefault();
@@ -61,6 +65,7 @@ function TimePanel({ post, onClose }: { readonly post: CalendarPost; readonly on
         form.set("postId", post.id);
         form.set("day", day);
         form.set("time", time);
+        if (network !== "all") form.set("network", network);
         const result = await changeWrittenPostTimeAction(form);
         if (result.status === "error") return setError(result.message);
         router.refresh();
@@ -73,6 +78,27 @@ function TimePanel({ post, onClose }: { readonly post: CalendarPost; readonly on
 
   return (
     <form onSubmit={submit} noValidate className="grid gap-3 rounded-xl bg-sunken p-3">
+      {platforms.length > 1 ? (
+        <div className="grid gap-1">
+          <label htmlFor="written-post-time-network" className="text-xs font-semibold text-ink-2">
+            Change the time for
+          </label>
+          <select
+            id="written-post-time-network"
+            value={network}
+            onChange={(event) => setNetwork(platforms.find((platform) => platform === event.target.value) ?? "all")}
+            className={FIELD}
+          >
+            <option value="all">All channels</option>
+            {platforms.map((platform) => (
+              <option key={platform} value={platform}>
+                {PLATFORM_NAMES[platform]} only
+              </option>
+            ))}
+          </select>
+          {network === "all" ? null : <p className="text-xs text-ink-3">Only {PLATFORM_NAMES[network]} goes out at this time. The other channels keep theirs.</p>}
+        </div>
+      ) : null}
       <div className="flex flex-wrap gap-3">
         <div className="grid gap-1">
           <label htmlFor="written-post-day" className="text-xs font-semibold text-ink-2">
