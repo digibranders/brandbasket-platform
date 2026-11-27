@@ -4,6 +4,7 @@ import type { Database } from "../client";
 import type { ScopedTransaction } from "../scope";
 import { bundledNetCents, findLiveBundledAddOns, insertBundledAddOns, removeBundledAddOnsOf, type NewBundledAddOn } from "./bundled-add-ons";
 import { markLeadPaidForBusiness } from "./leads";
+import { findDealStanding } from "./payment-links";
 import { isUnappliedReason } from "../unapplied-reasons";
 import { isUuid } from "./tenant";
 import {
@@ -1669,6 +1670,12 @@ export interface BillingState {
   readonly plan: Plan | null;
   /** The services billed inside the subscription (`pending` or `active`): what decides whether the business has a website. */
   readonly addOns: readonly BundledAddOn[];
+  /**
+   * Plan 66: the business's deal whose advance is paid and whose plans are not (the site is being built, or its balance is due), or
+   * null. `hasEverPaid` is not touched by it: an advance is a one-time charge, not a subscription.
+   */
+  readonly dealState: "building" | "balance_due" | null;
+  readonly dealLinkId: string | null;
 }
 
 /**
@@ -1691,6 +1698,7 @@ export async function findBillingState(db: Runner, businessId: string): Promise<
   const everPaid = await hasEverPaid(db, businessId);
   const paymentUnderReview = await hasPaymentUnderReview(db, businessId);
   const addOns = await findLiveBundledAddOns(db, businessId);
+  const deal = await findDealStanding(db, businessId);
   const billed = subscription === null ? null : await findPlanById(db, subscription.planId);
   // A move up that has been paid for is Premium from that moment, though the provider bills the old plan until the
   // renewal: the customer is shown, and gets, what they paid for.
@@ -1718,6 +1726,8 @@ export async function findBillingState(db: Runner, businessId: string): Promise<
     paymentUnderReview,
     plan,
     addOns,
+    dealState: deal?.dealState ?? null,
+    dealLinkId: deal?.dealLinkId ?? null,
   };
 }
 

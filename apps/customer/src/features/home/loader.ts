@@ -94,7 +94,8 @@ export function loadHomeState(customer: CustomerContext, now: Date): Promise<Loa
     const missedKickoffAt = booking === null && services.includes("website") && billing.status === "paid" ? await readMissedKickoffAt(customer) : null;
     const derived = deriveClientHomeState({
       now,
-      billing: { status: billing.status, paymentUnderReview: billing.paymentUnderReview },
+      // plan 66 step 4b decides this: until then a building business reads as unpaid on Home.
+      billing: { status: billing.status === "building" ? "unpaid" : billing.status, paymentUnderReview: billing.paymentUnderReview },
       services,
       kickoff: booking === null ? null : { startsAt: booking.startsAt, endsAt: booking.endsAt, heldAt: booking.heldAt },
       missedKickoffAt,

@@ -1,5 +1,6 @@
 import type { CurrentPaymentMethod, Subscription } from "@brandbasket/db";
 import { paymentLabel } from "@brandbasket/shared/lib/billing/payment-method";
+import type { CustomerBilling } from "@brandbasket/shared/lib/billing/status";
 
 /**
  * What Billing's Payment method section says, worked out from the newest payment and the plan. Plain data and no
@@ -15,7 +16,7 @@ export type PaymentMethodView =
 
 /** The part of the plan's billing state that decides whether the next payment is taken by itself. */
 export interface RenewalFacts {
-  readonly status: "paid" | "lapsed" | "unpaid";
+  readonly status: CustomerBilling["status"];
   readonly subscription: Pick<Subscription, "provider" | "cancelRequestedAt"> | null;
 }
 

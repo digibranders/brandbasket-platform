@@ -117,6 +117,8 @@ const NOT_PAID: BillingState = {
   paymentUnderReview: false,
   plan: PLAN,
   addOns: [],
+  dealState: null,
+  dealLinkId: null,
 };
 
 /** Every billing log line written, joined, for checking what was (and was not) logged. */

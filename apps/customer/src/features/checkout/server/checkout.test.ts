@@ -98,7 +98,7 @@ const PENDING_WEBSITE = { addOn: "managed-website", status: "pending" } as Bundl
 const customer: GrantedCustomer = {
   user: { id: "user-a", email: "ana@example.com", name: "Ana Diaz", emailConfirmed: true, phone: null },
   tenant: { userId: "user-a", businessId: BUSINESS_ID, businessName: "Riverside Plumbing", role: "owner" },
-  billing: { status: "unpaid", hasAccess: false, hasWebsite: false, subscription: null, tier: "managed", upgradePaid: false, plan: PLAN, paymentUnderReview: false, renewalFailingUntil: null },
+  billing: { status: "unpaid", hasAccess: false, hasWebsite: false, subscription: null, tier: "managed", upgradePaid: false, plan: PLAN, paymentUnderReview: false, renewalFailingUntil: null, dealState: null, dealLinkId: null },
 };
 
 const COMPLETE: OnboardingSnapshot = {
@@ -152,7 +152,7 @@ function subscription(overrides: Partial<Subscription>): Subscription {
 }
 
 function billingState(latest: Subscription | null, history: Partial<BillingState> = {}): BillingState {
-  return { currency: "USD", tier: "managed", upgradePaid: false, subscription: latest, hasEverPaid: false, paymentUnderReview: false, plan: PLAN, addOns: [], ...history };
+  return { currency: "USD", tier: "managed", upgradePaid: false, subscription: latest, hasEverPaid: false, paymentUnderReview: false, plan: PLAN, addOns: [], dealState: null, dealLinkId: null, ...history };
 }
 
 /** When the lapsed subscriptions of the reactivation tests were first paid. */
@@ -565,7 +565,7 @@ describe("startMembershipCheckoutFor", () => {
   const owner: GrantedCustomer = {
     user: { id: "user-a", email: "919820011223@phone.brandbasket.invalid", name: "Meera Shah", emailConfirmed: false, phone: "+919820011223" },
     tenant: { userId: "user-a", businessId: BUSINESS_ID, businessName: "Smile Dental", role: "owner" },
-    billing: { status: "unpaid", hasAccess: false, hasWebsite: false, subscription: null, tier: "managed", upgradePaid: false, plan: INR_PLAN, paymentUnderReview: false, renewalFailingUntil: null },
+    billing: { status: "unpaid", hasAccess: false, hasWebsite: false, subscription: null, tier: "managed", upgradePaid: false, plan: INR_PLAN, paymentUnderReview: false, renewalFailingUntil: null, dealState: null, dealLinkId: null },
   };
 
   beforeEach(() => {

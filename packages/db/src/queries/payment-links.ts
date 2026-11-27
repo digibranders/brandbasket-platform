@@ -147,6 +147,36 @@ export async function attachAdvanceCharge(db: Runner, input: { readonly linkId: 
   return link?.advanceChargeId ?? null;
 }
 
+/** The link whose advance this charge collects, or null (the charge is not an advance, or the id is not a charge). Staff connection only. */
+export async function findPaymentLinkByAdvanceChargeId(db: Runner, chargeId: string): Promise<PaymentLink | null> {
+  if (!isUuid(chargeId)) return null;
+  const rows = await db.select().from(paymentLinks).where(eq(paymentLinks.advanceChargeId, chargeId)).limit(1);
+  return rows[0] ?? null;
+}
+
+/** Where a business's deal stands once the advance is paid and the plans are not: building the site, or its balance due. */
+export interface DealStanding {
+  readonly dealLinkId: string;
+  readonly dealState: "building" | "balance_due";
+}
+
+/**
+ * The business's deal that is building or has its balance due, or null. Reads only the columns bb_app may select (migration 0238), so it
+ * works on the customer's tenant connection as well as on staff: findBillingState calls it, and every page guard runs that.
+ * Same condition as findDealForBusiness.
+ */
+export async function findDealStanding(db: Runner, businessId: string): Promise<DealStanding | null> {
+  if (!isUuid(businessId)) return null;
+  const rows = await db
+    .select({ id: paymentLinks.id, readyAt: paymentLinks.readyAt })
+    .from(paymentLinks)
+    .where(and(eq(paymentLinks.businessId, businessId), isNotNull(paymentLinks.advancePaidAt), isNull(paymentLinks.paidAt), isNull(paymentLinks.revokedAt)))
+    .orderBy(desc(paymentLinks.createdAt))
+    .limit(1);
+  const row = rows[0];
+  return row === undefined ? null : { dealLinkId: row.id, dealState: row.readyAt === null ? "building" : "balance_due" };
+}
+
 /** Records the advance as paid, from the one function every payment path calls. Safe to repeat: the first time stands. */
 export async function markAdvancePaid(db: Runner, input: { readonly linkId: string; readonly paidAt: Date }): Promise<void> {
   if (!isUuid(input.linkId)) return;

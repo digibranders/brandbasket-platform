@@ -1646,6 +1646,13 @@
       "when": 1795774978371,
       "tag": "0237_deal_payment_links",
       "breakpoints": true
+    },
+    {
+      "idx": 235,
+      "version": "7",
+      "when": 1795774979371,
+      "tag": "0238_payment_links_tenant_read",
+      "breakpoints": true
     }
   ]
 }

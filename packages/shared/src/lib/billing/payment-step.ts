@@ -86,6 +86,8 @@ export function paymentStep({
       return locked ? { kind: "none" } : { kind: "send", missing };
     case "lapsed":
       return locked ? { kind: "none" } : { kind: "reactivate" };
+    // plan 66 step 4b decides this: until then a building business is read like an unpaid one.
+    case "building":
     case "unpaid": {
       if (paymentUnderReview) return { kind: "under-review" };
       if (plan === null) return { kind: "no-plan" };
@@ -197,6 +199,8 @@ export function billingBanner({
         message: "Your website and content are safe. Restart it from Billing.",
         action: { href: REACTIVATE_HREF, label: "Reactivate" },
       };
+    // plan 66 step 4b decides this: until then a building business is read like an unpaid one.
+    case "building":
     case "unpaid": {
       if (paymentUnderReview) {
         return {

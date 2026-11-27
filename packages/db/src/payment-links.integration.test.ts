@@ -1,7 +1,8 @@
 import { eq } from "drizzle-orm";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { findActivePlan, insertSubscription } from "./queries/billing";
-import { insertCharge } from "./queries/charges";
+import { findBillingState } from "./queries/billing";
+import { insertAdvanceCharge, insertCharge } from "./queries/charges";
 import {
   bindPaymentLink,
   extendPaymentLink,
@@ -9,6 +10,8 @@ import {
   findPaymentLinkByTokenHash,
   attachAdvanceCharge,
   findDealForBusiness,
+  findDealStanding,
+  findPaymentLinkByAdvanceChargeId,
   insertPaymentLink,
   listPaymentLinks,
   markAdvancePaid,
@@ -19,9 +22,9 @@ import {
   unmarkLinkReady,
   updateDeal,
 } from "./queries/payment-links";
-import { businesses, paymentLinks, referralCodes, subscriptions, users } from "./schema";
+import { businessMembers, businesses, paymentLinks, referralCodes, subscriptions, users } from "./schema";
 import { withTenantScope } from "./scope";
-import { captureErrorText, openTestDatabases, resetTestDatabase, seedPlansFromMigrations, type TestDatabases } from "./testing";
+import { captureErrorText, openTestDatabases, querySql, resetTestDatabase, seedPlansFromMigrations, type TestDatabases } from "./testing";
 
 const STAFF = "staff-1";
 const OWNER = "owner-1";
@@ -198,7 +201,7 @@ describe("payment links", () => {
     ).resolves.toBeDefined();
   });
 
-  it("is staff-only: the customer's connection can neither read nor write it", async () => {
+  it("is staff-only: the customer's connection can neither read all of it nor write it", async () => {
     await insertPaymentLink(dbs.staff.db, newLink("hash-14", { businessId }));
 
     const read = await captureErrorText(withTenantScope(dbs.app.db, { userId: OWNER, businessId }, (tx) => tx.select().from(paymentLinks)));
@@ -414,5 +417,81 @@ describe("a subscription's build fee", () => {
     await expect(insertSubscription(dbs.staff.db, { ...base, providerSubscriptionId: "x1", setupFeeListCents: 3_500_000, setupFeeDiscountCents: 0 })).rejects.toThrow();
     await expect(insertSubscription(dbs.staff.db, { ...base, providerSubscriptionId: "x2", websiteKind: "b2b", setupFeeListCents: 3_500_000, setupFeeDiscountCents: 3_500_001 })).rejects.toThrow();
     await expect(insertSubscription(dbs.staff.db, { ...base, providerSubscriptionId: "x3", websiteKind: "shop" })).rejects.toThrow();
+  });
+});
+
+describe("the advance charge and the building state (plan 66 step 4)", () => {
+  const advance = (linkId: string, overrides: Partial<Parameters<typeof insertAdvanceCharge>[1]> = {}) =>
+    dbs.staff.db.transaction((tx) =>
+      insertAdvanceCharge(tx, {
+        businessId,
+        linkId,
+        amountCents: 2_000_000,
+        currency: "INR",
+        description: "Website design and build: advance (Ecommerce store)",
+        taxRateBasisPoints: 1800,
+        ...overrides,
+      }),
+    );
+
+  it("adds one open website_advance charge for exactly the advance, records it on the link, and finds the link from it", async () => {
+    const link = await insertPaymentLink(dbs.staff.db, newLink("adv-1", { businessId }));
+
+    const charge = await advance(link.id);
+
+    expect(charge).toMatchObject({ kind: "website_advance", status: "open", quantity: 1, unitAmountCents: 2_000_000, amountCents: 2_000_000, taxRateBasisPoints: 1800, createdByStaffId: null, businessId });
+    expect((await findPaymentLinkByAdvanceChargeId(dbs.staff.db, charge.id))?.id).toBe(link.id);
+    expect((await findPaymentLinkByAdvanceChargeId(dbs.staff.db, link.id))).toBeNull();
+    expect(await findPaymentLinkByAdvanceChargeId(dbs.staff.db, "not-a-uuid")).toBeNull();
+  });
+
+  it("refuses a second advance charge for the same link and leaves no extra charge", async () => {
+    const link = await insertPaymentLink(dbs.staff.db, newLink("adv-2", { businessId }));
+    await advance(link.id);
+
+    await expect(advance(link.id)).rejects.toThrow(/already has an advance charge/);
+
+    expect(await querySql(dbs.owner, "select count(*)::int as n from charges where kind = 'website_advance'")).toEqual([{ n: 1 }]);
+  });
+
+  it("refuses an advance of nothing, a description with spaces round it, and a link that is cancelled", async () => {
+    const link = await insertPaymentLink(dbs.staff.db, newLink("adv-3", { businessId }));
+    await expect(advance(link.id, { amountCents: 0 })).rejects.toThrow();
+    await expect(advance(link.id, { description: " advance " })).rejects.toThrow();
+    const cancelled = await insertPaymentLink(dbs.staff.db, newLink("adv-4", { businessId: otherBusinessId, revokedAt: NOW }));
+    await expect(advance(cancelled.id, { businessId: otherBusinessId })).rejects.toThrow(/already has an advance charge|cancelled/);
+  });
+
+  it("is building after the advance is paid and balance_due once staff mark the website ready, from the tenant connection too", async () => {
+    const { link } = await buildingLink("adv-5");
+    await dbs.staff.db.insert(businessMembers).values({ businessId, userId: OWNER, role: "owner" });
+    const asOwner = () => withTenantScope(dbs.app.db, { userId: OWNER, businessId }, (tx) => findBillingState(tx, businessId));
+
+    expect(await asOwner()).toMatchObject({ dealState: "building", dealLinkId: link.id, hasEverPaid: false });
+    await markLinkReady(dbs.staff.db, { linkId: link.id, staffUserId: STAFF, now: NOW });
+    expect(await asOwner()).toMatchObject({ dealState: "balance_due", dealLinkId: link.id, hasEverPaid: false });
+    expect(await findDealStanding(dbs.staff.db, businessId)).toEqual({ dealLinkId: link.id, dealState: "balance_due" });
+  });
+
+  it("has no deal state before the advance, once the deal is paid or cancelled, or for another business", async () => {
+    const open = await insertPaymentLink(dbs.staff.db, newLink("adv-6", { businessId }));
+    expect(await findBillingState(dbs.staff.db, businessId)).toMatchObject({ dealState: null, dealLinkId: null });
+
+    const { link } = await buildingLink("adv-7", { businessId });
+    expect(await findDealStanding(dbs.staff.db, otherBusinessId)).toBeNull();
+    await revokePaymentLink(dbs.staff.db, { linkId: link.id, staffUserId: STAFF, now: NOW });
+    expect(await findBillingState(dbs.staff.db, businessId)).toMatchObject({ dealState: null, dealLinkId: null });
+    expect(open.id).not.toBe(link.id);
+  });
+
+  it("lets the customer's connection read only its own business's deal columns it is granted, never the token", async () => {
+    await buildingLink("adv-8");
+    await buildingLink("adv-9", { businessId: otherBusinessId });
+    const mine = await withTenantScope(dbs.app.db, { userId: OWNER, businessId }, (tx) => tx.select({ id: paymentLinks.id, businessId: paymentLinks.businessId }).from(paymentLinks));
+    const token = await captureErrorText(withTenantScope(dbs.app.db, { userId: OWNER, businessId }, (tx) => tx.select({ tokenHash: paymentLinks.tokenHash }).from(paymentLinks)));
+
+    expect(mine).toHaveLength(1);
+    expect(mine[0]?.businessId).toBe(businessId);
+    expect(token).toMatch(/permission denied/i);
   });
 });

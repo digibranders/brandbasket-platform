@@ -1107,6 +1107,7 @@ export {
   findChargeByProviderOrder,
   findChargeForBusiness,
   findOpenChargeOfKind,
+  insertAdvanceCharge,
   insertCharge,
   InvalidChargeError,
   listChargesForBusiness,
@@ -1117,6 +1118,7 @@ export {
   type Charge,
   type ChargePayment,
   type ChargePaymentOutcome,
+  type NewAdvanceCharge,
   type NewCharge,
   type RecordedChargePayment,
 } from "./queries/charges";

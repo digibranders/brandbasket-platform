@@ -25,6 +25,8 @@ function state(sub: Subscription | null, history: Partial<BillingState> = {}): B
     paymentUnderReview: false,
     plan: PLAN,
     addOns: [],
+    dealState: null,
+    dealLinkId: null,
     ...history,
   };
 }
@@ -41,6 +43,8 @@ describe("summariseBilling", () => {
       plan: PLAN,
       paymentUnderReview: false,
       renewalFailingUntil: null,
+      dealState: null,
+      dealLinkId: null,
     });
   });
 
@@ -119,5 +123,28 @@ describe("summariseBilling", () => {
     expect(summariseBilling(state(paid, { addOns: [SOCIAL_LINE] }), NOW).hasWebsite).toBe(false);
     expect(summariseBilling(state(paid), NOW).hasWebsite).toBe(false);
     expect(summariseBilling(state(subscription("active", EARLIER), { addOns: [WEBSITE_LINE] }), NOW).hasWebsite).toBe(false);
+  });
+
+  it("is building when a deal's advance is paid and nothing gives access", () => {
+    expect(summariseBilling(state(null, { dealState: "building", dealLinkId: "link-1" }), NOW)).toMatchObject({
+      status: "building",
+      hasAccess: false,
+      dealState: "building",
+      dealLinkId: "link-1",
+    });
+    expect(summariseBilling(state(null, { dealState: "balance_due", dealLinkId: "link-1" }), NOW)).toMatchObject({ status: "building", dealState: "balance_due" });
+  });
+
+  it("stays building when the only subscription is an unpaid checkout, and does not make hasEverPaid true", () => {
+    const summary = summariseBilling(state(subscription("incomplete", null), { dealState: "balance_due", dealLinkId: "link-1" }), NOW);
+    expect(summary.status).toBe("building");
+  });
+
+  it("is paid, with no deal state, once a subscription gives access", () => {
+    expect(summariseBilling(state(subscription("active", LATER), { dealState: "balance_due", dealLinkId: "link-1" }), NOW)).toMatchObject({
+      status: "paid",
+      dealState: null,
+      dealLinkId: null,
+    });
   });
 });

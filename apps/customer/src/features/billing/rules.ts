@@ -203,6 +203,8 @@ export type PlanState =
 
 export function planStateOf(billing: Pick<CustomerBilling, "status" | "paymentUnderReview" | "renewalFailingUntil">): PlanState {
   switch (billing.status) {
+    // plan 66 step 4b decides this: until then a building business reads as unpaid on Plan & billing.
+    case "building":
     case "unpaid":
       return billing.paymentUnderReview ? { kind: "under-review" } : { kind: "unpaid" };
     case "lapsed":
@@ -311,7 +313,7 @@ export type PaymentMethodView =
 
 /** The part of the plan's billing state that decides whether the next payment is taken by itself. */
 export interface RenewalFacts {
-  readonly status: "paid" | "lapsed" | "unpaid";
+  readonly status: CustomerBilling["status"];
   readonly subscription: Pick<Subscription, "provider" | "cancelRequestedAt"> | null;
 }
 

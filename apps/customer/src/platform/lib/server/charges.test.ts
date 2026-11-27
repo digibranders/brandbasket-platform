@@ -21,6 +21,7 @@ vi.mock("@brandbasket/shared/server/basket-change", () => ({ finishAddOnAfterPay
 vi.mock("./add-ons", () => ({ basketDeps: () => ({ name: "basket-deps" }) }));
 vi.mock("./billing", () => ({ getBillingProvider: vi.fn() }));
 vi.mock("./payment-emails", () => ({ sendPaymentReceipt: vi.fn(async () => undefined) }));
+vi.mock("./payload-tenant-sync", () => ({ syncTenantForBusiness: vi.fn(async () => undefined) }));
 vi.mock("./teams", () => ({ announcePaymentToTeams: vi.fn(async () => undefined) }));
 vi.mock("./db", () => ({
   getAppDb: () => ({ name: "app-db" }),
@@ -38,6 +39,7 @@ import { finishAddOnAfterPayment } from "@brandbasket/shared/server/basket-chang
 import { recordChargePaymentWithInvoice } from "@brandbasket/shared/server/charge-payments";
 import { getBillingProvider } from "./billing";
 import { sendPaymentReceipt } from "./payment-emails";
+import { syncTenantForBusiness } from "./payload-tenant-sync";
 import {
   confirmFakeChargePayment,
   openBlogUnlock,
@@ -96,7 +98,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   vi.mocked(getBillingProvider).mockReturnValue(provider());
   vi.mocked(setChargeProviderOrder).mockResolvedValue(true);
-  vi.mocked(recordChargePaymentWithInvoice).mockResolvedValue({ outcome: "paid", alreadyRecorded: false, payment: {} as never });
+  vi.mocked(recordChargePaymentWithInvoice).mockResolvedValue({ outcome: "paid", alreadyRecorded: false, payment: {} as never, openedMembership: null });
 });
 
 describe("startCustomerChargePayment", () => {
@@ -209,17 +211,24 @@ describe("confirmFakeChargePayment", () => {
 
   it("emails a receipt for a charge that was paid, once, and none for a payment kept for staff or recorded before", async () => {
     vi.mocked(getBillingProvider).mockReturnValue(provider({ confirmChargePayment: vi.fn().mockResolvedValue(confirmed) }));
-    vi.mocked(recordChargePaymentWithInvoice).mockResolvedValue({ outcome: "paid", alreadyRecorded: false, payment: { id: "pay-charge" } as never });
+    vi.mocked(recordChargePaymentWithInvoice).mockResolvedValue({ outcome: "paid", alreadyRecorded: false, payment: { id: "pay-charge" } as never, openedMembership: null });
     await confirmFakeChargePayment(TENANT, { token: "t" }, NOW);
     expect(sendPaymentReceipt).toHaveBeenCalledTimes(1);
     expect(sendPaymentReceipt).toHaveBeenCalledWith("pay-charge");
 
     vi.mocked(sendPaymentReceipt).mockClear();
-    vi.mocked(recordChargePaymentWithInvoice).mockResolvedValue({ outcome: "paid", alreadyRecorded: true, payment: { id: "pay-charge" } as never });
+    vi.mocked(recordChargePaymentWithInvoice).mockResolvedValue({ outcome: "paid", alreadyRecorded: true, payment: { id: "pay-charge" } as never, openedMembership: null });
     await confirmFakeChargePayment(TENANT, { token: "t" }, NOW);
-    vi.mocked(recordChargePaymentWithInvoice).mockResolvedValue({ outcome: "amount-mismatch", alreadyRecorded: false, payment: { id: "pay-kept" } as never } as never);
+    vi.mocked(recordChargePaymentWithInvoice).mockResolvedValue({ outcome: "amount-mismatch", alreadyRecorded: false, payment: { id: "pay-kept" } as never, openedMembership: null } as never);
     await confirmFakeChargePayment(TENANT, { token: "t" }, NOW);
     expect(sendPaymentReceipt).not.toHaveBeenCalled();
+  });
+
+  it("gives a free listing account that has just paid its website advance the Payload tenant, once the payment has committed", async () => {
+    vi.mocked(getBillingProvider).mockReturnValue(provider({ confirmChargePayment: vi.fn().mockResolvedValue(confirmed) }));
+    vi.mocked(recordChargePaymentWithInvoice).mockResolvedValue({ outcome: "paid", alreadyRecorded: false, payment: { id: "pay-charge" } as never, openedMembership: { businessName: "Chennai Cafe" } });
+    await confirmFakeChargePayment(TENANT, { token: "t" }, NOW);
+    expect(syncTenantForBusiness).toHaveBeenCalledWith({ businessId: BUSINESS, name: "Chennai Cafe" });
   });
 
   it("refuses a link for another business, and a link that does not verify, recording nothing", async () => {

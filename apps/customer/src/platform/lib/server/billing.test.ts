@@ -96,6 +96,8 @@ function billingState(sub: Subscription | null, overrides: Partial<BillingState>
     paymentUnderReview: false,
     plan: PLAN,
     addOns: [],
+    dealState: null,
+    dealLinkId: null,
     ...overrides,
   };
 }
