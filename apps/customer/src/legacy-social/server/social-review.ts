@@ -9,12 +9,13 @@ import type { CarouselDetail, CarouselSummary } from "@/legacy-social/lib/social
 import { CHANNEL_PLATFORMS, type ChannelPlatform } from "@/legacy-social/lib/social/auto";
 import type { AutoPostingState } from "@/legacy-social/lib/social/auto-posting";
 import { renewalDay } from "@/legacy-social/lib/social/plan-window";
+import { withScheduledMoments } from "@/legacy-social/lib/social/scheduled-moments";
 import { addDays } from "@/legacy-social/lib/social/week-days";
 import { addableNetworks, type PostingDays } from "@/legacy-social/lib/social/schedule";
 import { loadChannelRequests } from "@/features/social/accounts/request-store";
 import type { ChannelRequest, ConnectMode } from "@/features/social/accounts/requests";
 import type { Platform } from "@/features/social/analytics/rules";
-import { loadAutoPosting, loadBatches, loadCarousel, loadCarouselList, loadChannels, loadPictureLimits, loadPosters, loadSchedule, loadSiteJobs, loadTopicRequests, loadTopics, loadWorkspaceFacts, socialAutoSettings, type PictureLimits } from "./social-auto";
+import { loadAutoPosting, loadBatches, loadCarousel, loadCarouselList, loadChannels, loadPictureLimits, loadPosters, loadPosts, loadSchedule, loadSiteJobs, loadTopicRequests, loadTopics, loadWorkspaceFacts, socialAutoSettings, type PictureLimits } from "./social-auto";
 
 /** Everything the review page shows: the customer's batches of written posts and where they stand, and the pictures. */
 export interface SocialReview {
@@ -80,7 +81,8 @@ export async function loadSocialReview(customer: Pick<CustomerContext, "tenant" 
     }
   };
   // One read of every picture: the "open" filter leaves out one that did not pass the checks, which the customer must still see.
-  const [jobs, written, pictures, topics, limits, carouselList, facts, channels, topicRequests, postingDays, autoPosting] = await Promise.all([
+  const today = localDateIn(BRAND_TIME_ZONE, new Date());
+  const [jobs, written, pictures, topics, limits, carouselList, facts, channels, topicRequests, postingDays, autoPosting, scheduled] = await Promise.all([
     read("the jobs", [] as SiteJob[], () => loadSiteJobs(settings, id)),
     read("the written posts", { batches: [] as WrittenBatch[], expired: [] as ExpiredBatch[], plan: null as BatchPlan | null }, () => loadBatches(settings, id)),
     read("the pictures", { posters: [] as Poster[], reasons: [] as string[] }, () => loadPosters(settings, id, "all")),
@@ -92,6 +94,8 @@ export async function loadSocialReview(customer: Pick<CustomerContext, "tenant" 
     read("her own topics", [] as TopicRequest[], () => loadTopicRequests(settings, id)),
     read("the posting days", null as PostingDays | null, () => loadSchedule(settings, id)),
     read("automatic posting", null as AutoPostingState, () => loadAutoPosting(settings, id)),
+    // The posting schedule says when each post really goes out, which is not the plan's time once the customer has moved it in the calendar.
+    read("the schedule", [] as Awaited<ReturnType<typeof loadPosts>>, () => loadPosts(settings, id, { from: addDays(today, -7), to: addDays(today, 120) })),
   ]);
   const asked = await read("the link requests", { modes: {} as Partial<Record<Platform, ConnectMode>>, list: [] as readonly ChannelRequest[], personNetworks: [] as readonly Platform[] }, () => loadChannelRequests(customer, channels.map((channel) => channel.platform)));
   const carousels = carouselList.carousels;
@@ -101,8 +105,8 @@ export async function loadSocialReview(customer: Pick<CustomerContext, "tenant" 
     jobs,
     batches: written.batches,
     // A picture the customer put away (sent back, or an approval taken back) stays here while one more can still be drawn.
-    waiting: pictures.posters.filter((poster) => poster.status === "pending" || poster.status === "held" || poster.status === "blocked" || ((poster.status === "rejected" || poster.status === "expired") && poster.canRedraw)),
-    approved: pictures.posters.filter((poster) => poster.status === "approved"),
+    waiting: withScheduledMoments(pictures.posters, scheduled).filter((poster) => poster.status === "pending" || poster.status === "held" || poster.status === "blocked" || ((poster.status === "rejected" || poster.status === "expired") && poster.canRedraw)),
+    approved: withScheduledMoments(pictures.posters, scheduled).filter((poster) => poster.status === "approved"),
     expired: { batches: written.expired, pictures: pictures.posters.filter((poster) => poster.status === "expired") },
     brand,
     channels: CHANNEL_PLATFORMS.flatMap((platform) => {

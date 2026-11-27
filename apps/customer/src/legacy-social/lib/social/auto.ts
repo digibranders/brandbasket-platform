@@ -52,6 +52,8 @@ const postSchema = z.object({
   date: z.string(),
   caption: z.string(),
   imageUrl: z.string().optional(),
+  /** A carousel's slides in order (every picture of the post); a post with one picture has none. */
+  imageUrls: z.array(z.string()).optional(),
   manual: z.boolean(),
   /** The accounts that have their own caption (and picture); the main caption stands for the rest. */
   variants: z.partialRecord(platformSchema, z.object({ caption: z.string().optional(), imageUrl: z.string().optional() })).optional(),
@@ -139,6 +141,8 @@ export interface CalendarPost {
   /** Made by the customer (not planned for them), so it can still be changed or removed. */
   readonly manual: boolean;
   readonly imageUrl?: string;
+  /** A carousel's slides in order; left out for a post with one picture. */
+  readonly imageUrls?: readonly string[];
   /** The captions the networks have of their own; a network that is not here posts the main caption. */
   readonly variants?: Readonly<Partial<Record<ChannelPlatform, string>>>;
 }
@@ -160,7 +164,7 @@ export function toCalendarPost(post: AutoPost): CalendarPost | null {
   if (Number.isNaN(at.getTime())) return null;
   // A network with no connected account has no account name to show: the row says so instead.
   const channels = post.channels.map((channel) => ({ ...channel, account: channel.account ?? "Not connected" }));
-  return { id: post.id, day: localDateIn(BRAND_TIME_ZONE, at), time: timeFormat.format(at), caption: post.caption, state: post.state, channels, manual: post.manual, ...(post.imageUrl === undefined ? {} : { imageUrl: post.imageUrl }), ...variantCaptions(post) };
+  return { id: post.id, day: localDateIn(BRAND_TIME_ZONE, at), time: timeFormat.format(at), caption: post.caption, state: post.state, channels, manual: post.manual, ...(post.imageUrl === undefined ? {} : { imageUrl: post.imageUrl }), ...(post.imageUrls !== undefined && post.imageUrls.length > 1 ? { imageUrls: post.imageUrls } : {}), ...variantCaptions(post) };
 }
 
 /** How far back and ahead the page loads posts, so the calendar can be moved without asking again. */
