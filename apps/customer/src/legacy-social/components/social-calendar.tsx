@@ -6,7 +6,7 @@ import { addDays, localDateIn } from "@brandbasket/shared/lib/calendar/local-dat
 import { cn } from "@brandbasket/shared/lib/cn";
 import { LIFT } from "@/legacy-social/classes";
 import { BRAND_TIME_ZONE } from "@/legacy-social/shims";
-import { canChange, canDrag, dayLabel, hourLabel, initialOf, monthGrid, nextPostDay, platformsOf, postStatus, postToShow, shiftMonth, time12, weekOf, type AutoChannel, type CalendarPost, type PostState, type PostStatus } from "@/legacy-social/lib/social/auto";
+import { canChange, canDrag, dayLabel, hourLabel, initialOf, monthGrid, nextPostDay, platformsOf, postStatus, postToShow, shiftMonth, time12, viewForChannels, weekOf, type AutoChannel, type CalendarPost, type PostState, type PostStatus } from "@/legacy-social/lib/social/auto";
 import { changeWrittenPostTimeAction, movePostAction } from "@/legacy-social/actions";
 import { canAddOn, DEFAULT_TIME, earliestDay, momentHasPassed } from "@/legacy-social/lib/social/new-post";
 import { ChannelLogo } from "./channel-logo";
@@ -391,7 +391,8 @@ export function SocialCalendar({ posts, today, lede = "", businessName, channels
     const map = new Map<string, Entry[]>();
     for (const post of posts) {
       const status = postStatus(post, shown);
-      if (status !== null) map.set(post.day, [...(map.get(post.day) ?? []), { post, status }]);
+      // On one network's calendar the post is that network's post (its words, its picture, its account), so the tile and the window show only that network.
+      if (status !== null) map.set(post.day, [...(map.get(post.day) ?? []), { post: viewForChannels(post, shown), status }]);
     }
     for (const entries of map.values()) entries.sort((x, y) => x.post.time.localeCompare(y.post.time));
     return map;
@@ -500,7 +501,7 @@ export function SocialCalendar({ posts, today, lede = "", businessName, channels
         </p>
       )}
       {adding === null || !canAdd ? null : <NewPostDialog day={adding.day} onDayChange={(day) => setAdding({ day, time: adding.time })} time={adding.time} today={today} channels={channels} onClose={() => setAdding(null)} />}
-      {reading === null ? null : <PostDetailsDialog key={reading.id} post={reading} onClose={() => setReading(null)} />}
+      {reading === null ? null : <PostDetailsDialog key={reading.id} post={reading} shown={shown} onClose={() => setReading(null)} />}
       {moveError === null ? null : (
         <p role="alert" className="text-[0.84375rem] font-semibold text-error">
           {moveError}

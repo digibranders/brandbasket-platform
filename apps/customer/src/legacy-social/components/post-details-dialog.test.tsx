@@ -1,9 +1,10 @@
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
-import type { CalendarPost } from "@/legacy-social/lib/social/auto";
+import { viewForChannels, type CalendarPost } from "@/legacy-social/lib/social/auto";
 
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
-vi.mock("@/legacy-social/actions", () => ({ changeWrittenCaptionAction: vi.fn(), changeWrittenPostTimeAction: vi.fn() }));
+const captionAction = vi.hoisted(() => vi.fn());
+vi.mock("@/legacy-social/actions", () => ({ changeWrittenCaptionAction: captionAction, changeWrittenPostTimeAction: vi.fn() }));
 
 import { PostDetailsDialog } from "./post-details-dialog";
 
@@ -52,5 +53,83 @@ describe("PostDetailsDialog", () => {
     render(<PostDetailsDialog post={post} onClose={() => undefined} />);
     expect(screen.getByText("LinkedIn picture")).toBeTruthy();
     expect(screen.getAllByRole("img", { hidden: true }).filter((img) => img.getAttribute("alt")?.startsWith("The ") === true)).toHaveLength(2);
+  });
+
+  const both: CalendarPost = {
+    ...base,
+    caption: "Instagram words.",
+    imageUrl: "https://x.example/posts/ig.png",
+    variants: { linkedin: "LinkedIn words." },
+    variantImages: { linkedin: "https://x.example/posts/li.png" },
+    channels: [
+      { platform: "instagram", account: "alsonotify", state: "scheduled", permalink: null },
+      { platform: "linkedin", account: "Steff Jay", state: "scheduled", permalink: null },
+    ],
+  } as CalendarPost;
+  const srcs = (): string[] => screen.getAllByRole("img", { hidden: true }).map((img) => img.getAttribute("src") ?? "").filter((src) => src.includes("posts"));
+
+  it("on LinkedIn's own calendar shows LinkedIn's picture, LinkedIn's words and LinkedIn's account, and nothing of Instagram", () => {
+    render(<PostDetailsDialog post={both} shown={new Set(["linkedin"])} onClose={() => undefined} />);
+    expect(srcs()).toHaveLength(1);
+    expect(srcs()[0]).toContain(encodeURIComponent("https://x.example/posts/li.png"));
+    expect(screen.getByText("LinkedIn words.")).toBeTruthy();
+    expect(screen.queryByText("Instagram words.")).toBeNull();
+    expect(screen.queryByText("LinkedIn picture and caption")).toBeNull();
+    expect(screen.getByText("Steff Jay")).toBeTruthy();
+    expect(screen.queryByText("alsonotify")).toBeNull();
+  });
+
+  it("on Instagram's own calendar shows the main picture and words, and not LinkedIn's", () => {
+    render(<PostDetailsDialog post={both} shown={new Set(["instagram"])} onClose={() => undefined} />);
+    expect(srcs()).toHaveLength(1);
+    expect(srcs()[0]).toContain(encodeURIComponent("https://x.example/posts/ig.png"));
+    expect(screen.getByText("Instagram words.")).toBeTruthy();
+    expect(screen.queryByText("LinkedIn words.")).toBeNull();
+    expect(screen.queryByText("Steff Jay")).toBeNull();
+  });
+
+  it("on a network with no picture or words of its own shows the main ones", () => {
+    render(<PostDetailsDialog post={both} shown={new Set(["facebook"])} onClose={() => undefined} />);
+    expect(srcs()[0]).toContain(encodeURIComponent("https://x.example/posts/ig.png"));
+    expect(screen.getByText("Instagram words.")).toBeTruthy();
+  });
+
+  it("with every network shown, keeps showing each network's own picture and words beside the main ones", () => {
+    render(<PostDetailsDialog post={both} shown={new Set(["instagram", "facebook", "linkedin", "google"])} onClose={() => undefined} />);
+    expect(srcs()).toHaveLength(2);
+    expect(screen.getByText("Instagram words.")).toBeTruthy();
+    expect(screen.getByText("LinkedIn words.")).toBeTruthy();
+  });
+
+  describe("changing the words", () => {
+    const future: CalendarPost = { ...both, day: "2099-01-05" } as CalendarPost;
+
+    it("changes the words of the network that was chosen, and starts from that network's own words", async () => {
+      captionAction.mockResolvedValue({ status: "partial", message: "Saved." });
+      render(<PostDetailsDialog post={future} onClose={() => undefined} />);
+      fireEvent.click(screen.getByRole("button", { name: /Change caption/ }));
+      const caption = screen.getByRole("textbox") as HTMLTextAreaElement;
+      expect(caption.value).toBe("Instagram words.");
+      fireEvent.change(screen.getByLabelText("Change the words for"), { target: { value: "linkedin" } });
+      expect(caption.value).toBe("LinkedIn words.");
+      fireEvent.change(caption, { target: { value: "New LinkedIn words." } });
+      fireEvent.click(screen.getByRole("button", { name: "Save caption" }));
+      await waitFor(() => expect(captionAction).toHaveBeenCalledTimes(1));
+      const form = captionAction.mock.calls[0]?.[0] as FormData;
+      expect([form.get("network"), form.get("caption"), form.get("postId")]).toEqual(["linkedin", "New LinkedIn words.", future.id]);
+    });
+
+    it("on one network's calendar the words are that network's, with no choice of network", async () => {
+      captionAction.mockReset();
+      captionAction.mockResolvedValue({ status: "partial", message: "Saved." });
+      const view = viewForChannels(future, new Set(["linkedin"]));
+      render(<PostDetailsDialog post={view} shown={new Set(["linkedin"])} onClose={() => undefined} />);
+      fireEvent.click(screen.getByRole("button", { name: /Change caption/ }));
+      expect(screen.queryByLabelText("Change the words for")).toBeNull();
+      expect((screen.getByRole("textbox") as HTMLTextAreaElement).value).toBe("LinkedIn words.");
+      fireEvent.click(screen.getByRole("button", { name: "Save caption" }));
+      await waitFor(() => expect(captionAction).toHaveBeenCalledTimes(1));
+      expect((captionAction.mock.calls[0]?.[0] as FormData).get("network")).toBe("linkedin");
+    });
   });
 });

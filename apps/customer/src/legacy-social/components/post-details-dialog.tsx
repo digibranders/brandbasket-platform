@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useTransition, type FormEvent, type ReactElement } from "react";
 import { changeWrittenCaptionAction, changeWrittenPostTimeAction } from "@/legacy-social/actions";
 import { ASK_FOR_A_CHANGE_PATH } from "@/legacy-social/shims";
-import { CHANNEL_PLATFORMS, dayLabel, PLATFORM_NAMES, postStatus, time12, type CalendarPost } from "@/legacy-social/lib/social/auto";
+import { CHANNEL_PLATFORMS, dayLabel, PLATFORM_NAMES, postStatus, time12, type CalendarPost, type ChannelPlatform } from "@/legacy-social/lib/social/auto";
 import { localDateIn } from "@brandbasket/shared/lib/calendar/local-date";
 import { BRAND_TIME_ZONE } from "@/legacy-social/shims";
 import { canAddOn, earliestDay, isTime, latestDay, momentHasPassed } from "@/legacy-social/lib/social/new-post";
@@ -17,6 +17,8 @@ import { useScrollLock } from "./use-scroll-lock";
 
 interface PostDetailsDialogProps {
   readonly post: CalendarPost;
+  /** The networks the calendar is showing. Alone, a network gets its own view of the post: its own picture, its own words and its own account, nothing of the others. */
+  readonly shown?: ReadonlySet<ChannelPlatform>;
   readonly onClose: () => void;
 }
 
@@ -105,21 +107,24 @@ function TimePanel({ post, onClose }: { readonly post: CalendarPost; readonly on
 /** The words of a post we wrote, to change: it is held back until she approves the new words again. */
 function CaptionPanel({ post, onClose }: { readonly post: CalendarPost; readonly onClose: () => void }): ReactElement {
   const router = useRouter();
-  const channel = post.channels[0];
-  const [caption, setCaption] = useState(post.caption);
+  // A post goes to one or more networks, each with its own words (or the main ones). The words changed here are one network's: the one chosen, never the first by default for every network.
+  const platforms = [...new Set(post.channels.map((channel) => channel.platform))];
+  const wordsOf = (platform: ChannelPlatform | undefined): string => (platform === undefined ? post.caption : (post.variants?.[platform] ?? post.caption));
+  const [network, setNetwork] = useState<ChannelPlatform | undefined>(platforms[0]);
+  const [caption, setCaption] = useState(wordsOf(platforms[0]));
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const submit = (event: FormEvent): void => {
     event.preventDefault();
-    if (pending || channel === undefined) return;
+    if (pending || network === undefined) return;
     if (caption.trim() === "") return setError("Write what the post should say.");
     setError(null);
     startTransition(async () => {
       try {
         const form = new FormData();
         form.set("postId", post.id);
-        form.set("network", channel.platform);
+        form.set("network", network);
         form.set("caption", caption);
         const result = await changeWrittenCaptionAction(form);
         if (result.status === "error") return setError(result.message);
@@ -146,8 +151,32 @@ function CaptionPanel({ post, onClose }: { readonly post: CalendarPost; readonly
   }
   return (
     <form onSubmit={submit} noValidate className="grid gap-3 rounded-xl bg-sunken p-3">
+      {platforms.length > 1 ? (
+        <div className="grid gap-1">
+          <label htmlFor="written-post-network" className="text-xs font-semibold text-ink-2">
+            Change the words for
+          </label>
+          <select
+            id="written-post-network"
+            value={network}
+            onChange={(event) => {
+              const next = platforms.find((platform) => platform === event.target.value);
+              setNetwork(next);
+              setCaption(wordsOf(next));
+            }}
+            className={FIELD}
+          >
+            {platforms.map((platform) => (
+              <option key={platform} value={platform}>
+                {PLATFORM_NAMES[platform]}
+              </option>
+            ))}
+          </select>
+          <p className="text-xs text-ink-3">Only this network's words change. The other networks keep theirs.</p>
+        </div>
+      ) : null}
       <label htmlFor="written-post-caption" className="text-xs font-semibold text-ink-2">
-        Caption
+        {platforms.length === 1 && platforms[0] !== undefined ? `${PLATFORM_NAMES[platforms[0]]} caption` : "Caption"}
       </label>
       <textarea id="written-post-caption" value={caption} onChange={(event) => setCaption(event.target.value)} rows={6} maxLength={3000} className="w-full rounded-lg border border-ink-2/65 bg-surface px-3 py-2 text-[0.875rem] text-ink" />
       <p className="text-xs text-ink-3">The words are checked against what is on your website. The post is held back until you approve the new words in Posts.</p>
@@ -195,7 +224,13 @@ const safeLink = (value: string | null): string | null => (value !== null && val
  * A post the customer cannot change, opened to read: the day and time, how it is doing on each account, the picture and the
  * words. It is a native dialog, so focus stays inside it and Escape closes it.
  */
-export function PostDetailsDialog({ post, onClose }: PostDetailsDialogProps): ReactElement {
+export function PostDetailsDialog({ post, shown, onClose }: PostDetailsDialogProps): ReactElement {
+  // On one network's calendar the post is that network's post: its own picture and words when it has them, the main ones when it has none, and only its own account.
+  const only: ChannelPlatform | null = shown !== undefined && shown.size === 1 ? ([...shown][0] ?? null) : null;
+  const seen = (platform: ChannelPlatform): boolean => shown === undefined || shown.has(platform);
+  const mainPicture = only === null ? post.imageUrl : (post.variantImages?.[only] ?? post.imageUrl);
+  const mainCaption = only === null ? post.caption : (post.variants?.[only] ?? post.caption);
+  const accounts = post.channels.filter((channel) => seen(channel.platform));
   const dialog = useRef<HTMLDialogElement>(null);
   useScrollLock();
   useEffect(() => {
@@ -245,14 +280,16 @@ export function PostDetailsDialog({ post, onClose }: PostDetailsDialogProps): Re
               </li>
             ))}
           </ol>
-        ) : post.imageUrl === undefined ? null : (
+        ) : mainPicture === undefined ? null : (
           // The post's picture, served by social-auto, which Next's image optimiser cannot reach.
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={postPictureSrc(post.imageUrl)} alt="The picture of this post" className="size-40 rounded-xl object-cover" />
+          <img src={postPictureSrc(mainPicture)} alt="The picture of this post" className="size-40 rounded-xl object-cover" />
         )}
 
-        <p className="whitespace-pre-wrap break-words text-[0.875rem] leading-relaxed text-ink">{post.caption}</p>
+        <p className="whitespace-pre-wrap break-words text-[0.875rem] leading-relaxed text-ink">{mainCaption}</p>
         {CHANNEL_PLATFORMS.flatMap((platform) => {
+          // A network's own picture and words are shown beside the main ones only when the calendar shows more than that network.
+          if (only !== null || !seen(platform)) return [];
           const own = post.variants?.[platform];
           const ownPicture = post.variantImages?.[platform];
           // A network that has its own caption or its own picture (LinkedIn's is wide) is shown with both: the main picture and words stand only for the networks with none of their own.
@@ -272,9 +309,9 @@ export function PostDetailsDialog({ post, onClose }: PostDetailsDialogProps): Re
           ];
         })}
 
-        {post.channels.length === 0 ? null : (
+        {accounts.length === 0 ? null : (
           <ul className="grid gap-2" aria-label="Where this post goes">
-            {post.channels.map((channel) => {
+            {accounts.map((channel) => {
               const status = postStatus({ ...post, channels: [channel] }, new Set([channel.platform]));
               const link = safeLink(channel.permalink);
               return (
