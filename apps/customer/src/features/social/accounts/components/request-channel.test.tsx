@@ -17,7 +17,7 @@ describe("RequestChannel", () => {
   it("asks for the profile link first, and sends it", async () => {
     vi.mocked(requestChannelAction).mockResolvedValue({ ok: true, data: { handle: "acme_foods" } } as never);
     render(<RequestChannel platform="instagram" request={null} />);
-    fireEvent.click(screen.getByRole("button", { name: "Add your Instagram profile" }));
+    fireEvent.click(screen.getByRole("button", { name: "Add Instagram profile" }));
     fireEvent.change(screen.getByLabelText(/Paste the link/), { target: { value: "instagram.com/acme_foods" } });
     fireEvent.click(screen.getByRole("button", { name: "Send my link" }));
     await waitFor(() => expect(requestChannelAction).toHaveBeenCalledWith("instagram", "instagram.com/acme_foods", undefined));
@@ -26,7 +26,7 @@ describe("RequestChannel", () => {
   it("says what is wrong with a link in the posting service's words", async () => {
     vi.mocked(requestChannelAction).mockResolvedValue({ ok: false, message: "That is a post, not a profile." } as never);
     render(<RequestChannel platform="instagram" request={null} />);
-    fireEvent.click(screen.getByRole("button", { name: "Add your Instagram profile" }));
+    fireEvent.click(screen.getByRole("button", { name: "Add Instagram profile" }));
     fireEvent.change(screen.getByLabelText(/Paste the link/), { target: { value: "instagram.com/p/x" } });
     fireEvent.click(screen.getByRole("button", { name: "Send my link" }));
     expect(await screen.findByText("That is a post, not a profile.")).toBeTruthy();
@@ -57,7 +57,7 @@ describe("RequestChannel, the person's own profile", () => {
   it("asks for it only when the network needs it, and sends it with the link", async () => {
     vi.mocked(requestChannelAction).mockResolvedValue({ ok: true, data: { handle: "acmefoods" } } as never);
     render(<RequestChannel platform="facebook" request={null} needsPerson />);
-    fireEvent.click(screen.getByRole("button", { name: "Add your Facebook page" }));
+    fireEvent.click(screen.getByRole("button", { name: "Add Facebook page" }));
     fireEvent.change(screen.getByLabelText(/Paste the link/), { target: { value: "facebook.com/acmefoods" } });
     fireEvent.change(screen.getByLabelText(/Your own Facebook profile/), { target: { value: "facebook.com/asha.mehta" } });
     fireEvent.click(screen.getByRole("button", { name: "Send my link" }));
@@ -66,7 +66,7 @@ describe("RequestChannel, the person's own profile", () => {
 
   it("does not show the second box when the network does not need it", () => {
     render(<RequestChannel platform="instagram" request={null} />);
-    fireEvent.click(screen.getByRole("button", { name: "Add your Instagram profile" }));
+    fireEvent.click(screen.getByRole("button", { name: "Add Instagram profile" }));
     expect(screen.queryByLabelText(/Your own Facebook profile/)).toBeNull();
   });
 });
