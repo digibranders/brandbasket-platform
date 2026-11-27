@@ -254,13 +254,20 @@ export function PostDetailsDialog({ post, onClose }: PostDetailsDialogProps): Re
         <p className="whitespace-pre-wrap break-words text-[0.875rem] leading-relaxed text-ink">{post.caption}</p>
         {CHANNEL_PLATFORMS.flatMap((platform) => {
           const own = post.variants?.[platform];
-          return own === undefined ? [] : [
-            <div key={platform} className="grid gap-1">
+          const ownPicture = post.variantImages?.[platform];
+          // A network that has its own caption or its own picture (LinkedIn's is wide) is shown with both: the main picture and words stand only for the networks with none of their own.
+          return own === undefined && ownPicture === undefined ? [] : [
+            <div key={platform} className="grid gap-1.5">
               <p className="flex items-center gap-2 text-xs font-semibold text-ink-2">
                 <ChannelLogo platform={platform} small />
-                {PLATFORM_NAMES[platform]} caption
+                {PLATFORM_NAMES[platform]} {ownPicture !== undefined && own !== undefined ? "picture and caption" : ownPicture !== undefined ? "picture" : "caption"}
               </p>
-              <p className="whitespace-pre-wrap break-words text-[0.875rem] leading-relaxed text-ink">{own}</p>
+              {ownPicture === undefined ? null : (
+                // The picture is served by social-auto, which Next's image optimiser cannot reach.
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={postPictureSrc(ownPicture)} alt={`The ${PLATFORM_NAMES[platform]} picture of this post`} className="w-full max-w-md rounded-xl object-cover" />
+              )}
+              {own === undefined ? null : <p className="whitespace-pre-wrap break-words text-[0.875rem] leading-relaxed text-ink">{own}</p>}
             </div>,
           ];
         })}

@@ -145,6 +145,8 @@ export interface CalendarPost {
   readonly imageUrls?: readonly string[];
   /** The captions the networks have of their own; a network that is not here posts the main caption. */
   readonly variants?: Readonly<Partial<Record<ChannelPlatform, string>>>;
+  /** The pictures the networks have of their own (LinkedIn's is wide); a network that is not here posts the main picture. */
+  readonly variantImages?: Readonly<Partial<Record<ChannelPlatform, string>>>;
 }
 
 const timeFormat = new Intl.DateTimeFormat("en-GB", { timeZone: BRAND_TIME_ZONE, hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
@@ -159,12 +161,22 @@ function variantCaptions(post: AutoPost): { readonly variants?: Readonly<Partial
   return Object.keys(captions).length === 0 ? {} : { variants: captions };
 }
 
+/** The pictures a post's networks have of their own, as `{ variantImages }` for a calendar post, or nothing when none has. */
+function variantPictures(post: AutoPost): { readonly variantImages?: Readonly<Partial<Record<ChannelPlatform, string>>> } {
+  const pictures: Partial<Record<ChannelPlatform, string>> = {};
+  for (const platform of CHANNEL_PLATFORMS) {
+    const imageUrl = post.variants?.[platform]?.imageUrl;
+    if (imageUrl !== undefined) pictures[platform] = imageUrl;
+  }
+  return Object.keys(pictures).length === 0 ? {} : { variantImages: pictures };
+}
+
 export function toCalendarPost(post: AutoPost): CalendarPost | null {
   const at = new Date(post.date);
   if (Number.isNaN(at.getTime())) return null;
   // A network with no connected account has no account name to show: the row says so instead.
   const channels = post.channels.map((channel) => ({ ...channel, account: channel.account ?? "Not connected" }));
-  return { id: post.id, day: localDateIn(BRAND_TIME_ZONE, at), time: timeFormat.format(at), caption: post.caption, state: post.state, channels, manual: post.manual, ...(post.imageUrl === undefined ? {} : { imageUrl: post.imageUrl }), ...(post.imageUrls !== undefined && post.imageUrls.length > 1 ? { imageUrls: post.imageUrls } : {}), ...variantCaptions(post) };
+  return { id: post.id, day: localDateIn(BRAND_TIME_ZONE, at), time: timeFormat.format(at), caption: post.caption, state: post.state, channels, manual: post.manual, ...(post.imageUrl === undefined ? {} : { imageUrl: post.imageUrl }), ...(post.imageUrls !== undefined && post.imageUrls.length > 1 ? { imageUrls: post.imageUrls } : {}), ...variantCaptions(post), ...variantPictures(post) };
 }
 
 /** How far back and ahead the page loads posts, so the calendar can be moved without asking again. */

@@ -37,4 +37,20 @@ describe("PostDetailsDialog", () => {
     unmount();
     expect(document.body.style.overflow).toBe("");
   });
+
+  it("shows a network's own picture with its caption, so LinkedIn's wide picture is not hidden behind the Instagram one", () => {
+    const post = { ...base, variants: { linkedin: "A longer LinkedIn caption." }, variantImages: { linkedin: "https://x.example/posts/a-linkedin.png" } } as CalendarPost;
+    render(<PostDetailsDialog post={post} onClose={() => undefined} />);
+    const alts = screen.getAllByRole("img", { hidden: true }).map((img) => img.getAttribute("alt")).filter((alt) => alt?.startsWith("The ") === true);
+    expect(alts).toEqual(["The picture of this post", "The LinkedIn picture of this post"]);
+    expect(screen.getByText("LinkedIn picture and caption")).toBeTruthy();
+    expect(screen.getByText("A longer LinkedIn caption.")).toBeTruthy();
+  });
+
+  it("shows a network that has its own picture but the same words, with its picture only", () => {
+    const post = { ...base, variantImages: { linkedin: "https://x.example/posts/a-linkedin.png" } } as CalendarPost;
+    render(<PostDetailsDialog post={post} onClose={() => undefined} />);
+    expect(screen.getByText("LinkedIn picture")).toBeTruthy();
+    expect(screen.getAllByRole("img", { hidden: true }).filter((img) => img.getAttribute("alt")?.startsWith("The ") === true)).toHaveLength(2);
+  });
 });
