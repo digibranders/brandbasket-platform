@@ -135,12 +135,10 @@ describe("PostDetailsDialog", () => {
   });
 
   describe("changing the time", () => {
-    const future: CalendarPost = { ...both, day: "2099-01-05" } as CalendarPost;
+    // A day the form allows (from today to 89 days ahead), already in the form when it opens, so the channel choice is what is tested.
+    const soon = new Date(Date.now() + 10 * 86_400_000).toISOString().slice(0, 10);
+    const future: CalendarPost = { ...both, day: soon, time: "16:30" } as CalendarPost;
     const save = async (): Promise<FormData> => {
-      // A day the form allows: from today to 89 days ahead.
-      const soon = new Date(Date.now() + 10 * 86_400_000).toISOString().slice(0, 10);
-      fireEvent.change(screen.getByLabelText("Day"), { target: { value: soon } });
-      fireEvent.change(screen.getByLabelText("Time"), { target: { value: "16:30" } });
       fireEvent.click(screen.getByRole("button", { name: "Save time" }));
       await waitFor(() => expect(timeAction).toHaveBeenCalledTimes(1));
       return timeAction.mock.calls[0]?.[0] as FormData;
@@ -153,8 +151,7 @@ describe("PostDetailsDialog", () => {
       fireEvent.click(screen.getByRole("button", { name: /Change time/ }));
       expect((screen.getByLabelText("Change the time for") as HTMLSelectElement).value).toBe("all");
       const form = await save();
-      expect([form.get("postId"), form.get("time"), form.get("network")]).toEqual([future.id, "16:30", null]);
-      expect(String(form.get("day"))).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+      expect([form.get("postId"), form.get("day"), form.get("time"), form.get("network")]).toEqual([future.id, soon, "16:30", null]);
     });
 
     it("moves only the chosen channel, which then goes out at its own time", async () => {
