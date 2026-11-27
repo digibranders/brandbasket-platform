@@ -57,7 +57,7 @@ export function CheckoutScreen({ view }: { readonly view: CheckoutView }) {
       return <PayScreen view={view} />;
     case "signup-pay":
       // The pay frame already draws the page's header and main; the screen is the same one /signup draws, with the account done.
-      return <SignupCheckoutScreen account="signed-in" standalone={false} table={view.table} initialServices={view.services} paymentFailed={view.paymentFailed} />;
+      return <SignupCheckoutScreen account="signed-in" standalone={false} table={view.table} initialServices={view.services} paymentFailed={view.paymentFailed} initialKind={view.websiteKind} link={view.link} />;
     default: {
       const unhandled: never = view;
       throw new Error(`Unhandled checkout view: ${JSON.stringify(unhandled)}`);
@@ -110,9 +110,10 @@ function PayScreen({ view }: { readonly view: Extract<CheckoutView, { kind: "pay
               )}
             </div>
 
-            <BillingSwitch interval={ledger.billing.interval} monthlyHref={ledger.billing.monthlyHref} yearlyHref={ledger.billing.yearlyHref} />
+            {ledger.locked ? null : <BillingSwitch interval={ledger.billing.interval} monthlyHref={ledger.billing.monthlyHref} yearlyHref={ledger.billing.yearlyHref} />}
 
             <PayForm
+              siteKind={ledger.siteKind}
               services={ledger.services}
               billing={ledger.billing.value}
               total={ledger.total}

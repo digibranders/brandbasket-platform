@@ -194,14 +194,14 @@ describe("loadAddOnsPage", () => {
     ]);
   });
 
-  it("lists no monitoring beside all three plans, which include it", async () => {
+  it("lists monitoring beside all three plans too: they no longer include it", async () => {
     vi.mocked(findLiveBundledAddOns).mockResolvedValue([
       includedRow({ id: "line-website", addOn: "managed-website" }),
       includedRow({ id: "line-social", addOn: "social-media" }),
       includedRow({ id: "line-ads", addOn: "paid-ads" }),
     ]);
     const allThree = await loadAddOnsPage(subscribed, NOW);
-    expect(allThree.addOns.map((entry) => entry.addOn)).toEqual(["managed-website", "social-media", "paid-ads"]);
+    expect(allThree.addOns.map((entry) => entry.addOn)).toEqual(["managed-website", "social-media", "paid-ads", "expert-monitoring"]);
   });
 
   it("shows a service not yet added at its list price, with no package discount", async () => {
@@ -260,6 +260,8 @@ describe("loadAddOnsPage", () => {
         ["managed-website", ["social-media", "paid-ads"], 3_499_800, false],
         ["social-media", ["managed-website", "paid-ads"], 2_799_800, false],
         ["paid-ads", ["managed-website", "social-media"], 1_299_800, false],
+        // Monitoring is no longer free with all three plans (owner, 2026-11-27): it is listed as a service to add, with no drop.
+        null,
       ]);
     });
 
@@ -278,7 +280,7 @@ describe("loadAddOnsPage", () => {
 
       const { addOns } = await loadAddOnsPage(closing, NOW);
 
-      expect(addOns.map((entry) => (entry.kind === "included" ? entry.drop : "available"))).toEqual([null, null, null]);
+      expect(addOns.map((entry) => (entry.kind === "included" ? entry.drop : "available"))).toEqual([null, null, null, "available"]);
     });
 
     it("offers no drop, and no add, while the client's kept plan waits to start, and says when it starts", async () => {

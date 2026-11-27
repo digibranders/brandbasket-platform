@@ -1,9 +1,10 @@
-import { consumeRateLimit } from "@brandbasket/db";
+import { bindPaymentLink, consumeRateLimit, setBusinessReferralCode } from "@brandbasket/db";
 import { checkHuman, turnstileSiteKey } from "@brandbasket/shared/server/turnstile-request";
 import { headers } from "next/headers";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { startSignupCheckoutAction } from "./actions";
 import { CHECKOUT_ACCOUNT_EXISTS_MESSAGE } from "./rules/checkout-signup-messages";
+import { lookUpPaymentLink } from "@/features/paylink/server/link";
 import { createCheckoutAccount } from "./server/checkout-account";
 
 vi.mock("server-only", () => ({}));
@@ -15,8 +16,9 @@ vi.mock("@/features/start/rules", () => ({ startHref: () => "/start" }));
 vi.mock("@brandbasket/shared/server/turnstile-request", () => ({ checkHuman: vi.fn(), turnstileSiteKey: vi.fn() }));
 vi.mock("@brandbasket/db", async () => {
   const actual = await vi.importActual<typeof import("@brandbasket/db")>("@brandbasket/db");
-  return { ...actual, consumeRateLimit: vi.fn() };
+  return { ...actual, consumeRateLimit: vi.fn(), bindPaymentLink: vi.fn(), setBusinessReferralCode: vi.fn() };
 });
+vi.mock("@/features/paylink/server/link", () => ({ lookUpPaymentLink: vi.fn() }));
 vi.mock("./server/checkout-account", () => ({ createCheckoutAccount: vi.fn() }));
 vi.mock("./server/env", () => ({ leadsApiToken: () => null }));
 vi.mock("./server/listing-account", () => ({ requestJoinCode: vi.fn(), createListingAccount: vi.fn() }));
@@ -109,5 +111,66 @@ describe("startSignupCheckoutAction", () => {
   it("passes a refusal from the account step to its field", async () => {
     vi.mocked(createCheckoutAccount).mockResolvedValue({ kind: "refused", field: "phone", message: "Enter a valid phone number." });
     await expect(startSignupCheckoutAction(null, form(VALID))).resolves.toMatchObject({ ok: false, field: "phone" });
+  });
+});
+
+describe("startSignupCheckoutAction with a staff payment link (plan 65)", () => {
+  const TOKEN = "a".repeat(43);
+  const link = (overrides: Record<string, unknown> = {}) =>
+    ({ id: "link-1", businessId: null, countryCode: "IN", referralCodeId: null, ...overrides }) as unknown as Awaited<ReturnType<typeof lookUpPaymentLink>> extends infer L ? (L extends { link: infer P } ? P : never) : never;
+  const open = (overrides: Record<string, unknown> = {}) => vi.mocked(lookUpPaymentLink).mockResolvedValue({ kind: "open", link: link(overrides) });
+
+  beforeEach(() => {
+    vi.mocked(bindPaymentLink).mockResolvedValue(true);
+  });
+
+  it("makes the account in the link's country whatever the visitor's, binds the link to the new business and reports ok", async () => {
+    vi.mocked(headers).mockResolvedValue(new Headers({ "cf-ipcountry": "AE" }));
+    open();
+
+    await expect(startSignupCheckoutAction(null, form({ ...VALID, payLink: TOKEN }))).resolves.toEqual({ ok: true });
+
+    expect(createCheckoutAccount).toHaveBeenCalledWith(expect.objectContaining({ country: "IN", stateCode: "mh" }), null);
+    expect(bindPaymentLink).toHaveBeenCalledWith(expect.anything(), { linkId: "link-1", businessId: "business-1", now: expect.any(Date) });
+    expect(setBusinessReferralCode).not.toHaveBeenCalled();
+  });
+
+  it("puts the link's coupon on the new business, as typing the code would", async () => {
+    open({ referralCodeId: "code-1" });
+
+    await startSignupCheckoutAction(null, form({ ...VALID, payLink: TOKEN }));
+
+    expect(setBusinessReferralCode).toHaveBeenCalledWith(expect.anything(), { businessId: "business-1", referralCodeId: "code-1" });
+  });
+
+  it("opens no account for a link that is cancelled, expired, paid or unknown", async () => {
+    vi.mocked(lookUpPaymentLink).mockResolvedValue({ kind: "gone" });
+
+    await expect(startSignupCheckoutAction(null, form({ ...VALID, payLink: TOKEN }))).resolves.toMatchObject({ ok: false, message: "This payment link no longer works. Ask us for a new one." });
+
+    expect(createCheckoutAccount).not.toHaveBeenCalled();
+    expect(consumeRateLimit).not.toHaveBeenCalled();
+  });
+
+  it("opens no account for a link already bound to a business: its owner signs in to pay", async () => {
+    open({ businessId: "business-9" });
+
+    await expect(startSignupCheckoutAction(null, form({ ...VALID, payLink: TOKEN }))).resolves.toMatchObject({ ok: false });
+
+    expect(createCheckoutAccount).not.toHaveBeenCalled();
+  });
+
+  it("refuses when the link was used between the check and the binding", async () => {
+    open();
+    vi.mocked(bindPaymentLink).mockResolvedValue(false);
+
+    await expect(startSignupCheckoutAction(null, form({ ...VALID, payLink: TOKEN }))).resolves.toMatchObject({ ok: false, message: "This payment link no longer works. Ask us for a new one." });
+  });
+
+  it("changes nothing for the public checkout, which posts no link", async () => {
+    await startSignupCheckoutAction(null, form(VALID));
+
+    expect(lookUpPaymentLink).not.toHaveBeenCalled();
+    expect(bindPaymentLink).not.toHaveBeenCalled();
   });
 });

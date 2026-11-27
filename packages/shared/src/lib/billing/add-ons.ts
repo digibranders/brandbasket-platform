@@ -1,11 +1,12 @@
 import { chargedAmountCents, GST_BASIS_POINTS } from "@brandbasket/billing/tax";
 import type { BillingInterval } from "@brandbasket/db";
 import type { MoneyCurrency } from "../money";
+import { type WebsiteKind, websiteMonthlyCents } from "./website-kind";
 
 /**
  * The services Brandbasket sells, and what each lists at in each currency a business is billed in: Website Management,
  * Social Media Management and Paid Ads Management (owner, 2026-11-06), all three at one price (owner, 2026-11-11), each on its own or two or more together as a package
- * priced in packages.ts, plus Dedicated Expert Monitoring, a monthly add-on that comes at no cost with all three plans.
+ * priced in packages.ts, plus Dedicated Expert Monitoring, a monthly add-on.
  * Social Media and Ads and Local SEO + AEO were retired with no customers on them (migration 0222). Every price
  * includes GST (owner, 2026-10-26; docs/plans/25-money-gst-and-offers.md): rupee prices are in paise with 18% GST inside
  * them, dollar prices are in cents with no tax of ours. They match the website's lib/pricing.ts: change both together. A
@@ -41,7 +42,7 @@ export interface AddOn {
   readonly platforms?: readonly string[];
 }
 
-/** Dedicated Expert Monitoring: included with all three plans, otherwise billed monthly (monitoringIncludedWith). */
+/** Dedicated Expert Monitoring: billed monthly beside any plans (monitoringIncludedWith). */
 export const MONITORING_ID = "expert-monitoring" satisfies AddOnId;
 
 /** The services: the plans in the order the website's pricing page lists them, then monitoring. */
@@ -76,7 +77,7 @@ export const ADD_ONS: readonly AddOn[] = [
   {
     id: MONITORING_ID,
     title: "Dedicated Expert Monitoring",
-    line: "Our experts watch your website, social media and ads, fix what slips and help you grow. Free with all three plans.",
+    line: "Our experts watch your website, social media and ads, fix what slips and help you grow.",
     billing: "monthly",
     prices: { INR: 6_000 * MINOR_UNITS_PER_MAJOR, USD: 99 * MINOR_UNITS_PER_MAJOR },
     unit: "a month",
@@ -111,9 +112,13 @@ export function addOnById(id: AddOnId): AddOn {
   return addOn;
 }
 
-/** Whether these services include all three plans, which bring monitoring at no cost: such a basket is never billed for it. */
-export function monitoringIncludedWith(services: readonly MonthlyAddOnId[]): boolean {
-  return PLAN_ADD_ON_IDS.every((id) => services.includes(id));
+/**
+ * Monitoring is its own price in every basket, however many plans it holds (owner, 2026-11-27; it was free with all three before). Kept as
+ * a function so every caller reads one rule, and so the rule can change in one place. A monitoring line already sold keeps the price
+ * frozen on it. `services` is unused for now.
+ */
+export function monitoringIncludedWith(_services: readonly MonthlyAddOnId[]): boolean {
+  return false;
 }
 
 /**
@@ -146,8 +151,9 @@ export function annualListCents(monthlyCents: number): number {
 }
 
 /** What a service costs each cycle in a currency: its monthly price, or its yearly price on a yearly subscription. */
-export function cyclePriceCents(addOn: AddOn, currency: MoneyCurrency, interval: BillingInterval): number {
-  const monthly = addOn.prices[currency];
+export function cyclePriceCents(addOn: AddOn, currency: MoneyCurrency, interval: BillingInterval, kind: WebsiteKind = "b2b"): number {
+  // Only the website's price depends on the kind of site (owner, 2026-11-27); every other service ignores it.
+  const monthly = addOn.id === "managed-website" ? websiteMonthlyCents(kind, currency) : addOn.prices[currency];
   return interval === "year" ? annualPriceCents(monthly) : monthly;
 }
 
@@ -180,8 +186,8 @@ export function addOnTaxRateBasisPoints(currency: MoneyCurrency): number {
  * What one purchase costs each cycle: the list price, less the package discount worked out for it (packageDiscountsFor), if
  * any. On a yearly subscription the list price is the yearly one (cyclePriceCents), the annual discount already inside it.
  */
-export function addOnPrice(addOn: AddOn, currency: MoneyCurrency, discountCents = 0, interval: BillingInterval = "month"): AddOnPrice {
-  const listCents = cyclePriceCents(addOn, currency, interval);
+export function addOnPrice(addOn: AddOn, currency: MoneyCurrency, discountCents = 0, interval: BillingInterval = "month", kind: WebsiteKind = "b2b"): AddOnPrice {
+  const listCents = cyclePriceCents(addOn, currency, interval, kind);
   if (!Number.isSafeInteger(discountCents) || discountCents < 0 || discountCents > listCents) {
     throw new RangeError(`A discount on ${addOn.title} must be whole minor units from 0 to ${listCents}, received ${discountCents}`);
   }

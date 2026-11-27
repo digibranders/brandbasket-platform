@@ -1,4 +1,5 @@
 import type { MonthlyAddOnId } from "@brandbasket/shared/lib/billing/add-ons";
+import type { WebsiteKind } from "@brandbasket/shared/lib/billing/website-kind";
 import type { MoneyCurrency } from "@brandbasket/shared/lib/money";
 import { pricesNote } from "./currency-words";
 
@@ -17,7 +18,7 @@ export interface CheckoutPlanCopy {
 
 export const CHECKOUT_PLAN_COPY: Readonly<Record<MonthlyAddOnId, CheckoutPlanCopy>> = {
   "managed-website": {
-    blurb: (monthly) => `Website free to build, ${monthly} a month to keep it running`,
+    blurb: (monthly) => `Built for you, ${monthly} a month to keep it running`,
     gets: ["A website of up to 10 pages, mobile-friendly", "Enquiry forms and click-to-call", "A local SEO foundation", "Website chat"],
   },
   // From the website's plan columns (brandbasket-website content/pricing.ts and content/basket.ts).
@@ -30,7 +31,7 @@ export const CHECKOUT_PLAN_COPY: Readonly<Record<MonthlyAddOnId, CheckoutPlanCop
     gets: ["Meta ads on Facebook and Instagram", "AI ad copy and creative generation", "Campaign setup and optimisation", "Budget and bidding management"],
   },
   "expert-monitoring": {
-    blurb: () => "Free with all three plans",
+    blurb: () => "Experts watching your website, social media and ads",
     gets: ["Experts watching your website, social media and ads", "Fixes for what slips", "Help to grow"],
   },
 };
@@ -44,12 +45,15 @@ const PAY_STEP: CheckoutStep = { title: "You pay", note: "Secure payment" };
 const KICKOFF_STEP: CheckoutStep = { title: "Book your kickoff call", note: "30 minutes, video" };
 
 /** "What happens next" for a basket with the Managed Website: the build, then the launch. */
-const WEBSITE_STEPS: readonly CheckoutStep[] = [
-  PAY_STEP,
-  KICKOFF_STEP,
-  { title: "We start building", note: "Within 48 hours of the call" },
-  { title: "Your website is live", note: "Within 7 working days of the call" },
-];
+function websiteSteps(kind: WebsiteKind): readonly CheckoutStep[] {
+  return [
+    PAY_STEP,
+    KICKOFF_STEP,
+    { title: "We start building", note: "Within 48 hours of the call" },
+    // An ecommerce store takes 21 days (owner, 2026-11-27).
+    { title: kind === "ecommerce" ? "Your store is live" : "Your website is live", note: kind === "ecommerce" ? "Within 21 days of the call" : "Within 7 working days of the call" },
+  ];
+}
 
 /** "What happens next" for a basket without it (Social and/or Ads): there is no website to build. */
 const NO_WEBSITE_STEPS: readonly CheckoutStep[] = [
@@ -59,8 +63,8 @@ const NO_WEBSITE_STEPS: readonly CheckoutStep[] = [
 ];
 
 /** "What happens next", in order, for the plans in the basket. */
-export function checkoutSteps(services: readonly MonthlyAddOnId[]): readonly CheckoutStep[] {
-  return services.includes("managed-website") ? WEBSITE_STEPS : NO_WEBSITE_STEPS;
+export function checkoutSteps(services: readonly MonthlyAddOnId[], kind: WebsiteKind = "b2b"): readonly CheckoutStep[] {
+  return services.includes("managed-website") ? websiteSteps(kind) : NO_WEBSITE_STEPS;
 }
 
 /** The line under the page title: what to do, then what the prices are in (and whether they carry GST). */
@@ -71,9 +75,8 @@ export function checkoutLead(currency: MoneyCurrency, taxRateBasisPoints: number
 /** The page's own words. */
 export const CHECKOUT_COPY = {
   title: "Your plan",
-  packageNote: "Take all three plans and Dedicated Expert Monitoring is free.",
-  allThree: "All three plans: Dedicated Expert Monitoring free every month.",
   getHeading: "What you get",
   nextHeading: "What happens next",
-  websiteBadge: "Website free",
+  /** On the website card while a build fee is owed. */
+  websiteBadge: "One-time build fee",
 } as const;

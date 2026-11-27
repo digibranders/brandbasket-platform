@@ -296,13 +296,13 @@ describe("adding a service from the Billing page", () => {
     expect(await add()).toEqual({ kind: "change-pending", changesOn: DEC_1 });
   });
 
-  it("leaves monitoring out once the added service completes all three, and the payment still fits", async () => {
+  it("carries monitoring through when the added service completes all three, and the payment still fits", async () => {
     await websiteSubscription(["managed-website", "social-media", "expert-monitoring"]);
     const started = await startCombinedAddOn(deps(), { businessId, businessName: "Harbour Bakery", email: "owner@bakery.test", addOn: "paid-ads", now: NOV_11 });
     if (started.kind !== "approve") throw new Error(`Expected a combined subscription, got ${started.kind}`);
 
     const lines = await findBundledAddOnsForSubscription(dbs.staff.db, started.subscriptionId);
-    expect(lines.map((row) => row.addOn).sort()).toEqual(["managed-website", "paid-ads", "social-media"]);
+    expect(lines.map((row) => row.addOn).sort()).toEqual(["expert-monitoring", "managed-website", "paid-ads", "social-media"]);
     const combined = await findSubscriptionById(dbs.staff.db, started.subscriptionId);
     const token = new URL(started.checkoutUrl, "https://app.test").searchParams.get("token") ?? "";
     const confirmed = await provider.confirmCheckout({ token });

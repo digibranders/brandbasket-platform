@@ -38,6 +38,26 @@ describe("Razorpay: a first-month offer in the basket", () => {
     );
   });
 
+  it("names the upfront amount for a build fee, and starts a yearly deal's subscription 13 months on", async () => {
+    const create = vi.fn().mockResolvedValue({ id: "sub_fee" });
+    const startAt = new Date(Date.now() + 395 * 86_400_000);
+    await razorpayWith(create).startCheckout({
+      businessId: BUSINESS,
+      businessName: "Bakery",
+      email: "o@b.test",
+      plan,
+      providerPlanId: "plan_year",
+      billingInterval: "year",
+      firstPayment: { amountCents: 6_500_000, startAt, label: "Website build and first payment" },
+    });
+    expect(create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        start_at: Math.floor(startAt.getTime() / 1000),
+        addons: [{ item: { name: "Website build and first payment", amount: 6_500_000, currency: "INR" } }],
+      }),
+    );
+  });
+
   it("opens an ordinary checkout with no start date and no add-on", async () => {
     const create = vi.fn().mockResolvedValue({ id: "sub_plain" });
     await razorpayWith(create).startCheckout({ businessId: BUSINESS, businessName: "B", email: "o@b.test", plan });

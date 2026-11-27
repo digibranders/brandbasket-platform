@@ -87,16 +87,16 @@ describe("startPaymentAction", () => {
   it("opens a sign-up account's checkout on the catalogue services named, dropping anything else", async () => {
     vi.mocked(startMembershipCheckoutFor).mockResolvedValue({ kind: "redirect", url: "/checkout/pay" });
     await expect(startPaymentAction(null, form({ tier: "managed", service: ["social-media", "nonsense", "managed-website"] }))).rejects.toThrow("redirect:/checkout/pay");
-    expect(startMembershipCheckoutFor).toHaveBeenCalledWith(CUSTOMER, expect.any(Date), "managed", ["managed-website", "social-media"], "month");
+    expect(startMembershipCheckoutFor).toHaveBeenCalledWith(CUSTOMER, expect.any(Date), "managed", ["managed-website", "social-media"], "month", "b2b");
     expect(startCheckoutFor).not.toHaveBeenCalled();
   });
 
   it("opens a yearly checkout when the form says yearly, and a monthly one for anything else", async () => {
     vi.mocked(startMembershipCheckoutFor).mockResolvedValue({ kind: "redirect", url: "/checkout/pay" });
     await expect(startPaymentAction(null, form({ tier: "managed", service: "managed-website", billing: "yearly" }))).rejects.toThrow("redirect:/checkout/pay");
-    expect(startMembershipCheckoutFor).toHaveBeenLastCalledWith(CUSTOMER, expect.any(Date), "managed", ["managed-website"], "year");
+    expect(startMembershipCheckoutFor).toHaveBeenLastCalledWith(CUSTOMER, expect.any(Date), "managed", ["managed-website"], "year", "b2b");
     await expect(startPaymentAction(null, form({ tier: "managed", service: "managed-website", billing: "weekly" }))).rejects.toThrow("redirect:/checkout/pay");
-    expect(startMembershipCheckoutFor).toHaveBeenLastCalledWith(CUSTOMER, expect.any(Date), "managed", ["managed-website"], "month");
+    expect(startMembershipCheckoutFor).toHaveBeenLastCalledWith(CUSTOMER, expect.any(Date), "managed", ["managed-website"], "month", "b2b");
   });
 
   it("opens a website client's checkout for the website alone, whatever the form says", async () => {

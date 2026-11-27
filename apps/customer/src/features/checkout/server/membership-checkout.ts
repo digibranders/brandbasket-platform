@@ -1,5 +1,9 @@
 import "server-only";
-import { businessHasHadService, findBillingState, isPackageOfferForfeited, type BillingInterval, type Plan } from "@brandbasket/db";
+import { businessHasHadService, findBillingState, findOpenPaymentLinkForBusiness, isPackageOfferForfeited, type BillingInterval, type Plan } from "@brandbasket/db";
+import { readBundleSelection } from "@brandbasket/shared/lib/billing/bundle";
+import { setupFeeFor } from "@brandbasket/shared/lib/billing/setup-fee";
+import { isWebsiteKind, type WebsiteKind } from "@brandbasket/shared/lib/billing/website-kind";
+import type { BuildDeal } from "../rules/build-fee";
 import type { BillingDetailsView } from "../rules/billing-details-view";
 import type { LedgerFirstMonth } from "../rules/ledger";
 import type { MonthlyAddOnId } from "@brandbasket/shared/lib/billing/add-ons";
@@ -39,6 +43,18 @@ export interface MembershipCheckoutView {
   readonly offer: MembershipOffer;
   /** What the first-month offer (plan 63) is judged on, read as the checkout reads it; null for a reactivation, which never gets it. */
   readonly firstMonth: LedgerFirstMonth | null;
+  /** How often the basket is paid: the address's, or the one a staff payment link names (plan 65). */
+  readonly interval: BillingInterval;
+  /** The kind of website, the build fee owed with it (null when none) and the staff note on its discount. */
+  readonly deal: BuildDeal;
+  /** A staff payment link decides the services, interval, kind and fee: the page offers no way to change them. */
+  readonly locked: boolean;
+}
+
+/** What a checkout may add to the basket its address names (plan 65): the kind of website, and whether the list build fee is owed when no payment link names one. */
+export interface MembershipDealOptions {
+  readonly chosenKind: WebsiteKind;
+  readonly chargeListFee: boolean;
 }
 
 export type MembershipOffer =
@@ -55,7 +71,8 @@ export async function loadMembershipCheckout(
   tier: MembershipTier,
   requested: readonly MonthlyAddOnId[],
   now: Date,
-  interval: BillingInterval = "month",
+  requestedInterval: BillingInterval = "month",
+  options: MembershipDealOptions = { chosenKind: "b2b", chargeListFee: false },
 ): Promise<MembershipCheckoutView> {
   const { businessId } = customer.tenant;
   const staffDb = getStaffDb();
@@ -64,9 +81,14 @@ export async function loadMembershipCheckout(
   const plan = await getMembershipPlan(tier, state?.currency ?? "INR");
   const hasEverPaid = state?.hasEverPaid ?? true;
   const reactivation = hasEverPaid ? await loadReactivationBasket(staffDb, businessId) : null;
-  const services = reactivation?.services ?? requested;
+  // A staff payment link bound to the business decides the basket, interval, kind and fee, as the checkout will read it (plan 65).
+  const bound = hasEverPaid ? null : await findOpenPaymentLinkForBusiness(staffDb, businessId, now);
+  const link = bound !== null && plan !== null && bound.currency === plan.currency ? bound : null;
+  const services = reactivation?.services ?? (link === null ? requested : readBundleSelection(link.services));
+  const interval: BillingInterval = link === null ? requestedInterval : link.billingInterval === "year" ? "year" : "month";
+  const kind: WebsiteKind = link?.websiteKind != null && isWebsiteKind(link.websiteKind) ? link.websiteKind : options.chosenKind;
   // A reactivation takes no code, so none is looked for against its basket.
-  const basis = plan === null || hasEverPaid ? null : codeBasisFor(services, plan.currency, interval);
+  const basis = plan === null || hasEverPaid ? null : codeBasisFor(services, plan.currency, interval, kind);
   const [discount, lapsedCode, forfeited, billingDetails] = await Promise.all([
     basis === null ? null : resolveAppliedDiscount(businessId, basis, now),
     basis === null ? null : findLapsedAppliedCode(businessId, basis, now),
@@ -76,13 +98,18 @@ export async function loadMembershipCheckout(
   const offer: MembershipOffer = !hasEverPaid && plan !== null ? { kind: "available" } : { kind: "none" };
   // A code that still works is not lapsed, whatever the second read says.
   // The offer is for a first purchase: a business coming back from a lapse pays its first month in full, as the checkout charges it.
-  const firstMonth: LedgerFirstMonth | null =
+  // The website too: a build fee is owed on a first purchase of it only (D15).
+  const hadService: LedgerFirstMonth["hadService"] | null =
     reactivation === null
-      ? {
-          provider: getBillingProvider().name,
-          // Both offer plans, chosen or not, so a page can show the offer on a plan the customer has yet to add.
-          hadService: Object.fromEntries(await Promise.all(TRIAL_ADD_ON_IDS.map(async (id) => [id, await businessHasHadService(staffDb, businessId, id)] as const))),
-        }
+      ? Object.fromEntries(await Promise.all([...TRIAL_ADD_ON_IDS, "managed-website" as const].map(async (id) => [id, await businessHasHadService(staffDb, businessId, id)] as const)))
       : null;
-  return { plan, services, discount, lapsedCode: discount === null ? lapsedCode : null, forfeited, hasEverPaid, billingDetails, offer, firstMonth };
+  const firstMonth: LedgerFirstMonth | null = hadService === null ? null : { provider: getBillingProvider().name, hadService };
+  const owesFee =
+    plan !== null && reactivation === null && services.includes("managed-website") && hadService?.["managed-website"] === false && (link !== null || options.chargeListFee);
+  const deal: BuildDeal = {
+    kind,
+    fee: owesFee ? setupFeeFor(kind, plan.currency, link?.setupFeeDiscountCents ?? 0) : null,
+    note: owesFee ? (link?.setupFeeNote ?? null) : null,
+  };
+  return { plan, services, discount, lapsedCode: discount === null ? lapsedCode : null, forfeited, hasEverPaid, billingDetails, offer, firstMonth, interval, deal, locked: link !== null };
 }

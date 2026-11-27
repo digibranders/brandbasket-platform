@@ -6,6 +6,8 @@ import { useId } from "react";
 import { formatMoney } from "@/lib/format";
 import { Badge, Icon } from "@/ui";
 import { cx } from "@/ui/cx";
+import type { WebsiteKind } from "@brandbasket/shared/lib/billing/website-kind";
+import { CHECKOUT_PLAN_COPY } from "../rules/plans";
 import { canTick, cardBadge, type SignupBasketService, type SignupBasketTable } from "../rules/signup-basket";
 
 /*
@@ -27,9 +29,13 @@ interface ServiceCardsProps {
   readonly services: readonly MonthlyAddOnId[];
   readonly interval: BillingInterval;
   readonly onToggle: (id: MonthlyAddOnId, ticked: boolean) => void;
+  /** The kind of website, which sets the website card's price (plan 65). */
+  readonly kind: WebsiteKind;
+  /** A staff payment link decided the services: they cannot be ticked or unticked. */
+  readonly locked?: boolean;
 }
 
-export function ServiceCards({ table, services, interval, onToggle }: ServiceCardsProps) {
+export function ServiceCards({ table, services, interval, onToggle, kind, locked = false }: ServiceCardsProps) {
   const headingId = useId();
   return (
     <section aria-labelledby={headingId}>
@@ -38,7 +44,7 @@ export function ServiceCards({ table, services, interval, onToggle }: ServiceCar
       </h2>
       <div className="grid gap-3 md:grid-cols-3">
         {table.services.map((service) => (
-          <ServiceCard key={service.id} service={service} table={table} ticked={services.includes(service.id)} enabled={canTick(service.id, services)} interval={interval} onToggle={onToggle} />
+          <ServiceCard key={service.id} service={service} table={table} ticked={services.includes(service.id)} enabled={canTick(service.id, services)} interval={interval} onToggle={onToggle} kind={kind} locked={locked} />
         ))}
       </div>
     </section>
@@ -52,10 +58,15 @@ interface ServiceCardProps {
   readonly enabled: boolean;
   readonly interval: BillingInterval;
   readonly onToggle: (id: MonthlyAddOnId, ticked: boolean) => void;
+  readonly kind: WebsiteKind;
+  readonly locked: boolean;
 }
 
-function ServiceCard({ service, table, ticked, enabled, interval, onToggle }: ServiceCardProps) {
+function ServiceCard({ service, table, ticked, enabled, interval, onToggle, kind, locked }: ServiceCardProps) {
   const badge = cardBadge(service, table, interval);
+  // The website's price follows the kind of site chosen; every other service has one price.
+  const monthlyCents = service.id === "managed-website" ? table.website.kinds[kind].monthlyCents : service.monthlyCents;
+  const blurb = service.id === "managed-website" ? CHECKOUT_PLAN_COPY["managed-website"].blurb(formatMoney(monthlyCents, table.currency)) : service.blurb;
   return (
     <label className={CARD}>
       <span className="flex items-start justify-between gap-3">
@@ -63,14 +74,14 @@ function ServiceCard({ service, table, ticked, enabled, interval, onToggle }: Se
           <span aria-hidden="true" className={cx("size-2 shrink-0 rounded-mark", MARK[service.id] ?? "bg-ink")} />
           {service.title}
         </span>
-        <input type="checkbox" className="sr-only" checked={ticked} disabled={!enabled && !ticked} onChange={(event) => onToggle(service.id, event.target.checked)} />
+        <input type="checkbox" className="sr-only" checked={ticked} disabled={locked || (!enabled && !ticked)} onChange={(event) => onToggle(service.id, event.target.checked)} />
         <span aria-hidden="true" data-checked={ticked ? "" : undefined} className={BOX}>
           {ticked ? <Icon name="Check" size="sm" className="size-3.5" /> : null}
         </span>
       </span>
-      <span className="hidden type-meta md:block">{service.blurb}</span>
+      <span className="hidden type-meta md:block">{blurb}</span>
       <span className="mt-auto flex flex-wrap items-center gap-2">
-        <span className="font-mono tabular-nums type-body text-ink">{formatMoney(service.monthlyCents, table.currency)}</span>
+        <span className="font-mono tabular-nums type-body text-ink">{formatMoney(monthlyCents, table.currency)}</span>
         <span className="type-meta">a month</span>
         {badge === null ? null : <Badge tone="pos">{badge}</Badge>}
       </span>

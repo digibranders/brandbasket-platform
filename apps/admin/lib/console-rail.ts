@@ -63,6 +63,7 @@ export const CONSOLE_RAIL: readonly ConsoleRailGroup[] = [
       { href: "/invoices", label: "Invoices" },
       { href: "/pricing", label: "Prices" },
       { href: "/coupons", label: "Coupons" },
+      { href: "/payment-links", label: "Payment links" },
       { href: "/affiliates", label: "Affiliates" },
       { href: "/ad-results", label: "Acquisition" },
     ],

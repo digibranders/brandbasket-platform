@@ -39,6 +39,7 @@ export * from "./onboarding";
 export * from "./patients";
 export * from "./practitioners";
 export * from "./project-events";
+export * from "./payment-links";
 export * from "./projects";
 export * from "./rate-limits";
 export * from "./referrals";

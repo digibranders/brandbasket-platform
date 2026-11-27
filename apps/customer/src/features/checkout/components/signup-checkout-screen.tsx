@@ -2,6 +2,7 @@
 
 import type { BillingInterval } from "@brandbasket/db";
 import type { MonthlyAddOnId } from "@brandbasket/shared/lib/billing/add-ons";
+import { WEBSITE_KIND_LABELS, WEBSITE_KINDS, type WebsiteKind } from "@brandbasket/shared/lib/billing/website-kind";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -12,18 +13,17 @@ import { TurnstileWidget } from "@/features/entry/components/turnstile";
 import { CHECKOUT_AGREE_MESSAGE } from "@/features/entry/rules/checkout-signup-messages";
 import { SIGN_IN_PATH } from "@/features/entry/rules/account-entry";
 import { AGREE_FIELD, AGREE_VALUE, START_FIELD } from "@/features/entry/rules/join-form";
-import type { StartPrefill } from "@/features/entry/rules/start-token";
 import { actionFail } from "@/lib/action-result";
 import { useGuardedActionState } from "@/lib/use-guarded-action-state";
 import { Badge, Banner, Segmented } from "@/ui";
 import { cx } from "@/ui/cx";
 import { applyCodeAction, startPaymentAction } from "../actions";
-import { billingParamValue, MEMBERSHIP_BILLING_PARAM, membershipHrefWithServices } from "../rules/membership";
+import { billingParamValue, MEMBERSHIP_BILLING_PARAM, MEMBERSHIP_KIND_PARAM, membershipHrefWithServices } from "../rules/membership";
 import { useOpeningPayment } from "../rules/opening-payment";
 import { checkoutLead, checkoutSteps } from "../rules/plans";
 import { basketView, payLabel, purchasableServices, type SignupBasketTable } from "../rules/signup-basket";
 import { CodeDisclosure } from "./code-disclosure";
-import { DetailsFields } from "./details-fields";
+import { DetailsFields, type DetailsPrefill } from "./details-fields";
 import { OrderPanel } from "./order-panel";
 import { PayBar, PayBarSpacer } from "./pay-bar";
 import { ServiceCards } from "./service-cards";
@@ -43,7 +43,7 @@ export interface NewAccountDetails {
   readonly siteKey: string | null;
   readonly phoneCountries: readonly PhoneCountryChoice[];
   readonly defaultPhoneCountry: string;
-  readonly prefill: StartPrefill | null;
+  readonly prefill: DetailsPrefill | null;
   /** The sealed token that named an ad, sent back so the account keeps which ad it came from. */
   readonly startToken: string | null;
 }
@@ -64,6 +64,15 @@ export interface SignupCheckoutScreenProps {
   readonly standalone?: boolean;
   /** Back from the provider after a payment that did not go through. */
   readonly paymentFailed?: boolean;
+  /** The kind of website to open on (plan 65): B2B when absent. */
+  readonly initialKind?: WebsiteKind;
+  /**
+   * Set when a staff payment link decided the deal: the services, how often they are paid, the kind of website and the build
+   * discount are fixed, and the screen offers no way to change them.
+   */
+  readonly link?: { readonly interval: BillingInterval; readonly discountCents: number; readonly note: string | null } | null;
+  /** The token of the staff payment link the visitor opened, sent back with the first post so the account is made for that deal. */
+  readonly payLinkToken?: string;
 }
 
 /** The second post: the same services and billing, tier managed, and no details. */
@@ -71,6 +80,7 @@ function paymentForm(opened: FormData): FormData {
   const payment = new FormData();
   payment.set("tier", "managed");
   payment.set("billing", String(opened.get("billing") ?? ""));
+  payment.set("siteKind", String(opened.get("siteKind") ?? "b2b"));
   for (const service of opened.getAll("service")) payment.append("service", service);
   return payment;
 }
@@ -86,12 +96,14 @@ function codeForm(opened: FormData, code: string): FormData {
 /** The full checkout for these services, paid the way the visitor chose: where a code in force is shown with what it is worth. */
 function checkoutHref(table: SignupBasketTable, opened: FormData): string {
   const href = membershipHrefWithServices("managed", purchasableServices(table, opened.getAll("service").map(String)));
-  return opened.get("billing") === billingParamValue("year") ? `${href}&${MEMBERSHIP_BILLING_PARAM}=${billingParamValue("year")}` : href;
+  const withKind = opened.get("siteKind") === "ecommerce" ? `${href}&${MEMBERSHIP_KIND_PARAM}=ecommerce` : href;
+  return opened.get("billing") === billingParamValue("year") ? `${withKind}&${MEMBERSHIP_BILLING_PARAM}=${billingParamValue("year")}` : withKind;
 }
 
-export function SignupCheckoutScreen({ table, initialServices, account, details, standalone = true, paymentFailed = false }: SignupCheckoutScreenProps) {
+export function SignupCheckoutScreen({ table, initialServices, account, details, standalone = true, paymentFailed = false, initialKind = "b2b", link = null, payLinkToken }: SignupCheckoutScreenProps) {
   const [ticked, setTicked] = useState<readonly MonthlyAddOnId[]>(() => purchasableServices(table, initialServices));
-  const [interval, setBilling] = useState<BillingInterval>("month");
+  const [interval, setBilling] = useState<BillingInterval>(link?.interval ?? "month");
+  const [kind, setKind] = useState<WebsiteKind>(initialKind);
   const [agreed, setAgreed] = useState(false);
   const [agreeMissing, setAgreeMissing] = useState(false);
   // Once the account is open a refused payment is tried again without opening another: the address would then "already have an account".
@@ -125,7 +137,7 @@ export function SignupCheckoutScreen({ table, initialServices, account, details,
   const [state, formAction, pending, formRef] = useGuardedActionState(run, null);
   const opening = useOpeningPayment(pending, state);
 
-  const view = basketView(table, ticked, interval);
+  const view = basketView(table, ticked, interval, { kind, deal: link });
   const failure = state !== null && !state.ok && !pending ? state : null;
   const codeError = failure?.fieldErrors?.referralCode;
   const bannerMessage = failure !== null && codeError === undefined && (failure.field === undefined || !FIELDS_ON_SCREEN.has(failure.field)) ? failure.message : null;
@@ -161,6 +173,8 @@ export function SignupCheckoutScreen({ table, initialServices, account, details,
     <Frame standalone={standalone} signIn={account === "new"}>
         <form ref={formRef} onSubmit={submit} noValidate className="flex flex-col gap-6">
           <input type="hidden" name="billing" value={billingParamValue(interval)} />
+          <input type="hidden" name="siteKind" value={kind} />
+          {payLinkToken === undefined ? null : <input type="hidden" name="payLink" value={payLinkToken} />}
           {view.services.map((service) => (
             <input key={service} type="hidden" name="service" value={service} />
           ))}
@@ -178,6 +192,9 @@ export function SignupCheckoutScreen({ table, initialServices, account, details,
               <h1 className="type-title text-ink">Your plan</h1>
               <p className="font-sans text-sm text-ink-2">{checkoutLead(table.currency, table.taxRateBasisPoints)}</p>
             </div>
+            {link !== null ? (
+              <p className="type-meta">{interval === "year" ? "Paid yearly" : "Paid monthly"}, as agreed with us.</p>
+            ) : (
             <Segmented
               aria-label="How you pay"
               value={interval}
@@ -194,9 +211,20 @@ export function SignupCheckoutScreen({ table, initialServices, account, details,
                 },
               ]}
             />
+            )}
           </header>
 
-          <ServiceCards table={table} services={view.services} interval={interval} onToggle={toggle} />
+          {view.services.includes("managed-website") && link === null ? (
+            <Segmented
+              aria-label="Type of website"
+              value={kind}
+              onValueChange={(next) => setKind(next === "ecommerce" ? "ecommerce" : "b2b")}
+              options={WEBSITE_KINDS.map((option) => ({ value: option, label: WEBSITE_KIND_LABELS[option] }))}
+            />
+          ) : null}
+          {view.services.includes("managed-website") && link !== null ? <p className="type-meta">{WEBSITE_KIND_LABELS[kind]}, as agreed with us.</p> : null}
+
+          <ServiceCards table={table} services={view.services} interval={interval} onToggle={toggle} kind={kind} locked={link !== null} />
 
           <div className="grid items-start gap-6 lg:grid-cols-12">
             {showDetails ? (
@@ -231,7 +259,7 @@ export function SignupCheckoutScreen({ table, initialServices, account, details,
               What happens next
             </h2>
             <ol aria-label="What happens next" className="m-0 grid list-none gap-3 p-0 md:grid-flow-col md:auto-cols-fr md:gap-0">
-              {checkoutSteps(view.services).map((step, index) => (
+              {checkoutSteps(view.services, kind).map((step, index) => (
                 <li
                   key={step.title}
                   aria-current={index === 0 ? "step" : undefined}

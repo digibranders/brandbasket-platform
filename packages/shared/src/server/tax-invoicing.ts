@@ -41,6 +41,7 @@ import {
 
 import { stateCodeOfIndiaPostName } from "@brandbasket/db/india-states";
 import { addOnById, isMonthlyAddOnId } from "../lib/billing/add-ons";
+import { WEBSITE_KIND_LABELS, type WebsiteKind } from "../lib/billing/website-kind";
 import { isPrintableOnInvoice, normaliseInvoiceText } from "../lib/billing/invoice-text";
 import { packageBasisPointsFor, packageOfferNote, percentOf, shareDiscountAcrossLines, soldPackageBasisPoints } from "../lib/billing/packages";
 import { paymentLabel } from "../lib/billing/payment-method";
@@ -86,6 +87,11 @@ export type InvoiceSource =
        * (linesFor), so a caller never has to say it.
        */
       readonly yearly?: boolean;
+      /**
+       * Plan 65: the one-time website build fee this payment carried or waived, frozen when the checkout opened. A fee paid in part or in
+       * full is a line of its own; one waived in full (`discountCents === listCents`) prints no line, and the first service line says so.
+       */
+      readonly setupFee?: { readonly websiteKind: WebsiteKind; readonly listCents: number; readonly discountCents: number; readonly note: string | null };
       /**
        * The first instant paid for. A provider renewal passes the provider's own cycle start, so the printed period
        * matches the provider's.
@@ -373,8 +379,37 @@ async function linesFor(tx: ScopedTransaction, payment: Payment, source: Invoice
   return planLinesFor(payment, source, coupon);
 }
 
-/** The lines of a plan payment: the plan row's own line when it costs something, then a line for each service. */
-function planLinesFor(payment: Payment, source: Extract<InvoiceSource, { kind: "plan" }>, coupon: ReferralCodeForInvoice | null): InvoiceLineInput[] {
+type PlanSource = Extract<InvoiceSource, { kind: "plan" }>;
+
+/** The build fee's line (plan 65): the list price with the deal's discount in the discount column and the staff note beside it. */
+function buildFeeLine(fee: NonNullable<PlanSource["setupFee"]>, taxRateBasisPoints: number): InvoiceLineInput {
+  return {
+    description: `Website design and build (${WEBSITE_KIND_LABELS[fee.websiteKind]})`,
+    detail: "One-time",
+    note: fee.discountCents === 0 ? null : (fee.note ?? "Build discount"),
+    sac: BRANDBASKET_SAC,
+    quantity: 1,
+    unitAmountCents: fee.listCents,
+    discountAmountCents: fee.discountCents,
+    taxRateBasisPoints,
+  };
+}
+
+/** The lines of a plan payment: the build fee when it was paid, then the plan row's own line when it costs something, then a line for each service. */
+function planLinesFor(payment: Payment, source: PlanSource, coupon: ReferralCodeForInvoice | null): InvoiceLineInput[] {
+  const lines = servicePlanLines(payment, source, coupon);
+  const fee = source.setupFee;
+  if (fee === undefined) return lines;
+  if (fee.listCents > fee.discountCents) return [buildFeeLine(fee, source.plan.taxRateBasisPoints), ...lines];
+  // A fee waived in full cannot be a line (a line paid at nothing is refused): the first service line says it was waived.
+  const [first, ...rest] = lines;
+  if (first === undefined) return lines;
+  const waived = ["Website build fee waived", fee.note].filter((part): part is string => part !== null && part !== "").join(". ");
+  return [{ ...first, note: first.note === null ? waived : `${first.note}. ${waived}` }, ...rest];
+}
+
+/** The plan row's own line when it costs something, then a line for each service. */
+function servicePlanLines(payment: Payment, source: PlanSource, coupon: ReferralCodeForInvoice | null): InvoiceLineInput[] {
   const planLine: InvoiceLineInput = {
     description: planLineDescription(source.plan.name),
     detail: planLineDetail(source.monthly, source.periodStart, source.periodEnd, source.yearly),

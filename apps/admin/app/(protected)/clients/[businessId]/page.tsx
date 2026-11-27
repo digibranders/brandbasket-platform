@@ -1,4 +1,4 @@
-import { findClientIntake, findSiteSetting, listActivityForBusiness, listAssignableSupportStaff } from "@brandbasket/db";
+import { findClientIntake, findSiteSetting, findWebsiteKindForBusiness, listActivityForBusiness, listAssignableSupportStaff } from "@brandbasket/db";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
@@ -17,6 +17,7 @@ import { ExceptionsStrip, OverviewNextStepCard, ServiceCards } from "@/component
 import { CustomerMirrorPanel } from "@/components/console/customer-mirror-panel";
 import { Quiet, Section } from "@/components/console/section";
 import { TryAgain } from "@/components/console/try-again";
+import { websiteKindLabel } from "@/lib/client-build-fee";
 import { overviewCard } from "@/lib/client-next-step";
 import { clientTabHref, forwardedNoticeHref } from "@/lib/client-tabs";
 import { loadOverviewReads, readOnce } from "@/lib/server/client-overview";
@@ -45,7 +46,7 @@ export default async function ClientOverviewPage({
   const db = getStaffDb();
   const now = new Date();
   const seesMoney = staffCan(granted.staff.role, "money");
-  const [overview, recent, intake, setupCallSetting] = await Promise.all([
+  const [overview, recent, intake, setupCallSetting, websiteKind] = await Promise.all([
     loadOverviewReads({ client, now, seesMoney }),
     readOnce("activity", async () => ({
       rows: await listActivityForBusiness(db, client.businessId, RECENT_SHOWN),
@@ -53,6 +54,7 @@ export default async function ClientOverviewPage({
     })),
     readOnce("intake", () => findClientIntake(db, client.businessId)),
     findSiteSetting(db, SETUP_CALL_URL_KEY).catch(() => null),
+    client.project === null ? Promise.resolve(null) : readOnce("website kind", () => findWebsiteKindForBusiness(db, client.businessId)),
   ]);
   const reading = setupCallSetting === null ? null : readSetupCallUrl(setupCallSetting.value);
   const fallbackCallUrl = reading !== null && reading.ok ? reading.url : null;
@@ -127,6 +129,7 @@ export default async function ClientOverviewPage({
                 ? []
                 : [{ label: "Mobile", value: <span className="tabular-nums">{displayPhoneText(client.owner.phone) ?? client.owner.phone}</span> }]),
               { label: "Billed in", value: BILLING_CURRENCY_LABELS[client.currency] },
+              ...(websiteKind === null || !websiteKind.ok ? [] : [{ label: "Website", value: websiteKindLabel(websiteKind.value) }]),
               { label: "Joined", value: <When date={client.createdAt} /> },
             ]}
           />

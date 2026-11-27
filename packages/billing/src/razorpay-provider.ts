@@ -320,7 +320,7 @@ export function createRazorpayProvider(options: RazorpayProviderOptions): Razorp
         ...(firstChargeAt === undefined ? {} : { start_at: Math.floor(firstChargeAt.getTime() / 1000) }),
         ...(input.firstPayment === undefined
           ? {}
-          : { addons: [{ item: { name: FIRST_PAYMENT_ITEM_NAME, amount: input.firstPayment.amountCents, currency: input.plan.currency } }] }),
+          : { addons: [{ item: { name: input.firstPayment.label ?? FIRST_PAYMENT_ITEM_NAME, amount: input.firstPayment.amountCents, currency: input.plan.currency } }] }),
       });
       return { providerSubscriptionId: created.id, checkoutUrl: input.startAt === undefined ? RAZORPAY_PAY_PATH : RAZORPAY_KEEP_PAY_PATH };
     },

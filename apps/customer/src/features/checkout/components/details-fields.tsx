@@ -18,6 +18,21 @@ import { Checkbox, Field, Input, Select, type SelectOption } from "@/ui";
  * refusal never resets what was typed.
  */
 
+/**
+ * The opening values of the details: the ad landing page's three (StartPrefill) and, from a staff payment link (plan 65), the rest of
+ * what staff knew. All of them are editable and every one may be absent; whatever is missing the visitor fills in while paying.
+ */
+export interface DetailsPrefill extends StartPrefill {
+  readonly businessName?: string;
+  readonly stateCode?: string;
+  readonly gstin?: string;
+  readonly legalName?: string;
+  readonly addressLine1?: string;
+  readonly addressLine2?: string;
+  readonly postalCode?: string;
+  readonly city?: string;
+}
+
 const GSTIN_LENGTH = 15;
 const PINCODE_LENGTH = 6;
 
@@ -30,14 +45,14 @@ interface DetailsFieldsProps {
   readonly phoneCountries: readonly { readonly code: string; readonly label: string }[];
   readonly defaultPhoneCountry: string;
   /** The ad landing page's details: opening values only, all editable. */
-  readonly prefill: StartPrefill | null;
+  readonly prefill: DetailsPrefill | null;
   /** The details were sent and the account opened with them: they are shown, no longer editable. */
   readonly locked: boolean;
 }
 
 export function DetailsFields({ inIndia, errors, accountExists, phoneCountries, defaultPhoneCountry, prefill, locked }: DetailsFieldsProps) {
-  const [businessName, setBusinessName] = useState("");
-  const [hasGstin, setHasGstin] = useState(false);
+  const [businessName, setBusinessName] = useState(prefill?.businessName ?? "");
+  const [hasGstin, setHasGstin] = useState(prefill?.gstin !== undefined && prefill.gstin !== "");
   const [phoneCountry, setPhoneCountry] = useState(prefill !== null && /^\d{10}$/.test(prefill.phone) ? HOME_COUNTRY : defaultPhoneCountry);
   const phoneOptions: readonly SelectOption[] = phoneCountries.map((option) => ({ value: option.code, label: option.label }));
   const gst = inIndia && hasGstin;
@@ -77,7 +92,7 @@ export function DetailsFields({ inIndia, errors, accountExists, phoneCountries, 
         {inIndia ? (
           <>
             <Field label="State" name="stateCode" nativeLabel={false} error={errors?.stateCode} hint="Used for GST on your invoices.">
-              <Select name="stateCode" disabled={locked} options={INDIA_STATE_OPTIONS} placeholder="Choose your state" />
+              <Select name="stateCode" disabled={locked} options={INDIA_STATE_OPTIONS} placeholder="Choose your state" defaultValue={prefill?.stateCode ?? null} />
             </Field>
             <div className="flex flex-col gap-1 sm:pt-6">
               <Checkbox name="hasGstin" disabled={locked} value="on" checked={hasGstin} onCheckedChange={setHasGstin} label="My business has a GSTIN" />
@@ -94,24 +109,24 @@ export function DetailsFields({ inIndia, errors, accountExists, phoneCountries, 
         {gst ? (
           <div className="grid gap-4 sm:col-span-2 sm:grid-cols-2">
             <Field label="GSTIN" name="gstin" error={errors?.gstin} hint="15 characters, on your GST registration certificate.">
-              <Input name="gstin" readOnly={locked} maxLength={GSTIN_LENGTH} autoComplete="off" spellCheck={false} />
+              <Input name="gstin" readOnly={locked} maxLength={GSTIN_LENGTH} autoComplete="off" spellCheck={false} defaultValue={prefill?.gstin ?? ""} />
             </Field>
             <Field label="Legal business name" name="legalName" error={errors?.legalName} hint="As it appears on your GST registration, in English letters.">
-              <Input name="legalName" readOnly={locked} maxLength={JOIN_BUSINESS_NAME_MAX_LENGTH} autoComplete="organization" />
+              <Input name="legalName" readOnly={locked} maxLength={JOIN_BUSINESS_NAME_MAX_LENGTH} autoComplete="organization" defaultValue={prefill?.legalName ?? ""} />
             </Field>
             <fieldset className="grid gap-4 sm:col-span-2 sm:grid-cols-2">
               <legend className="mb-3 type-sub text-ink">Billing address</legend>
               <Field label="Address line 1" name="addressLine1" error={errors?.addressLine1}>
-                <Input name="addressLine1" readOnly={locked} maxLength={JOIN_BUSINESS_NAME_MAX_LENGTH} autoComplete="address-line1" />
+                <Input name="addressLine1" readOnly={locked} maxLength={JOIN_BUSINESS_NAME_MAX_LENGTH} autoComplete="address-line1" defaultValue={prefill?.addressLine1 ?? ""} />
               </Field>
               <Field label="Address line 2 (optional)" name="addressLine2" error={errors?.addressLine2}>
-                <Input name="addressLine2" readOnly={locked} maxLength={JOIN_BUSINESS_NAME_MAX_LENGTH} autoComplete="address-line2" />
+                <Input name="addressLine2" readOnly={locked} maxLength={JOIN_BUSINESS_NAME_MAX_LENGTH} autoComplete="address-line2" defaultValue={prefill?.addressLine2 ?? ""} />
               </Field>
               <Field label="Pincode" name="postalCode" error={errors?.postalCode}>
-                <Input name="postalCode" readOnly={locked} inputMode="numeric" maxLength={PINCODE_LENGTH} autoComplete="postal-code" />
+                <Input name="postalCode" readOnly={locked} inputMode="numeric" maxLength={PINCODE_LENGTH} autoComplete="postal-code" defaultValue={prefill?.postalCode ?? ""} />
               </Field>
               <Field label="City" name="city" error={errors?.city}>
-                <Input name="city" readOnly={locked} maxLength={100} autoComplete="address-level2" />
+                <Input name="city" readOnly={locked} maxLength={100} autoComplete="address-level2" defaultValue={prefill?.city ?? ""} />
               </Field>
             </fieldset>
           </div>

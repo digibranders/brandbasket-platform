@@ -1,5 +1,6 @@
 import type { BillingInterval } from "@brandbasket/db";
 import type { MoneyCurrency } from "../money";
+import { type WebsiteKind } from "./website-kind";
 import { addOnById, addOnPrice, cyclePriceCents, MONITORING_ID, MONTHLY_ADD_ON_IDS, type AddOnPrice, type MonthlyAddOnId, type PlanAddOnId } from "./add-ons";
 
 /**
@@ -112,11 +113,11 @@ export function shareDiscountAcrossLines(netCents: readonly number[], totalCents
 }
 
 /** Every line of the basket with its package discount, once each, in catalogue order, priced for each month or each year. */
-export function packageLines(input: PackageInput, currency: MoneyCurrency, interval: BillingInterval = "month"): PackageLine[] {
+export function packageLines(input: PackageInput, currency: MoneyCurrency, interval: BillingInterval = "month", kind: WebsiteKind = "b2b"): PackageLine[] {
   const services = distinctServices(input.services);
-  const listed = services.map((id) => ({ addOn: id, listCents: cyclePriceCents(addOnById(id), currency, interval) }));
+  const listed = services.map((id) => ({ addOn: id, listCents: cyclePriceCents(addOnById(id), currency, interval, kind) }));
   const discounts = packageDiscountsFor(listed, packageBasisPointsFor(input));
-  return services.map((id, index) => ({ addOn: id, ...addOnPrice(addOnById(id), currency, discounts[index] ?? 0, interval) }));
+  return services.map((id, index) => ({ addOn: id, ...addOnPrice(addOnById(id), currency, discounts[index] ?? 0, interval, kind) }));
 }
 
 /**

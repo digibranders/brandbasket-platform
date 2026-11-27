@@ -1625,6 +1625,13 @@
       "when": 1795681146761,
       "tag": "0234_users_password_pending",
       "breakpoints": true
+    },
+    {
+      "idx": 232,
+      "version": "7",
+      "when": 1795774976371,
+      "tag": "0235_build_fee_payment_links",
+      "breakpoints": true
     }
   ]
 }

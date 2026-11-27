@@ -52,9 +52,9 @@ describe("assessAddOn", () => {
     expect(assessment).toMatchObject({ kind: "offer", line: { discountCents: 0, netCents: 299_900 }, quote: { nextRenewalCents: 599_800 } });
   });
 
-  it("does not sell monitoring beside all three plans, which include it", () => {
+  it("sells monitoring beside all three plans too: it is no longer free with them (owner, 2026-11-27)", () => {
     const allThree = [line("managed-website", 299_900), line("social-media", 999_900), line("paid-ads", 2_499_900)];
-    expect(assessAddOn({ state, live: allThree, addOn: "expert-monitoring", forfeited: false, providerName: "fake", now: NOW })).toEqual({ kind: "blocked", reason: "included" });
+    expect(assessAddOn({ state, live: allThree, addOn: "expert-monitoring", forfeited: false, providerName: "fake", now: NOW })).toMatchObject({ kind: "offer" });
   });
 
   it("prices monitoring at list beside one or two plans", () => {
@@ -64,11 +64,11 @@ describe("assessAddOn", () => {
     expect(assessment).toMatchObject({ kind: "offer", line: { listCents: 600_000, discountCents: 0, netCents: 600_000 }, quote: { nextRenewalCents: 1_899_800 } });
   });
 
-  it("leaves monitoring out of the renewal quoted for the plan that completes all three, at list with no discount", () => {
+  it("keeps monitoring in the renewal quoted for the plan that completes all three, at list with no discount", () => {
     const held = [line("managed-website", 299_900), line("social-media", 299_900), line("expert-monitoring", 600_000)];
     const assessment = assessAddOn({ state, live: held, addOn: "paid-ads", forfeited: false, providerName: "fake", now: NOW });
-    // All three at list is 8,997 a month, with no monitoring line.
-    expect(assessment).toMatchObject({ kind: "offer", quote: { nextRenewalCents: 899_700 } });
+    // All three at list is 8,997 a month, and monitoring's 6,000 stays on it.
+    expect(assessment).toMatchObject({ kind: "offer", quote: { nextRenewalCents: 899_700 + 600_000 } });
   });
 
   describe("with a referral code on the subscription", () => {

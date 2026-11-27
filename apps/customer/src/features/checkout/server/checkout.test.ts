@@ -11,6 +11,7 @@ import {
   findReferralCodeById,
   findLatestActivatedSubscriptionForBusiness,
   findLatestSubscriptionForBusiness,
+  findOpenPaymentLinkForBusiness,
   isPackageOfferForfeited,
   lockBusinessForBilling,
   markPackageOfferForfeited,
@@ -70,6 +71,7 @@ vi.mock("@brandbasket/db", () => {
     findReferralCodeById: vi.fn(),
     findLatestActivatedSubscriptionForBusiness: vi.fn(),
     findLatestSubscriptionForBusiness: vi.fn(),
+    findOpenPaymentLinkForBusiness: vi.fn(),
     isPackageOfferForfeited: vi.fn(),
     lockBusinessForBilling: vi.fn(),
     markPackageOfferForfeited: vi.fn(),
@@ -139,6 +141,11 @@ function subscription(overrides: Partial<Subscription>): Subscription {
     cancelRequestedAt: null,
     firstPaymentCents: null,
     firstChargeAt: null,
+    websiteKind: null,
+    setupFeeListCents: null,
+    setupFeeDiscountCents: null,
+    setupFeeNote: null,
+    paymentLinkId: null,
     createdAt: new Date(NOW.getTime() - HOUR_MS),
     ...overrides,
   } as Subscription;
@@ -220,6 +227,8 @@ beforeEach(() => {
   vi.mocked(businessHasHadService).mockResolvedValue(true);
   // No referral code applied, unless a test says otherwise.
   vi.mocked(findBusinessReferralCode).mockResolvedValue(null);
+  // No staff payment link, unless a test says otherwise (plan 65).
+  vi.mocked(findOpenPaymentLinkForBusiness).mockResolvedValue(null);
   vi.mocked(findRedeemableReferralCode).mockResolvedValue(null);
   // The fake provider needs no discounted plan of its own.
   vi.mocked(ensureDiscountPlan).mockResolvedValue(undefined);
@@ -265,6 +274,12 @@ describe("startCheckoutFor", () => {
         discountMonthsLeft: null,
         bundledAddOns: [WEBSITE_USD_LINE],
         adCreditCents: 0,
+        // Plan 65: a website client invited by staff has always had a free build, so no fee is frozen on its checkout.
+        websiteKind: "b2b",
+        setupFeeListCents: null,
+        setupFeeDiscountCents: null,
+        setupFeeNote: null,
+        paymentLinkId: null,
         replacing: null,
         now: NOW,
       },
@@ -585,23 +600,36 @@ describe("startMembershipCheckoutFor", () => {
       expect(openedLines().reduce((total, line) => total + line.netAmountCents, 0)).toBeGreaterThan(100);
     });
 
-    it("takes the Website in full and ₹1 for Social Media", async () => {
-      neverHad();
+    it("takes the Website at its price and ₹1 for Social Media from a business that has had the website before", async () => {
+      vi.mocked(businessHasHadService).mockImplementation(async (_db, _businessId, addOn) => addOn === "managed-website");
 
       await startMembershipCheckoutFor(owner, NOW, "managed", ["managed-website", "social-media"]);
 
       const website = openedLines().find((line) => line.addOn === "managed-website");
       expect(website?.trialPriceCents ?? null).toBeNull();
-      expect(openCheckoutSubscription).toHaveBeenCalledWith({ name: "tx2" }, expect.objectContaining({ firstPaymentCents: (website?.netAmountCents ?? 0) + 100 }));
+      expect(openCheckoutSubscription).toHaveBeenCalledWith(
+        { name: "tx2" },
+        expect.objectContaining({ firstPaymentCents: (website?.netAmountCents ?? 0) + 100, setupFeeListCents: null }),
+      );
     });
 
-    it("takes ₹1 each for all three plans' offer services, Website at its price", async () => {
+    it("takes the build fee and ₹1 for Social Media, and leaves the website's own month to the first monthly charge (plan 65)", async () => {
+      neverHad();
+
+      await startMembershipCheckoutFor(owner, NOW, "managed", ["managed-website", "social-media"]);
+
+      expect(openCheckoutSubscription).toHaveBeenCalledWith(
+        { name: "tx2" },
+        expect.objectContaining({ firstPaymentCents: 3_500_000 + 100, firstChargeAt: FIRST_CHARGE_AT, setupFeeListCents: 3_500_000, setupFeeDiscountCents: 0, websiteKind: "b2b" }),
+      );
+    });
+
+    it("takes the build fee and ₹1 each for the other two plans' offer services", async () => {
       neverHad();
 
       await startMembershipCheckoutFor(owner, NOW, "managed", ALL_THREE);
 
-      const website = openedLines().find((line) => line.addOn === "managed-website");
-      expect(openCheckoutSubscription).toHaveBeenCalledWith({ name: "tx2" }, expect.objectContaining({ firstPaymentCents: (website?.netAmountCents ?? 0) + 200 }));
+      expect(openCheckoutSubscription).toHaveBeenCalledWith({ name: "tx2" }, expect.objectContaining({ firstPaymentCents: 3_500_000 + 200 }));
     });
 
     it("charges a service the business had before at its price, and opens an ordinary checkout when no service is on the offer", async () => {
@@ -691,8 +719,128 @@ describe("startMembershipCheckoutFor", () => {
 
       await startMembershipCheckoutFor(owner, NOW, "managed", ["managed-website", "social-media"]);
 
+      // On a monthly build-fee deal the code starts with the first monthly charge: it takes nothing off today's payment (plan 65, Q4).
+      expect(openCheckoutSubscription).toHaveBeenCalledWith({ name: "tx2" }, expect.objectContaining({ discountAmountCents: 50_000, firstPaymentCents: 3_500_000 + 100 }));
+    });
+
+    it("takes a code off the services that pay full price when no fee is owed", async () => {
+      vi.mocked(businessHasHadService).mockImplementation(async (_db, _businessId, addOn) => addOn === "managed-website");
+      const code = coupon({ kind: "amount", amountCents: 50_000 });
+      vi.mocked(findBusinessReferralCode).mockResolvedValue(code);
+      vi.mocked(findRedeemableReferralCode).mockResolvedValue(code);
+
+      await startMembershipCheckoutFor(owner, NOW, "managed", ["managed-website", "social-media"]);
+
       const website = openedLines().find((line) => line.addOn === "managed-website");
       expect(openCheckoutSubscription).toHaveBeenCalledWith({ name: "tx2" }, expect.objectContaining({ discountAmountCents: 50_000, firstPaymentCents: (website?.netAmountCents ?? 0) + 100 - 50_000 }));
+    });
+  });
+
+  describe("the website build fee (plan 65)", () => {
+    const neverHad = () => vi.mocked(businessHasHadService).mockResolvedValue(false);
+    const FIRST_CHARGE_AT = new Date("2026-10-16T12:00:00.000Z");
+    const opened = () => vi.mocked(openCheckoutSubscription).mock.calls[0]?.[1];
+    /** A link bound to the business: an ecommerce store with Social, yearly, ₹15,000 off the build. Rupees, to match the member suite's plan. */
+    const link = (overrides: Record<string, unknown> = {}) =>
+      ({
+        id: "link-1",
+        currency: "INR",
+        services: ["managed-website", "social-media"],
+        billingInterval: "year",
+        websiteKind: "ecommerce",
+        setupFeeListCents: 6_500_000,
+        setupFeeDiscountCents: 1_500_000,
+        setupFeeNote: "As agreed on call",
+        referralCodeId: null,
+        ...overrides,
+      }) as unknown as Awaited<ReturnType<typeof findOpenPaymentLinkForBusiness>>;
+
+    it("charges the fee for an ecommerce store at its own price, and the website line at the ecommerce monthly price", async () => {
+      neverHad();
+
+      await startMembershipCheckoutFor(owner, NOW, "managed", WEBSITE_ALONE, "month", "ecommerce");
+
+      expect(opened()).toMatchObject({ websiteKind: "ecommerce", setupFeeListCents: 6_500_000, setupFeeDiscountCents: 0, firstPaymentCents: 6_500_000, firstChargeAt: FIRST_CHARGE_AT });
+      expect(opened()?.bundledAddOns?.[0]).toMatchObject({ addOn: "managed-website", netAmountCents: 399_900 });
+    });
+
+    it("names the upfront amount as a build fee when the provider is asked", async () => {
+      neverHad();
+      const started = vi.spyOn(provider, "startCheckout");
+
+      await startMembershipCheckoutFor(owner, NOW, "managed", WEBSITE_ALONE);
+
+      expect(started).toHaveBeenCalledWith(expect.objectContaining({ firstPayment: { amountCents: 3_500_000, startAt: FIRST_CHARGE_AT, label: "Website build and first payment" } }));
+    });
+
+    it("lets a payment link bound to the business decide the services, interval, kind, fee and discount, whatever the page posted", async () => {
+      neverHad();
+      vi.mocked(findOpenPaymentLinkForBusiness).mockResolvedValue(link());
+
+      // The page posted Social alone, monthly, B2B: the link says website and Social, yearly, ecommerce.
+      await startMembershipCheckoutFor(owner, NOW, "managed", ["social-media"], "month", "b2b");
+
+      expect(opened()).toMatchObject({
+        billingInterval: "year",
+        websiteKind: "ecommerce",
+        setupFeeListCents: 6_500_000,
+        setupFeeDiscountCents: 1_500_000,
+        setupFeeNote: "As agreed on call",
+        paymentLinkId: "link-1",
+        // ₹50,000 for the build, then a year of the ecommerce website at ₹3,999 a month (₹43,189) and of Social at ₹2,999 (₹32,389); the basket renews 13 months on.
+        firstPaymentCents: 5_000_000 + 4_318_900 + 3_238_900,
+        firstChargeAt: new Date("2027-10-16T12:00:00.000Z"),
+      });
+      expect(opened()?.bundledAddOns?.map((line) => line.addOn)).toEqual(["managed-website", "social-media"]);
+    });
+
+    it("records a waived fee with its discount but takes no free month: the checkout is the ordinary one", async () => {
+      neverHad();
+      vi.mocked(findOpenPaymentLinkForBusiness).mockResolvedValue(link({ billingInterval: "month", services: ["managed-website"], setupFeeDiscountCents: 6_500_000 }));
+
+      await startMembershipCheckoutFor(owner, NOW, "managed", WEBSITE_ALONE);
+
+      expect(opened()).toMatchObject({ setupFeeListCents: 6_500_000, setupFeeDiscountCents: 6_500_000, paymentLinkId: "link-1" });
+      expect(opened()).not.toHaveProperty("firstPaymentCents");
+    });
+
+    it("owes no fee to a business that has had the website before, even on a link", async () => {
+      vi.mocked(businessHasHadService).mockResolvedValue(true);
+      vi.mocked(findOpenPaymentLinkForBusiness).mockResolvedValue(link({ billingInterval: "month", services: ["managed-website"] }));
+
+      await startMembershipCheckoutFor(owner, NOW, "managed", WEBSITE_ALONE);
+
+      expect(opened()).toMatchObject({ setupFeeListCents: null, paymentLinkId: "link-1" });
+    });
+
+    it("refuses a link made in another currency than the business's, and opens nothing", async () => {
+      neverHad();
+      vi.mocked(findOpenPaymentLinkForBusiness).mockResolvedValue(link({ currency: "USD" }));
+
+      const result = await startMembershipCheckoutFor(owner, NOW, "managed", WEBSITE_ALONE);
+
+      expect(result).toMatchObject({ kind: "refused" });
+      expect(openCheckoutSubscription).not.toHaveBeenCalled();
+    });
+
+    it("refuses a code on a yearly build-fee deal, and says why", async () => {
+      neverHad();
+      const code = coupon({ kind: "amount", amountCents: 50_000 });
+      vi.mocked(findBusinessReferralCode).mockResolvedValue(code);
+      vi.mocked(findRedeemableReferralCode).mockResolvedValue(code);
+
+      const result = await startMembershipCheckoutFor(owner, NOW, "managed", WEBSITE_ALONE, "year");
+
+      expect(result).toMatchObject({ kind: "refused", problem: { message: expect.stringMatching(/yearly website build/) } });
+      expect(openCheckoutSubscription).not.toHaveBeenCalled();
+    });
+
+    it("never charges a fee on a reactivation", async () => {
+      vi.mocked(businessHasHadService).mockResolvedValue(false);
+
+      await startReactivationFor(owner, NOW, WEBSITE_ALONE);
+
+      expect(vi.mocked(openCheckoutSubscription).mock.calls[0]?.[1] ?? {}).not.toHaveProperty("setupFeeListCents", 3_500_000);
     });
   });
 

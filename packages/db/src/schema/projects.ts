@@ -63,10 +63,13 @@ export const projects = pgTable(
     launchedAt: timestamp("launched_at", { withTimezone: true }),
     /** The staff member building it; null until someone is assigned on the console's Projects board. */
     assignedStaffId: text("assigned_staff_id").references(() => staffMembers.userId),
+    /** Plan 65: B2B website or ecommerce store, copied from the subscription at the first payment. Null before kinds existed (then B2B). */
+    websiteKind: text("website_kind"),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
   (table) => [
+    check("projects_website_kind_check", sql`${table.websiteKind} is null or ${table.websiteKind} in ('b2b', 'ecommerce')`),
     // One open project per business; finished and cancelled ones accumulate.
     uniqueIndex("projects_one_open_per_business_idx")
       .on(table.businessId)

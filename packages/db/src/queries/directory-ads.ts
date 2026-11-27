@@ -789,7 +789,7 @@ export interface OpenedMembership {
 export async function openMembershipForListingBusiness(
   tx: ScopedTransaction,
   businessId: string,
-  options: { readonly withProject: boolean },
+  options: { readonly withProject: boolean; /** Plan 65: the kind of website the first payment bought, copied onto the project it opens. */ readonly websiteKind?: string | null },
 ): Promise<OpenedMembership | null> {
   const converted = await tx
     .update(businesses)
@@ -798,7 +798,7 @@ export async function openMembershipForListingBusiness(
     .returning({ businessName: businesses.name });
   const opened = converted[0];
   if (opened === undefined) return null;
-  if (options.withProject) await insertOnboardingProject(tx, businessId);
+  if (options.withProject) await insertOnboardingProject(tx, businessId, options.websiteKind ?? null);
   return opened;
 }
 

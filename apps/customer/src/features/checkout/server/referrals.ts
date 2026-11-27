@@ -21,6 +21,7 @@ import { basketNetCents } from "../rules/membership";
 import type { StepProblem } from "./onboarding";
 import type { GrantedCustomer } from "./customer-access";
 import { getAppDb, getStaffDb } from "./db";
+import type { WebsiteKind } from "@brandbasket/shared/lib/billing/website-kind";
 
 /**
  * Applying a referral code. Every read and write here runs on the staff connection: `referral_codes` grants the
@@ -88,9 +89,9 @@ export interface CodeBasis {
  * The basis a code is priced against for a basket of services, or null for an empty basket. A code is only ever applied
  * before a business has paid, so the package offer is never forfeited here.
  */
-export function codeBasisFor(services: readonly MonthlyAddOnId[], currency: MoneyCurrency, interval: BillingInterval = "month"): CodeBasis | null {
+export function codeBasisFor(services: readonly MonthlyAddOnId[], currency: MoneyCurrency, interval: BillingInterval = "month", kind: WebsiteKind = "b2b"): CodeBasis | null {
   if (services.length === 0) return null;
-  const netCents = basketNetCents(services, currency, interval);
+  const netCents = basketNetCents(services, currency, interval, kind);
   return interval === "year" ? { currency, netCents, interval } : { currency, netCents };
 }
 

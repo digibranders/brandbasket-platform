@@ -1420,27 +1420,23 @@ describe("Dedicated Expert Monitoring", () => {
     expect(plansMade).toEqual([{ net: 1_199_800, discount: 0 }]);
   });
 
-  it("refuses monitoring beside all three plans, which include it", async () => {
+  it("sells monitoring beside all three plans too: it is no longer free with them (owner, 2026-11-27)", async () => {
     await paidSubscription(bundleOf("managed-website", "social-media", "paid-ads"));
 
-    expect(await startAddOn(deps(), { businessId, addOn: "expert-monitoring", staffId: null, now: FIFTH_NOV })).toEqual({
-      kind: "refused",
-      assessment: { kind: "blocked", reason: "included" },
-    });
+    expect(await startAddOn(deps(), { businessId, addOn: "expert-monitoring", staffId: null, now: FIFTH_NOV })).toMatchObject({ kind: "pay" });
   });
 
-  it("ends a billed monitoring line once a paid add completes all three plans", async () => {
+  it("keeps a billed monitoring line when a paid add completes all three plans", async () => {
     const subscription = await paidSubscription(bundleOf("managed-website", "social-media", "expert-monitoring"), { adCreditCents: 150_000 });
 
     await addAndPay("paid-ads");
 
     const monitoring = await rowFor(subscription, "expert-monitoring");
-    expect(monitoring).toMatchObject({ status: "active", endReason: "Included with all three plans" });
-    expect(monitoring.endRequestedAt).not.toBeNull();
-    // All three at list from the next bill, with no monitoring line: 8,997 a month.
-    expect(await findSubscriptionById(dbs.staff.db, subscription.id)).toMatchObject({ pendingBundledAddOnNetCents: 899_700, adCreditCents: 150_000 });
+    expect(monitoring).toMatchObject({ status: "active", endReason: null, endRequestedAt: null });
+    // All three at list plus monitoring's 6,000 from the next bill: 14,997 a month.
+    expect(await findSubscriptionById(dbs.staff.db, subscription.id)).toMatchObject({ pendingBundledAddOnNetCents: 1_499_700, adCreditCents: 150_000 });
     expect(await forfeitedAt()).toBeNull();
-    expect(plansMade.at(-1)).toEqual({ net: 899_700, discount: 0 });
+    expect(plansMade.at(-1)).toEqual({ net: 1_499_700, discount: 0 });
   });
 
   it("takes monitoring out and leaves the other lines as they are", async () => {

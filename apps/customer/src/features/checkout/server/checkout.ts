@@ -14,6 +14,7 @@ import {
   findBundledAddOnsForSubscription,
   findBusinessReferralCode,
   findLatestSubscriptionForBusiness,
+  findOpenPaymentLinkForBusiness,
   findRedeemableReferralCode,
   isPackageOfferForfeited,
   type BillingInterval,
@@ -30,9 +31,11 @@ import {
 import { isSafeCheckoutUrl } from "../rules/checkout-url";
 import type { MonthlyAddOnId } from "@brandbasket/shared/lib/billing/add-ons";
 import { readBundleSelection, WEBSITE_ALONE, type ReactivationBasket } from "@brandbasket/shared/lib/billing/bundle";
-import { planFirstPayment } from "@brandbasket/shared/lib/billing/first-payment";
+import { BUILD_FEE_ADD_ON, planFirstPayment } from "@brandbasket/shared/lib/billing/first-payment";
+import { setupFeeFor, type SetupFee } from "@brandbasket/shared/lib/billing/setup-fee";
+import { isWebsiteKind, type WebsiteKind } from "@brandbasket/shared/lib/billing/website-kind";
 import { adCreditCentsAtCheckout, packageLines } from "@brandbasket/shared/lib/billing/packages";
-import { trialEndsAt } from "@brandbasket/shared/lib/billing/trial";
+import { addMonthsUtc } from "@brandbasket/billing/term";
 import { PAYMENT_RECEIVED_MESSAGE, REACTIVATE_HREF } from "@brandbasket/shared/lib/billing/payment-step";
 import { firstMissing, onboardingChecklist } from "@brandbasket/shared/lib/onboarding/checklist";
 import { MEMBER_HOME } from "../rules/membership";
@@ -85,6 +88,10 @@ const PAYMENT_UNAVAILABLE = "We couldn’t open your payment just now. Please tr
 const NO_SERVICES = "Choose at least one service to continue.";
 // New wording (plan 63, decision D4): the owner approves it before release.
 const CODE_NEEDS_A_PAID_SERVICE = "Your referral code can’t be used on a basket of first-month offer services only. Add a service that pays full price to use it.";
+/** What Razorpay Checkout calls the upfront amount when it carries a build fee (plan 65). New copy: the owner approves it before release. */
+const BUILD_FEE_ITEM_NAME = "Website build and first payment";
+// New wording (plan 65): the owner approves it before release. A code is refused with a yearly website build, as well as with first-month offer services only.
+const CODE_REFUSED_MESSAGE = `${CODE_NEEDS_A_PAID_SERVICE} A yearly website build takes no code either: ask us about a deal discount instead.`;
 const BILLING_DETAILS_NEEDED = "Add your billing details to pay. Your GST invoice is made out from them and cannot be changed once it is issued.";
 
 /** What was decided under the lock, carried past its commit. */
@@ -122,7 +129,30 @@ interface PlannedCheckout {
    * `firstChargeAt`, a month from now; `firstPaymentCents` is taken upfront when the customer approves it.
    */
   readonly offer: { readonly firstPaymentCents: number; readonly firstChargeAt: Date } | null;
+  /**
+   * What was agreed for the website (plan 65): its kind, the build fee less the deal discount and the staff note, and the payment link it
+   * came from. All null when the basket has no website or no fee is owed (a fee that is waived is still recorded, with its discount, so
+   * the invoice can say so). Frozen onto the subscription when the checkout opens.
+   */
+  readonly deal: {
+    readonly websiteKind: WebsiteKind | null;
+    readonly setupFee: SetupFee | null;
+    readonly note: string | null;
+    readonly paymentLinkId: string | null;
+  };
 }
+
+/**
+ * What a checkout may add to the basket the page named (plan 65): the kind of website the customer chose, and whether the list build
+ * fee is owed when no payment link names one. A sign-up checkout owes it (decision D14); a website client invited by staff, who has
+ * always had a free build, and a reactivation do not. A payment link bound to the business decides everything itself.
+ */
+export interface CheckoutDealOptions {
+  readonly chosenKind: WebsiteKind;
+  readonly chargeListFee: boolean;
+}
+
+const NO_FEE: CheckoutDealOptions = { chosenKind: "b2b", chargeListFee: false };
 
 type DecisionStep =
   | { readonly kind: "planned"; readonly planned: PlannedCheckout }
@@ -194,7 +224,15 @@ async function openNewCheckout(
     discountAmountCents,
     bundledAddOnNetCents,
     ...(providerPlanId === undefined ? {} : { providerPlanId }),
-    ...(planned.offer === null ? {} : { firstPayment: { amountCents: planned.offer.firstPaymentCents, startAt: planned.offer.firstChargeAt } }),
+    ...(planned.offer === null
+      ? {}
+      : {
+          firstPayment: {
+            amountCents: planned.offer.firstPaymentCents,
+            startAt: planned.offer.firstChargeAt,
+            ...(planned.deal.setupFee !== null && planned.deal.setupFee.netCents > 0 ? { label: BUILD_FEE_ITEM_NAME } : {}),
+          },
+        }),
   });
   const orphan = {
     businessId: tenant.businessId,
@@ -233,6 +271,11 @@ async function openNewCheckout(
         bundledAddOns: planned.bundle,
         adCreditCents: planned.adCreditCents,
         ...(planned.offer === null ? {} : { firstPaymentCents: planned.offer.firstPaymentCents, firstChargeAt: planned.offer.firstChargeAt }),
+        websiteKind: planned.deal.websiteKind,
+        setupFeeListCents: planned.deal.setupFee?.listCents ?? null,
+        setupFeeDiscountCents: planned.deal.setupFee?.discountCents ?? null,
+        setupFeeNote: planned.deal.note,
+        paymentLinkId: planned.deal.paymentLinkId,
         replacing: replacing?.id ?? null,
         now,
       });
@@ -290,7 +333,7 @@ export async function startCheckoutFor(customer: GrantedCustomer, now: Date, int
   }
 
   // Already paid (another tab, say): Home, which leads on to whatever setup is left.
-  return openPlanCheckout(customer, now, MEMBER_HOME, null, WEBSITE_ALONE, interval);
+  return openPlanCheckout(customer, now, MEMBER_HOME, null, WEBSITE_ALONE, interval, NO_FEE);
 }
 
 /**
@@ -314,6 +357,7 @@ export async function startMembershipCheckoutFor(
   tier: PlanTier,
   services: readonly MonthlyAddOnId[],
   interval: BillingInterval = "month",
+  chosenKind: WebsiteKind = "b2b",
 ): Promise<CheckoutOutcome> {
   const { tenant } = customer;
   const appDb = getAppDb();
@@ -325,7 +369,7 @@ export async function startMembershipCheckoutFor(
   if (entry?.kind !== "listing") return refused(ALREADY_A_MEMBER);
   if (await billingDetailsMissing(customer)) return refused(BILLING_DETAILS_NEEDED);
 
-  return openPlanCheckout(customer, now, MEMBER_HOME, tier, readBundleSelection(services), interval);
+  return openPlanCheckout(customer, now, MEMBER_HOME, tier, readBundleSelection(services), interval, { chosenKind, chargeListFee: true });
 }
 
 /**
@@ -350,15 +394,24 @@ export async function startReactivationFor(
   if (!limit.allowed) return refused(TOO_MANY_ATTEMPTS);
   if (billing.status === "paid") return { kind: "redirect", url: REACTIVATE_HREF };
   if (billing.status !== "lapsed") return refused(NOTHING_TO_PAY_FOR);
-  return openPlanCheckout(customer, now, REACTIVATE_HREF, null, readBundleSelection(chosen), interval);
+  return openPlanCheckout(customer, now, REACTIVATE_HREF, null, readBundleSelection(chosen), interval, NO_FEE);
 }
 
 /**
  * What a checkout was opened for: the services, what they add up to and the ad credit it grants. The same services at another
  * price (the package offer given up since, an ad credit that no longer applies) are another checkout, never the old one reused.
  */
-function basketKey(addOnIds: readonly string[], netCents: number, adCreditCents: number, interval: BillingInterval, firstPaymentCents: number | null): string {
-  return `${bundleKey(addOnIds)}|${netCents}|${adCreditCents}|${interval}|${firstPaymentCents ?? ""}`;
+function basketKey(
+  addOnIds: readonly string[],
+  netCents: number,
+  adCreditCents: number,
+  interval: BillingInterval,
+  firstPaymentCents: number | null,
+  deal: { readonly feeNetCents: number | null; readonly paymentLinkId: string | null },
+): string {
+  // The fee and the link are part of what a checkout is: the provider's subscription froze the amount, so another deal is another
+  // checkout. The kind needs no entry of its own: it already sets the website line's price, which `netCents` holds.
+  return `${bundleKey(addOnIds)}|${netCents}|${adCreditCents}|${interval}|${firstPaymentCents ?? ""}|${deal.feeNetCents ?? ""}|${deal.paymentLinkId ?? ""}`;
 }
 
 /**
@@ -412,13 +465,14 @@ async function openPlanCheckout(
   tier: PlanTier | null,
   chosen: readonly MonthlyAddOnId[],
   chosenInterval: BillingInterval,
+  options: CheckoutDealOptions = NO_FEE,
   lookAgain: boolean = true,
 ): Promise<CheckoutOutcome> {
   if (chosen.length === 0 && customer.billing.status !== "lapsed") return refused(NO_SERVICES);
   const { tenant } = customer;
   const provider = getBillingProvider();
   const changedMeanwhile = async (): Promise<CheckoutOutcome> =>
-    lookAgain ? openPlanCheckout(customer, now, paidHref, tier, chosen, chosenInterval, false) : refused(CHANGED_MEANWHILE);
+    lookAgain ? openPlanCheckout(customer, now, paidHref, tier, chosen, chosenInterval, options, false) : refused(CHANGED_MEANWHILE);
   const unrecorded = await unrecordedOfferPayment(provider, tenant.businessId);
   if (unrecorded === "paid") return refused(PAYMENT_RECEIVED_MESSAGE);
   if (unrecorded === "unknown") return refused(PAYMENT_UNAVAILABLE);
@@ -444,12 +498,19 @@ async function openPlanCheckout(
     // A lapse (not the client's own cancel) keeps its code with the months it has left, even if the code was retired since.
     const carried = reactivation === null ? null : await loadCarriedCode(tx, tenant.businessId, reactivation);
     // The client's own cancel ended the package: they chose their services again. A lapse comes back as it was.
-    const services = reactivation === null || reactivation.cancelled ? chosen : reactivation.services;
+    // Plan 65: a staff payment link bound to this business decides the deal. Read under the lock, so a link cancelled or paid a moment
+    // ago is never honoured. A reactivation takes no link.
+    const link = reactivation === null ? await findOpenPaymentLinkForBusiness(tx, tenant.businessId, now) : null;
+    if (link !== null && link.currency !== plan.currency) return { kind: "no-plan" };
+    const basket = reactivation === null || reactivation.cancelled ? chosen : reactivation.services;
+    const services = link === null ? basket : readBundleSelection(link.services);
     if (services.length === 0) return { kind: "no-services" };
     const forfeited = reactivation?.forfeited ?? (await isPackageOfferForfeited(tx, tenant.businessId));
     // A lapse comes back on the interval it had; a first checkout, or a client who cancelled and chose again, on the one chosen.
-    const interval = reactivation === null || reactivation.cancelled ? chosenInterval : reactivation.billingInterval;
-    const pricedLines = packageLines({ services, forfeited }, plan.currency, interval);
+    const pickedInterval = reactivation === null || reactivation.cancelled ? chosenInterval : reactivation.billingInterval;
+    const interval: BillingInterval = link === null ? pickedInterval : link.billingInterval === "year" ? "year" : "month";
+    const websiteKind: WebsiteKind = link?.websiteKind != null && isWebsiteKind(link.websiteKind) ? link.websiteKind : options.chosenKind;
+    const pricedLines = packageLines({ services, forfeited }, plan.currency, interval, websiteKind);
     const fullBundle: readonly NewBundledAddOn[] = pricedLines.map((line) => ({
       addOn: line.addOn,
       listAmountCents: line.listCents,
@@ -469,15 +530,32 @@ async function openPlanCheckout(
     if (reactivation === null) {
       for (const line of pricedLines) hadService.set(line.addOn, await businessHasHadService(tx, tenant.businessId, line.addOn));
     }
+    // The build fee (plan 65): owed for a first purchase of Website Management by a sign-up checkout, or as a payment link states it. A
+    // fee waived in full is still recorded, so the invoice can say so, but takes no free month (planFirstPayment: no fee, ordinary).
+    const owesFee = pricedLines.some((line) => line.addOn === BUILD_FEE_ADD_ON) && reactivation === null && hadService.get(BUILD_FEE_ADD_ON) === false;
+    const setupFee: SetupFee | null =
+      !owesFee || (link === null && !options.chargeListFee)
+        ? null
+        : link?.setupFeeListCents != null
+          ? setupFeeFor(websiteKind, plan.currency, link.setupFeeDiscountCents ?? 0)
+          : setupFeeFor(websiteKind, plan.currency, 0);
     const firstPayment = planFirstPayment({
       lines: pricedLines.map((line) => ({ addOn: line.addOn, netCents: line.netCents, hadService: hadService.get(line.addOn) ?? true })),
       interval,
       provider: provider.name,
       currency: plan.currency,
       discountCents: discount?.amountCents ?? 0,
+      ...(setupFee === null ? {} : { setupFeeNetCents: setupFee.netCents }),
     });
     if (firstPayment.kind === "code-refused") return { kind: "code-refused" };
-    const offer = firstPayment.kind === "offer" ? { firstPaymentCents: firstPayment.firstPaymentCents, firstChargeAt: trialEndsAt(now) } : null;
+    const offer = firstPayment.kind === "offer" ? { firstPaymentCents: firstPayment.firstPaymentCents, firstChargeAt: addMonthsUtc(now, firstPayment.firstChargeMonths) } : null;
+    const hasWebsite = pricedLines.some((line) => line.addOn === BUILD_FEE_ADD_ON);
+    const deal: PlannedCheckout["deal"] = {
+      websiteKind: hasWebsite ? websiteKind : null,
+      setupFee,
+      note: setupFee === null ? null : (link?.setupFeeNote ?? null),
+      paymentLinkId: link?.id ?? null,
+    };
     const bundle: readonly NewBundledAddOn[] =
       firstPayment.kind === "offer" ? fullBundle.map((line) => ({ ...line, trialPriceCents: firstPayment.trialPriceByAddOn[line.addOn] ?? null })) : fullBundle;
     // Ad credit is for services bought together at the first purchase. A reactivation grants none and keeps what the lapsed
@@ -495,22 +573,26 @@ async function openPlanCheckout(
               state.subscription.adCreditCents,
               state.subscription.billingInterval,
               state.subscription.firstPaymentCents,
+              {
+                feeNetCents: state.subscription.setupFeeListCents === null ? null : state.subscription.setupFeeListCents - (state.subscription.setupFeeDiscountCents ?? 0),
+                paymentLinkId: state.subscription.paymentLinkId,
+              },
             ),
           },
       {
         planId: plan.id,
         provider: provider.name,
         referralCodeId: discount?.codeId ?? null,
-        bundleKey: basketKey(bundle.map((item) => item.addOn), bundle.reduce((total, item) => total + item.netAmountCents, 0), adCreditCents, interval, offer?.firstPaymentCents ?? null),
+        bundleKey: basketKey(bundle.map((item) => item.addOn), bundle.reduce((total, item) => total + item.netAmountCents, 0), adCreditCents, interval, offer?.firstPaymentCents ?? null, { feeNetCents: setupFee?.netCents ?? null, paymentLinkId: deal.paymentLinkId }),
       },
       now,
       state,
     );
-    return { kind: "planned", planned: { plan, decision, latest: state.subscription, discount, bundle, adCreditCents, reactivation, interval, offer } };
+    return { kind: "planned", planned: { plan, decision, latest: state.subscription, discount, bundle, adCreditCents, reactivation, interval, offer, deal } };
   });
   if (first.kind === "no-plan") return refused(NO_PLAN);
   if (first.kind === "no-services") return refused(NO_SERVICES);
-  if (first.kind === "code-refused") return refused(CODE_NEEDS_A_PAID_SERVICE);
+  if (first.kind === "code-refused") return refused(CODE_REFUSED_MESSAGE);
 
   const { planned } = first;
   const { decision } = planned;

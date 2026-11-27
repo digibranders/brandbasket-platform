@@ -40,7 +40,7 @@ export interface StartCheckoutInput {
    * from now, and the first payment, `amountCents`, is taken upfront when the customer approves. Never with `startAt` (Keep my plan).
    * Razorpay takes it as an add-on on the new subscription (a real payment, kept); the fake provider simply charges it.
    */
-  readonly firstPayment?: { readonly amountCents: number; readonly startAt: Date };
+  readonly firstPayment?: { readonly amountCents: number; readonly startAt: Date; /** What Razorpay Checkout calls the upfront amount; the first-month name when absent. A build fee says so (plan 65). */ readonly label?: string };
 }
 
 export interface StartedCheckout {

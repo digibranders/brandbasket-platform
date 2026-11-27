@@ -35,6 +35,11 @@ function subscription(overrides: Partial<Subscription> = {}): Subscription {
     startAt: null,
     firstPaymentCents: null,
     firstChargeAt: null,
+    websiteKind: null,
+    setupFeeListCents: null,
+    setupFeeDiscountCents: null,
+    setupFeeNote: null,
+    paymentLinkId: null,
     createdAt: new Date("2026-09-20T09:00:00Z"),
     ...overrides,
   };

@@ -1,7 +1,7 @@
 "use server";
 
 import { AccountAlreadyExistsError } from "@brandbasket/auth";
-import { consumeRateLimit, InviteNoLongerRedeemableError } from "@brandbasket/db";
+import { bindPaymentLink, consumeRateLimit, InviteNoLongerRedeemableError, setBusinessReferralCode } from "@brandbasket/db";
 import { clientIpFrom } from "@brandbasket/shared/lib/client-ip";
 import { retryMessage } from "@brandbasket/shared/lib/sign-in-limits";
 import { readBundleSelection } from "@brandbasket/shared/lib/billing/bundle";
@@ -11,6 +11,8 @@ import { redirect } from "next/navigation";
 import { actionFail, type ActionFailure, type ActionResult, type ActionSuccess } from "@/lib/action-result";
 import { getAuth } from "@/lib/auth";
 import { getStaffDb } from "@/lib/db";
+import { PAY_LINK_GONE_MESSAGE } from "@/features/paylink/rules";
+import { lookUpPaymentLink } from "@/features/paylink/server/link";
 import { startHref } from "@/features/start/rules";
 import { parseCheckoutSignupForm, type CheckoutField } from "./rules/checkout-form";
 import { CHECKOUT_ACCOUNT_EXISTS_MESSAGE } from "./rules/checkout-signup-messages";
@@ -153,7 +155,15 @@ export async function startSignupCheckoutAction(_previous: CheckoutSignupResult 
   const human = await checkHuman(formData, "join");
   if (!human.ok) return fail(human.message);
 
-  const parsed = parseCheckoutSignupForm(formData, visitorCountry(requestHeaders));
+  // A staff payment link (plan 65): its country, not the visitor's, decides the currency, and the account is made for its deal.
+  const payLink = formData.get("payLink");
+  const linked = payLink === null || payLink === "" ? null : await lookUpPaymentLink(payLink, new Date());
+  if (linked?.kind === "gone") return fail(PAY_LINK_GONE_MESSAGE);
+  const link = linked === null ? null : linked.link;
+  // Already bound to a business (an account that signed up before): its owner signs in to pay, there is no account to open here.
+  if (link !== null && link.businessId !== null) return fail(PAY_LINK_GONE_MESSAGE);
+
+  const parsed = parseCheckoutSignupForm(formData, link?.countryCode ?? visitorCountry(requestHeaders));
   if (!parsed.success) return fail(parsed.message, parsed.field);
 
   const budget = await consumeRateLimit(getStaffDb(), `checkout-signup:ip:${ipRateLimitKey(clientIpFrom(requestHeaders))}`, {
@@ -165,6 +175,13 @@ export async function startSignupCheckoutAction(_previous: CheckoutSignupResult 
   const outcome = await createCheckoutAccount(parsed.data, attributionFromStart(formData, leadsApiToken()));
   if (outcome.kind === "exists") return { ...actionFail(CHECKOUT_ACCOUNT_EXISTS_MESSAGE, { email: CHECKOUT_ACCOUNT_EXISTS_MESSAGE }), field: "email", accountExists: true };
   if (outcome.kind === "refused") return fail(outcome.message, outcome.field);
+  if (link !== null && outcome.businessId !== null) {
+    // One statement decides: a link used, cancelled or expired a moment ago binds to nobody. The deal itself is the link's, read when
+    // the checkout opens; the coupon it names is put on the business the way typing it would.
+    const staffDb = getStaffDb();
+    if (!(await bindPaymentLink(staffDb, { linkId: link.id, businessId: outcome.businessId, now: new Date() }))) return fail(PAY_LINK_GONE_MESSAGE);
+    if (link.referralCodeId !== null) await setBusinessReferralCode(staffDb, { businessId: outcome.businessId, referralCodeId: link.referralCodeId });
+  }
   return { ok: true };
 }
 
