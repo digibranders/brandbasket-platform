@@ -25,8 +25,8 @@ describe("the rail", () => {
 
 describe("tabs under a page header", () => {
   it("shows every page of the item to everyone", () => {
-    for (const page of ["/payments", "/invoices", "/pricing", "/coupons", "/affiliates", "/ad-results"]) {
-      expect(stripLabels(page)).toEqual(["Payments", "Invoices", "Prices", "Coupons", "Affiliates", "Acquisition"]);
+    for (const page of ["/payments", "/invoices", "/pricing", "/coupons", "/payment-links", "/affiliates", "/ad-results"]) {
+      expect(stripLabels(page)).toEqual(["Payments", "Invoices", "Prices", "Coupons", "Payment links", "Affiliates", "Acquisition"]);
     }
   });
 
@@ -111,6 +111,8 @@ describe("the current item", () => {
       "/pricing": "/payments",
       "/coupons": "/payments",
       "/coupons/abc": "/payments",
+      "/payment-links": "/payments",
+      "/payment-links/new": "/payments",
       "/affiliates": "/payments",
       "/ad-results": "/payments",
       "/access-log": "/privacy-requests",

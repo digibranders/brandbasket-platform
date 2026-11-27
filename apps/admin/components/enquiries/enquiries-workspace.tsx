@@ -19,6 +19,7 @@ import {
 } from "@brandbasket/shared/ui/patterns";
 import { LEAD_SOURCE_LABELS, LEAD_SOURCE_ORDER } from "@brandbasket/shared/lib/lead-source";
 import { SelectField, type SelectOption } from "@brandbasket/shared/ui/select-field";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition, type ReactElement, type ReactNode } from "react";
 import { markContactedAction, restoreEnquiryStatusAction, sendSetupLinkNowAction } from "@/app/(protected)/leads/status-actions";
@@ -268,6 +269,11 @@ export function EnquiriesWorkspace({ rows, query, counts, openId, openRow, detai
         secondary={
           targetRow === null ? undefined : (
             <>
+              {targetRow.businessId === null ? (
+                <Link href={`/payment-links/new?lead=${targetRow.id}`} className={buttonSecondary}>
+                  Create payment link
+                </Link>
+              ) : null}
               {targetRow.canMarkContacted ? (
                 <button type="button" className={buttonSecondary} disabled={status.busyId === targetRow.id} onClick={() => void status.markContacted(targetRow.id, targetRow.businessName)}>
                   Mark contacted

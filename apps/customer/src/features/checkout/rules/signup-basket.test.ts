@@ -1,6 +1,7 @@
 import { gstInsideCents } from "@brandbasket/billing/tax";
 import type { BillingInterval } from "@brandbasket/db";
 import type { MonthlyAddOnId } from "@brandbasket/shared/lib/billing/add-ons";
+import { setupFeeFor } from "@brandbasket/shared/lib/billing/setup-fee";
 import type { MoneyCurrency } from "@brandbasket/shared/lib/money";
 import { describe, expect, it } from "vitest";
 import { formatMoney } from "@/lib/format";
@@ -22,8 +23,10 @@ function checkoutFigures(services: readonly MonthlyAddOnId[], currency: MoneyCur
   const taxRateBasisPoints = currency === "INR" ? 1800 : 0;
   const pricing = { planInitialAmountCents: 0, currency, taxRateBasisPoints, forfeited: false, hasEverPaid: false, interval };
   const summary = ledgerSummary(pricing, services, null);
-  const offer = ledgerOffer(summary, { provider: "razorpay", hadService: NEVER_HAD }, currency, interval);
-  return { dueCents: offer?.firstPaymentCents ?? summary.totalCents, rows: ledgerRows(summary, currency, null, offer), taxRateBasisPoints };
+  // A first purchase of the website owes the build fee at its list price (plan 65): the page and the checkout must quote it the same.
+  const deal = services.includes("managed-website") ? { kind: "b2b" as const, fee: setupFeeFor("b2b", currency, 0), note: null } : null;
+  const offer = ledgerOffer(summary, { provider: "razorpay", hadService: NEVER_HAD }, currency, interval, deal);
+  return { dueCents: offer?.firstPaymentCents ?? summary.totalCents, rows: ledgerRows(summary, currency, null, offer, deal), taxRateBasisPoints };
 }
 
 describe("the one-screen checkout's basket", () => {
@@ -67,23 +70,25 @@ describe("the one-screen checkout's basket", () => {
   it("shows the second line under the first-month row, from the ongoing price", () => {
     const view = basketView(buildSignupBasketTable("INR", "razorpay"), ["managed-website", "social-media"], "month");
     expect(view.rows).toContainEqual({ key: "social-media", label: "Social Media Management, first month", note: "₹2,999 a month from next month", amount: "₹1", tone: "plain" });
-    expect(view.due).toBe("₹3,000");
-    expect(view.gstLine).toBe("Includes ₹457.62 of GST at 18%");
-    expect(view.renewal).toBe("Your first payment covers your first month, then ₹5,998 (GST included) is taken each month for your services.");
+    // The build fee and ₹1 for Social's first month; the website's own month starts with the first monthly charge (plan 65).
+    expect(view.due).toBe("₹35,001");
+    expect(view.gstLine).toBe("Includes ₹5,339.14 of GST at 18%");
+    expect(view.renewal).toBe("Your payment covers the build. From one month after you pay, ₹5,998 (GST included) is taken each month for your services.");
   });
 
   it("words a yearly payment with its saving and no first-month row", () => {
     const view = basketView(buildSignupBasketTable("INR", "razorpay"), ["managed-website", "social-media"], "year");
-    expect(view.rows.map((row) => row.label)).toEqual(["Website", "Maintenance, 12 months", "Social Media Management, 12 months", "Paid yearly, 10% off"]);
-    expect(view.due).toBe("₹64,778");
-    expect(view.renewal).toBe("Your payment covers 12 months. Then ₹64,778 (GST included) is taken each year for your services.");
+    expect(view.rows.map((row) => row.label)).toEqual(["B2B website build", "Maintenance, 12 months", "Social Media Management, 12 months", "Paid yearly, 10% off"]);
+    expect(view.due).toBe("₹99,778");
+    expect(view.renewal).toBe("Your payment covers the build and 12 months of your services. They renew each year, starting 13 months after you pay, at ₹64,778 (GST included).");
   });
 
   it("names dollars with no GST for a visitor outside India", () => {
     const view = basketView(buildSignupBasketTable("USD", "razorpay"), ["managed-website", "social-media"], "month");
-    expect(view.due).toBe("$60");
+    // The $1,200 build fee and $1 for Social's first month.
+    expect(view.due).toBe("$1,201");
     expect(view.gstLine).toBeNull();
-    expect(view.renewal).toBe("Your first payment covers your first month, then $118 is taken each month for your services.");
+    expect(view.renewal).toBe("Your payment covers the build. From one month after you pay, $118 is taken each month for your services.");
   });
 
   it("buys nothing from an empty basket", () => {
@@ -103,13 +108,37 @@ describe("the one-screen checkout's basket", () => {
 
   it("labels Pay with the amount due", () => {
     const view = basketView(buildSignupBasketTable("INR", "razorpay"), ["managed-website"], "month");
-    expect(payLabel(view)).toBe("Pay ₹2,999");
+    expect(payLabel(view)).toBe("Pay ₹35,000");
   });
 
-  it("badges the website free and the offer month while paying monthly only", () => {
+  it("labels Pay with the maintenance price when no build fee is owed", () => {
+    const view = basketView(buildSignupBasketTable("INR", "razorpay", { "managed-website": true }), ["managed-website"], "month");
+    expect(payLabel(view)).toBe("Pay ₹2,999");
+    expect(view.rows.map((row) => row.label)).toEqual(["Website", "Maintenance"]);
+  });
+
+  it("prices an ecommerce store at its fee and its monthly price, and takes a link's discount off the fee", () => {
+    const table = buildSignupBasketTable("INR", "razorpay");
+    const view = basketView(table, ["managed-website"], "month", { kind: "ecommerce", deal: { discountCents: 1_500_000, note: "As agreed on call" } });
+    expect(view.dueCents).toBe(5_000_000);
+    expect(view.rows.map((row) => [row.label, row.amount])).toEqual([
+      ["Ecommerce store build", "₹65,000"],
+      ["As agreed on call", "-₹15,000"],
+      ["Maintenance", "Not charged today"],
+    ]);
+    expect(view.rows.at(-1)?.note).toBe("₹3,999 a month, from one month after you pay");
+  });
+
+  it("charges the website's first month today once its build fee is waived in full", () => {
+    const view = basketView(buildSignupBasketTable("INR", "razorpay"), ["managed-website"], "month", { deal: { discountCents: 3_500_000, note: null } });
+    expect(view.dueCents).toBe(299_900);
+  });
+
+  it("badges the build fee and the offer month while paying monthly only", () => {
     const table = buildSignupBasketTable("INR", "razorpay");
     const [website, social, monitoring] = table.services;
-    expect(cardBadge(website!, table, "month")).toBe("Website free");
+    expect(cardBadge(website!, table, "month")).toBe("One-time build fee");
+    expect(cardBadge(website!, buildSignupBasketTable("INR", "razorpay", { "managed-website": true }), "month")).toBeNull();
     expect(cardBadge(social!, table, "month")).toBe("First month ₹1");
     expect(cardBadge(social!, table, "year")).toBeNull();
     expect(cardBadge(monitoring!, table, "month")).toBeNull();

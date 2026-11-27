@@ -1,3 +1,4 @@
+import { findWebsiteKindForBusiness } from "@brandbasket/db";
 import { renderToStaticMarkup } from "react-dom/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { isWebsiteBought } from "@/lib/server/bought-services";
@@ -28,6 +29,7 @@ vi.mock("@brandbasket/db", async () => {
     findBusinessWebsiteUrl: vi.fn().mockResolvedValue(null),
     findListingPlacement: vi.fn().mockResolvedValue(null),
     findPlaces: vi.fn().mockResolvedValue(new Map()),
+    findWebsiteKindForBusiness: vi.fn().mockResolvedValue(null),
     getSiteKey: vi.fn().mockResolvedValue(null),
     hasLiveProject: vi.fn().mockResolvedValue(false),
     lastSiteHitAt: vi.fn().mockResolvedValue(null),
@@ -53,6 +55,14 @@ describe("Site details", () => {
     for (const title of ["Their website", "Features", "Business details", "Opening hours", "What they offer"]) expect(html).toContain(title);
     expect(html).not.toContain(">Listing<");
     for (const marker of ["[website url]", "[hosting]", "[token]", "[tracking]", "[analytics]", "[features]"]) expect(html).toContain(marker);
+  });
+
+  it("shows the kind of website the project is, B2B when it predates kinds", async () => {
+    expect(renderToStaticMarkup(await SiteDetails({ client: CLIENT, query: {}, staffRole: "admin" }))).toContain("B2B website");
+    vi.mocked(findWebsiteKindForBusiness).mockResolvedValue("ecommerce");
+    const html = renderToStaticMarkup(await SiteDetails({ client: CLIENT, query: {}, staffRole: "admin" }));
+    expect(html).toContain("Kind of website");
+    expect(html).toContain("Ecommerce store");
   });
 
   it("leaves the hosting, token and tracking out when the website was not bought", async () => {

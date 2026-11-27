@@ -58,7 +58,7 @@ const CODE_PATTERN = `[A-Za-z0-9][A-Za-z0-9\\-]{${String(MIN_REFERRAL_CODE_LENGT
  * One labelled field. The hint sits in a fixed slot between the label and the input rather than being dropped
  * when absent, so fields side by side in a grid keep their inputs on the same line.
  */
-function Field({
+export function Field({
   id,
   label,
   hint,

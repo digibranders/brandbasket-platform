@@ -32,17 +32,16 @@ describe("services catalogue", () => {
     ]);
   });
 
-  it("includes monitoring with all three plans only", () => {
-    expect(monitoringIncludedWith(["managed-website", "social-media", "paid-ads"])).toBe(true);
+  it("never includes monitoring, not even with all three plans (owner, 2026-11-27)", () => {
+    expect(monitoringIncludedWith(["managed-website", "social-media", "paid-ads"])).toBe(false);
     expect(monitoringIncludedWith(["managed-website", "social-media", "expert-monitoring"])).toBe(false);
     expect(monitoringIncludedWith(["social-media", "paid-ads"])).toBe(false);
   });
 
-  it("lists every service on a services page, except monitoring beside all three plans unless it is still billed", () => {
+  it("lists every service on a services page, monitoring included, whatever plans are held", () => {
     expect(servicesToList(["managed-website"], ["managed-website"])).toEqual(MONTHLY_ADD_ON_IDS);
     const allThree = ["managed-website", "social-media", "paid-ads"] as const;
-    expect(servicesToList(allThree, allThree)).toEqual(allThree);
-    // A monitoring line ending at the next billing date, once the third plan joined, stays on the page until then.
+    expect(servicesToList(allThree, allThree)).toEqual(MONTHLY_ADD_ON_IDS);
     expect(servicesToList([...allThree, "expert-monitoring"], allThree)).toEqual(MONTHLY_ADD_ON_IDS);
   });
 

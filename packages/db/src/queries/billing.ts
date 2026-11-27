@@ -192,6 +192,14 @@ export interface Subscription {
   /** A first-month offer in the basket (plan 63): what the first payment takes, and the day the first full charge falls. Both null otherwise. */
   readonly firstPaymentCents: number | null;
   readonly firstChargeAt: Date | null;
+  /** Plan 65: the kind of website (b2b or ecommerce) its Website Management line is for, or null. */
+  readonly websiteKind: string | null;
+  /** Plan 65: the build fee before the deal discount, what the deal took off it (a waived fee is the whole fee), and the staff note; all null when no fee was owed. */
+  readonly setupFeeListCents: number | null;
+  readonly setupFeeDiscountCents: number | null;
+  readonly setupFeeNote: string | null;
+  /** Plan 65: the staff payment link this checkout was opened from, or null. */
+  readonly paymentLinkId: string | null;
   readonly createdAt: Date;
 }
 
@@ -224,6 +232,11 @@ const SUBSCRIPTION_COLUMNS = {
   startAt: subscriptions.startAt,
   firstPaymentCents: subscriptions.firstPaymentCents,
   firstChargeAt: subscriptions.firstChargeAt,
+  websiteKind: subscriptions.websiteKind,
+  setupFeeListCents: subscriptions.setupFeeListCents,
+  setupFeeDiscountCents: subscriptions.setupFeeDiscountCents,
+  setupFeeNote: subscriptions.setupFeeNote,
+  paymentLinkId: subscriptions.paymentLinkId,
   createdAt: subscriptions.createdAt,
 } as const;
 
@@ -437,6 +450,12 @@ export interface NewSubscription {
   /** A first-month offer in the basket: what the first payment takes and the day the first full charge falls. Both or neither. */
   readonly firstPaymentCents?: number | null;
   readonly firstChargeAt?: Date | null;
+  /** Plan 65: the kind of website, the build fee and the deal discount on it, and the staff payment link, frozen with the checkout. All optional. */
+  readonly websiteKind?: string | null;
+  readonly setupFeeListCents?: number | null;
+  readonly setupFeeDiscountCents?: number | null;
+  readonly setupFeeNote?: string | null;
+  readonly paymentLinkId?: string | null;
 }
 
 /**
@@ -465,6 +484,11 @@ export async function insertSubscription(db: Runner, input: NewSubscription): Pr
       startAt: input.startAt ?? null,
       firstPaymentCents: input.firstPaymentCents ?? null,
       firstChargeAt: input.firstChargeAt ?? null,
+      websiteKind: input.websiteKind ?? null,
+      setupFeeListCents: input.setupFeeListCents ?? null,
+      setupFeeDiscountCents: input.setupFeeDiscountCents ?? null,
+      setupFeeNote: input.setupFeeNote ?? null,
+      paymentLinkId: input.paymentLinkId ?? null,
       status: "incomplete",
     })
     .returning(SUBSCRIPTION_COLUMNS);

@@ -4,6 +4,7 @@ import { annualListCents, MONTHLY_ADD_ON_IDS, PAUSED_ADD_ON_IDS, type MonthlyAdd
 import { bundleLines, bundleNetCents, readBundleSelection, WEBSITE_ALONE, type BundleLine } from "@brandbasket/shared/lib/billing/bundle";
 import { adCreditCentsAtCheckout, packageBasisPointsFor } from "@brandbasket/shared/lib/billing/packages";
 import { initialTermPhrase, renewalChargeCents } from "@brandbasket/shared/lib/billing/terms";
+import { isWebsiteKind, type WebsiteKind } from "@brandbasket/shared/lib/billing/website-kind";
 import { formatMoney, type MoneyCurrency } from "@brandbasket/shared/lib/money";
 
 /*
@@ -33,6 +34,15 @@ export const MEMBERSHIP_SERVICES_PARAM = "services";
 /** The plan page's parameter for paying yearly: `?billing=yearly`. Absent, or anything else, is monthly. */
 export const MEMBERSHIP_BILLING_PARAM = "billing";
 const YEARLY_VALUE = "yearly";
+
+/** The page's parameter for the kind of website (plan 65): `?site=ecommerce`. Absent, or anything else, is a B2B website. */
+export const MEMBERSHIP_KIND_PARAM = "site";
+
+export function readWebsiteKind(params: Readonly<Record<string, string | string[] | undefined>>): WebsiteKind {
+  const raw = params[MEMBERSHIP_KIND_PARAM];
+  const value = Array.isArray(raw) ? raw[0] : raw;
+  return value !== undefined && isWebsiteKind(value) ? value : "b2b";
+}
 
 /** How often the page's basket is paid for, as its address says. */
 export function readBillingInterval(params: Readonly<Record<string, string | string[] | undefined>>): BillingInterval {
@@ -155,8 +165,8 @@ export function servicesPhrase(services: readonly MonthlyAddOnId[]): string {
 }
 
 /** What the services cost a month (or a year, paid yearly) for a new sign-up, GST included, at the package price (a new account has given up nothing). */
-export function basketNetCents(services: readonly MonthlyAddOnId[], currency: MoneyCurrency, interval: BillingInterval = "month"): number {
-  return bundleNetCents(bundleLines(services, currency, false, interval));
+export function basketNetCents(services: readonly MonthlyAddOnId[], currency: MoneyCurrency, interval: BillingInterval = "month", kind: WebsiteKind = "b2b"): number {
+  return bundleNetCents(bundleLines(services, currency, false, interval, kind));
 }
 
 /**
@@ -230,6 +240,8 @@ export interface OrderSummaryInput {
   readonly hasEverPaid: boolean;
   /** How often it is paid for: every amount is for a year when `year`. Absent is every month. */
   readonly interval?: BillingInterval;
+  /** The kind of website the basket's Website Management line is for (plan 65). Absent is B2B. */
+  readonly kind?: WebsiteKind;
 }
 
 /**
@@ -242,7 +254,8 @@ export interface OrderSummaryInput {
 export function orderSummary(input: OrderSummaryInput, discountCents: number): OrderSummary {
   const { planInitialAmountCents, services, currency, taxRateBasisPoints, forfeited, hasEverPaid } = input;
   const interval = input.interval ?? "month";
-  const lines = bundleLines(services, currency, forfeited, interval);
+  const kind = input.kind ?? "b2b";
+  const lines = bundleLines(services, currency, forfeited, interval, kind);
   if (lines.length === 0) throw new RangeError("An order needs at least one service");
   const chargeableCents = planInitialAmountCents + lines.reduce((total, line) => total + line.netCents, 0);
   const totalCents = chargedAmountCents(chargeableCents, discountCents);
@@ -258,13 +271,13 @@ export function orderSummary(input: OrderSummaryInput, discountCents: number): O
     totalCents,
     totalWithoutCodeCents: chargedAmountCents(chargeableCents, 0),
     adCredit: adCreditCents === 0 ? null : { cents: adCreditCents, label: `We add ${formatMoney(adCreditCents, currency)} a month to your ads` },
-    annual: interval === "year" ? annualParts(services, currency, forfeited, lines) : null,
+    annual: interval === "year" ? annualParts(services, currency, forfeited, lines, kind) : null,
   };
 }
 
 /** Twelve months of the lines at their monthly prices, and what paying for the year takes off that. */
-function annualParts(services: readonly MonthlyAddOnId[], currency: MoneyCurrency, forfeited: boolean, yearly: readonly BundleLine[]): { readonly listCents: number; readonly savingCents: number } {
-  const listCents = bundleLines(services, currency, forfeited).reduce((total, line) => total + annualListCents(line.netCents), 0);
+function annualParts(services: readonly MonthlyAddOnId[], currency: MoneyCurrency, forfeited: boolean, yearly: readonly BundleLine[], kind: WebsiteKind): { readonly listCents: number; readonly savingCents: number } {
+  const listCents = bundleLines(services, currency, forfeited, "month", kind).reduce((total, line) => total + annualListCents(line.netCents), 0);
   return { listCents, savingCents: listCents - yearly.reduce((total, line) => total + line.netCents, 0) };
 }
 

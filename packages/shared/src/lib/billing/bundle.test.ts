@@ -21,8 +21,8 @@ describe("readBundleSelection", () => {
     expect(readBundleSelection([])).toEqual([]);
   });
 
-  it("drops monitoring beside all three plans, which include it, and when there is no plan for it to watch", () => {
-    expect(readBundleSelection(["managed-website", "social-media", "paid-ads", "expert-monitoring"])).toEqual(["managed-website", "social-media", "paid-ads"]);
+  it("keeps monitoring beside any plans, and drops it when there is no plan for it to watch", () => {
+    expect(readBundleSelection(["managed-website", "social-media", "paid-ads", "expert-monitoring"])).toEqual(["managed-website", "social-media", "paid-ads", "expert-monitoring"]);
     expect(readBundleSelection(["expert-monitoring"])).toEqual([]);
     expect(readBundleSelection(["social-media", "expert-monitoring"])).toEqual(["social-media", "expert-monitoring"]);
   });

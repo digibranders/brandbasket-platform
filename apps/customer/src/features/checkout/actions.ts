@@ -1,6 +1,7 @@
 "use server";
 
 import { WEBSITE_ALONE, readBundleSelection } from "@brandbasket/shared/lib/billing/bundle";
+import { WEBSITE_KINDS } from "@brandbasket/shared/lib/billing/website-kind";
 import { revalidatePath } from "next/cache";
 import { notFound, redirect } from "next/navigation";
 import { z } from "zod";
@@ -34,6 +35,8 @@ const PayForm = z.object({
   service: ServiceList,
   // How often to pay, as the page's address says it (readBillingInterval): anything but "yearly" is monthly.
   billing: z.string().max(16).optional(),
+  // The kind of website (plan 65): B2B unless the page says ecommerce. A payment link decides its own kind on the server.
+  siteKind: z.enum(WEBSITE_KINDS).default("b2b"),
 });
 const CodeForm = z.object({ referralCode: z.string().max(64).default(""), service: ServiceList });
 
@@ -61,7 +64,7 @@ export async function startPaymentAction(_previous: ActionResult | null, formDat
   const interval = readBillingInterval({ [MEMBERSHIP_BILLING_PARAM]: parsed.data.billing });
   const outcome =
     entry.kind === "listing"
-      ? await startMembershipCheckoutFor(customer, now, parsed.data.tier, servicesOf(parsed.data.service), interval)
+      ? await startMembershipCheckoutFor(customer, now, parsed.data.tier, servicesOf(parsed.data.service), interval, parsed.data.siteKind)
       : await startCheckoutFor(customer, now, interval);
   if (outcome.kind === "refused") return actionFail(outcome.problem.message);
   redirect(outcome.url);

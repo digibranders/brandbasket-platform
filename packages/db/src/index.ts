@@ -1,6 +1,7 @@
 export { createDatabase, type Database, type DatabaseHandle, type DatabaseOptions } from "./client";
 export * from "./schema/support";
 export * from "./schema/error-issues";
+export * from "./queries/payment-links";
 export * from "./queries/support";
 export * from "./queries/change-requests";
 export * from "./queries/change-request-staff";
@@ -366,6 +367,7 @@ export {
   requestProjectRevisions,
   RevisionRoundsUsedUpError,
   submitProject,
+  findWebsiteKindForBusiness,
   type Project,
   type ProjectLaunch,
   type ProjectPreviewResponse,

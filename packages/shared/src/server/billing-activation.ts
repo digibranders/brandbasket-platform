@@ -6,6 +6,7 @@ import {
   findBundledAddOnsForSubscription,
   openMembershipForListingBusiness,
   findSubscriptionById,
+  markPaymentLinkPaid,
   recordPaymentAndActivate,
   settleDiscountAfterPayment,
   startBundledTrials,
@@ -19,6 +20,8 @@ import {
   type RecordedActivation,
   type ScopedTransaction,
 } from "@brandbasket/db";
+import { BUILD_FEE_ADD_ON } from "../lib/billing/first-payment";
+import type { WebsiteKind } from "../lib/billing/website-kind";
 import { accrueAffiliateEarning } from "./affiliate-accrual";
 import { issueTaxInvoiceSafely, type BundledInvoiceAddOn } from "./tax-invoicing";
 
@@ -96,7 +99,18 @@ export async function activateFirstPayment(tx: ScopedTransaction, payment: First
   // A checkout with a first-month offer in it (plan 63) was opened to start its full charge a month on, and its first payment is
   // the amount frozen then. The first term ends on that day, which is also the end of every offer service's first month.
   const offer = opened?.firstPaymentCents != null && opened.firstChargeAt !== null ? { cents: opened.firstPaymentCents, chargeAt: opened.firstChargeAt } : null;
+  // Plan 65: a website build fee frozen on the checkout. A paid fee (net above nothing) is part of this payment; a waived one is only
+  // recorded, for the invoice to say so. On a monthly deal the website's own first month is not charged (it starts a month on, with
+  // the first full charge), and a code starts with that charge too; on a yearly deal every service's year is charged today.
+  const setupFee =
+    opened?.setupFeeListCents != null && opened.websiteKind != null
+      ? { websiteKind: opened.websiteKind, listCents: opened.setupFeeListCents, discountCents: opened.setupFeeDiscountCents ?? 0, note: opened.setupFeeNote ?? null }
+      : null;
+  const feeNetCents = setupFee === null ? 0 : setupFee.listCents - setupFee.discountCents;
+  const monthlyFeeDeal = feeNetCents > 0 && !yearly;
   const termEnd = offer?.chargeAt ?? addMonthsUtc(payment.paidAt, yearly ? monthsPerCycle("year") : payment.plan.initialTermMonths);
+  // What the first payment's services cover: a yearly build-fee deal's basket is paid through 13 months on, but what it buys is a year.
+  const servicesPeriodEnd = yearly && feeNetCents > 0 ? addMonthsUtc(payment.paidAt, monthsPerCycle("year")) : termEnd;
   // What was actually taken: the price (GST included) less the discount. chargedAmountCents throws for a discount that
   // would leave nothing, so a nonsense figure is never recorded as a payment.
   // The services taken at this checkout are lines of the subscription, billed in the same charge: their prices (the plan
@@ -107,10 +121,12 @@ export async function activateFirstPayment(tx: ScopedTransaction, payment: First
   if (offer === null) {
     amountCents = chargedAmountCents(payment.plan.initialAmountCents + bundledNetCents(bundled), payment.discountAmountCents ?? 0);
   } else {
-    // The lines say what the offer costs; the frozen first payment must agree with them, or the checkout was opened wrongly.
-    amountCents = bundled.reduce((total, line) => total + offerNet(line), 0) - (payment.discountAmountCents ?? 0);
+    // The lines say what the offer costs; the frozen first payment must agree with them, or the checkout was opened wrongly. On a
+    // monthly build-fee deal the website's line is not charged today and no code comes off today's payment.
+    const charged = monthlyFeeDeal ? bundled.filter((line) => line.addOn !== BUILD_FEE_ADD_ON) : bundled;
+    amountCents = feeNetCents + charged.reduce((total, line) => total + offerNet(line), 0) - (monthlyFeeDeal ? 0 : (payment.discountAmountCents ?? 0));
     if (amountCents !== offer.cents) {
-      throw new Error(`Subscription ${payment.subscriptionId} froze a first payment of ${offer.cents} but its lines come to ${amountCents}`);
+      throw new Error(`Subscription ${payment.subscriptionId} froze a first payment of ${offer.cents} but its lines and build fee come to ${amountCents}`);
     }
   }
   const activation = await recordPaymentAndActivate(tx, {
@@ -131,6 +147,8 @@ export async function activateFirstPayment(tx: ScopedTransaction, payment: First
   if (activation.alreadyRecorded) return { ...activation, openedMembership: null, discountEnded: false };
   const activeBundle = await activateBundledAddOns(tx, { subscriptionId: payment.subscriptionId, now: payment.paidAt });
   if (offer !== null) await startBundledTrials(tx, { subscriptionId: payment.subscriptionId, trialEndsAt: offer.chargeAt, now: payment.paidAt });
+  // Plan 65: the staff payment link this checkout came from is paid, in the same transaction as the payment.
+  if (opened?.paymentLinkId != null) await markPaymentLinkPaid(tx, { linkId: opened.paymentLinkId, subscriptionId: payment.subscriptionId, paidAt: payment.paidAt });
   // A first-month payment does not use up one of a code's months: the provider's subscription has not started, and its first full
   // charge is still on the discounted plan, which is where the code's months are counted from (plan 63).
   const settlement = await settleDiscountAfterPayment(tx, {
@@ -141,7 +159,9 @@ export async function activateFirstPayment(tx: ScopedTransaction, payment: First
   });
   // No reward on a first-month offer (owner decision D6, plan 63): the affiliate earns from the first real payment after it. A
   // basket that also holds services at full price earns on those, not on the ₹1.
-  const fullPriceNet = bundled.filter((line) => line.trialPriceCents == null).reduce((total, line) => total + line.netAmountCents, 0);
+  const fullPriceNet = bundled
+    .filter((line) => line.trialPriceCents == null && !(monthlyFeeDeal && line.addOn === BUILD_FEE_ADD_ON))
+    .reduce((total, line) => total + line.netAmountCents, 0);
   if (offer === null) {
     await accrueAffiliateEarning(tx, { paymentId: activation.payment.id, subscriptionId: payment.subscriptionId, kind: "initial" });
   } else if (fullPriceNet > 0) {
@@ -149,11 +169,12 @@ export async function activateFirstPayment(tx: ScopedTransaction, payment: First
       paymentId: activation.payment.id,
       subscriptionId: payment.subscriptionId,
       kind: "initial",
-      invoiced: { netCents: fullPriceNet, discountCents: payment.discountAmountCents ?? 0 },
+      invoiced: { netCents: fullPriceNet, discountCents: monthlyFeeDeal ? 0 : (payment.discountAmountCents ?? 0) },
     });
   }
   const openedMembership = await openMembershipForListingBusiness(tx, payment.businessId, {
-    withProject: activeBundle.some((line) => line.addOn === "managed-website"),
+    withProject: activeBundle.some((line) => line.addOn === BUILD_FEE_ADD_ON),
+    websiteKind: opened?.websiteKind ?? null,
   });
   // The last write that takes a lock outside this business's own rows: the invoice's serial holds the year's series row
   // until this transaction commits. Callers still run completePlanUpgradeAtRenewal and sendAfterPayment after it, but those
@@ -161,17 +182,19 @@ export async function activateFirstPayment(tx: ScopedTransaction, payment: First
   await issueTaxInvoiceSafely(tx, activation.payment, {
     kind: "plan",
     plan: payment.plan,
-    // A service on the offer is invoiced at what it cost, so the lines add up to the payment.
-    bundledAddOns: activeBundle.map((line) =>
-      line.trialPriceCents == null ? line : { ...line, listAmountCents: line.trialPriceCents, offerDiscountAmountCents: 0, netAmountCents: line.trialPriceCents },
-    ),
+    // A service on the offer is invoiced at what it cost, so the lines add up to the payment. A monthly build-fee deal charges no website
+    // line today (the build line stands for it).
+    bundledAddOns: activeBundle
+      .filter((line) => !(monthlyFeeDeal && line.addOn === BUILD_FEE_ADD_ON))
+      .map((line) => (line.trialPriceCents == null ? line : { ...line, listAmountCents: line.trialPriceCents, offerDiscountAmountCents: 0, netAmountCents: line.trialPriceCents })),
     netAmountCents: payment.plan.initialAmountCents,
-    discountAmountCents: payment.discountAmountCents ?? 0,
+    discountAmountCents: monthlyFeeDeal ? 0 : (payment.discountAmountCents ?? 0),
+    ...(setupFee === null ? {} : { setupFee: { ...setupFee, websiteKind: setupFee.websiteKind as WebsiteKind } }),
     // A stay offer is only ever added to a live subscription, never to its first payment.
     retentionDiscountCents: 0,
     monthly: !yearly && payment.plan.initialTermMonths === 1,
     periodStart: payment.paidAt,
-    periodEnd: termEnd,
+    periodEnd: servicesPeriodEnd,
   });
   return { ...activation, openedMembership, discountEnded: settlement.ended };
 }

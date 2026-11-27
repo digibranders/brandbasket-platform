@@ -152,10 +152,12 @@ export async function submitProject(tx: ScopedTransaction, submission: ProjectSu
 export async function insertOnboardingProject(
   tx: ScopedTransaction,
   businessId: string,
+  /** Plan 65: B2B website or ecommerce store, from the subscription that paid for it; null for a project not opened by a payment. */
+  websiteKind: string | null = null,
 ): Promise<{ readonly id: string }> {
   const rows = await tx
     .insert(projects)
-    .values({ businessId, kind: "initial_build", status: "onboarding", revisionRoundsIncluded: await findIncludedRevisionRounds(tx) })
+    .values({ businessId, kind: "initial_build", status: "onboarding", revisionRoundsIncluded: await findIncludedRevisionRounds(tx), websiteKind })
     .returning({ id: projects.id });
   const project = rows[0];
   if (project === undefined) throw new Error("Project insert returned no row");
@@ -278,4 +280,19 @@ export async function markProjectLive(db: Runner, input: ProjectLaunch): Promise
 
     return project;
   });
+}
+
+/**
+ * The kind of website the business's newest project is for (plan 65): "b2b" or "ecommerce", or null when it has no project or the
+ * project predates kinds (then it is a B2B website). Staff read it on the connection that already shows them the client.
+ */
+export async function findWebsiteKindForBusiness(db: Database, businessId: string): Promise<string | null> {
+  if (!isUuid(businessId)) return null;
+  const rows = await db
+    .select({ websiteKind: projects.websiteKind })
+    .from(projects)
+    .where(eq(projects.businessId, businessId))
+    .orderBy(desc(projects.createdAt), desc(projects.id))
+    .limit(1);
+  return rows[0]?.websiteKind ?? null;
 }

@@ -4,6 +4,7 @@ import {
   findBusinessWebsiteUrl,
   findListingPlacement,
   findPlaces,
+  findWebsiteKindForBusiness,
   getSiteKey,
   hasLiveProject,
   lastSiteHitAt,
@@ -28,6 +29,7 @@ import { ClientListing } from "@/components/client-listing";
 import { ClientListingTags } from "@/components/client-listing-tags";
 import { labelClasses } from "@/components/console/field-styles";
 import { Quiet, Section } from "@/components/console/section";
+import { websiteKindLabel } from "@/lib/client-build-fee";
 import { adminBrand } from "@/lib/brand";
 import { clientListingKey, readClientTagNotice } from "@/lib/client-tags";
 import { canManageGoogle } from "@/lib/google-card";
@@ -51,7 +53,7 @@ export async function SiteDetails({
 }): Promise<ReactElement> {
   const db = getStaffDb();
   const renderedAt = new Date();
-  const [siteApiToken, siteKey, lastEventAt, reportSources, gscLatestDay, ga4LatestDay, websiteUrl, hostedSites, timeZone, enabledModules, appointmentCounts, listingPlacement, listingLive, promotions, websiteBought] = await Promise.all([
+  const [siteApiToken, siteKey, lastEventAt, reportSources, gscLatestDay, ga4LatestDay, websiteUrl, hostedSites, timeZone, enabledModules, appointmentCounts, listingPlacement, listingLive, promotions, websiteBought, websiteKind] = await Promise.all([
     getSiteApiToken(client.businessId),
     getSiteKey(db, client.businessId),
     lastSiteHitAt(db, client.businessId),
@@ -67,6 +69,7 @@ export async function SiteDetails({
     hasLiveProject(db, client.businessId),
     listUpcomingDirectoryPromotions(db, client.businessId, renderedAt),
     isWebsiteBought(db, client.businessId),
+    findWebsiteKindForBusiness(db, client.businessId),
   ]);
   const websiteNotice = sp.website === "saved" || sp.website === "invalid" ? sp.website : null;
   const hostingNotice = sp.hosting === "saved" || sp.hosting === "invalid" ? sp.hosting : null;
@@ -97,6 +100,10 @@ export async function SiteDetails({
           <WebsiteUrlBlock businessId={client.businessId} websiteUrl={websiteUrl} notice={websiteNotice} />
           {websiteBought ? (
             <>
+              <div>
+                <h3 className={labelClasses}>Kind of website</h3>
+                <p className="mt-2 text-sm">{websiteKindLabel(websiteKind)}</p>
+              </div>
               <HostingBlock businessId={client.businessId} hosting={hostedSites[0] ?? null} notice={hostingNotice} />
               <div>
                 <h3 className={labelClasses}>Site API token</h3>

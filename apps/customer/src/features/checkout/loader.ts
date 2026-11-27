@@ -2,6 +2,7 @@ import "server-only";
 import { addMonthsUtc, monthsPerCycle } from "@brandbasket/billing";
 import { gstInsideCents } from "@brandbasket/billing/tax";
 import type { BillingInterval } from "@brandbasket/db";
+import type { WebsiteKind } from "@brandbasket/shared/lib/billing/website-kind";
 import { addOnById, type MonthlyAddOnId } from "@brandbasket/shared/lib/billing/add-ons";
 import { WEBSITE_ALONE } from "@brandbasket/shared/lib/billing/bundle";
 import { PAYMENT_RECEIVED_MESSAGE } from "@brandbasket/shared/lib/billing/payment-step";
@@ -11,6 +12,7 @@ import { formatDate, formatMoney, formatPercent } from "@/lib/format";
 import type { CustomerContext } from "@/lib/guards";
 import { INTAKE_SUMMARY_STEP, startHref } from "../start/rules";
 import type { BillingDetailsView } from "./rules/billing-details-view";
+import { feeRenewalTerms } from "./rules/build-fee";
 import { MEMBER_WELCOME_HREF } from "./rules/confirm-href";
 import { ledgerOffer, ledgerRows, ledgerSummary, type LedgerRow } from "./rules/ledger";
 import { buildSignupBasketTable, type SignupBasketTable } from "./rules/signup-basket";
@@ -23,6 +25,7 @@ import {
   readBillingInterval,
   readMembershipPaymentNotice,
   readSelectedServices,
+  readWebsiteKind,
   renewalTerms,
   unsettledCheckout,
 } from "./rules/membership";
@@ -59,6 +62,10 @@ export interface CheckoutLedgerView {
   /** Where "Change services" goes, or null when the services cannot be changed here. */
   readonly changeServicesHref: string | null;
   readonly paymentFailed: boolean;
+  /** A staff payment link decided the basket, how often it is paid, the kind of website and the build fee: none of them can be changed here. */
+  readonly locked: boolean;
+  /** The kind of website the Pay form posts back (plan 65). */
+  readonly siteKind: WebsiteKind;
 }
 
 export interface CheckoutAbout {
@@ -69,7 +76,16 @@ export interface CheckoutAbout {
 export type CheckoutView =
   | { readonly kind: "pay"; readonly title: string; readonly lead: string; readonly ledger: CheckoutLedgerView; readonly about: CheckoutAbout }
   /** A sign-up account that has not paid: the one-screen checkout (plan 64) in its signed-in mode, with its own figures. */
-  | { readonly kind: "signup-pay"; readonly table: SignupBasketTable; readonly services: readonly string[]; readonly paymentFailed: boolean }
+  | {
+      readonly kind: "signup-pay";
+      readonly table: SignupBasketTable;
+      readonly services: readonly string[];
+      readonly paymentFailed: boolean;
+      /** The kind of website to open on (plan 65). */
+      readonly websiteKind: WebsiteKind;
+      /** Set when a staff payment link decided the deal: the screen then offers no way to change it. */
+      readonly link: { readonly interval: BillingInterval; readonly discountCents: number; readonly note: string | null } | null;
+    }
   /** Money arrived that bought nothing; staff are sorting it out, so nothing is offered. */
   | { readonly kind: "under-review"; readonly message: string }
   /** Back from the provider before its word arrived: the page reloads until the payment is recorded. */
@@ -103,8 +119,12 @@ export async function loadCheckout(customer: CustomerContext, params: Params, no
   const entry = await loadBusinessEntry(customer);
   const signUp = entry.kind === "listing";
   // A website client invited by staff pays for the website alone (the old Check and send); a sign-up account for its basket.
-  const interval = readBillingInterval(params);
-  const view = await loadMembershipCheckout(customer, "managed", signUp ? readSelectedServices(params) : WEBSITE_ALONE, now, interval);
+  // A sign-up account owes the list build fee for its website (decision D14); a website client invited by staff has always had a free build.
+  const view = await loadMembershipCheckout(customer, "managed", signUp ? readSelectedServices(params) : WEBSITE_ALONE, now, readBillingInterval(params), {
+    chosenKind: readWebsiteKind(params),
+    chargeListFee: signUp,
+  });
+  const interval = view.interval;
   const waiting = isWaitingOnPayment(billing.subscription, notice);
 
   if (billing.paymentUnderReview) return { kind: "under-review", message: PAYMENT_RECEIVED_MESSAGE };
@@ -120,8 +140,10 @@ export async function loadCheckout(customer: CustomerContext, params: Params, no
     return {
       kind: "signup-pay",
       table: buildSignupBasketTable(plan.currency, view.firstMonth.provider, view.firstMonth.hadService),
-      services: named ? readSelectedServices(params) : await loadSavedServices(customer),
+      services: view.locked ? view.services : named ? readSelectedServices(params) : await loadSavedServices(customer),
       paymentFailed: notice === "failed",
+      websiteKind: view.deal.kind,
+      link: view.locked ? { interval, discountCents: view.deal.fee?.discountCents ?? 0, note: view.deal.note } : null,
     };
   }
 
@@ -132,11 +154,12 @@ export async function loadCheckout(customer: CustomerContext, params: Params, no
     forfeited: view.forfeited,
     hasEverPaid: view.hasEverPaid,
     interval,
+    kind: view.deal.kind,
   };
   const code = view.discount === null ? null : { code: view.discount.code, stated: view.discount.stated, months: view.discount.months };
   const summary = ledgerSummary(pricing, view.services, code);
   // With a plan on the first-month offer (plan 63) today's payment is less than a month of the services: the checkout charges it.
-  const firstMonth = ledgerOffer(summary, view.firstMonth, plan.currency, interval);
+  const firstMonth = ledgerOffer(summary, view.firstMonth, plan.currency, interval, view.deal);
   const dueCents = firstMonth?.firstPaymentCents ?? summary.totalCents;
   const taxed = plan.taxRateBasisPoints > 0;
   return {
@@ -146,28 +169,41 @@ export async function loadCheckout(customer: CustomerContext, params: Params, no
     ledger: {
       services: view.services,
       billing: { interval, value: billingParamValue(interval), ...billingSwitchHrefs(MEMBERSHIP_PATH, params) },
-      rows: ledgerRows(summary, plan.currency, code, firstMonth),
+      rows: ledgerRows(summary, plan.currency, code, firstMonth, view.deal),
       total: formatMoney(dueCents, plan.currency),
       gstLine: taxed ? `Includes ${formatMoney(gstInsideCents(dueCents, plan.taxRateBasisPoints), plan.currency)} of GST at ${formatPercent(plan.taxRateBasisPoints / 100)}` : null,
       adCredit: summary.adCredit?.label ?? null,
-      renewal: renewalTerms(
-        summary,
-        { ...pricing, initialTermMonths: plan.initialTermMonths },
-        code?.months ?? null,
-        interval === "year" ? formatDate(addMonthsUtc(now, monthsPerCycle("year")), now) : null,
-      ),
+      renewal:
+        view.deal.fee !== null && view.deal.fee.netCents > 0
+          ? feeRenewalTerms({
+              currency: plan.currency,
+              taxed,
+              interval,
+              cycleCents: interval === "year" ? summary.totalWithoutCodeCents : summary.totalCents,
+              services: summary.lines.length,
+              codeMonths: code?.months ?? null,
+              cycleWithoutCodeCents: summary.totalWithoutCodeCents,
+            })
+          : renewalTerms(
+              summary,
+              { ...pricing, initialTermMonths: plan.initialTermMonths },
+              code?.months ?? null,
+              interval === "year" ? formatDate(addMonthsUtc(now, monthsPerCycle("year")), now) : null,
+            ),
       code:
         view.discount === null
           ? null
           : { code: view.discount.code, worth: describeDiscount({ code: view.discount.code, amountCents: summary.discountCents, months: view.discount.months, stated: view.discount.stated }, plan.currency) },
       lapsedCode: view.lapsedCode,
       billingDetails: view.billingDetails,
-      changeServicesHref: signUp && view.offer.kind === "available" ? startHref(view.services, INTAKE_SUMMARY_STEP) : null,
+      changeServicesHref: signUp && !view.locked && view.offer.kind === "available" ? startHref(view.services, INTAKE_SUMMARY_STEP) : null,
       paymentFailed: notice === "failed",
+      locked: view.locked,
+      siteKind: view.deal.kind,
     },
     about: {
       gets: view.services.map((id) => ({ title: addOnById(id).title, items: CHECKOUT_PLAN_COPY[id].gets })),
-      steps: checkoutSteps(view.services),
+      steps: checkoutSteps(view.services, view.deal.kind),
     },
   };
 }

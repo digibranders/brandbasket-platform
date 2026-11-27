@@ -146,7 +146,7 @@ describe("what the database and the activation refuse", () => {
     await expect(pay(subscription)).rejects.toThrow("froze a first payment of 555");
   });
 
-  it("refuses a first payment without its first charge day, and one on a yearly plan", async () => {
+  it("refuses a first payment without its first charge day, and takes one on a yearly plan since plan 65 (a yearly build-fee deal; the first-month offer itself stays monthly in planFirstPayment)", async () => {
     await expect(open([line("social-media", TRIAL)], { firstPaymentCents: TRIAL, firstChargeAt: null })).rejects.toThrow();
     await expect(
       openCheckoutSubscription(dbs.staff.db, {
@@ -164,7 +164,7 @@ describe("what the database and the activation refuse", () => {
         firstPaymentCents: TRIAL,
         firstChargeAt: FIRST_CHARGE_AT,
       }),
-    ).rejects.toThrow();
+    ).resolves.toMatchObject({ billingInterval: "year", firstPaymentCents: TRIAL });
   });
 
   it("leaves an ordinary checkout alone: the monthly amount, one month, no trial", async () => {

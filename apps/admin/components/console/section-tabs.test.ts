@@ -35,7 +35,7 @@ it("renders the item's pages as links and marks the current one", async () => {
 it("lists the Money pages for every role, with the open one marked", async () => {
   for (const role of ["support", "finance"] as const) {
     await render(role, "/coupons");
-    expect(links().map((entry) => entry.split(":")[0])).toEqual(["Payments", "Invoices", "Prices", "Coupons", "Affiliates", "Acquisition"]);
+    expect(links().map((entry) => entry.split(":")[0])).toEqual(["Payments", "Invoices", "Prices", "Coupons", "Payment links", "Affiliates", "Acquisition"]);
     expect(container.querySelectorAll('a[aria-current="page"]')).toHaveLength(1);
     expect(container.querySelector('a[aria-current="page"]')?.textContent).toBe("Coupons");
   }

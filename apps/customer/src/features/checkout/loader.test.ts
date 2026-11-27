@@ -35,6 +35,10 @@ function view(overrides: Partial<MembershipCheckoutView> = {}): MembershipChecko
     offer: { kind: "available" },
     // A business that has had both offer plans, unless a test says otherwise: every plan at its price.
     firstMonth: { provider: "razorpay", hadService: { "social-media": true, "paid-ads": true } },
+    interval: "month",
+    // No build fee owed, unless a test says otherwise: the figures these tests read are the services' alone.
+    deal: { kind: "b2b", fee: null, note: null },
+    locked: false,
     ...overrides,
   };
 }
@@ -106,7 +110,8 @@ describe("loadCheckout", () => {
     vi.mocked(loadBusinessEntry).mockResolvedValue({ kind: "website", signupChoice: null });
     vi.mocked(loadMembershipCheckout).mockResolvedValue(view({ services: ["managed-website"] }));
     const result = await loadCheckout(customer(), { services: "paid-ads" });
-    expect(loadMembershipCheckout).toHaveBeenCalledWith(expect.anything(), "managed", ["managed-website"], expect.any(Date), "month");
+    // No list build fee for a client invited by staff, who has always had a free build (plan 65).
+    expect(loadMembershipCheckout).toHaveBeenCalledWith(expect.anything(), "managed", ["managed-website"], expect.any(Date), "month", { chosenKind: "b2b", chargeListFee: false });
     expect(billingDetailsMissing).not.toHaveBeenCalled();
     if (result.kind !== "pay") throw new Error("expected the pay view");
     expect(result.ledger.changeServicesHref).toBeNull();
@@ -193,5 +198,40 @@ describe("loadCheckout for a sign-up account that has not paid", () => {
     const open = { id: "sub-1", status: "incomplete", activatedAt: null };
     expect(await loadCheckout(customer({ subscription: open }), { payment: "received" })).toEqual({ kind: "waiting", waitKey: "membership:sub-1" });
     expect(await loadCheckout(customer({ paymentUnderReview: true }), {})).toMatchObject({ kind: "under-review" });
+  });
+});
+
+describe("loadCheckout with a website build fee (plan 65)", () => {
+  const FEE = { kind: "ecommerce", fee: { listCents: 6_500_000, discountCents: 1_500_000, netCents: 5_000_000 }, note: "As agreed on call" } as const;
+
+  it("asks a sign-up for the list fee, and reads the kind from the address", async () => {
+    await loadCheckout(customer(), { site: "ecommerce", services: "managed-website" });
+    expect(loadMembershipCheckout).toHaveBeenCalledWith(expect.anything(), "managed", ["managed-website"], expect.any(Date), "month", { chosenKind: "ecommerce", chargeListFee: true });
+  });
+
+  it("shows the build fee, its discount and the website's month left to the first monthly charge on the full checkout", async () => {
+    vi.mocked(loadMembershipCheckout).mockResolvedValue(view({ services: ["managed-website"], deal: FEE }));
+    const result = await loadCheckout(customer(), {});
+    if (result.kind !== "pay") throw new Error("expected the pay view");
+    expect(result.ledger.rows.map((row) => [row.label, row.amount])).toEqual([
+      ["Ecommerce store build", "₹65,000"],
+      ["As agreed on call", "-₹15,000"],
+      ["Maintenance", "Not charged today"],
+    ]);
+    expect(result.ledger.total).toBe("₹50,000");
+    expect(result.ledger.renewal).toBe("Your payment covers the build. From one month after you pay, ₹3,999 (GST included) is taken each month for your service.");
+    expect(result.about.steps.at(-1)).toEqual({ title: "Your store is live", note: "Within 21 days of the call" });
+  });
+
+  it("offers no way to change a deal a payment link decided, and hands the one-screen checkout its kind and discount", async () => {
+    vi.mocked(loadMembershipCheckout).mockResolvedValue(view({ services: ["managed-website"], deal: FEE, locked: true, interval: "year" }));
+    const full = await loadCheckout(customer(), {});
+    if (full.kind !== "pay") throw new Error("expected the pay view");
+    expect(full.ledger).toMatchObject({ locked: true, changeServicesHref: null });
+
+    vi.mocked(billingDetailsMissing).mockResolvedValue(false);
+    const one = await loadCheckout(customer(), {});
+    if (one.kind !== "signup-pay") throw new Error("expected the one-screen checkout");
+    expect(one).toMatchObject({ websiteKind: "ecommerce", services: ["managed-website"], link: { interval: "year", discountCents: 1_500_000, note: "As agreed on call" } });
   });
 });

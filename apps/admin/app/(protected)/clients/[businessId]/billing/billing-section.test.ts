@@ -60,6 +60,9 @@ beforeEach(() => {
   vi.mocked(findBillingState).mockResolvedValue(null);
 });
 
+const STATE = (hasEverPaid: boolean, subscription: object | null = null) => ({ hasEverPaid, subscription, plan: null }) as never;
+const FEE = { websiteKind: "ecommerce", setupFeeListCents: 6_500_000, setupFeeDiscountCents: 1_500_000, setupFeeNote: "Agreed on call", paymentLinkId: "link-1" };
+
 describe("the billing section of Plan and billing", () => {
   it("is refused for a role without money, before a single payment, invoice or charge is read", async () => {
     vi.mocked(requireStaffCan).mockRejectedValue(DENIED);
@@ -75,5 +78,26 @@ describe("the billing section of Plan and billing", () => {
     for (const marker of ["[payments]", "[billing facts]", "[billing details]", "[tax invoices]", "[charges]"]) expect(html).toContain(marker);
     expect(listPaymentsForClient).toHaveBeenCalledOnce();
     expect(listClientCharges).toHaveBeenCalledOnce();
+  });
+
+  it("offers a payment link to a business that never paid, and not to one that did", async () => {
+    vi.mocked(requireStaffCan).mockResolvedValue({} as never);
+    vi.mocked(findBillingState).mockResolvedValue(STATE(false));
+    expect(renderToStaticMarkup(await BillingSection({ client: CLIENT, query: {}, packageFacts: PACKAGE }))).toContain(`href="/payment-links/new?business=${BUSINESS}"`);
+    vi.mocked(findBillingState).mockResolvedValue(STATE(true));
+    expect(renderToStaticMarkup(await BillingSection({ client: CLIENT, query: {}, packageFacts: PACKAGE }))).not.toContain("/payment-links/new");
+  });
+
+  it("shows the build fee, its discount and note and the link it came from, from the frozen columns", async () => {
+    vi.mocked(requireStaffCan).mockResolvedValue({} as never);
+    vi.mocked(findBillingState).mockResolvedValue(STATE(true, FEE));
+    const html = renderToStaticMarkup(await BillingSection({ client: CLIENT, query: {}, packageFacts: PACKAGE }));
+    for (const text of ["Website build", "Ecommerce store", "₹65,000", "₹15,000", "₹50,000", "Agreed on call", "A staff payment link"]) expect(html).toContain(text);
+  });
+
+  it("shows no build fee section when none was owed", async () => {
+    vi.mocked(requireStaffCan).mockResolvedValue({} as never);
+    vi.mocked(findBillingState).mockResolvedValue(STATE(true, { ...FEE, setupFeeListCents: null, setupFeeDiscountCents: null, setupFeeNote: null }));
+    expect(renderToStaticMarkup(await BillingSection({ client: CLIENT, query: {}, packageFacts: PACKAGE }))).not.toContain("Website build");
   });
 });

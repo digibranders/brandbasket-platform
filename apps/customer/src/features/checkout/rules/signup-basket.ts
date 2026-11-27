@@ -14,8 +14,10 @@ import { readBundleSelection } from "@brandbasket/shared/lib/billing/bundle";
 import { planFirstPayment } from "@brandbasket/shared/lib/billing/first-payment";
 import { percentOf } from "@brandbasket/shared/lib/billing/packages";
 import { initialTermPhrase } from "@brandbasket/shared/lib/billing/terms";
+import { websiteBuildFeeCents, WEBSITE_KINDS, type WebsiteKind } from "@brandbasket/shared/lib/billing/website-kind";
 import type { MoneyCurrency } from "@brandbasket/shared/lib/money";
 import { formatMoney, formatPercent } from "@/lib/format";
+import { buildRows, feeRenewalTerms } from "./build-fee";
 import { CHECKOUT_COPY, CHECKOUT_PLAN_COPY } from "./plans";
 
 /*
@@ -48,11 +50,24 @@ export interface SignupBasketService {
   readonly yearlyCents: number;
 }
 
+/** What the website costs for one kind of site (plan 65): its monthly and yearly price and the one-time build fee, all in minor units. */
+export interface WebsiteKindPrices {
+  readonly monthlyCents: number;
+  readonly yearlyListCents: number;
+  readonly yearlyCents: number;
+  readonly feeCents: number;
+}
+
 export interface SignupBasketTable {
   readonly currency: MoneyCurrency;
   /** 1800 in rupees, 0 in dollars. */
   readonly taxRateBasisPoints: number;
   readonly services: readonly SignupBasketService[];
+  readonly website: {
+    /** A build fee comes with the website for a buyer who has never had it. */
+    readonly feeOwed: boolean;
+    readonly kinds: Readonly<Record<WebsiteKind, WebsiteKindPrices>>;
+  };
 }
 
 /**
@@ -82,7 +97,15 @@ export function buildSignupBasketTable(
       yearlyCents: yearly.netCents,
     };
   });
-  return { currency, taxRateBasisPoints: addOnTaxRateBasisPoints(currency), services };
+  const website = addOnById("managed-website");
+  const kinds = Object.fromEntries(
+    WEBSITE_KINDS.map((kind) => {
+      const monthly = addOnPrice(website, currency, 0, "month", kind);
+      const yearly = addOnPrice(website, currency, 0, "year", kind);
+      return [kind, { monthlyCents: monthly.netCents, yearlyListCents: annualListCents(monthly.netCents), yearlyCents: yearly.netCents, feeCents: websiteBuildFeeCents(kind, currency) }] as const;
+    }),
+  ) as Record<WebsiteKind, WebsiteKindPrices>;
+  return { currency, taxRateBasisPoints: addOnTaxRateBasisPoints(currency), services, website: { feeOwed: hadService["managed-website"] !== true, kinds } };
 }
 
 /** One line of the summary. `note` is the small line under the label. */
@@ -120,20 +143,48 @@ export function canTick(id: MonthlyAddOnId, services: readonly MonthlyAddOnId[])
 
 const sum = (values: readonly number[]): number => values.reduce((total, value) => total + value, 0);
 
+/** What shapes the website's part of the summary beyond the services ticked (plan 65). */
+export interface BasketOptions {
+  /** The kind of website chosen. B2B when absent. */
+  readonly kind?: WebsiteKind;
+  /** A staff payment link's discount on the build fee and the note beside it. Absent for the public checkout, which charges the list fee. */
+  readonly deal?: { readonly discountCents: number; readonly note: string | null } | null;
+}
+
 /** The summary for the services ticked and how often they are paid: the rows, the amount due today and what follows. */
-export function basketView(table: SignupBasketTable, ticked: readonly string[], interval: BillingInterval): BasketView {
+export function basketView(table: SignupBasketTable, ticked: readonly string[], interval: BillingInterval, options: BasketOptions = {}): BasketView {
   const services = purchasableServices(table, ticked);
   const chosen = table.services.filter((service) => services.includes(service.id));
   const money = (cents: number): string => formatMoney(cents, table.currency);
   const yearly = interval === "year";
   const months = yearly ? ", 12 months" : "";
+  const kind = options.kind ?? "b2b";
+  const web = table.website.kinds[kind];
+  const hasWebsite = services.includes("managed-website");
+  // The build fee (plan 65): owed on a first purchase of the website, at its list price less the deal's discount, if any.
+  const feeOwed = hasWebsite && table.website.feeOwed;
+  const feeCents = feeOwed ? Math.max(0, web.feeCents - (options.deal?.discountCents ?? 0)) : 0;
+  // A monthly deal that pays something for the build leaves the website's own first month to the first monthly charge.
+  const monthlyDeal = feeOwed && feeCents > 0 && !yearly;
+  const monthlyOf = (service: SignupBasketService): number => (service.id === "managed-website" ? web.monthlyCents : service.monthlyCents);
+  const yearlyOf = (service: SignupBasketService): number => (service.id === "managed-website" ? web.yearlyCents : service.yearlyCents);
+  const yearlyListOf = (service: SignupBasketService): number => (service.id === "managed-website" ? web.yearlyListCents : service.yearlyListCents);
 
   const rows: BasketRow[] = chosen.flatMap((service): BasketRow[] => {
-    const list = money(yearly ? service.yearlyListCents : service.monthlyCents);
+    const list = money(yearly ? yearlyListOf(service) : monthlyOf(service));
     if (service.id === "managed-website") {
+      if (!feeOwed) {
+        return [
+          { key: "website", label: "Website", note: null, amount: "Free", tone: "free" },
+          { key: "maintenance", label: `Maintenance${months}`, note: null, amount: list, tone: "plain" },
+        ];
+      }
+      const build = buildRows({ kind, fee: { listCents: web.feeCents, discountCents: options.deal?.discountCents ?? 0, netCents: feeCents }, note: options.deal?.note ?? null }, table.currency);
       return [
-        { key: "website", label: "Website", note: null, amount: "Free", tone: "free" },
-        { key: "maintenance", label: `Maintenance${months}`, note: null, amount: list, tone: "plain" },
+        ...build.map((row): BasketRow => ({ key: row.key, label: row.label, note: null, amount: row.amount, tone: row.tone })),
+        monthlyDeal
+          ? { key: "maintenance", label: "Maintenance", note: `${money(web.monthlyCents)} a month, from one month after you pay`, amount: "Not charged today", tone: "plain" }
+          : { key: "maintenance", label: `Maintenance${months}`, note: null, amount: list, tone: "plain" },
       ];
     }
     if (service.onOffer && !yearly) {
@@ -141,22 +192,27 @@ export function basketView(table: SignupBasketTable, ticked: readonly string[], 
     }
     return [{ key: service.id, label: `${service.title}${months}`, note: null, amount: list, tone: "plain" }];
   });
-  const dueCents = yearly ? sum(chosen.map((service) => service.yearlyCents)) : sum(chosen.map((service) => service.firstMonthCents));
+  const servicesDueCents = yearly
+    ? sum(chosen.map(yearlyOf))
+    : sum(chosen.map((service) => (service.id === "managed-website" ? (monthlyDeal ? 0 : web.monthlyCents) : service.firstMonthCents)));
+  const dueCents = servicesDueCents + feeCents;
   if (yearly && chosen.length > 0) {
-    const savingCents = sum(chosen.map((service) => service.yearlyListCents)) - dueCents;
+    const savingCents = sum(chosen.map(yearlyListOf)) - servicesDueCents;
     rows.push({ key: "annual", label: `Paid yearly, ${percentOf(ANNUAL_DISCOUNT_BASIS_POINTS)}% off`, note: null, amount: `-${money(savingCents)}`, tone: "save" });
   }
 
   const taxed = table.taxRateBasisPoints > 0;
   const gst = taxed ? " (GST included)" : "";
   const word = chosen.length === 1 ? "service" : "services";
-  const monthlyCents = sum(chosen.map((service) => service.monthlyCents));
+  const monthlyCents = sum(chosen.map(monthlyOf));
   const renewal =
     chosen.length === 0
       ? null
-      : yearly
-        ? `Your payment covers 12 months. Then ${money(dueCents)}${gst} is taken each year for your ${word}.`
-        : `Your first payment covers ${initialTermPhrase(1)}, then ${money(monthlyCents)}${gst} is taken each month for your ${word}.`;
+      : feeOwed && feeCents > 0
+        ? feeRenewalTerms({ currency: table.currency, taxed, interval, cycleCents: yearly ? sum(chosen.map(yearlyOf)) : monthlyCents, services: chosen.length, codeMonths: null, cycleWithoutCodeCents: monthlyCents })
+        : yearly
+          ? `Your payment covers 12 months. Then ${money(dueCents)}${gst} is taken each year for your ${word}.`
+          : `Your first payment covers ${initialTermPhrase(1)}, then ${money(monthlyCents)}${gst} is taken each month for your ${word}.`;
 
   return {
     services,
@@ -175,6 +231,6 @@ export function payLabel(view: Pick<BasketView, "services" | "due">): string {
 
 /** The first-month badge on a card: "First month ₹1" while paid monthly, nothing paid yearly. The website carries its own. */
 export function cardBadge(service: SignupBasketService, table: SignupBasketTable, interval: BillingInterval): string | null {
-  if (service.id === "managed-website") return CHECKOUT_COPY.websiteBadge;
+  if (service.id === "managed-website") return table.website.feeOwed ? CHECKOUT_COPY.websiteBadge : null;
   return service.onOffer && interval === "month" ? `First month ${formatMoney(service.firstMonthCents, table.currency)}` : null;
 }

@@ -10,7 +10,9 @@ export type ManualPaymentOutcome =
   /** The business's currency has no active plan, so there is no price to record. */
   | { readonly kind: "no-plan" }
   /** The business has an unpaid checkout for more than the website, which a payment recorded by hand would drop. */
-  | { readonly kind: "package-open" };
+  | { readonly kind: "package-open" }
+  /** Plan 65: a build fee is owed (an open payment link, or a sign-up account that has not paid), and a transfer recorded by hand would sell the website without it. */
+  | { readonly kind: "build-fee-owed" };
 import type { ManualPaymentFormProblem } from "./manual-payment-form";
 
 /** What the client page says after an admin records a manual payment or resolves a flagged one. */
@@ -27,6 +29,11 @@ export const MANUAL_PAYMENT_NOTICES: Readonly<Record<ManualPaymentNotice, { read
   "no-plan": { text: "Nothing recorded: there is no active plan for this business’s currency.", ok: false },
   "package-open": {
     text: "Nothing recorded: this client has an unfinished checkout for more than the website, and a transfer would drop the rest. Ask them to finish checkout, or contact the owner.",
+    ok: false,
+  },
+  // New wording (plan 65): the owner approves it before release.
+  "build-fee-owed": {
+    text: "Nothing recorded: this business owes a website build fee, and a transfer recorded here would sell the website without it. Send them a payment link instead.",
     ok: false,
   },
   unconfirmed: { text: "Nothing recorded: tick the box to confirm the money has arrived.", ok: false },

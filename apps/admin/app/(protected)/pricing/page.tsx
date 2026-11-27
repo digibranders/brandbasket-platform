@@ -21,7 +21,7 @@ import { PageHeader } from "@/components/console/page-header";
 import { SectionTabs } from "@/components/console/section-tabs";
 import { Quiet, Section } from "@/components/console/section";
 import { PRICING_NOTICES, readPricingNotice } from "@/lib/pricing-notices";
-import { catalogueRows } from "@/lib/service-packages";
+import { catalogueRows, websiteKindRows } from "@/lib/service-packages";
 import { listPricingPlans, listRecentPriceChanges } from "@/lib/server/pricing-admin";
 import { requireStaffCan } from "@/lib/server/staff-role";
 import { savePricesAction } from "./actions";
@@ -94,12 +94,30 @@ function ServicesCatalogue(): ReactElement {
   );
 }
 
-/** The one offer, stated as the owner's rule (root CLAUDE.md). Staff cannot change it here, so there is no form. */
-function TheOneOffer(): ReactElement {
+/** The two kinds of website: the monthly price of Website Management and the one-time build fee, both from the shared price functions. */
+function WebsiteKinds(): ReactElement {
   return (
-    <Section title="The one offer">
+    <Section title="Website kinds" aside="Build fee is one time">
+      <ul aria-label="Website kinds" className="max-w-3xl divide-y divide-line">
+        {websiteKindRows().map((row) => (
+          <li key={row.kind} className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1 py-3 text-sm first:pt-0">
+            <span className="font-medium">{row.label}</span>
+            <span className="tabular-nums">
+              {row.monthlyInr} or {row.monthlyUsd} a month, build fee {row.buildFeeInr} or {row.buildFeeUsd}
+            </span>
+          </li>
+        ))}
+      </ul>
+    </Section>
+  );
+}
+
+/** What the owner decided about offers. Staff cannot change it here, so there is no form. */
+function Offers(): ReactElement {
+  return (
+    <Section title="Offers">
       <p className="max-w-3xl text-sm leading-relaxed">
-        Dedicated Expert Monitoring is free when a customer has all three plans. A basket is the plans added up: there are no package discounts and no ad money.
+        Dedicated Expert Monitoring is a plain monthly add-on with its own price. A basket is the services added up: there are no package discounts and no ad money. A website build fee is discounted one deal at a time, on a payment link.
       </p>
     </Section>
   );
@@ -205,7 +223,8 @@ export default async function PricingPage({
       )}
       <div className="mt-12">
         <ServicesCatalogue />
-        <TheOneOffer />
+        <WebsiteKinds />
+        <Offers />
         {plans.map((plan) => (
           <ExtrasForm key={plan.id} plan={plan} />
         ))}

@@ -6,6 +6,10 @@
 // duplicate plans at Razorpay rather than reusing existing ones, because the Plans API has no "find by name": check
 // the dashboard first if you are not sure whether this has already been run.
 //
+// Superseded for prices from plan 65 on: a basket's Razorpay plan is found or made per amount and interval when a customer pays, so
+// the ecommerce website's ₹3,999 or $99 a month needs no entry here. The prices themselves live in packages/shared
+// (lib/billing/website-kind.ts and add-ons.ts), which this package cannot import.
+//
 // Usage: RAZORPAY_KEY_ID=... RAZORPAY_KEY_SECRET=... pnpm --filter @brandbasket/billing exec tsx scripts/create-razorpay-plans.ts
 
 import Razorpay from "razorpay";

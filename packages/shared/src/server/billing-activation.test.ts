@@ -152,7 +152,7 @@ describe("activateFirstPayment", () => {
     vi.mocked(activateBundledAddOns).mockResolvedValueOnce([{ addOn: "managed-website" } as BundledAddOn]);
     vi.mocked(openMembershipForListingBusiness).mockResolvedValue({ businessName: "Smile Dental" });
     const activation = await activateFirstPayment(tx, BASE);
-    expect(openMembershipForListingBusiness).toHaveBeenCalledWith(tx, "biz-1", { withProject: true });
+    expect(openMembershipForListingBusiness).toHaveBeenCalledWith(tx, "biz-1", { withProject: true, websiteKind: null });
     expect(activation.openedMembership).toEqual({ businessName: "Smile Dental" });
   });
 
@@ -162,7 +162,7 @@ describe("activateFirstPayment", () => {
     vi.mocked(activateBundledAddOns).mockResolvedValueOnce([{ addOn: "social-media" } as BundledAddOn, { addOn: "paid-ads" } as BundledAddOn]);
     vi.mocked(openMembershipForListingBusiness).mockResolvedValue({ businessName: "Smile Dental" });
     await activateFirstPayment(tx, BASE);
-    expect(openMembershipForListingBusiness).toHaveBeenCalledWith(tx, "biz-1", { withProject: false });
+    expect(openMembershipForListingBusiness).toHaveBeenCalledWith(tx, "biz-1", { withProject: false, websiteKind: null });
   });
 
   it("reports no membership opened for a business that was already a client", async () => {

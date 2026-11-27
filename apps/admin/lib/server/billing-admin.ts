@@ -6,7 +6,9 @@ import {
   findActivePlan,
   findBillingState,
   findBundledAddOnsForSubscription,
+  findBusinessEntry,
   findBusinessReferralCode,
+  findOpenPaymentLinkForBusiness,
   findRedeemableReferralCode,
   lockBusinessForBilling,
   markPackageOfferForfeited,
@@ -129,6 +131,15 @@ export async function recordManualFirstPayment(input: ManualFirstPayment, now: D
     const plan = await findActivePlan(tx, state.currency, state.tier);
     if (plan === null) return { outcome: { kind: "no-plan" }, replaced: null };
 
+    // Plan 65: a first payment recorded by hand books the website at its monthly price with no build fee. A business with an open payment
+    // link, or a sign-up account that has not paid (its own checkout charges the fee), would get the website without it. A website client
+    // invited by staff has always had a free build and is not held back.
+    if (!state.hasEverPaid) {
+      const entry = await findBusinessEntry(tx, businessId);
+      if (entry?.kind === "listing" || (await findOpenPaymentLinkForBusiness(tx, businessId, now)) !== null) {
+        return { outcome: { kind: "build-fee-owed" }, replaced: null };
+      }
+    }
     // A business that has paid before is reactivating, which takes no new code: a lapse keeps the one it had (below).
     const applied = state.hasEverPaid ? null : await findBusinessReferralCode(tx, businessId);
     const redeemable =

@@ -19,6 +19,7 @@ import { getPendingSignupCookie } from "@/features/entry/server/pending-signup-c
 import { loadSignUpBasket } from "@/features/entry/server/signup-prices";
 import { loadSignupCheckoutBasket, loadSignupCheckoutBasketFor } from "@/features/entry/server/signup-checkout-basket";
 import { visitorCountry } from "@/features/entry/server/visitor-country";
+import { readWebsiteKind } from "@/features/checkout/rules/membership";
 
 export const metadata: Metadata = { title: "Create your account" };
 
@@ -60,6 +61,7 @@ export default async function SignUpPage({ searchParams }: { readonly searchPara
         account={unpaid === null ? "new" : "signed-in"}
         table={unpaid === null ? loadSignupCheckoutBasket(visitorCountry(requestHeaders)) : loadSignupCheckoutBasketFor(unpaid.currency)}
         initialServices={unpaid === null || linkNamesServices ? entry.services : unpaid.savedServices}
+        initialKind={readWebsiteKind(params)}
         details={{ siteKey: turnstileSiteKey(), phoneCountries, defaultPhoneCountry, prefill, startToken: sealedStart }}
       />
     );

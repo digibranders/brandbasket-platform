@@ -9,12 +9,16 @@ describe("the checkout's words", () => {
   });
 
   it("says the website's maintenance price from the figure it is given", () => {
-    expect(CHECKOUT_PLAN_COPY["managed-website"].blurb("₹2,999")).toBe("Website free to build, ₹2,999 a month to keep it running");
+    expect(CHECKOUT_PLAN_COPY["managed-website"].blurb("₹2,999")).toBe("Built for you, ₹2,999 a month to keep it running");
   });
 
-  it("names the monitoring offer for all three plans", () => {
-    expect(CHECKOUT_COPY.packageNote).toBe("Take all three plans and Dedicated Expert Monitoring is free.");
-    expect(CHECKOUT_COPY.allThree).toBe("All three plans: Dedicated Expert Monitoring free every month.");
+  it("no longer says monitoring is free with all three plans (owner, 2026-11-27)", () => {
+    expect(CHECKOUT_PLAN_COPY["expert-monitoring"].blurb("₹6,000")).not.toMatch(/free/i);
+    expect(Object.keys(CHECKOUT_COPY)).not.toContain("packageNote");
+  });
+
+  it("says an ecommerce store is live within 21 days of the call", () => {
+    expect(checkoutSteps(["managed-website"], "ecommerce").at(-1)).toEqual({ title: "Your store is live", note: "Within 21 days of the call" });
   });
 
   it("shows the build and launch steps when the basket has the website", () => {

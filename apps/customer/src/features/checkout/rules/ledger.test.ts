@@ -178,3 +178,54 @@ describe("the first-month offer (plan 63)", () => {
     expect(ledgerOffer(ledgerSummary(PRICING, WEBSITE, null), NEVER_HAD, "INR", "month")).toBeNull();
   });
 });
+
+describe("the website build fee in the summary (plan 65)", () => {
+  const FEE = { kind: "b2b", fee: { listCents: 3_500_000, discountCents: 1_000_000, netCents: 2_500_000 }, note: "As agreed on call" } as const;
+  const summary = (services: readonly MonthlyAddOnId[], pricing: LedgerPricing = PRICING, code: LedgerCode | null = null) => ledgerSummary(pricing, services, code);
+
+  it("charges the fee and Social's first month today, and leaves the website's own month to the first monthly charge", () => {
+    const two = summary(TWO);
+    const offer = ledgerOffer(two, { provider: "razorpay", hadService: { "social-media": true } }, "INR", "month", FEE);
+    expect(offer?.firstPaymentCents).toBe(2_500_000 + 299_900);
+    expect(ledgerRows(two, "INR", null, offer, FEE).map((row) => [row.label, row.amount])).toEqual([
+      ["B2B website build", "₹35,000"],
+      ["As agreed on call", "-₹10,000"],
+      ["Maintenance", "Not charged today"],
+      ["Social Media Management", "₹2,999"],
+    ]);
+  });
+
+  it("charges the fee alone for the website alone", () => {
+    expect(ledgerOffer(summary(WEBSITE), { provider: "razorpay", hadService: {} }, "INR", "month", FEE)?.firstPaymentCents).toBe(2_500_000);
+  });
+
+  it("prices an ecommerce store at its own monthly price in the rows", () => {
+    const ecommerce = { kind: "ecommerce", fee: { listCents: 6_500_000, discountCents: 0, netCents: 6_500_000 }, note: null } as const;
+    const rows = ledgerRows(summary(WEBSITE, { ...PRICING, kind: "ecommerce" }), "INR", null, null, { ...ecommerce, fee: { ...ecommerce.fee, discountCents: 6_500_000, netCents: 0 } });
+    expect(rows.map((row) => [row.label, row.amount])).toEqual([
+      ["Ecommerce store build", "₹65,000"],
+      ["Build discount", "-₹65,000"],
+      ["Maintenance", "₹3,999"],
+    ]);
+  });
+
+  it("takes the whole year with the fee when paid yearly, the website included", () => {
+    const yearly: LedgerPricing = { ...PRICING, interval: "year" };
+    const offer = ledgerOffer(summary(WEBSITE, yearly), { provider: "razorpay", hadService: {} }, "INR", "year", FEE);
+    expect(offer?.firstPaymentCents).toBe(2_500_000 + 3_238_900);
+    expect(ledgerRows(summary(WEBSITE, yearly), "INR", null, offer, FEE).find((row) => row.key === "maintenance")?.amount).toBe("₹35,988");
+  });
+
+  it("says a code starts with the first monthly payment on a monthly deal", () => {
+    const code = FLAT_CODE;
+    const rows = ledgerRows(summary(TWO, PRICING, code), "INR", code, null, FEE);
+    expect(rows.find((row) => row.key === "code")).toEqual({ key: "code", label: "Code FLAT500", amount: "From your first monthly payment", tone: "save" });
+  });
+
+  it("is unchanged with no fee: the website is free and maintenance is charged", () => {
+    expect(ledgerRows(summary(WEBSITE), "INR", null, null, null).map((row) => [row.label, row.amount])).toEqual([
+      ["Website", "Free"],
+      ["Maintenance", "₹2,999"],
+    ]);
+  });
+});

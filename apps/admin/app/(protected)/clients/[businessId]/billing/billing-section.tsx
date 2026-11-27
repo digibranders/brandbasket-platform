@@ -8,6 +8,7 @@ import {
   listTaxInvoicesForBusiness,
 } from "@brandbasket/db";
 import type { ClientDetail } from "@brandbasket/db";
+import Link from "next/link";
 import type { ReactElement, ReactNode } from "react";
 import { reactivationNetCents, websiteAloneNetCents } from "@brandbasket/shared/lib/billing/bundle";
 import { readStaffChargeNotice } from "@brandbasket/shared/lib/billing/charge-notices";
@@ -18,10 +19,12 @@ import { loadReactivationBasket } from "@brandbasket/shared/server/reactivation-
 import { ClientCharges } from "@/components/client-charges";
 import { ClientBillingDetails, ClientTaxInvoices } from "@/components/client-invoicing";
 import { ClientPayments } from "@/components/client-payments";
+import { buttonSecondary } from "@/components/console/buttons";
 import { Notice } from "@/components/console/notice";
-import { Section } from "@/components/console/section";
+import { FactList, Section } from "@/components/console/section";
 import { PaymentsNeedingAttention } from "@/components/payments-needing-attention";
 import { attentionSection } from "@/lib/client-attention";
+import { buildFeeFacts } from "@/lib/client-build-fee";
 import { readInvoiceNotice } from "@/lib/invoice-notices";
 import { readRefundNotice } from "@/lib/refund-form";
 import type { ClientPackageFacts } from "@/lib/client-package";
@@ -83,6 +86,7 @@ export async function BillingSection({
       : lapsedBasket === null
         ? websiteAloneNetCents(plan.currency)
         : reactivationNetCents(lapsedBasket, plan.currency) - (carriedCode?.discountCents ?? 0);
+  const buildFee = buildFeeFacts(billingState?.subscription ?? null, client.currency);
   // One attention section on this tab: flagged payments first, else missing invoices.
   const attention = attentionSection({ flaggedCount: flagged.length, previewIsLate: false, missingInvoiceCount: invoiced ? missingInvoices.length : 0 });
 
@@ -115,6 +119,12 @@ export async function BillingSection({
 
       {afterPayments}
 
+      {buildFee === null ? null : (
+        <Section title="Website build" aside="One time, GST included">
+          <FactList items={buildFee} />
+        </Section>
+      )}
+
       <Section title="Billing">
         <BillingFacts client={client} state={paymentState} packageFacts={packageFacts} />
         {canRecordPayment && plan !== null ? (
@@ -125,6 +135,13 @@ export async function BillingSection({
             reactivating={paymentState.kind === "lapsed"}
             carriedCode={carriedCode === null ? null : { code: carriedCode.code.code, monthsLeft: carriedCode.monthsLeft }}
           />
+        ) : null}
+        {billingState !== null && !billingState.hasEverPaid ? (
+          <div className="mt-6">
+            <Link href={`/payment-links/new?business=${client.businessId}`} className={buttonSecondary}>
+              Create payment link
+            </Link>
+          </div>
         ) : null}
         {canRecordPayment && plan === null ? (
           <p className="mt-6 text-sm text-ink-2">

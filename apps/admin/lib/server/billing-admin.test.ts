@@ -9,6 +9,8 @@ import {
   findRedeemableReferralCode,
   findReferralCodeById,
   findSubscriptionById,
+  findBusinessEntry,
+  findOpenPaymentLinkForBusiness,
   isPackageOfferForfeited,
   lockBusinessForBilling,
   markPackageOfferForfeited,
@@ -58,7 +60,9 @@ vi.mock("@brandbasket/db", () => {
     findBundledAddOnsForSubscription: vi.fn(async () => []),
     findAffiliateAccrualContext: vi.fn(),
     findBillingState: vi.fn(),
+    findBusinessEntry: vi.fn(),
     findBusinessReferralCode: vi.fn(),
+    findOpenPaymentLinkForBusiness: vi.fn(),
     findLatestActivatedSubscriptionForBusiness: vi.fn(),
     findLatestSubscriptionForBusiness: vi.fn(),
     findRedeemableReferralCode: vi.fn(),
@@ -128,6 +132,9 @@ beforeEach(() => {
   });
   logged = vi.spyOn(console, "error").mockImplementation(() => undefined);
   vi.mocked(getBillingProvider).mockReturnValue(provider);
+  // A website client invited by staff, with no payment link: the case a transfer recorded by hand has always served (plan 65).
+  vi.mocked(findBusinessEntry).mockResolvedValue({ kind: "website" } as Awaited<ReturnType<typeof findBusinessEntry>>);
+  vi.mocked(findOpenPaymentLinkForBusiness).mockResolvedValue(null);
   vi.mocked(getStaffDb).mockReturnValue({
     transaction: async (work: (staffTx: ScopedTransaction) => Promise<unknown>) => {
       try {
@@ -230,6 +237,29 @@ describe("recordManualFirstPayment", () => {
     vi.mocked(findBillingState).mockResolvedValue(state(null, { plan: SERVICES_USD }));
     // The website line the manual subscription was opened with, waiting for this payment.
     vi.mocked(findBundledAddOnsForSubscription).mockResolvedValue([{ ...WEBSITE_USD_LINE, status: "pending" } as BundledAddOn]);
+  });
+
+  describe("a business that owes a website build fee (plan 65)", () => {
+    it("records nothing for a sign-up account that has not paid: its own checkout charges the fee", async () => {
+      vi.mocked(findBusinessEntry).mockResolvedValue({ kind: "listing" } as Awaited<ReturnType<typeof findBusinessEntry>>);
+
+      await expect(recordManualFirstPayment(MANUAL, NOW)).resolves.toEqual({ kind: "build-fee-owed" });
+
+      expect(openCheckoutSubscription).not.toHaveBeenCalled();
+      expect(recordPaymentAndActivate).not.toHaveBeenCalled();
+    });
+
+    it("records nothing for a business with an open payment link, whatever kind of account it is", async () => {
+      vi.mocked(findOpenPaymentLinkForBusiness).mockResolvedValue({ id: "link-1" } as Awaited<ReturnType<typeof findOpenPaymentLinkForBusiness>>);
+
+      await expect(recordManualFirstPayment(MANUAL, NOW)).resolves.toEqual({ kind: "build-fee-owed" });
+
+      expect(openCheckoutSubscription).not.toHaveBeenCalled();
+    });
+
+    it("still records for a website client invited by staff, who has always had a free build", async () => {
+      await expect(recordManualFirstPayment(MANUAL, NOW)).resolves.toEqual({ kind: "recorded" });
+    });
   });
 
   it("opens a manual subscription for the website and activates it with its audit trail", async () => {

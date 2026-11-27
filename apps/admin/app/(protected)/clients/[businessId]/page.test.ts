@@ -2,6 +2,7 @@ import {
   findClientIntake,
   findOpenClosureForBusiness,
   findSetupCallBooking,
+  findWebsiteKindForBusiness,
   listActivityForBusiness,
   listAddOnsToContact,
   listAssignableSupportStaff,
@@ -39,6 +40,7 @@ vi.mock("@brandbasket/db", async () => {
     ...actual,
     findClientIntake: vi.fn(),
     findSetupCallBooking: vi.fn(),
+    findWebsiteKindForBusiness: vi.fn(),
     listActivityForBusiness: vi.fn(),
     listAssignableSupportStaff: vi.fn(),
     findOpenClosureForBusiness: vi.fn(),
@@ -77,6 +79,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   vi.mocked(findSetupCallBooking).mockResolvedValue(null);
   vi.mocked(findClientIntake).mockResolvedValue(null);
+  vi.mocked(findWebsiteKindForBusiness).mockResolvedValue(null);
   vi.mocked(listActivityForBusiness).mockResolvedValue([]);
   vi.mocked(listAssignableSupportStaff).mockResolvedValue([]);
   vi.mocked(loadClientAddOns).mockResolvedValue({ package: {} } as never);
@@ -121,6 +124,18 @@ describe("the Overview's next step", () => {
     const html = await render("building");
     expect(html).toContain("What the customer sees");
     expect(html).toContain("We are building your website");
+  });
+});
+
+describe("the Overview's website kind", () => {
+  it("names the kind of website once there is a project, B2B for one from before kinds", async () => {
+    expect(await render("building")).toContain("Website:B2B website");
+    vi.mocked(findWebsiteKindForBusiness).mockResolvedValue("ecommerce");
+    expect(await render("building")).toContain("Website:Ecommerce store");
+  });
+
+  it("says nothing about a website before there is a project", async () => {
+    expect(await render(null)).not.toContain("Website:");
   });
 });
 

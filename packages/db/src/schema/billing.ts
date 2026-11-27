@@ -239,6 +239,15 @@ export const subscriptions = pgTable(
     firstPaymentCents: integer("first_payment_cents"),
     /** The day the provider takes the first full charge, which is the end of the first month and of the offer. Set with `firstPaymentCents`. */
     firstChargeAt: timestamp("first_charge_at", { withTimezone: true }),
+    /** Plan 65: the kind of website this subscription's Website Management line is for; null when it has none or predates kinds (then B2B). */
+    websiteKind: text("website_kind"),
+    /** Plan 65: the one-time build fee before the deal discount, frozen when the checkout opened; null when none was owed. */
+    setupFeeListCents: integer("setup_fee_list_cents"),
+    /** What the deal took off it: 0 to the whole fee (a waived fee, which the invoice says). Set with the list fee. */
+    setupFeeDiscountCents: integer("setup_fee_discount_cents"),
+    setupFeeNote: text("setup_fee_note"),
+    /** The staff payment link this checkout was opened from, or null. No foreign key: payment_links points at subscriptions. */
+    paymentLinkId: uuid("payment_link_id"),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
@@ -263,10 +272,20 @@ export const subscriptions = pgTable(
       sql`${table.bundledAddOnNetCents} >= 0 and (${table.pendingBundledAddOnNetCents} is null or ${table.pendingBundledAddOnNetCents} >= 0)`,
     ),
     check("subscriptions_ad_credit_check", sql`${table.adCreditCents} >= 0`),
-    // The first-month offer is monthly only, and its amount and its first full charge go together.
+    // The first payment (the first-month offer, or a build fee: plan 65) and its first full charge go together. Monthly baskets
+    // only had one before plan 65; a yearly build-fee deal has one too.
     check(
       "subscriptions_first_payment_check",
-      sql`(${table.firstPaymentCents} is null) = (${table.firstChargeAt} is null) and (${table.firstPaymentCents} is null or (${table.firstPaymentCents} > 0 and ${table.billingInterval} = 'month'))`,
+      sql`(${table.firstPaymentCents} is null) = (${table.firstChargeAt} is null) and (${table.firstPaymentCents} is null or ${table.firstPaymentCents} > 0)`,
+    ),
+    check("subscriptions_website_kind_check", sql`${table.websiteKind} is null or ${table.websiteKind} in ('b2b', 'ecommerce')`),
+    // A fee is frozen whole with its kind and a discount from nothing to the whole fee.
+    check(
+      "subscriptions_setup_fee_check",
+      sql`(${table.setupFeeListCents} is null and ${table.setupFeeDiscountCents} is null and ${table.setupFeeNote} is null)
+        or (${table.websiteKind} is not null and ${table.websiteKind} in ('b2b', 'ecommerce') and ${table.setupFeeListCents} > 0
+          and ${table.setupFeeDiscountCents} between 0 and ${table.setupFeeListCents}
+          and (${table.setupFeeNote} is null or char_length(${table.setupFeeNote}) between 1 and 200))`,
     ),
     check(
       "subscriptions_discount_months_check",

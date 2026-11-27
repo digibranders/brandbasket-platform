@@ -27,9 +27,11 @@ interface PayFormProps {
   readonly billingDetails: BillingDetailsView | null;
   /** What the confirm dialog shows before the payment opens. */
   readonly summary: PaymentSummary;
+  /** The kind of website (plan 65): B2B or ecommerce. */
+  readonly siteKind: string;
 }
 
-export function PayForm({ services, billing, total, billingDetails, summary }: PayFormProps) {
+export function PayForm({ services, billing, total, billingDetails, summary, siteKind }: PayFormProps) {
   const formId = useId();
   const [state, action, pending] = useGuardedActionState(startPaymentAction, null);
   const opening = useOpeningPayment(pending, state);
@@ -43,6 +45,7 @@ export function PayForm({ services, billing, total, billingDetails, summary }: P
     <form id={formId} action={action} noValidate className="flex flex-col gap-4">
       <input type="hidden" name="tier" value="managed" />
       <input type="hidden" name="billing" value={billing} />
+      <input type="hidden" name="siteKind" value={siteKind} />
       {services.map((service) => (
         <input key={service} type="hidden" name="service" value={service} />
       ))}

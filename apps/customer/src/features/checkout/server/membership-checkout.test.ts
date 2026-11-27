@@ -1,4 +1,4 @@
-import { businessHasHadService, findBillingState, isPackageOfferForfeited, type BillingState, type Database, type Plan } from "@brandbasket/db";
+import { businessHasHadService, findBillingState, findOpenPaymentLinkForBusiness, isPackageOfferForfeited, type BillingState, type Database, type Plan } from "@brandbasket/db";
 import type { ReactivationBasket } from "@brandbasket/shared/lib/billing/bundle";
 import { loadReactivationBasket } from "@brandbasket/shared/server/reactivation-basket";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -9,7 +9,7 @@ import { getMembershipPlan } from "./membership";
 import { findLapsedAppliedCode, resolveAppliedDiscount } from "./referrals";
 
 vi.mock("server-only", () => ({}));
-vi.mock("@brandbasket/db", () => ({ businessHasHadService: vi.fn(), findBillingState: vi.fn(), isPackageOfferForfeited: vi.fn() }));
+vi.mock("@brandbasket/db", () => ({ businessHasHadService: vi.fn(), findBillingState: vi.fn(), findOpenPaymentLinkForBusiness: vi.fn(), isPackageOfferForfeited: vi.fn() }));
 vi.mock("./billing", () => ({ getBillingProvider: () => ({ name: "razorpay" }) }));
 vi.mock("@brandbasket/shared/server/reactivation-basket", () => ({ loadReactivationBasket: vi.fn() }));
 vi.mock("./billing-details", () => ({ loadBillingDetailsView: vi.fn() }));
@@ -43,6 +43,7 @@ beforeEach(() => {
   vi.mocked(findLapsedAppliedCode).mockResolvedValue(null);
   vi.mocked(loadBillingDetailsView).mockResolvedValue(null);
   vi.mocked(businessHasHadService).mockResolvedValue(false);
+  vi.mocked(findOpenPaymentLinkForBusiness).mockResolvedValue(null);
 });
 
 describe("loadMembershipCheckout", () => {
@@ -75,8 +76,75 @@ describe("loadMembershipCheckout", () => {
 
     const view = await loadMembershipCheckout(customer, "managed", ["social-media", "paid-ads"], NOW);
 
-    expect(view.firstMonth).toEqual({ provider: "razorpay", hadService: { "social-media": false, "paid-ads": true } });
+    // The website too: a build fee is owed on a first purchase of it only (plan 65).
+    expect(view.firstMonth).toEqual({ provider: "razorpay", hadService: { "social-media": false, "paid-ads": true, "managed-website": false } });
     expect(businessHasHadService).toHaveBeenCalledWith(staffDb, BUSINESS_ID, "social-media");
+  });
+
+  describe("the website build fee (plan 65)", () => {
+    const WEBSITE = ["managed-website"] as const;
+
+    it("owes the list fee to a sign-up that has never had the website, for the kind it chose", async () => {
+      vi.mocked(findBillingState).mockResolvedValue(stateWith(false));
+
+      const view = await loadMembershipCheckout(customer, "managed", WEBSITE, NOW, "month", { chosenKind: "ecommerce", chargeListFee: true });
+
+      expect(view.deal).toEqual({ kind: "ecommerce", fee: { listCents: 6_500_000, discountCents: 0, netCents: 6_500_000 }, note: null });
+      expect(view).toMatchObject({ interval: "month", locked: false });
+    });
+
+    it("owes no fee to a website client invited by staff, to a business that has had the website, or for a basket with no website", async () => {
+      vi.mocked(findBillingState).mockResolvedValue(stateWith(false));
+      expect((await loadMembershipCheckout(customer, "managed", WEBSITE, NOW, "month", { chosenKind: "b2b", chargeListFee: false })).deal.fee).toBeNull();
+
+      vi.mocked(businessHasHadService).mockImplementation(async (_db, _business, addOn) => addOn === "managed-website");
+      expect((await loadMembershipCheckout(customer, "managed", WEBSITE, NOW, "month", { chosenKind: "b2b", chargeListFee: true })).deal.fee).toBeNull();
+
+      vi.mocked(businessHasHadService).mockResolvedValue(false);
+      expect((await loadMembershipCheckout(customer, "managed", ["social-media"], NOW, "month", { chosenKind: "b2b", chargeListFee: true })).deal.fee).toBeNull();
+    });
+
+    it("lets a payment link decide the services, the interval, the kind, the discount and the note, and locks the page", async () => {
+      vi.mocked(findBillingState).mockResolvedValue(stateWith(false));
+      vi.mocked(findOpenPaymentLinkForBusiness).mockResolvedValue({
+        currency: "INR",
+        services: ["managed-website", "social-media"],
+        billingInterval: "year",
+        websiteKind: "ecommerce",
+        setupFeeListCents: 6_500_000,
+        setupFeeDiscountCents: 1_500_000,
+        setupFeeNote: "As agreed on call",
+      } as never);
+
+      // The address names a B2B website, monthly, alone: the link's deal wins.
+      const view = await loadMembershipCheckout(customer, "managed", WEBSITE, NOW, "month", { chosenKind: "b2b", chargeListFee: true });
+
+      expect(view).toMatchObject({
+        services: ["managed-website", "social-media"],
+        interval: "year",
+        locked: true,
+        deal: { kind: "ecommerce", fee: { listCents: 6_500_000, discountCents: 1_500_000, netCents: 5_000_000 }, note: "As agreed on call" },
+      });
+    });
+
+    it("ignores a link made in another currency than the business's", async () => {
+      vi.mocked(findBillingState).mockResolvedValue(stateWith(false));
+      vi.mocked(findOpenPaymentLinkForBusiness).mockResolvedValue({ currency: "USD", services: ["social-media"], billingInterval: "year", websiteKind: "b2b" } as never);
+
+      const view = await loadMembershipCheckout(customer, "managed", WEBSITE, NOW);
+
+      expect(view).toMatchObject({ services: ["managed-website"], interval: "month", locked: false });
+    });
+
+    it("never offers a link or a fee to a business that has paid before", async () => {
+      vi.mocked(findBillingState).mockResolvedValue(stateWith(true));
+      vi.mocked(loadReactivationBasket).mockResolvedValue({ services: ["managed-website"], forfeited: false, adCreditCents: 0, cancelled: false, billingInterval: "month" });
+
+      const view = await loadMembershipCheckout(customer, "managed", WEBSITE, NOW, "month", { chosenKind: "b2b", chargeListFee: true });
+
+      expect(findOpenPaymentLinkForBusiness).not.toHaveBeenCalled();
+      expect(view).toMatchObject({ deal: { fee: null }, locked: false });
+    });
   });
 
   it("gives a business coming back from a lapse no first-month offer, as the checkout charges it", async () => {

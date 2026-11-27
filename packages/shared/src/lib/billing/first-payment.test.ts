@@ -12,7 +12,9 @@ describe("planFirstPayment", () => {
   });
 
   it("takes ₹1 for Social alone (the plan's case 1)", () => {
-    expect(planFirstPayment({ ...base, lines: [line("social-media")] })).toEqual({ kind: "offer", firstPaymentCents: 100, trialPriceByAddOn: { "social-media": 100 } });
+    expect(planFirstPayment({ ...base, lines: [line("social-media")] })).toEqual({
+      kind: "offer", firstPaymentCents: 100, trialPriceByAddOn: { "social-media": 100 }, firstChargeMonths: 1, deferredAddOns: [], firstPaymentDiscountCents: 0,
+    });
   });
 
   it("takes the Website in full and ₹1 for Social (case 3), and ₹1 each for Social and Ads (case 4)", () => {
@@ -39,5 +41,58 @@ describe("planFirstPayment", () => {
 
   it("takes $1 for the offer service in dollars", () => {
     expect(planFirstPayment({ ...base, currency: "USD", lines: [line("social-media")] })).toMatchObject({ firstPaymentCents: 100 });
+  });
+});
+
+describe("planFirstPayment with a build fee (plan 65)", () => {
+  const withFee = (over: Partial<Parameters<typeof planFirstPayment>[0]>): ReturnType<typeof planFirstPayment> =>
+    planFirstPayment({ ...base, setupFeeNetCents: 3_500_000, lines: [{ addOn: "managed-website", netCents: PRICE, hadService: false }], ...over });
+
+  it("charges the fee alone for a website on its own, monthly, and starts the monthly price a month on", () => {
+    expect(withFee({})).toEqual({
+      kind: "offer", firstPaymentCents: 3_500_000, trialPriceByAddOn: {}, firstChargeMonths: 1, deferredAddOns: ["managed-website"], firstPaymentDiscountCents: 0,
+    });
+  });
+
+  it("adds the other services' first month at list, or on their first-month offer", () => {
+    const atList = withFee({ lines: [{ addOn: "managed-website", netCents: PRICE, hadService: false }, { addOn: "social-media", netCents: PRICE, hadService: true }] });
+    expect(atList).toMatchObject({ kind: "offer", firstPaymentCents: 3_500_000 + PRICE, trialPriceByAddOn: {} });
+    const onOffer = withFee({
+      setupFeeNetCents: 5_000_000,
+      lines: [{ addOn: "managed-website", netCents: 399_900, hadService: false }, { addOn: "social-media", netCents: PRICE, hadService: false }],
+    });
+    expect(onOffer).toMatchObject({ kind: "offer", firstPaymentCents: 5_000_100, trialPriceByAddOn: { "social-media": 100 } });
+  });
+
+  it("takes no code off a monthly build-fee payment, and never refuses the code", () => {
+    expect(withFee({ discountCents: 100_000 })).toMatchObject({ kind: "offer", firstPaymentCents: 3_500_000, firstPaymentDiscountCents: 0 });
+  });
+
+  it("charges the fee and every service's whole year for a yearly deal, and renews 13 months on", () => {
+    const lines = [{ addOn: "managed-website", netCents: 3_238_900, hadService: false }, { addOn: "social-media", netCents: 3_238_900, hadService: false }] as const;
+    expect(withFee({ interval: "year", lines })).toEqual({
+      kind: "offer", firstPaymentCents: 3_500_000 + 6_477_800, trialPriceByAddOn: {}, firstChargeMonths: 13, deferredAddOns: [], firstPaymentDiscountCents: 0,
+    });
+  });
+
+  it("refuses a code on a yearly build-fee deal: staff discount the fee instead", () => {
+    const lines = [{ addOn: "managed-website", netCents: 3_238_900, hadService: false }] as const;
+    expect(withFee({ interval: "year", discountCents: 100_000, lines })).toEqual({ kind: "code-refused" });
+  });
+
+  it("is the ordinary checkout when the fee is waived or none is owed", () => {
+    expect(withFee({ setupFeeNetCents: 0 })).toEqual({ kind: "ordinary" });
+    expect(planFirstPayment({ ...base, lines: [{ addOn: "managed-website", netCents: PRICE, hadService: false }] })).toEqual({ kind: "ordinary" });
+  });
+
+  it("refuses a fee on a basket with no website, and a nonsense fee", () => {
+    expect(() => withFee({ lines: [{ addOn: "social-media", netCents: PRICE, hadService: false }] })).toThrow(RangeError);
+    expect(() => withFee({ setupFeeNetCents: -1 })).toThrow(RangeError);
+    expect(() => withFee({ setupFeeNetCents: 1.5 })).toThrow(RangeError);
+  });
+
+  it("keeps the first-month offer as it was when no fee is owed, now saying when the first full charge is", () => {
+    expect(planFirstPayment({ ...base, lines: [line("social-media")] })).toMatchObject({ firstChargeMonths: 1, deferredAddOns: [], firstPaymentDiscountCents: 0 });
+    expect(planFirstPayment({ ...base, discountCents: 50_000, lines: [line("managed-website"), line("social-media")] })).toMatchObject({ firstPaymentDiscountCents: 50_000 });
   });
 });

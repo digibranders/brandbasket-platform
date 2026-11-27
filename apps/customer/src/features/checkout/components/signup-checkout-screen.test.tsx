@@ -48,19 +48,20 @@ describe("the services", () => {
     expect(card("Dedicated Expert Monitoring").checked).toBe(false);
     expect(summary().getByText("Social Media Management, first month")).toBeTruthy();
     expect(summary().getByText("₹2,999 a month from next month")).toBeTruthy();
-    expect(summary().getByText("₹3,000")).toBeTruthy();
-    expect(payButtons().map((button) => button.textContent)).toEqual(["Pay ₹3,000", "Pay ₹3,000"]);
+    // The build fee and ₹1 for Social's first month: the website's own month starts with the first monthly charge (plan 65).
+    expect(summary().getByText("₹35,001")).toBeTruthy();
+    expect(payButtons().map((button) => button.textContent)).toEqual(["Pay ₹35,001", "Pay ₹35,001"]);
   });
 
   it("changes the rows and the total when a card is toggled", async () => {
     screenWith(INDIA);
     expect(summary().getByText("Maintenance")).toBeTruthy();
     expect(summary().queryByText("Social Media Management, first month")).toBeNull();
-    expect(payButtons()[0]?.textContent).toContain("Pay ₹2,999");
+    expect(payButtons()[0]?.textContent).toContain("Pay ₹35,000");
 
     await userEvent.click(card("Social Media Management"));
     expect(summary().getByText("Social Media Management, first month")).toBeTruthy();
-    expect(payButtons()[0]?.textContent).toContain("Pay ₹3,000");
+    expect(payButtons()[0]?.textContent).toContain("Pay ₹35,001");
 
     await userEvent.click(card("Website Management"));
     expect(summary().queryByText("Maintenance")).toBeNull();
@@ -93,7 +94,7 @@ describe("the services", () => {
     screenWith(INDIA, ["managed-website", "social-media"]);
     await userEvent.click(screen.getByRole("button", { name: /Yearly/ }));
     expect(summary().getByText("Paid yearly, 10% off")).toBeTruthy();
-    expect(payButtons()[0]?.textContent).toContain("Pay ₹64,778");
+    expect(payButtons()[0]?.textContent).toContain("Pay ₹99,778");
     expect(summary().queryByText("Social Media Management, first month")).toBeNull();
   });
 });
@@ -115,7 +116,8 @@ describe("the details", () => {
   it("shows dollars, no State and no GSTIN to a visitor outside India, whatever phone code they pick", async () => {
     screenWith(ABROAD, ["managed-website", "social-media"]);
     expect(card("Website Management").closest("label")?.textContent).toContain("$59");
-    expect(summary().getByText("$60")).toBeTruthy();
+    // The $1,200 build fee and $1 for Social's first month (plan 65).
+    expect(summary().getByText("$1,201")).toBeTruthy();
     expect(screen.queryByText("State")).toBeNull();
     expect(screen.queryByRole("checkbox", { name: "My business has a GSTIN" })).toBeNull();
     expect(screen.getByText("Choose the services you want. Prices are in dollars.")).toBeTruthy();
@@ -124,7 +126,7 @@ describe("the details", () => {
     await userEvent.click(await screen.findByRole("option", { name: "India +91" }));
     expect(screen.queryByText("State")).toBeNull();
     expect(screen.queryByRole("checkbox", { name: "My business has a GSTIN" })).toBeNull();
-    expect(summary().getByText("$60")).toBeTruthy();
+    expect(summary().getByText("$1,201")).toBeTruthy();
   });
 
   it("names the business on the invoice as it is typed", async () => {
@@ -181,7 +183,7 @@ describe("paying", () => {
     expect(opened.has("country")).toBe(false);
 
     const payment = paymentCall.calls[0]![1];
-    expect([...payment.keys()].sort()).toEqual(["billing", "service", "service", "tier"]);
+    expect([...payment.keys()].sort()).toEqual(["billing", "service", "service", "siteKind", "tier"]);
     expect(payment.get("tier")).toBe("managed");
     expect(payment.get("billing")).toBe("monthly");
     expect(payment.getAll("service")).toEqual(["managed-website", "social-media"]);
@@ -258,7 +260,7 @@ describe("for a signed-in owner whose sign-up has not paid", () => {
     expect(screen.queryByText("Business Details")).toBeNull();
     expect(screen.queryByText(/Already have an account/)).toBeNull();
     expect(card("Website Management").checked).toBe(true);
-    expect(payButtons().map((button) => button.textContent)).toEqual(["Pay ₹3,000", "Pay ₹3,000"]);
+    expect(payButtons().map((button) => button.textContent)).toEqual(["Pay ₹35,001", "Pay ₹35,001"]);
   });
 
   it("keeps the Terms tick and posts only the payment: no account post and no details", async () => {
@@ -272,7 +274,7 @@ describe("for a signed-in owner whose sign-up has not paid", () => {
     await waitFor(() => expect(startPaymentAction).toHaveBeenCalledTimes(1));
     expect(startSignupCheckoutAction).not.toHaveBeenCalled();
     const payment = vi.mocked(startPaymentAction).mock.calls[0]![1];
-    expect([...payment.keys()].sort()).toEqual(["billing", "service", "service", "tier"]);
+    expect([...payment.keys()].sort()).toEqual(["billing", "service", "service", "siteKind", "tier"]);
     expect(payment.getAll("service")).toEqual(["managed-website", "social-media"]);
     expect(await screen.findByText("We could not open the payment.")).toBeTruthy();
   });
