@@ -18,6 +18,17 @@ afterEach(() => {
 });
 
 describe("AutoPostingCard", () => {
+  it("is one quiet line once automatic posting is on and nothing is waiting to be chosen, still with Change and Switch off", () => {
+    const on = { channels: ["instagram"], safetyHours: 0, consentedAt: "2026-11-27T10:00:00Z", needsChoice: [] } as const;
+    const { container } = render(<AutoPostingCard auto={on} channels={[channels[0]]} canChange />);
+    expect(container.textContent).toContain("Automatic posting is on for Instagram");
+    expect(screen.getByRole("button", { name: "Change" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Switch off" })).toBeTruthy();
+    expect(screen.queryByText(/I agree that Brandbasket may approve/)).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Change" }));
+    expect(screen.getByRole("checkbox", { name: /Instagram/ })).toBeTruthy();
+  });
+
   it("says the customer approves every post until she chooses, and shows nothing with no channel", () => {
     render(<AutoPostingCard auto={none} channels={channels} canChange />);
     expect(screen.getByText(/You approve every post before it goes out/)).toBeTruthy();

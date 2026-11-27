@@ -9,6 +9,7 @@ import { canAddOn, earliestDay, isTime, latestDay, MAX_CAPTION_LENGTH, momentHas
 import { postPictureSrc } from "@/legacy-social/lib/social/post-picture";
 import { ChannelLogo } from "./channel-logo";
 import { SMALL_DARK, SMALL_SOFT } from "./small-buttons";
+import { useScrollLock } from "./use-scroll-lock";
 
 interface NewPostDialogProps {
   /** The day the post is for (`YYYY-MM-DD`); the person can change it here. */
@@ -76,6 +77,7 @@ export function NewPostDialog({ day, onDayChange, time: startTime, today, channe
   const url = picked?.url;
 
   // Open as a pop-up as soon as it is on the page, and put the cursor in the caption (again when the day is changed).
+  useScrollLock();
   useEffect(() => {
     const window = dialog.current;
     if (window !== null && !window.open) window.showModal();

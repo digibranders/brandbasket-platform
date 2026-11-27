@@ -9,9 +9,9 @@ import { reportError } from "@/lib/report";
 import { VIEWER_MESSAGE } from "../rules";
 import { PLATFORMS } from "../analytics/rules";
 import { PostingServiceError } from "../posting-service";
-import { deleteChannelLinkRequest, upsertChannelLinkRequest, withTenantScope } from "@brandbasket/db";
-import { getAppDb } from "@/lib/db";
-import { ensureWorkspace, fetchConnectLink, returnUrl } from "./client";
+import { deleteChannelLinkRequest, reopenChannelLinkRequest, upsertChannelLinkRequest, withTenantScope } from "@brandbasket/db";
+import { getAppDb, getStaffDb } from "@/lib/db";
+import { ensureWorkspace, fetchChannels, fetchConnectLink, returnUrl } from "./client";
 import { readPersonProfileLink, readProfileLink } from "./profile-link";
 import { manualConnectModes, personProfileNetworks } from "./request-store";
 import { tellRequesterAboutLink, tellTeamAboutLink } from "./request-alert";
@@ -67,9 +67,15 @@ export async function requestChannelAction(platform: string, url: string, adminP
   }
   try {
     const brand = await brandOf(customer);
-    const saved = await withTenantScope(getAppDb(), customer.tenant, (tx) =>
-      upsertChannelLinkRequest(tx, { businessId: customer.businessId, brandId: brand.externalId, network: parsed.data.platform, url: link.url, handle: link.handle, adminProfileUrl, userId: customer.user.id }),
-    );
+    const input = { businessId: customer.businessId, brandId: brand.externalId, network: parsed.data.platform, url: link.url, handle: link.handle, adminProfileUrl, userId: customer.user.id };
+    let saved = await withTenantScope(getAppDb(), customer.tenant, (tx) => upsertChannelLinkRequest(tx, input));
+    // A request marked connected while the network shows no account for the brand (marked by mistake, or the account was removed since) would leave her
+    // with a form that cannot send. The new link reopens it, once the posting service confirms there is no account. The customer role cannot change a
+    // connected row, so the service does it. If the posting service cannot be asked, nothing changes and she is asked to try again.
+    if (saved === null) {
+      const channels = await fetchChannels(brand.externalId);
+      if (!channels.some((channel) => channel.platform === input.network)) saved = await reopenChannelLinkRequest(getStaffDb(), input);
+    }
     if (saved === null) return actionFail(REQUEST_ANSWERED);
     await tellTeamAboutLink({ id: saved.id, businessName: customer.businessName, network: parsed.data.platform, url: link.url, handle: link.handle, adminProfileUrl, user: customer.user });
     await tellRequesterAboutLink(saved.id, "received");

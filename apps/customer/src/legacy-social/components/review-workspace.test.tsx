@@ -305,7 +305,7 @@ describe("ReviewWorkspace days and times from the posting service", () => {
     vi.mocked(moveTopicAction).mockResolvedValueOnce({ status: "partial", message: "Moved. The words of this topic name a day, so read them again to see they still fit." });
     render(<Screen groups={open([post("p1", "pending", "2026-11-16")], [], "waiting")} today="2026-11-15" />);
     await userEvent.click(screen.getByRole("button", { name: "Change the day" }));
-    await userEvent.click(await screen.findByRole("menuitem", { name: "Thu 19 Nov" }));
+    await userEvent.click(await screen.findByRole("menuitem", { name: /^Thu 19 Nov/ }));
     expect(await screen.findByText(/name a day/)).toBeTruthy();
   });
 });
@@ -354,10 +354,12 @@ describe("ReviewWorkspace moving a topic to another day", () => {
     expect(pickers.length).toBe(2);
     await userEvent.click(pickers[0] as HTMLElement);
     const days = (await screen.findAllByRole("menuitem")).map((one) => one.textContent);
-    expect(days).toContain("Wed 18 Nov");
+    expect(days.some((one) => one?.startsWith("Wed 18 Nov"))).toBe(true);
+    // Each day shows the time the topic goes out at, beside the day.
+    expect(days.every((one) => one?.endsWith("10:00 IST"))).toBe(true);
     // The topic's own day is not offered.
     expect(days.some((one) => one?.startsWith("Mon 16 Nov"))).toBe(false);
-    await userEvent.click(screen.getByRole("menuitem", { name: "Thu 19 Nov" }));
+    await userEvent.click(screen.getByRole("menuitem", { name: /^Thu 19 Nov/ }));
     await waitFor(() => expect(vi.mocked(moveTopicAction)).toHaveBeenCalledTimes(1));
     const form = vi.mocked(moveTopicAction).mock.calls[0]?.[0] as FormData;
     expect([form.get("batchId"), form.get("postId"), form.get("day")]).toEqual(["b1", "p1", "2026-11-19"]);
@@ -529,7 +531,7 @@ describe("ReviewWorkspace use these days every week", () => {
     const groups = threeAndThree();
     const { rerender } = render(<Screen groups={groups} today="2026-11-14" />);
     await userEvent.click(screen.getAllByRole("button", { name: "Change the day" })[0] as HTMLElement);
-    await userEvent.click(await screen.findByRole("menuitem", { name: "Wed 18 Nov" }));
+    await userEvent.click(await screen.findByRole("menuitem", { name: /^Wed 18 Nov/ }));
     await waitFor(() => expect(vi.mocked(moveTopicAction)).toHaveBeenCalledTimes(1));
     // What social-auto answers after the move: the topic is on Wednesday now.
     const moved = threeAndThree();
@@ -556,7 +558,7 @@ describe("ReviewWorkspace use these days every week", () => {
     const groups = threeAndThree();
     const { rerender } = render(<Screen groups={groups} today="2026-11-14" />);
     await userEvent.click(screen.getAllByRole("button", { name: "Change the day" })[0] as HTMLElement);
-    await userEvent.click(await screen.findByRole("menuitem", { name: "Wed 18 Nov" }));
+    await userEvent.click(await screen.findByRole("menuitem", { name: /^Wed 18 Nov/ }));
     await waitFor(() => expect(vi.mocked(moveTopicAction)).toHaveBeenCalledTimes(1));
     const moved = threeAndThree();
     const one = moved[0]?.batch?.posts.find((p) => p.id === "a1");

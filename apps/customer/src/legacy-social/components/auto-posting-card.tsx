@@ -53,6 +53,44 @@ export function AutoPostingCard({ auto, channels, canChange }: AutoPostingCardPr
   };
   const ordered = connected.filter((platform) => chosen.has(platform));
 
+  // Once automatic posting is on and nothing is waiting to be chosen, it is one quiet line: the card only grows when there is something to decide.
+  if (live.length > 0 && asked.length === 0 && !open) {
+    return (
+      <section aria-labelledby="auto-posting-title" className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 rounded-xl border border-line bg-surface px-4 py-2.5">
+        <p className="min-w-0 text-[0.84375rem] leading-relaxed text-ink-2">
+          <span id="auto-posting-title" className="font-semibold text-ink">
+            Automatic posting
+          </span>{" "}
+          is on for {names(live)}. We approve pictures {safetyWords(auto.safetyHours)}, and you can still reject a post until it goes out.
+          {manual.length > 0 ? ` ${names(manual)}: you approve each post.` : ""}
+        </p>
+        {!canChange ? null : (
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                setChosen(new Set([...auto.channels, ...asked]));
+                setAgreed(false);
+                setOpen(true);
+              }}
+              className={SMALL_SOFT}
+            >
+              Change
+            </button>
+            <button type="button" disabled={save.pending} onClick={() => submit([])} className={SMALL_SOFT}>
+              {save.pending ? "Saving" : "Switch off"}
+            </button>
+          </div>
+        )}
+        {save.error === null ? null : (
+          <p role="alert" className="w-full text-[0.84375rem] font-semibold text-error">
+            {save.error}
+          </p>
+        )}
+      </section>
+    );
+  }
+
   return (
     <section aria-labelledby="auto-posting-title" className={cn(LIFT, "grid gap-4 p-5")}>
       <div className="min-w-0">

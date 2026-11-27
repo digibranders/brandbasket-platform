@@ -39,6 +39,21 @@ export async function upsertChannelLinkRequest(db: Runner, input: NewChannelLink
   return rows[0] ?? null;
 }
 
+/**
+ * Puts a request that was marked connected back with the team as a fresh request, with the link she just sent. For the case where it was marked
+ * connected but the network shows no account for the brand (marked by mistake, or the account was removed since). The customer role cannot change a
+ * connected row, so this runs on the staff connection, and the caller has to confirm first that the network really has no account. Null when the
+ * request is not connected (nothing to reopen).
+ */
+export async function reopenChannelLinkRequest(db: Database, input: NewChannelLinkRequest): Promise<ChannelLinkRequest | null> {
+  const rows = await db
+    .update(channelLinkRequests)
+    .set({ url: input.url, handle: input.handle, adminProfileUrl: input.adminProfileUrl, state: "requested", reason: null, requestedByUserId: input.userId, notifiedAt: null, answeredAt: null, answeredByStaffId: null })
+    .where(and(eq(channelLinkRequests.businessId, input.businessId), eq(channelLinkRequests.brandId, input.brandId), eq(channelLinkRequests.network, input.network), eq(channelLinkRequests.state, "connected")))
+    .returning();
+  return rows[0] ?? null;
+}
+
 /** Takes back a request nobody has invited yet. True when one was removed. */
 export async function deleteChannelLinkRequest(db: Runner, businessId: string, brandId: string, network: ChannelLinkNetwork): Promise<boolean> {
   const rows = await db

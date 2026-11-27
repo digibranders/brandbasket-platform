@@ -13,6 +13,7 @@ import { canAddOn, earliestDay, isTime, latestDay, momentHasPassed } from "@/leg
 import { postPictureSrc } from "@/legacy-social/lib/social/post-picture";
 import { ChannelLogo } from "./channel-logo";
 import { SMALL_DARK, SMALL_SOFT } from "./small-buttons";
+import { useScrollLock } from "./use-scroll-lock";
 
 interface PostDetailsDialogProps {
   readonly post: CalendarPost;
@@ -196,6 +197,7 @@ const safeLink = (value: string | null): string | null => (value !== null && val
  */
 export function PostDetailsDialog({ post, onClose }: PostDetailsDialogProps): ReactElement {
   const dialog = useRef<HTMLDialogElement>(null);
+  useScrollLock();
   useEffect(() => {
     const window = dialog.current;
     if (window !== null && !window.open) window.showModal();
@@ -229,7 +231,21 @@ export function PostDetailsDialog({ post, onClose }: PostDetailsDialogProps): Re
           </button>
         </div>
 
-        {post.imageUrl === undefined ? null : (
+        {post.imageUrls !== undefined && post.imageUrls.length > 1 ? (
+          // A carousel: every slide, in order, so the whole post can be seen and not only its first picture.
+          <ol aria-label={`The ${post.imageUrls.length} slides of this carousel`} className="flex flex-wrap gap-2">
+            {post.imageUrls.map((url, index) => (
+              <li key={url} className="grid gap-1">
+                {/* The slides are served by social-auto, which Next's image optimiser cannot reach. */}
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={postPictureSrc(url)} alt={`Slide ${index + 1} of ${post.imageUrls?.length ?? 0}`} className="size-28 rounded-xl object-cover sm:size-32" />
+                <span className="text-center text-[0.6875rem] text-ink-3">
+                  {index + 1} of {post.imageUrls?.length}
+                </span>
+              </li>
+            ))}
+          </ol>
+        ) : post.imageUrl === undefined ? null : (
           // The post's picture, served by social-auto, which Next's image optimiser cannot reach.
           // eslint-disable-next-line @next/next/no-img-element
           <img src={postPictureSrc(post.imageUrl)} alt="The picture of this post" className="size-40 rounded-xl object-cover" />
