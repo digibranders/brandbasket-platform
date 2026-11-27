@@ -107,21 +107,24 @@ function TimePanel({ post, onClose }: { readonly post: CalendarPost; readonly on
 /** The words of a post we wrote, to change: it is held back until she approves the new words again. */
 function CaptionPanel({ post, onClose }: { readonly post: CalendarPost; readonly onClose: () => void }): ReactElement {
   const router = useRouter();
-  const channel = post.channels[0];
-  const [caption, setCaption] = useState(post.caption);
+  // A post goes to one or more networks, each with its own words (or the main ones). The words changed here are one network's: the one chosen, never the first by default for every network.
+  const platforms = [...new Set(post.channels.map((channel) => channel.platform))];
+  const wordsOf = (platform: ChannelPlatform | undefined): string => (platform === undefined ? post.caption : (post.variants?.[platform] ?? post.caption));
+  const [network, setNetwork] = useState<ChannelPlatform | undefined>(platforms[0]);
+  const [caption, setCaption] = useState(wordsOf(platforms[0]));
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const submit = (event: FormEvent): void => {
     event.preventDefault();
-    if (pending || channel === undefined) return;
+    if (pending || network === undefined) return;
     if (caption.trim() === "") return setError("Write what the post should say.");
     setError(null);
     startTransition(async () => {
       try {
         const form = new FormData();
         form.set("postId", post.id);
-        form.set("network", channel.platform);
+        form.set("network", network);
         form.set("caption", caption);
         const result = await changeWrittenCaptionAction(form);
         if (result.status === "error") return setError(result.message);
@@ -148,8 +151,32 @@ function CaptionPanel({ post, onClose }: { readonly post: CalendarPost; readonly
   }
   return (
     <form onSubmit={submit} noValidate className="grid gap-3 rounded-xl bg-sunken p-3">
+      {platforms.length > 1 ? (
+        <div className="grid gap-1">
+          <label htmlFor="written-post-network" className="text-xs font-semibold text-ink-2">
+            Change the words for
+          </label>
+          <select
+            id="written-post-network"
+            value={network}
+            onChange={(event) => {
+              const next = platforms.find((platform) => platform === event.target.value);
+              setNetwork(next);
+              setCaption(wordsOf(next));
+            }}
+            className={FIELD}
+          >
+            {platforms.map((platform) => (
+              <option key={platform} value={platform}>
+                {PLATFORM_NAMES[platform]}
+              </option>
+            ))}
+          </select>
+          <p className="text-xs text-ink-3">Only this network's words change. The other networks keep theirs.</p>
+        </div>
+      ) : null}
       <label htmlFor="written-post-caption" className="text-xs font-semibold text-ink-2">
-        Caption
+        {platforms.length === 1 && platforms[0] !== undefined ? `${PLATFORM_NAMES[platforms[0]]} caption` : "Caption"}
       </label>
       <textarea id="written-post-caption" value={caption} onChange={(event) => setCaption(event.target.value)} rows={6} maxLength={3000} className="w-full rounded-lg border border-ink-2/65 bg-surface px-3 py-2 text-[0.875rem] text-ink" />
       <p className="text-xs text-ink-3">The words are checked against what is on your website. The post is held back until you approve the new words in Posts.</p>

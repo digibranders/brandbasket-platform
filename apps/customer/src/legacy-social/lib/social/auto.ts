@@ -171,6 +171,19 @@ function variantPictures(post: AutoPost): { readonly variantImages?: Readonly<Pa
   return Object.keys(pictures).length === 0 ? {} : { variantImages: pictures };
 }
 
+/**
+ * One network's view of a post. A topic written for several networks is one post, with the main words and picture and, for a network that has its own, a version of each.
+ * When the calendar shows only one network, that network sees its own post: its own words and picture, and only its own account, nothing of the others. With more than one
+ * shown the post is left as it is.
+ */
+export function viewForChannels(post: CalendarPost, shown: ReadonlySet<ChannelPlatform>): CalendarPost {
+  const [only] = [...shown];
+  if (shown.size !== 1 || only === undefined) return post;
+  const { variants, variantImages, ...rest } = post;
+  const imageUrl = variantImages?.[only] ?? post.imageUrl;
+  return { ...rest, caption: variants?.[only] ?? post.caption, ...(imageUrl === undefined ? {} : { imageUrl }), channels: post.channels.filter((channel) => channel.platform === only) };
+}
+
 export function toCalendarPost(post: AutoPost): CalendarPost | null {
   const at = new Date(post.date);
   if (Number.isNaN(at.getTime())) return null;
