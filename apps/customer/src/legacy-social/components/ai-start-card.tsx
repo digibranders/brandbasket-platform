@@ -14,6 +14,7 @@ import { dayGroups, type PostingDays } from "@/legacy-social/lib/social/schedule
 import { ChannelLogo } from "./channel-logo";
 import { DismissibleNotice } from "./dismissible-notice";
 import { SMALL_DARK, SMALL_SOFT } from "./small-buttons";
+import { useScrollLock } from "./use-scroll-lock";
 
 /** How often the page asks again while a batch is being written. */
 const POLL_MS = 5000;
@@ -154,6 +155,7 @@ export function StartDialog({ connected, postingDays = null, startDate = null, w
   const address = mode === "page" ? pageLink : typedSite;
   const changedSite = mode === "site" && website !== null && address.trim() !== "" && !sameWebsite(address, website);
 
+  useScrollLock();
   useEffect(() => {
     const window = dialog.current;
     if (window !== null && !window.open) window.showModal();
