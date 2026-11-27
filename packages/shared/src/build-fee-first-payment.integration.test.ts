@@ -54,6 +54,8 @@ async function linkFor(tokenHash: string, overrides: Partial<Parameters<typeof i
     currency: "INR",
     services: ["managed-website", "social-media"],
     billingInterval: "month",
+    dealType: "paid",
+    advanceCents: 2_500_000,
     websiteKind: "b2b",
     setupFeeListCents: 3_500_000,
     setupFeeDiscountCents: 1_000_000,

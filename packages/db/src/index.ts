@@ -2,6 +2,7 @@ export { createDatabase, type Database, type DatabaseHandle, type DatabaseOption
 export * from "./schema/support";
 export * from "./schema/error-issues";
 export * from "./queries/payment-links";
+export * from "./queries/price-overrides";
 export * from "./queries/support";
 export * from "./queries/change-requests";
 export * from "./queries/change-request-staff";

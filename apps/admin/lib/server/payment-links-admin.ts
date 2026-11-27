@@ -102,6 +102,8 @@ export async function createPaymentLinkFor(input: CreatePaymentLinkInput): Promi
   });
   if (summary.kind === "refused") return refused(SUMMARY_REFUSALS[summary.reason], "couponId");
 
+  // A fully waived fee leaves nothing to take in advance, so it is a free deal.
+  const netFeeCents = form.setupFeeListCents === null ? 0 : form.setupFeeListCents - (form.setupFeeDiscountCents ?? 0);
   const token = newLinkToken();
   const { customer } = form;
   const link = await insertPaymentLink(db, {
@@ -124,10 +126,13 @@ export async function createPaymentLinkFor(input: CreatePaymentLinkInput): Promi
     currency: form.currency,
     services: [...form.services],
     billingInterval: form.billingInterval,
-    websiteKind: form.websiteKind,
-    setupFeeListCents: form.setupFeeListCents,
-    setupFeeDiscountCents: form.setupFeeDiscountCents,
-    setupFeeNote: form.setupFeeNote,
+    // Temporary mapping, plan 66 step 3 replaces this: a link with a fee is a paid deal whose advance is the whole net fee, one without is free.
+    dealType: netFeeCents > 0 ? "paid" : "free",
+    advanceCents: netFeeCents > 0 ? netFeeCents : null,
+    websiteKind: form.websiteKind ?? (form.services.includes("managed-website") ? "b2b" : null),
+    setupFeeListCents: netFeeCents > 0 ? form.setupFeeListCents : null,
+    setupFeeDiscountCents: netFeeCents > 0 ? form.setupFeeDiscountCents : null,
+    setupFeeNote: netFeeCents > 0 ? form.setupFeeNote : null,
     referralCodeId: coupon?.id ?? null,
     expiresAt: new Date(now.getTime() + PAYMENT_LINK_DAYS * DAY_MS),
     createdByStaffId: staff.user.id,

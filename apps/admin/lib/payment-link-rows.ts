@@ -27,6 +27,8 @@ export const PAYMENT_LINK_STATE_LABELS: Readonly<Record<PaymentLinkState, string
   paid: "Paid",
   revoked: "Cancelled",
   expired: "Expired",
+  building: "Building",
+  balance_due: "Balance due",
 };
 
 export function paymentLinkServices(services: readonly string[], websiteKind: WebsiteKind | null): string {

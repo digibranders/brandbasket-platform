@@ -63,7 +63,8 @@ async function seedClosedAccount(withSupport = false, withChangeQuote = false): 
   await raw(`insert into leads (id, name, business_name, email, phone, business_id) values ('${id(3)}', 'Meera Iyer', 'Aster Physio', 'meera@example.com', '+919820099999', '${businessId}')`);
   await raw(`insert into setup_invites (id, lead_id, email, business_name, token_hash, expires_at, created_by_staff_id, business_id) values ('${id(4)}', '${id(3)}', 'meera@example.com', 'Aster Physio', 'hash', now(), '${STAFF_ID}', '${businessId}')`);
   // A payment link holds the customer's details staff typed (plan 65): it goes with the account.
-  await raw(`insert into payment_links (id, token_hash, lead_id, business_id, contact_name, email, country_code, currency, services, billing_interval, expires_at, created_by_staff_id) values ('${id(20)}', 'link-hash', '${id(3)}', '${businessId}', 'Meera Iyer', 'meera@example.com', 'IN', 'INR', ARRAY['social-media'], 'month', now(), '${STAFF_ID}')`);
+  await raw(`insert into payment_links (id, token_hash, lead_id, business_id, contact_name, email, country_code, currency, services, billing_interval, deal_type, expires_at, created_by_staff_id) values ('${id(20)}', 'link-hash', '${id(3)}', '${businessId}', 'Meera Iyer', 'meera@example.com', 'IN', 'INR', ARRAY['social-media'], 'month', 'free', now(), '${STAFF_ID}')`);
+  await raw(`insert into business_price_overrides (id, business_id, add_on, billing_interval, net_cents, payment_link_id) values ('${id(21)}', '${businessId}', 'social-media', 'month', 100, '${id(20)}')`);
   await raw(`insert into media_assets (id, business_id, purpose, storage_key, original_filename, mime_type, bytes, width, height, sha256, status, uploaded_by_user_id) values ('${id(5)}', '${businessId}', 'photo', 't/${businessId}/${id(5)}/display', 'me.jpg', 'image/webp', 10, 1, 1, 'abc', 'ready', '${USER_ID}')`);
   await raw(`insert into directory_pictures (id, business_id, slot, storage_key, mime_type, bytes, width, height, sha256, uploaded_by_user_id) values ('${id(6)}', '${businessId}', 'listing', 't/${businessId}/${id(6)}/display', 'image/webp', 10, 1, 1, 'def', '${USER_ID}')`);
   await raw(`insert into directory_videos (id, business_id, slot, vimeo_id, vimeo_hash, poster_url, bytes, width, height, duration_ms, status, decided_at, decided_by_user_id, uploaded_by_user_id) values ('${id(12)}', '${businessId}', 1, '123456789', 'abc123def456', 'https://i.vimeocdn.com/video/1.jpg', 10, 1280, 720, 15000, 'approved', now(), '${USER_ID}', '${USER_ID}')`);
@@ -231,7 +232,7 @@ describe("eraseClosedAccount", () => {
     expect(outcome.storageKeys.every((key) => key.startsWith(`t/${businessId}/`))).toBe(true);
     expect(outcome.vimeoIds).toEqual(["123456789"]);
 
-    for (const table of ["patients", "practitioners", "leads", "setup_invites", "payment_links", "media_assets", "directory_pictures", "directory_videos", "directory_claims", "directory_business_profiles", "projects", "project_events", "project_preview_images", "project_preview_versions", "project_launch_checks", "domains", "business_members"]) {
+    for (const table of ["patients", "practitioners", "leads", "setup_invites", "business_price_overrides", "payment_links", "media_assets", "directory_pictures", "directory_videos", "directory_claims", "directory_business_profiles", "projects", "project_events", "project_preview_images", "project_preview_versions", "project_launch_checks", "domains", "business_members"]) {
       expect(await count(table, table === "business_members" ? `business_id = '${businessId}'` : "true"), table).toBe(0);
     }
     // Kickoff outcomes stay: staff cannot delete them (append only), and the business row is kept, so nothing cascades to them.
@@ -531,7 +532,7 @@ describe("what the erase knows about", () => {
   /** Tables the erase empties for the business. */
   const ERASED = [
     "activity_events", "appointment_services", "appointment_settings", "appointments", "billing_profiles", "booking_otps", "business_activity", "business_announcements", "business_closures",
-    "business_hours", "business_members", "business_modules", "business_profiles", "change_requests", "chatbot_leads", "chatbots", "client_intakes", "deliverables", "directory_business_categories", "directory_business_faqs",
+    "business_hours", "business_members", "business_modules", "business_price_overrides", "business_profiles", "change_requests", "chatbot_leads", "chatbots", "client_intakes", "deliverables", "directory_business_categories", "directory_business_faqs",
     "directory_business_products", "directory_business_profiles", "directory_business_services", "directory_claims",
     "directory_deals", "directory_listings", "directory_pictures", "directory_videos", "domains", "leads", "media_assets", "metric_breakdowns", "metric_daily", "monthly_reports", "monthly_snapshots", "onboarding_progress",
     "patients", "payment_links", "practitioner_hours", "practitioner_leave", "practitioners", "project_briefs", "project_events", "project_feedback_tickets", "project_preview_images", "projects", "report_documents", "report_source_runs", "report_sources", "service_setup", "services",

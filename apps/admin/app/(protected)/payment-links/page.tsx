@@ -17,7 +17,7 @@ import { cancelPaymentLinkAction, extendPaymentLinkAction } from "./actions";
 
 export const metadata: Metadata = { title: "Payment links" };
 
-const STATE_TONES: Readonly<Record<PaymentLinkRow["state"], PillTone>> = { open: "wait", paid: "done", revoked: "todo", expired: "problem" };
+const STATE_TONES: Readonly<Record<PaymentLinkRow["state"], PillTone>> = { open: "wait", paid: "done", revoked: "todo", expired: "problem", building: "wait", balance_due: "wait" };
 
 /** What an action's redirect says happened, in one line. */
 const RESULTS: Readonly<Record<string, { readonly ok: boolean; readonly text: string }>> = {

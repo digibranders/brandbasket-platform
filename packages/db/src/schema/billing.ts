@@ -246,6 +246,8 @@ export const subscriptions = pgTable(
     /** What the deal took off it: 0 to the whole fee (a waived fee, which the invoice says). Set with the list fee. */
     setupFeeDiscountCents: integer("setup_fee_discount_cents"),
     setupFeeNote: text("setup_fee_note"),
+    /** The part of the net build fee already received as the advance (plan 66); the balance is list - discount - advance. */
+    setupFeeAdvanceCents: integer("setup_fee_advance_cents"),
     /** The staff payment link this checkout was opened from, or null. No foreign key: payment_links points at subscriptions. */
     paymentLinkId: uuid("payment_link_id"),
     createdAt: createdAt(),
@@ -285,7 +287,13 @@ export const subscriptions = pgTable(
       sql`(${table.setupFeeListCents} is null and ${table.setupFeeDiscountCents} is null and ${table.setupFeeNote} is null)
         or (${table.websiteKind} is not null and ${table.websiteKind} in ('b2b', 'ecommerce') and ${table.setupFeeListCents} > 0
           and ${table.setupFeeDiscountCents} between 0 and ${table.setupFeeListCents}
-          and (${table.setupFeeNote} is null or char_length(${table.setupFeeNote}) between 1 and 200))`,
+          and (${table.setupFeeNote} is null or char_length(${table.setupFeeNote}) between 1 and 200)
+          and (${table.setupFeeAdvanceCents} is null or ${table.setupFeeAdvanceCents} between 0 and (${table.setupFeeListCents} - ${table.setupFeeDiscountCents})))`,
+    ),
+    // An advance only goes with a fee.
+    check(
+      "subscriptions_setup_fee_advance_check",
+      sql`${table.setupFeeAdvanceCents} is null or (${table.setupFeeListCents} is not null and ${table.setupFeeAdvanceCents} >= 0)`,
     ),
     check(
       "subscriptions_discount_months_check",
@@ -510,6 +518,7 @@ export const chargeKind = pgEnum("charge_kind", [
   "plan_upgrade",
   "press_release",
   "add_on",
+  "website_advance",
 ]);
 export type ChargeKind = (typeof chargeKind.enumValues)[number];
 

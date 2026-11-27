@@ -7,11 +7,12 @@ import { chargedAmountCents } from "@brandbasket/billing/tax";
  * it, from the Listing page, and its tag and price are fixed (lib/directory/promotion.ts). Nor is a `directory_ad`:
  * only the ad auction's settlement opens one, at the price the auction set (lib/directory/ads.ts). Nor is a
  * `press_release`: only the customer buys one, from the Services page, at the catalogue price. Nor is an `add_on`: only
- * adding an add-on to a running plan opens one, at the quote for the rest of the paid month (add-on-proration.ts).
+ * adding an add-on to a running plan opens one, at the quote for the rest of the paid month (add-on-proration.ts). Nor is a
+ * `website_advance`: only the customer's first payment on a paid website deal opens one, at the advance on the payment link (plan 66).
  */
 export type StaffChargeKind = Exclude<
   ChargeKind,
-  "listing_promotion" | "directory_ad" | "plan_upgrade" | "press_release" | "add_on"
+  "listing_promotion" | "directory_ad" | "plan_upgrade" | "press_release" | "add_on" | "website_advance"
 >;
 
 /** Staff's kinds, in the order the staff console lists them. */
@@ -33,6 +34,7 @@ export const CHARGE_KIND_LABELS: Readonly<Record<ChargeKind, string>> = {
   plan_upgrade: "Upgrade to Premium",
   press_release: "Press release",
   add_on: "Add-on, rest of the month",
+  website_advance: "Website build: advance",
 };
 
 type ChargePlan = Pick<
