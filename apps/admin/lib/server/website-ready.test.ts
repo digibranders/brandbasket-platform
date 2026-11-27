@@ -1,6 +1,8 @@
 import { findDealForBusiness, findOpenProjectForStaff, markLinkReady, unmarkLinkReady, type Database } from "@brandbasket/db";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { cancelPendingDealCheckout } from "@brandbasket/shared/server/deal-checkout";
 import { recordStaffAction } from "./activity";
+import { getBillingProvider } from "./billing-provider";
 import { sendBalanceDue } from "./payment-emails";
 import type { GrantedStaff } from "./staff-access";
 import { markWebsiteReady, undoWebsiteReady } from "./website-ready";
@@ -15,6 +17,8 @@ vi.mock("@brandbasket/db", async (importOriginal) => ({
 }));
 vi.mock("./activity", () => ({ recordStaffAction: vi.fn() }));
 vi.mock("./payment-emails", () => ({ sendBalanceDue: vi.fn() }));
+vi.mock("./billing-provider", () => ({ getBillingProvider: vi.fn(() => ({ name: "fake" })) }));
+vi.mock("@brandbasket/shared/server/deal-checkout", () => ({ cancelPendingDealCheckout: vi.fn() }));
 
 const db = {} as Database;
 const NOW = new Date("2026-11-27T05:00:00Z");
@@ -76,6 +80,8 @@ describe("undoWebsiteReady", () => {
     vi.mocked(findDealForBusiness).mockResolvedValue({ ...(BUILDING as object), readyAt: NOW } as never);
     expect(await undoWebsiteReady(db, { businessId: "b1", staff: STAFF })).toBe("undone");
     expect(unmarkLinkReady).toHaveBeenCalledWith(db, { linkId: "link-1" });
+    // A checkout the customer already opened for the balance is cancelled so it cannot be paid after the undo.
+    expect(cancelPendingDealCheckout).toHaveBeenCalledWith(db, getBillingProvider(), { businessId: "b1", linkId: "link-1", now: expect.any(Date) });
     expect(recordStaffAction).toHaveBeenCalledWith(STAFF, expect.objectContaining({ kind: "payment_link.ready_undone" }));
   });
 
@@ -84,5 +90,6 @@ describe("undoWebsiteReady", () => {
     vi.mocked(findDealForBusiness).mockResolvedValue(null);
     expect(await undoWebsiteReady(db, { businessId: "b1", staff: STAFF })).toBe("not-ready");
     expect(unmarkLinkReady).not.toHaveBeenCalled();
+    expect(cancelPendingDealCheckout).not.toHaveBeenCalled();
   });
 });

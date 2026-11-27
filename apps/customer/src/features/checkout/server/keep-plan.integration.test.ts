@@ -17,6 +17,7 @@ import {
   openAccountClosure,
   openCheckoutSubscription,
   subscriptions,
+  upsertPriceOverride,
   users,
   type NewBundledAddOn,
   type Plan,
@@ -288,6 +289,24 @@ describe("the checkout Keep my plan opens", () => {
       ["managed-website", 299_900, 0, 299_900, "pending"],
       ["social-media", 299_900, 0, 299_900, "pending"],
     ]);
+  });
+
+  it("keeps an agreed price (plan 66) for the same service and period, and prices the rest at list", async () => {
+    const old = await paidPlan("fake");
+    await closeAccount(old);
+    const staff = dbs().staff.db;
+    await upsertPriceOverride(staff, { businessId, addOn: "social-media", billingInterval: "month", netCents: 150_000 });
+    // A yearly agreement does not price a monthly plan kept as it is.
+    await upsertPriceOverride(staff, { businessId, addOn: "managed-website", billingInterval: "year", netCents: 100_000 });
+
+    await startKeepPlanFor(USER, NOW);
+
+    const lines = await findBundledAddOnsForSubscription(staff, (await kept()).id);
+    expect(lines.map((line) => [line.addOn, line.listAmountCents, line.netAmountCents])).toEqual([
+      ["managed-website", 299_900, 299_900],
+      ["social-media", 150_000, 150_000],
+    ]);
+    expect((await loadKeepPlanOffer(USER_ID, NOW))?.rows.find((row) => row.key === "social-media")?.amount).toBe("₹1,500");
   });
 
   it("leaves the closure, the cancel and the old plan exactly as they were while it is unfinished", async () => {

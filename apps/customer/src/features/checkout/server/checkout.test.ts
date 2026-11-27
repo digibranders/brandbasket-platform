@@ -13,6 +13,7 @@ import {
   findLatestSubscriptionForBusiness,
   findOpenPaymentLinkForBusiness,
   isPackageOfferForfeited,
+  listPriceOverridesForBusiness,
   lockBusinessForBilling,
   markPackageOfferForfeited,
   openCheckoutSubscription,
@@ -73,6 +74,7 @@ vi.mock("@brandbasket/db", () => {
     findLatestSubscriptionForBusiness: vi.fn(),
     findOpenPaymentLinkForBusiness: vi.fn(),
     isPackageOfferForfeited: vi.fn(),
+    listPriceOverridesForBusiness: vi.fn(),
     lockBusinessForBilling: vi.fn(),
     markPackageOfferForfeited: vi.fn(),
     openCheckoutSubscription: vi.fn(),
@@ -224,6 +226,7 @@ beforeEach(() => {
   newest(null);
   vi.mocked(findActivePlan).mockResolvedValue(PLAN);
   vi.mocked(isPackageOfferForfeited).mockResolvedValue(false);
+  vi.mocked(listPriceOverridesForBusiness).mockResolvedValue([]);
   // A business that has had every service before, so no first-month offer, unless a test says otherwise.
   vi.mocked(businessHasHadService).mockResolvedValue(true);
   // No referral code applied, unless a test says otherwise.
@@ -1339,6 +1342,41 @@ describe("startReactivationFor", () => {
         expect.objectContaining({ bundledAddOns: [usdLine("social-media", 5_900, 0), usdLine("paid-ads", 5_900, 0)], adCreditCents: 2_500 }),
       );
       expect(started).toHaveBeenCalledWith(expect.objectContaining({ bundledAddOnNetCents: 11_800 }));
+    });
+
+    describe("with an agreed price from a deal (plan 66, 3.7)", () => {
+      const agreed = (addOn: string, billingInterval: string, netCents: number) => ({ addOn, billingInterval, netCents }) as never;
+
+      it("reopens the service at the agreed price for the same period, and the others at list", async () => {
+        lapsedWith(["managed-website", "social-media"]);
+        vi.mocked(listPriceOverridesForBusiness).mockResolvedValue([agreed("social-media", "month", 2_500)]);
+
+        redirectUrl(await startReactivationFor(lapsedCustomer, NOW));
+
+        expect(openCheckoutSubscription).toHaveBeenCalledWith(
+          { name: "tx2" },
+          expect.objectContaining({ bundledAddOns: [usdLine("managed-website", 5_900, 0), usdLine("social-media", 2_500, 0)] }),
+        );
+      });
+
+      it("asks the provider for the agreed total, which is what a code of the customer's would come off", async () => {
+        lapsedWith(["social-media"]);
+        vi.mocked(listPriceOverridesForBusiness).mockResolvedValue([agreed("social-media", "month", 2_500)]);
+        const started = vi.spyOn(provider, "startCheckout");
+
+        redirectUrl(await startReactivationFor(lapsedCustomer, NOW));
+
+        expect(started).toHaveBeenCalledWith(expect.objectContaining({ bundledAddOnNetCents: 2_500 }));
+      });
+
+      it("ignores an agreed price for another billing period, and one for a service that is not coming back", async () => {
+        lapsedWith(["managed-website"]);
+        vi.mocked(listPriceOverridesForBusiness).mockResolvedValue([agreed("managed-website", "year", 40_000), agreed("paid-ads", "month", 1_000)]);
+
+        redirectUrl(await startReactivationFor(lapsedCustomer, NOW));
+
+        expect(openCheckoutSubscription).toHaveBeenCalledWith({ name: "tx2" }, expect.objectContaining({ bundledAddOns: [usdLine("managed-website", 5_900, 0)] }));
+      });
     });
 
     it("reopens a single service at its list price, with no ad credit", async () => {

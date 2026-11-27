@@ -8,19 +8,23 @@ import {
   findReferralCodeById,
   insertPaymentLink,
   revokePaymentLink,
+  updateDeal,
   type PaymentLink,
   type ReferralCode,
 } from "@brandbasket/db";
+import { cancelPendingDealCheckout } from "@brandbasket/shared/server/deal-checkout";
 import { hashLinkToken } from "@brandbasket/shared/server/link-token";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { PaymentLinkDraft } from "@/lib/payment-link-form";
 import { recordStaffAction } from "./activity";
-import { createPaymentLinkFor, extendPaymentLinkFor, revokePaymentLinkFor } from "./payment-links-admin";
+import { createPaymentLinkFor, extendPaymentLinkFor, revokePaymentLinkFor, updateDealFor } from "./payment-links-admin";
 import type { GrantedStaff } from "./staff-access";
 
 vi.mock("server-only", () => ({}));
 vi.mock("./db", () => ({ getStaffDb: () => ({ name: "staff-db" }) }));
 vi.mock("./activity", () => ({ recordStaffAction: vi.fn() }));
+vi.mock("./billing-provider", () => ({ getBillingProvider: () => ({ name: "fake" }) }));
+vi.mock("@brandbasket/shared/server/deal-checkout", () => ({ cancelPendingDealCheckout: vi.fn() }));
 vi.mock("@brandbasket/billing", () => ({ resolveBillingProviderName: () => "razorpay" }));
 vi.mock("@brandbasket/db", async () => {
   const actual = await vi.importActual<typeof import("@brandbasket/db")>("@brandbasket/db");
@@ -39,6 +43,7 @@ vi.mock("@brandbasket/db", async () => {
     listReferralCodes: vi.fn(),
     listStaffRoster: vi.fn(),
     revokePaymentLink: vi.fn(),
+    updateDeal: vi.fn(),
   };
 });
 
@@ -229,6 +234,8 @@ describe("revokePaymentLinkFor", () => {
     expect(await revokePaymentLinkFor({ linkId: LINK_ID, staff: STAFF, now: NOW })).toBe("done");
     expect(revokePaymentLink).toHaveBeenCalledWith({ name: "staff-db" }, { linkId: LINK_ID, staffUserId: "staff-1", now: NOW });
     expect(recordStaffAction).toHaveBeenCalledWith(STAFF, expect.objectContaining({ kind: "payment_link.cancelled", businessId: BUSINESS }));
+    // A checkout the customer opened for the balance can no longer be paid.
+    expect(cancelPendingDealCheckout).toHaveBeenCalledWith({ name: "staff-db" }, { name: "fake" }, { businessId: BUSINESS, linkId: LINK_ID, now: NOW });
   });
   it("says so when the link is gone or already paid or cancelled, recording nothing", async () => {
     vi.mocked(findPaymentLinkById).mockResolvedValue(null);
@@ -262,5 +269,103 @@ describe("extendPaymentLinkFor", () => {
     vi.mocked(findOpenPaymentLinkForBusiness).mockResolvedValue({ ...OPEN_LINK, id: "another" });
     expect(await extendPaymentLinkFor({ linkId: LINK_ID, staff: STAFF, now: NOW })).toBe("business-has-another");
     expect(extendPaymentLink).not.toHaveBeenCalled();
+  });
+});
+
+describe("updateDealFor (plan 66, step 6)", () => {
+  /** A paid deal whose advance is paid and whose website is still being built. */
+  const BUILDING = {
+    id: LINK_ID,
+    businessId: BUSINESS,
+    dealType: "paid",
+    currency: "INR",
+    countryCode: "IN",
+    services: ["managed-website", "social-media"],
+    billingInterval: "month",
+    websiteKind: "ecommerce",
+    setupFeeListCents: 6_500_000,
+    setupFeeDiscountCents: 1_500_000,
+    setupFeeNote: "Agreed on call",
+    advanceCents: 2_000_000,
+    advancePaidAt: NOW,
+    readyAt: null,
+    paidAt: null,
+    revokedAt: null,
+    expiresAt: NOW,
+    referralCodeId: null,
+    websitePriceCents: null,
+    socialPriceCents: null,
+    adsPriceCents: null,
+    monitoringPriceCents: null,
+  } as unknown as PaymentLink;
+
+  const edit = (change: Partial<PaymentLinkDraft>) => updateDealFor({ form: { ...DRAFT, ...change }, linkId: LINK_ID, staff: STAFF, now: NOW });
+
+  beforeEach(() => {
+    vi.mocked(findPaymentLinkById).mockResolvedValue(BUILDING);
+    vi.mocked(updateDeal).mockResolvedValue(true);
+  });
+
+  it("saves a new build price and a custom price, keeps the advance, records what changed and ends an open checkout", async () => {
+    const outcome = await edit({ setupFeeListCents: 5_000_000, setupFeeDiscountCents: 0, setupFeeNote: null, socialPriceCents: 199_900 });
+    expect(outcome).toMatchObject({ kind: "saved", businessId: BUSINESS });
+    const patch = vi.mocked(updateDeal).mock.calls[0]?.[1].patch;
+    expect(patch).toMatchObject({ setupFeeListCents: 5_000_000, setupFeeDiscountCents: 0, socialPriceCents: 199_900, services: ["managed-website", "social-media"] });
+    expect(patch).not.toHaveProperty("advanceCents");
+    expect(cancelPendingDealCheckout).toHaveBeenCalledWith({ name: "staff-db" }, { name: "fake" }, { businessId: BUSINESS, linkId: LINK_ID, now: NOW });
+    const entry = vi.mocked(recordStaffAction).mock.calls[0]?.[1];
+    expect(entry).toMatchObject({ businessId: BUSINESS, kind: "payment_link.edited" });
+    expect(entry?.summary).toContain("build price ₹65,000 to ₹50,000");
+    expect(entry?.summary).toContain("Social Media price list to ₹1,999");
+    expect(entry?.data).toMatchObject({ before: { setupFeeListCents: 6_500_000 }, after: { setupFeeListCents: 5_000_000 } });
+  });
+
+  it("allows the balance to reach 0 (net price equal to the advance)", async () => {
+    expect(await edit({ setupFeeListCents: 2_000_000, setupFeeDiscountCents: 0, setupFeeNote: null })).toMatchObject({ kind: "saved" });
+  });
+
+  it("refuses a net build price below the advance, with its own message, and saves nothing", async () => {
+    const outcome = await edit({ setupFeeListCents: 2_500_000, setupFeeDiscountCents: 600_000 });
+    expect(outcome).toMatchObject({ kind: "refused", field: "buildPrice", message: expect.stringContaining("less than the advance already paid") });
+    expect(updateDeal).not.toHaveBeenCalled();
+    expect(recordStaffAction).not.toHaveBeenCalled();
+  });
+
+  it("cannot change the advance, the currency or drop the website", async () => {
+    expect(await edit({ advanceCents: 1_000_000 })).toMatchObject({ kind: "refused", field: "advanceValue" });
+    expect(await edit({ currency: "USD" })).toMatchObject({ kind: "refused", field: "countryCode" });
+    expect(await edit({ services: ["social-media"], websiteKind: null })).toMatchObject({ kind: "refused", field: "service" });
+    expect(updateDeal).not.toHaveBeenCalled();
+  });
+
+  it("refuses a coupon beside a custom price, and a coupon on a yearly deal that has a build", async () => {
+    vi.mocked(findReferralCodeById).mockResolvedValue(COUPON);
+    expect(await edit({ couponId: COUPON_ID, socialPriceCents: 199_900 })).toMatchObject({ kind: "refused", message: expect.stringContaining("not both") });
+    expect(await edit({ couponId: COUPON_ID, billingInterval: "year" })).toMatchObject({ kind: "refused", message: expect.stringContaining("yearly link that has a build fee") });
+    expect(updateDeal).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["marked ready (undo it first)", { readyAt: NOW }, "Undo ready"],
+    ["paid", { paidAt: NOW }, "paid"],
+    ["cancelled", { revokedAt: NOW }, "cancelled"],
+    ["still waiting for its advance", { advancePaidAt: null }, "not paid yet"],
+    ["a free deal", { dealType: "free", advanceCents: null }, "Only a paid deal"],
+  ])("refuses a deal that is %s", async (_name, change, words) => {
+    vi.mocked(findPaymentLinkById).mockResolvedValue({ ...BUILDING, ...change } as unknown as PaymentLink);
+    expect(await edit({})).toMatchObject({ kind: "refused", message: expect.stringContaining(words) });
+    expect(updateDeal).not.toHaveBeenCalled();
+    expect(recordStaffAction).not.toHaveBeenCalled();
+  });
+
+  it("says so when staff marked it ready between the page and the save", async () => {
+    vi.mocked(updateDeal).mockResolvedValue(false);
+    expect(await edit({})).toMatchObject({ kind: "refused", message: expect.stringContaining("Undo ready") });
+    expect(recordStaffAction).not.toHaveBeenCalled();
+  });
+
+  it("answers not-found for a link that is gone", async () => {
+    vi.mocked(findPaymentLinkById).mockResolvedValue(null);
+    expect(await edit({})).toEqual({ kind: "not-found" });
   });
 });

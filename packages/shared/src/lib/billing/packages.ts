@@ -201,6 +201,32 @@ export function priceLinesFor(input: PackageInput, currency: MoneyCurrency, inte
   }
   return lines.map((line) => {
     const custom = overrides[line.addOn];
-    return custom === undefined ? line : { ...line, listCents: custom, discountCents: 0, offerCents: 0, netCents: custom, chargedCents: chargedAmountCents(custom, 0) };
+    return custom === undefined ? line : atAgreedPrice(line, custom);
   });
+}
+
+/** A line at an agreed price: it becomes the line's list price, with no package offer on it. */
+export function atAgreedPrice(line: PackageLine, cents: number): PackageLine {
+  return { ...line, listCents: cents, discountCents: 0, offerCents: 0, netCents: cents, chargedCents: chargedAmountCents(cents, 0) };
+}
+
+/** A stored agreed price (business_price_overrides): the fields the re-pricing sites read. */
+export interface StoredPriceOverride {
+  readonly addOn: string;
+  readonly billingInterval: string;
+  readonly netCents: number;
+}
+
+/**
+ * The agreed prices that apply to a basket priced for `interval`: one per service in the basket whose stored price is for the same
+ * billing period. A price for another period or for a service not in the basket is left out (priceLinesFor refuses a price for a
+ * service that is not in the basket, and a yearly agreement must not price a monthly checkout). Pass the result to priceLinesFor.
+ */
+export function priceOverridesFor(rows: readonly StoredPriceOverride[], interval: BillingInterval, services: readonly MonthlyAddOnId[]): PriceOverrides {
+  const overrides: Partial<Record<MonthlyAddOnId, number>> = {};
+  for (const row of rows) {
+    const addOn = MONTHLY_ADD_ON_IDS.find((id) => id === row.addOn);
+    if (addOn !== undefined && row.billingInterval === interval && services.includes(addOn)) overrides[addOn] = row.netCents;
+  }
+  return overrides;
 }

@@ -30,6 +30,7 @@ import { nextDiscountCents } from "@brandbasket/shared/lib/billing/bundle";
 import { applyAddOnPayment, type ProviderSubscriptionRef } from "@brandbasket/shared/server/add-on-activation";
 import { discountOnBasket, moveProviderAfterDiscountEnds, packageMove } from "@brandbasket/shared/server/basket-change";
 import { recordAddedServicePayment } from "@brandbasket/shared/server/added-service";
+import { isDealCheckoutStale } from "@brandbasket/shared/server/deal-checkout";
 import { activateFirstPayment, activateReactivationPayment, activateRenewalPayment } from "@brandbasket/shared/server/billing-activation";
 import { describeError, logBillingEvent } from "@brandbasket/shared/server/billing-log";
 import { cancelAtProvider } from "@brandbasket/shared/server/provider-cancellation";
@@ -248,6 +249,33 @@ export async function handleRazorpayWebhookEvent(event: RazorpayWebhookEvent): P
           providerPaymentId: event.paymentId,
           reason: "checkout_replaced",
         });
+        return null;
+      }
+
+      // Plan 66: payment 2 of a deal whose "Website ready" staff took back (or whose deal was cancelled) after the customer opened this
+      // checkout. The checkout is cancelled when that happens; this catches one that was still payable. Kept for staff, not activated.
+      if (subscription.activatedAt === null && (await isDealCheckoutStale(tx, subscription, new Date()))) {
+        noted(await recordUnappliedPayment(tx, {
+          businessId: subscription.businessId,
+          subscriptionId: subscription.id,
+          provider: "razorpay",
+          providerPaymentId: event.paymentId,
+          kind: "initial",
+          amountCents: event.amountCents,
+          currency: event.currency,
+          paidAt: event.paidAt,
+          reason: "checkout_replaced",
+          now: new Date(),
+          method: event.method,
+        }));
+        logBillingEvent("warn", "confirmation-refused", {
+          businessId: subscription.businessId,
+          subscriptionId: subscription.id,
+          provider: "razorpay",
+          providerPaymentId: event.paymentId,
+          reason: "checkout_replaced",
+        });
+        replacedToCancel.push({ businessId: subscription.businessId, subscriptionId: subscription.id, providerSubscriptionId: subscription.providerSubscriptionId });
         return null;
       }
 

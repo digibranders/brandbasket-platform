@@ -1,6 +1,6 @@
-import { and, desc, eq, gt, isNotNull, isNull, or } from "drizzle-orm";
+import { and, desc, eq, gt, inArray, isNotNull, isNull, or } from "drizzle-orm";
 import type { Database } from "../client";
-import { type NewPaymentLink, type PaymentLink, paymentLinks } from "../schema";
+import { type BillingProviderName, type NewPaymentLink, type PaymentLink, paymentLinks, subscriptions } from "../schema";
 import type { ScopedTransaction } from "../scope";
 import { isUuid } from "./tenant";
 
@@ -294,4 +294,32 @@ export async function listDealsAwaitingBalance(db: Runner, limit: number): Promi
       ? []
       : [{ linkId: link.id, businessId: link.businessId, readyAt: link.readyAt, currency: link.currency, balanceCents: link.setupFeeListCents - (link.setupFeeDiscountCents ?? 0) - link.advanceCents }],
   );
+}
+
+/** A checkout a deal's customer opened at the provider and has not paid: what staff taking a deal back must cancel. */
+export interface PendingDealCheckout {
+  readonly subscriptionId: string;
+  readonly provider: BillingProviderName;
+  readonly providerSubscriptionId: string;
+}
+
+/**
+ * The business's unpaid checkouts (never activated, still `incomplete` or `inactive`) opened for this link, newest first. Payment 2 of a
+ * deal opens one; staff undoing "Website ready", editing the deal or cancelling it must end it, so it can no longer be paid.
+ */
+export async function findPendingCheckoutsForLink(db: Runner, input: { readonly businessId: string; readonly linkId: string }): Promise<readonly PendingDealCheckout[]> {
+  if (!isUuid(input.businessId) || !isUuid(input.linkId)) return [];
+  const rows = await db
+    .select({ subscriptionId: subscriptions.id, provider: subscriptions.provider, providerSubscriptionId: subscriptions.providerSubscriptionId })
+    .from(subscriptions)
+    .where(
+      and(
+        eq(subscriptions.businessId, input.businessId),
+        eq(subscriptions.paymentLinkId, input.linkId),
+        isNull(subscriptions.activatedAt),
+        inArray(subscriptions.status, ["incomplete", "inactive"]),
+      ),
+    )
+    .orderBy(desc(subscriptions.createdAt));
+  return rows;
 }

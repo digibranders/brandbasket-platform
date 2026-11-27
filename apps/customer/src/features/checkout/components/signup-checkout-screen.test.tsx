@@ -502,4 +502,13 @@ describe("a paid deal's balance screen (plan 66)", () => {
     expect(summary().queryByText(/referral|code/i)).toBeNull();
     expect(summary().queryByText("Advance to pay now")).toBeNull();
   });
+
+  it("does not describe a sign-up: no 'choose the services' lead, no build-fee badge, no steps of a build; a plain lead for the balance", () => {
+    render(<SignupCheckoutScreen account="signed-in" table={buildSignupBasketTable("INR", "razorpay", { "social-media": false })} initialServices={["managed-website", "social-media"]} link={link} standalone={false} />);
+    expect(screen.getByText("Your website is ready. Review what you pay today.")).toBeTruthy();
+    expect(screen.queryByText(/Choose the services you want/)).toBeNull();
+    expect(screen.queryByText("One-time build fee")).toBeNull();
+    expect(screen.queryByText("What happens next")).toBeNull();
+    expect(screen.queryByText("Book your kickoff call")).toBeNull();
+  });
 });

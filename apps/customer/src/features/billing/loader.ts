@@ -278,7 +278,7 @@ export async function loadReactivationCard(customer: CustomerContext, params: Pa
     ? SOLD_PLAN_ADD_ON_IDS.map((addOn) => ({
         addOn,
         name: serviceName(addOn),
-        price: formatMoney(addOnPrice(addOnById(addOn), plan.currency).chargedCents, plan.currency),
+        price: formatMoney(reactivation.agreed[addOn] ?? addOnPrice(addOnById(addOn), plan.currency).chargedCents, plan.currency),
         selected: reactivation.services.includes(addOn),
         href: `/billing?services=${servicesAfterToggle(reactivation.services, addOn).join(",")}`,
       }))

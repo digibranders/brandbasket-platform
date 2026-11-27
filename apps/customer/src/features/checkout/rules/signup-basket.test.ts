@@ -139,6 +139,8 @@ describe("the one-screen checkout's basket", () => {
     const [website, social, monitoring] = table.services;
     expect(cardBadge(website!, table, "month")).toBe("One-time build fee");
     expect(cardBadge(website!, buildSignupBasketTable("INR", "razorpay", { "managed-website": true }), "month")).toBeNull();
+    // The balance of a built website is not a build fee.
+    expect(cardBadge(website!, table, "month", true)).toBeNull();
     expect(cardBadge(social!, table, "month")).toBe("First month ₹1");
     expect(cardBadge(social!, table, "year")).toBeNull();
     expect(cardBadge(monitoring!, table, "month")).toBeNull();

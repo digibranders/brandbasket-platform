@@ -18,6 +18,7 @@ import {
   findRedeemableReferralCode,
   isPackageOfferForfeited,
   type BillingInterval,
+  listPriceOverridesForBusiness,
   lockBusinessForBilling,
   markPackageOfferForfeited,
   openCheckoutSubscription,
@@ -36,7 +37,7 @@ import { BUILD_FEE_ADD_ON, planFirstPayment } from "@brandbasket/shared/lib/bill
 import { setupFeeFor, type SetupFee } from "@brandbasket/shared/lib/billing/setup-fee";
 import { isWebsiteKind, type WebsiteKind } from "@brandbasket/shared/lib/billing/website-kind";
 import { linkCustomPrices } from "@brandbasket/shared/lib/billing/deal";
-import { adCreditCentsAtCheckout, packageLines, priceLinesFor } from "@brandbasket/shared/lib/billing/packages";
+import { adCreditCentsAtCheckout, priceLinesFor, priceOverridesFor } from "@brandbasket/shared/lib/billing/packages";
 import { addMonthsUtc } from "@brandbasket/billing/term";
 import { PAYMENT_RECEIVED_MESSAGE, REACTIVATE_HREF } from "@brandbasket/shared/lib/billing/payment-step";
 import { firstMissing, onboardingChecklist } from "@brandbasket/shared/lib/onboarding/checklist";
@@ -545,8 +546,11 @@ async function openPlanCheckout(
     const interval: BillingInterval = link === null ? pickedInterval : link.billingInterval === "year" ? "year" : "month";
     const websiteKind: WebsiteKind = link?.websiteKind != null && isWebsiteKind(link.websiteKind) ? link.websiteKind : options.chosenKind;
     // Plan 66: a link's custom prices (a free deal's, or a paid deal's recurring ones) replace the catalogue's, with no offer discount.
+    // Plan 66, 3.7: a business coming back (a lapse, or a cancel followed by choosing again) keeps the agreed price of a service it
+    // had on a deal, for the same billing period; anything without one is at list. A code still comes off the net, as for any customer.
+    const agreed = link === null && reactivation !== null ? priceOverridesFor(await listPriceOverridesForBusiness(tx, tenant.businessId), interval, services) : {};
     const pricedLines =
-      link === null ? packageLines({ services, forfeited }, plan.currency, interval, websiteKind) : priceLinesFor({ services, forfeited }, plan.currency, interval, websiteKind, linkCustomPrices(link));
+      link === null ? priceLinesFor({ services, forfeited }, plan.currency, interval, websiteKind, agreed) : priceLinesFor({ services, forfeited }, plan.currency, interval, websiteKind, linkCustomPrices(link));
     const fullBundle: readonly NewBundledAddOn[] = pricedLines.map((line) => ({
       addOn: line.addOn,
       listAmountCents: line.listCents,

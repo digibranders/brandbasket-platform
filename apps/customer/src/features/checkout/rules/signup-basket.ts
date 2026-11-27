@@ -146,6 +146,8 @@ export const ADVANCE_COPY = {
 export const BALANCE_COPY = {
   balanceLabel: "Balance for your website build",
   dueLabel: "Total to pay now",
+  /** The line under the title once the website is built: the sign-up lead ("Choose the services you want.") no longer fits. */
+  lead: "Your website is ready. Review what you pay today.",
   /** "Your monthly plan starts today. Next charge on 27 Dec 2026." */
   planStarts: (interval: BillingInterval, nextCharge: string): string => `Your ${interval === "year" ? "yearly" : "monthly"} plan starts today. Next charge on ${nextCharge}.`,
 } as const;
@@ -359,7 +361,8 @@ export function payLabel(view: Pick<BasketView, "services" | "due">): string {
 }
 
 /** The first-month badge on a card: "First month ₹1" while paid monthly, nothing paid yearly. The website carries its own. */
-export function cardBadge(service: SignupBasketService, table: SignupBasketTable, interval: BillingInterval): string | null {
-  if (service.id === "managed-website") return table.website.feeOwed ? CHECKOUT_COPY.websiteBadge : null;
+export function cardBadge(service: SignupBasketService, table: SignupBasketTable, interval: BillingInterval, balance = false): string | null {
+  // The build is done when its balance is paid: "One-time build fee" describes a sign-up, not this.
+  if (service.id === "managed-website") return table.website.feeOwed && !balance ? CHECKOUT_COPY.websiteBadge : null;
   return service.onOffer && interval === "month" ? `First month ${formatMoney(service.firstMonthCents, table.currency)}` : null;
 }

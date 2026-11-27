@@ -228,6 +228,7 @@ describe("dealBlockView (plan 66)", () => {
     setupFeeDiscountCents: 500_000,
     advanceCents: 2_000_000,
     advancePaidAt: new Date("2026-11-27T10:00:00.000Z"),
+    readyAt: null,
     websitePriceCents: null,
     socialPriceCents: 150_000,
     adsPriceCents: null,
@@ -236,6 +237,11 @@ describe("dealBlockView (plan 66)", () => {
 
   it("shows the advance paid and the build balance: price less discount less advance", () => {
     expect(dealBlockView(link)).toMatchObject({ advanceLabel: "Advance paid on Fri 27 Nov", advance: "₹20,000", balance: "₹40,000" });
+  });
+
+  it("says the balance is due now once staff have marked the website ready, and not while it is being built", () => {
+    expect(dealBlockView(link)?.balanceDue).toBe(false);
+    expect(dealBlockView({ ...link, readyAt: new Date("2026-12-01T10:00:00.000Z") })?.balanceDue).toBe(true);
   });
 
   it("lists what is charged with the balance, a custom price where staff set one", () => {

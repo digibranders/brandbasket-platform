@@ -3,6 +3,7 @@ import {
   findBillingProfile,
   findBillingState,
   listPaymentsForClient,
+  listPriceOverridesForBusiness,
   listPaymentsNeedingAttention,
   listPaymentsWithoutTaxInvoice,
   listTaxInvoicesForBusiness,
@@ -10,6 +11,8 @@ import {
 import type { ClientDetail } from "@brandbasket/db";
 import Link from "next/link";
 import type { ReactElement, ReactNode } from "react";
+import { addOnById, isMonthlyAddOnId, perCycle } from "@brandbasket/shared/lib/billing/add-ons";
+import { formatMoney } from "@brandbasket/shared/lib/money";
 import { reactivationNetCents, websiteAloneNetCents } from "@brandbasket/shared/lib/billing/bundle";
 import { readStaffChargeNotice } from "@brandbasket/shared/lib/billing/charge-notices";
 import { clientPaymentState } from "@brandbasket/shared/lib/billing/client-payment";
@@ -19,7 +22,7 @@ import { loadReactivationBasket } from "@brandbasket/shared/server/reactivation-
 import { ClientCharges } from "@/components/client-charges";
 import { ClientBillingDetails, ClientTaxInvoices } from "@/components/client-invoicing";
 import { ClientPayments } from "@/components/client-payments";
-import { buttonSecondary } from "@/components/console/buttons";
+import { buttonSecondary, buttonSmall } from "@/components/console/buttons";
 import { Notice } from "@/components/console/notice";
 import { FactList, Section } from "@/components/console/section";
 import { PaymentsNeedingAttention } from "@/components/payments-needing-attention";
@@ -35,6 +38,7 @@ import { getStaffDb } from "@/lib/server/db";
 import { requireStaffCan } from "@/lib/server/staff-role";
 import { resolvePaymentAttentionAction } from "../actions";
 import { BillingFacts, ManualPaymentForm } from "../parts";
+import { clearPriceOverrideAction } from "./override-actions";
 import { markPaymentRefundedAction, refundPaymentAction } from "./refund-actions";
 
 /** How many flagged payments one client page lists. */
@@ -67,7 +71,7 @@ export async function BillingSection({
   const paymentState = clientPaymentState(client.billing, renderedAt);
   const canRecordPayment = paymentState.kind === "not-paid" || paymentState.kind === "checkout-open" || paymentState.kind === "lapsed";
   const invoiced = client.currency === "INR";
-  const [plan, flagged, charges, billingState, billingProfile, taxInvoices, missingInvoices] = await Promise.all([
+  const [plan, flagged, charges, billingState, billingProfile, taxInvoices, missingInvoices, overrides] = await Promise.all([
     canRecordPayment ? findActivePlan(db, client.currency, client.tier) : Promise.resolve(null),
     listPaymentsNeedingAttention(db, { businessId: client.businessId, limit: ATTENTION_SHOWN }),
     listClientCharges(client.businessId),
@@ -76,6 +80,7 @@ export async function BillingSection({
     invoiced ? findBillingProfile(db, client.businessId) : Promise.resolve(null),
     invoiced ? listTaxInvoicesForBusiness(db, client.businessId) : Promise.resolve([]),
     invoiced ? listPaymentsWithoutTaxInvoice(db, client.businessId) : Promise.resolve([]),
+    listPriceOverridesForBusiness(db, client.businessId),
   ]);
   // Exactly what recordManualFirstPayment books: the basket they lapsed with, less the code a lapse keeps, else the website at list.
   const lapsedBasket = plan !== null && paymentState.kind === "lapsed" ? await loadReactivationBasket(db, client.businessId) : null;
@@ -123,6 +128,42 @@ export async function BillingSection({
       {deal === null ? null : (
         <Section title="Website build" aside="Advance taken first, balance before go-live, GST included">
           <FactList items={deal} />
+          {client.billing.deal?.state === "building" ? (
+            <div className="mt-6">
+              <Link href={`/payment-links/${client.billing.deal.linkId}/edit`} className={buttonSecondary}>
+                Edit deal
+              </Link>
+            </div>
+          ) : null}
+        </Section>
+      )}
+
+      {overrides.length === 0 ? null : (
+        <Section title="Agreed prices">
+          <FactList
+            items={overrides.flatMap((row) =>
+              isMonthlyAddOnId(row.addOn)
+                ? [
+                    {
+                      label: "Agreed price",
+                      value: (
+                        <form action={clearPriceOverrideAction} className="flex flex-wrap items-center gap-3">
+                          <input type="hidden" name="businessId" value={client.businessId} />
+                          <input type="hidden" name="addOn" value={row.addOn} />
+                          <input type="hidden" name="billingInterval" value={row.billingInterval} />
+                          <span>
+                            {addOnById(row.addOn).title} {formatMoney(row.netCents, client.currency)} {perCycle(row.billingInterval === "year" ? "year" : "month")}
+                          </span>
+                          <button type="submit" className={buttonSmall}>
+                            Remove
+                          </button>
+                        </form>
+                      ),
+                    },
+                  ]
+                : [],
+            )}
+          />
         </Section>
       )}
 

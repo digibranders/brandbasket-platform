@@ -260,6 +260,27 @@ describe("parsePaymentLinkForm", () => {
   });
 });
 
+describe("parsePaymentLinkForm editing a deal with its advance paid (plan 66, step 6)", () => {
+  const edit = (overrides: Record<string, string | string[]> = {}) => parsePaymentLinkForm(form({ dealType: "paid", buildPrice: "35000", discountKind: "none", ...overrides }), { fixedAdvanceCents: 1_000_000 });
+
+  it("keeps the advance already received and ignores any advance fields posted", () => {
+    const result = edit({ advanceKind: "percent", advanceValue: "99" });
+    if (!result.ok) throw new Error(result.message);
+    expect(result.draft.advanceCents).toBe(1_000_000);
+    expect(result.draft.setupFeeListCents).toBe(3_500_000);
+  });
+
+  it("needs no advance fields at all", () => {
+    expect(edit().ok).toBe(true);
+  });
+
+  it("allows the net price to equal the advance, and refuses one below it with its own message", () => {
+    expect(edit({ buildPrice: "10000" }).ok).toBe(true);
+    const below = edit({ buildPrice: "20000", discountKind: "amount", discountValue: "12000", setupFeeNote: "Agreed" });
+    expect(below).toMatchObject({ ok: false, field: "buildPrice", message: expect.stringContaining("The balance cannot be negative") });
+  });
+});
+
 describe("couponProblem", () => {
   const live = { affiliateId: null, active: true, currency: "INR", expiresAt: null } as const;
   const now = new Date("2026-11-27T12:00:00Z");

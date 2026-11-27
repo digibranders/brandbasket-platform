@@ -179,7 +179,7 @@ describe("loadBillingOverview", () => {
     expect(loadAddOnsPage).not.toHaveBeenCalled();
 
     vi.mocked(findReactivationPlan).mockResolvedValue(PLAN as never);
-    vi.mocked(findReactivation).mockResolvedValue({ cancelled: false, services: ["managed-website"], lines: [{ addOn: "managed-website", title: "Website Management", listCents: 299_900, offerCents: 0, netCents: 299_900 }], netCents: 299_900, discountCents: 0, billingInterval: "month" });
+    vi.mocked(findReactivation).mockResolvedValue({ cancelled: false, services: ["managed-website"], lines: [{ addOn: "managed-website", title: "Website Management", listCents: 299_900, offerCents: 0, netCents: 299_900 }], netCents: 299_900, discountCents: 0, billingInterval: "month", agreed: {} });
     const lapsed = await loadBillingOverview(customerWith("owner", { status: "lapsed", hasAccess: false }), {}, NOW);
     expect(lapsed.services).toBeNull();
     expect(lapsed.reactivation).toEqual({
@@ -201,15 +201,32 @@ describe("loadBillingOverview", () => {
     });
   });
 
+  it("shows a customer who cancelled the agreed price of a service in the picker, and the list price of the others", async () => {
+    vi.mocked(findReactivationPlan).mockResolvedValue(PLAN as never);
+    vi.mocked(findReactivation).mockResolvedValue({
+      cancelled: true,
+      services: ["managed-website"],
+      lines: [{ addOn: "managed-website", title: "Website Management", listCents: 150_000, offerCents: 0, netCents: 150_000 }],
+      netCents: 150_000,
+      discountCents: 0,
+      billingInterval: "month",
+      agreed: { "managed-website": 150_000 },
+    });
+    const card = await loadBillingOverview(customerWith("owner", { status: "lapsed", hasAccess: false }), {}, NOW);
+    const shown = card.reactivation?.ok === true ? card.reactivation.data?.picker : null;
+    expect(shown?.find((row) => row.addOn === "managed-website")?.price).toBe("₹1,500");
+    expect(shown?.find((row) => row.addOn === "social-media")?.price).not.toBe("₹1,500");
+  });
+
   it("prices a reactivation less the kept code through the shared renewal figure, and refuses one that leaves nothing", async () => {
     const lapsedOwner = customerWith("owner", { status: "lapsed", hasAccess: false });
     vi.mocked(findReactivationPlan).mockResolvedValue(PLAN as never);
-    vi.mocked(findReactivation).mockResolvedValue({ cancelled: false, services: ["managed-website"], lines: [{ addOn: "managed-website", title: "Website Management", listCents: 299_900, offerCents: 0, netCents: 299_900 }], netCents: 299_900, discountCents: 30_000, billingInterval: "month" });
+    vi.mocked(findReactivation).mockResolvedValue({ cancelled: false, services: ["managed-website"], lines: [{ addOn: "managed-website", title: "Website Management", listCents: 299_900, offerCents: 0, netCents: 299_900 }], netCents: 299_900, discountCents: 30_000, billingInterval: "month", agreed: {} });
     expect((await loadBillingOverview(lapsedOwner, {}, NOW)).reactivation).toMatchObject({
       ok: true,
       data: { monthlyAmount: "₹2,699", summary: { rows: [{ label: "Website Management" }, { label: "Your code", amount: "-₹300", tone: "save" }], total: "₹2,699" } },
     });
-    vi.mocked(findReactivation).mockResolvedValue({ cancelled: false, services: ["managed-website"], lines: [{ addOn: "managed-website", title: "Website Management", listCents: 299_900, offerCents: 0, netCents: 299_900 }], netCents: 299_900, discountCents: 299_900, billingInterval: "month" });
+    vi.mocked(findReactivation).mockResolvedValue({ cancelled: false, services: ["managed-website"], lines: [{ addOn: "managed-website", title: "Website Management", listCents: 299_900, offerCents: 0, netCents: 299_900 }], netCents: 299_900, discountCents: 299_900, billingInterval: "month", agreed: {} });
     expect((await loadBillingOverview(lapsedOwner, {}, NOW)).reactivation).toMatchObject({ ok: false });
   });
 

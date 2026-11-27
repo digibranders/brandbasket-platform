@@ -178,6 +178,7 @@ export function PaymentLinkForm({
   countries,
   coupons,
   provider,
+  editing,
 }: {
   readonly action: PaymentLinkAction;
   /** Field names to starting values, from the enquiry or the account the page was opened for. */
@@ -185,6 +186,8 @@ export function PaymentLinkForm({
   readonly countries: readonly SelectOption[];
   readonly coupons: readonly CouponChoice[];
   readonly provider: Parameters<typeof summariseLink>[0]["provider"];
+  /** Set when the form edits a paid deal whose advance is received (plan 66, step 6): the advance is shown, never typed, and the customer's details are not asked again. */
+  readonly editing?: { readonly advanceCents: number };
 }): ReactElement {
   const formRef = useRef<HTMLFormElement>(null);
   const errorRef = useRef<HTMLParagraphElement>(null);
@@ -208,12 +211,12 @@ export function PaymentLinkForm({
 
   const echoedServices = echoed?.service;
   const [country, setCountry] = useState(valueOf("countryCode"));
-  const [services, setServices] = useState<readonly string[]>(Array.isArray(echoedServices) ? echoedServices : ["managed-website"]);
+  const [services, setServices] = useState<readonly string[]>(Array.isArray(echoedServices) ? echoedServices : prefill.service === undefined ? ["managed-website"] : prefill.service.split(","));
   const [kind, setKind] = useState<WebsiteKind>(valueOf("websiteKind") === "ecommerce" ? "ecommerce" : "b2b");
   const [interval, setInterval] = useState<"month" | "year">(valueOf("billingInterval") === "year" ? "year" : "month");
   const [dealType, setDealType] = useState<"free" | "paid">(valueOf("dealType") === "paid" ? "paid" : "free");
   // Null until staff type a price: the catalogue price for the kind and country shows meanwhile, so changing either re-prefills it.
-  const [typedBuildPrice, setTypedBuildPrice] = useState<string | null>(echoed?.buildPrice === undefined ? null : valueOf("buildPrice"));
+  const [typedBuildPrice, setTypedBuildPrice] = useState<string | null>(echoed?.buildPrice !== undefined ? valueOf("buildPrice") : (prefill.buildPrice ?? null));
   const [advanceKind, setAdvanceKind] = useState<DealAdvanceKind>(valueOf("advanceKind") === "percent" ? "percent" : "amount");
   const [advanceValue, setAdvanceValue] = useState(valueOf("advanceValue"));
   const [customTyped, setCustomTyped] = useState<Readonly<Record<string, string>>>(() => Object.fromEntries(LINK_SERVICE_IDS.map((id) => [id, valueOf(CUSTOM_PRICE_FIELDS[id])])));
@@ -267,11 +270,15 @@ export function PaymentLinkForm({
         </p>
       )}
 
-      <Block title="Country" hint="India is billed in rupees, any other country in dollars. This overrides where the customer is.">
-        <Field id="link-country" label="Customer's country" required>
-          <SelectField key={valueOf("countryCode")} id="link-country" name="countryCode" required options={countries} value={country} onChange={setCountry} className={fieldClasses} {...status("countryCode")} />
-        </Field>
-      </Block>
+      {editing === undefined ? (
+        <Block title="Country" hint="India is billed in rupees, any other country in dollars. This overrides where the customer is.">
+          <Field id="link-country" label="Customer's country" required>
+            <SelectField key={valueOf("countryCode")} id="link-country" name="countryCode" required options={countries} value={country} onChange={setCountry} className={fieldClasses} {...status("countryCode")} />
+          </Field>
+        </Block>
+      ) : (
+        <input type="hidden" name="countryCode" value={country} />
+      )}
 
       <Block title="What they buy">
         <div>
@@ -303,7 +310,9 @@ export function PaymentLinkForm({
           <span className="block text-sm font-medium text-ink">Billed</span>
           <Choice name="billingInterval" label="Billed" options={INTERVALS} value={interval} onChange={setInterval} />
         </div>
-        {hasWebsite ? (
+        {editing !== undefined ? (
+          <input type="hidden" name="dealType" value="paid" />
+        ) : hasWebsite ? (
           <div>
             <span className="block text-sm font-medium text-ink">Website deal</span>
             <Choice name="dealType" label="Website deal" options={DEAL_TYPES} value={dealType} onChange={setDealType} invalid={errorField === "dealType"} />
@@ -350,7 +359,18 @@ export function PaymentLinkForm({
         </Block>
       ) : null}
 
-      {paid ? (
+      {paid && editing !== undefined ? (
+        <Block title="Advance" hint="Already paid by the customer. It cannot change; the balance is the net build price less this.">
+          <p className="font-figure text-sm tabular-nums text-ink">{formatMoney(editing.advanceCents, currency)} paid</p>
+          <input type="hidden" name="advanceKind" value="amount" />
+          <input type="hidden" name="advanceValue" value={advanceValue} />
+          {advance === null || advance.ok ? null : (
+            <p role="status" className="text-sm text-error">
+              The build price after the discount is less than the advance already paid. The balance cannot be negative.
+            </p>
+          )}
+        </Block>
+      ) : paid ? (
         <Block title="Advance">
           <div>
             <span className="block text-sm font-medium text-ink">Advance as</span>
@@ -399,56 +419,62 @@ export function PaymentLinkForm({
         </Field>
       </Block>
 
-      <Block title="Customer details" hint="Optional. The customer sees these filled in and can correct them.">
-        <div className="grid gap-6 sm:grid-cols-2">
-          <Field id="link-business" label="Business name">
-            <input id="link-business" name="businessName" autoComplete="off" defaultValue={valueOf("businessName")} className={fieldClasses} {...status("businessName")} />
-          </Field>
-          <Field id="link-contact" label="Contact name">
-            <input id="link-contact" name="contactName" autoComplete="off" defaultValue={valueOf("contactName")} className={fieldClasses} {...status("contactName")} />
-          </Field>
-          <Field id="link-email" label="Email">
-            <input id="link-email" name="email" type="email" autoComplete="off" defaultValue={valueOf("email")} className={fieldClasses} {...status("email")} />
-          </Field>
-          <Field id="link-phone" label="Phone" hint="With the country code, like +91 98765 43210, or just the number for the country above.">
-            <RuleInput rule="phone" type="tel" id="link-phone" name="phone" autoComplete="off" defaultValue={valueOf("phone")} className={fieldClasses} {...status("phone")} />
-          </Field>
-        </div>
-        {inIndia ? (
+      {editing !== undefined ? null : (
+        <Block title="Customer details" hint="Optional. The customer sees these filled in and can correct them.">
           <div className="grid gap-6 sm:grid-cols-2">
-            <Field id="link-state" label="State">
-              <SelectField key={valueOf("stateCode")} id="link-state" name="stateCode" options={stateOptions} defaultValue={valueOf("stateCode")} className={fieldClasses} {...status("stateCode")} />
+            <Field id="link-business" label="Business name">
+              <input id="link-business" name="businessName" autoComplete="off" defaultValue={valueOf("businessName")} className={fieldClasses} {...status("businessName")} />
             </Field>
-            <Field id="link-gstin" label="GSTIN" hint="Fixes the state.">
-              <RuleInput rule="code" id="link-gstin" name="gstin" maxLength={15} pattern={FIELD_PATTERNS.gstin} autoComplete="off" defaultValue={valueOf("gstin")} className={fieldClasses} {...status("gstin")} />
+            <Field id="link-contact" label="Contact name">
+              <input id="link-contact" name="contactName" autoComplete="off" defaultValue={valueOf("contactName")} className={fieldClasses} {...status("contactName")} />
             </Field>
-            <Field id="link-legal" label="Name on the GST registration" hint="Needed with a GSTIN.">
-              <input id="link-legal" name="legalName" autoComplete="off" defaultValue={valueOf("legalName")} className={fieldClasses} {...status("legalName")} />
+            <Field id="link-email" label="Email">
+              <input id="link-email" name="email" type="email" autoComplete="off" defaultValue={valueOf("email")} className={fieldClasses} {...status("email")} />
+            </Field>
+            <Field id="link-phone" label="Phone" hint="With the country code, like +91 98765 43210, or just the number for the country above.">
+              <RuleInput rule="phone" type="tel" id="link-phone" name="phone" autoComplete="off" defaultValue={valueOf("phone")} className={fieldClasses} {...status("phone")} />
             </Field>
           </div>
-        ) : null}
-        <div className="grid gap-6 sm:grid-cols-2">
-          <Field id="link-address1" label="Address">
-            <input id="link-address1" name="addressLine1" autoComplete="off" defaultValue={valueOf("addressLine1")} className={fieldClasses} {...status("addressLine1")} />
-          </Field>
-          <Field id="link-address2" label="Address line 2">
-            <input id="link-address2" name="addressLine2" autoComplete="off" defaultValue={valueOf("addressLine2")} className={fieldClasses} {...status("addressLine2")} />
-          </Field>
-          <Field id="link-city" label="City">
-            <input id="link-city" name="city" autoComplete="off" defaultValue={valueOf("city")} className={fieldClasses} {...status("city")} />
-          </Field>
-          <Field id="link-postal" label={inIndia ? "Pincode" : "Postal code"}>
-            <RuleInput rule={inIndia ? "digits" : "code"} id="link-postal" name="postalCode" maxLength={inIndia ? 6 : 20} autoComplete="off" defaultValue={valueOf("postalCode")} className={fieldClasses} {...status("postalCode")} />
-          </Field>
-        </div>
-      </Block>
+          {inIndia ? (
+            <div className="grid gap-6 sm:grid-cols-2">
+              <Field id="link-state" label="State">
+                <SelectField key={valueOf("stateCode")} id="link-state" name="stateCode" options={stateOptions} defaultValue={valueOf("stateCode")} className={fieldClasses} {...status("stateCode")} />
+              </Field>
+              <Field id="link-gstin" label="GSTIN" hint="Fixes the state.">
+                <RuleInput rule="code" id="link-gstin" name="gstin" maxLength={15} pattern={FIELD_PATTERNS.gstin} autoComplete="off" defaultValue={valueOf("gstin")} className={fieldClasses} {...status("gstin")} />
+              </Field>
+              <Field id="link-legal" label="Name on the GST registration" hint="Needed with a GSTIN.">
+                <input id="link-legal" name="legalName" autoComplete="off" defaultValue={valueOf("legalName")} className={fieldClasses} {...status("legalName")} />
+              </Field>
+            </div>
+          ) : null}
+          <div className="grid gap-6 sm:grid-cols-2">
+            <Field id="link-address1" label="Address">
+              <input id="link-address1" name="addressLine1" autoComplete="off" defaultValue={valueOf("addressLine1")} className={fieldClasses} {...status("addressLine1")} />
+            </Field>
+            <Field id="link-address2" label="Address line 2">
+              <input id="link-address2" name="addressLine2" autoComplete="off" defaultValue={valueOf("addressLine2")} className={fieldClasses} {...status("addressLine2")} />
+            </Field>
+            <Field id="link-city" label="City">
+              <input id="link-city" name="city" autoComplete="off" defaultValue={valueOf("city")} className={fieldClasses} {...status("city")} />
+            </Field>
+            <Field id="link-postal" label={inIndia ? "Pincode" : "Postal code"}>
+              <RuleInput rule={inIndia ? "digits" : "code"} id="link-postal" name="postalCode" maxLength={inIndia ? 6 : 20} autoComplete="off" defaultValue={valueOf("postalCode")} className={fieldClasses} {...status("postalCode")} />
+            </Field>
+          </div>
+        </Block>
+      )}
 
       {summary === null ? null : <PaysSummary summary={summary} currency={currency} kind={websiteKind} interval={interval} />}
 
-      <GatedSubmitButton className={buttonPrimary} pendingLabel="Creating…">
-        Create payment link
+      <GatedSubmitButton className={buttonPrimary} pendingLabel={editing === undefined ? "Creating…" : "Saving…"}>
+        {editing === undefined ? "Create payment link" : "Save deal"}
       </GatedSubmitButton>
-      <p className="text-sm leading-relaxed text-ink-2">The link works for one payment and for 7 days. You copy it and send it yourself. The deal cannot be changed once the link exists: cancel it and make another.</p>
+      <p className="text-sm leading-relaxed text-ink-2">
+        {editing === undefined
+          ? "The link works for one payment and for 7 days. You copy it and send it yourself. The deal cannot be changed once the link exists: cancel it and make another."
+          : "The advance stays as paid. The customer is asked for the new balance once you mark the website ready."}
+      </p>
     </form>
   );
 }

@@ -23,6 +23,7 @@ import type { TenantContext } from "@brandbasket/shared/lib/access";
 import { getBillingProvider } from "./billing";
 import { moveProviderAfterDiscountEnds } from "@brandbasket/shared/server/basket-change";
 import { recordAddedServicePayment } from "@brandbasket/shared/server/added-service";
+import { isDealCheckoutStale } from "@brandbasket/shared/server/deal-checkout";
 import { activateFirstPayment, activateReactivationPayment } from "@brandbasket/shared/server/billing-activation";
 import { getStaffDb } from "./db";
 import { sendOnboardingWithin, StepRefusedError } from "./onboarding";
@@ -41,6 +42,7 @@ vi.mock("./add-ons", () => ({ basketDeps: vi.fn(() => ({ deps: true })) }));
 vi.mock("@brandbasket/shared/server/basket-change", () => ({ moveProviderAfterDiscountEnds: vi.fn() }));
 vi.mock("@brandbasket/shared/server/billing-activation", () => ({ activateFirstPayment: vi.fn(), activateReactivationPayment: vi.fn() }));
 vi.mock("@brandbasket/shared/server/added-service", () => ({ recordAddedServicePayment: vi.fn() }));
+vi.mock("@brandbasket/shared/server/deal-checkout", () => ({ isDealCheckoutStale: vi.fn(async () => false) }));
 vi.mock("./db", () => ({ getStaffDb: vi.fn() }));
 vi.mock("./onboarding-alert", () => ({ notifyTeamOnboardingSent: vi.fn() }));
 vi.mock("./payment-emails", () => ({ sendPaymentReceipt: vi.fn(async () => undefined) }));
@@ -494,6 +496,17 @@ describe("confirmFirstPayment", () => {
       expect(logText()).not.toContain(token);
     },
   );
+
+  it("keeps for staff, and activates nothing, a payment on a deal's balance checkout whose Website ready was taken back (plan 66)", async () => {
+    const { token, providerSubscriptionId } = await checkoutToken();
+    vi.mocked(findSubscriptionByProviderId).mockResolvedValue(unpaidSubscription(providerSubscriptionId, { paymentLinkId: "link-1", setupFeeAdvanceCents: 2_000_000 }));
+    vi.mocked(findBillingState).mockResolvedValue(NOT_PAID);
+    vi.mocked(isDealCheckoutStale).mockResolvedValue(true);
+
+    await expect(confirmFirstPayment(tenant, { token }, NOW)).resolves.toEqual({ kind: "needs-attention" });
+    expect(activateFirstPayment).not.toHaveBeenCalled();
+    expect(recordUnappliedPayment).toHaveBeenCalledWith(staffTx, expect.objectContaining({ subscriptionId: "sub-1", reason: "checkout_replaced" }));
+  });
 
   it("reactivates a business that paid before: a month at the monthly price, nothing sent, no first payment", async () => {
     // Premium at ₹9,999 + 18% GST, one month up front: the test checkout charges what Razorpay's monthly plan would.

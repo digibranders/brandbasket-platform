@@ -71,6 +71,30 @@ describe("assessAddOn", () => {
     expect(assessment).toMatchObject({ kind: "offer", quote: { nextRenewalCents: 899_700 + 600_000 } });
   });
 
+  describe("with an agreed price on the deal (plan 66, 3.7)", () => {
+    const monthly = { ...state, subscription: { ...state.subscription, billingInterval: "month" } } as unknown as BillingState;
+    const yearly = { ...state, subscription: { ...state.subscription, billingInterval: "year" } } as unknown as BillingState;
+    const agreed = [{ addOn: "social-media", billingInterval: "month", netCents: 99_900 }];
+    const held = [line("managed-website", 299_900)];
+
+    it("prices the joining service at the agreed price, with no discount, and carries it into the renewal quoted", () => {
+      const assessment = assessAddOn({ state: monthly, live: held, addOn: "social-media", forfeited: false, agreedPrices: agreed, providerName: "fake", now: NOW });
+      expect(assessment).toMatchObject({ kind: "offer", line: { listCents: 99_900, discountCents: 0, netCents: 99_900 }, quote: { nextRenewalCents: 299_900 + 99_900 } });
+    });
+
+    it("uses the list price when there is no agreed price for that service", () => {
+      const withAgreed = assessAddOn({ state: monthly, live: held, addOn: "paid-ads", forfeited: false, agreedPrices: agreed, providerName: "fake", now: NOW });
+      const without = assessAddOn({ state: monthly, live: held, addOn: "paid-ads", forfeited: false, providerName: "fake", now: NOW });
+      expect(withAgreed).toEqual(without);
+    });
+
+    it("does not use a monthly agreed price on a yearly subscription", () => {
+      const assessment = assessAddOn({ state: yearly, live: held, addOn: "social-media", forfeited: false, agreedPrices: agreed, providerName: "fake", now: NOW });
+      expect(assessment).toMatchObject({ kind: "offer" });
+      expect(assessment.kind === "offer" ? assessment.line.netCents : 0).not.toBe(99_900);
+    });
+  });
+
   describe("with a referral code on the subscription", () => {
     const withCode = (held: Partial<{ discountAmountCents: number; discountMonthsLeft: number | null; nextDiscountAmountCents: number | null }>): BillingState =>
       ({ ...state, subscription: { ...state.subscription, ...held } }) as BillingState;

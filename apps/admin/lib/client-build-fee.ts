@@ -15,6 +15,10 @@ export interface BuildFeeColumns {
   readonly setupFeeDiscountCents: number | null;
   readonly setupFeeNote: string | null;
   readonly paymentLinkId: string | null;
+  /** Plan 66: the advance a paid deal took first (the balance is paid with the plan's first payment). Absent or null for any other fee. */
+  readonly setupFeeAdvanceCents?: number | null;
+  /** Null while the checkout is unpaid. Only read with an advance, to say whether the balance has been paid. */
+  readonly activatedAt?: Date | null;
 }
 
 export interface BuildFeeFact {
@@ -30,11 +34,20 @@ export function buildFeeFacts(subscription: BuildFeeColumns | null, currency: Bi
   if (subscription === null || subscription.setupFeeListCents === null) return null;
   const list = subscription.setupFeeListCents;
   const discount = subscription.setupFeeDiscountCents ?? 0;
+  const advance = subscription.setupFeeAdvanceCents ?? null;
+  const net = list - discount;
+  // A paid deal pays in two: the advance, then the balance with the plan's first payment. Say what has actually been paid.
+  const paid =
+    advance === null
+      ? { label: "Paid for the build", value: formatMoney(net, currency) }
+      : subscription.activatedAt == null
+        ? { label: "Paid so far", value: `${formatMoney(advance, currency)} (the advance)` }
+        : { label: "Paid so far", value: `${formatMoney(net, currency)} (advance ${formatMoney(advance, currency)}, balance ${formatMoney(net - advance, currency)})` };
   return [
     { label: "Website", value: websiteKindLabel(subscription.websiteKind) },
     { label: "Build fee", value: formatMoney(list, currency) },
     { label: "Discount", value: discount === 0 ? "None" : discount === list ? `${formatMoney(discount, currency)} (fee waived)` : formatMoney(discount, currency) },
-    { label: "Paid for the build", value: formatMoney(list - discount, currency) },
+    paid,
     ...(subscription.setupFeeNote === null ? [] : [{ label: "Note", value: subscription.setupFeeNote }]),
     { label: "Came from", value: subscription.paymentLinkId === null ? "The public checkout" : "A staff payment link" },
   ];

@@ -30,6 +30,12 @@ describe("buildFeeFacts", () => {
     expect(facts).toContainEqual({ label: "Came from", value: "The public checkout" });
     expect(facts?.some((fact) => fact.label === "Note")).toBe(false);
   });
+  it("says what a paid deal has paid so far: the advance while the balance is unpaid, then both", () => {
+    const deal = { ...columns, websiteKind: "b2b", setupFeeListCents: 3_500_000, setupFeeDiscountCents: 500_000, setupFeeAdvanceCents: 1_000_000 };
+    expect(buildFeeFacts({ ...deal, activatedAt: null }, "INR")).toContainEqual({ label: "Paid so far", value: "₹10,000 (the advance)" });
+    expect(buildFeeFacts({ ...deal, activatedAt: new Date("2026-12-01T00:00:00Z") }, "INR")).toContainEqual({ label: "Paid so far", value: "₹30,000 (advance ₹10,000, balance ₹20,000)" });
+    expect(buildFeeFacts({ ...deal, activatedAt: null }, "INR")?.some((fact) => fact.label === "Paid for the build")).toBe(false);
+  });
   it("is absent when no fee was owed", () => {
     expect(buildFeeFacts(null, "INR")).toBeNull();
     expect(buildFeeFacts({ ...columns, setupFeeListCents: null, setupFeeDiscountCents: null, setupFeeNote: null }, "INR")).toBeNull();

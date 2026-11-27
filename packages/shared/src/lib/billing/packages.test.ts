@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { chargedAmountCents } from "@brandbasket/billing/tax";
 import type { MonthlyAddOnId } from "./add-ons";
-import { adCreditCentsAtCheckout, adCreditCentsFor, PACKAGE_OFFERS, packageBasisPointsFor, packageDiscountCentsFor, packageDiscountsFor, packageLines, packageLineWith, shareDiscountAcrossLines } from "./packages";
+import { adCreditCentsAtCheckout, adCreditCentsFor, PACKAGE_OFFERS, packageBasisPointsFor, packageDiscountCentsFor, packageDiscountsFor, packageLines, packageLineWith, priceLinesFor, priceOverridesFor, shareDiscountAcrossLines } from "./packages";
 
 describe("package offers", () => {
   it("has no offers: every basket is at list with no discount percentage and no ad credit", () => {
@@ -110,5 +110,29 @@ describe("shareDiscountAcrossLines", () => {
   it("refuses a discount that is not whole minor units", () => {
     expect(() => shareDiscountAcrossLines([100], 1.5)).toThrow(RangeError);
     expect(() => shareDiscountAcrossLines([100], -1)).toThrow(RangeError);
+  });
+});
+
+describe("priceOverridesFor", () => {
+  const rows = [
+    { addOn: "social-media", billingInterval: "month", netCents: 99_900 },
+    { addOn: "paid-ads", billingInterval: "year", netCents: 500_000 },
+    { addOn: "managed-website", billingInterval: "month", netCents: 150_000 },
+  ];
+
+  it("keeps an agreed price for a service in the basket and the same period, and nothing else", () => {
+    expect(priceOverridesFor(rows, "month", ["managed-website", "social-media", "paid-ads"])).toEqual({ "social-media": 99_900, "managed-website": 150_000 });
+    expect(priceOverridesFor(rows, "year", ["paid-ads", "social-media"])).toEqual({ "paid-ads": 500_000 });
+    expect(priceOverridesFor(rows, "month", ["paid-ads"])).toEqual({});
+  });
+
+  it("makes priceLinesFor keep the agreed price, and list price where there is none or the period differs", () => {
+    const basket = { services: ["managed-website", "social-media"] as const, forfeited: false };
+    const listSocial = packageLines(basket, "INR", "month").find((line) => line.addOn === "social-media")?.netCents;
+    const kept = priceLinesFor(basket, "INR", "month", "b2b", priceOverridesFor(rows, "month", basket.services));
+    expect(kept.find((line) => line.addOn === "social-media")?.netCents).toBe(99_900);
+    const yearly = priceLinesFor(basket, "INR", "year", "b2b", priceOverridesFor(rows, "year", basket.services));
+    expect(yearly.find((line) => line.addOn === "social-media")?.netCents).not.toBe(99_900);
+    expect(priceLinesFor(basket, "INR", "month", "b2b", priceOverridesFor([], "month", basket.services)).find((line) => line.addOn === "social-media")?.netCents).toBe(listSocial);
   });
 });

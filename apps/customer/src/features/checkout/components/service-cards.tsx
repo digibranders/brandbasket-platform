@@ -33,9 +33,11 @@ interface ServiceCardsProps {
   readonly kind: WebsiteKind;
   /** A staff payment link decided the services: they cannot be ticked or unticked. */
   readonly locked?: boolean;
+  /** The balance of a built website is being paid (plan 66): the cards carry no build-fee badge. */
+  readonly balance?: boolean;
 }
 
-export function ServiceCards({ table, services, interval, onToggle, kind, locked = false }: ServiceCardsProps) {
+export function ServiceCards({ table, services, interval, onToggle, kind, locked = false, balance = false }: ServiceCardsProps) {
   const headingId = useId();
   return (
     <section aria-labelledby={headingId}>
@@ -44,7 +46,7 @@ export function ServiceCards({ table, services, interval, onToggle, kind, locked
       </h2>
       <div className="grid gap-3 md:grid-cols-3">
         {table.services.map((service) => (
-          <ServiceCard key={service.id} service={service} table={table} ticked={services.includes(service.id)} enabled={canTick(service.id, services)} interval={interval} onToggle={onToggle} kind={kind} locked={locked} />
+          <ServiceCard key={service.id} service={service} table={table} ticked={services.includes(service.id)} enabled={canTick(service.id, services)} interval={interval} onToggle={onToggle} kind={kind} locked={locked} balance={balance} />
         ))}
       </div>
     </section>
@@ -60,10 +62,11 @@ interface ServiceCardProps {
   readonly onToggle: (id: MonthlyAddOnId, ticked: boolean) => void;
   readonly kind: WebsiteKind;
   readonly locked: boolean;
+  readonly balance: boolean;
 }
 
-function ServiceCard({ service, table, ticked, enabled, interval, onToggle, kind, locked }: ServiceCardProps) {
-  const badge = cardBadge(service, table, interval);
+function ServiceCard({ service, table, ticked, enabled, interval, onToggle, kind, locked, balance }: ServiceCardProps) {
+  const badge = cardBadge(service, table, interval, balance);
   // The website's price follows the kind of site chosen; every other service has one price.
   const monthlyCents = service.id === "managed-website" ? table.website.kinds[kind].monthlyCents : service.monthlyCents;
   const blurb = service.id === "managed-website" ? CHECKOUT_PLAN_COPY["managed-website"].blurb(formatMoney(monthlyCents, table.currency)) : service.blurb;

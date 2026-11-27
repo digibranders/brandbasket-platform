@@ -1,6 +1,8 @@
 import "server-only";
 import { findDealForBusiness, findOpenProjectForStaff, markLinkReady, paymentLinkState, unmarkLinkReady, type Database } from "@brandbasket/db";
+import { cancelPendingDealCheckout } from "@brandbasket/shared/server/deal-checkout";
 import { recordStaffAction } from "./activity";
+import { getBillingProvider } from "./billing-provider";
 import { sendBalanceDue } from "./payment-emails";
 import type { GrantedStaff } from "./staff-access";
 
@@ -39,10 +41,14 @@ export async function markWebsiteReady(db: Database, input: { readonly businessI
   return "ready";
 }
 
-/** Takes "Website ready" back while the balance is unpaid, so staff can edit the deal again. */
-export async function undoWebsiteReady(db: Database, input: { readonly businessId: string; readonly staff: GrantedStaff }): Promise<WebsiteReadyUndoOutcome> {
+/**
+ * Takes "Website ready" back while the balance is unpaid, so staff can edit the deal again. A checkout the customer already opened for the
+ * balance is cancelled too (cancelPendingDealCheckout): it froze the old deal and must not stay payable.
+ */
+export async function undoWebsiteReady(db: Database, input: { readonly businessId: string; readonly staff: GrantedStaff; readonly now?: Date }): Promise<WebsiteReadyUndoOutcome> {
   const link = await findDealForBusiness(db, input.businessId);
   if (link === null || link.readyAt === null || !(await unmarkLinkReady(db, { linkId: link.id }))) return "not-ready";
+  await cancelPendingDealCheckout(db, getBillingProvider(), { businessId: input.businessId, linkId: link.id, now: input.now ?? new Date() });
   await recordStaffAction(input.staff, { businessId: input.businessId, kind: "payment_link.ready_undone", summary: "Took back Website ready", data: { linkId: link.id } });
   return "undone";
 }

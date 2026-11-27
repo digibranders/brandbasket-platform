@@ -176,7 +176,7 @@ const DISCOUNT_KINDS = ["none", "amount", "percent", "final"] as const;
 /** The finalised price is typed in rupees or dollars; the database column is a 32-bit integer of minor units. */
 const BUILD_PRICE_MAX_CENTS = 2_000_000_000;
 
-function readPaidBuild(raw: z.infer<typeof rawForm>, currency: BillingCurrency, kind: WebsiteKind): { readonly build: PaidBuild } | Refused {
+function readPaidBuild(raw: z.infer<typeof rawForm>, currency: BillingCurrency, kind: WebsiteKind, fixedAdvanceCents: number | null): { readonly build: PaidBuild } | Refused {
   const listCents = parseMoney(raw.buildPrice);
   if (listCents === null) return refuse("buildPrice", "Type the build price as a number like 35000 or 35000.50.");
   if (listCents < 100 || listCents > BUILD_PRICE_MAX_CENTS) return refuse("buildPrice", "The build price is at least 1 and under 20,000,000.");
@@ -200,6 +200,15 @@ function readPaidBuild(raw: z.infer<typeof rawForm>, currency: BillingCurrency, 
     if (isRefusal(plain)) return plain;
     if (plain.value.length < 1 || plain.value.length > NOTE_MAX_LENGTH) return refuse("setupFeeNote", `The note is 1 to ${NOTE_MAX_LENGTH} characters.`);
     note = plain.value;
+  }
+
+  if (fixedAdvanceCents !== null) {
+    // Editing a deal after its advance was paid: the advance is what was received, never retyped. The balance may be 0 but not below it.
+    const netCents = listCents - discountCents;
+    if (netCents < fixedAdvanceCents) {
+      return refuse("buildPrice", `The build price after the discount, ${formatMoney(netCents, currency)}, is less than the advance already paid, ${formatMoney(fixedAdvanceCents, currency)}. The balance cannot be negative.`);
+    }
+    return { build: { listCents, discountCents, advanceCents: fixedAdvanceCents, note } };
   }
 
   const advanceKind = raw.advanceKind === "amount" || raw.advanceKind === "percent" ? raw.advanceKind : null;
@@ -309,7 +318,13 @@ function readCustomer(raw: z.infer<typeof rawForm>, countryCode: string, currenc
   };
 }
 
-export function parsePaymentLinkForm(formData: FormData): ParsedPaymentLinkForm {
+/** What changes when the form edits a deal whose advance is paid, rather than making a link. */
+export interface ParseOptions {
+  /** The advance already received, minor units. The advance fields are then ignored and the deal keeps it. */
+  readonly fixedAdvanceCents?: number;
+}
+
+export function parsePaymentLinkForm(formData: FormData, options: ParseOptions = {}): ParsedPaymentLinkForm {
   const input: Record<string, unknown> = { service: formData.getAll("service").filter((value): value is string => typeof value === "string") };
   for (const name of PAYMENT_LINK_FIELDS) if (name !== "service") input[name] = field(formData, name);
   const shaped = rawForm.safeParse(input);
@@ -336,7 +351,7 @@ export function parsePaymentLinkForm(formData: FormData): ParsedPaymentLinkForm 
   let build: PaidBuild | null = null;
   if (raw.dealType === "paid") {
     if (websiteKind === null) return refuse("service", "A paid deal needs Website Management. Choose it, or make this a free deal.");
-    const read = readPaidBuild(raw, currency, websiteKind);
+    const read = readPaidBuild(raw, currency, websiteKind, options.fixedAdvanceCents ?? null);
     if (isRefusal(read)) return read;
     build = read.build;
   }

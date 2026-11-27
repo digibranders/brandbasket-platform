@@ -129,7 +129,7 @@ function DealPanel({ deal }: { readonly deal: DealBlockView }) {
           <dd className="tabular-nums font-mono text-sm text-ink font-medium">{deal.advance}</dd>
         </div>
         <div className="flex items-baseline justify-between gap-4 border-t border-border pt-3">
-          <dt className="type-sub font-semibold text-ink">Balance, due when your website is ready</dt>
+          <dt className="type-sub font-semibold text-ink">{deal.balanceDue ? "Your website is ready. The balance is due now." : "Balance, due when your website is ready"}</dt>
           <dd className="type-metric-sm tabular-nums font-mono">{deal.balance}</dd>
         </div>
       </dl>
@@ -144,7 +144,7 @@ function DealPanel({ deal }: { readonly deal: DealBlockView }) {
               </div>
             ))}
           </dl>
-          <p className="mt-3 type-meta">Maintenance and your other services are charged with the balance when your website is ready.</p>
+          <p className="mt-3 type-meta">{deal.balanceDue ? "Maintenance and your other services are charged with the balance." : "Maintenance and your other services are charged with the balance when your website is ready."}</p>
         </>
       )}
     </article>

@@ -235,6 +235,7 @@ export type DealBlockLink = Pick<
   | "setupFeeDiscountCents"
   | "advanceCents"
   | "advancePaidAt"
+  | "readyAt"
   | "websitePriceCents"
   | "socialPriceCents"
   | "adsPriceCents"
@@ -246,6 +247,8 @@ export interface DealBlockView {
   /** "Advance paid on Fri 27 Nov". */
   readonly advanceLabel: string;
   readonly advance: string;
+  /** Staff have marked the website ready: the balance is due now, not "when your website is ready". */
+  readonly balanceDue: boolean;
   /** What is still to pay for the build at go-live. Never includes the services: see `then`. */
   readonly balance: string;
   /** The services charged with the balance when the website is ready, each at its price for the deal's period ("₹2,999 a month"). */
@@ -267,6 +270,7 @@ export function dealBlockView(link: DealBlockLink): DealBlockView | null {
   return {
     advanceLabel: `Advance paid on ${formatDate(advancePaidAt)}`,
     advance: money(advance),
+    balanceDue: link.readyAt !== null,
     balance: money(Math.max(0, net - advance)),
     then: dealLines({
       services: readBundleSelection(link.services),

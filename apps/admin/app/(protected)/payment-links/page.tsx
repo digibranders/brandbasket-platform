@@ -33,6 +33,15 @@ function oneOf(value: string | string[] | undefined): string | undefined {
 }
 
 function RowActions({ row }: { readonly row: PaymentLinkRow }): ReactElement | null {
+  if (row.state === "building") {
+    return (
+      <div className="flex justify-end gap-2">
+        <Link href={`/payment-links/${row.id}/edit`} className={buttonSmall}>
+          Edit deal
+        </Link>
+      </div>
+    );
+  }
   if (!row.canChange) return null;
   return (
     <div className="flex justify-end gap-2">

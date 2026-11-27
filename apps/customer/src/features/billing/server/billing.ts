@@ -1,6 +1,7 @@
 import "server-only";
-import { findActivePlan, findCurrentPaymentMethod, findDealForBusiness, withTenantScope, type PaymentLink, type BillingInterval, type CurrentPaymentMethod, type Plan } from "@brandbasket/db";
-import type { MonthlyAddOnId } from "@brandbasket/shared/lib/billing/add-ons";
+import { findActivePlan, findCurrentPaymentMethod, findDealForBusiness, listPriceOverridesForBusiness, withTenantScope, type PaymentLink, type BillingInterval, type CurrentPaymentMethod, type Plan } from "@brandbasket/db";
+import { MONTHLY_ADD_ON_IDS, type MonthlyAddOnId } from "@brandbasket/shared/lib/billing/add-ons";
+import { priceOverridesFor, type PriceOverrides } from "@brandbasket/shared/lib/billing/packages";
 import { bundleLines, bundleNetCents, readBundleSelection, type BundleLine } from "@brandbasket/shared/lib/billing/bundle";
 import { loadCarriedCode, loadReactivationBasket } from "@brandbasket/shared/server/reactivation-basket";
 import { getAppDb, getStaffDb } from "@/lib/db";
@@ -49,6 +50,8 @@ export interface ReactivationView {
   readonly discountCents: number;
   /** How often it is charged once it restarts: a yearly plan that lapsed comes back yearly, and `netCents` is then a year's. */
   readonly billingInterval: BillingInterval;
+  /** Plan 66: the agreed prices staff set on a deal, for this billing period and every service (a picker shows them too). Empty when none. */
+  readonly agreed: PriceOverrides;
 }
 
 /**
@@ -64,11 +67,14 @@ export async function findReactivation(customer: Customer, requested: readonly s
   const chosen = basket.cancelled ? readBundleSelection(requested) : [];
   const priced = chosen.length === 0 ? basket : { ...basket, services: chosen };
   const { currency } = billing.plan;
-  const lines = bundleLines(priced.services, currency, priced.forfeited, priced.billingInterval);
+  // An agreed price (plan 66) for the same service and period replaces the catalogue's, as the checkout this opens will price it.
+  const stored = await listPriceOverridesForBusiness(getStaffDb(), tenant.businessId);
+  const agreed = priceOverridesFor(stored, basket.billingInterval, MONTHLY_ADD_ON_IDS);
+  const lines = bundleLines(priced.services, currency, priced.forfeited, priced.billingInterval, "b2b", priceOverridesFor(stored, priced.billingInterval, priced.services));
   const netCents = bundleNetCents(lines);
   const carried = await loadCarriedCode(getStaffDb(), tenant.businessId, basket);
   const discountCents = carried === null ? 0 : (discountFrom(carried.code, { currency, netCents })?.amountCents ?? 0);
-  return { cancelled: basket.cancelled, services: priced.services, lines, netCents, discountCents, billingInterval: basket.billingInterval };
+  return { cancelled: basket.cancelled, services: priced.services, lines, netCents, discountCents, billingInterval: basket.billingInterval, agreed };
 }
 
 /**
