@@ -34,6 +34,24 @@ describe("renewalState", () => {
   });
 });
 
+describe("renewalState for a deal (plan 66)", () => {
+  const deal = (state: "building" | "balance_due"): ClientBilling => ({
+    subscription: null,
+    firstPayment: null,
+    deal: { linkId: "l", state, currency: "INR", advanceCents: 2_000_000, advancePaidAt: day(5), balanceCents: 4_000_000 },
+  });
+
+  it("lists a balance due, and never a deal that is only being built", () => {
+    expect(renewalState(client("a", deal("balance_due")), NOW)).toBe("balance_due");
+    expect(renewalState(client("b", deal("building")), NOW)).toBeNull();
+  });
+
+  it("puts a balance due in the renewals lane and counts it as needing a look", () => {
+    expect(renewalLane([client("a", deal("balance_due"))], NOW)).toMatchObject([{ businessId: "a", state: "balance_due", paidThroughAt: null, daysOverdue: null }]);
+    expect(renewalLane([client("b", deal("building"))], NOW)).toEqual([]);
+  });
+});
+
 describe("renewalLane", () => {
   const clients = [
     client("a", { subscription: sub("past_due", day(3)), firstPayment: first }),

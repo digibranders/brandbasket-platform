@@ -41,6 +41,8 @@ export interface EventDataMap {
   "billing.plan_lapsed": NoData;
   "billing.refund": NoData;
   "billing.unapplied_payment": NoData;
+  /** Plan 66: staff marked a paid deal's website ready, so its balance is due. */
+  "billing.balance_due": NoData;
   "billing.payment_needs_look.staff": NoData;
   "website.started": NoData;
   "website.preview_ready": NoData;
@@ -131,6 +133,7 @@ const DEFINITIONS: readonly EventDefinition[] = [
   customer("billing.plan_lapsed", null, ["email", "bell"], { alwaysSent: "plan" }),
   customer("billing.refund", null, ["bell"], { alwaysSent: "payments" }),
   customer("billing.unapplied_payment", null, ["email", "bell"], { alwaysSent: "payments" }),
+  customer("billing.balance_due", null, ["bell"], { alwaysSent: "payments" }),
   staff("billing.payment_needs_look.staff", ["today", "push"]),
   // C. Website
   customer("website.started", null, ["bell", "email"], { alwaysSent: "website" }),

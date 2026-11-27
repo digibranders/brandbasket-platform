@@ -1,5 +1,6 @@
 import {
   findBusinessWebsiteUrl,
+  findPaidDealForBusiness,
   findLatestKickoffOutcome,
   findLatestProjectEventAt,
   findOpenProjectForStaff,
@@ -12,6 +13,7 @@ import type { Metadata } from "next";
 import type { ReactElement } from "react";
 import { DOMAIN_CONNECT_NOTICES, readDomainConnectNotice } from "@brandbasket/shared/lib/domain-connect-notices";
 import { clientSiteBaseDomain, isTemporarySubdomain } from "@brandbasket/shared/lib/onboarding/domain-form";
+import { staffCan } from "@brandbasket/shared/lib/access";
 import { clientPaymentState } from "@brandbasket/shared/lib/billing/client-payment";
 import { PROJECT_LAUNCH_NOTICES, readProjectLaunchNotice } from "@brandbasket/shared/lib/project-launch-notices";
 import { PROJECT_PREVIEW_NOTICES, readProjectPreviewNotice } from "@brandbasket/shared/lib/project-preview-notices";
@@ -36,12 +38,13 @@ import { updatedPreviewDay, updatedPreviewLateReason } from "@/lib/delivery-tab"
 import { readProjectMoveNotice } from "@/lib/project-move-notices";
 import { readWebsiteMoveNotice } from "@/lib/website-form";
 import { silentDaysSince, websiteStage } from "@/lib/website-stage";
-import { clock, weekdayDate } from "@/lib/team-time";
+import { clock, shortDate, weekdayDate } from "@/lib/team-time";
 import { ProjectControls } from "@/components/project-controls";
 import { openClientTab } from "@/lib/server/client-page";
 import { isWebsiteBought } from "@/lib/server/bought-services";
 import { getStaffDb } from "@/lib/server/db";
-import { LAUNCH_RESEND_WINDOW_MS } from "@/lib/server/project-launch";
+import { LAUNCH_RESEND_WINDOW_MS, websiteServiceMissing } from "@/lib/server/project-launch";
+import { formatMoney } from "@brandbasket/shared/lib/money";
 import { CustomerLink, DNS_STATUS_TEXT, Facts, MoveDomainPanel, ResendLaunchEmailForm, When } from "../parts";
 import { SiteDetails } from "./site-details";
 
@@ -49,6 +52,9 @@ import { SiteDetails } from "./site-details";
 const SITE_DETAIL_NOTICES = ["website", "hosting", "features", "listing", "tags", "google"] as const;
 
 export const metadata: Metadata = { title: "Client website" };
+
+/** Why Mark live is not offered (plan 66). New copy for the owner. */
+const GO_LIVE_BLOCKED = "The website can go live once the customer has paid (for a paid deal, the balance and the first period of their plan) and their plan is running.";
 
 export default async function ClientWebsitePage({
   params,
@@ -104,6 +110,23 @@ export default async function ClientWebsitePage({
     project === null || nextStep !== "live"
       ? []
       : await listLaunchChecks(getStaffDb(), { projectId: project.id, businessId: client.businessId });
+  // Plan 66: a paid deal's balance. Mark live is not offered until the business holds a running website service (it is refused anyway).
+  const canChange = staffCan(granted.staff.role, "money");
+  const deal = client.billing.deal ?? null;
+  const paidDeal = deal === null ? await findPaidDealForBusiness(getStaffDb(), client.businessId) : null;
+  const dealCard =
+    deal !== null
+      ? { state: deal.state, balance: formatMoney(deal.balanceCents, deal.currency), approved: project?.status === "approved", canChange }
+      : paidDeal?.advanceCents == null || paidDeal.setupFeeListCents === null || paidDeal.paidAt === null
+        ? null
+        : {
+            state: "paid" as const,
+            balance: formatMoney(paidDeal.setupFeeListCents - (paidDeal.setupFeeDiscountCents ?? 0) - paidDeal.advanceCents, paidDeal.currency),
+            approved: project?.status === "approved",
+            canChange,
+            paidOn: shortDate(paidDeal.paidAt),
+          };
+  const launchBlocked = project !== null && nextStep === "live" && (await websiteServiceMissing(getStaffDb(), client.businessId, now));
   const billingAttention = billingNeedsAttention(clientPaymentState(client.billing, now), client.billing);
   const openBuild = project === null ? null : await findOpenProjectForStaff(getStaffDb(), client.businessId);
   const baseDomain = clientSiteBaseDomain();
@@ -200,11 +223,13 @@ export default async function ClientWebsitePage({
             latestFeedback={latestFeedback}
             kickoff={kickoffSlot}
             silentDays={stage === "review_silent" ? silentDays : null}
+            deal={dealCard}
             goLive={{
               doneChecks: launchChecks.map((check) => check.key),
               domain: client.domain,
               previewUrl: project.previewUrl,
               addressUnverified: launchNotice === "address-unverified",
+              blockedReason: launchBlocked ? GO_LIVE_BLOCKED : null,
             }}
           />
           <DeliveryFacts

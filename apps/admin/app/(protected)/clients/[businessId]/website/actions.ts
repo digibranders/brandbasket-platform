@@ -12,10 +12,13 @@ import {
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
+import { projectLaunchNoticeHref, type ProjectLaunchNotice } from "@brandbasket/shared/lib/project-launch-notices";
 import { projectMoveNoticeHref, type ProjectMoveNotice } from "@/lib/project-move-notices";
 import { recordStaffAction } from "@/lib/server/activity";
 import { getStaffDb } from "@/lib/server/db";
 import { requireStaffAccess } from "@/lib/server/staff-access";
+import { requireStaffCan } from "@/lib/server/staff-role";
+import { markWebsiteReady, undoWebsiteReady, type WebsiteReadyOutcome, type WebsiteReadyUndoOutcome } from "@/lib/server/website-ready";
 
 const idSchema = z.uuid();
 
@@ -89,4 +92,34 @@ export async function planLaunchAction(formData: FormData): Promise<void> {
   const moved = await attempt(businessId, () => setProjectLaunchPlannedOn(getStaffDb(), projectId, day));
   await recordStaffAction(staff, { businessId: moved.businessId, kind: "project.launch_planned", summary: day === null ? "Launch day cleared" : "Launch day set", data: { launchDay: day } });
   finish(moved.businessId, "launch-planned");
+}
+
+const READY_NOTICES: Readonly<Record<WebsiteReadyOutcome, ProjectLaunchNotice>> = {
+  ready: "ready-sent",
+  "no-deal": "ready-no-deal",
+  "not-approved": "ready-not-approved",
+  "not-building": "ready-not-building",
+};
+const UNDO_NOTICES: Readonly<Record<WebsiteReadyUndoOutcome, ProjectLaunchNotice>> = { undone: "ready-undone", "not-ready": "ready-not-undone" };
+
+function finishDeal(businessId: string, notice: ProjectLaunchNotice): never {
+  revalidatePath("/");
+  revalidatePath("/payment-links");
+  revalidatePath(`/clients/${businessId}`);
+  revalidatePath(`/clients/${businessId}/website`);
+  redirect(projectLaunchNoticeHref(businessId, notice));
+}
+
+/** Plan 66: the website of a paid deal is ready, so the customer is asked to pay the balance. Money work, so it needs the money capability. */
+export async function markWebsiteReadyAction(formData: FormData): Promise<void> {
+  const staff = await requireStaffCan("money");
+  const businessId = readId(formData.get("businessId"), "The business");
+  finishDeal(businessId, READY_NOTICES[await markWebsiteReady(getStaffDb(), { businessId, staff, now: new Date() })]);
+}
+
+/** Takes Website ready back while the balance is unpaid. */
+export async function undoWebsiteReadyAction(formData: FormData): Promise<void> {
+  const staff = await requireStaffCan("money");
+  const businessId = readId(formData.get("businessId"), "The business");
+  finishDeal(businessId, UNDO_NOTICES[await undoWebsiteReady(getStaffDb(), { businessId, staff })]);
 }

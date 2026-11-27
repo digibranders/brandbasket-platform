@@ -71,6 +71,7 @@ import { DomainReadyRecipientMissingError, markDomainReady, type DomainReadyOutc
 import { DomainSwitchRecipientMissingError, switchDomain } from "@/lib/server/domain-switch";
 import {
   ProjectLaunchAddressUnverifiedError,
+  BalanceUnpaidError,
   ProjectLaunchChecksMissingError,
   ProjectLaunchDomainMissingError,
   ProjectLaunchRecipientMissingError,
@@ -254,6 +255,7 @@ export async function markLiveAction(formData: FormData): Promise<void> {
     if (error instanceof ProjectNotApprovedError) redirect(projectLaunchNoticeHref(businessId, "not-approved"));
     if (error instanceof ProjectLaunchRecipientMissingError) redirect(projectLaunchNoticeHref(businessId, "no-owner"));
     if (error instanceof ProjectLaunchDomainMissingError) redirect(projectLaunchNoticeHref(businessId, "no-domain"));
+    if (error instanceof BalanceUnpaidError) redirect(projectLaunchNoticeHref(businessId, "balance-unpaid"));
     if (error instanceof ProjectLaunchChecksMissingError) redirect(projectLaunchNoticeHref(businessId, "checks-missing"));
     if (error instanceof ProjectLaunchAddressUnverifiedError) redirect(projectLaunchNoticeHref(businessId, "address-unverified"));
     throw error;

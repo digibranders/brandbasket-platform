@@ -29,6 +29,7 @@ import { getBillingProvider } from "./billing";
 import { moveProviderAfterDiscountEnds } from "@brandbasket/shared/server/basket-change";
 import { recordAddedServicePayment } from "@brandbasket/shared/server/added-service";
 import { cancelAtProvider } from "@brandbasket/shared/server/provider-cancellation";
+import { isDealCheckoutStale } from "@brandbasket/shared/server/deal-checkout";
 import { activateFirstPayment, activateReactivationPayment } from "@brandbasket/shared/server/billing-activation";
 import { describeError, logBillingEvent } from "@brandbasket/shared/server/billing-log";
 import { getAppDb, getStaffDb } from "./db";
@@ -195,6 +196,8 @@ async function applicability(
   const state = await findBillingState(tx, businessId);
   if (state !== null && hasBillingAccess(state.subscription, now)) return { kind: "unapplied", reason: "already_paid" };
   if (subscription.status !== "incomplete") return { kind: "unapplied", reason: "checkout_replaced" };
+  // Plan 66: payment 2 of a deal staff have taken back from "balance due" since this checkout opened is not honoured.
+  if (await isDealCheckoutStale(tx, subscription, now)) return { kind: "unapplied", reason: "checkout_replaced" };
   const plan = await findPlanById(tx, subscription.planId);
   if (plan === null || plan.currency !== confirmed.currency) return { kind: "unapplied", reason: "amount_mismatch" };
   const reactivating = state?.hasEverPaid === true;

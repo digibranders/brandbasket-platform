@@ -164,6 +164,20 @@ export async function insertOnboardingProject(
   return project;
 }
 
+/**
+ * Opens the onboarding project unless the business already has an open one. For a deal's advance paid by a business that was a website
+ * client before the link (plan 66): it has no project to build from, and openMembershipForListingBusiness only opens one on conversion.
+ * Staff connection, inside the payment's transaction, which holds the business's billing lock. Null when a project is already open.
+ */
+export async function insertOnboardingProjectIfNoneOpen(tx: ScopedTransaction, businessId: string, websiteKind: string | null): Promise<{ readonly id: string } | null> {
+  const open = await tx
+    .select({ id: projects.id })
+    .from(projects)
+    .where(and(eq(projects.businessId, businessId), notInArray(projects.status, [...CLOSED_STATUSES])))
+    .limit(1);
+  return open.length > 0 ? null : insertOnboardingProject(tx, businessId, websiteKind);
+}
+
 export interface ProjectPreviewSent {
   readonly businessId: string;
   readonly previewUrl: string;

@@ -4,6 +4,7 @@ import {
   activateBundledAddOns,
   businessHasHadService,
   findWaitingAddedServiceSuccessor,
+  listPriceOverridesForBusiness,
   lockBusinessForBilling,
   openAddedServiceSuccessor,
   findBundledAddOnsForSubscription,
@@ -241,7 +242,8 @@ export async function planCombinedAddOn(
   tx: Database | ScopedTransaction,
   input: { readonly businessId: string; readonly addOn: MonthlyAddOnId; readonly providerName: BillingProviderName; readonly now: Date },
 ): Promise<CombinedAddOnPlan> {
-  const assessment = await readAddOnAssessment(tx, { businessId: input.businessId, addOn: input.addOn, providerName: input.providerName, now: input.now });
+  const agreedPrices = await listPriceOverridesForBusiness(tx, input.businessId);
+  const assessment = await readAddOnAssessment(tx, { businessId: input.businessId, addOn: input.addOn, providerName: input.providerName, now: input.now, agreedPrices });
   if (assessment === null) return { kind: "refused", assessment: { kind: "blocked", reason: "unpaid" } };
   if (assessment.kind === "keep") return { kind: "not-combined" };
   if (assessment.kind !== "offer") return { kind: "refused", assessment };

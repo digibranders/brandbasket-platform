@@ -5,6 +5,7 @@ import {
   findLiveBundledAddOns,
   findReferralCodeById,
   isPackageOfferForfeited,
+  listPriceOverridesForBusiness,
   withTenantScope,
   type BillingProviderName,
   type BundledAddOn,
@@ -13,7 +14,7 @@ import {
 } from "@brandbasket/db";
 import { isMonthlyAddOnId, MONTHLY_ADD_ON_IDS, PAUSED_ADD_ON_IDS, servicesToList, type AddOnPrice, type MonthlyAddOnId } from "@brandbasket/shared/lib/billing/add-ons";
 import { bundledLinePrice } from "@brandbasket/shared/lib/billing/bundle";
-import { packageLineWith } from "@brandbasket/shared/lib/billing/packages";
+import { atAgreedPrice, packageLineWith, priceOverridesFor } from "@brandbasket/shared/lib/billing/packages";
 import { planCombinedAddOn, startCombinedAddOn } from "@brandbasket/shared/server/added-service";
 import { findKeptPlanStart, readAddOnAssessment, removeBundledAddOn, startAddOn, type AddOnAssessment } from "@brandbasket/shared/server/basket-change";
 import { getAppDb, getStaffDb } from "@/lib/db";
@@ -160,11 +161,13 @@ export async function loadAddOnsPage(customer: Customer, now: Date): Promise<Add
   // The customer's connection cannot read referral codes: the code on their own subscription is read as staff, for its terms.
   const codeId = customer.billing.subscription?.referralCodeId ?? null;
   const code = codeId === null ? null : await findReferralCodeById(getStaffDb(), codeId);
+  // Agreed prices are staff-only too: read as staff, so the quote shown is the price the add will be taken at.
+  const agreedPrices = await listPriceOverridesForBusiness(getStaffDb(), tenant.businessId);
   const { bundled, currency, assessments, forfeited, keptStartsOn } = await withTenantScope(getAppDb(), tenant, async (tx) => {
     const forfeited = await isPackageOfferForfeited(tx, tenant.businessId);
     const assessed = new Map<MonthlyAddOnId, AddOnAssessment | null>();
     for (const addOn of MONTHLY_ADD_ON_IDS) {
-      assessed.set(addOn, await readAddOnAssessment(tx, { businessId: tenant.businessId, addOn, providerName, now, forfeited, code }));
+      assessed.set(addOn, await readAddOnAssessment(tx, { businessId: tenant.businessId, addOn, providerName, now, forfeited, code, agreedPrices }));
     }
     return {
       bundled: await findLiveBundledAddOns(tx, tenant.businessId),
@@ -186,7 +189,10 @@ export async function loadAddOnsPage(customer: Customer, now: Date): Promise<Add
     const included = bundled.find((row) => row.addOn === addOn && row.status === "active");
     // What it costs once added: the package price the basket would earn, which is list for a service on its own.
     if (included === undefined) {
-      const price = packageLineWith(listedLines, forfeited, addOn, currency, customer.billing.subscription?.billingInterval ?? "month");
+      const interval = customer.billing.subscription?.billingInterval ?? "month";
+      const listPrice = packageLineWith(listedLines, forfeited, addOn, currency, interval);
+      const agreed = priceOverridesFor(agreedPrices, interval, [addOn])[addOn];
+      const price = agreed === undefined ? listPrice : atAgreedPrice(listPrice, agreed);
       const offer = offerOf(assessment, nextBillingOn);
       return { kind: "available", addOn, price, offer: offer.kind === "quote" ? await combinedOfferOf(tenant.businessId, addOn, providerName, offer, nextBillingOn, now) : offer };
     }

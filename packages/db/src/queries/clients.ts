@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, inArray, isNull, notInArray, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, isNotNull, isNull, notInArray, or, sql } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import type { Database } from "../client";
 import {
@@ -10,6 +10,7 @@ import {
   domains,
   mediaAssets,
   onboardingProgress,
+  paymentLinks,
   payments,
   plans,
   projectBriefs,
@@ -93,6 +94,17 @@ export interface ClientFirstPayment {
   readonly manual: ClientManualPayment | null;
 }
 
+/** A paid deal whose advance is paid and whose plans are not (plan 66): the site is being built, or its balance is due. */
+export interface ClientDeal {
+  readonly linkId: string;
+  readonly state: "building" | "balance_due";
+  readonly currency: BillingCurrency;
+  readonly advanceCents: number;
+  readonly advancePaidAt: Date | null;
+  /** What is left of the build: the finalised price less the discount less the advance. */
+  readonly balanceCents: number;
+}
+
 export interface ClientBilling {
   /**
    * The newest subscription, whatever its status: one cancelled inside its paid period still grants access. Whether
@@ -101,6 +113,8 @@ export interface ClientBilling {
   readonly subscription: ClientSubscription | null;
   /** The first payment that bought something. A payment that could not be applied is not one. */
   readonly firstPayment: ClientFirstPayment | null;
+  /** Plan 66: the deal being built, or null (absent reads as null). Not a payment for the plan, so `firstPayment` stays null for it. */
+  readonly deal?: ClientDeal | null;
 }
 
 export interface ClientSummary {
@@ -166,7 +180,7 @@ async function latestProjectByBusiness(
 async function billingByBusiness(db: Database, businessIds: readonly string[]): Promise<Map<string, ClientBilling>> {
   if (businessIds.length === 0) return new Map();
   const ids = [...businessIds];
-  const [subscriptionRows, paymentRows] = await Promise.all([
+  const [subscriptionRows, paymentRows, dealRows] = await Promise.all([
     db
       .select({
         businessId: subscriptions.businessId,
@@ -206,10 +220,40 @@ async function billingByBusiness(db: Database, businessIds: readonly string[]): 
         ),
       )
       .orderBy(asc(payments.paidAt), asc(payments.id)),
+    // The deals being built: advance paid, not paid in full, not cancelled (the same condition as findDealForBusiness), newest first.
+    db
+      .select({
+        linkId: paymentLinks.id,
+        businessId: paymentLinks.businessId,
+        currency: paymentLinks.currency,
+        advanceCents: paymentLinks.advanceCents,
+        listCents: paymentLinks.setupFeeListCents,
+        discountCents: paymentLinks.setupFeeDiscountCents,
+        advancePaidAt: paymentLinks.advancePaidAt,
+        readyAt: paymentLinks.readyAt,
+      })
+      .from(paymentLinks)
+      .where(and(inArray(paymentLinks.businessId, ids), isNotNull(paymentLinks.advancePaidAt), isNull(paymentLinks.paidAt), isNull(paymentLinks.revokedAt)))
+      .orderBy(desc(paymentLinks.createdAt), desc(paymentLinks.id)),
   ]);
 
   const billing = new Map<string, ClientBilling>();
-  for (const id of ids) billing.set(id, { subscription: null, firstPayment: null });
+  for (const id of ids) billing.set(id, { subscription: null, firstPayment: null, deal: null });
+  for (const row of dealRows) {
+    const current = row.businessId === null ? undefined : billing.get(row.businessId);
+    if (row.businessId === null || current === undefined || current.deal != null || row.advanceCents === null || row.listCents === null) continue;
+    billing.set(row.businessId, {
+      ...current,
+      deal: {
+        linkId: row.linkId,
+        state: row.readyAt === null ? "building" : "balance_due",
+        currency: row.currency,
+        advanceCents: row.advanceCents,
+        advancePaidAt: row.advancePaidAt,
+        balanceCents: Math.max(0, row.listCents - (row.discountCents ?? 0) - row.advanceCents),
+      },
+    });
+  }
   for (const { businessId, ...subscription } of subscriptionRows) {
     const current = billing.get(businessId);
     if (current !== undefined && current.subscription === null) billing.set(businessId, { ...current, subscription });
@@ -260,10 +304,13 @@ async function tiersByBusiness(db: Database, businessIds: readonly string[]): Pr
 const NO_BILLING: ClientBilling = { subscription: null, firstPayment: null };
 
 /** Which businesses the staff client list holds (contract C3b). A business is listed when it is in any included group. */
-export type ClientListInclude = "paying" | "not_paid" | "leaving";
+export type ClientListInclude = "paying" | "deal" | "not_paid" | "leaving";
 
-/** Today's list: businesses whose first plan payment was captured. */
-const DEFAULT_CLIENT_INCLUDE: readonly ClientListInclude[] = ["paying"];
+/**
+ * Today's list: businesses whose first plan payment was captured, and those whose deal's advance was (plan 66: "deal", being built or
+ * their balance due, with no plan payment yet). A deal client is a client: its project needs the team's work and its balance their eye.
+ */
+const DEFAULT_CLIENT_INCLUDE: readonly ClientListInclude[] = ["paying", "deal"];
 
 /** Businesses with an open closure: asked to delete, not restored, not erased yet. */
 async function leavingBusinessIds(db: Database): Promise<ReadonlySet<string>> {
@@ -302,8 +349,9 @@ export async function listClients(db: Database, options?: { readonly include?: r
   );
   const leaving = include.has("leaving") ? await leavingBusinessIds(db) : new Set<string>();
   const rows = registered.filter((row) => {
-    const paid = allBilling.get(row.businessId)?.firstPayment != null;
-    return include.has(paid ? "paying" : "not_paid") || leaving.has(row.businessId);
+    const billing = allBilling.get(row.businessId);
+    const group: ClientListInclude = billing?.firstPayment != null ? "paying" : billing?.deal != null ? "deal" : "not_paid";
+    return include.has(group) || leaving.has(row.businessId);
   });
 
   const ids = rows.map((row) => row.businessId);

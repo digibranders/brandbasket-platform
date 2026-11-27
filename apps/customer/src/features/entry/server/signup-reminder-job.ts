@@ -71,7 +71,8 @@ export async function processSignupReminders(
     if (!isPaid && lead.businessId !== null) {
       try {
         const billingState = await findBillingState(db, lead.businessId);
-        if (billingState !== null && billingState.hasEverPaid) {
+        // A deal whose advance is paid (plan 66: building, or its balance due) has paid and is being built for: no reminder to pay.
+        if (billingState !== null && (billingState.hasEverPaid || billingState.dealState !== null)) {
           isPaid = true;
           await markLeadPaidForBusiness(db, lead.businessId);
         }

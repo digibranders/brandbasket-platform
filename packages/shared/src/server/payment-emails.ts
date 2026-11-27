@@ -17,7 +17,7 @@ import {
   type Payment,
   type TaxInvoice,
 } from "@brandbasket/db";
-import { emailDate, emailOutcome, firstChargeReminderEmail, paymentFailedEmail, paymentReceivedEmail, paymentRefundedEmail, type EmailAttachment, type EmailMessage, type EmailSendOutcome, type PaymentFailedPlan } from "@brandbasket/email";
+import { balanceDueEmail, emailDate, emailOutcome, firstChargeReminderEmail, paymentFailedEmail, paymentReceivedEmail, paymentRefundedEmail, type EmailAttachment, type EmailMessage, type EmailSendOutcome, type PaymentFailedPlan } from "@brandbasket/email";
 import { nextBundledNetCents, nextDiscountCents } from "../lib/billing/bundle";
 import { nextPaymentDate } from "../lib/billing/period";
 import { paymentsContinue } from "../lib/billing/payments-continue";
@@ -294,6 +294,50 @@ export async function sendFirstChargeReminder(
       businessId: input.businessId,
       error: error instanceof Error ? error.name : "error",
     });
+  }
+}
+
+export interface BalanceDueNotice {
+  readonly businessId: string;
+  /** The deal's link and the moment staff marked it ready: the bell is announced once per ready. */
+  readonly linkId: string;
+  readonly readyAt: Date;
+  readonly currency: BillingCurrency;
+  /** What is left of the website build after the advance. */
+  readonly balanceCents: number;
+  /** The three-day reminder rather than the first notice: it adds no bell and sends only if none went in the last three days. */
+  readonly reminder: boolean;
+}
+
+/** A reminder goes out when the last balance-due email to the owner is older than this. */
+export const BALANCE_REMINDER_DAYS = 3;
+const BALANCE_DUE_TEMPLATE = "balance-due";
+const CHECKOUT_PATH = "/checkout";
+const DAY_MS = 86_400_000;
+
+/**
+ * Plan 66: tells the owner of a paid deal that the website is ready and the balance is due: the bell (once per ready) and the
+ * `balance-due` email. Called when staff press Website ready, and by the billing sweep every three days while the balance is unpaid.
+ * A reminder is deduplicated against the outbox, like the first-charge reminder: none goes if a balance-due email to this owner is less
+ * than three days old. The first notice is not (staff pressing Website ready again after an undo must reach the customer). Best-effort: it never throws.
+ */
+export async function sendBalanceDue(db: Database, deps: PaymentEmailDeps, input: BalanceDueNotice, now: Date = new Date()): Promise<void> {
+  try {
+    if (!input.reminder) {
+      await notifyEvent(db, { event: "billing.balance_due", audience: { kind: "customer", businessId: input.businessId }, dedupeKey: `${input.linkId}:${input.readyAt.toISOString()}`, data: {} });
+    }
+    const details = await findBusinessAlertDetails(db, input.businessId);
+    const to = details === null ? null : recipientOf(details.owner);
+    if (details === null || to === null) return;
+    const checkoutUrl = new URL(CHECKOUT_PATH, deps.dashboardOrigin).toString();
+    // Only a reminder waits for three quiet days: the first notice of each Website ready (an undo and a new ready included) always goes.
+    if (input.reminder) {
+      const recent = await hasEmailContaining(db, { template: BALANCE_DUE_TEMPLATE, toAddress: to, text: checkoutUrl, since: new Date(now.getTime() - BALANCE_REMINDER_DAYS * DAY_MS) });
+      if (recent) return;
+    }
+    await deps.send(balanceDueEmail({ to, name: details.owner.name, businessName: details.business.name, currency: input.currency, balanceCents: input.balanceCents, checkoutUrl, reminder: input.reminder }));
+  } catch (error) {
+    console.error("[payment-email] A balance-due email could not be sent.", { businessId: input.businessId, error: error instanceof Error ? error.name : "error" });
   }
 }
 

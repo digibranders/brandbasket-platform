@@ -17,3 +17,15 @@ export async function lookUpPaymentLink(token: unknown, now: Date): Promise<Link
   if (link === null || paymentLinkState(link, now) !== "open") return { kind: "gone" };
   return { kind: "open", link };
 }
+
+/**
+ * The link behind a token whose deal is being built (advance paid) or has its balance due (plan 66), or null for any other state. Not
+ * payable from the address: the page only uses it to send the signed-in owner of the business it is bound to Home.
+ */
+export async function lookUpDealLink(token: unknown, now: Date): Promise<PaymentLink | null> {
+  if (typeof token !== "string" || !looksLikeLinkToken(token)) return null;
+  const link = await findPaymentLinkByTokenHash(getStaffDb(), hashLinkToken(token));
+  if (link === null) return null;
+  const state = paymentLinkState(link, now);
+  return state === "building" || state === "balance_due" ? link : null;
+}

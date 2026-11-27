@@ -23,6 +23,7 @@ import { signupReminderEmail } from "./signup-reminder";
 import { supportReplyAlertEmail } from "./support-reply-alert";
 import { supportTicketAlertEmail } from "./support-ticket-alert";
 import { systemErrorAlertEmail } from "./system-error-alert";
+import { balanceDueEmail } from "./balance-due";
 import { websiteLiveEmail } from "./website-live";
 
 describe("leadReceivedEmail", () => {
@@ -931,5 +932,28 @@ describe("signupReminderEmail (D21)", () => {
         continueUrl: "javascript:alert(1)",
       }),
     ).toThrow();
+  });
+});
+
+describe("balanceDueEmail", () => {
+  const base = { to: "owner@example.com", name: "Asha Rao", businessName: "Riverside Plumbing", currency: "INR", balanceCents: 500_000, checkoutUrl: "https://app.brandbasket.in/checkout" } as const;
+
+  it("names the balance and links the checkout in both bodies, with no dashes", () => {
+    const email = balanceDueEmail(base);
+    expect(email.template).toBe("balance-due");
+    expect(email.subject).toBe("Your website is ready: pay the balance to go live");
+    expect(email.bodyText).toContain("₹5,000");
+    expect(email.bodyText).toContain("https://app.brandbasket.in/checkout");
+    expect(email.bodyHtml).toContain('href="https://app.brandbasket.in/checkout"');
+    expect(`${email.subject}${email.bodyText}`).not.toMatch(/[–—]/);
+  });
+
+  it("words the reminder and the no-balance case differently", () => {
+    expect(balanceDueEmail({ ...base, reminder: true }).subject).toBe("Reminder: pay the balance to put your website live");
+    expect(balanceDueEmail({ ...base, balanceCents: 0 }).bodyText).toContain("Your advance covered the whole website build");
+  });
+
+  it("refuses a checkout link that is not http or https", () => {
+    expect(() => balanceDueEmail({ ...base, checkoutUrl: "javascript:alert(1)" })).toThrow("checkoutUrl must use http or https");
   });
 });

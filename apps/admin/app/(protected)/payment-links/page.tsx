@@ -17,7 +17,7 @@ import { cancelPaymentLinkAction, extendPaymentLinkAction } from "./actions";
 
 export const metadata: Metadata = { title: "Payment links" };
 
-const STATE_TONES: Readonly<Record<PaymentLinkRow["state"], PillTone>> = { open: "wait", paid: "done", revoked: "todo", expired: "problem" };
+const STATE_TONES: Readonly<Record<PaymentLinkRow["state"], PillTone>> = { open: "wait", paid: "done", revoked: "todo", expired: "problem", building: "wait", balance_due: "wait" };
 
 /** What an action's redirect says happened, in one line. */
 const RESULTS: Readonly<Record<string, { readonly ok: boolean; readonly text: string }>> = {
@@ -33,6 +33,15 @@ function oneOf(value: string | string[] | undefined): string | undefined {
 }
 
 function RowActions({ row }: { readonly row: PaymentLinkRow }): ReactElement | null {
+  if (row.state === "building") {
+    return (
+      <div className="flex justify-end gap-2">
+        <Link href={`/payment-links/${row.id}/edit`} className={buttonSmall}>
+          Edit deal
+        </Link>
+      </div>
+    );
+  }
   if (!row.canChange) return null;
   return (
     <div className="flex justify-end gap-2">
@@ -102,7 +111,10 @@ export default async function PaymentLinksPage({ searchParams }: { readonly sear
                   </td>
                   <td className={TD}>
                     {row.services}
-                    <span className="block text-xs text-ink-2">{row.interval === "year" ? "Yearly" : "Monthly"}</span>
+                    <span className="block text-xs text-ink-2">
+                      {row.interval === "year" ? "Yearly" : "Monthly"}, {row.deal}
+                      {row.balance === null ? "" : `, balance ${row.balance} at go-live`}
+                    </span>
                   </td>
                   <td className={TD_NUM}>{row.payToday ?? "Not priced"}</td>
                   <td className={TD}>

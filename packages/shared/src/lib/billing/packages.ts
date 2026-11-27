@@ -1,4 +1,6 @@
 import type { BillingInterval } from "@brandbasket/db";
+// Subpath, not the package index: this module reaches client components.
+import { chargedAmountCents } from "@brandbasket/billing/tax";
 import type { MoneyCurrency } from "../money";
 import { type WebsiteKind } from "./website-kind";
 import { addOnById, addOnPrice, cyclePriceCents, MONITORING_ID, MONTHLY_ADD_ON_IDS, type AddOnPrice, type MonthlyAddOnId, type PlanAddOnId } from "./add-ons";
@@ -180,4 +182,51 @@ export function soldPackageBasisPoints(listCents: number, offerCents: number): n
  */
 export function packageOfferNote(basisPoints: number): string {
   return `Package offer, ${percentOf(basisPoints)}% off`;
+}
+
+/** A per-service price that replaces the catalogue's, in minor units for the billing period, GST included. */
+export type PriceOverrides = Partial<Record<MonthlyAddOnId, number>>;
+
+/**
+ * `packageLines` with a custom price applied per service (a staff deal): the override becomes the line's list price, with no
+ * discount. The one helper every re-pricing site calls, so a custom price is never lost. An override for a service not in the
+ * basket is an error, not ignored.
+ */
+export function priceLinesFor(input: PackageInput, currency: MoneyCurrency, interval: BillingInterval, kind: WebsiteKind, overrides: PriceOverrides): PackageLine[] {
+  const lines = packageLines(input, currency, interval, kind);
+  for (const [id, cents] of Object.entries(overrides)) {
+    if (cents === undefined) continue;
+    if (!lines.some((line) => line.addOn === id)) throw new RangeError(`A custom price was given for ${id}, which is not in the basket`);
+    if (!Number.isSafeInteger(cents) || cents <= 0) throw new RangeError(`A custom price for ${id} must be whole, positive minor units, received ${cents}`);
+  }
+  return lines.map((line) => {
+    const custom = overrides[line.addOn];
+    return custom === undefined ? line : atAgreedPrice(line, custom);
+  });
+}
+
+/** A line at an agreed price: it becomes the line's list price, with no package offer on it. */
+export function atAgreedPrice(line: PackageLine, cents: number): PackageLine {
+  return { ...line, listCents: cents, discountCents: 0, offerCents: 0, netCents: cents, chargedCents: chargedAmountCents(cents, 0) };
+}
+
+/** A stored agreed price (business_price_overrides): the fields the re-pricing sites read. */
+export interface StoredPriceOverride {
+  readonly addOn: string;
+  readonly billingInterval: string;
+  readonly netCents: number;
+}
+
+/**
+ * The agreed prices that apply to a basket priced for `interval`: one per service in the basket whose stored price is for the same
+ * billing period. A price for another period or for a service not in the basket is left out (priceLinesFor refuses a price for a
+ * service that is not in the basket, and a yearly agreement must not price a monthly checkout). Pass the result to priceLinesFor.
+ */
+export function priceOverridesFor(rows: readonly StoredPriceOverride[], interval: BillingInterval, services: readonly MonthlyAddOnId[]): PriceOverrides {
+  const overrides: Partial<Record<MonthlyAddOnId, number>> = {};
+  for (const row of rows) {
+    const addOn = MONTHLY_ADD_ON_IDS.find((id) => id === row.addOn);
+    if (addOn !== undefined && row.billingInterval === interval && services.includes(addOn)) overrides[addOn] = row.netCents;
+  }
+  return overrides;
 }

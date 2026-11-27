@@ -8,8 +8,10 @@ import type { BillingState, Plan, PlanTier, Subscription } from "@brandbasket/db
  *   Everything that writes is open.
  * - `lapsed`: paid once, but the period has run out or the provider gave up. Restarting is reactivation, on Billing
  *   (docs/superpowers/specs/2026-10-09-reactivation-design.md), never a new first payment.
+ * - `building` (plan 66): no subscription with access, but a deal's advance is paid and its plans are not (the site is being
+ *   built, or its balance is due). Computed here and nowhere else; `hasEverPaid` does not change for it.
  */
-export type CustomerBillingStatus = "unpaid" | "paid" | "lapsed";
+export type CustomerBillingStatus = "unpaid" | "paid" | "lapsed" | "building";
 
 export interface CustomerBilling {
   readonly status: CustomerBillingStatus;
@@ -43,13 +45,29 @@ export interface CustomerBilling {
    * unchanged until then, which is why nothing else in the app notices.
    */
   readonly renewalFailingUntil: Date | null;
+  /** Plan 66: `building` or `balance_due` while a deal's advance is paid and its plans are not, else null. Set exactly when `status` is `building`. */
+  readonly dealState: "building" | "balance_due" | null;
+  readonly dealLinkId: string | null;
 }
 
 export function summariseBilling(state: BillingState, now: Date): CustomerBilling {
-  const { subscription, plan, tier, upgradePaid, hasEverPaid, paymentUnderReview, addOns } = state;
+  const { subscription, plan, tier, upgradePaid, hasEverPaid, paymentUnderReview, addOns, dealState, dealLinkId } = state;
   const hasAccess = hasBillingAccess(subscription, now);
   const hasWebsite = hasWebsiteService(addOns, subscription, now);
-  const status: CustomerBillingStatus = hasAccess ? "paid" : hasEverPaid ? "lapsed" : "unpaid";
+  const building = !hasAccess && dealState !== null;
+  const status: CustomerBillingStatus = hasAccess ? "paid" : building ? "building" : hasEverPaid ? "lapsed" : "unpaid";
   const renewalFailingUntil = hasAccess && subscription?.status === "past_due" ? subscription.paidThroughAt : null;
-  return { status, hasAccess, hasWebsite, subscription, tier, upgradePaid, plan, paymentUnderReview, renewalFailingUntil };
+  return {
+    status,
+    hasAccess,
+    hasWebsite,
+    subscription,
+    tier,
+    upgradePaid,
+    plan,
+    paymentUnderReview,
+    renewalFailingUntil,
+    dealState: building ? dealState : null,
+    dealLinkId: building ? dealLinkId : null,
+  };
 }

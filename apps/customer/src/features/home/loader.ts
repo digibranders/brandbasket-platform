@@ -82,6 +82,8 @@ export interface HomeStateView {
   readonly live: LiveWebsite | null;
   /** Calls after the kickoff can be booked (paid, and the first look is over). */
   readonly callsOpen: boolean;
+  /** Plan 66: set while the advance is paid and the plans are not (building, or its balance due); Home then says so in one line. */
+  readonly dealState?: "building" | "balance_due" | null;
 }
 
 /** The facts behind Home's state, read together. Ported from apps/platform lib/server/home.ts loadHome's first half. */
@@ -91,10 +93,12 @@ export function loadHomeState(customer: CustomerContext, now: Date): Promise<Loa
     const { booking, project, live } = facts;
     const { billing, services } = customer;
     // Only a business with no booking can be showing a miss, so the outcome is read only then, and only for the website.
-    const missedKickoffAt = booking === null && services.includes("website") && billing.status === "paid" ? await readMissedKickoffAt(customer) : null;
+    const missedKickoffAt = booking === null && services.includes("website") && (billing.status === "paid" || billing.status === "building") ? await readMissedKickoffAt(customer) : null;
     const derived = deriveClientHomeState({
       now,
-      billing: { status: billing.status, paymentUnderReview: billing.paymentUnderReview },
+      // Plan 66: a business being built is a paid client on Home (its advance is paid): the same project stages, no payment task. It
+      // holds the Website alone (see servicesHeld), which is what puts it on the project's stages rather than the ongoing page.
+      billing: { status: billing.status === "building" ? "paid" : billing.status, paymentUnderReview: billing.paymentUnderReview },
       services,
       kickoff: booking === null ? null : { startsAt: booking.startsAt, endsAt: booking.endsAt, heldAt: booking.heldAt },
       missedKickoffAt,
@@ -128,6 +132,7 @@ export function loadHomeState(customer: CustomerContext, now: Date): Promise<Loa
             },
       live,
       callsOpen: callsOpenFor(customer, facts, now),
+      dealState: billing.dealState,
     };
   });
 }

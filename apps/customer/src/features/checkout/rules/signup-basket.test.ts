@@ -139,8 +139,84 @@ describe("the one-screen checkout's basket", () => {
     const [website, social, monitoring] = table.services;
     expect(cardBadge(website!, table, "month")).toBe("One-time build fee");
     expect(cardBadge(website!, buildSignupBasketTable("INR", "razorpay", { "managed-website": true }), "month")).toBeNull();
+    // The balance of a built website is not a build fee.
+    expect(cardBadge(website!, table, "month", true)).toBeNull();
     expect(cardBadge(social!, table, "month")).toBe("First month ₹1");
     expect(cardBadge(social!, table, "year")).toBeNull();
     expect(cardBadge(monitoring!, table, "month")).toBeNull();
+  });
+});
+
+describe("basketView for a paid deal (plan 66)", () => {
+  const table = buildSignupBasketTable("INR", "razorpay", NEVER_HAD);
+  const deal = { listCents: 6_500_000, discountCents: 500_000, note: "As agreed on call", advanceCents: 2_000_000 };
+
+  it("shows the agreed build price, the discount, the balance and the advance as the one amount to pay", () => {
+    const view = basketView(table, ["managed-website", "social-media"], "month", { kind: "ecommerce", deal });
+    expect(view.rows.map((row) => [row.label, row.amount])).toEqual([
+      ["Ecommerce store build", "₹65,000"],
+      ["As agreed on call", "-₹5,000"],
+      ["Balance at go-live", "₹40,000"],
+    ]);
+    expect(view).toMatchObject({ dueCents: 2_000_000, due: "₹20,000", dueLabel: "Advance to pay now" });
+    expect(payLabel(view)).toBe("Pay ₹20,000");
+    expect(view.gstLine).toBe("Includes ₹3,050.84 of GST at 18%");
+  });
+
+  it("says in two plain sentences that the advance is not refunded and what comes with the balance", () => {
+    const view = basketView(table, ["managed-website"], "year", { kind: "ecommerce", deal });
+    expect(view.advanceNote).toBe("The advance is non-refundable.");
+    expect(view.renewal).toBe("Maintenance and your other services are charged with the balance when your website is ready.");
+  });
+
+  it("leaves out the discount line when there is none, and shows no balance owed when the advance is the whole price", () => {
+    const view = basketView(table, ["managed-website"], "month", { deal: { listCents: 3_500_000, discountCents: 0, note: null, advanceCents: 3_500_000 } });
+    expect(view.rows.map((row) => [row.label, row.amount])).toEqual([
+      ["B2B website build", "₹35,000"],
+      ["Balance at go-live", "₹0"],
+    ]);
+  });
+
+  it("changes nothing for a free link or a self sign-up", () => {
+    for (const options of [{}, { deal: { discountCents: 0, note: null } }]) {
+      const view = basketView(table, ["managed-website"], "month", options);
+      expect(view).toMatchObject({ dueLabel: "Due today", advanceNote: null });
+    }
+  });
+});
+
+describe("basketView for a paid deal's balance (plan 66)", () => {
+  const table = buildSignupBasketTable("INR", "razorpay", NEVER_HAD);
+  const balance = { cents: 500_000, codeLabel: null, codeCents: 0, nextCharge: "Sun 27 Dec" };
+  const deal = { listCents: 1_000_000, discountCents: 0, note: null, advanceCents: 500_000, balance };
+
+  it("adds the balance to the website's first month: 5,000 and 2,999 make 7,999", () => {
+    const view = basketView(table, ["managed-website"], "month", { deal });
+    expect(view.rows.map((row) => [row.label, row.amount])).toEqual([
+      ["Balance for your website build", "₹5,000"],
+      ["Maintenance", "₹2,999"],
+    ]);
+    expect(view).toMatchObject({ dueCents: 799_900, dueLabel: "Total to pay now", advanceNote: null, renewal: "Your monthly plan starts today. Next charge on Sun 27 Dec." });
+  });
+
+  it("takes Social Media at its first-month price of 1: 8,000 in all", () => {
+    const view = basketView(table, ["managed-website", "social-media"], "month", { deal });
+    expect(view.dueCents).toBe(800_000);
+    expect(view.rows.at(-1)).toMatchObject({ label: "Social Media Management, first month", amount: "₹1" });
+  });
+
+  it("takes the year's price paid yearly, and says the plan is yearly", () => {
+    const view = basketView(table, ["managed-website", "social-media"], "year", { deal });
+    expect(view.dueCents).toBe(500_000 + table.website.kinds.b2b.yearlyCents + table.services[1]!.yearlyCents);
+    expect(view.renewal).toBe("Your yearly plan starts today. Next charge on Sun 27 Dec.");
+  });
+
+  it("shows no balance row when the advance paid the whole build, and takes a code off the total", () => {
+    const none = basketView(table, ["managed-website"], "month", { deal: { ...deal, balance: { ...balance, cents: 0 } } });
+    expect(none.rows.map((row) => row.key)).toEqual(["maintenance"]);
+    expect(none.dueCents).toBe(299_900);
+    const coded = basketView(table, ["managed-website"], "month", { deal: { ...deal, balance: { ...balance, codeLabel: "Code WELCOME", codeCents: 10_000 } } });
+    expect(coded.rows.at(-1)).toMatchObject({ label: "Code WELCOME", amount: "-₹100", tone: "save" });
+    expect(coded.dueCents).toBe(789_900);
   });
 });

@@ -15,6 +15,7 @@ import {
   flagPaymentForAttention,
   flagSubscriptionForAttention,
   keepBundledAddOn,
+  listPriceOverridesForBusiness,
   lockBusinessForBilling,
   markBundledAddOnsScheduled,
   nextBundledNetCents,
@@ -36,7 +37,7 @@ import {
 import { addOnBlock, quoteAddOn, type AddOnBlock, type AddOnQuote } from "../lib/billing/add-on-proration";
 import { addOnById, isMonthlyAddOnId, MONITORING_ID, monitoringIncludedWith, type MonthlyAddOnId } from "../lib/billing/add-ons";
 import { nextDiscountCents } from "../lib/billing/bundle";
-import { listTotalCents, packageBasisPointsFor, packageDiscountsFor, packageLineWith, type PackageLine, type PackageListLine } from "../lib/billing/packages";
+import { atAgreedPrice, listTotalCents, packageBasisPointsFor, packageDiscountsFor, packageLineWith, priceOverridesFor, type PackageLine, type PackageListLine, type StoredPriceOverride } from "../lib/billing/packages";
 import { billingPeriodProgress } from "../lib/billing/period";
 import { describeError, logBillingEvent } from "./billing-log";
 import { servicePeriod } from "./tax-invoicing";
@@ -242,6 +243,11 @@ export interface AddOnAssessmentInput {
   readonly code?: ReferralCode | null;
   /** When the kept plan the subscription is carried on by starts, if one is waiting (findKeptPlanStart); null or absent when none is. */
   readonly keptStartsOn?: Date | null;
+  /**
+   * Agreed prices staff set on a deal (business_price_overrides), read on the staff connection by the caller. The joining service is priced
+   * at its agreed price when one exists for the subscription's billing period, else at list. Absent means none.
+   */
+  readonly agreedPrices?: readonly StoredPriceOverride[];
   readonly providerName: BillingProvider["name"];
   readonly now: Date;
 }
@@ -283,7 +289,9 @@ export function assessAddOn(input: AddOnAssessmentInput): AddOnAssessment {
   // monitoring free: its line ends at the next billing date (endMonitoringOnceIncluded), so the renewal quoted leaves it out.
   const staying = allThree ? held.filter((row) => row.addOn !== MONITORING_ID) : held;
   // On a yearly subscription the new line is priced for the year and the quote prorates it over the year paid for.
-  const line = packageLineWith(listedOf(staying), input.forfeited, input.addOn, plan.currency, subscription.billingInterval);
+  const listLine = packageLineWith(listedOf(staying), input.forfeited, input.addOn, plan.currency, subscription.billingInterval);
+  const agreed = priceOverridesFor(input.agreedPrices ?? [], subscription.billingInterval, [input.addOn])[input.addOn];
+  const line = agreed === undefined ? listLine : atAgreedPrice(listLine, agreed);
   const basketNetCents = line.netCents + totalNetCents(repriced(staying, input.forfeited, { addOn: input.addOn, listCents: line.listCents }));
   const renewalNetCents = plan.recurringAmountCents + basketNetCents;
   const quote = quoteAddOn({
@@ -314,6 +322,8 @@ export async function readAddOnAssessment(
     readonly forfeited?: boolean;
     /** The subscription's code, when the caller has read it already: a customer's own connection cannot read referral codes. */
     readonly code?: ReferralCode | null;
+    /** Agreed prices for the business, when the caller is on the staff connection and has read them (a customer's own connection cannot). */
+    readonly agreedPrices?: readonly StoredPriceOverride[];
   },
 ): Promise<AddOnAssessment | null> {
   const state = await findBillingState(db, input.businessId);
@@ -326,7 +336,7 @@ export async function readAddOnAssessment(
   const codeId = state.subscription?.referralCodeId ?? null;
   const code = input.code !== undefined ? input.code : codeId === null ? null : await findReferralCodeById(db, codeId);
   const keptStartsOn = await findKeptPlanStart(db, state.subscription);
-  return assessAddOn({ state, live, addOn: input.addOn, forfeited, code, keptStartsOn, providerName: input.providerName, now: input.now });
+  return assessAddOn({ state, live, addOn: input.addOn, forfeited, code, keptStartsOn, ...(input.agreedPrices === undefined ? {} : { agreedPrices: input.agreedPrices }), providerName: input.providerName, now: input.now });
 }
 
 /** "Social Media and Ads, 05 Nov to 18 Nov 2026": what the charge and its invoice line say. */
@@ -472,7 +482,8 @@ export async function startAddOn(
   try {
     opened = await staffDb.transaction(async (tx) => {
       await lockBusinessForBilling(tx, input.businessId);
-      const assessment = await readAddOnAssessment(tx, { businessId: input.businessId, addOn: input.addOn, providerName: provider.name, now: input.now });
+      const agreedPrices = await listPriceOverridesForBusiness(tx, input.businessId);
+      const assessment = await readAddOnAssessment(tx, { businessId: input.businessId, addOn: input.addOn, providerName: provider.name, now: input.now, agreedPrices });
       if (assessment === null) return { kind: "refused", assessment: { kind: "blocked", reason: "unpaid" } } as const;
       if (assessment.kind === "keep") return { kind: "keep", row: assessment.row } as const;
       if (assessment.kind !== "offer") return { kind: "refused", assessment } as const;

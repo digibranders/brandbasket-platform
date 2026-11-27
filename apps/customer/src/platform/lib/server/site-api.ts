@@ -58,11 +58,12 @@ export async function findTenantBySiteToken(token: string): Promise<SiteApiTenan
  * it is on while the period the customer paid for runs, and off the moment the payment is given up on (or the period ends
  * with nothing renewed), so a website whose plan has ended stops being served at once. A business that never paid has none,
  * and neither has one without a Managed Website line (a Social-only or SEO-only client); a dropped website runs to the end of
- * the paid month.
+ * the paid month. One exception (plan 66): a business whose deal's advance is paid and whose plans are not (building, or its balance
+ * due) has its preview site served while it is built; that is no subscription, only the deal standing.
  */
 export async function siteHasAccess(businessId: string, now: Date = new Date()): Promise<boolean> {
   const state = await findBillingState(getStaffDb(), businessId);
-  return hasWebsiteService(state?.addOns ?? [], state?.subscription ?? null, now);
+  return hasWebsiteService(state?.addOns ?? [], state?.subscription ?? null, now) || Boolean(state?.dealState);
 }
 
 /** findTenantBySiteToken, but null as well when the business's website has ended: for the routes that answer a bad token the same way. */

@@ -469,3 +469,46 @@ describe("the code box", () => {
     expect(after).toEqual(before);
   });
 });
+
+describe("a paid deal link (plan 66)", () => {
+  const link = { interval: "month", discountCents: 500_000, note: "As agreed on call", listCents: 6_500_000, advanceCents: 2_000_000 } as const;
+
+  it("shows the build price, the discount, the balance and the advance as the one amount to pay, with the refund line", () => {
+    render(<SignupCheckoutScreen account="new" table={INDIA} initialServices={["managed-website", "social-media"]} initialKind="ecommerce" link={link} details={DETAILS} />);
+    expect(summary().getByText("Ecommerce store build")).toBeTruthy();
+    expect(summary().getByText("-₹5,000")).toBeTruthy();
+    expect(summary().getByText("Balance at go-live")).toBeTruthy();
+    expect(summary().getByText("Advance to pay now")).toBeTruthy();
+    expect(summary().getByText("The advance is non-refundable.")).toBeTruthy();
+    expect(summary().getByText(/charged with the balance when your website is ready/)).toBeTruthy();
+    expect(payButtons().map((button) => button.textContent)).toEqual(["Pay ₹20,000", "Pay ₹20,000"]);
+    expect(summary().queryByText(/referral|code/i)).toBeNull();
+  });
+});
+
+describe("a paid deal's balance screen (plan 66)", () => {
+  const balance = { cents: 500_000, codeLabel: null, codeCents: 0, nextCharge: "Sun 27 Dec" };
+  const link = { interval: "month", discountCents: 0, note: null, listCents: 1_000_000, advanceCents: 500_000, balance } as const;
+
+  it("shows the balance, the services' first period and the total to pay now, with when the plan starts and no code box or refund line", () => {
+    render(<SignupCheckoutScreen account="signed-in" table={buildSignupBasketTable("INR", "razorpay", { "social-media": false })} initialServices={["managed-website", "social-media"]} link={link} standalone={false} />);
+    expect(summary().getByText("Balance for your website build")).toBeTruthy();
+    expect(summary().getByText("₹5,000")).toBeTruthy();
+    expect(summary().getByText("Social Media Management, first month")).toBeTruthy();
+    expect(summary().getByText("Total to pay now")).toBeTruthy();
+    expect(summary().getByText("Your monthly plan starts today. Next charge on Sun 27 Dec.")).toBeTruthy();
+    expect(payButtons().map((button) => button.textContent)).toEqual(["Pay ₹8,000", "Pay ₹8,000"]);
+    expect(summary().queryByText(/non-refundable/)).toBeNull();
+    expect(summary().queryByText(/referral|code/i)).toBeNull();
+    expect(summary().queryByText("Advance to pay now")).toBeNull();
+  });
+
+  it("does not describe a sign-up: no 'choose the services' lead, no build-fee badge, no steps of a build; a plain lead for the balance", () => {
+    render(<SignupCheckoutScreen account="signed-in" table={buildSignupBasketTable("INR", "razorpay", { "social-media": false })} initialServices={["managed-website", "social-media"]} link={link} standalone={false} />);
+    expect(screen.getByText("Your website is ready. Review what you pay today.")).toBeTruthy();
+    expect(screen.queryByText(/Choose the services you want/)).toBeNull();
+    expect(screen.queryByText("One-time build fee")).toBeNull();
+    expect(screen.queryByText("What happens next")).toBeNull();
+    expect(screen.queryByText("Book your kickoff call")).toBeNull();
+  });
+});

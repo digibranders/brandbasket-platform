@@ -10,6 +10,7 @@ import {
   waiveCharge,
   type Charge,
   type ChargePaymentOutcome,
+  type OpenedMembership,
 } from "@brandbasket/db";
 import { chargeAmountCents, chargePricing } from "@brandbasket/shared/lib/billing/charges";
 import type { ChargeRequest } from "@brandbasket/shared/lib/billing/charge-form";
@@ -18,6 +19,7 @@ import { finishAddOnAfterPayment } from "@brandbasket/shared/server/basket-chang
 import { recordChargePaymentWithInvoice } from "@brandbasket/shared/server/charge-payments";
 import { basketDeps } from "./basket-deps";
 import { getStaffDb } from "./db";
+import { syncTenantForBusiness } from "./payload-tenant-sync";
 import { sendPaymentReceipt } from "./payment-emails";
 import { announcePaymentToTeams } from "./teams-admin";
 
@@ -79,11 +81,11 @@ export async function markClientChargePaid(
   },
   now: Date,
 ): Promise<MarkChargePaidOutcome> {
-  const { outcome, newPaymentId } = await getStaffDb().transaction(async (tx): Promise<{ outcome: MarkChargePaidOutcome; newPaymentId: string | null }> => {
+  const { outcome, newPaymentId, openedMembership } = await getStaffDb().transaction(async (tx): Promise<{ outcome: MarkChargePaidOutcome; newPaymentId: string | null; openedMembership: OpenedMembership | null }> => {
     await lockBusinessForBilling(tx, input.businessId);
     const charge = await findChargeForBusiness(tx, input.businessId, input.chargeId);
-    if (charge === null) return { outcome: "not-found", newPaymentId: null };
-    if (charge.status !== "open") return { outcome: "not-open", newPaymentId: null };
+    if (charge === null) return { outcome: "not-found", newPaymentId: null, openedMembership: null };
+    if (charge.status !== "open") return { outcome: "not-open", newPaymentId: null, openedMembership: null };
     const recorded = await recordChargePaymentWithInvoice(tx, {
       chargeId: charge.id,
       businessId: input.businessId,
@@ -99,11 +101,13 @@ export async function markClientChargePaid(
         receivedOn: input.details.receivedOn,
       },
     });
-    return { outcome: recorded.outcome, newPaymentId: recorded.alreadyRecorded ? null : recorded.payment.id };
+    return { outcome: recorded.outcome, newPaymentId: recorded.alreadyRecorded ? null : recorded.payment.id, openedMembership: recorded.openedMembership };
   });
   if (newPaymentId !== null) void announcePaymentToTeams(newPaymentId);
   // Only a charge that was paid is a receipt: a refused one is kept for staff and bought nothing.
   if (newPaymentId !== null && outcome === "paid") void sendPaymentReceipt(newPaymentId);
+  // A paid website advance made a free listing account a client: it gets the Payload tenant every client has, once this has committed.
+  if (openedMembership !== null) await syncTenantForBusiness({ businessId: input.businessId, name: openedMembership.businessName });
   // A paid add-on is on; the provider is told to bill it from the next renewal, with the payment's transaction committed.
   if (outcome === "paid") await finishAddOnAfterPayment(basketDeps(), { businessId: input.businessId, chargeId: input.chargeId, now });
   return outcome;

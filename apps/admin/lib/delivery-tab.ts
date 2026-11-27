@@ -16,6 +16,13 @@ export const NEXT_STEP_HEADLINES: Readonly<Record<ProjectStatus, string>> = {
   cancelled: "Nothing needed",
 };
 
+/** The next-step headline, which for an approved paid deal (plan 66) is about its balance until it is paid. New copy for the owner. */
+export function nextStepHeadline(status: ProjectStatus, dealState: "building" | "balance_due" | null): string {
+  if (status === "approved" && dealState === "building") return "Mark website ready for the balance";
+  if (status === "approved" && dealState === "balance_due") return "Waiting for the customer to pay the balance";
+  return NEXT_STEP_HEADLINES[status];
+}
+
 export const SEND_PREVIEW_LABEL = "Send preview";
 export const SEND_UPDATED_PREVIEW_LABEL = "Send updated preview";
 

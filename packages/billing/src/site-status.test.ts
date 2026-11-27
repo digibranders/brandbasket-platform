@@ -10,6 +10,12 @@ describe("deriveSiteStatus", () => {
     }
   });
 
+  it("is never 'offline' for a project that is not live, so a deal being built (no subscription yet, plan 66) is not reported lapsed", () => {
+    for (const projectStatus of ["onboarding", "submitted", "building", "preview", "revisions", "approved"] as const) {
+      expect(deriveSiteStatus({ projectStatus, hasWebsite: false })).toEqual({ kind: "not_launched" });
+    }
+  });
+
   it("is 'online' once live and the Managed Website service is held", () => {
     expect(deriveSiteStatus({ projectStatus: "live", hasWebsite: true })).toEqual({ kind: "online" });
   });

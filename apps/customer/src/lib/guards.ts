@@ -15,7 +15,7 @@ import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { cache } from "react";
 import { getAppDb, getStaffDb } from "./db";
-import { accessRedirect, GUARD_PATHS, requirementRedirect, servicesFrom, signInHref, type Requirement, type Service } from "./guard-rules";
+import { accessRedirect, GUARD_PATHS, requirementRedirect, servicesHeld, signInHref, type Requirement, type Service } from "./guard-rules";
 import { getSessionUser } from "./session";
 
 /*
@@ -90,14 +90,15 @@ const loadCustomerContext = cache(async (user: SessionUser, tenant: TenantContex
     setupServices: await listBoughtSetupServices(tx, tenant.businessId),
   }));
   if (state === null) throw new CustomerBusinessMissingError(tenant.businessId);
+  const billing = summariseBilling(state, new Date());
   return {
     user,
     tenant,
     businessId: tenant.businessId,
     businessName: tenant.businessName,
     role: tenant.role,
-    billing: summariseBilling(state, new Date()),
-    services: servicesFrom(state.addOns, setupServices),
+    billing,
+    services: servicesHeld(billing.status, state.addOns, setupServices),
     currency: state.currency,
   };
 });

@@ -10,7 +10,7 @@ import type { DetailsPrefill } from "@/features/checkout/components/details-fiel
 import { getEntryAccess } from "@/features/entry/server/entry-access";
 import { loadSignupCheckoutBasketFor } from "@/features/entry/server/signup-checkout-basket";
 import { LinkGone, LinkSignIn } from "@/features/paylink/components/link-notice";
-import { lookUpPaymentLink } from "@/features/paylink/server/link";
+import { lookUpDealLink, lookUpPaymentLink } from "@/features/paylink/server/link";
 
 export const metadata: Metadata = { title: "Payment link", robots: { index: false, follow: false } };
 
@@ -46,7 +46,15 @@ function prefillOf(link: Awaited<ReturnType<typeof lookUpPaymentLink>> & { kind:
 export default async function PayLinkPage({ params }: { readonly params: Promise<{ readonly token: string }> }) {
   const { token } = await params;
   const found = await lookUpPaymentLink(token, new Date());
-  if (found.kind === "gone") return <LinkGone />;
+  if (found.kind === "gone") {
+    // Plan 66: a deal being built has nothing left to pay from this address. Its owner goes Home; anyone else is told it no longer works.
+    const deal = await lookUpDealLink(token, new Date());
+    if (deal?.businessId != null) {
+      const access = await getEntryAccess();
+      if (access.kind === "granted" && access.tenant.businessId === deal.businessId) redirect("/");
+    }
+    return <LinkGone />;
+  }
   const { link } = found;
 
   if (link.businessId !== null) {
@@ -63,7 +71,13 @@ export default async function PayLinkPage({ params }: { readonly params: Promise
       table={loadSignupCheckoutBasketFor(link.currency)}
       initialServices={link.services}
       initialKind={link.websiteKind !== null && isWebsiteKind(link.websiteKind) ? link.websiteKind : "b2b"}
-      link={{ interval: link.billingInterval === "year" ? "year" : "month", discountCents: link.setupFeeDiscountCents ?? 0, note: link.setupFeeNote }}
+      link={{
+        interval: link.billingInterval === "year" ? "year" : "month",
+        discountCents: link.setupFeeDiscountCents ?? 0,
+        note: link.setupFeeNote,
+        // A paid deal (plan 66) is paid as an advance first: the screen shows the agreed build price and the advance.
+        ...(link.dealType === "paid" && link.setupFeeListCents !== null && link.advanceCents !== null ? { listCents: link.setupFeeListCents, advanceCents: link.advanceCents } : {}),
+      }}
       payLinkToken={token}
       details={{
         siteKey: turnstileSiteKey(),

@@ -39,6 +39,7 @@ vi.mock("@brandbasket/shared/server/billing-activation", () => ({
 vi.mock("@brandbasket/shared/server/add-on-activation", () => ({
   applyAddOnPayment: vi.fn(async () => ({ kind: "applied", paymentId: "pay_row_addon", cancelAtProvider: [] })),
 }));
+vi.mock("@brandbasket/shared/server/deal-checkout", () => ({ isDealCheckoutStale: vi.fn(async () => false) }));
 vi.mock("@brandbasket/shared/server/provider-cancellation", () => ({ cancelAtProvider: vi.fn(async () => undefined) }));
 vi.mock("@brandbasket/shared/server/added-service", () => ({ recordAddedServicePayment: vi.fn() }));
 vi.mock("@brandbasket/shared/server/basket-change", async (importOriginal) => ({
@@ -87,6 +88,7 @@ import {
 } from "@brandbasket/db";
 import { applyAddOnPayment } from "@brandbasket/shared/server/add-on-activation";
 import { moveProviderAfterDiscountEnds } from "@brandbasket/shared/server/basket-change";
+import { isDealCheckoutStale } from "@brandbasket/shared/server/deal-checkout";
 import { cancelAtProvider } from "@brandbasket/shared/server/provider-cancellation";
 import { activateFirstPayment, activateReactivationPayment, activateRenewalPayment } from "@brandbasket/shared/server/billing-activation";
 import { recordRazorpayChargePayment } from "./charges";
@@ -330,6 +332,30 @@ describe("handleRazorpayWebhookEvent", () => {
     expect(activateRenewalPayment).not.toHaveBeenCalled();
     expect(activateFirstPayment).not.toHaveBeenCalled();
     expect(activateReactivationPayment).not.toHaveBeenCalled();
+  });
+
+  it("keeps for staff a first charge on a deal's balance checkout that staff took back, cancels it at Razorpay and activates nothing (plan 66)", async () => {
+    vi.mocked(findSubscriptionByProviderId).mockResolvedValue({
+      id: "sub_deal",
+      businessId: "biz_1",
+      planId: "plan_1",
+      providerSubscriptionId: "sub_rzp_1",
+      status: "incomplete",
+      activatedAt: null,
+      continuesId: null,
+      paymentLinkId: "link-1",
+      setupFeeAdvanceCents: 2_000_000,
+      firstPaymentCents: null,
+      bundledAddOnNetCents: 0,
+    } as never);
+    vi.mocked(findPlanById).mockResolvedValue(PLAN as never);
+    vi.mocked(isDealCheckoutStale).mockResolvedValueOnce(true);
+
+    await handleRazorpayWebhookEvent(CHARGED);
+
+    expect(recordUnappliedPayment).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ subscriptionId: "sub_deal", kind: "initial", reason: "checkout_replaced" }));
+    expect(activateFirstPayment).not.toHaveBeenCalled();
+    expect(cancelAtProvider).toHaveBeenCalledWith(razorpay, expect.objectContaining({ subscriptionId: "sub_deal", providerSubscriptionId: "sub_rzp_1" }));
   });
 
   it("records a returning customer's first charge as a reactivation, through Razorpay's own cycle end", async () => {

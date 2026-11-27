@@ -26,7 +26,7 @@ import type { PillTone } from "@/components/console/status-pill";
 
 export const metadata: Metadata = { title: "Clients" };
 
-const ROW_STAGES: readonly ClientRowStage[] = ["not-paid", "setup", "building", "preview", "live", "paused", "leaving"];
+const ROW_STAGES: readonly ClientRowStage[] = ["not-paid", "advance-paid", "balance-due", "setup", "building", "preview", "live", "paused", "leaving"];
 
 function readStage(value: string | string[] | undefined): ClientRowStage | null {
   const raw = Array.isArray(value) ? value[0] : value;
@@ -74,7 +74,7 @@ export default async function ClientsPage({
   const search = rawSearch.toLowerCase();
   const db = getStaffDb();
   const [clients, closures, flagged, addOns, linkRequests] = await Promise.all([
-    listClients(db, { include: ["paying", "not_paid", "leaving"] }),
+    listClients(db, { include: ["paying", "deal", "not_paid", "leaving"] }),
     listOpenClosures(db),
     // Flagged payments are money: other roles do not see them, so the query is not run for them.
     staffCan(staff.role, "money") ? listPaymentsNeedingAttention(db, { limit: ATTENTION_READ_LIMIT }) : Promise.resolve([]),
@@ -94,6 +94,7 @@ export default async function ClientsPage({
     ...ROW_STAGES.map((option) => ({ id: option, label: CLIENT_ROW_STAGE_LABELS[option], count: found.filter((row) => row.stage === option).length })),
   ];
   const paying = clients.filter((client) => client.billing.firstPayment !== null).length;
+  const building = clients.filter((client) => client.billing.firstPayment === null && client.billing.deal != null).length;
 
   const rows: DirectoryRow[] = visible.map(({ client, stage: rowStage }) => {
     const needs = attention.get(client.businessId);
@@ -142,7 +143,7 @@ export default async function ClientsPage({
     <>
       <PageHeader
         title="Clients"
-        meta={`${paying} paying · ${clients.length - paying} signed up, not paid`}
+        meta={`${paying} paying${building === 0 ? "" : ` · ${building} advance paid`} · ${clients.length - paying - building} signed up, not paid`}
         action={
           <Link href="/clients/channel-requests" className="rounded-lg border border-ink-2/65 bg-surface px-3 py-1.5 text-sm font-semibold text-ink hover:bg-ink/5">
             Channel requests{linkRequests.length === 0 ? "" : ` (${linkRequests.length})`}

@@ -39,6 +39,7 @@ export { domainReadyEmail, type DomainReadyInput } from "./templates/domain-read
 export { notificationEmail, type NotificationEmailInput } from "./templates/notification";
 export { onboardingSentEmail, type OnboardingSentInput } from "./templates/onboarding-sent";
 export { assertMinorUnits, emailDate, emailMoney, type EmailCurrency } from "./format";
+export { balanceDueEmail, type BalanceDueInput } from "./templates/balance-due";
 export { firstChargeReminderEmail, type FirstChargeReminderInput } from "./templates/first-charge-reminder";
 export { paymentFailedEmail, type PaymentFailedInput, type PaymentFailedPlan } from "./templates/payment-failed";
 export { monthlyReportEmail, type MonthlyReportInput } from "./templates/monthly-report";

@@ -23,6 +23,7 @@ import { basketDeps } from "./add-ons";
 import { getBillingProvider } from "./billing";
 import type { GrantedCustomer } from "./customer-access";
 import { getAppDb, getStaffDb } from "./db";
+import { syncTenantForBusiness } from "./payload-tenant-sync";
 import { sendPaymentReceipt } from "./payment-emails";
 import { announcePaymentToTeams } from "./teams";
 
@@ -113,7 +114,7 @@ interface RecordInput {
 /** Records a verified charge payment under the business's billing lock, the lock every payment path takes. */
 async function recordVerifiedChargePayment({ confirmed, method, now }: RecordInput): Promise<ChargePaymentOutcome> {
   const provider = getBillingProvider();
-  const { outcome, newPaymentId } = await getStaffDb().transaction(async (tx) => {
+  const { outcome, newPaymentId, openedMembership } = await getStaffDb().transaction(async (tx) => {
     await lockBusinessForBilling(tx, confirmed.businessId);
     const recorded = await recordChargePaymentWithInvoice(tx, {
       chargeId: confirmed.chargeId,
@@ -143,12 +144,14 @@ async function recordVerifiedChargePayment({ confirmed, method, now }: RecordInp
                 : "charge-amount-mismatch",
       });
     }
-    return { outcome: recorded.outcome, newPaymentId: recorded.alreadyRecorded ? null : recorded.payment.id };
+    return { outcome: recorded.outcome, newPaymentId: recorded.alreadyRecorded ? null : recorded.payment.id, openedMembership: recorded.openedMembership };
   });
   // Teams is told once the payment has committed, for a payment recorded for the first time.
   if (newPaymentId !== null) void announcePaymentToTeams(newPaymentId);
   // Only a charge that was paid is a receipt: a refused one is kept for staff and bought nothing.
   if (newPaymentId !== null && outcome === "paid") void sendPaymentReceipt(newPaymentId);
+  // A paid website advance made a free listing account a client: it gets the Payload tenant every client has, once this has committed.
+  if (openedMembership !== null) await syncTenantForBusiness({ businessId: confirmed.businessId, name: openedMembership.businessName });
   // A paid add-on is on; the provider is told to bill it from the next renewal, with the payment's transaction committed.
   if (outcome === "paid") await finishAddOnAfterPayment(basketDeps(), { businessId: confirmed.businessId, chargeId: confirmed.chargeId, now });
   return outcome;

@@ -59,7 +59,7 @@ export function OrderPanel({ view, payLabel, pending, agreed, onAgreedChange, ag
           )}
         </ul>
         <div className="mt-1 flex items-baseline justify-between gap-4 border-t border-border pt-3">
-          <span className="type-sub font-semibold text-ink">Due today</span>
+          <span className="type-sub font-semibold text-ink">{view.dueLabel}</span>
           <span className="type-metric tabular-nums text-ink">{view.due}</span>
         </div>
         {view.gstLine === null ? null : <p className="mt-1 text-right font-sans text-xs text-ink-3">{view.gstLine}</p>}
@@ -94,6 +94,7 @@ export function OrderPanel({ view, payLabel, pending, agreed, onAgreedChange, ag
       {failure === null ? null : <Banner tone="neg">{failure}</Banner>}
       {children}
       <PayButton label={payLabel} disabled={view.services.length === 0} pending={pending} className="max-lg:hidden w-full" />
+      {view.advanceNote === null ? null : <p className="type-meta">{view.advanceNote}</p>}
       {view.renewal === null ? null : <p className="type-meta">{view.renewal}</p>}
       {footer}
     </article>

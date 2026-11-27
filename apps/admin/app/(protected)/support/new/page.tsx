@@ -21,7 +21,7 @@ export default async function NewRequestPage({ searchParams }: NewRequestPagePro
   const { businessId } = await searchParams;
   const preselected = z.uuid().safeParse(businessId);
   // Paying and not yet paid businesses (contract C3b): staff open requests for anyone they are talking to.
-  const clients = await listClients(getStaffDb(), { include: ["paying", "not_paid"] });
+  const clients = await listClients(getStaffDb(), { include: ["paying", "deal", "not_paid"] });
   return (
     <>
       <PageHeader

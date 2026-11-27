@@ -12,25 +12,40 @@ const LINK = {
   services: ["managed-website", "social-media"],
   billingInterval: "month",
   websiteKind: "ecommerce",
+  dealType: "paid",
+  setupFeeListCents: 6_500_000,
   setupFeeDiscountCents: 1_500_000,
+  advanceCents: 2_000_000,
+  websitePriceCents: null,
+  socialPriceCents: null,
+  adsPriceCents: null,
+  monitoringPriceCents: null,
   expiresAt: new Date("2026-12-04T10:00:00.000Z"),
   createdAt: NOW,
   createdByStaffId: "s1",
   paidAt: null,
   revokedAt: null,
+  advancePaidAt: null,
+  readyAt: null,
 } as unknown as PaymentLink;
 const context = { now: NOW, provider: "razorpay", coupon: null, createdBy: "Gaurav" } as const;
 
 describe("toPaymentLinkRow", () => {
-  it("names the customer, the services with the kind, and what is paid today", () => {
+  it("names the customer, the services with the kind, the advance paid today and the balance", () => {
     expect(toPaymentLinkRow(LINK, context)).toMatchObject({
       customer: "Rao Dental",
       services: "Website Management (Ecommerce store), Social Media Management",
-      payToday: "₹50,001",
+      deal: "paid deal",
+      payToday: "₹20,000",
+      balance: "₹30,000",
       state: "open",
       createdBy: "Gaurav",
       canChange: true,
     });
+  });
+  it("prices a free deal at its custom price, with no balance", () => {
+    const free = { ...LINK, dealType: "free", setupFeeListCents: null, setupFeeDiscountCents: null, advanceCents: null, websitePriceCents: 199_900 } as unknown as PaymentLink;
+    expect(toPaymentLinkRow(free, context)).toMatchObject({ deal: "free deal", payToday: "₹2,000", balance: null });
   });
   it("falls back to the contact or the email when there is no business name", () => {
     expect(toPaymentLinkRow({ ...LINK, businessName: null }, context).customer).toBe("Asha Rao");
@@ -43,7 +58,7 @@ describe("toPaymentLinkRow", () => {
     expect(toPaymentLinkRow({ ...LINK, paidAt: NOW }, context)).toMatchObject({ state: "paid", canChange: false });
   });
   it("prices a dollar yearly link with no website", () => {
-    const row = toPaymentLinkRow({ ...LINK, currency: "USD", services: ["social-media"], websiteKind: null, billingInterval: "year", setupFeeDiscountCents: null }, context);
+    const row = toPaymentLinkRow({ ...LINK, currency: "USD", dealType: "free", services: ["social-media"], websiteKind: null, billingInterval: "year", setupFeeListCents: null, setupFeeDiscountCents: null, advanceCents: null }, context);
     expect(row.payToday).toBe("$637");
   });
 });

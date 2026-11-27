@@ -7,9 +7,11 @@ import {
   requirementRedirect,
   safeReturnPath,
   servicesFrom,
+  servicesHeld,
   signInHref,
   unpaidHoldRedirect,
   type CustomerFacts,
+  type Requirement,
 } from "./guard-rules";
 
 const user: SessionUser = { id: "user-1", email: "owner@example.com", name: "Riley Owner", emailConfirmed: true, phone: null };
@@ -208,6 +210,36 @@ describe("requirementRedirect", () => {
   });
 });
 
+describe("requirementRedirect for a business being built (plan 66, status building)", () => {
+  const { checkout, billing, home } = GUARD_PATHS;
+  // Every requirement the guards build, against every status. Building differs from paid only where the plan itself is needed.
+  const table: readonly (readonly [string, Requirement, Record<CustomerFacts["billing"]["status"], string | null>])[] = [
+    ["nothing", {}, { unpaid: null, paid: null, lapsed: null, building: null }],
+    ["paid ever", { paid: "ever" }, { unpaid: checkout, paid: null, lapsed: null, building: null }],
+    ["paid live (requirePaid write, requireBilling)", { paid: "live" }, { unpaid: checkout, paid: null, lapsed: billing, building: billing }],
+    ["owner (requireOwner)", { owner: true }, { unpaid: null, paid: null, lapsed: null, building: null }],
+    ["owner write (requireOwner write)", { owner: true, paid: "live" }, { unpaid: checkout, paid: null, lapsed: billing, building: null }],
+    ["website ever (requireWebsite)", { paid: "ever", service: "website" }, { unpaid: checkout, paid: home, lapsed: home, building: null }],
+    ["website live (requireWebsite write)", { paid: "live", service: "website" }, { unpaid: checkout, paid: home, lapsed: billing, building: null }],
+    ["social ever", { paid: "ever", service: "social" }, { unpaid: checkout, paid: home, lapsed: home, building: billing }],
+    ["social live", { paid: "live", service: "social" }, { unpaid: checkout, paid: home, lapsed: billing, building: billing }],
+    ["search (Ads, Expert Monitoring) ever", { paid: "ever", service: "search" }, { unpaid: checkout, paid: home, lapsed: home, building: billing }],
+    ["search live", { paid: "live", service: "search" }, { unpaid: checkout, paid: home, lapsed: billing, building: billing }],
+  ];
+  const noServices = (status: CustomerFacts["billing"]["status"]): CustomerFacts => facts({ status, hasWebsite: false, services: [] });
+
+  it.each(table)("%s", (_name, requirement, expected) => {
+    for (const status of ["unpaid", "paid", "lapsed", "building"] as const) {
+      // No services on any plan: a paid or lapsed business is sent Home from a service page, while building needs none for the Website.
+      expect(requirementRedirect(noServices(status), requirement), status).toBe(expected[status]);
+    }
+  });
+
+  it("keeps owner pages from an editor even while building", () => {
+    expect(requirementRedirect(facts({ status: "building", role: "editor" }), { owner: true, paid: "live" })).toBe(home);
+  });
+});
+
 describe("servicesFrom", () => {
   const line = (addOn: string, status = "active", endRequestedAt: Date | null = null) => ({ addOn, status, endRequestedAt });
 
@@ -256,5 +288,18 @@ describe("unpaidHoldRedirect and isUnpaidAllowedPath", () => {
   it("never redirects accounts that have already paid", () => {
     expect(unpaidHoldRedirect("/", false)).toBeNull();
     expect(unpaidHoldRedirect("/website", false)).toBeNull();
+  });
+});
+
+describe("servicesHeld", () => {
+  const lines = [{ addOn: "managed-website", status: "active", endRequestedAt: null }];
+
+  it("is servicesFrom for every status but building", () => {
+    for (const status of ["unpaid", "paid", "lapsed"] as const) expect(servicesHeld(status, lines, ["social"])).toEqual(servicesFrom(lines, ["social"]));
+  });
+
+  it("holds the Website alone while a business is being built, whatever lines it has", () => {
+    expect(servicesHeld("building", [], [])).toEqual(["website"]);
+    expect(servicesHeld("building", [], ["social", "search"])).toEqual(["website"]);
   });
 });

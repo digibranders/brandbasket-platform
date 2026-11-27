@@ -73,6 +73,7 @@ import {
   teamCalls,
   services,
   sessions,
+  businessPriceOverrides,
   paymentLinks,
   setupInvites,
   siteEvents,
@@ -335,6 +336,8 @@ export async function eraseClosedAccount(db: Database, input: { readonly closure
     await tx.delete(businessProfiles).where(eq(businessProfiles.businessId, businessId));
     // What they told us for invoices goes. The invoices themselves stay: they are financial records (tax_invoices).
     // A payment link holds the name, email, phone and GST details staff typed for the customer (plan 65). Its subscription stays: it is a financial record.
+    // Staff-set custom prices point at the link, so they go first (plan 66).
+    await tx.delete(businessPriceOverrides).where(eq(businessPriceOverrides.businessId, businessId));
     await tx.delete(paymentLinks).where(eq(paymentLinks.businessId, businessId));
     await tx.delete(billingProfiles).where(eq(billingProfiles.businessId, businessId));
     await tx.delete(onboardingProgress).where(eq(onboardingProgress.businessId, businessId));

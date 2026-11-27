@@ -119,7 +119,7 @@ const MANUAL: ManualFirstPayment = {
 };
 
 function state(subscription: Subscription | null, history: Partial<BillingState> = {}): BillingState {
-  return { currency: "USD", tier: "managed", upgradePaid: false, subscription, hasEverPaid: false, paymentUnderReview: false, plan: USD, addOns: [], ...history };
+  return { currency: "USD", tier: "managed", upgradePaid: false, subscription, hasEverPaid: false, paymentUnderReview: false, plan: USD, addOns: [], dealState: null, dealLinkId: null, ...history };
 }
 
 beforeEach(() => {

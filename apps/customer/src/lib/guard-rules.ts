@@ -173,9 +173,25 @@ export function accessRedirect(access: CustomerAccess, currentPath?: string | nu
   }
 }
 
+/**
+ * A `building` business (plan 66: the advance is paid, the plans are not) is a website client being built for. It may open the Website
+ * (onboarding, preview approval and revision requests are writes), may read everywhere a paid client reads, and its owner may write
+ * its own details. Everything that needs the running plan is sent to Plan & billing, which explains why: a write that asks for a paid
+ * period with no service named and no owner (`paid: "live"` alone), and any service but the Website (Social, Ads, Expert Monitoring),
+ * read or write, because those start when the website goes live.
+ */
+function buildingRedirect(facts: CustomerFacts, requirement: Requirement): string | null {
+  const { service } = requirement;
+  if (service !== undefined && service !== "website") return GUARD_PATHS.billing;
+  if (requirement.paid === "live" && service === undefined && requirement.owner !== true) return GUARD_PATHS.billing;
+  if (requirement.owner === true && facts.role !== "owner") return GUARD_PATHS.home;
+  return null;
+}
+
 /** Where a business that may not open the page is sent, or null when it may. */
 export function requirementRedirect(facts: CustomerFacts, requirement: Requirement): string | null {
   const { status } = facts.billing;
+  if (status === "building") return buildingRedirect(facts, requirement);
   const live = requirement.paid === "live";
   if ((requirement.paid === "ever" || live) && status === "unpaid") return GUARD_PATHS.checkout;
   // Restarting a lapsed plan is reactivation, on Plan & billing, never a new first payment.
@@ -214,4 +230,16 @@ export interface ServiceLine {
 export function servicesFrom(lines: readonly ServiceLine[], setupServices: readonly ("social" | "search")[]): readonly Service[] {
   const website = lines.some((line) => line.addOn === "managed-website" && line.status === "active" && line.endRequestedAt === null);
   return SERVICES.filter((service) => (service === "website" ? website : setupServices.includes(service)));
+}
+
+/**
+ * The services a business is treated as holding: servicesFrom for everyone but a business being built (plan 66), which has no plan
+ * lines yet but is building its Website, so it holds that and nothing else. Social, Ads and Expert Monitoring start with the plan.
+ */
+export function servicesHeld(
+  status: CustomerBilling["status"],
+  lines: readonly ServiceLine[],
+  setupServices: readonly ("social" | "search")[],
+): readonly Service[] {
+  return status === "building" ? ["website"] : servicesFrom(lines, setupServices);
 }

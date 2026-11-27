@@ -2,6 +2,7 @@ export { createDatabase, type Database, type DatabaseHandle, type DatabaseOption
 export * from "./schema/support";
 export * from "./schema/error-issues";
 export * from "./queries/payment-links";
+export * from "./queries/price-overrides";
 export * from "./queries/support";
 export * from "./queries/change-requests";
 export * from "./queries/change-request-staff";
@@ -367,6 +368,7 @@ export {
   requestProjectRevisions,
   RevisionRoundsUsedUpError,
   submitProject,
+  insertOnboardingProjectIfNoneOpen,
   findWebsiteKindForBusiness,
   type Project,
   type ProjectLaunch,
@@ -1106,6 +1108,7 @@ export {
   findChargeByProviderOrder,
   findChargeForBusiness,
   findOpenChargeOfKind,
+  insertAdvanceCharge,
   insertCharge,
   InvalidChargeError,
   listChargesForBusiness,
@@ -1116,6 +1119,7 @@ export {
   type Charge,
   type ChargePayment,
   type ChargePaymentOutcome,
+  type NewAdvanceCharge,
   type NewCharge,
   type RecordedChargePayment,
 } from "./queries/charges";
@@ -1209,6 +1213,7 @@ export {
   listClients,
   renameBusinessOwner,
   type ClientBilling,
+  type ClientDeal,
   type ClientDetail,
   type ClientFirstPayment,
   type ClientHours,

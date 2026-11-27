@@ -40,6 +40,7 @@ export * from "./patients";
 export * from "./practitioners";
 export * from "./project-events";
 export * from "./payment-links";
+export * from "./price-overrides";
 export * from "./projects";
 export * from "./rate-limits";
 export * from "./referrals";

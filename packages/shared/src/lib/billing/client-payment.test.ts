@@ -26,6 +26,26 @@ const FIRST: ClientFirstPayment = {
   manual: null,
 };
 
+describe("clientPaymentState for a deal (plan 66)", () => {
+  const deal = (state: "building" | "balance_due"): ClientBilling => ({
+    subscription: null,
+    firstPayment: null,
+    deal: { linkId: "l", state, currency: "INR", advanceCents: 2_000_000, advancePaidAt: PAID_AT, balanceCents: 4_000_000 },
+  });
+
+  it("is building with the advance and the balance, not 'not paid'", () => {
+    expect(clientPaymentState(deal("building"), NOW)).toEqual({ kind: "building", advanceAmount: "₹20,000", advancePaidAt: PAID_AT, balanceAmount: "₹40,000" });
+  });
+
+  it("is balance due once staff marked the website ready", () => {
+    expect(clientPaymentState(deal("balance_due"), NOW)).toMatchObject({ kind: "balance-due", balanceAmount: "₹40,000" });
+  });
+
+  it("is a business with no deal that is not paid", () => {
+    expect(clientPaymentState({ subscription: null, firstPayment: null, deal: null }, NOW)).toEqual({ kind: "not-paid" });
+  });
+});
+
 describe("clientPaymentState", () => {
   it("is not paid with no subscription", () => {
     expect(clientPaymentState({ subscription: null, firstPayment: null }, NOW)).toEqual({ kind: "not-paid" });

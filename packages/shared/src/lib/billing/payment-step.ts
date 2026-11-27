@@ -82,6 +82,9 @@ export function paymentStep({
 }: PaymentStepInput): PaymentStep {
   if (!hasProject) return { kind: "none" };
   switch (status) {
+    // Plan 66: a business being built has paid its advance, which is what Check and send was waiting for, so it sends its answers
+    // like a paid one and is never asked to pay here; the balance is paid on its own screen when the website is ready.
+    case "building":
     case "paid":
       return locked ? { kind: "none" } : { kind: "send", missing };
     case "lapsed":
@@ -197,6 +200,9 @@ export function billingBanner({
         message: "Your website and content are safe. Restart it from Billing.",
         action: { href: REACTIVATE_HREF, label: "Reactivate" },
       };
+    // Plan 66: no payment is asked of a business being built, so no banner: its Home line says the balance comes at go-live.
+    case "building":
+      return null;
     case "unpaid": {
       if (paymentUnderReview) {
         return {

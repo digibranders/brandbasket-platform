@@ -33,6 +33,11 @@ export interface FirstPaymentInput {
    * ordinary one, with no free month.
    */
   readonly setupFeeNetCents?: number;
+  /**
+   * What a staff deal still owes for the website build when the customer pays the rest (plan 66): whole, non-negative minor units,
+   * added to the first payment. Exclusive with `setupFeeNetCents`. 0 is a deal with nothing left to pay (free, or paid in full).
+   */
+  readonly dealBalanceCents?: number;
 }
 
 export type FirstPaymentPlan =
@@ -59,6 +64,7 @@ export type FirstPaymentPlan =
 const sum = (lines: readonly FirstPaymentLine[]): number => lines.reduce((total, line) => total + line.netCents, 0);
 
 export function planFirstPayment(input: FirstPaymentInput): FirstPaymentPlan {
+  if (input.dealBalanceCents !== undefined) return withDealBalance(input, input.dealBalanceCents);
   const fee = input.setupFeeNetCents ?? 0;
   if (!Number.isSafeInteger(fee) || fee < 0) throw new RangeError(`A build fee must be whole, non-negative minor units, received ${fee}`);
   if (input.setupFeeNetCents !== undefined && !input.lines.some((line) => line.addOn === BUILD_FEE_ADD_ON)) {
@@ -78,6 +84,29 @@ export function planFirstPayment(input: FirstPaymentInput): FirstPaymentPlan {
     firstPaymentCents: fullPriceNet + onOffer.length * trialPriceCentsOfOne - input.discountCents,
     trialPriceByAddOn: Object.fromEntries(onOffer.map((line) => [line.addOn, trialPriceCentsOfOne])),
     firstChargeMonths: 1,
+    deferredAddOns: [],
+    firstPaymentDiscountCents: input.discountCents,
+  };
+}
+
+function withDealBalance(input: FirstPaymentInput, balance: number): FirstPaymentPlan {
+  if (input.setupFeeNetCents !== undefined) throw new RangeError("A deal balance and a build fee cannot both be given");
+  if (!Number.isSafeInteger(balance) || balance < 0) throw new RangeError(`A deal balance must be whole, non-negative minor units, received ${balance}`);
+  if (!input.lines.some((line) => line.addOn === BUILD_FEE_ADD_ON)) throw new RangeError("A deal balance needs Website Management in the basket");
+
+  const trialPriceCentsOfOne = trialPriceCents(input.currency);
+  const onOffer = input.lines.filter((line) => trialEligible({ service: line.addOn, interval: input.interval, provider: input.provider, hadService: line.hadService }));
+  if (onOffer.length === 0 && balance === 0) return { kind: "ordinary" };
+
+  const fullPriceNet = sum(input.lines.filter((line) => !onOffer.includes(line)));
+  if (input.discountCents > fullPriceNet) return { kind: "code-refused" };
+
+  return {
+    kind: "offer",
+    firstPaymentCents: balance + fullPriceNet + onOffer.length * trialPriceCentsOfOne - input.discountCents,
+    trialPriceByAddOn: Object.fromEntries(onOffer.map((line) => [line.addOn, trialPriceCentsOfOne])),
+    // A yearly deal pays the first year's lines with the balance, so the provider's plan starts a year on (annual is never on trial).
+    firstChargeMonths: input.interval === "year" ? 12 : 1,
     deferredAddOns: [],
     firstPaymentDiscountCents: input.discountCents,
   };

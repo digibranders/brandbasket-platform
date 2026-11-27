@@ -1,5 +1,6 @@
 import { notifyEvent } from "@brandbasket/shared/server/notify-event";
 import {
+  findBillingState,
   findClientDetail,
   LAUNCH_CHECK_KEYS,
   listLaunchChecks,
@@ -13,6 +14,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { customerEmailTransport } from "./email";
 import { checkSiteAddress } from "./site-check";
 import {
+  BalanceUnpaidError,
   ProjectLaunchAddressUnverifiedError,
   ProjectLaunchChecksMissingError,
   ProjectLaunchDomainMissingError,
@@ -20,6 +22,7 @@ import {
   launchProject,
   resendLaunchEmail,
   saveLaunchChecks,
+  websiteServiceMissing,
 } from "./project-launch";
 
 vi.mock("server-only", () => ({}));
@@ -28,6 +31,7 @@ vi.mock("@brandbasket/db", async () => {
   const actual = await vi.importActual<typeof import("@brandbasket/db")>("@brandbasket/db");
   return {
     ...actual,
+    findBillingState: vi.fn(),
     findClientDetail: vi.fn(),
     listLaunchChecks: vi.fn(),
     markProjectLive: vi.fn(),
@@ -41,6 +45,7 @@ vi.mock("./site-check", () => ({ checkSiteAddress: vi.fn() }));
 
 const mockedMarkLive = vi.mocked(markProjectLive);
 const mockedFindClient = vi.mocked(findClientDetail);
+const mockedBillingState = vi.mocked(findBillingState);
 const mockedListChecks = vi.mocked(listLaunchChecks);
 const mockedSetCheck = vi.mocked(setLaunchCheck);
 const mockedSetWebsiteUrl = vi.mocked(setBusinessWebsiteUrl);
@@ -78,8 +83,12 @@ function clientReadyToLaunch(overrides: {
 
 const ALL_CHECKS = LAUNCH_CHECK_KEYS.map((key) => ({ key, checkedByStaffId: "staff-1", checkedAt: NOW }));
 
+/** A business whose plan is running: a paid subscription (paid through a month on) with an active Managed Website line. */
+const RUNNING = { subscription: { status: "active", cancelRequestedAt: null, activatedAt: NOW, paidThroughAt: new Date("2026-10-18T12:00:00.000Z"), commitmentEndsAt: null }, addOns: [{ addOn: "managed-website", status: "active" }] };
+
 beforeEach(() => {
   vi.resetAllMocks();
+  mockedBillingState.mockResolvedValue(RUNNING as never);
   mockedMarkLive.mockResolvedValue({} as Awaited<ReturnType<typeof markProjectLive>>);
   mockedFindClient.mockResolvedValue(clientReadyToLaunch());
   mockedListChecks.mockResolvedValue(ALL_CHECKS);
@@ -95,6 +104,35 @@ beforeEach(() => {
   });
   send.mockResolvedValue(undefined);
   vi.spyOn(console, "error").mockImplementation(() => undefined);
+});
+
+describe("launchProject and the balance (plan 66)", () => {
+  it("refuses a business with no running website service, before any check or write: a paid deal's balance is unpaid", async () => {
+    mockedBillingState.mockResolvedValue({ subscription: null, addOns: [], dealState: "balance_due" } as never);
+
+    await expect(launchProject(db, { businessId: "business-1" }, NOW)).rejects.toBeInstanceOf(BalanceUnpaidError);
+    expect(mockedMarkLive).not.toHaveBeenCalled();
+    expect(mockedSetWebsiteUrl).not.toHaveBeenCalled();
+    expect(send).not.toHaveBeenCalled();
+  });
+
+  it("refuses a lapsed client the same way, and a plan whose website line is not paid", async () => {
+    mockedBillingState.mockResolvedValue({ ...RUNNING, subscription: { ...RUNNING.subscription, paidThroughAt: new Date("2026-09-01T00:00:00.000Z") } } as never);
+    await expect(launchProject(db, { businessId: "business-1" }, NOW)).rejects.toBeInstanceOf(BalanceUnpaidError);
+    mockedBillingState.mockResolvedValue({ ...RUNNING, addOns: [] } as never);
+    await expect(launchProject(db, { businessId: "business-1" }, NOW)).rejects.toBeInstanceOf(BalanceUnpaidError);
+  });
+
+  it("lets a business with a paid subscription go live as before (a self sign-up, a free deal, or a deal whose balance is paid)", async () => {
+    await expect(launchProject(db, { businessId: "business-1" }, NOW)).resolves.toBe("emailed");
+    expect(mockedMarkLive).toHaveBeenCalledTimes(1);
+  });
+
+  it("tells the Website page whether the service is missing", async () => {
+    expect(await websiteServiceMissing(db, "business-1", NOW)).toBe(false);
+    mockedBillingState.mockResolvedValue(null);
+    expect(await websiteServiceMissing(db, "business-1", NOW)).toBe(true);
+  });
 });
 
 describe("launchProject", () => {

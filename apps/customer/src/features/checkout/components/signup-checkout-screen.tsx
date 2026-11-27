@@ -21,7 +21,7 @@ import { applyCodeAction, startPaymentAction } from "../actions";
 import { billingParamValue, MEMBERSHIP_BILLING_PARAM, MEMBERSHIP_KIND_PARAM, membershipHrefWithServices } from "../rules/membership";
 import { useOpeningPayment } from "../rules/opening-payment";
 import { checkoutLead, checkoutSteps } from "../rules/plans";
-import { basketView, payLabel, purchasableServices, type SignupBasketTable } from "../rules/signup-basket";
+import { BALANCE_COPY, basketView, payLabel, purchasableServices, type SignupBasketTable } from "../rules/signup-basket";
 import { CodeDisclosure } from "./code-disclosure";
 import { DetailsFields, type DetailsPrefill } from "./details-fields";
 import { OrderPanel } from "./order-panel";
@@ -70,7 +70,15 @@ export interface SignupCheckoutScreenProps {
    * Set when a staff payment link decided the deal: the services, how often they are paid, the kind of website and the build
    * discount are fixed, and the screen offers no way to change them.
    */
-  readonly link?: { readonly interval: BillingInterval; readonly discountCents: number; readonly note: string | null } | null;
+  readonly link?: {
+    readonly interval: BillingInterval;
+    readonly discountCents: number;
+    readonly note: string | null;
+    readonly listCents?: number;
+    readonly advanceCents?: number;
+    /** A paid deal's payment 2 (plan 66): see BasketOptions. */
+    readonly balance?: { readonly cents: number; readonly codeLabel: string | null; readonly codeCents: number; readonly nextCharge: string };
+  } | null;
   /** The token of the staff payment link the visitor opened, sent back with the first post so the account is made for that deal. */
   readonly payLinkToken?: string;
 }
@@ -138,6 +146,8 @@ export function SignupCheckoutScreen({ table, initialServices, account, details,
   const opening = useOpeningPayment(pending, state);
 
   const view = basketView(table, ticked, interval, { kind, deal: link });
+  // Paying the balance of a built website (plan 66): the sign-up lead, the website badge and the steps of a build do not apply.
+  const balanceMode = link?.balance !== undefined && view.services.includes("managed-website");
   const failure = state !== null && !state.ok && !pending ? state : null;
   const codeError = failure?.fieldErrors?.referralCode;
   const bannerMessage = failure !== null && codeError === undefined && (failure.field === undefined || !FIELDS_ON_SCREEN.has(failure.field)) ? failure.message : null;
@@ -190,7 +200,7 @@ export function SignupCheckoutScreen({ table, initialServices, account, details,
           <header className="flex flex-wrap items-end justify-between gap-x-6 gap-y-3">
             <div className="flex flex-col gap-1">
               <h1 className="type-title text-ink">Your plan</h1>
-              <p className="font-sans text-sm text-ink-2">{checkoutLead(table.currency, table.taxRateBasisPoints)}</p>
+              <p className="font-sans text-sm text-ink-2">{balanceMode ? BALANCE_COPY.lead : checkoutLead(table.currency, table.taxRateBasisPoints)}</p>
             </div>
             {link !== null ? (
               <p className="type-meta">{interval === "year" ? "Paid yearly" : "Paid monthly"}, as agreed with us.</p>
@@ -224,7 +234,7 @@ export function SignupCheckoutScreen({ table, initialServices, account, details,
           ) : null}
           {view.services.includes("managed-website") && link !== null ? <p className="type-meta">{WEBSITE_KIND_LABELS[kind]}, as agreed with us.</p> : null}
 
-          <ServiceCards table={table} services={view.services} interval={interval} onToggle={toggle} kind={kind} locked={link !== null} />
+          <ServiceCards table={table} services={view.services} interval={interval} onToggle={toggle} kind={kind} locked={link !== null} balance={balanceMode} />
 
           <div className="grid items-start gap-6 lg:grid-cols-12">
             {showDetails ? (
@@ -247,13 +257,14 @@ export function SignupCheckoutScreen({ table, initialServices, account, details,
                 onAgreedChange={agree}
                 agreeError={agreeError}
                 failure={bannerMessage}
-                footer={<CodeDisclosure open={codeOpen} onOpenChange={setCodeOpen} error={codeError} />}
+                footer={view.advanceNote === null && link?.balance === undefined ? <CodeDisclosure open={codeOpen} onOpenChange={setCodeOpen} error={codeError} /> : null}
               >
                 {first === undefined ? null : <TurnstileWidget siteKey={first.siteKey} action="join" resetKey={state} />}
               </OrderPanel>
             </aside>
           </div>
 
+          {balanceMode ? null : (
           <section aria-labelledby="signup-next" className="flex flex-col gap-4 border-t border-border pt-6">
             <h2 className="type-sub text-ink" id="signup-next">
               What happens next
@@ -272,6 +283,7 @@ export function SignupCheckoutScreen({ table, initialServices, account, details,
               ))}
             </ol>
           </section>
+          )}
 
           <PayBar due={view.due} label={label} disabled={view.services.length === 0} pending={opening} />
           <PayBarSpacer />

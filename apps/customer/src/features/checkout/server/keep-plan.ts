@@ -14,6 +14,7 @@ import {
   findWaitingSuccessor,
   isPackageOfferForfeited,
   listMembershipsForUser,
+  listPriceOverridesForBusiness,
   lockBusinessForBilling,
   openKeptSubscription,
   restoreAccountClosureForBusiness,
@@ -27,7 +28,7 @@ import {
 } from "@brandbasket/db";
 import { addOnById, isMonthlyAddOnId, perCycle } from "@brandbasket/shared/lib/billing/add-ons";
 import { nextDiscountCents, reactivationBasketOf } from "@brandbasket/shared/lib/billing/bundle";
-import { packageLines } from "@brandbasket/shared/lib/billing/packages";
+import { priceLinesFor, priceOverridesFor } from "@brandbasket/shared/lib/billing/packages";
 import { describeError, logBillingEvent } from "@brandbasket/shared/server/billing-log";
 import { formatDate, formatMoney } from "@/lib/format";
 import { gstNote, type PaymentSummary, type PaymentSummaryRow } from "../rules/payment-summary";
@@ -83,7 +84,9 @@ async function keptBasket(db: Database | ScopedTransaction, subscription: Subscr
     forfeited: await isPackageOfferForfeited(db, subscription.businessId),
   });
   // A yearly plan kept is kept yearly: its lines are priced for the year it goes on billing.
-  const bundle = packageLines({ services: basket.services, forfeited: basket.forfeited }, plan.currency, subscription.billingInterval).map((line) => ({
+  // Plan 66, 3.7: an agreed price for the same service and period is kept, so keeping the plan does not put a negotiated price back to list.
+  const agreed = priceOverridesFor(await listPriceOverridesForBusiness(db, subscription.businessId), subscription.billingInterval, basket.services);
+  const bundle = priceLinesFor({ services: basket.services, forfeited: basket.forfeited }, plan.currency, subscription.billingInterval, "b2b", agreed).map((line) => ({
     addOn: line.addOn,
     listAmountCents: line.listCents,
     offerDiscountAmountCents: line.offerCents,

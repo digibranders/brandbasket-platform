@@ -3,7 +3,7 @@ import type { BillingInterval, BundledAddOn, Subscription } from "@brandbasket/d
 import { chargedAmountCents } from "@brandbasket/billing/tax";
 import type { MoneyCurrency } from "../money";
 import { addOnById, MONITORING_ID, MONTHLY_ADD_ON_IDS, monitoringIncludedWith, type AddOnPrice, type MonthlyAddOnId } from "./add-ons";
-import { packageLines } from "./packages";
+import { priceLinesFor, type PriceOverrides } from "./packages";
 import type { WebsiteKind } from "./website-kind";
 
 /**
@@ -44,8 +44,16 @@ export const WEBSITE_ALONE: readonly MonthlyAddOnId[] = ["managed-website"];
  * `forfeited` is a business that has given the package offer up for good: its lines are at list. On a yearly checkout every
  * line is priced for the year.
  */
-export function bundleLines(selection: readonly MonthlyAddOnId[], currency: MoneyCurrency, forfeited = false, interval: BillingInterval = "month", kind: WebsiteKind = "b2b"): readonly BundleLine[] {
-  return packageLines({ services: selection, forfeited }, currency, interval, kind).map((line) => ({
+export function bundleLines(
+  selection: readonly MonthlyAddOnId[],
+  currency: MoneyCurrency,
+  forfeited = false,
+  interval: BillingInterval = "month",
+  kind: WebsiteKind = "b2b",
+  /** A staff deal's custom prices for the period (plan 66): each replaces the line's catalogue price. */
+  customPrices: PriceOverrides = {},
+): readonly BundleLine[] {
+  return priceLinesFor({ services: selection, forfeited }, currency, interval, kind, customPrices).map((line) => ({
     addOn: line.addOn,
     title: addOnById(line.addOn).title,
     listCents: line.listCents,

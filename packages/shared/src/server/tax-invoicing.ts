@@ -91,7 +91,17 @@ export type InvoiceSource =
        * Plan 65: the one-time website build fee this payment carried or waived, frozen when the checkout opened. A fee paid in part or in
        * full is a line of its own; one waived in full (`discountCents === listCents`) prints no line, and the first service line says so.
        */
-      readonly setupFee?: { readonly websiteKind: WebsiteKind; readonly listCents: number; readonly discountCents: number; readonly note: string | null };
+      readonly setupFee?: {
+        readonly websiteKind: WebsiteKind;
+        readonly listCents: number;
+        readonly discountCents: number;
+        readonly note: string | null;
+        /**
+         * Plan 66: the advance of a paid deal, received before this payment. The build line is then the balance only, and says what was
+         * agreed and when the advance came; `invoiceNumber` is the advance's own tax invoice, or null when it has none.
+         */
+        readonly advance?: { readonly cents: number; readonly receivedAt: Date; readonly invoiceNumber: string | null };
+      };
       /**
        * The first instant paid for. A provider renewal passes the provider's own cycle start, so the printed period
        * matches the provider's.
@@ -381,6 +391,19 @@ async function linesFor(tx: ScopedTransaction, payment: Payment, source: Invoice
 
 type PlanSource = Extract<InvoiceSource, { kind: "plan" }>;
 
+/** "Rs 10,000", or "Rs 10,000.50": an invoice prints the rupee as plain letters. */
+function rupees(cents: number): string {
+  const whole = cents % 100 === 0;
+  return `Rs ${new Intl.NumberFormat("en-IN", { minimumFractionDigits: whole ? 0 : 2, maximumFractionDigits: 2 }).format(cents / 100)}`;
+}
+
+/** What a paid deal's invoice says of the advance: "Agreed price Rs X, advance Rs Y received on 27 Nov 2026, invoice NUMBER." */
+function advanceSentence(fee: NonNullable<PlanSource["setupFee"]>, advance: NonNullable<NonNullable<PlanSource["setupFee"]>["advance"]>): string {
+  const day = istDay(advance.receivedAt);
+  const invoice = advance.invoiceNumber === null ? "" : `, invoice ${advance.invoiceNumber}`;
+  return `Agreed price ${rupees(fee.listCents - fee.discountCents)}, advance ${rupees(advance.cents)} received on ${day.dayMonth} ${day.year}${invoice}.`;
+}
+
 /** The build fee's line (plan 65): the list price with the deal's discount in the discount column and the staff note beside it. */
 function buildFeeLine(fee: NonNullable<PlanSource["setupFee"]>, taxRateBasisPoints: number): InvoiceLineInput {
   return {
@@ -400,6 +423,31 @@ function planLinesFor(payment: Payment, source: PlanSource, coupon: ReferralCode
   const lines = servicePlanLines(payment, source, coupon);
   const fee = source.setupFee;
   if (fee === undefined) return lines;
+  if (fee.advance !== undefined) {
+    // Plan 66, invoice 2 of a paid deal: the build line is the balance, GST inside it as in every price here, so the invoice adds up to the payment.
+    const balanceCents = fee.listCents - fee.discountCents - fee.advance.cents;
+    const sentence = advanceSentence(fee, fee.advance);
+    if (balanceCents > 0) {
+      return [
+        {
+          description: `Website design and build (${WEBSITE_KIND_LABELS[fee.websiteKind]}): balance. ${sentence}`,
+          detail: "One-time",
+          note: null,
+          sac: BRANDBASKET_SAC,
+          quantity: 1,
+          unitAmountCents: balanceCents,
+          discountAmountCents: 0,
+          taxRateBasisPoints: source.plan.taxRateBasisPoints,
+        },
+        ...lines,
+      ];
+    }
+    // The advance paid the whole build: no build line, and the first service line names the advance.
+    const [head, ...others] = lines;
+    if (head === undefined) return lines;
+    const paidNote = `Website build paid in full by the advance. ${sentence}`;
+    return [{ ...head, note: head.note === null ? paidNote : `${head.note}. ${paidNote}` }, ...others];
+  }
   if (fee.listCents > fee.discountCents) return [buildFeeLine(fee, source.plan.taxRateBasisPoints), ...lines];
   // A fee waived in full cannot be a line (a line paid at nothing is refused): the first service line says it was waived.
   const [first, ...rest] = lines;

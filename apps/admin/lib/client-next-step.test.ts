@@ -65,6 +65,25 @@ describe("previewLateReason", () => {
   });
 });
 
+describe("overviewNextStep for a paid deal (plan 66)", () => {
+  const approved = project({ status: "approved" });
+  const dealOf = (state: "building" | "balance_due") => ({ billing: { deal: { state } } as never });
+
+  it("says to mark the website ready while the deal is building, and waits for the balance once it is ready", () => {
+    expect(overviewNextStep({ project: approved, movingTo: null, ...dealOf("building") }, NOW)).toEqual({ label: "Mark website ready for the balance", anchor: "domain" });
+    expect(overviewNextStep({ project: approved, movingTo: null, ...dealOf("balance_due") }, NOW)).toEqual({ label: "Waiting for the customer to pay the balance", anchor: "domain" });
+  });
+
+  it("goes to launch for a deal whose balance is paid (no open deal) and for any client with no deal", () => {
+    expect(overviewNextStep({ project: approved, movingTo: null, billing: { deal: null } as never }, NOW)).toEqual({ label: "Go live", anchor: "domain" });
+    expect(overviewNextStep({ project: approved, movingTo: null }, NOW)).toEqual({ label: "Go live", anchor: "domain" });
+  });
+
+  it("leaves every other stage as it was", () => {
+    expect(overviewNextStep({ project: project({}), movingTo: null, ...dealOf("building") }, NOW)).toEqual({ label: "Start building: preview 2 days late", anchor: null });
+  });
+});
+
 describe("overviewNextStep", () => {
   it("puts a domain move first", () => {
     expect(overviewNextStep({ project: project({ status: "live" }), movingTo: { hostname: "omsweets.in", status: "pending" } }, NOW)).toEqual({ label: "Move them to their own domain", anchor: "domain" });

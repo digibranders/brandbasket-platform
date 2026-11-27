@@ -15,6 +15,7 @@ import {
 } from "./billing";
 import { startPaidChangeRequest } from "./change-request-payment";
 import { markDirectoryAdWinPaid } from "./directory-ads";
+import { attachAdvanceCharge } from "./payment-links";
 import { startDirectoryPromotionForCharge } from "./directory-promotions";
 import { applyPaidBundledAddOn, bundledAddOnStillApplies, dropBundledAddOnOfCharge } from "./bundled-add-ons";
 import { applyPaidPlanUpgrade, cancelStalePlanUpgrade, planUpgradeStillApplies } from "./plan-upgrades";
@@ -137,6 +138,43 @@ export async function insertCharge(db: Runner, input: NewCharge): Promise<Charge
   const rows = await db.insert(charges).values(input).returning(CHARGE_COLUMNS);
   const charge = rows[0];
   if (charge === undefined) throw new Error("Inserting a charge returned no row");
+  return charge;
+}
+
+export interface NewAdvanceCharge {
+  readonly businessId: string;
+  /** The payment link (the deal) the advance belongs to. */
+  readonly linkId: string;
+  /** The link's `advance_cents`, GST included, in minor units of `currency`. */
+  readonly amountCents: number;
+  readonly currency: BillingCurrency;
+  /** What the customer and the invoice read: "Website design and build: advance (B2B website)". */
+  readonly description: string;
+  /** The GST inside the amount (1800 in rupees, 0 in dollars). The caller owns the rate; this package does not know it. */
+  readonly taxRateBasisPoints: number;
+}
+
+/**
+ * Adds the one charge that collects a deal's advance and records it on the link (`advance_charge_id`), in the caller's transaction.
+ * Every price here includes its GST, so the unit price and the amount charged are both the advance, and the rate is only the share
+ * of it the invoice reports as tax (the convention of every other charge: staff and blog charges are priced the same way). Added
+ * by the server for the customer, so no staff member is named. Throws when the link already has a charge, is paid or cancelled, or
+ * does not exist, which rolls the transaction back and leaves no second charge. Staff connection only, under the billing lock.
+ */
+export async function insertAdvanceCharge(db: Runner, input: NewAdvanceCharge): Promise<Charge> {
+  const charge = await insertCharge(db, {
+    businessId: input.businessId,
+    kind: "website_advance",
+    description: input.description,
+    quantity: 1,
+    unitAmountCents: input.amountCents,
+    taxRateBasisPoints: input.taxRateBasisPoints,
+    amountCents: input.amountCents,
+    currency: input.currency,
+    createdByStaffId: null,
+  });
+  const attached = await attachAdvanceCharge(db, { linkId: input.linkId, chargeId: charge.id });
+  if (attached !== charge.id) throw new InvalidChargeError("the deal already has an advance charge, or is paid or cancelled");
   return charge;
 }
 

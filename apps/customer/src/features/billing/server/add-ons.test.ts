@@ -10,6 +10,7 @@ import {
   findSubscriptionById,
   findWaitingSuccessor,
   isPackageOfferForfeited,
+  listPriceOverridesForBusiness,
   recordBundledAddOnRemoval,
   setNextDiscount,
   withTenantScope,
@@ -54,6 +55,7 @@ vi.mock("@brandbasket/db", () => {
     findWaitingSuccessor: vi.fn(),
     flagSubscriptionForAttention: vi.fn(),
     isPackageOfferForfeited: vi.fn(),
+    listPriceOverridesForBusiness: vi.fn(),
     lockBusinessForBilling: vi.fn(),
     recordBundledAddOnRemoval: vi.fn(),
     setNextDiscount: vi.fn(),
@@ -73,7 +75,7 @@ type GrantedCustomer = Pick<CustomerContext, "user" | "tenant" | "billing">;
 const customer: GrantedCustomer = {
   user: { id: "user-a", email: "ana@example.com", name: "Ana Diaz", emailConfirmed: true, phone: null },
   tenant: { userId: "user-a", businessId: BUSINESS_ID, businessName: "Riverside Dental", role: "owner" },
-  billing: { status: "paid", hasAccess: true, hasWebsite: true, subscription: null, tier: "managed", upgradePaid: false, plan: null, paymentUnderReview: false, renewalFailingUntil: null },
+  billing: { status: "paid", hasAccess: true, hasWebsite: true, subscription: null, tier: "managed", upgradePaid: false, plan: null, paymentUnderReview: false, renewalFailingUntil: null, dealState: null, dealLinkId: null },
 };
 
 /** Social Media Management and Paid Ads Management in rupees as frozen on their rows, GST included. */
@@ -96,6 +98,7 @@ beforeEach(() => {
   vi.mocked(findLiveBundledAddOns).mockResolvedValue([]);
   vi.mocked(findBusinessCurrency).mockResolvedValue("INR");
   vi.mocked(isPackageOfferForfeited).mockResolvedValue(false);
+  vi.mocked(listPriceOverridesForBusiness).mockResolvedValue([]);
   vi.mocked(findWaitingSuccessor).mockResolvedValue(null);
   vi.mocked(startCombinedAddOn).mockResolvedValue({ kind: "not-combined" });
   vi.mocked(planCombinedAddOn).mockResolvedValue({ kind: "not-combined" });
@@ -162,13 +165,14 @@ describe("loadAddOnsPage", () => {
       ...overrides,
     }) as BundledAddOn;
 
-  it("reads through row-level security as the signed-in customer, and never with the staff connection without a code", async () => {
+  it("reads through row-level security as the signed-in customer, and uses the staff connection only for the agreed prices when there is no code", async () => {
     await loadAddOnsPage(customer, NOW);
 
     expect(withTenantScope).toHaveBeenCalledWith(appDb, customer.tenant, expect.any(Function));
     expect(findLiveBundledAddOns).toHaveBeenCalledWith(appTx, BUSINESS_ID);
     expect(findBusinessCurrency).toHaveBeenCalledWith(appTx, BUSINESS_ID);
-    expect(getStaffDb).not.toHaveBeenCalled();
+    expect(listPriceOverridesForBusiness).toHaveBeenCalledWith(staffDb, BUSINESS_ID);
+    expect(findReferralCodeById).not.toHaveBeenCalled();
   });
 
   it("reads the code on the customer's own subscription as staff, which their connection cannot, and assesses with it", async () => {
@@ -212,6 +216,22 @@ describe("loadAddOnsPage", () => {
       kind: "available",
       price: { listCents: 299_900, discountCents: 0, netCents: 299_900, chargedCents: 299_900 },
     });
+  });
+
+  it("shows a service not yet added at the agreed price for the plan's billing period, and passes the agreed prices to the quote (plan 66)", async () => {
+    vi.mocked(findLiveBundledAddOns).mockResolvedValue([includedRow({ addOn: "managed-website", listAmountCents: 299_900, offerDiscountAmountCents: 0, netAmountCents: 299_900 })]);
+    const agreed = [
+      { addOn: "social-media", billingInterval: "month", netCents: 99_900 },
+      { addOn: "paid-ads", billingInterval: "year", netCents: 50_000 },
+    ] as never;
+    vi.mocked(listPriceOverridesForBusiness).mockResolvedValue(agreed);
+
+    const page = await loadAddOnsPage(subscribed, NOW);
+
+    expect(page.addOns.find((entry) => entry.addOn === "social-media")).toMatchObject({ kind: "available", price: { listCents: 99_900, discountCents: 0, netCents: 99_900 } });
+    // Read as staff, and sent to the assessment, so the quote is the price the add is taken at.
+    expect(listPriceOverridesForBusiness).toHaveBeenCalledWith(staffDb, BUSINESS_ID);
+    expect(readAddOnAssessment).toHaveBeenCalledWith(appTx, expect.objectContaining({ addOn: "social-media", agreedPrices: agreed }));
   });
 
   it("prices a business billed in dollars in dollars, with no tax", async () => {
@@ -312,9 +332,9 @@ describe("loadAddOnsPage", () => {
   it("asks for each add-on's assessment through row-level security, at the time given", async () => {
     await loadAddOnsPage(customer, NOW);
 
-    expect(readAddOnAssessment).toHaveBeenCalledWith(appTx, { businessId: BUSINESS_ID, addOn: "managed-website", providerName: "fake", now: NOW, forfeited: false, code: null });
-    expect(readAddOnAssessment).toHaveBeenCalledWith(appTx, { businessId: BUSINESS_ID, addOn: "social-media", providerName: "fake", now: NOW, forfeited: false, code: null });
-    expect(readAddOnAssessment).toHaveBeenCalledWith(appTx, { businessId: BUSINESS_ID, addOn: "paid-ads", providerName: "fake", now: NOW, forfeited: false, code: null });
+    expect(readAddOnAssessment).toHaveBeenCalledWith(appTx, { businessId: BUSINESS_ID, addOn: "managed-website", providerName: "fake", now: NOW, forfeited: false, code: null, agreedPrices: [] });
+    expect(readAddOnAssessment).toHaveBeenCalledWith(appTx, { businessId: BUSINESS_ID, addOn: "social-media", providerName: "fake", now: NOW, forfeited: false, code: null, agreedPrices: [] });
+    expect(readAddOnAssessment).toHaveBeenCalledWith(appTx, { businessId: BUSINESS_ID, addOn: "paid-ads", providerName: "fake", now: NOW, forfeited: false, code: null, agreedPrices: [] });
   });
 
   it("offers the add with its charge for the rest of the month and the new monthly payment", async () => {

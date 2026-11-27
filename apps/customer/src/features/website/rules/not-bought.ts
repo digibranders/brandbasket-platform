@@ -27,8 +27,10 @@ export function websiteOffer(held: readonly MonthlyAddOnId[], forfeited: boolean
 
 /**
  * Whether the business holds the Managed Website for reading, by the guard's own rule (requireWebsite): a paying business
- * follows billing (hasWebsite), an unpaid or lapsed one the services on its plan. The page shows Not bought otherwise.
+ * follows billing (hasWebsite), an unpaid or lapsed one the services on its plan. A business being built (plan 66) has bought the
+ * website with its advance. The page shows Not bought otherwise.
  */
 export function holdsWebsite(context: Pick<CustomerContext, "billing" | "services">): boolean {
+  if (context.billing.status === "building") return true;
   return context.billing.status === "paid" ? context.billing.hasWebsite : context.services.includes("website");
 }

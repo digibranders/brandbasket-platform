@@ -54,6 +54,7 @@ describe("processSignupReminders", () => {
     vi.mocked(listAbandonedSignupLeads).mockResolvedValueOnce([lead]);
     vi.mocked(findBillingState).mockResolvedValueOnce({
       hasEverPaid: false,
+      dealState: null,
     } as unknown as Awaited<ReturnType<typeof findBillingState>>);
 
     const report = await processSignupReminders(NOW, {
@@ -84,6 +85,7 @@ describe("processSignupReminders", () => {
     vi.mocked(listAbandonedSignupLeads).mockResolvedValueOnce([lead]);
     vi.mocked(findBillingState).mockResolvedValueOnce({
       hasEverPaid: true,
+      dealState: null,
     } as unknown as Awaited<ReturnType<typeof findBillingState>>);
 
     const report = await processSignupReminders(NOW, {
@@ -102,11 +104,23 @@ describe("processSignupReminders", () => {
     expect(recordSignupReminderSent).toHaveBeenCalledWith(expect.anything(), "lead-123", NOW);
   });
 
+  it.each(["building", "balance_due"] as const)("does not send a reminder to a business whose deal is %s (advance paid, plan 66)", async (dealState) => {
+    vi.mocked(listAbandonedSignupLeads).mockResolvedValueOnce([makeMockLead({ businessId: "biz-deal" })]);
+    vi.mocked(findBillingState).mockResolvedValueOnce({ hasEverPaid: false, dealState } as unknown as Awaited<ReturnType<typeof findBillingState>>);
+
+    const report = await processSignupReminders(NOW, { emailTransport: mockTransport });
+
+    expect(report).toEqual({ checked: 1, sent: 0, skippedPaid: 1, failed: 0 });
+    expect(send).not.toHaveBeenCalled();
+    expect(markLeadPaidForBusiness).toHaveBeenCalledWith(expect.anything(), "biz-deal");
+  });
+
   it("records failure when email transport throws and continues without crashing", async () => {
     const lead = makeMockLead();
     vi.mocked(listAbandonedSignupLeads).mockResolvedValueOnce([lead]);
     vi.mocked(findBillingState).mockResolvedValueOnce({
       hasEverPaid: false,
+      dealState: null,
     } as unknown as Awaited<ReturnType<typeof findBillingState>>);
     send.mockRejectedValueOnce(new Error("Brevo down"));
 
@@ -129,7 +143,7 @@ describe("processSignupReminders", () => {
 describe("a reminder the transport reports instead of throwing", () => {
   async function runWith(answer: { status: "failed" | "queued" | "sent"; error?: string }) {
     vi.mocked(listAbandonedSignupLeads).mockResolvedValueOnce([makeMockLead()]);
-    vi.mocked(findBillingState).mockResolvedValueOnce({ hasEverPaid: false } as unknown as Awaited<ReturnType<typeof findBillingState>>);
+    vi.mocked(findBillingState).mockResolvedValueOnce({ hasEverPaid: false, dealState: null } as unknown as Awaited<ReturnType<typeof findBillingState>>);
     send.mockResolvedValueOnce(answer as never);
     vi.spyOn(console, "error").mockImplementation(() => undefined);
     return processSignupReminders(NOW, { emailTransport: mockTransport });
@@ -170,7 +184,7 @@ describe("signupReminderToken", () => {
 describe("the reminder's link", () => {
   async function runWith(setPasswordUrl: (email: string) => Promise<string | null>): Promise<string> {
     vi.mocked(listAbandonedSignupLeads).mockResolvedValueOnce([makeMockLead()]);
-    vi.mocked(findBillingState).mockResolvedValueOnce({ hasEverPaid: false } as unknown as Awaited<ReturnType<typeof findBillingState>>);
+    vi.mocked(findBillingState).mockResolvedValueOnce({ hasEverPaid: false, dealState: null } as unknown as Awaited<ReturnType<typeof findBillingState>>);
     await processSignupReminders(NOW, { emailTransport: mockTransport, setPasswordUrl });
     const sent = send.mock.calls[0]![0];
     return `${sent.bodyText}\n${sent.bodyHtml ?? ""}`;

@@ -10,7 +10,7 @@ import { PaymentWaiting } from "../../checkout/components/payment-waiting";
 import { BRAND } from "../../checkout/rules/brand";
 import { CHARGE_NOTICES } from "../../checkout/rules/charge-notices";
 import { loadBillingOverview, loadInvoices, loadPaymentPage, type BillingOverview, type NoticesView, type PaymentView, type ServicesPanelView } from "../loader";
-import { BILLING_REQUEST_HREF, BILLING_TABS, PAYMENT_PATH, type BillView, type PlanState } from "../rules";
+import { BILLING_REQUEST_HREF, BILLING_TABS, PAYMENT_PATH, type BillView, type DealBlockView, type PlanState } from "../rules";
 import { BillingDetailsForm } from "./billing-details-form";
 import { InvoicesTable } from "./invoices-table";
 import { PaymentMethodRequest } from "./payment-method-request";
@@ -118,6 +118,39 @@ function BillPanel({ bill, isFocal = false }: { readonly bill: BillView; readonl
   );
 }
 
+/** The deal being built (plan 66): what was paid, what is left, and what is charged with the balance. Same rows as the bill panel. */
+function DealPanel({ deal }: { readonly deal: DealBlockView }) {
+  return (
+    <article className="rounded-panel border border-border bg-surface p-6 shadow-card">
+      <h2 className="font-display text-lg font-bold tracking-tight text-ink mb-3">Your website build</h2>
+      <dl className="flex flex-col gap-2">
+        <div className="flex justify-between gap-4">
+          <dt className="text-ink-3 font-sans text-sm">{deal.advanceLabel}</dt>
+          <dd className="tabular-nums font-mono text-sm text-ink font-medium">{deal.advance}</dd>
+        </div>
+        <div className="flex items-baseline justify-between gap-4 border-t border-border pt-3">
+          <dt className="type-sub font-semibold text-ink">{deal.balanceDue ? "Your website is ready. The balance is due now." : "Balance, due when your website is ready"}</dt>
+          <dd className="type-metric-sm tabular-nums font-mono">{deal.balance}</dd>
+        </div>
+      </dl>
+      {deal.then.length === 0 ? null : (
+        <>
+          <h3 className="mt-5 mb-2 type-sub font-semibold text-ink">What you pay then</h3>
+          <dl className="flex flex-col gap-2">
+            {deal.then.map((row) => (
+              <div key={row.label} className="flex justify-between gap-4">
+                <dt className="text-ink-3 font-sans text-sm">{row.label}</dt>
+                <dd className="tabular-nums font-mono text-sm text-ink font-medium">{row.amount}</dd>
+              </div>
+            ))}
+          </dl>
+          <p className="mt-3 type-meta">{deal.balanceDue ? "Maintenance and your other services are charged with the balance." : "Maintenance and your other services are charged with the balance when your website is ready."}</p>
+        </>
+      )}
+    </article>
+  );
+}
+
 /** The panel for a plan that is not simply paid, with its one action. Null for a paid plan. */
 function StatePanel({ state, overview }: { readonly state: PlanState; readonly overview: BillingOverview }): ReactNode {
   switch (state.kind) {
@@ -153,6 +186,18 @@ function StatePanel({ state, overview }: { readonly state: PlanState; readonly o
           <p className="type-body text-ink-3">{PAYMENT_RECEIVED_MESSAGE} There’s nothing more for you to pay.</p>
         </Panel>
       );
+    case "building": {
+      const { deal } = overview;
+      if (deal == null) return null;
+      if (!deal.ok) {
+        return (
+          <Panel title="Your website build">
+            <PanelError failure={deal.error} what="your website build" />
+          </Panel>
+        );
+      }
+      return deal.data === null ? null : <DealPanel deal={deal.data} />;
+    }
     case "unpaid":
       return (
         <article className="relative flex flex-col rounded-overlay border border-border bg-surface p-6 shadow-hero sm:p-7">

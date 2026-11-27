@@ -13,6 +13,7 @@ import {
   invoiceRows,
   nextPaymentLine,
   paymentMethodView,
+  dealBlockView,
   planStateOf,
   readAddParam,
   renewsAutomatically,
@@ -210,8 +211,49 @@ describe("planStateOf", () => {
     [{ ...base, status: "lapsed" }, { kind: "lapsed" }],
     [{ ...base, status: "unpaid" }, { kind: "unpaid" }],
     [{ ...base, status: "unpaid", paymentUnderReview: true }, { kind: "under-review" }],
+    [{ ...base, status: "building" }, { kind: "building" }],
+    [{ ...base, status: "building", paymentUnderReview: true }, { kind: "under-review" }],
   ] as const)("reads %j as %j", (billing, state) => {
     expect(planStateOf(billing)).toEqual(state);
+  });
+});
+
+describe("dealBlockView (plan 66)", () => {
+  const link = {
+    currency: "INR",
+    billingInterval: "month",
+    websiteKind: "ecommerce",
+    services: ["managed-website", "social-media"],
+    setupFeeListCents: 6_500_000,
+    setupFeeDiscountCents: 500_000,
+    advanceCents: 2_000_000,
+    advancePaidAt: new Date("2026-11-27T10:00:00.000Z"),
+    readyAt: null,
+    websitePriceCents: null,
+    socialPriceCents: 150_000,
+    adsPriceCents: null,
+    monitoringPriceCents: null,
+  } as const;
+
+  it("shows the advance paid and the build balance: price less discount less advance", () => {
+    expect(dealBlockView(link)).toMatchObject({ advanceLabel: "Advance paid on Fri 27 Nov", advance: "₹20,000", balance: "₹40,000" });
+  });
+
+  it("says the balance is due now once staff have marked the website ready, and not while it is being built", () => {
+    expect(dealBlockView(link)?.balanceDue).toBe(false);
+    expect(dealBlockView({ ...link, readyAt: new Date("2026-12-01T10:00:00.000Z") })?.balanceDue).toBe(true);
+  });
+
+  it("lists what is charged with the balance, a custom price where staff set one", () => {
+    expect(dealBlockView(link)?.then).toEqual([
+      { label: "Maintenance", amount: "₹3,999 a month" },
+      { label: "Social Media Management", amount: "₹1,500 a month" },
+    ]);
+  });
+
+  it("is null for a deal that is not a paid one with its advance paid", () => {
+    expect(dealBlockView({ ...link, advancePaidAt: null })).toBeNull();
+    expect(dealBlockView({ ...link, setupFeeListCents: null })).toBeNull();
   });
 });
 

@@ -48,7 +48,7 @@ vi.mock("@brandbasket/db", async (importOriginal) => ({
 
 const NOW = new Date("2026-11-20T06:30:00.000Z");
 
-function customer(overrides: { status?: "paid" | "unpaid" | "lapsed"; services?: readonly string[]; hasWebsite?: boolean; role?: string; renewalFailingUntil?: Date | null } = {}) {
+function customer(overrides: { status?: "paid" | "unpaid" | "lapsed" | "building"; services?: readonly string[]; hasWebsite?: boolean; role?: string; renewalFailingUntil?: Date | null } = {}) {
   return {
     user: { id: "u1", name: "Anand Verma", email: "anand@example.test" },
     tenant: {},
@@ -56,7 +56,7 @@ function customer(overrides: { status?: "paid" | "unpaid" | "lapsed"; services?:
     role: overrides.role ?? "owner",
     currency: "INR",
     services: overrides.services ?? ["website", "social"],
-    billing: { status: overrides.status ?? "paid", paymentUnderReview: false, hasAccess: (overrides.status ?? "paid") === "paid", hasWebsite: overrides.hasWebsite ?? true, subscription: null, plan: null, renewalFailingUntil: overrides.renewalFailingUntil ?? null },
+    billing: { status: overrides.status ?? "paid", dealState: overrides.status === "building" ? "building" : null, paymentUnderReview: false, hasAccess: (overrides.status ?? "paid") === "paid", hasWebsite: overrides.hasWebsite ?? true, subscription: null, plan: null, renewalFailingUntil: overrides.renewalFailingUntil ?? null },
   } as never;
 }
 
@@ -116,6 +116,19 @@ describe("loadHomeState", () => {
     vi.mocked(callsOpenFor).mockReturnValue(true);
     const loaded = await loadHomeState(customer(), NOW);
     expect(loaded.ok && loaded.data).toMatchObject({ state: { kind: "building", dueAt: null }, layout: "progress", callsOpen: true });
+  });
+
+  it("shows a business being built the project's stages as a paid client, with the deal state for Home's one line (plan 66)", async () => {
+    vi.mocked(readKickoffFacts).mockResolvedValue({ booking: HELD, project: PROJECT, live: null });
+    const built = await loadHomeState(customer({ status: "building", services: ["website"], hasWebsite: false }), NOW);
+    expect(built.ok && built.data).toMatchObject({ state: { kind: "building" }, layout: "progress", dealState: "building" });
+
+    vi.mocked(readKickoffFacts).mockResolvedValue({ booking: null, project: PROJECT, live: null });
+    const unbooked = await loadHomeState(customer({ status: "building", services: ["website"], hasWebsite: false }), NOW);
+    expect(unbooked.ok && unbooked.data.state.kind).toBe("kickoff_unbooked");
+    expect(readMissedKickoffAt).toHaveBeenCalled();
+    const paid = await loadHomeState(customer(), NOW);
+    expect(paid.ok && paid.data.dealState).toBeNull();
   });
 
   it("puts an unpaid business on the payment task without reading the miss", async () => {
