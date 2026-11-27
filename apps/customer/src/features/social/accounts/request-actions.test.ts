@@ -1,16 +1,18 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { deleteChannelLinkRequest, upsertChannelLinkRequest } from "@brandbasket/db";
+import { deleteChannelLinkRequest, reopenChannelLinkRequest, upsertChannelLinkRequest } from "@brandbasket/db";
 import { requireService } from "@/lib/guards";
 import { cancelChannelRequestAction, requestChannelAction } from "./actions";
+import { fetchChannels } from "./client";
+import { PostingServiceError } from "../posting-service";
 import { tellRequesterAboutLink, tellTeamAboutLink } from "./request-alert";
 
 vi.mock("next/navigation", () => ({ unstable_rethrow: vi.fn() }));
 vi.mock("@/lib/guards", () => ({ requireService: vi.fn() }));
 vi.mock("@/lib/report", () => ({ reportError: vi.fn() }));
 vi.mock("@/lib/db", () => ({ getAppDb: () => ({}), getStaffDb: () => ({}) }));
-vi.mock("@brandbasket/db", () => ({ withTenantScope: (_db: unknown, _scope: unknown, work: (tx: unknown) => unknown) => work({}), upsertChannelLinkRequest: vi.fn(), deleteChannelLinkRequest: vi.fn() }));
+vi.mock("@brandbasket/db", () => ({ withTenantScope: (_db: unknown, _scope: unknown, work: (tx: unknown) => unknown) => work({}), upsertChannelLinkRequest: vi.fn(), deleteChannelLinkRequest: vi.fn(), reopenChannelLinkRequest: vi.fn() }));
 vi.mock("../brand", () => ({ brandOf: async () => ({ externalId: "b1", name: "Om Sweets" }) }));
-vi.mock("./client", () => ({ ensureWorkspace: vi.fn(), fetchConnectLink: vi.fn(), returnUrl: () => "https://app.example.com/social" }));
+vi.mock("./client", () => ({ ensureWorkspace: vi.fn(), fetchChannels: vi.fn(), fetchConnectLink: vi.fn(), returnUrl: () => "https://app.example.com/social" }));
 vi.mock("./request-alert", () => ({ tellTeamAboutLink: vi.fn(), tellRequesterAboutLink: vi.fn() }));
 
 const owner = { role: "owner", businessId: "b1", businessName: "Om Sweets", tenant: { businessId: "b1", userId: "u1" }, user: { id: "u1", name: "Asha", email: "asha@om.test" } };
@@ -70,8 +72,36 @@ describe("requestChannelAction", () => {
 
   it("tells her it is already with the team when the team has answered", async () => {
     vi.mocked(upsertChannelLinkRequest).mockResolvedValue(null);
+    vi.mocked(fetchChannels).mockResolvedValue([]);
+    vi.mocked(reopenChannelLinkRequest).mockResolvedValue(null);
     expect(await requestChannelAction("facebook", "facebook.com/acmefoods")).toMatchObject({ ok: false, message: expect.stringContaining("already with our team") });
     expect(tellTeamAboutLink).not.toHaveBeenCalled();
+  });
+
+  it("reopens a request marked connected when the network shows no account for the brand, and tells the team", async () => {
+    vi.mocked(upsertChannelLinkRequest).mockResolvedValue(null);
+    vi.mocked(fetchChannels).mockResolvedValue([]);
+    vi.mocked(reopenChannelLinkRequest).mockResolvedValue({ id: "r9" } as never);
+    expect(await requestChannelAction("instagram", "https://www.instagram.com/fynix_digital/")).toEqual({ ok: true, data: { handle: "fynix_digital" } });
+    expect(fetchChannels).toHaveBeenCalledWith("b1");
+    expect(reopenChannelLinkRequest).toHaveBeenCalledWith({}, { businessId: "b1", brandId: "b1", network: "instagram", url: "https://www.instagram.com/fynix_digital", handle: "fynix_digital", adminProfileUrl: null, userId: "u1" });
+    expect(tellTeamAboutLink).toHaveBeenCalledWith(expect.objectContaining({ id: "r9", network: "instagram", handle: "fynix_digital" }));
+    expect(tellRequesterAboutLink).toHaveBeenCalledWith("r9", "received");
+  });
+
+  it("leaves a connected request alone when the account really is connected", async () => {
+    vi.mocked(upsertChannelLinkRequest).mockResolvedValue(null);
+    vi.mocked(fetchChannels).mockResolvedValue([{ id: "c1", platform: "instagram", account: "fynix_digital", connectedAt: new Date().toISOString() }]);
+    expect(await requestChannelAction("instagram", "https://www.instagram.com/fynix_digital/")).toMatchObject({ ok: false, message: expect.stringContaining("already with our team") });
+    expect(reopenChannelLinkRequest).not.toHaveBeenCalled();
+    expect(tellTeamAboutLink).not.toHaveBeenCalled();
+  });
+
+  it("changes nothing when the posting service cannot say what is connected", async () => {
+    vi.mocked(upsertChannelLinkRequest).mockResolvedValue(null);
+    vi.mocked(fetchChannels).mockRejectedValue(new PostingServiceError(0, "down"));
+    expect(await requestChannelAction("instagram", "https://www.instagram.com/fynix_digital/")).toMatchObject({ ok: false, message: expect.stringContaining("could not send") });
+    expect(reopenChannelLinkRequest).not.toHaveBeenCalled();
   });
 
   it("does nothing for a viewer", async () => {
