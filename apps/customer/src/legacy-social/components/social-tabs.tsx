@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import type { ReactElement } from "react";
+import type { ReactElement, ReactNode } from "react";
 import { cn } from "@brandbasket/shared/lib/cn";
 import { CHANNEL_PARAM, channelParamOf, withChannel } from "@/legacy-social/lib/social/channel-param";
 
@@ -16,13 +16,15 @@ export interface SocialTabsProps {
   readonly hasPosts?: boolean;
   /** How many things wait for the customer on the Posts tab (the channel numbers added up); none when 0 or not known. */
   readonly waiting?: number;
+  /** Something to hold at the right end of the row, level with the tabs (the Analytics date range). */
+  readonly trailing?: ReactNode;
 }
 
 const TAB = "-mb-px no-underline border-b-2 px-3.5 py-2 text-[0.875rem] font-semibold";
 const tab = (on: boolean): string => cn(TAB, on ? "border-rattan-text text-ink" : "border-transparent text-ink-2");
 
 /** Calendar, Posts (the written posts to look over) and Analytics, one line under the page title, so the header keeps only its buttons. Analytics is greyed, with the reason, until an account is connected. */
-export function SocialTabs({ current, hasNumbers, onlyWithoutNumbers = false, hasPosts = false, waiting = 0 }: SocialTabsProps): ReactElement {
+export function SocialTabs({ current, hasNumbers, onlyWithoutNumbers = false, hasPosts = false, waiting = 0, trailing }: SocialTabsProps): ReactElement {
   // The channel she is looking at goes with her to the next tab.
   const channel = channelParamOf(useSearchParams()?.get(CHANNEL_PARAM));
   return (
@@ -51,6 +53,7 @@ export function SocialTabs({ current, hasNumbers, onlyWithoutNumbers = false, ha
           <span className="ml-2 text-[0.6875rem] font-normal">{onlyWithoutNumbers ? "LinkedIn has no numbers yet" : "Connect an account first"}</span>
         </span>
       )}
+      {trailing === undefined ? null : <div className="ml-auto pb-1.5">{trailing}</div>}
     </nav>
   );
 }

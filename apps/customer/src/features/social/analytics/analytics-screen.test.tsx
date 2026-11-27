@@ -52,8 +52,10 @@ describe("Social Analytics", () => {
     );
     wrap(await SocialAnalytics({ customer, range: 30, channel: "all", now: NOW }));
     expect(screen.getAllByText("Reach").length).toBeGreaterThan(0);
-    expect(screen.getByText("6,000")).toBeTruthy();
-    expect(screen.getByText("+100%")).toBeTruthy();
+    // The four summary cards (reach, views, likes and comments, shares and saves) are gone: the chart and the table carry the numbers.
+    expect(screen.queryByText("Likes and comments")).toBeNull();
+    expect(screen.queryByText("Shares and saves")).toBeNull();
+    expect(screen.getByRole("img", { name: /Reach by day/ })).toBeTruthy();
     expect(screen.getByText("Diwali boxes")).toBeTruthy();
     expect(screen.getByRole("link", { name: "View post" }).getAttribute("href")).toBe("https://instagram.com/p/x");
     expect(screen.getAllByText("Not given").length).toBeGreaterThan(0);
@@ -71,5 +73,15 @@ describe("Social Analytics", () => {
     wrap(await SocialAnalytics({ customer, range: 30, channel: "instagram", now: NOW }));
     expect(screen.getByText("Not enough followers yet.")).toBeTruthy();
     expect(screen.getByText("64 of 100")).toBeTruthy();
+  });
+
+  it("holds the date range at the right end of the tabs row, level with the tabs", async () => {
+    vi.mocked(loadAnalytics).mockResolvedValue(
+      data({ channels: [ig], posts: [], accounts: [{ channel: "instagram:1", platform: "instagram", series: [...w.previous, ...w.current].map((date) => ({ date, reach: 100 })) }] }),
+    );
+    wrap(await SocialAnalytics({ customer, range: 30, channel: "all", now: NOW }));
+    const tabs = screen.getByRole("navigation", { name: "Content calendar" });
+    expect(tabs.contains(screen.getByRole("group", { name: "Date range" }))).toBe(true);
+    for (const label of ["7 days", "30 days", "90 days"]) expect(tabs.contains(screen.getByText(label))).toBe(true);
   });
 });

@@ -7,6 +7,7 @@ import Link from "next/link";
 import { Banner, Icon, Meter, Table, TableBody, TableCell, TableHead, TableHeader, TableRow, type IconName } from "@/ui";
 import { ConnectButton } from "../../accounts/components/connect-button";
 import { SOCIAL_ANALYTICS_PATH } from "../../rules";
+import { PostsTable } from "./posts-table";
 import { BrandControl } from "@/legacy-social/components/brand-switcher";
 import { SMALL_ACCENT } from "@/legacy-social/components/small-buttons";
 import { brandOf } from "../../brand";
@@ -78,61 +79,6 @@ function Waiting() {
   );
 }
 
-const TOTAL_COLUMNS = [
-  ["reach", "Reach"],
-  ["views", "Views"],
-  ["likes", "Likes"],
-  ["comments", "Comments"],
-  ["shares", "Shares"],
-  ["saves", "Saves"],
-] as const;
-
-function PostsTable({ rows, now }: { readonly rows: readonly PostRow[]; readonly now: Date }) {
-  return (
-    <Table aria-label="How each post did">
-      <TableHead>
-        <TableHeader>Post</TableHeader>
-        {TOTAL_COLUMNS.map(([key, name]) => (
-          <TableHeader key={key} align="end" hideOnPhone={key !== "reach"}>
-            {name}
-          </TableHeader>
-        ))}
-      </TableHead>
-      <TableBody>
-        {rows.map((row) => (
-          <TableRow key={row.key}>
-            <TableCell>
-              <div className="flex items-start gap-2.5">
-                <Icon name={PLATFORM_ICON[row.platform]} size="sm" />
-                <div className="min-w-0">
-                  <p className="type-body font-medium text-ink">{row.title}</p>
-                  <p className="type-meta">
-                    {CHANNEL_NAMES[row.platform]}
-                    {row.day === null ? "" : `, ${formatDate(new Date(`${row.day}T12:00:00Z`), now)}`}
-                    {row.link === null ? null : (
-                      <>
-                        {". "}
-                        <a href={row.link} target="_blank" rel="noopener noreferrer" className="underline hover:text-ink">
-                          View post
-                        </a>
-                      </>
-                    )}
-                  </p>
-                </div>
-              </div>
-            </TableCell>
-            {TOTAL_COLUMNS.map(([key]) => (
-              <TableCell key={key} align="end" hideOnPhone={key !== "reach"}>
-                {row.totals[key] === undefined ? <span className="type-meta">{NOT_GIVEN}</span> : formatNumber(row.totals[key] ?? 0)}
-              </TableCell>
-            ))}
-          </TableRow>
-        ))}
-      </TableBody>
-    </Table>
-  );
-}
-
 function Body({ analytics, data, channel, now }: { readonly analytics: Analytics; readonly data: AnalyticsData; readonly channel: "all" | AnalyticsChannel; readonly now: Date }) {
   const scope: readonly AnalyticsChannel[] = channel === "all" ? ANALYTICS_CHANNELS : [channel];
   const overview = overviewOf(analytics, scope, data.range, data.today);
@@ -142,10 +88,8 @@ function Body({ analytics, data, channel, now }: { readonly analytics: Analytics
   const nothing = overview.figures.length === 0 && overview.google === null;
   return (
     <>
-      <Filters />
       <Notices analytics={analytics} scope={scope} />
       {nothing ? <Waiting /> : null}
-      {overview.figures.length === 0 ? null : <MetricStrip label="Reach, views and talk" metrics={metricsOf(overview.figures, data.range)} />}
       {overview.reach.days.length < 2 ? null : (
         <Panel title="Reach by day" meta={`Last ${data.range} days`}>
           <LineChart label={`Reach by day, last ${data.range} days`} labels={overview.reach.days.map(shortDay)} current={{ name: "Reach", values: overview.reach.values }} />
@@ -168,7 +112,7 @@ function Body({ analytics, data, channel, now }: { readonly analytics: Analytics
       )}
       {posts.length === 0 ? null : (
         <Panel title="How each post did" meta="Numbers since each post went out" flush>
-          <PostsTable rows={posts} now={now} />
+          <PostsTable rows={posts} nowIso={now.toISOString()} />
         </Panel>
       )}
       {hashtags.length === 0 ? null : (
@@ -248,7 +192,7 @@ export async function SocialAnalytics({ customer, range, channel, now = new Date
             )}
           </div>
         </header>
-        <SocialTabs current="analytics" hasNumbers hasPosts={customer.role !== "viewer"} waiting={column.ok ? column.data.rows.reduce((total, row) => total + (row.todo ?? 0), 0) : 0} />
+        <SocialTabs current="analytics" hasNumbers hasPosts={customer.role !== "viewer"} waiting={column.ok ? column.data.rows.reduce((total, row) => total + (row.todo ?? 0), 0) : 0} trailing={data.ok && data.data.analytics !== null ? <Filters /> : undefined} />
       <Stack>
         {!data.ok ? (
           <Panel title="Analytics">
