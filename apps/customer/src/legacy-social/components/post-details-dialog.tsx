@@ -12,6 +12,8 @@ import { BRAND_TIME_ZONE } from "@/legacy-social/shims";
 import { canAddOn, earliestDay, isTime, latestDay, momentHasPassed } from "@/legacy-social/lib/social/new-post";
 import { postPictureSrc } from "@/legacy-social/lib/social/post-picture";
 import { ChannelLogo } from "./channel-logo";
+import { DatePicker } from "./date-picker";
+import { TimePicker } from "./time-picker";
 import { SMALL_DARK, SMALL_SOFT } from "./small-buttons";
 import { useScrollLock } from "./use-scroll-lock";
 
@@ -76,13 +78,13 @@ function TimePanel({ post, onClose }: { readonly post: CalendarPost; readonly on
           <label htmlFor="written-post-day" className="text-xs font-semibold text-ink-2">
             Day
           </label>
-          <input id="written-post-day" type="date" value={day} min={earliestDay(today)} max={latestDay(today)} onChange={(event) => event.target.value !== "" && setDay(event.target.value)} className={FIELD} />
+          <DatePicker id="written-post-day" value={day} min={earliestDay(today)} max={latestDay(today)} today={today} onChange={setDay} />
         </div>
         <div className="grid gap-1">
           <label htmlFor="written-post-time" className="text-xs font-semibold text-ink-2">
             Time
           </label>
-          <input id="written-post-time" type="time" value={time} onChange={(event) => setTime(event.target.value)} className={FIELD} />
+          <TimePicker id="written-post-time" value={time} onChange={setTime} />
         </div>
       </div>
       <p className="text-xs text-ink-3">India time. It goes out within a few minutes of the time you choose.</p>
