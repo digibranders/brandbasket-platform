@@ -115,6 +115,8 @@ describe("loadMembershipCheckout", () => {
         setupFeeListCents: 6_500_000,
         setupFeeDiscountCents: 1_500_000,
         setupFeeNote: "As agreed on call",
+        advanceCents: 2_000_000,
+        advancePaidAt: null,
         websitePriceCents: null,
         socialPriceCents: null,
         adsPriceCents: null,
@@ -128,7 +130,9 @@ describe("loadMembershipCheckout", () => {
         services: ["managed-website", "social-media"],
         interval: "year",
         locked: true,
-        deal: { kind: "ecommerce", fee: { listCents: 6_500_000, discountCents: 1_500_000, netCents: 5_000_000 }, note: "As agreed on call" },
+        // A paid deal owes no build with a plan checkout: it is paid as the advance (plan 66), which the pay screen reads from paidDeal.
+        deal: { kind: "ecommerce", fee: null, note: "As agreed on call" },
+        paidDeal: { listCents: 6_500_000, discountCents: 1_500_000, advanceCents: 2_000_000, note: "As agreed on call" },
       });
     });
 
@@ -151,7 +155,7 @@ describe("loadMembershipCheckout", () => {
 
       const view = await loadMembershipCheckout(customer, "managed", WEBSITE, NOW, "month", { chosenKind: "b2b", chargeListFee: true });
 
-      expect(view).toMatchObject({ locked: true, deal: { fee: null }, customPrices: { "managed-website": 199_900 }, linkBuildListCents: null });
+      expect(view).toMatchObject({ locked: true, deal: { fee: null }, customPrices: { "managed-website": 199_900 }, paidDeal: null });
     });
 
     it("ignores a link made in another currency than the business's", async () => {

@@ -2,6 +2,7 @@ import "server-only";
 import {
   findChargeForBusiness,
   findPaymentLinkByAdvanceChargeId,
+  insertOnboardingProjectIfNoneOpen,
   markAdvancePaid,
   openMembershipForListingBusiness,
   recordChargePayment,
@@ -30,7 +31,7 @@ export interface RecordedChargePaymentWithEffects extends RecordedChargePayment 
  * A `website_advance` charge (plan 66, payment 1 of a paid deal) marks the deal's advance paid and opens the project, in the
  * payment's own transaction, so the money and the start never disagree. A second delivery of the same payment is
  * `alreadyRecorded` and does nothing more; a business that is already a client keeps the project it has (openMembership
- * returns null for it).
+ * returns null for it, and one with no open project gets one).
  */
 export async function recordChargePaymentWithInvoice(tx: ScopedTransaction, input: ChargePayment): Promise<RecordedChargePaymentWithEffects> {
   const recorded = await recordChargePayment(tx, input);
@@ -42,6 +43,8 @@ export async function recordChargePaymentWithInvoice(tx: ScopedTransaction, inpu
       if (link === null) throw new Error(`The advance charge ${charge.id} belongs to no payment link`);
       await markAdvancePaid(tx, { linkId: link.id, paidAt: input.paidAt });
       openedMembership = await openMembershipForListingBusiness(tx, input.businessId, { withProject: true, websiteKind: link.websiteKind });
+      // A business that was a website client already (so not converted above) still has nothing to build from: open its project now.
+      if (openedMembership === null) await insertOnboardingProjectIfNoneOpen(tx, input.businessId, link.websiteKind);
     }
     await issueTaxInvoiceSafely(tx, recorded.payment, { kind: "charge", chargeId: input.chargeId });
   }

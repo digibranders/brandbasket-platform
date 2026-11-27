@@ -469,3 +469,19 @@ describe("the code box", () => {
     expect(after).toEqual(before);
   });
 });
+
+describe("a paid deal link (plan 66)", () => {
+  const link = { interval: "month", discountCents: 500_000, note: "As agreed on call", listCents: 6_500_000, advanceCents: 2_000_000 } as const;
+
+  it("shows the build price, the discount, the balance and the advance as the one amount to pay, with the refund line", () => {
+    render(<SignupCheckoutScreen account="new" table={INDIA} initialServices={["managed-website", "social-media"]} initialKind="ecommerce" link={link} details={DETAILS} />);
+    expect(summary().getByText("Ecommerce store build")).toBeTruthy();
+    expect(summary().getByText("-₹5,000")).toBeTruthy();
+    expect(summary().getByText("Balance at go-live")).toBeTruthy();
+    expect(summary().getByText("Advance to pay now")).toBeTruthy();
+    expect(summary().getByText("The advance is non-refundable.")).toBeTruthy();
+    expect(summary().getByText(/charged with the balance when your website is ready/)).toBeTruthy();
+    expect(payButtons().map((button) => button.textContent)).toEqual(["Pay ₹20,000", "Pay ₹20,000"]);
+    expect(summary().queryByText(/referral|code/i)).toBeNull();
+  });
+});

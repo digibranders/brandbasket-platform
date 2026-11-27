@@ -144,3 +144,41 @@ describe("the one-screen checkout's basket", () => {
     expect(cardBadge(monitoring!, table, "month")).toBeNull();
   });
 });
+
+describe("basketView for a paid deal (plan 66)", () => {
+  const table = buildSignupBasketTable("INR", "razorpay", NEVER_HAD);
+  const deal = { listCents: 6_500_000, discountCents: 500_000, note: "As agreed on call", advanceCents: 2_000_000 };
+
+  it("shows the agreed build price, the discount, the balance and the advance as the one amount to pay", () => {
+    const view = basketView(table, ["managed-website", "social-media"], "month", { kind: "ecommerce", deal });
+    expect(view.rows.map((row) => [row.label, row.amount])).toEqual([
+      ["Ecommerce store build", "₹65,000"],
+      ["As agreed on call", "-₹5,000"],
+      ["Balance at go-live", "₹40,000"],
+    ]);
+    expect(view).toMatchObject({ dueCents: 2_000_000, due: "₹20,000", dueLabel: "Advance to pay now" });
+    expect(payLabel(view)).toBe("Pay ₹20,000");
+    expect(view.gstLine).toBe("Includes ₹3,050.84 of GST at 18%");
+  });
+
+  it("says in two plain sentences that the advance is not refunded and what comes with the balance", () => {
+    const view = basketView(table, ["managed-website"], "year", { kind: "ecommerce", deal });
+    expect(view.advanceNote).toBe("The advance is non-refundable.");
+    expect(view.renewal).toBe("Maintenance and your other services are charged with the balance when your website is ready.");
+  });
+
+  it("leaves out the discount line when there is none, and shows no balance owed when the advance is the whole price", () => {
+    const view = basketView(table, ["managed-website"], "month", { deal: { listCents: 3_500_000, discountCents: 0, note: null, advanceCents: 3_500_000 } });
+    expect(view.rows.map((row) => [row.label, row.amount])).toEqual([
+      ["B2B website build", "₹35,000"],
+      ["Balance at go-live", "₹0"],
+    ]);
+  });
+
+  it("changes nothing for a free link or a self sign-up", () => {
+    for (const options of [{}, { deal: { discountCents: 0, note: null } }]) {
+      const view = basketView(table, ["managed-website"], "month", options);
+      expect(view).toMatchObject({ dueLabel: "Due today", advanceNote: null });
+    }
+  });
+});

@@ -23,6 +23,7 @@ import {
   addOnStatus,
   billsNext,
   billView,
+  dealBlockView,
   dropCopy,
   invoiceRows,
   nextPaymentLine,
@@ -37,13 +38,14 @@ import {
   SERVICE_KEY_OF,
   type AddOnStatus,
   type BillView,
+  type DealBlockView,
   type DropCopy,
   type InvoiceRow,
   type PaymentMethodView,
   type PlanState,
 } from "./rules";
 import { loadAddOnsPage, type AddOnOffer, type AddOnPageEntry } from "./server/add-ons";
-import { findCustomerPaymentMethod, findReactivation, findReactivationPlan } from "./server/billing";
+import { findCustomerDeal, findCustomerPaymentMethod, findReactivation, findReactivationPlan } from "./server/billing";
 import type { ServiceKey } from "@/ui";
 
 /*
@@ -126,6 +128,8 @@ export interface BillingOverview {
   readonly notices: Loaded<NoticesView>;
   /** Null for a business with no plan to show services for (unpaid, under review, lapsed). */
   readonly services: Loaded<ServicesPanelView> | null;
+  /** Only for a business being built (plan 66): the deal's advance and balance. Null inside when the deal cannot be read as a paid deal. */
+  readonly deal?: Loaded<DealBlockView | null> | null;
   /** Only for a lapsed business. */
   readonly reactivation: Loaded<ReactivationCardView | null> | null;
 }
@@ -315,6 +319,10 @@ async function loadNotices(customer: CustomerContext, params: Params): Promise<N
 }
 
 /** Plan & billing's first tab. The page's guard has run; billing is shown in every state. */
+function dealBlockViewOf(link: Awaited<ReturnType<typeof findCustomerDeal>>): DealBlockView | null {
+  return link === null ? null : dealBlockView(link);
+}
+
 export async function loadBillingOverview(customer: CustomerContext, params: Params, now: Date = new Date()): Promise<BillingOverview> {
   const state = planStateOf(customer.billing);
   const notices = await load("billing.notices", () => loadNotices(customer, params));
@@ -327,6 +335,7 @@ export async function loadBillingOverview(customer: CustomerContext, params: Par
     preselect: readAddParam(params.add),
     notices,
     services: live ? await load("billing.services", () => loadServicesPanel(customer, canAdd, now)) : null,
+    deal: state.kind === "building" ? await load("billing.deal", async () => dealBlockViewOf(await findCustomerDeal(customer))) : null,
     reactivation: state.kind === "lapsed" ? await load("billing.reactivation", () => loadReactivationCard(customer, params)) : null,
   };
 }

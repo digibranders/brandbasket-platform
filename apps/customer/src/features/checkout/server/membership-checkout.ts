@@ -52,8 +52,11 @@ export interface MembershipCheckoutView {
   readonly locked: boolean;
   /** The custom recurring prices of the staff link in force (plan 66), for the link's period; empty with no link or none set. */
   readonly customPrices: DealCustomPrices;
-  /** The finalised build price of a paid link, which the page shows instead of the catalogue's; null for any other checkout. */
-  readonly linkBuildListCents: number | null;
+  /**
+   * A paid link (plan 66) whose advance is still to pay: the finalised build price, the discount and the advance, which the pay screen
+   * shows instead of a plan checkout; null for any other checkout.
+   */
+  readonly paidDeal: { readonly listCents: number; readonly discountCents: number; readonly advanceCents: number; readonly note: string | null } | null;
 }
 
 /** What a checkout may add to the basket its address names (plan 65): the kind of website, and whether the list build fee is owed when no payment link names one. */
@@ -113,15 +116,9 @@ export async function loadMembershipCheckout(
     plan !== null && reactivation === null && services.includes("managed-website") && hadService?.["managed-website"] === false && (link !== null || options.chargeListFee);
   const deal: BuildDeal = {
     kind,
-    // A free link (plan 66) owes no build. A paid link keeps charging its net build price with the first payment until the advance flow
-    // exists (plan 66 step 4 replaces this), at the price staff finalised.
-    fee: !owesFee
-      ? null
-      : link === null
-        ? setupFeeFor(kind, plan.currency, 0)
-        : link.dealType === "paid" && link.setupFeeListCents !== null
-          ? { listCents: link.setupFeeListCents, discountCents: link.setupFeeDiscountCents ?? 0, netCents: link.setupFeeListCents - (link.setupFeeDiscountCents ?? 0) }
-          : null,
+    // Only a sign-up checkout owes the list build with its first payment. A staff link owes none here: a free link has no build, and a
+    // paid one is paid as an advance and a balance (plan 66), which the pay screen builds from the link itself (paidDeal).
+    fee: owesFee && link === null ? setupFeeFor(kind, plan.currency, 0) : null,
     note: owesFee ? (link?.setupFeeNote ?? null) : null,
   };
   return {
@@ -138,6 +135,9 @@ export async function loadMembershipCheckout(
     deal,
     locked: link !== null,
     customPrices: link === null ? {} : linkCustomPrices(link),
-    linkBuildListCents: link?.dealType === "paid" ? link.setupFeeListCents : null,
+    paidDeal:
+      link?.dealType === "paid" && link.advancePaidAt === null && link.setupFeeListCents !== null && link.advanceCents !== null
+        ? { listCents: link.setupFeeListCents, discountCents: link.setupFeeDiscountCents ?? 0, advanceCents: link.advanceCents, note: link.setupFeeNote }
+        : null,
   };
 }

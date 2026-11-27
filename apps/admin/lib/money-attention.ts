@@ -1,7 +1,7 @@
 import type { ClientSummary } from "@brandbasket/db";
 import { clientPaymentState } from "@brandbasket/shared/lib/billing/client-payment";
 
-export type RenewalState = "past_due" | "lapsed";
+export type RenewalState = "past_due" | "lapsed" | "balance_due";
 
 export interface RenewalRow {
   readonly businessId: string;
@@ -14,17 +14,19 @@ export interface RenewalRow {
   readonly href: string;
 }
 
-export const RENEWAL_STATE_LABELS: Readonly<Record<RenewalState, string>> = { past_due: "Past due", lapsed: "Lapsed" };
+export const RENEWAL_STATE_LABELS: Readonly<Record<RenewalState, string>> = { past_due: "Past due", lapsed: "Lapsed", balance_due: "Balance due" };
 
 type RenewalClient = Pick<ClientSummary, "billing" | "businessId" | "businessName">;
 
 const DAY_MS = 86_400_000;
 
 /**
- * The state of a client's plan when it needs a person: the provider is still retrying a failed renewal (past due), or the paid
+ * The state of a client's plan when it needs a person: a deal's balance is due (plan 66), the provider is still retrying a failed renewal (past due), or the paid
  * period has run out (lapsed). Same rule as the Today queue's billing rows (`queueFrom` in `lib/server/today.ts`).
  */
 export function renewalState(client: Pick<ClientSummary, "billing">, now: Date): RenewalState | null {
+  // Plan 66: the website is ready and its balance is unpaid. Not a renewal, but money the team has to chase, so it is listed here.
+  if (client.billing.deal?.state === "balance_due" && client.billing.firstPayment === null) return "balance_due";
   if (client.billing.subscription?.status === "past_due") return "past_due";
   return clientPaymentState(client.billing, now).kind === "lapsed" ? "lapsed" : null;
 }

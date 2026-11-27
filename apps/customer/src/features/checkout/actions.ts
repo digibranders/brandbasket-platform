@@ -12,6 +12,7 @@ import { reportError } from "@/lib/report";
 import { chargeNoticeHref, chargePayPath } from "./rules/charge-notices";
 import { MEMBERSHIP_BILLING_PARAM, MEMBERSHIP_PATH, readBillingInterval } from "./rules/membership";
 import { lookupBillingPincode, saveBillingDetailsFor, type BillingPincodeLookup } from "./server/billing-details";
+import { hasOpenPaidDeal, startAdvancePaymentFor } from "./server/advance-payment";
 import { startCustomerChargePayment } from "./server/charges";
 import { startCheckoutFor, startMembershipCheckoutFor } from "./server/checkout";
 import { loadBusinessEntry } from "./server/entry";
@@ -62,8 +63,10 @@ export async function startPaymentAction(_previous: ActionResult | null, formDat
   const entry = await loadBusinessEntry(customer);
   const now = new Date();
   const interval = readBillingInterval({ [MEMBERSHIP_BILLING_PARAM]: parsed.data.billing });
-  const outcome =
-    entry.kind === "listing"
+  // A paid deal (plan 66) is paid in two: this press pays the advance, whatever the form posted. A free link and a self sign-up go on as before.
+  const outcome = (await hasOpenPaidDeal(customer, now))
+    ? await startAdvancePaymentFor(customer, now)
+    : entry.kind === "listing"
       ? await startMembershipCheckoutFor(customer, now, parsed.data.tier, servicesOf(parsed.data.service), interval, parsed.data.siteKind)
       : await startCheckoutFor(customer, now, interval);
   if (outcome.kind === "refused") return actionFail(outcome.problem.message);

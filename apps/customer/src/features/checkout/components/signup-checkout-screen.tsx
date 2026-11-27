@@ -70,7 +70,7 @@ export interface SignupCheckoutScreenProps {
    * Set when a staff payment link decided the deal: the services, how often they are paid, the kind of website and the build
    * discount are fixed, and the screen offers no way to change them.
    */
-  readonly link?: { readonly interval: BillingInterval; readonly discountCents: number; readonly note: string | null } | null;
+  readonly link?: { readonly interval: BillingInterval; readonly discountCents: number; readonly note: string | null; readonly listCents?: number; readonly advanceCents?: number } | null;
   /** The token of the staff payment link the visitor opened, sent back with the first post so the account is made for that deal. */
   readonly payLinkToken?: string;
 }
@@ -247,7 +247,7 @@ export function SignupCheckoutScreen({ table, initialServices, account, details,
                 onAgreedChange={agree}
                 agreeError={agreeError}
                 failure={bannerMessage}
-                footer={<CodeDisclosure open={codeOpen} onOpenChange={setCodeOpen} error={codeError} />}
+                footer={view.advanceNote === null ? <CodeDisclosure open={codeOpen} onOpenChange={setCodeOpen} error={codeError} /> : null}
               >
                 {first === undefined ? null : <TurnstileWidget siteKey={first.siteKey} action="join" resetKey={state} />}
               </OrderPanel>

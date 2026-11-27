@@ -1,9 +1,12 @@
 import { chargedAmountCents, gstInsideCents } from "@brandbasket/billing/tax";
 import { gstNote, type PaymentSummary } from "../checkout/rules/payment-summary";
-import type { BillingInterval, BundledAddOn, Charge, CurrentPaymentMethod, Plan, Receipt, Subscription } from "@brandbasket/db";
+import type { BillingInterval, BundledAddOn, Charge, CurrentPaymentMethod, PaymentLink, Plan, Receipt, Subscription } from "@brandbasket/db";
 import { isUnappliedReason } from "@brandbasket/db/unapplied-reasons";
 import { MONTHLY_ADD_ON_IDS, perCycle, type MonthlyAddOnId } from "@brandbasket/shared/lib/billing/add-ons";
 import { bundledLinePrice, nextBundledNetCents, nextDiscountCents } from "@brandbasket/shared/lib/billing/bundle";
+import { readBundleSelection } from "@brandbasket/shared/lib/billing/bundle";
+import { dealLines, linkCustomPrices } from "@brandbasket/shared/lib/billing/deal";
+import { isWebsiteKind, type WebsiteKind } from "@brandbasket/shared/lib/billing/website-kind";
 import { chargeLabel } from "@brandbasket/shared/lib/billing/charges";
 import { listTotalCents, packageBasisPointsFor, percentOf } from "@brandbasket/shared/lib/billing/packages";
 import { paymentLabel } from "@brandbasket/shared/lib/billing/payment-method";
@@ -199,12 +202,14 @@ export type PlanState =
   /** The paid period ran out. Action: Reactivate. */
   | { readonly kind: "lapsed" }
   /** Never paid. Action: go to checkout. */
-  | { readonly kind: "unpaid" };
+  | { readonly kind: "unpaid" }
+  /** Plan 66: the advance is paid and the plans are not (the website is being built). No action: the balance is paid when it is ready. */
+  | { readonly kind: "building" };
 
 export function planStateOf(billing: Pick<CustomerBilling, "status" | "paymentUnderReview" | "renewalFailingUntil">): PlanState {
   switch (billing.status) {
-    // plan 66 step 4b decides this: until then a building business reads as unpaid on Plan & billing.
     case "building":
+      return billing.paymentUnderReview ? { kind: "under-review" } : { kind: "building" };
     case "unpaid":
       return billing.paymentUnderReview ? { kind: "under-review" } : { kind: "unpaid" };
     case "lapsed":
@@ -216,6 +221,61 @@ export function planStateOf(billing: Pick<CustomerBilling, "status" | "paymentUn
       throw new Error(`Unhandled billing status: ${String(unhandled)}`);
     }
   }
+}
+
+// ---- A deal being built (plan 66) ----
+
+/** The deal's own columns that Billing words. */
+export type DealBlockLink = Pick<
+  PaymentLink,
+  | "currency"
+  | "billingInterval"
+  | "websiteKind"
+  | "setupFeeListCents"
+  | "setupFeeDiscountCents"
+  | "advanceCents"
+  | "advancePaidAt"
+  | "websitePriceCents"
+  | "socialPriceCents"
+  | "adsPriceCents"
+  | "monitoringPriceCents"
+> & { readonly services: readonly string[] };
+
+/** What Plan & billing says while a deal is being built: what was paid, what is left, and what comes with the balance. */
+export interface DealBlockView {
+  /** "Advance paid on Fri 27 Nov". */
+  readonly advanceLabel: string;
+  readonly advance: string;
+  /** What is still to pay for the build at go-live. Never includes the services: see `then`. */
+  readonly balance: string;
+  /** The services charged with the balance when the website is ready, each at its price for the deal's period ("₹2,999 a month"). */
+  readonly then: readonly { readonly label: string; readonly amount: string }[];
+}
+
+/**
+ * The deal block of Plan & billing. Every figure is the deal's own (dealAmounts, dealLines): the build balance is the finalised
+ * price less the discount less the advance. The total of payment 2 is step 5's rule, so only the build balance is shown now.
+ */
+export function dealBlockView(link: DealBlockLink): DealBlockView | null {
+  const { setupFeeListCents: list, advanceCents: advance, advancePaidAt } = link;
+  if (list === null || advance === null || advancePaidAt === null) return null;
+  const kind: WebsiteKind = link.websiteKind !== null && isWebsiteKind(link.websiteKind) ? link.websiteKind : "b2b";
+  const interval: BillingInterval = link.billingInterval === "year" ? "year" : "month";
+  const net = list - (link.setupFeeDiscountCents ?? 0);
+  const money = (cents: number): string => formatMoney(cents, link.currency);
+  const per = interval === "year" ? "a year" : "a month";
+  return {
+    advanceLabel: `Advance paid on ${formatDate(advancePaidAt)}`,
+    advance: money(advance),
+    balance: money(Math.max(0, net - advance)),
+    then: dealLines({
+      services: readBundleSelection(link.services),
+      interval,
+      currency: link.currency,
+      kind,
+      customPrices: linkCustomPrices(link),
+    }).map((line) => ({ label: line.addOn === "managed-website" ? "Maintenance" : serviceName(line.addOn), amount: `${money(line.netCents)} ${per}` })),
+  };
 }
 
 // ---- The bill ----

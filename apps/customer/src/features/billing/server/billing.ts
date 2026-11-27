@@ -1,5 +1,5 @@
 import "server-only";
-import { findActivePlan, findCurrentPaymentMethod, withTenantScope, type BillingInterval, type CurrentPaymentMethod, type Plan } from "@brandbasket/db";
+import { findActivePlan, findCurrentPaymentMethod, findDealForBusiness, withTenantScope, type PaymentLink, type BillingInterval, type CurrentPaymentMethod, type Plan } from "@brandbasket/db";
 import type { MonthlyAddOnId } from "@brandbasket/shared/lib/billing/add-ons";
 import { bundleLines, bundleNetCents, readBundleSelection, type BundleLine } from "@brandbasket/shared/lib/billing/bundle";
 import { loadCarriedCode, loadReactivationBasket } from "@brandbasket/shared/server/reactivation-basket";
@@ -81,4 +81,12 @@ export async function getPaymentMethodUpdateUrlFor(customer: Pick<CustomerContex
   }
   const provider = getBillingProvider();
   return provider.getPaymentMethodUpdateUrl(billing.subscription.providerSubscriptionId);
+}
+
+/**
+ * The business's deal while its advance is paid and its plans are not (plan 66), or null. Read on the staff connection, like the
+ * reactivation: the payment links table is staff-only, and the business is the session's own.
+ */
+export async function findCustomerDeal(customer: Pick<CustomerContext, "tenant">): Promise<PaymentLink | null> {
+  return findDealForBusiness(getStaffDb(), customer.tenant.businessId);
 }

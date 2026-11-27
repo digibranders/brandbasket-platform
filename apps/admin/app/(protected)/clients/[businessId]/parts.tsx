@@ -358,6 +358,8 @@ export function addressOf(profile: NonNullable<ClientDetail["profile"]>): string
 const PAYMENT_LABELS: Readonly<Record<ClientPaymentState["kind"], string>> = {
   paid: "Paid",
   lapsed: "Lapsed",
+  building: "Advance paid",
+  "balance-due": "Balance due",
   "checkout-open": "Not paid (checkout started)",
   "not-paid": "Not paid",
 };

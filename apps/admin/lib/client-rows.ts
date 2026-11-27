@@ -4,12 +4,19 @@ import { STAFF_STAGE_LABELS, staffStageOf, type StaffStage } from "@brandbasket/
 import type { PillTone } from "@/components/console/status-pill";
 import { clientStage, JOURNEY_STAGE_LABELS } from "@/lib/pipeline";
 
-/** Where a business stands in the Clients table: leaving and not paid come before the build stage. */
-export type ClientRowStage = "not-paid" | "leaving" | "setup" | "building" | "preview" | "live" | "paused";
+/**
+ * Where a business stands in the Clients table: leaving, not paid and the two deal stages (plan 66: "advance-paid" while the website
+ * is built, "balance-due" once it is ready) come before the build stage.
+ */
+export type ClientRowStage = "not-paid" | "advance-paid" | "balance-due" | "leaving" | "setup" | "building" | "preview" | "live" | "paused";
 
 export function clientRowStage(client: Pick<ClientSummary, "project" | "billing">, closing: boolean): ClientRowStage {
   if (closing) return "leaving";
-  if (client.billing.firstPayment === null) return "not-paid";
+  if (client.billing.firstPayment === null) {
+    const deal = client.billing.deal;
+    if (deal == null) return "not-paid";
+    return deal.state === "building" ? "advance-paid" : "balance-due";
+  }
   const stage = clientStage(client);
   return stage === "lead" ? "setup" : stage;
 }
@@ -50,6 +57,8 @@ export function filterClientRows<T extends { readonly stage: ClientRowStage; rea
 
 export const CLIENT_ROW_STAGE_LABELS: Readonly<Record<ClientRowStage, string>> = {
   "not-paid": "Not paid",
+  "advance-paid": "Advance paid",
+  "balance-due": "Balance due",
   leaving: "Leaving",
   setup: JOURNEY_STAGE_LABELS.setup,
   building: JOURNEY_STAGE_LABELS.building,
@@ -60,6 +69,8 @@ export const CLIENT_ROW_STAGE_LABELS: Readonly<Record<ClientRowStage, string>> =
 
 export const CLIENT_ROW_STAGE_TONES: Readonly<Record<ClientRowStage, PillTone>> = {
   "not-paid": "todo",
+  "advance-paid": "progress",
+  "balance-due": "wait",
   leaving: "problem",
   setup: "wait",
   building: "progress",

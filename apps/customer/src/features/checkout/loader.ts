@@ -84,7 +84,14 @@ export type CheckoutView =
       /** The kind of website to open on (plan 65). */
       readonly websiteKind: WebsiteKind;
       /** Set when a staff payment link decided the deal: the screen then offers no way to change it. */
-      readonly link: { readonly interval: BillingInterval; readonly discountCents: number; readonly note: string | null; readonly listCents?: number } | null;
+      readonly link: {
+        readonly interval: BillingInterval;
+        readonly discountCents: number;
+        readonly note: string | null;
+        /** A paid deal (plan 66): the finalised build price and the advance, the one amount paid now. Absent for a free link. */
+        readonly listCents?: number;
+        readonly advanceCents?: number;
+      } | null;
     }
   /** Money arrived that bought nothing; staff are sorting it out, so nothing is offered. */
   | { readonly kind: "under-review"; readonly message: string }
@@ -96,10 +103,10 @@ export type CheckoutView =
   | { readonly kind: "owner-only" };
 
 /** The one-screen table for a staff link (plan 66): its custom prices in, and a build fee only where the link owes one (a free link owes none). */
-function lockedTable(table: SignupBasketTable, view: Pick<MembershipCheckoutView, "locked" | "customPrices" | "deal" | "interval">): SignupBasketTable {
+function lockedTable(table: SignupBasketTable, view: Pick<MembershipCheckoutView, "locked" | "customPrices" | "deal" | "interval" | "paidDeal">): SignupBasketTable {
   if (!view.locked) return table;
   const priced = withCustomPrices(table, view.customPrices, view.interval);
-  return { ...priced, website: { ...priced.website, feeOwed: view.deal.fee !== null } };
+  return { ...priced, website: { ...priced.website, feeOwed: view.deal.fee !== null || view.paidDeal !== null } };
 }
 
 type Params = Readonly<Record<string, string | string[] | undefined>>;
@@ -115,6 +122,9 @@ export async function loadCheckout(customer: CustomerContext, params: Params, no
   if (billing.status === "paid") redirect(notice === "received" ? MEMBER_WELCOME_HREF : "/");
   // Restarting a lapsed plan is reactivation, on Plan & billing, never a new first payment.
   if (billing.status === "lapsed") redirect("/billing");
+  // Plan 66: the advance is paid and the website is being built. There is nothing to pay on this page until the balance falls due
+  // (step 5 gives balance_due its own screen), so a business being built goes Home.
+  if (billing.status === "building") redirect("/");
   // Not a redirect: the workspace layout sends an unpaid sign-up back here, so sending a non-owner Home would loop.
   if (customer.role !== "owner") return { kind: "owner-only" };
 
@@ -142,6 +152,17 @@ export async function loadCheckout(customer: CustomerContext, params: Params, no
 
   // The one-screen checkout prices every service on sale itself, so it cannot show a code's discount, and it asks for no billing
   // address: a sign-up that gave its state needs none. A business with either of those keeps the full checkout below.
+  // A paid deal (plan 66) always gets it: its pay screen is the advance, whatever else is on the account.
+  if (view.paidDeal !== null && view.firstMonth !== null) {
+    return {
+      kind: "signup-pay",
+      table: lockedTable(buildSignupBasketTable(plan.currency, view.firstMonth.provider, view.firstMonth.hadService), view),
+      services: view.services,
+      paymentFailed: notice === "failed",
+      websiteKind: view.deal.kind,
+      link: { interval, discountCents: view.paidDeal.discountCents, note: view.paidDeal.note, listCents: view.paidDeal.listCents, advanceCents: view.paidDeal.advanceCents },
+    };
+  }
   if (signUp && view.firstMonth !== null && view.discount === null && view.lapsedCode === null && !(await billingDetailsMissing(customer))) {
     const named = params[MEMBERSHIP_SERVICES_PARAM] !== undefined;
     return {
@@ -150,7 +171,7 @@ export async function loadCheckout(customer: CustomerContext, params: Params, no
       services: view.locked ? view.services : named ? readSelectedServices(params) : await loadSavedServices(customer),
       paymentFailed: notice === "failed",
       websiteKind: view.deal.kind,
-      link: view.locked ? { interval, discountCents: view.deal.fee?.discountCents ?? 0, note: view.deal.note, ...(view.linkBuildListCents === null ? {} : { listCents: view.linkBuildListCents }) } : null,
+      link: view.locked ? { interval, discountCents: view.deal.fee?.discountCents ?? 0, note: view.deal.note } : null,
     };
   }
 

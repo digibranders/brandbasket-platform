@@ -8,12 +8,13 @@ import { PurchasePush } from "@/features/conversions/components/purchase-push";
 import type { PurchaseEvent } from "@/features/conversions/purchase-event";
 import type { LoadFailure } from "@/lib/loaded";
 import { formatDate, formatDateTime } from "@/lib/format";
-import { Button, Icon, LinkButton } from "@/ui";
+import { Banner, Button, Icon, LinkButton } from "@/ui";
 import { NextActionCard, ServiceCard, StatusChip } from "@brandbasket/shared/ui/patterns";
 import type { LiveAccounts } from "@/features/social/accounts/rules";
 import { ChannelLogo } from "@/legacy-social/components/channel-logo";
 import type { HomePanels, HomeStateView } from "../loader";
 import {
+  ADVANCE_PAID_LINE,
   firstName,
   greetingFor,
   homeLede,
@@ -487,6 +488,16 @@ function OverviewScreen({ view, panels, person, now }: HomeScreenProps) {
 
 /** Home: one of four templates, chosen by the state. Exactly one primary action per state. */
 export function HomeScreen(props: HomeScreenProps) {
+  if (props.view.dealState == null) return <HomeTemplate {...props} />;
+  return (
+    <div className="flex flex-col gap-6">
+      <Banner tone="info">{ADVANCE_PAID_LINE}</Banner>
+      <HomeTemplate {...props} />
+    </div>
+  );
+}
+
+function HomeTemplate(props: HomeScreenProps) {
   const { view } = props;
   switch (view.layout) {
     case "task":

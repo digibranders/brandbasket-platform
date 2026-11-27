@@ -100,3 +100,9 @@ export async function startAdvancePaymentFor(customer: GrantedCustomer, now: Dat
     }
   }
 }
+
+/** Whether the business's open staff link is a paid deal (plan 66): its first payment is then the advance, never the plan checkout. */
+export async function hasOpenPaidDeal(customer: Pick<GrantedCustomer, "tenant">, now: Date): Promise<boolean> {
+  const link = await findOpenPaymentLinkForBusiness(getStaffDb(), customer.tenant.businessId, now);
+  return link !== null && link.businessId === customer.tenant.businessId && link.dealType === "paid";
+}

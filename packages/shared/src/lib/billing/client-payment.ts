@@ -13,6 +13,16 @@ export type ClientPaymentState =
       /** Set when the first payment was recorded by hand rather than through the provider: who, what, when. */
       readonly manual: ClientManualPayment | null;
     }
+  /**
+   * Plan 66: a paid deal whose advance is paid and whose plans are not. `building` while the site is built, `balance-due` once staff
+   * marked it ready. The amounts are formatted: what was paid first, and what is left of the build.
+   */
+  | {
+      readonly kind: "building" | "balance-due";
+      readonly advanceAmount: string;
+      readonly advancePaidAt: Date | null;
+      readonly balanceAmount: string;
+    }
   /** Sent to checkout, not paid. */
   | { readonly kind: "checkout-open" }
   | { readonly kind: "not-paid" };
@@ -22,7 +32,15 @@ export type ClientPaymentState =
  * period still reads as paid, and one cancelled after it as lapsed.
  */
 export function clientPaymentState(billing: ClientBilling, now: Date): ClientPaymentState {
-  const { subscription, firstPayment } = billing;
+  const { subscription, firstPayment, deal } = billing;
+  if (firstPayment === null && deal != null) {
+    return {
+      kind: deal.state === "building" ? "building" : "balance-due",
+      advanceAmount: formatMoney(deal.advanceCents, deal.currency),
+      advancePaidAt: deal.advancePaidAt,
+      balanceAmount: formatMoney(deal.balanceCents, deal.currency),
+    };
+  }
   if (firstPayment === null) {
     return subscription?.status === "incomplete" ? { kind: "checkout-open" } : { kind: "not-paid" };
   }

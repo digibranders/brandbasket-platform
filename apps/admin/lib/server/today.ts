@@ -168,6 +168,16 @@ function queueFrom(sources: QueueSources, now: Date): readonly TodayItem[] {
           dueAt: client.billing.subscription.paidThroughAt,
           href: `/clients/${client.businessId}/billing`,
         });
+      } else if (client.billing?.deal?.state === "balance_due" && client.billing.firstPayment === null) {
+        // Plan 66: the website is ready and its balance is unpaid.
+        billing.push({
+          key: `billing:balance_due:${client.businessId}`,
+          kind: "payment",
+          title: `Balance due: ${client.businessName}`,
+          detail: "Website is ready, balance not paid",
+          dueAt: client.billing.deal.advancePaidAt ?? client.createdAt,
+          href: `/clients/${client.businessId}/billing`,
+        });
       } else if (client.billing && clientPaymentState(client.billing, now).kind === "lapsed") {
         billing.push({
           key: `billing:lapsed:${client.businessId}`,

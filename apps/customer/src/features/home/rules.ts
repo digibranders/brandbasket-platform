@@ -18,6 +18,9 @@ import { SERVICE_NAMES } from "@/ui/service-tag";
 /** How long after launch Home greets a new site before it becomes the ongoing page. */
 export const LAUNCH_GREETING_DAYS = 7;
 
+/** The one line Home shows a business being built (plan 66): its advance is paid and the balance comes at go-live. New copy for the owner. */
+export const ADVANCE_PAID_LINE = "Advance paid. The balance is due when your website is ready.";
+
 export interface HomeFacts {
   readonly now: Date;
   readonly billing: { readonly status: "unpaid" | "paid" | "lapsed"; readonly paymentUnderReview: boolean };

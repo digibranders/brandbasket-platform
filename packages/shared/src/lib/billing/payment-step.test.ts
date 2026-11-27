@@ -237,3 +237,29 @@ describe("a referral discount", () => {
     expect(paymentStep({ ...OPEN_UNPAID, discount: null })).toMatchObject({ amount: "$59", terms: USD_TERMS });
   });
 });
+
+describe("a business being built (plan 66, status building)", () => {
+  const building: PaymentStepInput = { ...OPEN_UNPAID, status: "building" };
+
+  it("sends its answers without paying again, and never offers a payment", () => {
+    expect(paymentStep(building)).toEqual({ kind: "send", missing: null });
+    expect(paymentStep({ ...building, missing: MISSING })).toEqual({ kind: "send", missing: MISSING });
+    expect(paymentStep({ ...building, locked: true })).toEqual({ kind: "none" });
+    expect(paymentStep({ ...building, paymentUnderReview: true })).toEqual({ kind: "send", missing: null });
+  });
+
+  it("has no payment banner", () => {
+    const input: BannerInput = {
+      status: "building",
+      plan: USD,
+      setupComplete: true,
+      locked: false,
+      paymentUnderReview: false,
+      nextStepHref: "/onboarding/brand",
+      discount: null,
+      renewalFailingUntil: null,
+    };
+    expect(billingBanner(input)).toBeNull();
+    expect(billingBanner({ ...input, locked: true })).toBeNull();
+  });
+});

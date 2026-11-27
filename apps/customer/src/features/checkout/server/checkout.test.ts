@@ -779,24 +779,26 @@ describe("startMembershipCheckoutFor", () => {
       expect(started).toHaveBeenCalledWith(expect.objectContaining({ firstPayment: { amountCents: 3_500_000, startAt: FIRST_CHARGE_AT, label: "Website build and first payment" } }));
     });
 
-    it("lets a payment link bound to the business decide the services, interval, kind, fee and discount, whatever the page posted", async () => {
+    it("refuses a paid link's plan checkout and opens nothing: its build is paid as the advance and the balance (plan 66)", async () => {
       neverHad();
       vi.mocked(findOpenPaymentLinkForBusiness).mockResolvedValue(link());
+
+      const result = await startMembershipCheckoutFor(owner, NOW, "managed", ["social-media"], "month", "b2b");
+
+      expect(result).toMatchObject({ kind: "refused" });
+      expect(opened()).toBeUndefined();
+    });
+
+    it("lets a free payment link decide the services, interval and kind, whatever the page posted, and charges no build", async () => {
+      neverHad();
+      vi.mocked(findOpenPaymentLinkForBusiness).mockResolvedValue(
+        link({ dealType: "free", advanceCents: null, setupFeeListCents: null, setupFeeDiscountCents: null, setupFeeNote: null, billingInterval: "year", websiteKind: "ecommerce", services: ["managed-website", "social-media"] }),
+      );
 
       // The page posted Social alone, monthly, B2B: the link says website and Social, yearly, ecommerce.
       await startMembershipCheckoutFor(owner, NOW, "managed", ["social-media"], "month", "b2b");
 
-      expect(opened()).toMatchObject({
-        billingInterval: "year",
-        websiteKind: "ecommerce",
-        setupFeeListCents: 6_500_000,
-        setupFeeDiscountCents: 1_500_000,
-        setupFeeNote: "As agreed on call",
-        paymentLinkId: "link-1",
-        // ₹50,000 for the build, then a year of the ecommerce website at ₹3,999 a month (₹43,189) and of Social at ₹2,999 (₹32,389); the basket renews 13 months on.
-        firstPaymentCents: 5_000_000 + 4_318_900 + 3_238_900,
-        firstChargeAt: new Date("2027-10-16T12:00:00.000Z"),
-      });
+      expect(opened()).toMatchObject({ billingInterval: "year", websiteKind: "ecommerce", setupFeeListCents: null, paymentLinkId: "link-1" });
       expect(opened()?.bundledAddOns?.map((line) => line.addOn)).toEqual(["managed-website", "social-media"]);
     });
 
@@ -828,7 +830,7 @@ describe("startMembershipCheckoutFor", () => {
 
     it("owes no fee to a business that has had the website before, even on a link", async () => {
       vi.mocked(businessHasHadService).mockResolvedValue(true);
-      vi.mocked(findOpenPaymentLinkForBusiness).mockResolvedValue(link({ billingInterval: "month", services: ["managed-website"] }));
+      vi.mocked(findOpenPaymentLinkForBusiness).mockResolvedValue(freeLink({ services: ["managed-website"] }));
 
       await startMembershipCheckoutFor(owner, NOW, "managed", WEBSITE_ALONE);
 

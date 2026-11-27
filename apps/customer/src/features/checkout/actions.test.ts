@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { requireCustomer, requireOwner } from "@/lib/guards";
 import { applyCodeAction, lookupPincodeAction, payChargeAction, removeCodeAction, saveBillingDetailsAction, startPaymentAction } from "./actions";
 import { lookupBillingPincode, saveBillingDetailsFor } from "./server/billing-details";
+import { hasOpenPaidDeal, startAdvancePaymentFor } from "./server/advance-payment";
 import { startCustomerChargePayment } from "./server/charges";
 import { startCheckoutFor, startMembershipCheckoutFor } from "./server/checkout";
 import { loadBusinessEntry } from "./server/entry";
@@ -21,6 +22,7 @@ vi.mock("next/navigation", () => ({
 vi.mock("@/lib/guards", () => ({ requireCustomer: vi.fn(), requireOwner: vi.fn() }));
 vi.mock("@/lib/report", () => ({ reportError: vi.fn() }));
 vi.mock("./server/billing-details", () => ({ saveBillingDetailsFor: vi.fn(), lookupBillingPincode: vi.fn() }));
+vi.mock("./server/advance-payment", () => ({ hasOpenPaidDeal: vi.fn(), startAdvancePaymentFor: vi.fn() }));
 vi.mock("./server/charges", () => ({ startCustomerChargePayment: vi.fn() }));
 vi.mock("./server/checkout", () => ({ startCheckoutFor: vi.fn(), startMembershipCheckoutFor: vi.fn() }));
 vi.mock("./server/entry", () => ({ loadBusinessEntry: vi.fn() }));
@@ -40,6 +42,7 @@ beforeEach(() => {
   vi.mocked(requireCustomer).mockResolvedValue(CUSTOMER);
   vi.mocked(requireOwner).mockResolvedValue(CUSTOMER);
   vi.mocked(loadBusinessEntry).mockResolvedValue({ kind: "listing", signupChoice: "managed" });
+  vi.mocked(hasOpenPaidDeal).mockResolvedValue(false);
 });
 
 describe("every checkout action runs the guard first", () => {
@@ -74,6 +77,29 @@ describe("every checkout action runs the guard first", () => {
     expect(removeReferralCodeFor).not.toHaveBeenCalled();
     expect(saveBillingDetailsFor).not.toHaveBeenCalled();
     expect(startCustomerChargePayment).not.toHaveBeenCalled();
+  });
+});
+
+describe("startPaymentAction for a paid deal (plan 66)", () => {
+  it("pays the advance whatever the form posted, and never opens the plan checkout", async () => {
+    vi.mocked(hasOpenPaidDeal).mockResolvedValue(true);
+    vi.mocked(startAdvancePaymentFor).mockResolvedValue({ kind: "redirect", url: "/checkout/charges/c1" });
+    await expect(startPaymentAction(null, form({ tier: "managed", service: "social-media", billing: "yearly" }))).rejects.toThrow("redirect:/checkout/charges/c1");
+    expect(startAdvancePaymentFor).toHaveBeenCalledTimes(1);
+    expect(startMembershipCheckoutFor).not.toHaveBeenCalled();
+    expect(startCheckoutFor).not.toHaveBeenCalled();
+  });
+
+  it("returns the advance's refusal as the message", async () => {
+    vi.mocked(hasOpenPaidDeal).mockResolvedValue(true);
+    vi.mocked(startAdvancePaymentFor).mockResolvedValue({ kind: "refused", problem: { message: "Your advance is already paid.", field: null } });
+    expect(await startPaymentAction(null, form({ tier: "managed" }))).toMatchObject({ ok: false, message: "Your advance is already paid." });
+  });
+
+  it("leaves a free link and a self sign-up on the plan checkout", async () => {
+    vi.mocked(startMembershipCheckoutFor).mockResolvedValue({ kind: "redirect", url: "/checkout/pay" });
+    await expect(startPaymentAction(null, form({ tier: "managed", service: "managed-website" }))).rejects.toThrow("redirect:/checkout/pay");
+    expect(startAdvancePaymentFor).not.toHaveBeenCalled();
   });
 });
 

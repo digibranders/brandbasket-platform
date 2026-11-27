@@ -80,12 +80,16 @@ describe("websiteOffer", () => {
 });
 
 describe("holdsWebsite", () => {
-  const facts = (status: "paid" | "lapsed" | "unpaid", hasWebsite: boolean, services: readonly ("website" | "social" | "search")[]) =>
+  const facts = (status: "paid" | "lapsed" | "unpaid" | "building", hasWebsite: boolean, services: readonly ("website" | "social" | "search")[]) =>
     ({ billing: { status, hasWebsite }, services }) as unknown as Parameters<typeof holdsWebsite>[0];
 
   it("follows billing for a paying business, so a dropped website runs to the end of its month", () => {
     expect(holdsWebsite(facts("paid", true, []))).toBe(true);
     expect(holdsWebsite(facts("paid", false, ["website"]))).toBe(false);
+  });
+
+  it("counts a business being built as having bought the website, whatever its plan lines say (plan 66)", () => {
+    expect(holdsWebsite(facts("building", false, []))).toBe(true);
   });
 
   it("follows the plan for a lapsed business, which keeps reading its website", () => {

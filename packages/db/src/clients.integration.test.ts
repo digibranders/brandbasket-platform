@@ -11,8 +11,10 @@ import {
   saveProjectBrief,
 } from "./queries/onboarding-data";
 import { submitProject } from "./queries/projects";
-import { businesses, businessMembers, payments, plans, projects, users, type PaymentKind, type PaymentStatus } from "./schema";
+import { businesses, businessMembers, paymentLinks, payments, plans, projects, users, type PaymentKind, type PaymentStatus } from "./schema";
 import { insertSubscription } from "./queries/billing";
+import { insertAdvanceCharge } from "./queries/charges";
+import { markAdvancePaid, markLinkReady } from "./queries/payment-links";
 import { openAccountClosure } from "./queries/account-closures";
 import { phoneAccountEmail } from "./phone-account";
 import { withTenantScope, type ScopedTransaction } from "./scope";
@@ -342,6 +344,45 @@ describe("listClients include (contract C3b)", () => {
     expect(await names(["not_paid", "leaving"])).toEqual(["Not Paid Yet", "Harbour Bakery"]);
     // A leaving business that paid is still paying: the default list does not change.
     expect(await names()).toEqual(["Harbour Bakery"]);
+  });
+});
+
+describe("a deal being built (plan 66)", () => {
+  it("lists a website business whose advance is paid by default, with its deal, and a balance due once staff marked it ready", async () => {
+    const [building] = await dbs.staff.db.insert(businesses).values({ slug: "deal-cafe", name: "Deal Cafe", currency: "INR", kind: "website" }).returning({ id: businesses.id });
+    if (building === undefined) throw new Error("Seed business was not inserted");
+    const [link] = await dbs.staff.db
+      .insert(paymentLinks)
+      .values({
+        tokenHash: "deal-clients-hash",
+        businessId: building.id,
+        countryCode: "IN",
+        currency: "INR",
+        services: ["managed-website"],
+        billingInterval: "month",
+        dealType: "paid",
+        websiteKind: "b2b",
+        setupFeeListCents: 3_500_000,
+        setupFeeDiscountCents: 500_000,
+        advanceCents: 1_000_000,
+        expiresAt: new Date("2026-12-27T00:00:00.000Z"),
+        createdByStaffId: OWNER,
+      })
+      .returning({ id: paymentLinks.id });
+    if (link === undefined) throw new Error("Seed link was not inserted");
+    await dbs.staff.db.transaction((tx) =>
+      insertAdvanceCharge(tx, { businessId: building.id, linkId: link.id, amountCents: 1_000_000, currency: "INR", description: "Website design and build: advance (B2B website)", taxRateBasisPoints: 1800 }),
+    );
+    await markAdvancePaid(dbs.staff.db, { linkId: link.id, paidAt: new Date("2026-11-27T10:00:00.000Z") });
+
+    const listed = (await listClients(dbs.staff.db)).find((client) => client.businessName === "Deal Cafe");
+    expect(listed?.billing.firstPayment).toBeNull();
+    expect(listed?.billing.deal).toMatchObject({ linkId: link.id, state: "building", advanceCents: 1_000_000, balanceCents: 2_000_000 });
+    expect((await listClients(dbs.staff.db)).map((client) => client.billing.deal ?? null).filter((deal) => deal !== null)).toHaveLength(1);
+
+    await markLinkReady(dbs.staff.db, { linkId: link.id, staffUserId: OWNER, now: new Date("2026-12-01T10:00:00.000Z") });
+    expect((await listClients(dbs.staff.db)).find((client) => client.businessName === "Deal Cafe")?.billing.deal?.state).toBe("balance_due");
+    expect((await listClients(dbs.staff.db, { include: ["paying"] })).map((client) => client.businessName)).toEqual(["Harbour Bakery"]);
   });
 });
 

@@ -128,7 +128,19 @@ export interface BasketView {
   readonly gstLine: string | null;
   /** What follows the first payment, or null with an empty basket. */
   readonly renewal: string | null;
+  /** The label of the amount paid now: "Due today", or "Advance to pay now" for a paid deal (plan 66). */
+  readonly dueLabel: string;
+  /** The line beside the Pay button of a paid deal (the advance is not refunded); null for every other basket. New copy for the owner. */
+  readonly advanceNote: string | null;
 }
+
+/** New copy for the owner (plan 66, decisions O3 and O9). */
+export const ADVANCE_COPY = {
+  dueLabel: "Advance to pay now",
+  balanceLabel: "Balance at go-live",
+  afterBalance: "Maintenance and your other services are charged with the balance when your website is ready.",
+  nonRefundable: "The advance is non-refundable.",
+} as const;
 
 /** The services a ticked set really buys: only catalogue ids on sale, and the shared rule on monitoring (never alone). */
 export function purchasableServices(table: SignupBasketTable, ticked: readonly string[]): readonly MonthlyAddOnId[] {
@@ -153,6 +165,8 @@ export interface BasketOptions {
     readonly note: string | null;
     /** The finalised build price of a paid link (plan 66), when it is not the catalogue's. */
     readonly listCents?: number;
+    /** The advance of a paid link: the one amount paid now, the rest of the build being paid when the website is ready. */
+    readonly advanceCents?: number;
   } | null;
 }
 
@@ -184,9 +198,36 @@ export function withCustomPrices(table: SignupBasketTable, customPrices: Readonl
   };
 }
 
+/**
+ * A paid deal's summary (plan 66): the agreed build price, any discount, the advance as the one amount to pay and the balance of the
+ * build left for go-live. The services are not priced here: they are charged with the balance (the sentence under Pay says so).
+ */
+function advanceView(table: SignupBasketTable, services: readonly MonthlyAddOnId[], kind: WebsiteKind, deal: NonNullable<BasketOptions["deal"]>, advanceCents: number): BasketView {
+  const money = (cents: number): string => formatMoney(cents, table.currency);
+  const listCents = deal.listCents ?? table.website.kinds[kind].feeCents;
+  const netCents = Math.max(0, listCents - deal.discountCents);
+  const rows: BasketRow[] = [
+    ...buildRows({ kind, fee: { listCents, discountCents: deal.discountCents, netCents }, note: deal.note }, table.currency).map((row): BasketRow => ({ key: row.key, label: row.label, note: null, amount: row.amount, tone: row.tone })),
+    { key: "balance", label: ADVANCE_COPY.balanceLabel, note: null, amount: money(Math.max(0, netCents - advanceCents)), tone: "plain" },
+  ];
+  const taxed = table.taxRateBasisPoints > 0;
+  return {
+    services,
+    rows,
+    dueCents: advanceCents,
+    due: money(advanceCents),
+    gstLine: taxed ? `Includes ${money(gstInsideCents(advanceCents, table.taxRateBasisPoints))} of GST at ${formatPercent(table.taxRateBasisPoints / 100)}` : null,
+    renewal: ADVANCE_COPY.afterBalance,
+    dueLabel: ADVANCE_COPY.dueLabel,
+    advanceNote: ADVANCE_COPY.nonRefundable,
+  };
+}
+
 /** The summary for the services ticked and how often they are paid: the rows, the amount due today and what follows. */
 export function basketView(table: SignupBasketTable, ticked: readonly string[], interval: BillingInterval, options: BasketOptions = {}): BasketView {
   const services = purchasableServices(table, ticked);
+  const advanceCents = options.deal?.advanceCents;
+  if (options.deal != null && advanceCents !== undefined && services.includes("managed-website")) return advanceView(table, services, options.kind ?? "b2b", options.deal, advanceCents);
   const chosen = table.services.filter((service) => services.includes(service.id));
   const money = (cents: number): string => formatMoney(cents, table.currency);
   const yearly = interval === "year";
@@ -254,6 +295,8 @@ export function basketView(table: SignupBasketTable, ticked: readonly string[], 
     due: money(dueCents),
     gstLine: chosen.length > 0 && taxed ? `Includes ${money(gstInsideCents(dueCents, table.taxRateBasisPoints))} of GST at ${formatPercent(table.taxRateBasisPoints / 100)}` : null,
     renewal,
+    dueLabel: "Due today",
+    advanceNote: null,
   };
 }
 

@@ -8,6 +8,7 @@ import {
   findBillingState,
   findClientDetail,
   findLead,
+  findDealForBusiness,
   findOpenPaymentLinkForBusiness,
   findPaymentLinkById,
   findReferralCodeById,
@@ -77,6 +78,10 @@ export async function createPaymentLinkFor(input: CreatePaymentLinkInput): Promi
     const state = await findBillingState(db, businessId);
     if (state === null) return refused("That business no longer exists.");
     if (state.hasEverPaid) return refused("This business has paid before. A payment link is for a first purchase.");
+    // Plan 66: a deal whose advance is paid is being built; it is edited (step 6), never replaced by a second link.
+    if ((await findDealForBusiness(db, businessId)) !== null) {
+      return refused("This business has a deal in progress: its advance is paid. A new payment link cannot be made for it.");
+    }
     if ((await findOpenPaymentLinkForBusiness(db, businessId, now)) !== null) {
       return refused("This business already has an open payment link. Cancel it first, then make a new one.");
     }

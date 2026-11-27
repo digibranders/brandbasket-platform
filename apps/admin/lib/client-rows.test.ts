@@ -18,6 +18,11 @@ const PAID: ClientBilling = {
   firstPayment: { amountCents: 299_900, currency: "INR", provider: "fake", paidAt: new Date("2026-11-17T09:00:00.000Z"), manual: null },
 };
 const NOT_PAID: ClientBilling = { subscription: null, firstPayment: null };
+const DEAL = (state: "building" | "balance_due"): ClientBilling => ({
+  subscription: null,
+  firstPayment: null,
+  deal: { linkId: "link-1", state, currency: "INR", advanceCents: 2_000_000, advancePaidAt: new Date("2026-11-17T09:00:00.000Z"), balanceCents: 4_000_000 },
+});
 
 function project(status: ClientProject["status"]): ClientProject {
   return {
@@ -39,6 +44,14 @@ describe("clientRowStage", () => {
     expect(clientRowStage({ project: project("onboarding"), billing: NOT_PAID }, false)).toBe("not-paid");
     expect(clientRowStage({ project: null, billing: PAID }, false)).toBe("setup");
     expect(clientRowStage({ project: project("live"), billing: PAID }, false)).toBe("live");
+  });
+
+  it("says Advance paid or Balance due, not Not paid, for a deal whose advance is paid (plan 66), after leaving", () => {
+    expect(clientRowStage({ project: project("building"), billing: DEAL("building") }, false)).toBe("advance-paid");
+    expect(clientRowStage({ project: project("approved"), billing: DEAL("balance_due") }, false)).toBe("balance-due");
+    expect(clientRowStage({ project: project("building"), billing: DEAL("building") }, true)).toBe("leaving");
+    expect(CLIENT_ROW_STAGE_LABELS["advance-paid"]).toBe("Advance paid");
+    expect(CLIENT_ROW_STAGE_LABELS["balance-due"]).toBe("Balance due");
   });
 
   it("has a label for every stage", () => {

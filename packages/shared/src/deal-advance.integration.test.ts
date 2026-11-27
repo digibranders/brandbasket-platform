@@ -14,6 +14,7 @@ import {
   type PaymentLink,
 } from "@brandbasket/db";
 import { openTestDatabases, querySql, resetTestDatabase, seedPlansFromMigrations, type TestDatabases } from "@brandbasket/db/testing";
+import { deriveSiteStatus, hasBillingAccess, hasWebsiteService } from "@brandbasket/billing";
 import { summariseBilling } from "./lib/billing/status";
 import { recordChargePaymentWithInvoice } from "./server/charge-payments";
 
@@ -156,5 +157,31 @@ describe("the advance of a paid deal", () => {
     expect(recorded).toMatchObject({ outcome: "paid", openedMembership: null });
     expect((await findDealForBusiness(dbs.staff.db, businessId))?.advancePaidAt).not.toBeNull();
     expect(await count("select count(*) as count from projects")).toBe(1);
+  });
+
+  it("opens the onboarding project for a business that was already a website client with none (plan 66)", async () => {
+    await dbs.owner.db.update(businesses).set({ kind: "website" });
+    const recorded = await pay("fake_pay_advance");
+
+    expect(recorded).toMatchObject({ outcome: "paid", openedMembership: null });
+    expect(await querySql(dbs.owner, "select status, website_kind from projects")).toEqual([{ status: "onboarding", website_kind: "ecommerce" }]);
+    await pay("fake_pay_advance");
+    expect(await count("select count(*) as count from projects")).toBe(1);
+  });
+
+  it("leaves a business with a recorded advance a website client with a project, reading as building, with its preview site served and not offline", async () => {
+    await pay("fake_pay_advance");
+
+    expect(await querySql(dbs.owner, "select kind from businesses")).toEqual([{ kind: "website" }]);
+    expect(await count("select count(*) as count from projects")).toBe(1);
+    const state = await findBillingState(dbs.staff.db, businessId);
+    if (state === null) throw new Error("The business has no billing state");
+    const billing = summariseBilling(state, PAID_AT);
+    expect(billing).toMatchObject({ status: "building", hasAccess: false, hasWebsite: false });
+    // What siteHasAccess reads: no website subscription, but the deal stands, so the preview is served.
+    expect(hasWebsiteService(state.addOns, state.subscription, PAID_AT) || state.dealState !== null).toBe(true);
+    expect(hasBillingAccess(state.subscription, PAID_AT)).toBe(false);
+    // A project that is not live is never reported offline, whatever billing says.
+    expect(deriveSiteStatus({ projectStatus: "onboarding", hasWebsite: billing.hasWebsite })).toEqual({ kind: "not_launched" });
   });
 });

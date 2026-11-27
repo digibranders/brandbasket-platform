@@ -148,6 +148,20 @@ describe("HomeScreen", () => {
     expect(screen.getByText(/Your kickoff call is booked for/)).toBeTruthy();
   });
 
+  it("says once, above the project's stages, that the advance is paid and the balance comes when the website is ready (plan 66)", () => {
+    render(
+      <ToastProvider>
+        <HomeScreen person={person} services={["website"]} view={{ ...view({ kind: "preparing", dueAt: null }, "progress"), dealState: "building" }} panels={panels()} now={NOW} purchase={null} />
+      </ToastProvider>,
+    );
+    expect(screen.getAllByText("Advance paid. The balance is due when your website is ready.")).toHaveLength(1);
+  });
+
+  it("says nothing of an advance for a paid client", () => {
+    show({ state: { kind: "preparing", dueAt: null }, layout: "progress" });
+    expect(screen.queryByText(/Advance paid/)).toBeNull();
+  });
+
   it("renders focal NextActionCard for unpaid state with primary action", () => {
     show({ state: { kind: "payment_required" }, layout: "task" });
     expect(screen.getByText("Start your plan")).toBeTruthy();

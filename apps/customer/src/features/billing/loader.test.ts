@@ -5,7 +5,7 @@ import { listOpenCustomerCharges } from "../checkout/server/charges";
 import { loadBillingOverview } from "./loader";
 import { dropPreview } from "./rules";
 import { loadAddOnsPage, type AddOnsPage } from "./server/add-ons";
-import { findReactivation, findReactivationPlan } from "./server/billing";
+import { findCustomerDeal, findReactivation, findReactivationPlan } from "./server/billing";
 
 vi.mock("server-only", () => ({}));
 vi.mock("next/navigation", () => ({ unstable_rethrow: vi.fn() }));
@@ -15,7 +15,7 @@ vi.mock("../checkout/server/billing", () => ({ listCustomerReceipts: vi.fn() }))
 vi.mock("../checkout/server/billing-details", () => ({ loadBillingDetailsView: vi.fn() }));
 vi.mock("../checkout/server/charges", () => ({ listOpenCustomerCharges: vi.fn() }));
 vi.mock("./server/add-ons", () => ({ loadAddOnsPage: vi.fn() }));
-vi.mock("./server/billing", () => ({ findCustomerPaymentMethod: vi.fn(), findReactivation: vi.fn(), findReactivationPlan: vi.fn() }));
+vi.mock("./server/billing", () => ({ findCustomerDeal: vi.fn(), findCustomerPaymentMethod: vi.fn(), findReactivation: vi.fn(), findReactivationPlan: vi.fn() }));
 
 const NOW = new Date("2026-11-03T06:00:00.000Z");
 const NEXT = new Date("2026-11-27T06:00:00.000Z");
@@ -148,6 +148,28 @@ describe("loadBillingOverview", () => {
   it("reads the service ?add= names", async () => {
     expect((await loadBillingOverview(customerWith("owner"), { add: "social" }, NOW)).preselect).toBe("social-media");
     expect((await loadBillingOverview(customerWith("owner"), { add: "search" }, NOW)).preselect).toBeNull();
+  });
+
+  it("shows a business being built its deal: the advance paid, the build balance and what comes with it, with no services panel (plan 66)", async () => {
+    vi.mocked(findCustomerDeal).mockResolvedValue({
+      currency: "INR",
+      billingInterval: "month",
+      websiteKind: "b2b",
+      services: ["managed-website"],
+      setupFeeListCents: 3_500_000,
+      setupFeeDiscountCents: 0,
+      advanceCents: 1_000_000,
+      advancePaidAt: new Date("2026-11-27T10:00:00.000Z"),
+      websitePriceCents: null,
+      socialPriceCents: null,
+      adsPriceCents: null,
+      monitoringPriceCents: null,
+    } as never);
+    const view = await loadBillingOverview(customerWith("owner", { status: "building", hasAccess: false, subscription: null }), {}, NOW);
+    expect(view.state.kind).toBe("building");
+    expect(view.services).toBeNull();
+    expect(loadAddOnsPage).not.toHaveBeenCalled();
+    expect(view.deal?.ok && view.deal.data).toMatchObject({ advance: "₹10,000", balance: "₹25,000", then: [{ label: "Maintenance", amount: "₹2,999 a month" }] });
   });
 
   it("loads no services for an unpaid business, and the reactivation for a lapsed one", async () => {

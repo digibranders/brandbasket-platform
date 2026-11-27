@@ -1,4 +1,5 @@
 import {
+  findDealForBusiness,
   extendPaymentLink,
   findBillingState,
   findLead,
@@ -26,6 +27,7 @@ vi.mock("@brandbasket/db", async () => {
   return {
     ...actual,
     extendPaymentLink: vi.fn(),
+    findDealForBusiness: vi.fn(),
     findBillingState: vi.fn(),
     findClientDetail: vi.fn(),
     findLead: vi.fn(),
@@ -93,6 +95,7 @@ beforeEach(() => {
   vi.mocked(insertPaymentLink).mockImplementation(async (_db, values) => ({ id: LINK_ID, ...values }) as unknown as PaymentLink);
   vi.mocked(findBillingState).mockResolvedValue({ hasEverPaid: false } as never);
   vi.mocked(findOpenPaymentLinkForBusiness).mockResolvedValue(null);
+  vi.mocked(findDealForBusiness).mockResolvedValue(null);
   vi.mocked(findLead).mockResolvedValue({ id: LEAD } as never);
 });
 
@@ -169,6 +172,13 @@ describe("createPaymentLinkFor", () => {
     vi.mocked(findOpenPaymentLinkForBusiness).mockResolvedValue(OPEN_LINK);
     const outcome = await createPaymentLinkFor({ form: DRAFT, staff: STAFF, businessId: BUSINESS, now: NOW });
     expect(outcome).toMatchObject({ kind: "refused", message: expect.stringContaining("Cancel it first") });
+    expect(insertPaymentLink).not.toHaveBeenCalled();
+  });
+
+  it("refuses a business whose deal is being built, whatever else is open (plan 66)", async () => {
+    vi.mocked(findDealForBusiness).mockResolvedValue(OPEN_LINK);
+    const outcome = await createPaymentLinkFor({ form: DRAFT, staff: STAFF, businessId: BUSINESS, now: NOW });
+    expect(outcome).toMatchObject({ kind: "refused", message: expect.stringContaining("deal in progress") });
     expect(insertPaymentLink).not.toHaveBeenCalled();
   });
 

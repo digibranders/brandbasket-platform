@@ -159,7 +159,9 @@ type DecisionStep =
   | { readonly kind: "planned"; readonly planned: PlannedCheckout }
   | { readonly kind: "code-refused" }
   | { readonly kind: "no-plan" }
-  | { readonly kind: "no-services" };
+  | { readonly kind: "no-services" }
+  /** A paid deal (plan 66) is paid in two payments; the plan checkout is payment 2, which is built in step 5. Until then it opens nothing. */
+  | { readonly kind: "deal-not-ready" };
 
 function sameSubscriptionState(seen: Subscription | null, now: Subscription | null): boolean {
   if (seen === null || now === null) return seen === now;
@@ -503,6 +505,7 @@ async function openPlanCheckout(
     // ago is never honoured. A reactivation takes no link.
     const link = reactivation === null ? await findOpenPaymentLinkForBusiness(tx, tenant.businessId, now) : null;
     if (link !== null && link.currency !== plan.currency) return { kind: "no-plan" };
+    if (link?.dealType === "paid") return { kind: "deal-not-ready" };
     const basket = reactivation === null || reactivation.cancelled ? chosen : reactivation.services;
     const services = link === null ? basket : readBundleSelection(link.services);
     if (services.length === 0) return { kind: "no-services" };
@@ -536,17 +539,9 @@ async function openPlanCheckout(
     // The build fee (plan 65): owed for a first purchase of Website Management by a sign-up checkout, or as a payment link states it. A
     // fee waived in full is still recorded, so the invoice can say so, but takes no free month (planFirstPayment: no fee, ordinary).
     const owesFee = pricedLines.some((line) => line.addOn === BUILD_FEE_ADD_ON) && reactivation === null && hadService.get(BUILD_FEE_ADD_ON) === false;
-    // A free link (plan 66) owes no build at all; the old charge of the list fee belongs to a sign-up checkout only.
-    const setupFee: SetupFee | null = !owesFee
-      ? null
-      : link !== null
-        ? link.dealType === "paid" && link.setupFeeListCents !== null
-          ? // plan 66 step 4 replaces this: a paid link charges its net build price with the first payment until the advance flow exists.
-            { listCents: link.setupFeeListCents, discountCents: link.setupFeeDiscountCents ?? 0, netCents: link.setupFeeListCents - (link.setupFeeDiscountCents ?? 0) }
-          : null
-        : options.chargeListFee
-          ? setupFeeFor(websiteKind, plan.currency, 0)
-          : null;
+    // A link owes no build here: a free link has none, and a paid one is refused above (its build is paid as the advance and the balance,
+    // plan 66). The charge of the list fee with the first payment belongs to a sign-up checkout only.
+    const setupFee: SetupFee | null = owesFee && link === null && options.chargeListFee ? setupFeeFor(websiteKind, plan.currency, 0) : null;
     const firstPayment = planFirstPayment({
       lines: pricedLines.map((line) => ({ addOn: line.addOn, netCents: line.netCents, hadService: hadService.get(line.addOn) ?? true })),
       interval,
@@ -600,6 +595,7 @@ async function openPlanCheckout(
   });
   if (first.kind === "no-plan") return refused(NO_PLAN);
   if (first.kind === "no-services") return refused(NO_SERVICES);
+  if (first.kind === "deal-not-ready") return refused(NOTHING_TO_PAY_FOR);
   if (first.kind === "code-refused") return refused(CODE_REFUSED_MESSAGE);
 
   const { planned } = first;

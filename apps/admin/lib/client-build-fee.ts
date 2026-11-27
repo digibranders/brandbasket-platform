@@ -1,6 +1,7 @@
-import type { BillingCurrency } from "@brandbasket/db";
+import type { BillingCurrency, ClientDeal } from "@brandbasket/db";
 import { WEBSITE_KIND_LABELS, isWebsiteKind } from "@brandbasket/shared/lib/billing/website-kind";
 import { formatMoney } from "@brandbasket/shared/lib/money";
+import { shortDate } from "@/lib/team-time";
 
 /** The kind of website as staff read it. A project or subscription that predates kinds (null) is a B2B website, as D15 of plan 65 says. */
 export function websiteKindLabel(kind: string | null): string {
@@ -36,5 +37,15 @@ export function buildFeeFacts(subscription: BuildFeeColumns | null, currency: Bi
     { label: "Paid for the build", value: formatMoney(list - discount, currency) },
     ...(subscription.setupFeeNote === null ? [] : [{ label: "Note", value: subscription.setupFeeNote }]),
     { label: "Came from", value: subscription.paymentLinkId === null ? "The public checkout" : "A staff payment link" },
+  ];
+}
+
+/** What client billing shows about a paid deal that is being built (plan 66): where it stands, the advance taken and what is left. Null with no such deal. */
+export function dealFacts(deal: ClientDeal | null | undefined): readonly BuildFeeFact[] | null {
+  if (deal == null) return null;
+  return [
+    { label: "Stage", value: deal.state === "building" ? "Advance paid, website being built" : "Balance due, website ready" },
+    { label: "Advance paid", value: `${formatMoney(deal.advanceCents, deal.currency)}${deal.advancePaidAt === null ? "" : ` on ${shortDate(deal.advancePaidAt)}`}` },
+    { label: "Balance at go-live", value: formatMoney(deal.balanceCents, deal.currency) },
   ];
 }

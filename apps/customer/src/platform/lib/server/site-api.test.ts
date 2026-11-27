@@ -71,6 +71,20 @@ describe("siteHasAccess: a website is served only while its plan and its Website
   });
 });
 
+describe("siteHasAccess for a deal being built (plan 66)", () => {
+  it("serves the preview site while the advance is paid and the balance is not, building or balance due", async () => {
+    for (const dealState of ["building", "balance_due"] as const) {
+      vi.mocked(findBillingState).mockResolvedValue({ subscription: null, addOns: [], dealState } as never);
+      expect(await siteHasAccess("biz-1", NOW)).toBe(true);
+    }
+  });
+
+  it("serves nothing for a business with no deal standing and no subscription", async () => {
+    vi.mocked(findBillingState).mockResolvedValue({ subscription: null, addOns: [], dealState: null } as never);
+    expect(await siteHasAccess("biz-1", NOW)).toBe(false);
+  });
+});
+
 describe("findOnlineTenantBySiteToken: the routes that answer a bad token the same way", () => {
   function tokenBelongsTo(businessId: string): void {
     vi.mocked(getBlogPayload).mockResolvedValue({

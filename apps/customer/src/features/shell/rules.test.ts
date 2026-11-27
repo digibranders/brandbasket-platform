@@ -165,6 +165,10 @@ describe("billing banner", () => {
     expect(billingBannerState({ status: "unpaid", renewalFailingUntil: null, paymentUnderReview: true })).toEqual({ kind: "under-review" });
   });
 
+  it("shows nothing for a business being built (plan 66): nothing is overdue, the balance is due at go-live", () => {
+    expect(billingBannerState({ status: "building", renewalFailingUntil: null, paymentUnderReview: false })).toBeNull();
+  });
+
   it("shows nothing while paid, or while unpaid (checkout handles that)", () => {
     expect(billingBannerState({ status: "paid", renewalFailingUntil: null, paymentUnderReview: false })).toBeNull();
     expect(billingBannerState({ status: "unpaid", renewalFailingUntil: null, paymentUnderReview: false })).toBeNull();

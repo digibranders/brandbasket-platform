@@ -717,6 +717,7 @@ describe("listClients billing", () => {
         commitmentEndsAt: THREE_MONTHS_ON,
       },
       firstPayment: { amountCents: 7500, currency: "USD", provider: "fake", paidAt: PAID_AT, manual: null },
+      deal: null,
     });
     // Opening a checkout does not make a client; paying does.
     expect(unpaid).toBeUndefined();

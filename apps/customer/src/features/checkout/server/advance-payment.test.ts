@@ -8,7 +8,7 @@ import {
   type Database,
 } from "@brandbasket/db";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { startAdvancePaymentFor } from "./advance-payment";
+import { hasOpenPaidDeal, startAdvancePaymentFor } from "./advance-payment";
 import { billingDetailsMissing } from "./billing-details";
 import { startCustomerChargePayment } from "./charges";
 import type { GrantedCustomer } from "./customer-access";
@@ -143,5 +143,25 @@ describe("startAdvancePaymentFor", () => {
   it("refuses when the order cannot be opened", async () => {
     vi.mocked(startCustomerChargePayment).mockResolvedValue({ kind: "not-open" });
     expect(refusedWith(await startAdvancePaymentFor(CUSTOMER, NOW))).toMatch(/couldn.t open your payment/);
+  });
+});
+
+describe("hasOpenPaidDeal", () => {
+  beforeEach(() => {
+    vi.mocked(getStaffDb).mockReturnValue(TX as unknown as Database);
+  });
+
+  it("is true for the business's own open paid link, with its advance paid or not", async () => {
+    vi.mocked(findOpenPaymentLinkForBusiness).mockResolvedValue(LINK);
+    expect(await hasOpenPaidDeal(CUSTOMER, NOW)).toBe(true);
+  });
+
+  it("is false for a free link, a link bound elsewhere and no link", async () => {
+    vi.mocked(findOpenPaymentLinkForBusiness).mockResolvedValueOnce({ ...(LINK as object), dealType: "free" } as never);
+    expect(await hasOpenPaidDeal(CUSTOMER, NOW)).toBe(false);
+    vi.mocked(findOpenPaymentLinkForBusiness).mockResolvedValueOnce({ ...(LINK as object), businessId: "other" } as never);
+    expect(await hasOpenPaidDeal(CUSTOMER, NOW)).toBe(false);
+    vi.mocked(findOpenPaymentLinkForBusiness).mockResolvedValueOnce(null);
+    expect(await hasOpenPaidDeal(CUSTOMER, NOW)).toBe(false);
   });
 });

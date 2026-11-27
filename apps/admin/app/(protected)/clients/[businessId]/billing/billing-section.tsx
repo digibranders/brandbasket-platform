@@ -24,7 +24,7 @@ import { Notice } from "@/components/console/notice";
 import { FactList, Section } from "@/components/console/section";
 import { PaymentsNeedingAttention } from "@/components/payments-needing-attention";
 import { attentionSection } from "@/lib/client-attention";
-import { buildFeeFacts } from "@/lib/client-build-fee";
+import { buildFeeFacts, dealFacts } from "@/lib/client-build-fee";
 import { readInvoiceNotice } from "@/lib/invoice-notices";
 import { readRefundNotice } from "@/lib/refund-form";
 import type { ClientPackageFacts } from "@/lib/client-package";
@@ -87,6 +87,7 @@ export async function BillingSection({
         ? websiteAloneNetCents(plan.currency)
         : reactivationNetCents(lapsedBasket, plan.currency) - (carriedCode?.discountCents ?? 0);
   const buildFee = buildFeeFacts(billingState?.subscription ?? null, client.currency);
+  const deal = dealFacts(client.billing.deal);
   // One attention section on this tab: flagged payments first, else missing invoices.
   const attention = attentionSection({ flaggedCount: flagged.length, previewIsLate: false, missingInvoiceCount: invoiced ? missingInvoices.length : 0 });
 
@@ -118,6 +119,12 @@ export async function BillingSection({
       />
 
       {afterPayments}
+
+      {deal === null ? null : (
+        <Section title="Website build" aside="Advance taken first, balance before go-live, GST included">
+          <FactList items={deal} />
+        </Section>
+      )}
 
       {buildFee === null ? null : (
         <Section title="Website build" aside="One time, GST included">

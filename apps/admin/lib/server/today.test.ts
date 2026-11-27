@@ -360,6 +360,25 @@ describe("billing status items in the queue (past_due and lapsed)", () => {
     });
   });
 
+  it("adds a balance due item for a deal whose website is ready, and none for one still being built (plan 66)", async () => {
+    const advancePaidAt = new Date("2026-11-10T00:00:00.000Z");
+    const deal = (state: "building" | "balance_due") => ({ linkId: "l", state, currency: "INR" as const, advanceCents: 2_000_000, advancePaidAt, balanceCents: 4_000_000 });
+    vi.mocked(listClients).mockResolvedValue([
+      makeClient("c-ready", "Ready Business", { deal: deal("balance_due") }),
+      makeClient("c-building", "Building Business", { deal: deal("building") }),
+    ]);
+    const items = await loadTodayItems(NOW, true);
+    expect(items.find((item) => item.key === "billing:balance_due:c-ready")).toEqual({
+      key: "billing:balance_due:c-ready",
+      kind: "payment",
+      title: "Balance due: Ready Business",
+      detail: "Website is ready, balance not paid",
+      dueAt: advancePaidAt,
+      href: "/clients/c-ready/billing",
+    });
+    expect(items.some((item) => item.key.endsWith("c-building"))).toBe(false);
+  });
+
   it("hides past_due and lapsed items when staff cannot see money", async () => {
     const clientPastDue = makeClient("c-past-due", "Past Due Business", {
       subscription: {
