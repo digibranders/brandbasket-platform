@@ -18,10 +18,10 @@ describe("project launch notices", () => {
     expect(readProjectLaunchNotice(value)).toBeNull();
   });
 
-  it("marks only the saved checks, the resent email and the saved or changed free address as successes", () => {
+  it("marks only the saved checks, the resent email, the saved or changed free address and a deal marked ready or taken back as successes", () => {
     const successes = Object.entries(PROJECT_LAUNCH_NOTICES)
       .filter(([, notice]) => notice.ok)
       .map(([key]) => key);
-    expect(successes.sort()).toEqual(["address-changed", "address-saved", "check-ok", "checks-saved", "launched", "launched-no-email", "resent"].sort());
+    expect(successes.sort()).toEqual(["address-changed", "address-saved", "check-ok", "checks-saved", "launched", "launched-no-email", "ready-sent", "ready-undone", "resent"].sort());
   });
 });

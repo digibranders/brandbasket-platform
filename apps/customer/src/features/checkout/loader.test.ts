@@ -62,10 +62,26 @@ describe("loadCheckout", () => {
     await expect(loadCheckout(customer({ status: "paid" }), { payment: "received" })).rejects.toThrow("redirect:/?welcome=1");
   });
 
-  it("sends a business being built Home: its advance is paid and there is nothing to pay here (plan 66)", async () => {
+  it("sends a business being built Home: its advance is paid and there is nothing to pay until the website is marked ready (plan 66)", async () => {
     await expect(loadCheckout(customer({ status: "building", dealState: "building" }), {})).rejects.toThrow("redirect:/");
-    await expect(loadCheckout(customer({ status: "building", dealState: "balance_due" }), {})).rejects.toThrow("redirect:/");
     expect(loadMembershipCheckout).not.toHaveBeenCalled();
+  });
+
+  it("shows a business whose website is ready the balance screen: the balance, the services' first period, the code and the next charge (plan 66)", async () => {
+    vi.mocked(loadMembershipCheckout).mockResolvedValue(
+      view({
+        services: ["managed-website", "social-media"],
+        locked: true,
+        discount: { code: "WELCOME", amountCents: 50_000, months: null, codeId: "c1", stated: null } as never,
+        paidDeal: { stage: "balance", listCents: 1_000_000, discountCents: 0, advanceCents: 500_000, note: null },
+        firstMonth: { provider: "razorpay", hadService: { "social-media": false, "paid-ads": false } },
+      }),
+    );
+    const now = new Date("2026-11-27T05:00:00Z");
+    const result = await loadCheckout(customer({ status: "building", dealState: "balance_due" }), {}, now);
+    if (result.kind !== "signup-pay") throw new Error("expected the one-screen checkout");
+    expect(result.link?.balance).toEqual({ cents: 500_000, codeLabel: "Code WELCOME", codeCents: 50_000, nextCharge: "Sun 27 Dec" });
+    expect(billingDetailsMissing).not.toHaveBeenCalled();
   });
 
   it("shows an unpaid owner with an open paid deal the advance screen, even when billing details are missing", async () => {
@@ -74,7 +90,7 @@ describe("loadCheckout", () => {
         services: ["managed-website"],
         locked: true,
         deal: { kind: "ecommerce", fee: null, note: "As agreed on call" },
-        paidDeal: { listCents: 6_500_000, discountCents: 500_000, advanceCents: 2_000_000, note: "As agreed on call" },
+        paidDeal: { stage: "advance", listCents: 6_500_000, discountCents: 500_000, advanceCents: 2_000_000, note: "As agreed on call" },
         firstMonth: { provider: "razorpay", hadService: { "social-media": false, "paid-ads": false } },
       }),
     );

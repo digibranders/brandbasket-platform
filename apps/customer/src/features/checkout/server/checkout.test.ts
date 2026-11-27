@@ -33,7 +33,7 @@ import { afterEach, beforeEach, describe, expect, it, vi, type MockInstance } fr
 import type { OnboardingSnapshot } from "@/features/checklist/rules-snapshot";
 import { getBillingProvider } from "./billing";
 import { billingDetailsMissing } from "./billing-details";
-import { CHECKOUT_RATE_LIMIT, startCheckoutFor, startMembershipCheckoutFor, startReactivationFor, UnsafeCheckoutUrlError } from "./checkout";
+import { CHECKOUT_RATE_LIMIT, startBalancePaymentFor, startCheckoutFor, startMembershipCheckoutFor, startReactivationFor, UnsafeCheckoutUrlError } from "./checkout";
 import type { GrantedCustomer } from "./customer-access";
 import { getAppDb, getStaffDb } from "./db";
 import { ensureDiscountPlan } from "./discount-plans";
@@ -76,6 +76,7 @@ vi.mock("@brandbasket/db", () => {
     lockBusinessForBilling: vi.fn(),
     markPackageOfferForfeited: vi.fn(),
     openCheckoutSubscription: vi.fn(),
+    paymentLinkState: (link: { readyAt?: Date | null; advancePaidAt?: Date | null }) => (link.readyAt != null ? "balance_due" : link.advancePaidAt != null ? "building" : "open"),
     withTenantScope: vi.fn(),
   };
 });
@@ -279,6 +280,7 @@ describe("startCheckoutFor", () => {
         setupFeeListCents: null,
         setupFeeDiscountCents: null,
         setupFeeNote: null,
+        setupFeeAdvanceCents: null,
         paymentLinkId: null,
         replacing: null,
         now: NOW,
@@ -787,6 +789,61 @@ describe("startMembershipCheckoutFor", () => {
 
       expect(result).toMatchObject({ kind: "refused" });
       expect(opened()).toBeUndefined();
+    });
+
+    describe("payment 2 of a paid deal (plan 66)", () => {
+      const ready = (overrides: Record<string, unknown> = {}) =>
+        link({ billingInterval: "month", websiteKind: "b2b", services: ["managed-website"], setupFeeListCents: 1_000_000, setupFeeDiscountCents: 0, setupFeeNote: null, advanceCents: 500_000, advancePaidAt: NOW, readyAt: NOW, ...overrides });
+
+      it("takes the balance and the website's first month: 5,000 and 2,999 make 7,999, frozen with the advance and the link", async () => {
+        neverHad();
+        vi.mocked(findOpenPaymentLinkForBusiness).mockResolvedValue(ready());
+        const started = vi.spyOn(provider, "startCheckout");
+
+        const result = await startBalancePaymentFor(owner, NOW);
+
+        expect(result).toMatchObject({ kind: "redirect" });
+        expect(opened()).toMatchObject({ firstPaymentCents: 799_900, firstChargeAt: FIRST_CHARGE_AT, setupFeeListCents: 1_000_000, setupFeeDiscountCents: 0, setupFeeAdvanceCents: 500_000, paymentLinkId: "link-1", websiteKind: "b2b" });
+        expect(started).toHaveBeenCalledWith(expect.objectContaining({ firstPayment: { amountCents: 799_900, startAt: FIRST_CHARGE_AT, label: "Website balance and first payment" } }));
+        expect(await chargedFor(result)).toBe(799_900);
+      });
+
+      it("takes Social Media's first month at 1 beside it: 8,000", async () => {
+        neverHad();
+        vi.mocked(findOpenPaymentLinkForBusiness).mockResolvedValue(ready({ services: ["managed-website", "social-media"] }));
+
+        await startBalancePaymentFor(owner, NOW);
+
+        expect(opened()).toMatchObject({ firstPaymentCents: 800_000, firstChargeAt: FIRST_CHARGE_AT });
+        expect(opened()?.bundledAddOns?.map((line) => [line.addOn, line.trialPriceCents ?? null])).toEqual([["managed-website", null], ["social-media", 100]]);
+      });
+
+      it("takes the balance and the year's price paid yearly, and starts the provider's plan a year on", async () => {
+        neverHad();
+        vi.mocked(findOpenPaymentLinkForBusiness).mockResolvedValue(ready({ billingInterval: "year" }));
+
+        await startBalancePaymentFor(owner, NOW);
+
+        expect(opened()).toMatchObject({ firstPaymentCents: 500_000 + 3_238_900, firstChargeAt: new Date("2027-09-16T12:00:00.000Z"), billingInterval: "year", setupFeeAdvanceCents: 500_000 });
+      });
+
+      it("opens the ordinary checkout, still tied to the link, when the advance paid the whole build", async () => {
+        neverHad();
+        vi.mocked(findOpenPaymentLinkForBusiness).mockResolvedValue(ready({ advanceCents: 1_000_000 }));
+
+        await startBalancePaymentFor(owner, NOW);
+
+        expect(opened()).toMatchObject({ paymentLinkId: "link-1", setupFeeAdvanceCents: 1_000_000 });
+        expect(opened()).not.toHaveProperty("firstPaymentCents");
+      });
+
+      it("refuses a deal whose website is not marked ready, and opens nothing", async () => {
+        neverHad();
+        vi.mocked(findOpenPaymentLinkForBusiness).mockResolvedValue(ready({ readyAt: null }));
+
+        expect(await startBalancePaymentFor(owner, NOW)).toMatchObject({ kind: "refused" });
+        expect(opened()).toBeUndefined();
+      });
     });
 
     it("lets a free payment link decide the services, interval and kind, whatever the page posted, and charges no build", async () => {

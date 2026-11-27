@@ -4,6 +4,8 @@ import {
   activateBundledAddOns,
   bundledNetCents,
   findBundledAddOnsForSubscription,
+  findChargeForBusiness,
+  findTaxInvoiceByPaymentId,
   openMembershipForListingBusiness,
   findPaymentLinkById,
   findSubscriptionById,
@@ -105,15 +107,27 @@ export async function activateFirstPayment(tx: ScopedTransaction, payment: First
   // Plan 65: a website build fee frozen on the checkout. A paid fee (net above nothing) is part of this payment; a waived one is only
   // recorded, for the invoice to say so. On a monthly deal the website's own first month is not charged (it starts a month on, with
   // the first full charge), and a code starts with that charge too; on a yearly deal every service's year is charged today.
+  // Plan 66: a paid deal's payment 2 (its subscription is tied to a link that took an advance). The advance was received as a charge, so
+  // this payment carries the balance of the build, and the website's first period with the other services, nothing deferred.
+  const dealLink = opened?.paymentLinkId != null ? await findPaymentLinkById(tx, opened.paymentLinkId) : null;
+  const frozenAdvanceCents = opened?.setupFeeAdvanceCents ?? null;
+  let advance: { readonly cents: number; readonly receivedAt: Date; readonly invoiceNumber: string | null } | null = null;
+  if (frozenAdvanceCents !== null) {
+    // The advance frozen on the checkout is what the balance is worked out from; the link says when it was received and on which charge.
+    if (dealLink?.advancePaidAt == null) throw new Error(`Subscription ${payment.subscriptionId} froze an advance of ${frozenAdvanceCents} but its payment link has no paid advance`);
+    advance = { cents: frozenAdvanceCents, receivedAt: dealLink.advancePaidAt, invoiceNumber: await advanceInvoiceNumber(tx, payment.businessId, dealLink.advanceChargeId) };
+  }
   const setupFee =
     opened?.setupFeeListCents != null && opened.websiteKind != null
       ? { websiteKind: opened.websiteKind, listCents: opened.setupFeeListCents, discountCents: opened.setupFeeDiscountCents ?? 0, note: opened.setupFeeNote ?? null }
       : null;
   const feeNetCents = setupFee === null ? 0 : setupFee.listCents - setupFee.discountCents;
-  const monthlyFeeDeal = feeNetCents > 0 && !yearly;
+  // What this payment takes for the build: the whole fee on a build-fee deal (plan 65), the balance on a paid deal (plan 66).
+  const feeTodayCents = advance === null ? feeNetCents : feeNetCents - advance.cents;
+  const monthlyFeeDeal = advance === null && feeNetCents > 0 && !yearly;
   const termEnd = offer?.chargeAt ?? addMonthsUtc(payment.paidAt, yearly ? monthsPerCycle("year") : payment.plan.initialTermMonths);
   // What the first payment's services cover: a yearly build-fee deal's basket is paid through 13 months on, but what it buys is a year.
-  const servicesPeriodEnd = yearly && feeNetCents > 0 ? addMonthsUtc(payment.paidAt, monthsPerCycle("year")) : termEnd;
+  const servicesPeriodEnd = yearly && advance === null && feeNetCents > 0 ? addMonthsUtc(payment.paidAt, monthsPerCycle("year")) : termEnd;
   // What was actually taken: the price (GST included) less the discount. chargedAmountCents throws for a discount that
   // would leave nothing, so a nonsense figure is never recorded as a payment.
   // The services taken at this checkout are lines of the subscription, billed in the same charge: their prices (the plan
@@ -127,7 +141,7 @@ export async function activateFirstPayment(tx: ScopedTransaction, payment: First
     // The lines say what the offer costs; the frozen first payment must agree with them, or the checkout was opened wrongly. On a
     // monthly build-fee deal the website's line is not charged today and no code comes off today's payment.
     const charged = monthlyFeeDeal ? bundled.filter((line) => line.addOn !== BUILD_FEE_ADD_ON) : bundled;
-    amountCents = feeNetCents + charged.reduce((total, line) => total + offerNet(line), 0) - (monthlyFeeDeal ? 0 : (payment.discountAmountCents ?? 0));
+    amountCents = feeTodayCents + charged.reduce((total, line) => total + offerNet(line), 0) - (monthlyFeeDeal ? 0 : (payment.discountAmountCents ?? 0));
     if (amountCents !== offer.cents) {
       throw new Error(`Subscription ${payment.subscriptionId} froze a first payment of ${offer.cents} but its lines and build fee come to ${amountCents}`);
     }
@@ -154,10 +168,9 @@ export async function activateFirstPayment(tx: ScopedTransaction, payment: First
   if (opened?.paymentLinkId != null) {
     await markPaymentLinkPaid(tx, { linkId: opened.paymentLinkId, subscriptionId: payment.subscriptionId, paidAt: payment.paidAt });
     // Plan 66: the link's custom prices outlive the checkout, so a later re-pricing from the catalogue can honour them.
-    const link = await findPaymentLinkById(tx, opened.paymentLinkId);
-    if (link !== null) {
-      for (const [addOn, netCents] of Object.entries(linkCustomPrices(link))) {
-        await upsertPriceOverride(tx, { businessId: payment.businessId, addOn, billingInterval: link.billingInterval === "year" ? "year" : "month", netCents, paymentLinkId: link.id });
+    if (dealLink !== null) {
+      for (const [addOn, netCents] of Object.entries(linkCustomPrices(dealLink))) {
+        await upsertPriceOverride(tx, { businessId: payment.businessId, addOn, billingInterval: dealLink.billingInterval === "year" ? "year" : "month", netCents, paymentLinkId: dealLink.id });
       }
     }
   }
@@ -201,7 +214,15 @@ export async function activateFirstPayment(tx: ScopedTransaction, payment: First
       .map((line) => (line.trialPriceCents == null ? line : { ...line, listAmountCents: line.trialPriceCents, offerDiscountAmountCents: 0, netAmountCents: line.trialPriceCents })),
     netAmountCents: payment.plan.initialAmountCents,
     discountAmountCents: monthlyFeeDeal ? 0 : (payment.discountAmountCents ?? 0),
-    ...(setupFee === null ? {} : { setupFee: { ...setupFee, websiteKind: setupFee.websiteKind as WebsiteKind } }),
+    ...(setupFee === null
+      ? {}
+      : {
+          setupFee: {
+            ...setupFee,
+            websiteKind: setupFee.websiteKind as WebsiteKind,
+            ...(advance === null ? {} : { advance }),
+          },
+        }),
     // A stay offer is only ever added to a live subscription, never to its first payment.
     retentionDiscountCents: 0,
     monthly: !yearly && payment.plan.initialTermMonths === 1,
@@ -209,6 +230,14 @@ export async function activateFirstPayment(tx: ScopedTransaction, payment: First
     periodEnd: servicesPeriodEnd,
   });
   return { ...activation, openedMembership, discountEnded: settlement.ended };
+}
+
+/** The number of the tax invoice the deal's advance was issued, or null when it has none (a dollar advance, or one not yet invoiced). */
+async function advanceInvoiceNumber(tx: ScopedTransaction, businessId: string, chargeId: string | null): Promise<string | null> {
+  if (chargeId === null) return null;
+  const charge = await findChargeForBusiness(tx, businessId, chargeId);
+  if (charge?.paymentId == null) return null;
+  return (await findTaxInvoiceByPaymentId(tx, charge.paymentId))?.number ?? null;
 }
 
 /** What a renewal was charged at, exactly as the caller's amount check accepted it, for its tax invoice. */

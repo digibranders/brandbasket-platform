@@ -31,6 +31,7 @@ export const EVENT_LINES = {
   paymentFailedBody: "Pay again to keep your plan running",
   renewalUpcoming: (when: string): string => `Your next payment is due on ${when}`,
   planLapsed: "Your plan has lapsed",
+  balanceDue: "Your website is ready. Pay the balance to go live",
   planLapsedBody: "Pay to start it again",
   refund: "Your payment was refunded",
   unappliedPayment: "We received a payment we could not apply to your plan yet",
@@ -101,6 +102,7 @@ export const BELL_COPY: CopyModule<BellCopy> = {
   "billing.plan_lapsed": () => ({ title: EVENT_LINES.planLapsed, body: EVENT_LINES.planLapsedBody, link: "/billing/payment" }),
   "billing.refund": () => ({ title: EVENT_LINES.refund, link: BILLING }),
   "billing.unapplied_payment": () => ({ title: EVENT_LINES.unappliedPayment, body: EVENT_LINES.unappliedPaymentBody, link: BILLING }),
+  "billing.balance_due": () => ({ title: EVENT_LINES.balanceDue, link: "/checkout" }),
   // C. Website
   "website.started": () => ({ title: EVENT_LINES.started, link: WEBSITE }),
   "website.preview_ready": () => ({ title: EVENT_LINES.previewReady, link: WEBSITE }),

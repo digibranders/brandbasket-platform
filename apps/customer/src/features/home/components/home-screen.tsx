@@ -15,6 +15,8 @@ import { ChannelLogo } from "@/legacy-social/components/channel-logo";
 import type { HomePanels, HomeStateView } from "../loader";
 import {
   ADVANCE_PAID_LINE,
+  BALANCE_DUE_LINE,
+  PAY_BALANCE_LABEL,
   firstName,
   greetingFor,
   homeLede,
@@ -491,7 +493,14 @@ export function HomeScreen(props: HomeScreenProps) {
   if (props.view.dealState == null) return <HomeTemplate {...props} />;
   return (
     <div className="flex flex-col gap-6">
-      <Banner tone="info">{ADVANCE_PAID_LINE}</Banner>
+      <Banner tone="info">{props.view.dealState === "balance_due" ? BALANCE_DUE_LINE : ADVANCE_PAID_LINE}</Banner>
+      {props.view.dealState === "balance_due" ? (
+        <div>
+          <LinkButton href="/checkout" variant="primary">
+            {PAY_BALANCE_LABEL}
+          </LinkButton>
+        </div>
+      ) : null}
       <HomeTemplate {...props} />
     </div>
   );

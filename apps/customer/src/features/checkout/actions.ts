@@ -12,9 +12,9 @@ import { reportError } from "@/lib/report";
 import { chargeNoticeHref, chargePayPath } from "./rules/charge-notices";
 import { MEMBERSHIP_BILLING_PARAM, MEMBERSHIP_PATH, readBillingInterval } from "./rules/membership";
 import { lookupBillingPincode, saveBillingDetailsFor, type BillingPincodeLookup } from "./server/billing-details";
-import { hasOpenPaidDeal, startAdvancePaymentFor } from "./server/advance-payment";
+import { openPaidDealPayment, startAdvancePaymentFor } from "./server/advance-payment";
 import { startCustomerChargePayment } from "./server/charges";
-import { startCheckoutFor, startMembershipCheckoutFor } from "./server/checkout";
+import { startBalancePaymentFor, startCheckoutFor, startMembershipCheckoutFor } from "./server/checkout";
 import { loadBusinessEntry } from "./server/entry";
 import { applyReferralCodeFor, removeReferralCodeFor } from "./server/referrals";
 
@@ -63,12 +63,17 @@ export async function startPaymentAction(_previous: ActionResult | null, formDat
   const entry = await loadBusinessEntry(customer);
   const now = new Date();
   const interval = readBillingInterval({ [MEMBERSHIP_BILLING_PARAM]: parsed.data.billing });
-  // A paid deal (plan 66) is paid in two: this press pays the advance, whatever the form posted. A free link and a self sign-up go on as before.
-  const outcome = (await hasOpenPaidDeal(customer, now))
-    ? await startAdvancePaymentFor(customer, now)
-    : entry.kind === "listing"
-      ? await startMembershipCheckoutFor(customer, now, parsed.data.tier, servicesOf(parsed.data.service), interval, parsed.data.siteKind)
-      : await startCheckoutFor(customer, now, interval);
+  // A paid deal (plan 66) is paid in two, whatever the form posted: the advance first, then (once staff mark the website ready) the balance
+  // with the first period of the services. A free link and a self sign-up go on as before.
+  const deal = await openPaidDealPayment(customer, now);
+  const outcome =
+    deal === "balance"
+      ? await startBalancePaymentFor(customer, now)
+      : deal !== null
+        ? await startAdvancePaymentFor(customer, now)
+        : entry.kind === "listing"
+          ? await startMembershipCheckoutFor(customer, now, parsed.data.tier, servicesOf(parsed.data.service), interval, parsed.data.siteKind)
+          : await startCheckoutFor(customer, now, interval);
   if (outcome.kind === "refused") return actionFail(outcome.problem.message);
   redirect(outcome.url);
 }

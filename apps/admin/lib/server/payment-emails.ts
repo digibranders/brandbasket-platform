@@ -1,8 +1,10 @@
 import "server-only";
 import {
+  sendBalanceDue as sendBalance,
   sendPaymentFailed as sendFailed,
   sendPaymentReceipt as sendReceipt,
   sendPaymentRefunded as sendRefunded,
+  type BalanceDueNotice,
   type FailedPaymentEmail,
   type PaymentEmailDeps,
   type RefundEmailInput,
@@ -51,3 +53,12 @@ export async function sendPaymentRefunded(input: RefundEmailInput): Promise<void
   }
 }
 
+
+/** Tells the customer their paid deal's website is ready and the balance is due. Best-effort: it never throws. */
+export async function sendBalanceDue(input: BalanceDueNotice): Promise<void> {
+  try {
+    await sendBalance(getStaffDb(), deps(), input);
+  } catch (error) {
+    console.error("[payment-email] A balance-due notice could not be sent.", { businessId: input.businessId, error: error instanceof Error ? error.name : "error" });
+  }
+}

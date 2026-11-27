@@ -142,6 +142,14 @@ export const ADVANCE_COPY = {
   nonRefundable: "The advance is non-refundable.",
 } as const;
 
+/** New copy for the owner (plan 66, step 5): the pay screen of a paid deal's balance. */
+export const BALANCE_COPY = {
+  balanceLabel: "Balance for your website build",
+  dueLabel: "Total to pay now",
+  /** "Your monthly plan starts today. Next charge on 27 Dec 2026." */
+  planStarts: (interval: BillingInterval, nextCharge: string): string => `Your ${interval === "year" ? "yearly" : "monthly"} plan starts today. Next charge on ${nextCharge}.`,
+} as const;
+
 /** The services a ticked set really buys: only catalogue ids on sale, and the shared rule on monitoring (never alone). */
 export function purchasableServices(table: SignupBasketTable, ticked: readonly string[]): readonly MonthlyAddOnId[] {
   const onSale = new Set<string>(table.services.map((service) => service.id));
@@ -167,6 +175,11 @@ export interface BasketOptions {
     readonly listCents?: number;
     /** The advance of a paid link: the one amount paid now, the rest of the build being paid when the website is ready. */
     readonly advanceCents?: number;
+    /**
+     * A paid deal whose website is ready (plan 66, payment 2): what is left of the build, the code taken off the first payment (its label
+     * and amount) and the date the plan's next charge falls. Present means the summary is the balance, never the advance.
+     */
+    readonly balance?: { readonly cents: number; readonly codeLabel: string | null; readonly codeCents: number; readonly nextCharge: string };
   } | null;
 }
 
@@ -223,10 +236,50 @@ function advanceView(table: SignupBasketTable, services: readonly MonthlyAddOnId
   };
 }
 
+/**
+ * A paid deal's payment 2 (plan 66): the balance of the build, then the first period of each service (the website's maintenance, Social
+ * and Ads at their first-month price where eligible), less the code, as the checkout takes it (planFirstPayment, dealBalanceCents).
+ */
+function balanceView(
+  table: SignupBasketTable,
+  services: readonly MonthlyAddOnId[],
+  kind: WebsiteKind,
+  interval: BillingInterval,
+  balance: NonNullable<NonNullable<BasketOptions["deal"]>["balance"]>,
+): BasketView {
+  const money = (cents: number): string => formatMoney(cents, table.currency);
+  const yearly = interval === "year";
+  const months = yearly ? ", 12 months" : "";
+  const web = table.website.kinds[kind];
+  const chosen = table.services.filter((service) => services.includes(service.id));
+  const priceOf = (service: SignupBasketService): number => (service.id === "managed-website" ? (yearly ? web.yearlyCents : web.monthlyCents) : yearly ? service.yearlyCents : service.firstMonthCents);
+  const rows: BasketRow[] = [];
+  if (balance.cents > 0) rows.push({ key: "balance", label: BALANCE_COPY.balanceLabel, note: null, amount: money(balance.cents), tone: "plain" });
+  for (const service of chosen) {
+    if (service.id === "managed-website") rows.push({ key: "maintenance", label: `Maintenance${months}`, note: null, amount: money(priceOf(service)), tone: "plain" });
+    else if (service.onOffer && !yearly) rows.push({ key: service.id, label: `${service.title}, first month`, note: `${money(service.monthlyCents)} a month from next month`, amount: money(service.firstMonthCents), tone: "plain" });
+    else rows.push({ key: service.id, label: `${service.title}${months}`, note: null, amount: money(priceOf(service)), tone: "plain" });
+  }
+  if (balance.codeCents > 0) rows.push({ key: "code", label: balance.codeLabel ?? "Code", note: null, amount: `-${money(balance.codeCents)}`, tone: "save" });
+  const dueCents = balance.cents + sum(chosen.map(priceOf)) - balance.codeCents;
+  return {
+    services,
+    rows,
+    dueCents,
+    due: money(dueCents),
+    gstLine: table.taxRateBasisPoints > 0 ? `Includes ${money(gstInsideCents(dueCents, table.taxRateBasisPoints))} of GST at ${formatPercent(table.taxRateBasisPoints / 100)}` : null,
+    renewal: BALANCE_COPY.planStarts(interval, balance.nextCharge),
+    dueLabel: BALANCE_COPY.dueLabel,
+    advanceNote: null,
+  };
+}
+
 /** The summary for the services ticked and how often they are paid: the rows, the amount due today and what follows. */
 export function basketView(table: SignupBasketTable, ticked: readonly string[], interval: BillingInterval, options: BasketOptions = {}): BasketView {
   const services = purchasableServices(table, ticked);
   const advanceCents = options.deal?.advanceCents;
+  const balance = options.deal?.balance;
+  if (balance !== undefined && services.includes("managed-website")) return balanceView(table, services, options.kind ?? "b2b", interval, balance);
   if (options.deal != null && advanceCents !== undefined && services.includes("managed-website")) return advanceView(table, services, options.kind ?? "b2b", options.deal, advanceCents);
   const chosen = table.services.filter((service) => services.includes(service.id));
   const money = (cents: number): string => formatMoney(cents, table.currency);

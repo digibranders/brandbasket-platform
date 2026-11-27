@@ -1,6 +1,6 @@
 import { PROJECT_STATUSES_PREVIEWABLE, type ClientDetail, type ClientProject } from "@brandbasket/db";
 import { PROJECT_STATUSES_WAITING_ON_US } from "@brandbasket/shared/lib/project-status";
-import { NEXT_STEP_HEADLINES } from "@/lib/delivery-tab";
+import { NEXT_STEP_HEADLINES, nextStepHeadline } from "@/lib/delivery-tab";
 import type { ClientException, ExceptionResult, Read } from "@/lib/client-exceptions";
 import { lateReason } from "@/lib/pipeline";
 
@@ -36,12 +36,15 @@ export interface OverviewNextStep {
  * The one line the Overview leads with. A domain move first, then the build or preview, then going live. The words are
  * the Website tab's next-step card headline for the same stage (NEXT_STEP_HEADLINES), so the two never disagree.
  */
-export function overviewNextStep(client: Pick<ClientDetail, "project" | "movingTo">, now: Date): OverviewNextStep | null {
+export function overviewNextStep(
+  client: Pick<ClientDetail, "project" | "movingTo"> & { readonly billing?: Pick<ClientDetail["billing"], "deal"> },
+  now: Date,
+): OverviewNextStep | null {
   if (client.movingTo !== null) return { label: "Move them to their own domain", anchor: "domain" };
   const { project } = client;
   const step = clientNextStep(project);
   if (project === null || step === null) return null;
-  if (step === "live") return { label: NEXT_STEP_HEADLINES[project.status], anchor: "domain" };
+  if (step === "live") return { label: nextStepHeadline(project.status, client.billing?.deal?.state ?? null), anchor: "domain" };
   const late = previewLateReason(project, now);
   return { label: `${NEXT_STEP_HEADLINES[project.status]}${late === null ? "" : `: ${late.toLowerCase()}`}`, anchor: null };
 }

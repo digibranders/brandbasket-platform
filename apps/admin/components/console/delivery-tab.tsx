@@ -17,7 +17,8 @@ import {
   SendPreviewForm,
   When,
 } from "@/app/(protected)/clients/[businessId]/parts";
-import { dueDateLabel, NEXT_STEP_HEADLINES, roundName, roundsText, SEND_UPDATED_PREVIEW_LABEL } from "@/lib/delivery-tab";
+import { DealPanel, type DealCard } from "@/components/console/deal-panel";
+import { dueDateLabel, nextStepHeadline, roundName, roundsText, SEND_UPDATED_PREVIEW_LABEL } from "@/lib/delivery-tab";
 
 /** The latest thing the customer wrote when they asked for changes. */
 export interface LatestFeedback {
@@ -37,6 +38,8 @@ interface GoLiveInput {
   readonly domain: { readonly hostname: string; readonly status: DomainStatus } | null;
   readonly previewUrl: string | null;
   readonly addressUnverified: boolean;
+  /** Why Mark live is not offered (plan 66: the balance is unpaid), or null when it is. */
+  readonly blockedReason?: string | null;
 }
 
 interface NextStepCardProps {
@@ -47,6 +50,8 @@ interface NextStepCardProps {
   readonly rounds: RoundsFact | null;
   readonly latestFeedback: LatestFeedback | null;
   readonly goLive: GoLiveInput;
+  /** A paid deal being built (plan 66): its state and the one button for it, or null. */
+  readonly deal?: DealCard | null;
   /** What to show while the build waits for the kickoff call: its state, and the one button that opens the kickoff prompt. */
   readonly kickoff?: ReactNode;
   /** Whole days the customer has not answered a sent preview, once past the silent threshold. */
@@ -74,7 +79,7 @@ function QuotedFeedback({ feedback, rounds }: { readonly feedback: LatestFeedbac
   );
 }
 
-function StageBody({ businessId, status, rounds, latestFeedback, goLive, kickoff, silentDays }: Omit<NextStepCardProps, "late">): ReactNode {
+function StageBody({ businessId, status, rounds, latestFeedback, goLive, kickoff, silentDays }: Omit<NextStepCardProps, "late" | "deal">): ReactNode {
   switch (status) {
     case "onboarding":
       return kickoff === undefined || kickoff === null ? null : <div className="mt-4">{kickoff}</div>;
@@ -125,6 +130,7 @@ function StageBody({ businessId, status, rounds, latestFeedback, goLive, kickoff
             domain={goLive.domain}
             previewUrl={goLive.previewUrl}
             addressUnverified={goLive.addressUnverified}
+            blockedReason={goLive.blockedReason ?? null}
           />
         </div>
       );
@@ -136,7 +142,7 @@ function StageBody({ businessId, status, rounds, latestFeedback, goLive, kickoff
 }
 
 /** The one thing to do next on this build, first on the page. The stage name is the staff name the header uses. */
-export function NextStepCard({ late, ...rest }: NextStepCardProps): ReactElement {
+export function NextStepCard({ late, deal = null, ...rest }: NextStepCardProps): ReactElement {
   const { status } = rest;
   return (
     <section
@@ -153,7 +159,8 @@ export function NextStepCard({ late, ...rest }: NextStepCardProps): ReactElement
           {late === null ? null : <span className="text-error"> · {late}</span>}
         </p>
       </div>
-      <h3 className="mt-3 font-display text-xl font-semibold tracking-[-0.01em] text-ink">{NEXT_STEP_HEADLINES[status]}</h3>
+      <h3 className="mt-3 font-display text-xl font-semibold tracking-[-0.01em] text-ink">{nextStepHeadline(status, deal?.state === "paid" ? null : (deal?.state ?? null))}</h3>
+      {deal == null ? null : <DealPanel businessId={rest.businessId} deal={deal} />}
       <StageBody {...rest} />
     </section>
   );

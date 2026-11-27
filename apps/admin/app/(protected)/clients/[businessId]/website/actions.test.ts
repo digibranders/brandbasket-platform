@@ -11,11 +11,15 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { recordStaffAction } from "@/lib/server/activity";
 import { getStaffDb } from "@/lib/server/db";
 import { requireStaffAccess, type GrantedStaff } from "@/lib/server/staff-access";
+import { requireStaffCan } from "@/lib/server/staff-role";
+import { markWebsiteReady, undoWebsiteReady } from "@/lib/server/website-ready";
 import {
   assignBuilderAction,
   cancelProjectAction,
   grantRoundAction,
+  markWebsiteReadyAction,
   planLaunchAction,
+  undoWebsiteReadyAction,
 } from "./actions";
 
 vi.mock("server-only", () => ({}));
@@ -34,6 +38,8 @@ vi.mock("@brandbasket/db", async () => {
 vi.mock("@/lib/server/db", () => ({ getStaffDb: vi.fn() }));
 vi.mock("@/lib/server/staff-access", () => ({ requireStaffAccess: vi.fn() }));
 vi.mock("@/lib/server/activity", () => ({ recordStaffAction: vi.fn() }));
+vi.mock("@/lib/server/staff-role", () => ({ requireStaffCan: vi.fn() }));
+vi.mock("@/lib/server/website-ready", () => ({ markWebsiteReady: vi.fn(), undoWebsiteReady: vi.fn() }));
 
 const DB = { name: "staff-db" } as unknown as ReturnType<typeof getStaffDb>;
 const STAFF = { user: { id: "staff-1" }, staff: { userId: "staff-1", role: "support" } } as unknown as GrantedStaff;
@@ -52,6 +58,7 @@ const IDS = { businessId: BUSINESS, projectId: PROJECT };
 beforeEach(() => {
   vi.resetAllMocks();
   vi.mocked(requireStaffAccess).mockResolvedValue(STAFF);
+  vi.mocked(requireStaffCan).mockResolvedValue(STAFF);
   vi.mocked(getStaffDb).mockReturnValue(DB);
   vi.mocked(redirect).mockImplementation((url: string) => {
     throw new Error(`redirect:${url}`);
@@ -139,5 +146,33 @@ describe("planLaunchAction", () => {
   it("says the build no longer allows it when the database refuses", async () => {
     vi.mocked(setProjectLaunchPlannedOn).mockRejectedValue(new ProjectMoveRefusedError("plan-launch", PROJECT));
     await expect(planLaunchAction(form({ ...IDS, launchDay: "2026-12-05" }))).rejects.toThrow("move=refused");
+  });
+});
+
+describe("Website ready and Undo ready (plan 66)", () => {
+  it("need the money capability, and do nothing without it", async () => {
+    vi.mocked(requireStaffCan).mockRejectedValue(new Error("redirect:/no-access"));
+    await expect(markWebsiteReadyAction(form({ businessId: BUSINESS }))).rejects.toThrow("redirect:/no-access");
+    await expect(undoWebsiteReadyAction(form({ businessId: BUSINESS }))).rejects.toThrow("redirect:/no-access");
+    expect(requireStaffCan).toHaveBeenCalledWith("money");
+    expect(markWebsiteReady).not.toHaveBeenCalled();
+    expect(undoWebsiteReady).not.toHaveBeenCalled();
+  });
+
+  it("answers every outcome with its notice on the Website tab", async () => {
+    for (const [outcome, notice] of [["ready", "ready-sent"], ["no-deal", "ready-no-deal"], ["not-approved", "ready-not-approved"], ["not-building", "ready-not-building"]] as const) {
+      vi.mocked(markWebsiteReady).mockResolvedValue(outcome);
+      await expect(markWebsiteReadyAction(form({ businessId: BUSINESS }))).rejects.toThrow(`redirect:/clients/${BUSINESS}/website?launch=${notice}`);
+    }
+    expect(markWebsiteReady).toHaveBeenCalledWith(DB, { businessId: BUSINESS, staff: STAFF, now: expect.any(Date) });
+    vi.mocked(undoWebsiteReady).mockResolvedValue("undone");
+    await expect(undoWebsiteReadyAction(form({ businessId: BUSINESS }))).rejects.toThrow(`launch=ready-undone`);
+    vi.mocked(undoWebsiteReady).mockResolvedValue("not-ready");
+    await expect(undoWebsiteReadyAction(form({ businessId: BUSINESS }))).rejects.toThrow(`launch=ready-not-undone`);
+  });
+
+  it("refuses a business id that is not an id", async () => {
+    await expect(markWebsiteReadyAction(form({ businessId: "nope" }))).rejects.toThrow("The business must be a valid id.");
+    expect(markWebsiteReady).not.toHaveBeenCalled();
   });
 });

@@ -1,5 +1,14 @@
 import "server-only";
-import { businessHasHadService, findBillingState, findOpenPaymentLinkForBusiness, isPackageOfferForfeited, type BillingInterval, type Plan } from "@brandbasket/db";
+import {
+  businessHasHadService,
+  findBillingState,
+  findOpenPaymentLinkForBusiness,
+  isPackageOfferForfeited,
+  paymentLinkState,
+  type BillingInterval,
+  type PaymentLink,
+  type Plan,
+} from "@brandbasket/db";
 import { readBundleSelection } from "@brandbasket/shared/lib/billing/bundle";
 import { type DealCustomPrices, linkCustomPrices } from "@brandbasket/shared/lib/billing/deal";
 import { setupFeeFor } from "@brandbasket/shared/lib/billing/setup-fee";
@@ -53,10 +62,11 @@ export interface MembershipCheckoutView {
   /** The custom recurring prices of the staff link in force (plan 66), for the link's period; empty with no link or none set. */
   readonly customPrices: DealCustomPrices;
   /**
-   * A paid link (plan 66) whose advance is still to pay: the finalised build price, the discount and the advance, which the pay screen
-   * shows instead of a plan checkout; null for any other checkout.
+   * A paid link (plan 66) with a payment to make: the finalised build price, the discount and the advance. `advance` while the advance is
+   * still to pay (the pay screen shows it instead of a plan checkout); `balance` once staff have marked the website ready (the pay screen
+   * shows the balance and the first period of the services). Null for any other checkout, and for a deal that is being built.
    */
-  readonly paidDeal: { readonly listCents: number; readonly discountCents: number; readonly advanceCents: number; readonly note: string | null } | null;
+  readonly paidDeal: { readonly stage: "advance" | "balance"; readonly listCents: number; readonly discountCents: number; readonly advanceCents: number; readonly note: string | null } | null;
 }
 
 /** What a checkout may add to the basket its address names (plan 65): the kind of website, and whether the list build fee is owed when no payment link names one. */
@@ -135,9 +145,19 @@ export async function loadMembershipCheckout(
     deal,
     locked: link !== null,
     customPrices: link === null ? {} : linkCustomPrices(link),
-    paidDeal:
-      link?.dealType === "paid" && link.advancePaidAt === null && link.setupFeeListCents !== null && link.advanceCents !== null
-        ? { listCents: link.setupFeeListCents, discountCents: link.setupFeeDiscountCents ?? 0, advanceCents: link.advanceCents, note: link.setupFeeNote }
-        : null,
+    paidDeal: paidDealOf(link, now),
+  };
+}
+
+function paidDealOf(link: PaymentLink | null, now: Date): MembershipCheckoutView["paidDeal"] {
+  if (link?.dealType !== "paid" || link.setupFeeListCents === null || link.advanceCents === null) return null;
+  const state = paymentLinkState(link, now);
+  if (state !== "open" && state !== "balance_due") return null;
+  return {
+    stage: state === "open" ? "advance" : "balance",
+    listCents: link.setupFeeListCents,
+    discountCents: link.setupFeeDiscountCents ?? 0,
+    advanceCents: link.advanceCents,
+    note: link.setupFeeNote,
   };
 }

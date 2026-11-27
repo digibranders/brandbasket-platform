@@ -9,7 +9,13 @@ import { getMembershipPlan } from "./membership";
 import { findLapsedAppliedCode, resolveAppliedDiscount } from "./referrals";
 
 vi.mock("server-only", () => ({}));
-vi.mock("@brandbasket/db", () => ({ businessHasHadService: vi.fn(), findBillingState: vi.fn(), findOpenPaymentLinkForBusiness: vi.fn(), isPackageOfferForfeited: vi.fn() }));
+vi.mock("@brandbasket/db", () => ({
+  businessHasHadService: vi.fn(),
+  findBillingState: vi.fn(),
+  findOpenPaymentLinkForBusiness: vi.fn(),
+  isPackageOfferForfeited: vi.fn(),
+  paymentLinkState: (link: { readyAt?: Date | null; advancePaidAt?: Date | null }) => (link.readyAt != null ? "balance_due" : link.advancePaidAt != null ? "building" : "open"),
+}));
 vi.mock("./billing", () => ({ getBillingProvider: () => ({ name: "razorpay" }) }));
 vi.mock("@brandbasket/shared/server/reactivation-basket", () => ({ loadReactivationBasket: vi.fn() }));
 vi.mock("./billing-details", () => ({ loadBillingDetailsView: vi.fn() }));
@@ -104,6 +110,15 @@ describe("loadMembershipCheckout", () => {
       expect((await loadMembershipCheckout(customer, "managed", ["social-media"], NOW, "month", { chosenKind: "b2b", chargeListFee: true })).deal.fee).toBeNull();
     });
 
+    it("reads a paid deal marked ready as its balance stage, and one still being built as nothing to pay (plan 66)", async () => {
+      vi.mocked(findBillingState).mockResolvedValue(stateWith(false));
+      const paid = { currency: "INR", services: ["managed-website"], billingInterval: "month", websiteKind: "b2b", dealType: "paid", setupFeeListCents: 1_000_000, setupFeeDiscountCents: 0, setupFeeNote: null, advanceCents: 500_000, advancePaidAt: NOW, websitePriceCents: null, socialPriceCents: null, adsPriceCents: null, monitoringPriceCents: null };
+      vi.mocked(findOpenPaymentLinkForBusiness).mockResolvedValue({ ...paid, readyAt: NOW } as never);
+      expect((await loadMembershipCheckout(customer, "managed", WEBSITE, NOW)).paidDeal).toMatchObject({ stage: "balance", advanceCents: 500_000 });
+      vi.mocked(findOpenPaymentLinkForBusiness).mockResolvedValue({ ...paid, readyAt: null } as never);
+      expect((await loadMembershipCheckout(customer, "managed", WEBSITE, NOW)).paidDeal).toBeNull();
+    });
+
     it("lets a payment link decide the services, the interval, the kind, the discount and the note, and locks the page", async () => {
       vi.mocked(findBillingState).mockResolvedValue(stateWith(false));
       vi.mocked(findOpenPaymentLinkForBusiness).mockResolvedValue({
@@ -132,7 +147,7 @@ describe("loadMembershipCheckout", () => {
         locked: true,
         // A paid deal owes no build with a plan checkout: it is paid as the advance (plan 66), which the pay screen reads from paidDeal.
         deal: { kind: "ecommerce", fee: null, note: "As agreed on call" },
-        paidDeal: { listCents: 6_500_000, discountCents: 1_500_000, advanceCents: 2_000_000, note: "As agreed on call" },
+        paidDeal: { stage: "advance", listCents: 6_500_000, discountCents: 1_500_000, advanceCents: 2_000_000, note: "As agreed on call" },
       });
     });
 

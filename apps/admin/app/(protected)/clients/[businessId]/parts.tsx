@@ -613,12 +613,16 @@ function MarkLiveForm({
   businessId,
   note,
   offerOverride,
+  blockedReason,
 }: {
   readonly businessId: string;
   readonly note?: string;
   /** The last try found the address not loading: offer the box that lets staff go live anyway. */
   readonly offerOverride: boolean;
+  /** Why the website cannot go live yet (plan 66: its balance is unpaid). Then no button is offered. */
+  readonly blockedReason: string | null;
 }): ReactElement {
+  if (blockedReason !== null) return <p className="max-w-xl text-ink-2">{blockedReason}</p>;
   return (
     <form action={markLiveAction}>
       <p className="max-w-xl text-ink-2">
@@ -659,14 +663,17 @@ export function GoLivePanel({
   domain,
   previewUrl,
   addressUnverified,
+  blockedReason = null,
 }: {
   readonly businessId: string;
   readonly domain: { readonly hostname: string; readonly status: DomainStatus } | null;
   readonly previewUrl: string | null;
   /** The last Mark live stopped because the address did not load. */
   readonly addressUnverified: boolean;
+  /** Why Mark live is not offered, or null (plan 66). */
+  readonly blockedReason?: string | null;
 }): ReactElement {
-  if (domain === null || isTemporarySubdomain(domain.hostname)) return <MarkLiveForm businessId={businessId} offerOverride={addressUnverified} />;
+  if (domain === null || isTemporarySubdomain(domain.hostname)) return <MarkLiveForm businessId={businessId} offerOverride={addressUnverified} blockedReason={blockedReason} />;
 
   const root = registrableDomain(domain.hostname);
   return (
@@ -712,6 +719,7 @@ export function GoLivePanel({
       <MarkLiveForm
         businessId={businessId}
         offerOverride={addressUnverified}
+        blockedReason={blockedReason}
         note={
           domain.status === "verifying"
             ? "Their DNS now points at the site. Open their address, check it loads, then mark it live. The client is emailed their website address."

@@ -8,7 +8,7 @@ import {
   type Database,
 } from "@brandbasket/db";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { hasOpenPaidDeal, startAdvancePaymentFor } from "./advance-payment";
+import { openPaidDealPayment, startAdvancePaymentFor } from "./advance-payment";
 import { billingDetailsMissing } from "./billing-details";
 import { startCustomerChargePayment } from "./charges";
 import type { GrantedCustomer } from "./customer-access";
@@ -29,6 +29,7 @@ vi.mock("@brandbasket/db", () => {
     findOpenPaymentLinkForBusiness: vi.fn(),
     insertAdvanceCharge: vi.fn(),
     lockBusinessForBilling: vi.fn(),
+    paymentLinkState: (link: { readyAt?: Date | null; advancePaidAt?: Date | null }) => (link.readyAt != null ? "balance_due" : link.advancePaidAt != null ? "building" : "open"),
   };
 });
 
@@ -146,22 +147,26 @@ describe("startAdvancePaymentFor", () => {
   });
 });
 
-describe("hasOpenPaidDeal", () => {
+describe("openPaidDealPayment", () => {
   beforeEach(() => {
     vi.mocked(getStaffDb).mockReturnValue(TX as unknown as Database);
   });
 
-  it("is true for the business's own open paid link, with its advance paid or not", async () => {
-    vi.mocked(findOpenPaymentLinkForBusiness).mockResolvedValue(LINK);
-    expect(await hasOpenPaidDeal(CUSTOMER, NOW)).toBe(true);
+  it("names the payment a paid deal owes: the advance, then waiting while the site is built, then the balance once it is marked ready", async () => {
+    vi.mocked(findOpenPaymentLinkForBusiness).mockResolvedValueOnce(LINK);
+    expect(await openPaidDealPayment(CUSTOMER, NOW)).toBe("advance");
+    vi.mocked(findOpenPaymentLinkForBusiness).mockResolvedValueOnce({ ...(LINK as object), advancePaidAt: NOW } as never);
+    expect(await openPaidDealPayment(CUSTOMER, NOW)).toBe("waiting");
+    vi.mocked(findOpenPaymentLinkForBusiness).mockResolvedValueOnce({ ...(LINK as object), advancePaidAt: NOW, readyAt: NOW } as never);
+    expect(await openPaidDealPayment(CUSTOMER, NOW)).toBe("balance");
   });
 
-  it("is false for a free link, a link bound elsewhere and no link", async () => {
+  it("is null for a free link, a link bound elsewhere and no link", async () => {
     vi.mocked(findOpenPaymentLinkForBusiness).mockResolvedValueOnce({ ...(LINK as object), dealType: "free" } as never);
-    expect(await hasOpenPaidDeal(CUSTOMER, NOW)).toBe(false);
+    expect(await openPaidDealPayment(CUSTOMER, NOW)).toBeNull();
     vi.mocked(findOpenPaymentLinkForBusiness).mockResolvedValueOnce({ ...(LINK as object), businessId: "other" } as never);
-    expect(await hasOpenPaidDeal(CUSTOMER, NOW)).toBe(false);
+    expect(await openPaidDealPayment(CUSTOMER, NOW)).toBeNull();
     vi.mocked(findOpenPaymentLinkForBusiness).mockResolvedValueOnce(null);
-    expect(await hasOpenPaidDeal(CUSTOMER, NOW)).toBe(false);
+    expect(await openPaidDealPayment(CUSTOMER, NOW)).toBeNull();
   });
 });

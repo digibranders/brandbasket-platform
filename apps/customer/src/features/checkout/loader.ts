@@ -91,6 +91,8 @@ export type CheckoutView =
         /** A paid deal (plan 66): the finalised build price and the advance, the one amount paid now. Absent for a free link. */
         readonly listCents?: number;
         readonly advanceCents?: number;
+        /** A paid deal's payment 2 (plan 66): the screen shows the balance and the first period of the services instead of the advance. */
+        readonly balance?: { readonly cents: number; readonly codeLabel: string | null; readonly codeCents: number; readonly nextCharge: string };
       } | null;
     }
   /** Money arrived that bought nothing; staff are sorting it out, so nothing is offered. */
@@ -122,9 +124,9 @@ export async function loadCheckout(customer: CustomerContext, params: Params, no
   if (billing.status === "paid") redirect(notice === "received" ? MEMBER_WELCOME_HREF : "/");
   // Restarting a lapsed plan is reactivation, on Plan & billing, never a new first payment.
   if (billing.status === "lapsed") redirect("/billing");
-  // Plan 66: the advance is paid and the website is being built. There is nothing to pay on this page until the balance falls due
-  // (step 5 gives balance_due its own screen), so a business being built goes Home.
-  if (billing.status === "building") redirect("/");
+  // Plan 66: the advance is paid and the website is being built. There is nothing to pay on this page until staff mark the website ready
+  // (balance_due), so a business being built goes Home.
+  if (billing.status === "building" && billing.dealState !== "balance_due") redirect("/");
   // Not a redirect: the workspace layout sends an unpaid sign-up back here, so sending a non-owner Home would loop.
   if (customer.role !== "owner") return { kind: "owner-only" };
 
@@ -154,13 +156,31 @@ export async function loadCheckout(customer: CustomerContext, params: Params, no
   // address: a sign-up that gave its state needs none. A business with either of those keeps the full checkout below.
   // A paid deal (plan 66) always gets it: its pay screen is the advance, whatever else is on the account.
   if (view.paidDeal !== null && view.firstMonth !== null) {
+    const { paidDeal } = view;
+    const nextCharge = formatDate(addMonthsUtc(now, monthsPerCycle(interval)), now);
     return {
       kind: "signup-pay",
       table: lockedTable(buildSignupBasketTable(plan.currency, view.firstMonth.provider, view.firstMonth.hadService), view),
       services: view.services,
       paymentFailed: notice === "failed",
       websiteKind: view.deal.kind,
-      link: { interval, discountCents: view.paidDeal.discountCents, note: view.paidDeal.note, listCents: view.paidDeal.listCents, advanceCents: view.paidDeal.advanceCents },
+      link: {
+        interval,
+        discountCents: paidDeal.discountCents,
+        note: paidDeal.note,
+        listCents: paidDeal.listCents,
+        advanceCents: paidDeal.advanceCents,
+        ...(paidDeal.stage === "balance"
+          ? {
+              balance: {
+                cents: paidDeal.listCents - paidDeal.discountCents - paidDeal.advanceCents,
+                codeLabel: view.discount === null ? null : `Code ${view.discount.code}`,
+                codeCents: view.discount?.amountCents ?? 0,
+                nextCharge,
+              },
+            }
+          : {}),
+      },
     };
   }
   if (signUp && view.firstMonth !== null && view.discount === null && view.lapsedCode === null && !(await billingDetailsMissing(customer))) {

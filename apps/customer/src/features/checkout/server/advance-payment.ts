@@ -12,6 +12,7 @@ import {
   findOpenPaymentLinkForBusiness,
   insertAdvanceCharge,
   lockBusinessForBilling,
+  paymentLinkState,
   BillingBusinessNotFoundError,
   type Charge,
 } from "@brandbasket/db";
@@ -101,8 +102,14 @@ export async function startAdvancePaymentFor(customer: GrantedCustomer, now: Dat
   }
 }
 
-/** Whether the business's open staff link is a paid deal (plan 66): its first payment is then the advance, never the plan checkout. */
-export async function hasOpenPaidDeal(customer: Pick<GrantedCustomer, "tenant">, now: Date): Promise<boolean> {
+/**
+ * Which payment of a paid deal (plan 66) the business owes now: `advance` while the advance is unpaid, `balance` once staff have marked the
+ * website ready (the plan checkout), `waiting` while the site is being built, or null when the open link is not a paid deal. Read on the
+ * staff connection; the payment itself is checked again under the billing lock.
+ */
+export async function openPaidDealPayment(customer: Pick<GrantedCustomer, "tenant">, now: Date): Promise<"advance" | "balance" | "waiting" | null> {
   const link = await findOpenPaymentLinkForBusiness(getStaffDb(), customer.tenant.businessId, now);
-  return link !== null && link.businessId === customer.tenant.businessId && link.dealType === "paid";
+  if (link === null || link.businessId !== customer.tenant.businessId || link.dealType !== "paid") return null;
+  const state = paymentLinkState(link, now);
+  return state === "balance_due" ? "balance" : state === "building" ? "waiting" : "advance";
 }

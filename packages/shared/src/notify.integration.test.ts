@@ -63,6 +63,18 @@ describe("notify against the database", () => {
     expect(errors).toEqual([]);
   });
 
+  it("writes the balance-due bell row for a paid deal's owner (plan 66), once per ready, with no email through notify()", async () => {
+    const notify = notifier();
+    const input = { event: "billing.balance_due", audience: { kind: "customer", businessId }, dedupeKey: "link-1:2026-12-18T06:00:00.000Z", data: {} } as const;
+    await notify(input);
+    await notify(input);
+    const rows = await dbs.owner.db.select().from(notifications);
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({ audience: "customer", userId: "owner", businessId, eventKey: "billing.balance_due", title: "Your website is ready. Pay the balance to go live", link: "/checkout" });
+    expect(await emails()).toEqual([]);
+    expect(errors).toEqual([]);
+  });
+
   it("follows each person's own choices for an optional event", async () => {
     await dbs.owner.db.insert(notificationPreferences).values([
       { userId: "owner", businessId, topic: "calls", email: false, bell: true, push: true },

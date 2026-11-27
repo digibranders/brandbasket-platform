@@ -2,6 +2,7 @@ import { hasBillingAccess } from "@brandbasket/billing";
 import {
   findLatestSubscriptionForBusiness,
   findPlanById,
+  listDealsAwaitingBalance,
   listSubscriptionsEndingFirstTerm,
   listSubscriptionsPaidThroughBetween,
   type Database,
@@ -11,11 +12,11 @@ import { nextBundledNetCents, nextDiscountCents } from "../lib/billing/bundle";
 import { paymentsContinue } from "../lib/billing/payments-continue";
 import { renewalChargeCents } from "../lib/billing/terms";
 import { notifyEvent } from "./notify-event";
-import { sendFirstChargeReminder, type PaymentEmailDeps } from "./payment-emails";
+import { sendBalanceDue, sendFirstChargeReminder, type PaymentEmailDeps } from "./payment-emails";
 
 /*
- * The timer sweep for two billing notices that have no write to hang on: the reminder before the first full price charge, and the
- * plan lapsed notice. Both are keyed so a timer that runs every 15 minutes (or twice) notifies once. Run it from an existing
+ * The timer sweep for the billing notices that have no write to hang on: the reminder before the first full price charge, the
+ * plan lapsed notice and (plan 66) the reminder to pay a paid deal's balance. Both are keyed so a timer that runs every 15 minutes (or twice) notifies once. Run it from an existing
  * internal route; it adds no timer of its own.
  */
 
@@ -27,6 +28,8 @@ export const REMINDER_LEAD_DAYS = 3;
  * shortcut: a timer that was down longer than this misses a lapse, so keep it well above the timer's gap.
  */
 export const LAPSE_WINDOW_DAYS = 14;
+/** Deals read for the balance reminder in one run. */
+const BALANCE_SWEEP_LIMIT = 500;
 
 export interface BillingNoticeReport {
   readonly reminders: number;
@@ -63,6 +66,25 @@ async function sendReminders(db: Database, deps: PaymentEmailDeps, now: Date): P
   return { sent, failed };
 }
 
+/** A paid deal's website is ready and its balance unpaid (plan 66): the reminder every three days (sendBalanceDue holds the dedupe). Stops once paid or cancelled. */
+async function sendBalanceReminders(db: Database, deps: PaymentEmailDeps, now: Date): Promise<{ sent: number; failed: number }> {
+  const waiting = await listDealsAwaitingBalance(db, BALANCE_SWEEP_LIMIT);
+  let sent = 0;
+  let failed = 0;
+  for (const deal of waiting) {
+    try {
+      // The first notice goes when staff press Website ready; nothing is due again before three days have passed since.
+      if (now.getTime() - deal.readyAt.getTime() < REMINDER_LEAD_DAYS * DAY_MS) continue;
+      await sendBalanceDue(db, deps, { ...deal, reminder: true }, now);
+      sent += 1;
+    } catch (error) {
+      failed += 1;
+      console.error("[billing-notices] A balance reminder could not be sent.", { linkId: deal.linkId, error: error instanceof Error ? error.name : "error" });
+    }
+  }
+  return { sent, failed };
+}
+
 async function sendLapses(db: Database, now: Date): Promise<{ sent: number; failed: number }> {
   const candidates = await listSubscriptionsPaidThroughBetween(db, { from: new Date(now.getTime() - LAPSE_WINDOW_DAYS * DAY_MS), to: now });
   let sent = 0;
@@ -94,9 +116,13 @@ export async function sendDueBillingNotices(db: Database, deps: PaymentEmailDeps
     console.error("[billing-notices] The reminder sweep failed.", { error: error instanceof Error ? error.name : "error" });
     return { sent: 0, failed: 1 };
   });
+  const balances = await sendBalanceReminders(db, deps, now).catch((error: unknown) => {
+    console.error("[billing-notices] The balance reminder sweep failed.", { error: error instanceof Error ? error.name : "error" });
+    return { sent: 0, failed: 1 };
+  });
   const lapses = await sendLapses(db, now).catch((error: unknown) => {
     console.error("[billing-notices] The lapse sweep failed.", { error: error instanceof Error ? error.name : "error" });
     return { sent: 0, failed: 1 };
   });
-  return { reminders: reminders.sent, lapses: lapses.sent, failed: reminders.failed + lapses.failed };
+  return { reminders: reminders.sent + balances.sent, lapses: lapses.sent, failed: reminders.failed + balances.failed + lapses.failed };
 }

@@ -2,6 +2,7 @@ import type { ProjectStatus } from "@brandbasket/db";
 import {
   findBusinessWebsiteUrl,
   findLatestKickoffOutcome,
+  findPaidDealForBusiness,
   findLatestProjectEventAt,
   findOpenProjectForStaff,
   findSetupCallBooking,
@@ -11,6 +12,7 @@ import {
 } from "@brandbasket/db";
 import { renderToStaticMarkup } from "react-dom/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { websiteServiceMissing } from "@/lib/server/project-launch";
 import { isWebsiteBought } from "@/lib/server/bought-services";
 import { openClientTab } from "@/lib/server/client-page";
 import ClientWebsitePage from "./page";
@@ -19,7 +21,7 @@ vi.mock("server-only", () => ({}));
 vi.mock("@/lib/server/db", () => ({ getStaffDb: () => ({ name: "staff-db" }) }));
 vi.mock("@/lib/server/client-page", () => ({ openClientTab: vi.fn() }));
 vi.mock("@/lib/server/bought-services", () => ({ isWebsiteBought: vi.fn() }));
-vi.mock("@/lib/server/project-launch", () => ({ LAUNCH_RESEND_WINDOW_MS: 7 * 24 * 60 * 60 * 1000 }));
+vi.mock("@/lib/server/project-launch", () => ({ LAUNCH_RESEND_WINDOW_MS: 7 * 24 * 60 * 60 * 1000, websiteServiceMissing: vi.fn() }));
 vi.mock("./site-details", () => ({ SiteDetails: () => "[site details]" }));
 vi.mock("@/components/project-controls", () => ({ ProjectControls: () => "[project controls]" }));
 vi.mock("@/components/console/kickoff-call-section", () => ({ KickoffCallSection: () => "[kickoff call]" }));
@@ -46,6 +48,7 @@ vi.mock("@brandbasket/db", async () => {
   return {
     ...actual,
     findBusinessWebsiteUrl: vi.fn(),
+    findPaidDealForBusiness: vi.fn(),
     findLatestKickoffOutcome: vi.fn(),
     findLatestProjectEventAt: vi.fn(),
     findOpenProjectForStaff: vi.fn(),
@@ -113,9 +116,21 @@ const VERSIONS = [
 
 async function render(
   status: ProjectStatus | null,
-  options: { readonly feedback?: boolean; readonly versions?: boolean; readonly bought?: boolean; readonly search?: Record<string, string> } = {},
+  options: {
+    readonly feedback?: boolean;
+    readonly versions?: boolean;
+    readonly bought?: boolean;
+    readonly search?: Record<string, string>;
+    /** A paid deal's state on the client's billing (plan 66). */
+    readonly deal?: "building" | "balance_due";
+    readonly serviceMissing?: boolean;
+    readonly role?: "admin" | "support";
+  } = {},
 ): Promise<string> {
-  vi.mocked(openClientTab).mockResolvedValue({ granted: { user: { id: "staff-1" }, staff: { role: "admin" } }, client: client(status) } as never);
+  const base = client(status) as unknown as { billing: object };
+  const withDeal = options.deal === undefined ? base : { ...base, billing: { ...base.billing, deal: { linkId: "l1", state: options.deal, currency: "INR", advanceCents: 500_000, advancePaidAt: null, balanceCents: 500_000 } } };
+  vi.mocked(websiteServiceMissing).mockResolvedValue(options.serviceMissing ?? false);
+  vi.mocked(openClientTab).mockResolvedValue({ granted: { user: { id: "staff-1" }, staff: { role: options.role ?? "admin" } }, client: withDeal } as never);
   vi.mocked(listFeedbackForProject).mockResolvedValue(options.feedback ? FEEDBACK : []);
   vi.mocked(listPreviewVersions).mockResolvedValue(options.versions ? VERSIONS : []);
   vi.mocked(isWebsiteBought).mockResolvedValue(options.bought ?? true);
@@ -132,6 +147,7 @@ function foldTag(html: string, title: string): string {
 beforeEach(() => {
   vi.resetAllMocks();
   vi.mocked(findBusinessWebsiteUrl).mockResolvedValue(null);
+  vi.mocked(findPaidDealForBusiness).mockResolvedValue(null);
   vi.mocked(findSetupCallBooking).mockResolvedValue(null);
   vi.mocked(findLatestKickoffOutcome).mockResolvedValue(null);
   vi.mocked(listLaunchChecks).mockResolvedValue([]);
@@ -339,5 +355,54 @@ describe("the Website tab, CR-06", () => {
     } finally {
       vi.useRealTimers();
     }
+  });
+});
+
+describe("the Website tab for a paid deal (plan 66)", () => {
+  it("shows the Website ready button on an approved build whose advance is paid, with the balance", async () => {
+    const html = await render("approved", { deal: "building", serviceMissing: true });
+    expect(html).toContain("Mark website ready for the balance");
+    expect(html).toContain("Advance paid. Balance of ₹5,000 is due when the website is ready.");
+    expect(html).toContain("Website ready</button>");
+    expect(html).not.toContain("Undo ready");
+  });
+
+  it("offers no Website ready button before the preview is approved", async () => {
+    const html = await render("preview", { deal: "building", serviceMissing: true });
+    expect(html).toContain("Advance paid. Balance of ₹5,000 is due when the website is ready.");
+    expect(html).not.toContain("Website ready</button>");
+  });
+
+  it("offers Undo ready, not Website ready, once it is marked ready, and waits for the balance", async () => {
+    const html = await render("approved", { deal: "balance_due", serviceMissing: true });
+    expect(html).toContain("Waiting for the customer to pay the balance");
+    expect(html).toContain("Undo ready</button>");
+    expect(html).not.toContain("Website ready</button>");
+  });
+
+  it("shows staff without the money capability the deal state but neither button", async () => {
+    const building = await render("approved", { deal: "building", role: "support" });
+    expect(building).toContain("Advance paid. Balance of ₹5,000 is due when the website is ready.");
+    expect(building).not.toContain("Website ready</button>");
+    const ready = await render("approved", { deal: "balance_due", role: "support" });
+    expect(ready).not.toContain("Undo ready</button>");
+  });
+
+  it("says the balance is paid once the deal is paid, with no button", async () => {
+    vi.mocked(findPaidDealForBusiness).mockResolvedValue({ advanceCents: 500_000, setupFeeListCents: 1_000_000, setupFeeDiscountCents: 0, currency: "INR", paidAt: new Date("2026-12-20T07:00:00Z") } as never);
+    const html = await render("approved");
+    expect(html).toContain("Balance of ₹5,000 paid on");
+    expect(html).not.toContain("Website ready</button>");
+    expect(html).not.toContain("Undo ready");
+    expect(html).toContain("Go live");
+  });
+
+  it("hides Mark live with the reason while the website service is not running, and shows it once it is", async () => {
+    const blocked = await render("approved", { deal: "balance_due", serviceMissing: true });
+    expect(blocked).toContain("The website can go live once the customer has paid");
+    expect(blocked).not.toContain(">Mark live</button>");
+    const paid = await render("approved", { serviceMissing: false });
+    expect(paid).toContain("Mark live</button>");
+    expect(paid).not.toContain("The website can go live once the customer has paid");
   });
 });

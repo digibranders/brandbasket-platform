@@ -28,7 +28,7 @@ vi.mock("./payment-alerts", () => ({ paymentServiceNames: vi.fn(async () => []),
 vi.mock("./email-preference", () => ({ emailPreferenceAllows: vi.fn(async () => false) }));
 vi.mock("server-only", () => ({}));
 
-import { sendFirstChargeReminder, sendPaymentFailed, sendPaymentReceipt, sendPaymentRefunded } from "./payment-emails";
+import { sendBalanceDue, sendFirstChargeReminder, sendPaymentFailed, sendPaymentReceipt, sendPaymentRefunded } from "./payment-emails";
 
 const DB = {} as Database;
 const BUSINESS = "b1";
@@ -183,5 +183,47 @@ describe("sendFirstChargeReminder", () => {
     await sendFirstChargeReminder(DB, deps, { businessId: BUSINESS, amountCents: 100, currency: "INR", chargeDate: new Date("2026-12-01T00:00:00Z") });
     expect(mocks.notifyEvent).toHaveBeenCalledTimes(1);
     expect(mocks.notifyEvent).toHaveBeenCalledWith(DB, expect.objectContaining({ event: "billing.renewal_upcoming", dedupeKey: `${BUSINESS}:2026-12-01T00:00:00.000Z`, data: { when: expect.any(String) } }));
+  });
+});
+
+describe("sendBalanceDue (plan 66)", () => {
+  const READY_AT = new Date("2026-11-27T05:00:00.000Z");
+  const input = { businessId: BUSINESS, linkId: "l1", readyAt: READY_AT, currency: "INR", balanceCents: 500_000, reminder: false } as const;
+  beforeEach(() => {
+    mocks.findBusinessAlertDetails.mockResolvedValue({ business: { name: "Asha Cafe" }, owner: OWNER });
+  });
+
+  it("rings the bell once per ready and emails the balance with a link to the checkout", async () => {
+    await sendBalanceDue(DB, deps, input, READY_AT);
+    expect(mocks.notifyEvent).toHaveBeenCalledWith(DB, { event: "billing.balance_due", audience: customer, dedupeKey: `l1:${READY_AT.toISOString()}`, data: {} });
+    expect(send).toHaveBeenCalledTimes(1);
+    const [message] = send.mock.calls[0] as unknown as [{ template: string; bodyText: string }];
+    expect(message.template).toBe("balance-due");
+    expect(message.bodyText).toContain("https://app.example.test/checkout");
+    expect(message.bodyText).toContain("₹5,000");
+  });
+
+  it("sends a reminder with no bell, and nothing at all when an email went in the last three days", async () => {
+    await sendBalanceDue(DB, deps, { ...input, reminder: true }, new Date("2026-11-30T06:00:00.000Z"));
+    expect(mocks.notifyEvent).not.toHaveBeenCalled();
+    expect(send).toHaveBeenCalledTimes(1);
+    expect(mocks.hasEmailContaining).toHaveBeenCalledWith(DB, expect.objectContaining({ template: "balance-due", toAddress: "asha@example.com", since: new Date("2026-11-27T06:00:00.000Z") }));
+    send.mockClear();
+    mocks.hasEmailContaining.mockResolvedValue(true);
+    await sendBalanceDue(DB, deps, { ...input, reminder: true }, new Date("2026-11-30T06:00:00.000Z"));
+    expect(send).not.toHaveBeenCalled();
+  });
+
+  it("sends the first notice even when an email went in the last three days (Undo ready, then Website ready again)", async () => {
+    mocks.hasEmailContaining.mockResolvedValue(true);
+    await sendBalanceDue(DB, deps, input, READY_AT);
+    expect(send).toHaveBeenCalledTimes(1);
+    expect(mocks.hasEmailContaining).not.toHaveBeenCalled();
+  });
+
+  it("never throws, and sends no email to an owner with no address", async () => {
+    mocks.findBusinessAlertDetails.mockResolvedValue({ business: { name: "Asha Cafe" }, owner: { ...OWNER, email: null } });
+    await expect(sendBalanceDue(DB, deps, input, READY_AT)).resolves.toBeUndefined();
+    expect(send).not.toHaveBeenCalled();
   });
 });

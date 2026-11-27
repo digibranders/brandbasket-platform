@@ -13,6 +13,7 @@ import {
   findDealStanding,
   findPaymentLinkByAdvanceChargeId,
   insertPaymentLink,
+  listDealsAwaitingBalance,
   listPaymentLinks,
   markAdvancePaid,
   markLinkReady,
@@ -336,6 +337,19 @@ describe("deal states and transitions (plan 66)", () => {
 
     await revokePaymentLink(dbs.staff.db, { linkId: link.id, staffUserId: STAFF, now: NOW });
     expect(await markLinkReady(dbs.staff.db, { linkId: link.id, staffUserId: STAFF, now: NOW })).toBe(false);
+  });
+
+  it("lists the deals awaiting their balance: ready, unpaid and not cancelled, with the balance, and no others", async () => {
+    const { link: building } = await buildingLink("wait-1");
+    expect(await listDealsAwaitingBalance(dbs.staff.db, 10)).toEqual([]);
+
+    await markLinkReady(dbs.staff.db, { linkId: building.id, staffUserId: STAFF, now: NOW });
+    const waiting = await listDealsAwaitingBalance(dbs.staff.db, 10);
+    expect(waiting).toHaveLength(1);
+    expect(waiting[0]).toMatchObject({ linkId: building.id, businessId, readyAt: NOW, currency: "INR", balanceCents: (building.setupFeeListCents ?? 0) - (building.setupFeeDiscountCents ?? 0) - (building.advanceCents ?? 0) });
+
+    await revokePaymentLink(dbs.staff.db, { linkId: building.id, staffUserId: STAFF, now: NOW });
+    expect(await listDealsAwaitingBalance(dbs.staff.db, 10)).toEqual([]);
   });
 
   it("keeps the advance when a building deal is cancelled", async () => {

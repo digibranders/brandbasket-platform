@@ -199,6 +199,8 @@ export interface Subscription {
   readonly setupFeeListCents: number | null;
   readonly setupFeeDiscountCents: number | null;
   readonly setupFeeNote: string | null;
+  /** Plan 66: the advance of a paid deal already received when this payment 2 was opened; null for any other subscription. Optional so older fixtures stay valid. */
+  readonly setupFeeAdvanceCents?: number | null;
   /** Plan 65: the staff payment link this checkout was opened from, or null. */
   readonly paymentLinkId: string | null;
   readonly createdAt: Date;
@@ -237,6 +239,7 @@ const SUBSCRIPTION_COLUMNS = {
   setupFeeListCents: subscriptions.setupFeeListCents,
   setupFeeDiscountCents: subscriptions.setupFeeDiscountCents,
   setupFeeNote: subscriptions.setupFeeNote,
+  setupFeeAdvanceCents: subscriptions.setupFeeAdvanceCents,
   paymentLinkId: subscriptions.paymentLinkId,
   createdAt: subscriptions.createdAt,
 } as const;
@@ -456,6 +459,8 @@ export interface NewSubscription {
   readonly setupFeeListCents?: number | null;
   readonly setupFeeDiscountCents?: number | null;
   readonly setupFeeNote?: string | null;
+  /** Plan 66: the part of the net build fee already received as the deal's advance; the balance this checkout pays is list - discount - advance. */
+  readonly setupFeeAdvanceCents?: number | null;
   readonly paymentLinkId?: string | null;
 }
 
@@ -489,6 +494,7 @@ export async function insertSubscription(db: Runner, input: NewSubscription): Pr
       setupFeeListCents: input.setupFeeListCents ?? null,
       setupFeeDiscountCents: input.setupFeeDiscountCents ?? null,
       setupFeeNote: input.setupFeeNote ?? null,
+      setupFeeAdvanceCents: input.setupFeeAdvanceCents ?? null,
       paymentLinkId: input.paymentLinkId ?? null,
       status: "incomplete",
     })

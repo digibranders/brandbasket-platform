@@ -1,5 +1,7 @@
 import "server-only";
+import { hasWebsiteService } from "@brandbasket/billing";
 import {
+  findBillingState,
   findClientDetail,
   InvalidWebsiteUrlError,
   LAUNCH_CHECK_KEYS,
@@ -41,6 +43,23 @@ export class ProjectLaunchChecksMissingError extends Error {
   }
 }
 
+/** The business holds no running website service: a paid deal's balance and first period are unpaid, or the plan has lapsed (plan 66, section 3.6). */
+export class BalanceUnpaidError extends Error {
+  constructor(businessId: string) {
+    super(`Business ${businessId} has no running website service, so its website cannot go live: the balance or the plan is unpaid.`);
+    this.name = "BalanceUnpaidError";
+  }
+}
+
+/**
+ * Whether the business has no website service running now (hasWebsiteService: a paid period and a paid Managed Website line). Read
+ * by launchProject, which refuses such a business, and by the Website page, which says why Mark live is not offered.
+ */
+export async function websiteServiceMissing(db: Database, businessId: string, now: Date): Promise<boolean> {
+  const state = await findBillingState(db, businessId);
+  return !hasWebsiteService(state?.addOns ?? [], state?.subscription ?? null, now);
+}
+
 export class ProjectLaunchAddressUnverifiedError extends Error {
   constructor(
     businessId: string,
@@ -77,6 +96,7 @@ async function emailLaunch(
  * Marks a business's project live (markProjectLive, which is also the check that it's actually approved and ready)
  * and emails the owner their real website address. The client is read first: a business with no owner or no domain
  * throws before anything is written, so the project is never left live with no email and no website address. The
+ * business must hold a running website service (BalanceUnpaidError): a paid deal's website goes live only after payment 2. The
  * launch checks must all be ticked too (ProjectLaunchChecksMissingError); they are read before the project is marked live.
  * Then the domain is loaded once (checkSiteAddress): an address that does not load throws ProjectLaunchAddressUnverifiedError,
  * a soft stop that staff pass by launching again with confirmUnverifiedAddress. The project is marked live only once all of that is present.
@@ -88,6 +108,8 @@ export async function launchProject(db: Database, input: LaunchProjectInput, now
   const client = await findClientDetail(db, input.businessId);
   if (client === null || client.owner === null) throw new ProjectLaunchRecipientMissingError(input.businessId);
   if (client.domain === null) throw new ProjectLaunchDomainMissingError(input.businessId);
+
+  if (await websiteServiceMissing(db, input.businessId, now)) throw new BalanceUnpaidError(input.businessId);
 
   if (client.project !== null) {
     const ticked = await listLaunchChecks(db, { projectId: client.project.id, businessId: input.businessId });

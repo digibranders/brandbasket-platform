@@ -21,6 +21,7 @@ import {
   lockBusinessForBilling,
   markPackageOfferForfeited,
   openCheckoutSubscription,
+  paymentLinkState,
   withTenantScope,
   type NewBundledAddOn,
   type Plan,
@@ -91,6 +92,8 @@ const NO_SERVICES = "Choose at least one service to continue.";
 const CODE_NEEDS_A_PAID_SERVICE = "Your referral code can’t be used on a basket of first-month offer services only. Add a service that pays full price to use it.";
 /** What Razorpay Checkout calls the upfront amount when it carries a build fee (plan 65). New copy: the owner approves it before release. */
 const BUILD_FEE_ITEM_NAME = "Website build and first payment";
+/** What Razorpay Checkout calls the upfront amount of a paid deal's payment 2 (plan 66). New copy: the owner approves it before release. */
+const DEAL_BALANCE_ITEM_NAME = "Website balance and first payment";
 // New wording (plan 65): the owner approves it before release. A code is refused with a yearly website build, as well as with first-month offer services only.
 const CODE_REFUSED_MESSAGE = `${CODE_NEEDS_A_PAID_SERVICE} A yearly website build takes no code either: ask us about a deal discount instead.`;
 const BILLING_DETAILS_NEEDED = "Add your billing details to pay. Your GST invoice is made out from them and cannot be changed once it is issued.";
@@ -140,6 +143,8 @@ interface PlannedCheckout {
     readonly setupFee: SetupFee | null;
     readonly note: string | null;
     readonly paymentLinkId: string | null;
+    /** Plan 66: the advance a paid deal already received, or null (the balance is then net build price less this, paid with this checkout). */
+    readonly advanceCents: number | null;
   };
 }
 
@@ -160,7 +165,7 @@ type DecisionStep =
   | { readonly kind: "code-refused" }
   | { readonly kind: "no-plan" }
   | { readonly kind: "no-services" }
-  /** A paid deal (plan 66) is paid in two payments; the plan checkout is payment 2, which is built in step 5. Until then it opens nothing. */
+  /** A paid deal (plan 66) whose website staff have not marked ready: the plan checkout is payment 2 and opens only once they have. */
   | { readonly kind: "deal-not-ready" };
 
 function sameSubscriptionState(seen: Subscription | null, now: Subscription | null): boolean {
@@ -233,7 +238,11 @@ async function openNewCheckout(
           firstPayment: {
             amountCents: planned.offer.firstPaymentCents,
             startAt: planned.offer.firstChargeAt,
-            ...(planned.deal.setupFee !== null && planned.deal.setupFee.netCents > 0 ? { label: BUILD_FEE_ITEM_NAME } : {}),
+            ...(planned.deal.advanceCents !== null
+              ? { label: DEAL_BALANCE_ITEM_NAME }
+              : planned.deal.setupFee !== null && planned.deal.setupFee.netCents > 0
+                ? { label: BUILD_FEE_ITEM_NAME }
+                : {}),
           },
         }),
   });
@@ -278,6 +287,7 @@ async function openNewCheckout(
         setupFeeListCents: planned.deal.setupFee?.listCents ?? null,
         setupFeeDiscountCents: planned.deal.setupFee?.discountCents ?? null,
         setupFeeNote: planned.deal.note,
+        setupFeeAdvanceCents: planned.deal.advanceCents,
         paymentLinkId: planned.deal.paymentLinkId,
         replacing: replacing?.id ?? null,
         now,
@@ -373,6 +383,18 @@ export async function startMembershipCheckoutFor(
   if (await billingDetailsMissing(customer)) return refused(BILLING_DETAILS_NEEDED);
 
   return openPlanCheckout(customer, now, MEMBER_HOME, tier, readBundleSelection(services), interval, { chosenKind, chargeListFee: true });
+}
+
+/**
+ * Plan 66, payment 2 of a paid deal: the balance of the build with the first period of every service, once staff have marked the website
+ * ready. The business already has its project (paid at the advance), so there are no onboarding answers to check. The deal's link decides
+ * the services, interval and every price; openPlanCheckout reads it under the lock and refuses a deal that is not ready.
+ */
+export async function startBalancePaymentFor(customer: GrantedCustomer, now: Date): Promise<CheckoutOutcome> {
+  const limit = await consumeRateLimit(getAppDb(), `checkout:business:${customer.tenant.businessId}`, CHECKOUT_RATE_LIMIT);
+  if (!limit.allowed) return refused(TOO_MANY_ATTEMPTS);
+  if (await billingDetailsMissing(customer)) return refused(BILLING_DETAILS_NEEDED);
+  return openPlanCheckout(customer, now, MEMBER_HOME, null, WEBSITE_ALONE, "month", NO_FEE);
 }
 
 /**
@@ -505,7 +527,15 @@ async function openPlanCheckout(
     // ago is never honoured. A reactivation takes no link.
     const link = reactivation === null ? await findOpenPaymentLinkForBusiness(tx, tenant.businessId, now) : null;
     if (link !== null && link.currency !== plan.currency) return { kind: "no-plan" };
-    if (link?.dealType === "paid") return { kind: "deal-not-ready" };
+    // Plan 66: a paid deal pays its balance here, once staff have marked the website ready. Before that the build is not owed.
+    let dealNetCents: number | null = null;
+    let dealAdvanceCents: number | null = null;
+    if (link?.dealType === "paid") {
+      if (paymentLinkState(link, now) !== "balance_due" || link.setupFeeListCents === null || link.advanceCents === null) return { kind: "deal-not-ready" };
+      dealNetCents = link.setupFeeListCents - (link.setupFeeDiscountCents ?? 0);
+      dealAdvanceCents = link.advanceCents;
+      if (dealNetCents < dealAdvanceCents) return { kind: "deal-not-ready" };
+    }
     const basket = reactivation === null || reactivation.cancelled ? chosen : reactivation.services;
     const services = link === null ? basket : readBundleSelection(link.services);
     if (services.length === 0) return { kind: "no-services" };
@@ -541,14 +571,24 @@ async function openPlanCheckout(
     const owesFee = pricedLines.some((line) => line.addOn === BUILD_FEE_ADD_ON) && reactivation === null && hadService.get(BUILD_FEE_ADD_ON) === false;
     // A link owes no build here: a free link has none, and a paid one is refused above (its build is paid as the advance and the balance,
     // plan 66). The charge of the list fee with the first payment belongs to a sign-up checkout only.
-    const setupFee: SetupFee | null = owesFee && link === null && options.chargeListFee ? setupFeeFor(websiteKind, plan.currency, 0) : null;
+    const signUpFee: SetupFee | null = owesFee && link === null && options.chargeListFee ? setupFeeFor(websiteKind, plan.currency, 0) : null;
+    // The deal's build is recorded on the subscription (list, discount, advance) so the invoice can split it, but it is the balance that
+    // planFirstPayment adds, never a fee.
+    const setupFee: SetupFee | null =
+      dealNetCents !== null && link?.setupFeeListCents != null
+        ? { listCents: link.setupFeeListCents, discountCents: link.setupFeeDiscountCents ?? 0, netCents: dealNetCents }
+        : signUpFee;
     const firstPayment = planFirstPayment({
       lines: pricedLines.map((line) => ({ addOn: line.addOn, netCents: line.netCents, hadService: hadService.get(line.addOn) ?? true })),
       interval,
       provider: provider.name,
       currency: plan.currency,
       discountCents: discount?.amountCents ?? 0,
-      ...(setupFee === null ? {} : { setupFeeNetCents: setupFee.netCents }),
+      ...(dealNetCents !== null && dealAdvanceCents !== null
+        ? { dealBalanceCents: dealNetCents - dealAdvanceCents }
+        : signUpFee === null
+          ? {}
+          : { setupFeeNetCents: signUpFee.netCents }),
     });
     if (firstPayment.kind === "code-refused") return { kind: "code-refused" };
     const offer = firstPayment.kind === "offer" ? { firstPaymentCents: firstPayment.firstPaymentCents, firstChargeAt: addMonthsUtc(now, firstPayment.firstChargeMonths) } : null;
@@ -558,6 +598,7 @@ async function openPlanCheckout(
       setupFee,
       note: setupFee === null ? null : (link?.setupFeeNote ?? null),
       paymentLinkId: link?.id ?? null,
+      advanceCents: dealAdvanceCents,
     };
     const bundle: readonly NewBundledAddOn[] =
       firstPayment.kind === "offer" ? fullBundle.map((line) => ({ ...line, trialPriceCents: firstPayment.trialPriceByAddOn[line.addOn] ?? null })) : fullBundle;

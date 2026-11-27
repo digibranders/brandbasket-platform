@@ -258,3 +258,40 @@ export async function findDealForBusiness(db: Runner, businessId: string): Promi
     .limit(1);
   return rows[0] ?? null;
 }
+
+/** The business's paid deal whose balance has been paid (the newest), or null. For the console's Website tab. Staff connection only. */
+export async function findPaidDealForBusiness(db: Runner, businessId: string): Promise<PaymentLink | null> {
+  if (!isUuid(businessId)) return null;
+  const rows = await db
+    .select()
+    .from(paymentLinks)
+    .where(and(eq(paymentLinks.businessId, businessId), eq(paymentLinks.dealType, "paid"), isNotNull(paymentLinks.paidAt)))
+    .orderBy(desc(paymentLinks.paidAt))
+    .limit(1);
+  return rows[0] ?? null;
+}
+
+/** A deal whose website is ready and whose balance is unpaid: what the three-day reminder needs. Staff connection only. */
+export interface DealAwaitingBalance {
+  readonly linkId: string;
+  readonly businessId: string;
+  readonly readyAt: Date;
+  readonly currency: PaymentLink["currency"];
+  /** What is left of the build: net price less the advance. */
+  readonly balanceCents: number;
+}
+
+/** Paid deals marked ready, not paid and not cancelled, bound to a business. Oldest first, at most `limit`. */
+export async function listDealsAwaitingBalance(db: Runner, limit: number): Promise<readonly DealAwaitingBalance[]> {
+  const rows = await db
+    .select()
+    .from(paymentLinks)
+    .where(and(isNotNull(paymentLinks.businessId), isNotNull(paymentLinks.readyAt), isNull(paymentLinks.paidAt), isNull(paymentLinks.revokedAt)))
+    .orderBy(paymentLinks.readyAt)
+    .limit(limit);
+  return rows.flatMap((link) =>
+    link.businessId === null || link.readyAt === null || link.setupFeeListCents === null || link.advanceCents === null
+      ? []
+      : [{ linkId: link.id, businessId: link.businessId, readyAt: link.readyAt, currency: link.currency, balanceCents: link.setupFeeListCents - (link.setupFeeDiscountCents ?? 0) - link.advanceCents }],
+  );
+}

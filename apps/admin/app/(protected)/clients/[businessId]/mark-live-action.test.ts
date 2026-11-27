@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { recordStaffAction } from "@/lib/server/activity";
 import { getStaffDb } from "@/lib/server/db";
-import { launchProject, ProjectLaunchAddressUnverifiedError } from "@/lib/server/project-launch";
+import { BalanceUnpaidError, launchProject, ProjectLaunchAddressUnverifiedError } from "@/lib/server/project-launch";
 import { requireStaffAccess, type GrantedStaff } from "@/lib/server/staff-access";
 import { markLiveAction } from "./actions";
 
@@ -25,9 +25,11 @@ vi.mock("@/lib/server/web-address", () => ({}));
 vi.mock("@/lib/server/activity", () => ({ recordStaffAction: vi.fn() }));
 vi.mock("@/lib/server/project-launch", () => {
   class ProjectLaunchAddressUnverifiedError extends Error {}
+  class BalanceUnpaidError extends Error {}
   class Unused extends Error {}
   return {
     launchProject: vi.fn(),
+    BalanceUnpaidError,
     ProjectLaunchAddressUnverifiedError,
     ProjectLaunchChecksMissingError: Unused,
     ProjectLaunchDomainMissingError: Unused,
@@ -51,6 +53,14 @@ beforeEach(() => {
   vi.mocked(getStaffDb).mockReturnValue(DB);
   vi.mocked(redirect).mockImplementation((url: string) => {
     throw new Error(`redirect:${url}`);
+  });
+});
+
+describe("markLiveAction and the balance (plan 66)", () => {
+  it("sends staff back with the reason when the customer has not paid, and records nothing", async () => {
+    vi.mocked(launchProject).mockRejectedValue(new BalanceUnpaidError(BUSINESS));
+    await expect(markLiveAction(form({ businessId: BUSINESS }))).rejects.toThrow(`redirect:/clients/${BUSINESS}/website?launch=balance-unpaid`);
+    expect(recordStaffAction).not.toHaveBeenCalled();
   });
 });
 
