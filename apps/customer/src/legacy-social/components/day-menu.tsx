@@ -19,7 +19,7 @@ const TRIGGER = "inline-grid size-6 shrink-0 place-items-center rounded-md borde
  * rows a little taller than their text, and the days that cannot be chosen greyed out with a word saying why. It opens over the page, so the
  * week's grid never cuts it off, and the arrow keys, Enter and Escape work.
  */
-export function DayMenu({ choices, disabled = false, onMove }: { readonly choices: readonly DayChoice[]; readonly disabled?: boolean; readonly onMove: (day: string) => void }): ReactElement {
+export function DayMenu({ choices, disabled = false, time, onMove }: { readonly choices: readonly DayChoice[]; readonly disabled?: boolean; /** `HH:MM` India time the topic goes out at, shown beside each day (the day changes, the time stays). */ readonly time?: string; readonly onMove: (day: string) => void }): ReactElement {
   return (
     <Menu.Root>
       <Menu.Trigger type="button" title="Change the day" aria-label="Change the day" disabled={disabled} className={TRIGGER}>
@@ -36,7 +36,10 @@ export function DayMenu({ choices, disabled = false, onMove }: { readonly choice
                 onClick={() => onMove(day)}
                 className={cn("flex h-7 cursor-pointer items-center justify-between gap-3 rounded-md px-2 text-[0.8125rem] text-ink outline-none select-none data-[highlighted]:bg-sunken", why !== null && "cursor-not-allowed text-ink-3")}
               >
-                {dayLabel(day)}
+                <span>
+                  {dayLabel(day)}{" "}
+                  {time === undefined ? null : <span className="ml-1.5 text-[0.6875rem] text-ink-3">{time} IST</span>}
+                </span>
                 {why === null ? null : <span className="text-[0.6875rem]">{why}</span>}
               </Menu.Item>
             ))}

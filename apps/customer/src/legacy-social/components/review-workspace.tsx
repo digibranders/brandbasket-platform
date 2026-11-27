@@ -187,7 +187,7 @@ function TopicRow({
       >
         <TextT size={13} weight="bold" aria-hidden="true" />
       </IconButton>
-      {moveDays.length === 0 || onMove === undefined ? null : <DayMenu choices={dayChoices ?? moveDays.map((day) => ({ day, why: null }))} disabled={pending} onMove={onMove} />}
+      {moveDays.length === 0 || onMove === undefined ? null : <DayMenu choices={dayChoices ?? moveDays.map((day) => ({ day, why: null }))} disabled={pending} time={post.time ?? POST_TIME} onMove={onMove} />}
     </>
   );
   const tags = (
