@@ -14,7 +14,9 @@ describe("a draw that failed", () => {
   it("says so while a kept topic still has no pictures", () => {
     render(<AiStartCard jobs={[failedDraw]} channels={[]} drawWaiting />);
     expect(screen.getByText("We could not draw your pictures")).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Try again" })).toBeTruthy();
+    // The posts are written already, so there is no button that would read the website again.
+    expect(screen.queryByRole("button", { name: "Try again" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Start from my website" })).toBeNull();
   });
 
   it("says nothing once every kept topic has its pictures, so the old failure is not shown again", () => {
@@ -26,5 +28,6 @@ describe("a draw that failed", () => {
   it("still says a failed write, whatever is waiting to be drawn", () => {
     render(<AiStartCard jobs={[{ ...failedDraw, kind: "write" }]} channels={[]} drawWaiting={false} />);
     expect(screen.getByText("We could not write your posts")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Try again" })).toBeTruthy();
   });
 });

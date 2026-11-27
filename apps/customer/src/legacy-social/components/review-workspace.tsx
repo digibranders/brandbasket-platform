@@ -30,6 +30,7 @@ import { SMALL_DARK, SMALL_SOFT } from "./small-buttons";
 import { SplashText, TopicReel } from "./topic-reel";
 import { useReviewAction } from "./use-review-action";
 import { useTopicDrag } from "./use-topic-drag";
+import { useScrollLock } from "./use-scroll-lock";
 
 /** A connected account the review screen lists down its side. */
 export interface ReviewChannel {
@@ -187,7 +188,7 @@ function TopicRow({
       >
         <TextT size={13} weight="bold" aria-hidden="true" />
       </IconButton>
-      {moveDays.length === 0 || onMove === undefined ? null : <DayMenu choices={dayChoices ?? moveDays.map((day) => ({ day, why: null }))} disabled={pending} onMove={onMove} />}
+      {moveDays.length === 0 || onMove === undefined ? null : <DayMenu choices={dayChoices ?? moveDays.map((day) => ({ day, why: null }))} disabled={pending} time={post.time ?? POST_TIME} onMove={onMove} />}
     </>
   );
   const tags = (
@@ -585,6 +586,7 @@ function OwnTopicBox({ week, onClose }: { readonly week: string | undefined; rea
   const dialog = useRef<HTMLDialogElement>(null);
   const ask = useReviewAction();
   const [text, setText] = useState("");
+  useScrollLock();
   useEffect(() => {
     const window = dialog.current;
     if (window !== null && !window.open) window.showModal();
@@ -803,6 +805,7 @@ function DrawBar({ week, kept, total, retry, pictures, stay, carousel = null }: 
   const makesWords = pictures > 0 ? `${pictures} new ${picturesWord}${carouselNote}` : carouselNote === "" ? `${pictures} new ${picturesWord}` : carouselNote;
   const dialog = useRef<HTMLDialogElement>(null);
   const [asking, setAsking] = useState(false);
+  useScrollLock(asking);
   useEffect(() => {
     const window = dialog.current;
     if (window === null) return;

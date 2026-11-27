@@ -7,6 +7,7 @@ import { addBrandAction, archiveBrandAction, renameBrandAction, renameFirstBrand
 import type { BrandsView } from "@/features/social/brands";
 import { SMALL_DARK, SMALL_SOFT } from "./small-buttons";
 import { useReviewAction } from "./use-review-action";
+import { useScrollLock } from "./use-scroll-lock";
 
 const FIELD = "h-10 w-full rounded-lg border border-ink-2/65 bg-surface px-3 text-[0.875rem] text-ink placeholder:text-ink-3";
 
@@ -28,6 +29,7 @@ export function ManageBrands({ view, current, onClose }: BrandSwitcherProps & { 
   const canAdd = view.used < view.allowed;
   const live = view.brands.filter((brand) => !brand.archived).length;
 
+  useScrollLock();
   useEffect(() => {
     const window = dialog.current;
     if (window !== null && !window.open) window.showModal();

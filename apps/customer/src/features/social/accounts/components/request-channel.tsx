@@ -11,8 +11,8 @@ import { requestWords, type ChannelRequest } from "../requests";
 import { ConnectButton } from "./connect-button";
 
 const ASK: Readonly<Record<"instagram" | "facebook", { readonly label: string; readonly hint: string; readonly example: string }>> = {
-  instagram: { label: "Add your Instagram profile", hint: "A Business or Creator account", example: "instagram.com/yourname" },
-  facebook: { label: "Add your Facebook page", hint: "A Page you manage", example: "facebook.com/yourpage" },
+  instagram: { label: "Add Instagram profile", hint: "A Business or Creator account", example: "instagram.com/yourname" },
+  facebook: { label: "Add Facebook page", hint: "A Page you manage", example: "facebook.com/yourpage" },
 };
 
 /**
@@ -63,7 +63,7 @@ export function RequestChannel({ platform, request, needsPerson = false }: { rea
       {words === null ? <p className="type-meta">{ask.hint}</p> : <p className="type-meta">{words.long}</p>}
       {request?.state === "invited" ? <ConnectButton platform={platform} size="sm">{`Allow ${name}`}</ConnectButton> : null}
       {waiting ? (
-        <Button variant="ghost" size="sm" pending={pending} onClick={cancel} className="h-auto! min-h-8 w-full min-w-0 justify-start whitespace-normal! py-1.5 text-left leading-tight">
+        <Button variant="ghost" size="sm" pending={pending} onClick={cancel} className="w-full min-w-0 justify-start whitespace-nowrap">
           Send a different link
         </Button>
       ) : open ? (
@@ -90,7 +90,7 @@ export function RequestChannel({ platform, request, needsPerson = false }: { rea
           </div>
         </form>
       ) : (
-        <Button variant="secondary" size="sm" onClick={() => setOpen(true)} className="h-auto! min-h-8 w-full min-w-0 justify-start whitespace-normal! py-1.5 text-left leading-tight">
+        <Button variant="secondary" size="sm" onClick={() => setOpen(true)} className="w-full min-w-0 justify-start whitespace-nowrap">
           {request?.state === "refused" ? "Send a new link" : ask.label}
         </Button>
       )}
