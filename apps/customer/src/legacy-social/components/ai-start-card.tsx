@@ -89,7 +89,9 @@ export function AiStartCard({ jobs, channels, website = null, savedWebsite = nul
     if (active !== undefined) return { title: active.kind === "draw" ? "We are drawing your pictures" : "We are writing your posts", text: `${jobLine(active).replace(/\.$/, "")}. You can leave this page: they will be here when they are ready.`, button: null };
     if (latest === undefined) return { title: "Let us write your posts from your website", text: "Give us your website and we read it once, learn what you sell and how you sound, and write posts for each network. You look them over before anything is drawn or posted.", button: "Start from my website" };
     // Nothing is running and the latest job is not done (that returned above), so it failed.
-    return { title: latest.kind === "draw" ? "We could not draw your pictures" : "We could not write your posts", text: knownWordsForCode(latest.failure) ?? `${jobLine(latest)} Check the address and try again.`, button: "Try again" };
+    // A failed draw is about pictures, not about the website: the posts are already written, so nothing here reads the site again. The topics below have the button that draws what is missing.
+    if (latest.kind === "draw") return { title: "We could not draw your pictures", text: knownWordsForCode(latest.failure) ?? "Some topics got no picture. Change the headline of a topic that says why, or drop it, then use Draw the missing pictures below.", button: null };
+    return { title: "We could not write your posts", text: knownWordsForCode(latest.failure) ?? `${jobLine(latest)} Check the address and try again.`, button: "Try again" };
   })();
 
   return (
