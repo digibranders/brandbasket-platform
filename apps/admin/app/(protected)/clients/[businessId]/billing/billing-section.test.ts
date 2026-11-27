@@ -45,7 +45,8 @@ vi.mock("@brandbasket/db", async () => {
 });
 
 const BUSINESS = "01a0f71b-8402-7d48-a90a-207e8c8a882c";
-const CLIENT = { businessId: BUSINESS, businessName: "Om Sweets", currency: "INR", tier: "managed", billing: { subscription: null, firstPayment: null }, profile: null } as never;
+const CLIENT_FIELDS = { businessId: BUSINESS, businessName: "Om Sweets", currency: "INR", tier: "managed", billing: { subscription: null, firstPayment: null }, profile: null };
+const CLIENT = CLIENT_FIELDS as never;
 const PACKAGE = {} as never;
 const DENIED = new Error("redirect:/no-access");
 
@@ -109,9 +110,9 @@ describe("the billing section of Plan and billing", () => {
 
   it("links to Edit deal while the deal is being built, and not once its balance is due (staff undo ready first)", async () => {
     vi.mocked(requireStaffCan).mockResolvedValue({} as never);
-    const building = { ...CLIENT, billing: { subscription: null, firstPayment: null, deal: DEAL } } as never;
+    const building = { ...CLIENT_FIELDS, billing: { subscription: null, firstPayment: null, deal: DEAL } } as never;
     expect(renderToStaticMarkup(await BillingSection({ client: building, query: {}, packageFacts: PACKAGE }))).toContain('href="/payment-links/link-9/edit"');
-    const ready = { ...CLIENT, billing: { subscription: null, firstPayment: null, deal: { ...DEAL, state: "balance_due" } } } as never;
+    const ready = { ...CLIENT_FIELDS, billing: { subscription: null, firstPayment: null, deal: { ...DEAL, state: "balance_due" } } } as never;
     expect(renderToStaticMarkup(await BillingSection({ client: ready, query: {}, packageFacts: PACKAGE }))).not.toContain("/edit");
   });
 
